@@ -24,12 +24,14 @@ The lessons catalog lives at `.compass/meta/lessons-catalog.yaml`. It provides O
 # meta/lessons-catalog.yaml
 lessons:
   - file: "LESSON-yaml-frontmatter-quoting.md"
+    status: active
     category: process
     area: workflow
     tags: [yaml, frontmatter, quoting]
     score: 8
     summary: "YAML frontmatter values with colons must be quoted"
   - file: "LESSON-batch-export-user-need.md"
+    status: active
     category: domain
     area: backend
     tags: [export, users, requirements]
@@ -38,23 +40,29 @@ lessons:
 ```
 
 Fields:
-- `file`: Filename of the lesson in `.compass/lessons/`
+- `file`: Filename of the lesson in `.compass/lessons/` — named as `LESSON-<descriptive-slug>.md`
+- `status`: `active` or `archived`
 - `category`: `process` (how to build) or `domain` (what to build)
 - `area`: Matches the frontmatter `area` field
 - `tags`: List of tags for matching
 - `score`: 1-10, higher = more broadly applicable. Starts at 5, adjusted over time.
 - `summary`: One-line description for quick scanning
 
+## When to Search for Lessons
+
+Search for relevant lessons before **making plans**, **implementing plans**, or **starting any task that changes code or vault structure**. The catalog is cheap to read — when in doubt, check it.
+
 ## Search Algorithm
 
 When looking for relevant lessons:
 
 1. **Read catalog**: Load `.compass/meta/lessons-catalog.yaml`
-2. **Filter by area**: Keep lessons matching the current work area
-3. **Filter by tags**: Keep lessons with at least one overlapping tag with the current task
-4. **Sort by score**: Highest score first
-5. **Load top 3-5**: Read the full lesson files for the top matches
-6. **Apply**: Incorporate relevant lessons into your approach
+2. **Filter out archived**: Skip entries with `status: archived`
+3. **Judge relevance**: Read the summaries, tags, areas, and categories. Use your judgment to decide which lessons are relevant to the current task — don't rely on mechanical tag matching. Consider the intent of the work, not just keyword overlap.
+4. **Load relevant lessons**: Read the full lesson files for the ones you judged relevant (typically 3-5 max)
+5. **Apply**: Incorporate relevant lessons into your approach
+
+For large catalogs (20+ entries), spawn a subagent to review the catalog and return the relevant filenames — this keeps the main context clean.
 
 If the catalog doesn't exist or is empty, fall back to:
 ```
@@ -94,43 +102,7 @@ Create when you discover:
 
 ## Lesson File Format
 
-Lessons live in `.compass/lessons/` and follow the template from the obsidian skill:
-
-```markdown
----
-title: "Descriptive title of the lesson"
-type: lesson
-status: active
-category: process | domain
-area: <area>
-tags: [specific, relevant, tags]
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
-score: 5
----
-
-# Descriptive Title
-
-## Context
-
-What were you doing? What was the goal or expected behavior?
-
-## What Happened
-
-What actually happened? What was surprising or went wrong?
-
-## Why
-
-Root cause or contributing factors.
-
-## Lesson
-
-What is the correct approach or understanding?
-
-## Applicability
-
-When should this lesson be recalled? What signals or situations make it relevant?
-```
+Lessons live in `.compass/lessons/` and follow the Lesson template defined in the **obsidian** skill (`plugin/skills/obsidian/SKILL.md` → Templates → Lesson).
 
 ## Catalog Update Protocol
 
@@ -138,7 +110,8 @@ The catalog is **append-only** (entries are never deleted, only marked as archiv
 
 1. Create the lesson file in `.compass/lessons/`
 2. Append an entry to `meta/lessons-catalog.yaml` with:
-   - `file`: the lesson filename
+   - `file`: the lesson filename (`LESSON-<descriptive-slug>.md`)
+   - `status`: `active`
    - `category`: `process` or `domain` from the lesson frontmatter
    - `area`: from the lesson frontmatter
    - `tags`: from the lesson frontmatter

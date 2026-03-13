@@ -13,17 +13,20 @@ updated: 2026-03-12
 ## In Progress
 
 - [ ] TASK-001: Review and approve all plugin files (21 files) — human approves each file one by one
-  - Progress: file 1/21 (`plugin/skills/obsidian/SKILL.md`) — APPROVED
-  - All 6 templates reviewed and approved: Spec, Research, Plan, Lesson, Handoff, ADR
-  - Plan template: enhanced with Current State, Desired End State, Not Doing, file paths, Testing Strategy, Open Questions (inspired by HumanLayer)
-  - Lesson template: redesigned with Reinertsen's process/domain distinction, new sections (Context, What Happened, Why, Lesson, Applicability)
-  - Handoff template: enhanced with Artifacts section and Current Phase tracking (inspired by HumanLayer)
-  - ADR template: confirmed as Nygard standard (Context, Decision, Consequences) — no changes needed
-  - Cascade fixes applied: `plugin/agents/spec-writer.md`, `SPEC-001` line 148, `plugin/skills/lessons/SKILL.md`, `plugin/agents/builder.md`, `plugin/skills/methodology/SKILL.md`
-  - HumanLayer mining: adopted plan validation, builder plan-tracking, TODO priority annotations
-  - Files 2-21: not started
-  - Next file: `plugin/skills/lessons/SKILL.md` (file 2)
-  - Handoff: [[2026-03-12_session-2-obsidian-approved]]
+  - Progress: 3/21 files approved (all 3 skills done, agents next)
+  - File 1: `plugin/skills/obsidian/SKILL.md` — APPROVED (session 2)
+  - File 2: `plugin/skills/lessons/SKILL.md` — APPROVED (session 3)
+    - Added `status` field to catalog schema + search filter
+    - Replaced inline template with reference to obsidian skill
+    - Search algorithm rewritten: AI judgment instead of mechanical tag matching
+    - Added file naming convention (`LESSON-<descriptive-slug>.md`)
+    - Added "When to Search" section
+  - File 3: `plugin/skills/methodology/SKILL.md` — APPROVED (session 3)
+    - No changes needed — handoff timestamp convention confirmed correct
+  - Duplication audit: found heavy duplication across agents (templates inlined instead of referencing skills). Will dedup selectively during agent review — keep alignment-critical reminders inline, replace full template copies with references.
+  - Files 4-21: not started (15 agents + 3 vault structure files)
+  - Next file: agents (file 4 onward)
+  - Handoff: [[2026-03-12_session-3-skills-approved]]
 
 ## Blocked
 
