@@ -39,6 +39,10 @@ See [[active]].
 
 See [[backlog]].
 
+## Handoffs
+
+- [[2026-03-12_review-all-plugin-files]] — File-by-file review of all 21 plugin files (active)
+
 ## Lessons
 
 _None yet._

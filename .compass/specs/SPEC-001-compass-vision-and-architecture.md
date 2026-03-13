@@ -145,7 +145,7 @@ Subagent constraints:
 - Interactive agent that guides the human through spec creation
 - Asks ONE question at a time, saves after every 2-3 answers
 - Human models the spec, agent structures it
-- MADR-inspired format: Problem, Context, Decision Drivers, Considered Options, Consequences
+- Research-backed format: Problem, Context, User Scenarios, Desired Outcome, Success Criteria, Constraints, Assumptions & Dependencies, Non-Goals, Risks, Open Questions (alternative formats like Rust RFC or Python PEP also supported)
 - Multiple spec-writers can run in parallel for Bayesian convergence
 
 #### researcher

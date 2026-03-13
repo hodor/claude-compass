@@ -1,6 +1,6 @@
 ---
 name: methodology
-description: The Compass development workflow pipeline — Spec, Research, Plan, Tasks, Build — with human involvement gradient, status transitions, testing mandate, and required artifacts enforcement
+description: The Compass development workflow pipeline — Spec, Research, Plan, Tasks, Build, Validate — with human involvement gradient, status transitions, testing mandate, and required artifacts enforcement
 version: 1.0.0
 allowed-tools: [Read, Glob, Grep]
 ---
@@ -12,7 +12,7 @@ Compass provides a structured development pipeline that ensures humans own strat
 ## The Pipeline
 
 ```
-Spec → Research → Plan → Tasks → Build
+Spec → Research → Plan → Tasks → Build → Validate
 ```
 
 Each stage produces artifacts that feed the next. Stages can be revisited, but never skipped.
@@ -61,6 +61,35 @@ ADRs live in `.compass/decisions/` and follow the `ADR-NNN-descriptive-name.md` 
 
 Tests are the safety net that allows humans to trust AI-written code. Skipping tests is never acceptable.
 
+## TODO Priority Annotations
+
+Use a priority-based TODO annotation system throughout the codebase. These are greppable and can be enforced by CI:
+
+| Annotation | Severity | Meaning |
+|------------|----------|---------|
+| `TODO(0)` | Critical | Never merge — must be resolved before PR |
+| `TODO(1)` | High | Architectural flaw or major bug — fix before release |
+| `TODO(2)` | Medium | Minor bug or missing feature — fix soon |
+| `TODO(3)` | Low | Polish, tests, documentation — fix when convenient |
+| `TODO(4)` | Question | Investigation needed — resolve before finalizing design |
+| `PERF` | Performance | Optimization opportunity — not a bug, but worth revisiting |
+
+Rules:
+- `TODO(0)` and `TODO(1)` are merge blockers — agents MUST resolve them before marking a task done
+- `TODO(2)` and `TODO(3)` are acceptable in merged code but should be tracked
+- `TODO(4)` should be converted to a research question or resolved before the plan is finalized
+- Always include a brief description: `TODO(2): handle edge case where input is empty`
+
+## Commit Conventions
+
+When an agent is instructed to commit:
+
+- Always use `git add <specific-file>` — never `git add -A` or `git add .`
+- Never commit `.compass/tmp/` contents or draft handoffs not ready for source control
+- Commit messages use imperative mood and explain *why* (from conversation context), not just *what* (from diff)
+- After committing, run `git log --oneline -3` to confirm
+- Agents should only commit when explicitly instructed — never auto-commit without human approval
+
 ## Status Transitions
 
 ```
@@ -97,6 +126,70 @@ When bootstrapping a new project, Compass applies its own methodology:
 
 This is not a special case — it's the standard workflow applied to itself.
 
+## Handoffs (Session Continuity)
+
+When a conversation ends with work in progress, create a handoff document to preserve context for the next session.
+
+**Creating a handoff** (use the `handoff-create` agent):
+- Compress session state into a portable document
+- Capture git state (branch, commit hash), task progress, file references, decisions, blockers
+- Use `file:line` references, never copy large code blocks
+- Save to `.compass/handoffs/YYYY-MM-DD_HH-MM-SS_description.md`
+
+**Resuming from a handoff** (use the `handoff-resume` agent):
+- Read the handoff, verify current state matches (git branch, commit, file existence)
+- Classify scenario: clean continuation, diverged codebase, incomplete work, or stale handoff
+- Present situational report before taking any action
+- Never blindly trust a handoff — always verify
+
+## Debug Isolation
+
+When investigating errors, test failures, or unexpected behavior, use the `debug` agent instead of debugging in the main conversation. This:
+- Preserves the main conversation's context window for implementation
+- Keeps the investigation scope focused
+- Produces a structured report that the builder can act on
+- Is read-only — the debug agent never edits files
+
+## Autopilot Mode
+
+For well-scoped S/M tasks, the `autopilot` agent can run the full pipeline (research → plan → build) in a single session. Constraints:
+- Only for S or M complexity tasks
+- Pauses for human confirmation after research and after planning
+- Follows all standard rules (testing mandate, ADRs, lessons)
+- Never appropriate for L+ tasks, sensitive systems, or ambiguous requirements
+
+## Validation
+
+After the builder marks tasks done, the `validator` agent can verify that the implementation matches the plan:
+- Reads the plan and diffs git history against it
+- Classifies changes as "matches plan", "deviation (improvement)", or "deviation (problem)"
+- Audits checkbox state — flags items marked done with no corresponding changes
+- Compiles manual verification steps into a final checklist
+- Read-only: reports findings, does not edit files
+
+Invoke the validator before creating a handoff or PR for any non-trivial implementation.
+
+## Retroactive Entry
+
+`status: done` is a valid initial status for retroactively documented work. When a commit exists without Compass artifacts, the `retroactive` agent can create minimal vault entries:
+- A SPEC with status: done capturing what was built and why
+- A pre-checked task in active.md under "Recently Completed"
+- Optional ADR if the implementation involved a significant decision
+
+This is not a shortcut around the pipeline — it's a recovery path for work that preceded the vault.
+
+## Plan Iteration
+
+Plans are living documents. When feedback requires updating an approved plan, use the `planner-iterate` agent — not the planner (which creates new plans). Plan iteration follows these principles:
+- Surgical edits only — never rewrite the plan wholesale
+- Confirm understanding before making changes
+- Check consistency ripples — a change in one section may require updates in others
+- No unresolved questions — resolve before closing the iteration
+
+## Tool Availability
+
+Agents that depend on external tools (MCP servers, CLI tools like `gh`, specific runtimes) should verify availability as Step 0 before beginning work. If a required tool is unavailable, present a clear message with recovery instructions rather than failing mid-execution.
+
 ## File Organization
 
 ```
@@ -112,11 +205,50 @@ This is not a special case — it's the standard workflow applied to itself.
 ├── plans/                — Implementation plans
 ├── decisions/            — Architecture Decision Records
 ├── lessons/              — Lessons learned
+├── handoffs/             — Session continuity documents
+├── prs/                  — PR descriptions
 └── archive/              — Completed/retired documents
 ```
 
+## Pattern Discovery
+
+When implementing new code, use the `pattern-finder` agent to see how existing code handles similar patterns before writing your own. The pattern-finder:
+- Returns concrete code snippets with `file:line` references
+- Shows multiple variations if they exist
+- Is a documentarian — it does not critique or recommend, only shows what exists
+- Runs on the `sonnet` model for speed — it's a lightweight lookup, not deep analysis
+
+Use it when: "How does this codebase handle X?" before implementing your own version of X.
+
+## Artifact Traceability
+
+All research, handoff, plan, and decision documents MUST include git traceability in their frontmatter:
+
+```yaml
+git_branch: "branch-name"     # Current branch when document was created
+git_commit: "abc1234"         # Short commit hash at creation time
+author: "human or agent name" # Who created the document
+```
+
+This enables:
+- Detecting when a document was written against a different state of the codebase
+- Tracing decisions back to the code they were based on
+- Knowing who (or what agent) produced each artifact
+
+## Two-Tier Success Criteria
+
+Every task in a plan MUST have two types of verification:
+
+1. **Automated verification**: Commands, tests, or scripts that an agent can run to verify the task is complete. Examples: `pytest tests/`, `npm run lint`, `curl localhost:3000/health`.
+2. **Manual verification**: Checks that require a human to perform. Examples: "UI renders correctly on mobile", "error message is user-friendly", "flow matches the spec's intent".
+
+After each phase's automated verification passes, **pause for the human to perform manual verification** before proceeding to the next phase.
+
+Agents MUST NOT check off manual verification items in a plan or active.md until the human explicitly confirms those checks passed. Automated verification items may be checked off by the agent after the command succeeds.
+
 ## Agent Protocol (Common to All Agents)
 
+0. Verify tool availability (if the agent depends on external tools)
 1. Read the hot path (index.md, active.md, lessons catalog)
 2. Identify what you're here to do
 3. Load additional context as needed (specific specs, research, plans)

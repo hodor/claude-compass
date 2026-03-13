@@ -7,7 +7,14 @@ allowed-tools: [Glob, Grep, Read]
 
 # Lessons — Search, Apply & Create
 
-Lessons capture hard-won knowledge: surprising bugs, counter-intuitive patterns, misleading docs. They prevent the same mistake from being made twice.
+Lessons capture hard-won knowledge that prevents the same mistake from being made twice.
+
+Per Reinertsen (*The Principles of Product Development Flow*), product development generates two distinct types of knowledge:
+
+- **Process lessons** (`category: process`): Knowledge about *how* to build — methods, tools, techniques, workflow. Example: "Mocking the DB in integration tests hides migration bugs."
+- **Domain lessons** (`category: domain`): Knowledge about *what* to build — the product, users, requirements, the problem space. Example: "Users need batch export, not single-file export."
+
+Both types are equally valuable but serve different purposes. Process lessons improve how agents work. Domain lessons improve what agents build.
 
 ## Catalog Structure
 
@@ -17,19 +24,22 @@ The lessons catalog lives at `.compass/meta/lessons-catalog.yaml`. It provides O
 # meta/lessons-catalog.yaml
 lessons:
   - file: "LESSON-yaml-frontmatter-quoting.md"
+    category: process
     area: workflow
     tags: [yaml, frontmatter, quoting]
     score: 8
     summary: "YAML frontmatter values with colons must be quoted"
-  - file: "LESSON-glob-pattern-escaping.md"
-    area: tooling
-    tags: [glob, patterns, escaping]
-    score: 5
-    summary: "Glob patterns with braces need escaping on Windows"
+  - file: "LESSON-batch-export-user-need.md"
+    category: domain
+    area: backend
+    tags: [export, users, requirements]
+    score: 6
+    summary: "Users need batch export, not single-file export"
 ```
 
 Fields:
 - `file`: Filename of the lesson in `.compass/lessons/`
+- `category`: `process` (how to build) or `domain` (what to build)
 - `area`: Matches the frontmatter `area` field
 - `tags`: List of tags for matching
 - `score`: 1-10, higher = more broadly applicable. Starts at 5, adjusted over time.
@@ -54,7 +64,9 @@ Grep: tags matching current work area/tags
 
 ## When to Create Lessons
 
-Create a lesson when you encounter:
+### Process lessons (how to build)
+
+Create when you encounter:
 
 - **Surprising bugs**: Something that behaved differently than expected, especially if the fix was non-obvious
 - **Counter-intuitive patterns**: The correct approach was the opposite of what seemed natural
@@ -63,10 +75,22 @@ Create a lesson when you encounter:
 - **Tool quirks**: Unexpected behavior in tools, libraries, or frameworks
 - **Performance traps**: Code that looked fine but caused performance issues
 
-Do NOT create lessons for:
+### Domain lessons (what to build)
+
+Create when you discover:
+
+- **Requirement corrections**: What users actually need vs. what was assumed
+- **Domain model insights**: A concept was misunderstood or modeled incorrectly
+- **User behavior surprises**: Users interact with the system differently than expected
+- **Constraint discoveries**: A business rule, regulation, or technical constraint that wasn't known at design time
+- **Integration realities**: An external system or API behaves differently than its docs suggest
+
+### Do NOT create lessons for
+
 - Standard patterns documented in official docs
 - Personal preferences or style choices
 - Things that are obvious once you know the technology
+- Ephemeral information (use handoffs for session context)
 
 ## Lesson File Format
 
@@ -77,6 +101,7 @@ Lessons live in `.compass/lessons/` and follow the template from the obsidian sk
 title: "Descriptive title of the lesson"
 type: lesson
 status: active
+category: process | domain
 area: <area>
 tags: [specific, relevant, tags]
 created: YYYY-MM-DD
@@ -88,19 +113,23 @@ score: 5
 
 ## Context
 
-When does this apply? What were you doing when you hit this?
+What were you doing? What was the goal or expected behavior?
 
-## Problem
+## What Happened
 
-What went wrong? What was surprising? Be specific — include error messages, unexpected behavior, etc.
+What actually happened? What was surprising or went wrong?
 
-## Solution
+## Why
 
-What is the correct approach? Include code examples if applicable.
+Root cause or contributing factors.
 
-## Tags
+## Lesson
 
-`tag1`, `tag2`, `tag3`
+What is the correct approach or understanding?
+
+## Applicability
+
+When should this lesson be recalled? What signals or situations make it relevant?
 ```
 
 ## Catalog Update Protocol
@@ -110,6 +139,7 @@ The catalog is **append-only** (entries are never deleted, only marked as archiv
 1. Create the lesson file in `.compass/lessons/`
 2. Append an entry to `meta/lessons-catalog.yaml` with:
    - `file`: the lesson filename
+   - `category`: `process` or `domain` from the lesson frontmatter
    - `area`: from the lesson frontmatter
    - `tags`: from the lesson frontmatter
    - `score`: start at 5 (default)
