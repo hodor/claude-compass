@@ -94,6 +94,15 @@ After applying the requested edits, verify consistency across the plan:
 
 Apply any necessary ripple updates via Edit.
 
+### Step 7b: Assess Research Needs
+
+If the applied changes introduce new technology, external dependencies, or assumptions not covered by existing research:
+
+1. Flag it: "This change introduces [X] which has no existing research backing."
+2. Add a research task to `.compass/active.md` (or `.compass/backlog.md` if non-blocking)
+3. Mark the affected plan tasks as `blocked_by: research` if they can't proceed without answers
+4. The human will later spawn the `researcher` agent to investigate
+
 ### Step 8: Enforce No-Open-Questions Rule
 
 Review the Open Questions section:
