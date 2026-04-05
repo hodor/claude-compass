@@ -1,9 +1,11 @@
 {
   "name": "compass",
-  "description": "AI-guided development workflow with per-project Obsidian-compatible knowledge vaults. Provides structured spec → research → plan → build methodology.",
-  "version": "0.1.0",
+  "description": "AI-guided development workflow with per-project Obsidian-compatible knowledge vaults. Provides structured spec → research → plan → build → test → validate methodology. Run /compass:bootstrap to set up a project.",
+  "version": "0.2.0",
   "author": {
     "name": "Roger Gasi"
   },
-  "keywords": ["workflow", "methodology", "obsidian", "specs", "planning"]
+  "repository": "https://github.com/hodor/claude-compass",
+  "license": "MIT",
+  "keywords": ["workflow", "methodology", "obsidian", "specs", "planning", "testing", "validation"]
 }

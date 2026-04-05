@@ -40,7 +40,7 @@ Glob: CLAUDE.md — existing project instructions?
 
 Copy all Compass agent files from the plugin to `.claude/agents/`. This gives agents full feature access (initialPrompt, permissionMode, hooks, mcpServers) that plugin agents don't get.
 
-1. Find the plugin's agent templates: `Glob: **/compass/plugin/agents-full/*.md` or read from `${CLAUDE_PLUGIN_ROOT}/agents-full/`
+1. Find the plugin's agent templates: `Glob: **/compass/plugin/templates/agents/*.md` or read from `${CLAUDE_PLUGIN_ROOT}/templates/agents/`
 2. Create `.claude/agents/` if it doesn't exist
 3. Copy each agent file, preserving content exactly
 4. Report what was installed
