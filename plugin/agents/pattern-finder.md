@@ -3,7 +3,7 @@ name: pattern-finder
 description: "Fast agent for finding existing code patterns and conventions. Returns concrete examples with file:line references. Shows 'how things are done here' without analysis or critique. Specify thoroughness: quick, medium, or thorough."
 tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit, NotebookEdit
-model: haiku
+model: sonnet
 effort: high
 maxTurns: 15
 color: white
