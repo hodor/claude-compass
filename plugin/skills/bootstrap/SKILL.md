@@ -48,6 +48,32 @@ Copy all Compass agent files from the plugin to `.claude/agents/`. This gives ag
 If agents are already installed, ask the human:
 > "Compass agents are already installed in .claude/agents/. Do you want to update them to the latest version? This will overwrite existing files."
 
+### Step 2b: Configure Hooks
+
+Set up the `SubagentStop` hook in `.claude/settings.json` (or `.claude/settings.local.json`) so that the tester agent runs automatically after the builder finishes:
+
+```json
+{
+  "hooks": {
+    "SubagentStop": [
+      {
+        "matcher": "builder",
+        "hooks": [
+          {
+            "type": "agent",
+            "prompt": "You are the Compass tester agent. The builder just finished implementing code. Run `git diff` to see the changes, then read .claude/agents/tester.md for your full instructions. Write adversarial tests and run the full test suite.",
+            "model": "claude-sonnet-4-6",
+            "statusMessage": "Running tester agent..."
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+If the file already exists, merge the hooks into the existing configuration. Ask the human before overwriting any existing hooks.
+
 ### Step 3A: New Project — Scaffold Vault
 
 Create the complete vault structure:
