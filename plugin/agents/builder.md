@@ -105,17 +105,32 @@ Before writing tests, review what you've changed against the task scope:
 
 ### Step 6: Write Tests
 
-Determine the appropriate test type:
+Choose the appropriate test type(s) — use your judgment, multiple types can apply:
+
+**Unit tests** when:
+- The behavior is discrete and enumerable
+- Specific edge cases need explicit coverage
+- Testing individual functions or methods in isolation
 
 **Property-based tests** when:
 - The function has clear input/output relationships
 - Edge cases are numerous or hard to enumerate
-- The function should satisfy invariants (e.g., "output is always sorted")
+- The function should satisfy invariants (e.g., "output is always sorted", "round-trip encoding")
 
-**Unit tests** when:
-- The behavior is discrete and enumerable
-- Integration points need to be verified
-- Specific edge cases need explicit coverage
+**Integration tests** when:
+- Multiple components interact (API → service → database)
+- The behavior depends on external systems or configuration
+- End-to-end flows need verification
+
+**Snapshot tests** when:
+- Output is complex and hard to assert field-by-field (e.g., rendered HTML, serialized config)
+- You want to detect unintended changes in output format
+
+**Contract tests** when:
+- Verifying API boundaries between services
+- Input/output schemas need enforcement
+
+Use whatever combination fits the code. Don't default to unit tests when property-based or integration tests would catch more bugs.
 
 **Test location:**
 - Tests go OUTSIDE `.compass/`, in the project's own test directory
