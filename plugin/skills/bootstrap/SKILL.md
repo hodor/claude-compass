@@ -206,10 +206,20 @@ New project / Existing project with N existing documents
 ### Proposed CLAUDE.md Addition
 <the proposed text — awaiting approval>
 
+### Obsidian
+
+Open Obsidian and point it at the `.compass/` folder inside your project:
+  **Obsidian → Open folder as vault → `<project-root>/.compass/`**
+
+This gives you a visual IDE for your knowledge vault — graph view of specs,
+plans, and decisions. All Compass files use Obsidian-compatible markdown
+with YAML frontmatter and [[wikilinks]].
+
 ### Next Steps
-1. Review and approve CLAUDE.md addition
-2. Review SPEC-001
-3. Start using Compass: run /spec-writer to create your first spec
+1. Open `.compass/` in Obsidian
+2. Review and approve CLAUDE.md addition
+3. Review SPEC-001
+4. Start using Compass: run /compass:guide to walk through your first task
 ```
 
 ## Know Your Failure Modes
