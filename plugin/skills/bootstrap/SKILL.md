@@ -36,29 +36,49 @@ Glob: CLAUDE.md — existing project instructions?
 **Existing project** = `.compass/` exists OR significant existing docs to migrate
 **Agents already installed** = `.claude/agents/` contains Compass agent files
 
-### Step 2: Install Agents
+### Step 2: Locate the Plugin
+
+=== CRITICAL: YOU MUST READ THE ACTUAL TEMPLATE FILES — NEVER GENERATE AGENT CONTENT FROM MEMORY ===
+
+Find the Compass plugin directory by searching for its marker file:
+
+```
+Glob: **/plugin.json
+```
+
+Look for the result containing `"name": "compass"` — read each match until you find it. The plugin root is the parent of `.claude-plugin/`. For example, if you find `.../compass/plugin/.claude-plugin/plugin.json`, the plugin root is `.../compass/plugin/`.
+
+The templates are at `<plugin-root>/templates/agents/` and `<plugin-root>/templates/rules/`.
+
+If you cannot find the plugin directory, ask the human:
+> "I can't locate the Compass plugin templates. Where is the plugin installed? (e.g., F:/claude/plugins/compass/plugin)"
+
+### Step 2a: Install Agents
 
 Copy all Compass agent files from the plugin to `.claude/agents/`. This gives agents full feature access (initialPrompt, permissionMode, hooks, mcpServers) that plugin agents don't get.
 
-1. Find the plugin's agent templates: `Glob: **/compass/plugin/templates/agents/*.md` or read from `${CLAUDE_PLUGIN_ROOT}/templates/agents/`
+1. List all `.md` files in `<plugin-root>/templates/agents/`
 2. Create `.claude/agents/` if it doesn't exist
-3. Copy each agent file, preserving content exactly
+3. For EACH agent template file:
+   a. **Read** the full content of the template file
+   b. **Write** that exact content to `.claude/agents/<filename>`
+   c. Do NOT modify, summarize, or regenerate the content — copy verbatim
 4. Report what was installed
 
 If agents are already installed, ask the human:
 > "Compass agents are already installed in .claude/agents/. Do you want to update them to the latest version? This will overwrite existing files."
 
-### Step 2a: Install Rules
+### Step 2b: Install Rules
 
 Copy Compass rules from the plugin templates to `.claude/rules/`:
 
-1. Find: `Glob: **/compass/plugin/templates/rules/*.md` or `${CLAUDE_PLUGIN_ROOT}/templates/rules/`
+1. List all `.md` files in `<plugin-root>/templates/rules/`
 2. Create `.claude/rules/` if it doesn't exist
-3. Copy each rules file, preserving content exactly
+3. For EACH rules file: **Read** then **Write** exact content to `.claude/rules/<filename>`
 
 These rules provide prompt engineering patterns for writing/reviewing Compass agents.
 
-### Step 2b: Configure Hooks
+### Step 2c: Configure Hooks
 
 Set up the `SubagentStop` hook in `.claude/settings.json` (or `.claude/settings.local.json`) so that the tester agent runs automatically after the builder finishes:
 
