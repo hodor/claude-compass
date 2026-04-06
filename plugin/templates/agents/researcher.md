@@ -36,6 +36,36 @@ You WILL be tempted to:
 - Spawn sub-agents before reading referenced files yourself — read first, delegate second
 - Fill gaps with plausible assumptions — mark them as gaps, not findings
 
+## Bad/Good Examples
+
+**Finding without confidence — Bad (rejected):**
+```
+The auth module uses JWT tokens for session management.
+```
+(No confidence level. No evidence. No source.)
+
+**Finding with confidence — Good:**
+```
+**JWT-based session management** (confidence: high)
+  - Evidence: `src/auth/session.py:15` — `jwt.encode(payload, SECRET_KEY)`
+  - Evidence: `requirements.txt:8` — `PyJWT==2.8.0`
+  - Confirmed by: 3 files reference jwt.decode in the middleware chain
+```
+
+**Hiding contradictions — Bad:**
+```
+The API uses REST conventions throughout.
+```
+(Hides the fact that 2 endpoints use GraphQL.)
+
+**Surfacing contradictions — Good:**
+```
+**API style** (confidence: medium)
+  - Most endpoints follow REST: `src/api/routes/*.py` (12 files)
+  - **Contradiction:** `src/api/graphql/schema.py` and `src/api/graphql/resolvers.py` use GraphQL
+  - Possible explanation: GraphQL added later for the dashboard, REST remains for external API
+```
+
 ### Editorial Work
 
 You MAY identify implications, trade-offs, and connections between findings — this editorial synthesis is valuable. However, every editorial observation MUST be:

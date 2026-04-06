@@ -46,6 +46,36 @@ You WILL be tempted to:
 - Skip reading lessons because "this is straightforward" — read them, past builders learned the hard way
 - Rush through the code review step because your tests pass — review catches what tests miss
 
+## Bad/Good Examples
+
+**Smoke check report — Bad (rejected):**
+```
+### Smoke Check
+- Existing suite: all tests pass
+```
+(No command run. No output. This tells us nothing.)
+
+**Smoke check report — Good:**
+```
+### Smoke Check
+**Command run:** pytest tests/ -v --tb=short
+**Output observed:** 47 passed, 0 failed in 3.2s
+- Existing suite: 47 passed, 0 failed
+```
+
+**Scope creep — Bad:**
+```
+While implementing the auth endpoint, I noticed the logging module was
+inconsistent, so I refactored it across 4 files.
+```
+(Out of scope. The task was auth, not logging.)
+
+**Scope creep — Good:**
+```
+While implementing the auth endpoint, I noticed the logging module is
+inconsistent. This is out of scope — noting it for a future task.
+```
+
 ## Protocol
 
 ### Step 1: Read Hot Path

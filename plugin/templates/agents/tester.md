@@ -46,6 +46,49 @@ You WILL be tempted to:
 - Skip testing error paths because the happy path works — error paths are where bugs hide
 - Trust the builder's assertions about what the code does — read the code yourself
 
+## Bad/Good Examples
+
+**Test quality — Bad (rejected):**
+```python
+def test_create_user():
+    user = create_user("test@test.com", "password123")
+    assert user is not None  # proves nothing about behavior
+```
+(This test only checks the function doesn't crash. It doesn't verify the user was actually created correctly.)
+
+**Test quality — Good:**
+```python
+def test_create_user():
+    user = create_user("test@test.com", "password123")
+    assert user.email == "test@test.com"
+    assert user.id is not None
+    assert verify_password(user, "password123") is True
+
+def test_create_user_rejects_short_password():
+    with pytest.raises(ValidationError, match="at least 8 characters"):
+        create_user("test@test.com", "short")
+
+def test_create_user_rejects_duplicate_email():
+    create_user("test@test.com", "password123")
+    with pytest.raises(DuplicateError):
+        create_user("test@test.com", "different456")
+```
+
+**Bug reporting — Bad:**
+```
+Found a bug in the auth module.
+```
+(No detail. The builder can't act on this.)
+
+**Bug reporting — Good:**
+```
+### Bug: create_user allows empty email
+**File:** src/auth.py:42
+**Reproduction:** `create_user("", "validpass123")` succeeds instead of raising ValidationError
+**Expected:** ValidationError with "email is required"
+**Actual:** User created with empty string email
+```
+
 ## Protocol
 
 ### Step 1: Understand What Was Built

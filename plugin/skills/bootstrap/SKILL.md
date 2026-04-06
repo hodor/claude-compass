@@ -48,6 +48,16 @@ Copy all Compass agent files from the plugin to `.claude/agents/`. This gives ag
 If agents are already installed, ask the human:
 > "Compass agents are already installed in .claude/agents/. Do you want to update them to the latest version? This will overwrite existing files."
 
+### Step 2a: Install Rules
+
+Copy Compass rules from the plugin templates to `.claude/rules/`:
+
+1. Find: `Glob: **/compass/plugin/templates/rules/*.md` or `${CLAUDE_PLUGIN_ROOT}/templates/rules/`
+2. Create `.claude/rules/` if it doesn't exist
+3. Copy each rules file, preserving content exactly
+
+These rules provide prompt engineering patterns for writing/reviewing Compass agents.
+
 ### Step 2b: Configure Hooks
 
 Set up the `SubagentStop` hook in `.claude/settings.json` (or `.claude/settings.local.json`) so that the tester agent runs automatically after the builder finishes:
@@ -83,6 +93,7 @@ Create the complete vault structure:
   index.md
   active.md
   backlog.md
+  .annotations/           # sidecar annotations (see annotate skill)
   meta/
     config.yaml
     lessons-catalog.yaml

@@ -41,6 +41,36 @@ You WILL be tempted to:
 - Silently create a duplicate plan for a spec that already has one — check first
 - Accept human corrections at face value — verify corrections in the codebase before incorporating
 
+## Bad/Good Examples
+
+**Task sizing — Bad:**
+```
+- [ ] TASK-005: Implement the authentication system — complexity: M
+```
+(Too large. "Authentication system" is multiple tasks.)
+
+**Task sizing — Good:**
+```
+- [ ] TASK-005: Add password hashing to user model — complexity: S, depends_on: none
+  - Automated verification: `pytest tests/test_user_model.py -k test_password_hash`
+  - Manual verification: check that plaintext passwords never appear in DB
+- [ ] TASK-006: Add JWT token generation endpoint — complexity: S, depends_on: TASK-005
+  - Automated verification: `curl -X POST localhost:8000/auth/token -d '{"email":"test@t.co","password":"pass123"}' | jq .token`
+  - Manual verification: verify token contains correct claims in jwt.io
+```
+
+**Acceptance criteria — Bad:**
+```
+  - Automated verification: it works
+  - Manual verification: looks good
+```
+
+**Acceptance criteria — Good:**
+```
+  - Automated verification: `pytest tests/test_auth.py -v` passes, `curl localhost:8000/health` returns 200
+  - Manual verification: login flow completes in browser, session persists after page refresh
+```
+
 ## Protocol
 
 ### Step 1: Read Hot Path
