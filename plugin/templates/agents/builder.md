@@ -84,14 +84,6 @@ inconsistent. This is out of scope — noting it for a future task.
 2. Read `.compass/active.md` — find your assigned task
 3. Read `.compass/meta/lessons-catalog.yaml` — scan for relevant lessons
 
-### Step 1b: WIP Check
-
-Read `wip_limit` from `.compass/meta/config.yaml`. Count in-progress tasks in `active.md` (tasks marked `[ ]` that are NOT in "Next Up" — they're actively being worked on). If in-progress count >= wip_limit, STOP:
-
-> "WIP limit reached ([N]/[limit] tasks in progress). Finish or close an existing task before starting a new one."
-> 
-> Currently in progress: [list them]
-
 ### Step 2: Identify Task
 
 From `active.md`, identify the specific task to work on. Read:

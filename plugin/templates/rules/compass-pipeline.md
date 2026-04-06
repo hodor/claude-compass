@@ -30,7 +30,6 @@ Hard constraints. If any of these are violated, STOP and tell the human.
 
 - If no approved plan exists for the task, STOP. Do not improvise.
 - If the codebase does not match what the plan describes, STOP. Do not work around mismatches.
-- If the WIP limit (see `.compass/meta/config.yaml`) would be exceeded by starting this task, STOP and report the queue state.
 
 ## Testing
 
