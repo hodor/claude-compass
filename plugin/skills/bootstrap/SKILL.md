@@ -157,18 +157,25 @@ Create initial tasks in `active.md` and link everything in `index.md`.
 
 ### Step 4: Propose CLAUDE.md Addition
 
-Draft a Compass section for CLAUDE.md:
+Draft a Compass section for CLAUDE.md. Keep it short — rules, not essays:
 
 ```markdown
 ## Compass
 
-This project uses the Compass development workflow. The `.compass/` directory contains the project's knowledge vault.
+`.compass/` is the knowledge vault. Open it in Obsidian for graph view.
 
-- **Start here**: `.compass/index.md` (project map) and `.compass/active.md` (current tasks)
-- **Workflow**: Spec -> Research -> Plan -> Tasks -> Build -> Validate
-- **Testing**: All code changes require tests and a full test suite run
-- **Decisions**: Significant choices are recorded as ADRs in `.compass/decisions/`
-- **Lessons**: Surprising discoveries go in `.compass/lessons/`
+**Pipeline:** Spec → Research → Plan → Build → Test → Validate. Don't skip phases.
+
+**Key rules:**
+- Specs are about the NEED, not the solution. No implementation decisions in specs.
+- Specs start as `draft`. Nothing happens until the human changes status to `approved`.
+- One spec at a time. Interview the human. Don't batch-create.
+- All code changes require tests. Builder codes, tester tests (auto-spawned).
+- Decisions → ADRs in `.compass/decisions/`. Surprises → lessons in `.compass/lessons/`.
+- `git add <file>` — never `-A` or `.`
+
+**Start here:** `.compass/index.md` (map) and `.compass/active.md` (tasks).
+**Help:** `/compass:guide` (workflow) or `/compass:checkup` (health).
 ```
 
 Present this to the human. Write ONLY after they approve.
