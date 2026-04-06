@@ -182,6 +182,13 @@ If this is a novel problem worth remembering:
 **Summary:** [one-line]
 **Content:** [full lesson text ready to paste — the builder or human can create the file]
 
+### Suggested Annotations
+If specific vault files should be flagged for future agents:
+- **File:** `[vault path]`
+- **Note:** [what future agents should know about this file]
+- **Tags:** [caveat, stale, bug, etc.]
+(The builder or human can add these via the annotate skill.)
+
 ### Verdict
 CONFIDENCE: HIGH / MEDIUM / LOW — [one sentence justification]
 ```

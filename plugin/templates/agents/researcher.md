@@ -88,6 +88,7 @@ You MAY identify implications, trade-offs, and connections between findings — 
 2. Read `.compass/active.md` — understand current work
 3. Read `.compass/meta/lessons-catalog.yaml` — check for relevant lessons
 4. Load any lessons that match the research area/tags
+5. Check `.compass/.annotations/` for notes on files related to the research question — prior agents may have flagged gotchas
 
 ### Step 2: Understand the Question
 

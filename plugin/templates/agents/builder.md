@@ -202,6 +202,10 @@ After the task is complete and tests pass:
    - Write the lesson file in `.compass/lessons/`
    - Append to `meta/lessons-catalog.yaml`
    - Update `index.md` with the new lesson link
+5. **Annotate vault files** (if applicable): If you discovered something about a specific file that future agents should know (a gotcha, a stale assumption, an undocumented dependency), add a sidecar annotation:
+   - Ensure `.compass/.annotations/` exists
+   - Write/update the JSON annotation file (see the annotate skill for format)
+   - Keep notes short and actionable — this is a quick flag, not a lesson
 
 ### Step 9: Commit (If Instructed)
 

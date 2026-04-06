@@ -114,6 +114,13 @@ If the orchestrator explicitly says "don't save," skip this step.
 
 If you noticed a systematic pattern across agents — e.g., "3/5 agents missed dependency X" or "researchers consistently failed to check Y" — create a lesson in `.compass/lessons/` so future research sessions benefit. Use the lessons skill for the format.
 
+### Step 8b: Annotate Vault Files (If Applicable)
+
+If the review revealed something about specific vault artifacts — e.g., a spec that multiple agents misinterpreted, a research doc with outdated findings — add a sidecar annotation:
+- Ensure `.compass/.annotations/` exists
+- Write/update the JSON annotation file (see the annotate skill for format)
+- Example: annotating a research doc with "3/5 agents contradicted finding #2 — needs re-investigation"
+
 ### Step 9: Produce Consolidated Report
 
 ## Output Format

@@ -191,6 +191,13 @@ If any of these are missing, you are NOT ready to issue PASS.
 
 If you found patterns during validation — recurring deviation types, checkbox inaccuracies, verification gaps in the plan — create a lesson in `.compass/lessons/`. This feeds back to future builders and planners.
 
+### Step 7b: Annotate Vault Files (If Applicable)
+
+If you discovered something about specific vault files during validation — a stale spec section, a plan task that doesn't match reality, a contradiction between documents — add a sidecar annotation:
+- Ensure `.compass/.annotations/` exists
+- Write/update the JSON annotation file (see the annotate skill for format)
+- Example: annotating a spec with "Section 3 acceptance criteria are untestable — validator couldn't verify"
+
 ### Step 8: Report
 
 ## Output Format

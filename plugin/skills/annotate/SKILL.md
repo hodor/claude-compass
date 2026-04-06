@@ -3,7 +3,7 @@ name: annotate
 description: Sidecar annotation system for Compass vault files. Agents attach persistent notes that auto-surface when files are read. Lightweight alternative to full lessons.
 version: 1.0.0
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash]
-when_to_use: "Use when an agent discovers something worth noting about a vault file — a gotcha, a missing link, a pattern, a caveat — that doesn't warrant a full lesson. Triggers: 'annotate', 'add note to', 'flag this file'."
+when_to_use: "Reference for the sidecar annotation system. Agents use this directly during their work (builder, validator, debug, reviewer annotate automatically). Humans can invoke to show, list, or clear annotations. Triggers: 'show annotations', 'list annotations', 'clear annotations'."
 argument-hint: "<action> <vault-path> [note]"
 ---
 
