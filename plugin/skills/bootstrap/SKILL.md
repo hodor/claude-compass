@@ -36,31 +36,39 @@ Glob: CLAUDE.md — existing project instructions?
 **Existing project** = `.compass/` exists OR significant existing docs to migrate
 **Agents already installed** = `.claude/agents/` contains Compass agent files
 
-### Step 2: Locate the Plugin
+### Step 2: Install Agents and Rules
 
-=== CRITICAL: YOU MUST READ THE ACTUAL TEMPLATE FILES — NEVER GENERATE AGENT CONTENT FROM MEMORY ===
+=== CRITICAL: USE BASH cp COMMANDS ONLY — DO NOT READ THE TEMPLATE FILES ===
 
-Find the Compass plugin directory by searching for its marker file:
+Find the Compass plugin, then use Bash to copy files. Do NOT use the Read tool on any template file. Do NOT use the Write tool. ONLY use Bash.
 
+```bash
+# Step 1: Find the plugin root
+PLUGIN_ROOT=$(find / -path "*/compass/plugin/.claude-plugin/plugin.json" -type f 2>/dev/null | head -1 | sed 's|/.claude-plugin/plugin.json||')
+
+# If not found, try common locations
+if [ -z "$PLUGIN_ROOT" ]; then
+  for p in "$HOME/.claude/plugins/compass/plugin" "F:/claude/plugins/compass/plugin"; do
+    [ -f "$p/.claude-plugin/plugin.json" ] && PLUGIN_ROOT="$p" && break
+  done
+fi
+
+echo "Plugin root: $PLUGIN_ROOT"
+
+# Step 2: Copy agents
+mkdir -p .claude/agents
+cp "$PLUGIN_ROOT/templates/agents/"*.md .claude/agents/
+echo "Agents copied: $(ls .claude/agents/*.md | wc -l) files"
+
+# Step 3: Copy rules
+mkdir -p .claude/rules
+cp "$PLUGIN_ROOT/templates/rules/"*.md .claude/rules/
+echo "Rules copied: $(ls .claude/rules/*.md | wc -l) files"
 ```
-Glob: **/plugin.json
-```
 
-Look for the result containing `"name": "compass"` — read each match until you find it. The plugin root is the parent of `.claude-plugin/`. For example, if you find `.../compass/plugin/.claude-plugin/plugin.json`, the plugin root is `.../compass/plugin/`.
+Run this as a single Bash command. Verify the output shows 15 agents and 1 rules file. If the plugin can't be found, ask the human for the path.
 
-The templates are at `<plugin-root>/templates/agents/` and `<plugin-root>/templates/rules/`.
-
-If you cannot find the plugin directory, ask the human:
-> "I can't locate the Compass plugin templates. Where is the plugin installed? (e.g., F:/claude/plugins/compass/plugin)"
-
-### Step 2a: Install Agents
-
-Copy all agent files from `<plugin-root>/templates/agents/` to `.claude/agents/`. Copy the rules file from `<plugin-root>/templates/rules/` to `.claude/rules/`.
-
-Your job here is to get the right files in the right places. That's it.
-
-If agents are already installed, ask the human:
-> "Compass agents are already installed in .claude/agents/. Do you want to update them to the latest version? This will overwrite existing files."
+If agents are already installed, ask the human before overwriting.
 
 ### Step 2b: Configure Hooks
 
@@ -207,7 +215,7 @@ New project / Existing project with N existing documents
 ## Know Your Failure Modes
 
 You WILL be tempted to:
-- Read all the agent template files and then rewrite them from memory — DO NOT do this. Copy the files as they are. Your job is to get the right files in the right places, not to regenerate content.
+- Read all the agent template files into your context and then use Write to recreate them — DO NOT do this. Use Bash `cp` to copy files. NEVER use the Read tool on template files. NEVER use the Write tool for template files. The content must never pass through your context window.
 - Write to CLAUDE.md without asking — always present and wait for approval
 - Skip the migration table for existing projects — always present it line by line
 - Make assumptions about what the project does — ask the human
