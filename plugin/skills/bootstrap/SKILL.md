@@ -55,26 +55,33 @@ If you cannot find the plugin directory, ask the human:
 
 ### Step 2a: Install Agents
 
-Copy all Compass agent files from the plugin to `.claude/agents/`. This gives agents full feature access (initialPrompt, permissionMode, hooks, mcpServers) that plugin agents don't get.
+Copy all Compass agent files from the plugin to `.claude/agents/` using filesystem copy — NOT Read+Write.
 
-1. List all `.md` files in `<plugin-root>/templates/agents/`
-2. Create `.claude/agents/` if it doesn't exist
-3. For EACH agent template file:
-   a. **Read** the full content of the template file
-   b. **Write** that exact content to `.claude/agents/<filename>`
-   c. Do NOT modify, summarize, or regenerate the content — copy verbatim
-4. Report what was installed
+=== CRITICAL: USE BASH `cp` TO COPY FILES — DO NOT READ AND REWRITE THEM ===
+
+```bash
+mkdir -p .claude/agents
+cp "<plugin-root>/templates/agents/"*.md .claude/agents/
+```
+
+This gives agents full feature access (initialPrompt, permissionMode, hooks, mcpServers) that plugin agents don't get.
+
+Verify the copy worked:
+```bash
+ls .claude/agents/*.md | wc -l   # should be 15
+```
 
 If agents are already installed, ask the human:
 > "Compass agents are already installed in .claude/agents/. Do you want to update them to the latest version? This will overwrite existing files."
 
 ### Step 2b: Install Rules
 
-Copy Compass rules from the plugin templates to `.claude/rules/`:
+Copy Compass rules using filesystem copy:
 
-1. List all `.md` files in `<plugin-root>/templates/rules/`
-2. Create `.claude/rules/` if it doesn't exist
-3. For EACH rules file: **Read** then **Write** exact content to `.claude/rules/<filename>`
+```bash
+mkdir -p .claude/rules
+cp "<plugin-root>/templates/rules/"*.md .claude/rules/
+```
 
 These rules provide prompt engineering patterns for writing/reviewing Compass agents.
 
