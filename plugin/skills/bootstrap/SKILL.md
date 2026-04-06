@@ -55,37 +55,14 @@ If you cannot find the plugin directory, ask the human:
 
 ### Step 2a: Install Agents
 
-Copy all Compass agent files from the plugin to `.claude/agents/` using filesystem copy — NOT Read+Write.
+Copy all agent files from `<plugin-root>/templates/agents/` to `.claude/agents/`. Copy the rules file from `<plugin-root>/templates/rules/` to `.claude/rules/`.
 
-=== CRITICAL: USE BASH `cp` TO COPY FILES — DO NOT READ AND REWRITE THEM ===
-
-```bash
-mkdir -p .claude/agents
-cp "<plugin-root>/templates/agents/"*.md .claude/agents/
-```
-
-This gives agents full feature access (initialPrompt, permissionMode, hooks, mcpServers) that plugin agents don't get.
-
-Verify the copy worked:
-```bash
-ls .claude/agents/*.md | wc -l   # should be 15
-```
+Your job here is to get the right files in the right places. That's it.
 
 If agents are already installed, ask the human:
 > "Compass agents are already installed in .claude/agents/. Do you want to update them to the latest version? This will overwrite existing files."
 
-### Step 2b: Install Rules
-
-Copy Compass rules using filesystem copy:
-
-```bash
-mkdir -p .claude/rules
-cp "<plugin-root>/templates/rules/"*.md .claude/rules/
-```
-
-These rules provide prompt engineering patterns for writing/reviewing Compass agents.
-
-### Step 2c: Configure Hooks
+### Step 2b: Configure Hooks
 
 Set up the `SubagentStop` hook in `.claude/settings.json` (or `.claude/settings.local.json`) so that the tester agent runs automatically after the builder finishes:
 
@@ -230,6 +207,7 @@ New project / Existing project with N existing documents
 ## Know Your Failure Modes
 
 You WILL be tempted to:
+- Read all the agent template files and then rewrite them from memory — DO NOT do this. Copy the files as they are. Your job is to get the right files in the right places, not to regenerate content.
 - Write to CLAUDE.md without asking — always present and wait for approval
 - Skip the migration table for existing projects — always present it line by line
 - Make assumptions about what the project does — ask the human
