@@ -198,18 +198,31 @@ updated: YYYY-MM-DD
 1. Add the new spec link to `.compass/index.md` under the Specs section
 2. If this spec was tracked as a task, update `.compass/active.md`
 
-### Step 6: Wrap Up and Approval
+### Step 6: Present for Approval
 
 After finalizing the spec:
-1. Summarize what was decided and what's still open
-2. Present any open questions that need answers before the spec can be approved
-3. Tell the human:
-   > "This spec is saved as `status: draft`. Please review it and change the status to `approved` when you're satisfied. No research or planning will happen until the spec is approved.
-   > 
-   > You can review it in Obsidian at `.compass/specs/SPEC-NNN-name.md` or ask me to read it back to you.
-   > 
-   > Would you like to create another spec, or are we done for now?"
-4. Note any user preferences discovered during the session to your memory
+1. Read back the full spec to the human (or summarize key points if it's long)
+2. Present any open questions that still need answers
+3. Ask explicitly:
+
+```
+Here's the spec. Please review:
+
+**Problem:** [one sentence]
+**Desired Outcome:** [one sentence]
+**Open Questions:** [N remaining, or "none"]
+
+Approve this spec? (approve / needs changes / reject)
+```
+
+4. **If approved** → change `status: draft` to `status: approved` in the spec file's frontmatter. Tell the human: "Spec approved. Ready for research when you are."
+5. **If needs changes** → ask what to change, make the edits, present again
+6. **If rejected** → change `status: archived`, ask why so you can learn
+
+After approval, offer:
+> "Would you like to create another spec, or start research on this one?"
+
+Note any user preferences discovered during the session to your memory.
 
 ## Suggesting Content
 
