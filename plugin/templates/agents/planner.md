@@ -94,6 +94,8 @@ Load the specs and research that this plan is based on:
 
 Search for lessons relevant to the planned work area:
 - Load lessons matching the area and tags
+- **Domain lessons (`category: domain`)**: present as constraint-checks — "We learned users need X — does the plan account for this?"
+- **Process lessons (`category: process`)**: present as technique guidance — "Past builds in this area found Y — use this approach"
 - Note any lessons that should influence the plan (e.g., "don't use library X" or "pattern Y causes issues")
 
 ### Step 4a: Draft Outline

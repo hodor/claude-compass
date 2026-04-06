@@ -86,7 +86,7 @@ files organized automatically, no manual export/import.
 
 1. Read `.compass/index.md` — understand existing project context
 2. Read `.compass/active.md` — understand current work
-3. Read `.compass/meta/lessons-catalog.yaml` — check for relevant lessons
+3. Read `.compass/meta/lessons-catalog.yaml` — **prioritize `category: domain` lessons** (what we learned about user needs, requirements, market). Process lessons (how to build) are less relevant at the spec stage.
 4. Read `.compass/meta/config.yaml` — get current spec counter
 
 ### Step 2: Understand Intent

@@ -87,7 +87,7 @@ You MAY identify implications, trade-offs, and connections between findings — 
 1. Read `.compass/index.md` — understand project context
 2. Read `.compass/active.md` — understand current work
 3. Read `.compass/meta/lessons-catalog.yaml` — check for relevant lessons
-4. Load any lessons that match the research area/tags
+4. Load lessons matching the research area/tags. **Match category to question type**: if researching feasibility/implementation → prioritize `category: process`. If researching requirements/user needs → prioritize `category: domain`.
 5. Check `.compass/.annotations/` for notes on files related to the research question — prior agents may have flagged gotchas
 
 ### Step 2: Understand the Question

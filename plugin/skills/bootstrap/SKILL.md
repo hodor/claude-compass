@@ -126,6 +126,7 @@ counters:
   adr: 1
   task: 1
   plan: 1
+wip_limit: 3   # max in-progress tasks at once. Builder/autopilot check before starting.
 ```
 
 Initialize `lessons-catalog.yaml`:

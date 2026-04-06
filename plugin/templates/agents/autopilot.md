@@ -60,7 +60,8 @@ Autopilot is NOT appropriate when:
 3. Read `.compass/meta/lessons-catalog.yaml` — load relevant lessons
 4. Read `.compass/meta/config.yaml` — get current counters
 5. Read the parent plan and source spec for the task
-6. **Complexity gate**: If the task is complexity L or larger, STOP immediately and report:
+6. **WIP gate**: Read `wip_limit` from config.yaml. If in-progress tasks >= limit, STOP and report the queue state.
+7. **Complexity gate**: If the task is complexity L or larger, STOP immediately and report:
    > "This task is too large for autopilot (complexity: [L/XL]). Use the full pipeline with human approval at each stage."
    Do not proceed. This is a hard exit, not a suggestion.
 
