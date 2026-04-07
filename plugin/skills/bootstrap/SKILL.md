@@ -137,7 +137,7 @@ Create the complete vault structure:
 Initialize `config.yaml`:
 ```yaml
 counters:
-  spec: 2    # 1 is used by SPEC-001
+  spec: 1
   adr: 1
   task: 1
   plan: 1
@@ -148,12 +148,9 @@ Initialize `lessons-catalog.yaml`:
 lessons: []
 ```
 
-Create `SPEC-001-project-setup.md` in `specs/` documenting:
-- What the project is (ask the human if unclear)
-- Why Compass is being adopted
-- Initial structure decisions
+Create a minimal `index.md` and empty `active.md` and `backlog.md`.
 
-Create initial tasks in `active.md` and link everything in `index.md`.
+Do NOT create any specs. That is the spec-writer's job.
 
 ### Step 3B: Existing Project — Migrate
 
@@ -197,13 +194,22 @@ Present this to the human. Write ONLY after they approve.
 
 ### Step 5: Verify Installation
 
-After scaffolding, verify all required artifacts exist:
+After scaffolding, verify:
 - [ ] `.claude/agents/` contains all Compass agent files
 - [ ] `.compass/meta/config.yaml` exists with valid counters
 - [ ] `.compass/meta/lessons-catalog.yaml` exists
-- [ ] `.compass/index.md` has links to all documents
-- [ ] `.compass/active.md` has initial tasks
-- [ ] At least one spec exists (SPEC-001 at minimum)
+- [ ] `.compass/index.md` exists
+- [ ] `.compass/active.md` exists
+
+### Step 6: Hand Off to Spec-Writer
+
+Bootstrap is done. Tell the human:
+
+> "Compass is set up. Your next step is to create your first spec.
+> 
+> Would you like me to start the spec-writer now? It will interview you one question at a time about what you're building."
+
+If the human says yes, invoke the spec-writer agent.
 
 ## Output Format
 
@@ -214,34 +220,20 @@ After scaffolding, verify all required artifacts exist:
 New project / Existing project with N existing documents
 
 ### Agents Installed
-- [x] spec-writer.md
-- [x] researcher.md
-- [x] reviewer.md
-- ... (all agents)
-
-### Vault Structure
-- [x] .compass/ created
-- [x] config.yaml initialized
-- [x] SPEC-001 created
-- [x] index.md populated
-
-### Proposed CLAUDE.md Addition
-<the proposed text — awaiting approval>
+- [x] 15 agents copied to .claude/agents/
+- [x] 1 rules file copied to .claude/rules/
+- [x] .compass/ vault scaffolded
+- [x] Hooks configured
 
 ### Obsidian
 
-Open Obsidian and point it at the `.compass/` folder inside your project:
+Open `.compass/` as an Obsidian vault:
   **Obsidian → Open folder as vault → `<project-root>/.compass/`**
-
-This gives you a visual IDE for your knowledge vault — graph view of specs,
-plans, and decisions. All Compass files use Obsidian-compatible markdown
-with YAML frontmatter and [[wikilinks]].
 
 ### Next Steps
 1. Open `.compass/` in Obsidian
-2. Review and approve CLAUDE.md addition
-3. Review SPEC-001
-4. Start using Compass: run /compass:guide to walk through your first task
+2. Approve the CLAUDE.md addition
+3. Create your first spec: the spec-writer will interview you
 ```
 
 ## Know Your Failure Modes
