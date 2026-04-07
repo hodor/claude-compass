@@ -178,12 +178,12 @@ Draft a Compass section for CLAUDE.md. Keep it short — rules, not essays:
 
 **Pipeline:** Spec → Research → Plan → Build → Test → Validate. Don't skip phases.
 
-**Key rules:**
+**You are an orchestrator. Delegate to agents, don't do the work yourself.**
+- Specs → spawn `spec-writer`. Plans → spawn `planner`. Code → spawn `builder`. Research → spawn `researcher`.
+- Do NOT write code, specs, plans, or research directly in the main conversation.
 - Specs are about the NEED, not the solution. No implementation decisions in specs.
-- Specs start as `draft`. Nothing happens until the human changes status to `approved`.
-- One spec at a time. Interview the human. Don't batch-create.
+- Specs start as `draft`. Nothing happens until the human approves.
 - All code changes require tests. Builder codes, tester tests (auto-spawned).
-- Decisions → ADRs in `.compass/decisions/`. Surprises → lessons in `.compass/lessons/`.
 - `git add <file>` — never `-A` or `.`
 
 **Start here:** `.compass/index.md` (map) and `.compass/active.md` (tasks).
