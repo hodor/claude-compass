@@ -3,8 +3,8 @@ name: bootstrap
 description: Set up the Compass development workflow in a project. Creates the .compass/ vault, installs full-featured agents to .claude/agents/, and proposes CLAUDE.md additions.
 version: 1.0.0
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash]
-when_to_use: "Use when the user wants to set up Compass in a project, initialize a .compass/ vault, or install Compass agents. Triggers: 'set up compass', 'initialize compass', 'bootstrap compass', 'install compass'."
-argument-hint: "[new | migrate]"
+when_to_use: "Use when the user wants to set up Compass in a project, update Compass agents, or install Compass agents. Triggers: 'set up compass', 'initialize compass', 'bootstrap compass', 'install compass', 'update compass'."
+argument-hint: "[new | migrate | update]"
 ---
 
 # Bootstrap — Compass Project Setup
@@ -21,7 +21,22 @@ argument-hint: "[new | migrate]"
 4. Proposes CLAUDE.md additions (human approves before writing)
 5. Creates SPEC-001 documenting the project setup
 
+## Modes
+
+- **`/compass:bootstrap new`** — Full setup: agents + rules + hooks + vault + SPEC-001 + CLAUDE.md
+- **`/compass:bootstrap migrate`** — Full setup for a project with existing docs
+- **`/compass:bootstrap update`** — Quick refresh: overwrite agents + rules + hooks only. Does NOT touch the vault, CLAUDE.md, or existing specs. Use this to get the latest Compass agents during development.
+
 ## Protocol
+
+### Step 0: Check for Update Mode
+
+If the argument is `update`:
+1. Skip project state detection
+2. Go directly to Step 2 (Install Agents and Rules) — overwrite without asking
+3. Go to Step 2b (Configure Hooks) — overwrite without asking
+4. Report what was updated
+5. STOP — do not scaffold vault, create specs, or touch CLAUDE.md
 
 ### Step 1: Detect Project State
 
