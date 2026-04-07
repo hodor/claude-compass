@@ -9,6 +9,16 @@ allowed-tools: [Glob, Grep, Read]
 
 Reference for reading and writing `.compass/` vault documents. All vault files are Obsidian-compatible markdown with YAML frontmatter and wikilinks.
 
+## The One Linking Rule
+
+When you mention a vault document in prose, use `[[wikilinks]]`. Every time. No exceptions.
+
+- Write: "This plan implements [[SPEC-001-project-setup]]"
+- Not: "This plan implements the project setup spec"
+- Not: "This plan implements `.compass/specs/SPEC-001-project-setup.md`"
+
+This is how documents connect — for agents (grep finds them) and for humans (Obsidian renders the graph). Frontmatter `depends_on` is for structured queries. Inline wikilinks are for navigation and context.
+
 ## YAML Frontmatter Schema
 
 Every `.compass/` document MUST have frontmatter. Fields by applicability:

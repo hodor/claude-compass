@@ -47,3 +47,9 @@ Hard constraints. If any of these are violated, STOP and tell the human.
 - Spec-writers and planners should prioritize `domain` lessons.
 - Builders should prioritize `process` lessons.
 - Researchers should match lesson category to their research question type.
+
+## Linking
+
+- When mentioning a vault document in prose, ALWAYS use `[[wikilinks]]`. Not bare names, not file paths.
+- This applies to every document you write: specs, research, plans, ADRs, lessons, handoffs.
+- Frontmatter `depends_on` is for structured queries. Inline wikilinks are for navigation and context. Both matter.

@@ -147,6 +147,8 @@ Check with `git branch --show-current` and `git remote get-url origin`.
 ```markdown
 ## Research: [Topic]
 
+Initiated from [[SPEC-NNN-name]] (or describe what triggered this research).
+
 ### Question
 [The specific question being investigated]
 

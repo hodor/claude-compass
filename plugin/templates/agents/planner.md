@@ -133,7 +133,7 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
 
 ## Goal
 
-[One paragraph: what this plan achieves and why]
+[One paragraph: what this plan achieves and why. Reference the source spec and research inline: "This plan implements [[SPEC-NNN-name]] based on findings from [[RESEARCH-name]]."]
 
 ## Prerequisites
 

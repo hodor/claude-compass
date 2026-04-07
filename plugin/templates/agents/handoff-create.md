@@ -130,11 +130,11 @@ Files created or modified during this session:
 
 ## Artifacts (Load in Order)
 
-Documents required to resume this work — read in this order:
+Vault documents required to resume this work — use [[wikilinks]], read in this order:
 
-1. `path/to/spec.md` — the source specification
-2. `path/to/plan.md` — the plan being executed (currently in Phase N)
-3. `path/to/research.md` — key research findings
+1. [[SPEC-NNN-name]] — the source specification
+2. [[PLAN-NNN-name]] — the plan being executed (currently in Phase N)
+3. [[RESEARCH-name]] — key research findings
 
 ## Decisions Made
 

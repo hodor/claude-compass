@@ -110,7 +110,27 @@ Verify that `meta/config.yaml` counters match the actual highest-numbered files.
 Summary: 2 OK, 2 FAIL (counters would cause collisions)
 ```
 
-### 5. Full Report (`full`)
+### 5. Wikilink Usage (`linking`)
+
+Check that vault documents reference each other using `[[wikilinks]]` in prose, not bare names or file paths.
+
+**Check procedure:**
+1. Grep for vault document identifiers (SPEC-NNN, PLAN-NNN, ADR-NNN, RESEARCH-, LESSON-) across all `.compass/**/*.md`
+2. For each match, check if it's wrapped in `[[...]]`
+3. Report references that should be wikilinks but aren't
+
+**Output:**
+```
+## Wikilink Usage
+
+Bare references (should be [[wikilinks]]):
+- plans/PLAN-002-auth.md:15 — mentions "SPEC-001" without [[...]]
+- handoffs/2026-04-05_session.md:42 — uses file path `.compass/specs/SPEC-003.md` instead of [[SPEC-003-name]]
+
+Summary: 30 vault references checked, 2 not using wikilinks
+```
+
+### 6. Full Report (`full`)
 
 Runs all checks and produces a combined report. Default when no argument is provided.
 
@@ -122,8 +142,9 @@ Runs all checks and produces a combined report. Default when no argument is prov
 ### Wikilinks: 45 checked, 2 broken
 ### Orphans: 18 files, 2 unreferenced
 ### Counters: 2 OK, 2 FAIL
+### Linking: 30 references, 2 not using wikilinks
 
-Overall: NEEDS ATTENTION (4 issues found)
+Overall: NEEDS ATTENTION (5 issues found)
 ```
 
 ## Fixing Issues
