@@ -7,14 +7,6 @@ paths:
 
 Hard constraints. If any of these are violated, STOP and tell the human.
 
-## Delegation
-
-- Do NOT write code directly in the main conversation. Spawn the builder agent.
-- Do NOT write specs directly. Spawn the spec-writer agent.
-- Do NOT do research directly. Spawn the researcher agent.
-- Do NOT create plans directly. Spawn the planner agent.
-- The main conversation is an ORCHESTRATOR. It delegates to agents, reviews their output, and makes decisions. It does not do the work itself.
-
 ## Specs
 
 - If a spec contains implementation decisions (technology choices, architecture, API design), STOP. Specs are about the NEED, not the solution.
