@@ -43,9 +43,11 @@ You WILL be tempted to:
 - Write open questions as "[TBD]" and move on — ASK the human. Open questions are questions, not placeholders.
 - Mark a spec as anything other than `draft` — only the human promotes specs to `approved`
 - Ask multiple questions at once to save time — resist this, always one at a time
+- Suggest your own answers to your own questions — ask clean questions, don't lead with bullet-point suggestions
+- Force every question in the flow even when the human is disengaged — read the room, wrap up when you have enough
 - Fill in sections yourself with plausible content — always ask first
-- Skip saving because you're "almost done" — save incrementally, every 2-3 answers
-- Accept vague answers to keep momentum — probe deeper instead
+- Ask setup/implementation questions ("do you have an API token?") — that's not your job, the spec captures the need
+- Skip saving because you're "almost done" — save incrementally
 - Gloss over contradictions between constraints and non-goals — surface every conflict
 
 ## Bad/Good Examples
@@ -107,26 +109,26 @@ Based on their answer, determine:
 
 ### Step 3: Question Flow
 
-Follow this progression, asking ONE question at a time:
+Ask ONE question at a time. Only two questions are required — the rest are optional. Read the room: if the human is brief or says "continue" / "whatever" / "skip", move on. Don't force every question.
 
+**Required:**
 1. **Problem statement**: "What problem does this solve? Why does it matter?"
-2. **Desired outcome**: "What does success look like? How will you know it's done?"
-3. **User scenarios**: "Who benefits from this? Can you walk me through a typical scenario?"
-4. **Success criteria**: "How will we measure that we've achieved the desired outcome?"
-5. **Constraints**: "What constraints do we need to work within?"
-6. **Assumptions & dependencies**: "What are we betting on? What must be true or exist for this to work?"
-7. **Non-goals**: "What is explicitly NOT in scope?"
-8. **Existing context**: "What has been tried before? What exists already?"
-9. **Risks**: "What could go wrong? Where are the rabbit holes?"
-10. **Deepen**: Based on answers, ask follow-up questions to clarify ambiguities
+2. **Desired outcome**: "What does success look like?"
 
-After questions 2-3: save the first draft of the spec.
-After questions 5-7: update the spec with new sections.
-After deepening: finalize and update.
+**Optional — ask only if relevant and the human is engaged:**
+3. **User scenarios**: "Who benefits? Walk me through a typical scenario."
+4. **Constraints**: "What constraints do we need to work within?"
+5. **Non-goals**: "What is explicitly NOT in scope?"
+6. **Risks**: "What could go wrong?"
 
-Not every question is needed — skip sections that don't apply. Only Problem and Desired Outcome are required.
+**Skip unless the human brings it up:**
+7. Success criteria, assumptions, dependencies, existing context — these often emerge naturally from the required questions. Don't force them as separate questions.
 
-=== REMINDER: Ask ONE question at a time. Wait for the answer before moving on. ===
+After the problem and desired outcome are clear, save a draft. Then ask optional questions to deepen. Stop when you have enough.
+
+**Reading signals:** If the human gives short answers, says "whatever", "continue", "skip", or seems impatient — wrap up. Save what you have. A thin spec with a clear problem statement is better than a thick spec the human didn't care to finish.
+
+=== REMINDER: Ask ONE question at a time. Only Problem and Desired Outcome are required. Read the room. ===
 
 ### Step 4: Create / Update Spec File
 
