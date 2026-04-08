@@ -48,6 +48,12 @@ Hard constraints. If any of these are violated, STOP and tell the human.
 - Builders should prioritize `process` lessons.
 - Researchers should match lesson category to their research question type.
 
+## Vault State
+
+- After completing a task, update `.compass/active.md` — check off the task `[x]`. This is not optional.
+- After creating any vault document (spec, plan, research, ADR, lesson), add it to `.compass/index.md`.
+- These updates are as important as the work itself. An untracked task is invisible to the next session.
+
 ## Linking
 
 - When mentioning a vault document in prose, ALWAYS use `[[wikilinks]]`. Not bare names, not file paths.
