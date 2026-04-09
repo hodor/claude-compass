@@ -152,10 +152,10 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
 
 ### Phase 1: [Name]
 
-- [ ] TASK-NNN: [Description] — complexity: S, depends_on: none
+- [ ] TASK-NNN: [Description] — complexity: S, depends_on: none, files: [list of files this task owns]
   - Automated verification: [commands/tests that can be run by an agent]
   - Manual verification: [checks that require a human]
-- [ ] TASK-NNN: [Description] — complexity: M, depends_on: TASK-NNN
+- [ ] TASK-NNN: [Description] — complexity: M, depends_on: TASK-NNN, files: [list of files]
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
 
@@ -188,6 +188,7 @@ Here is the proposed plan based on [source specs/research]:
 **Goal:** [one sentence]
 **Phases:** N phases, M total tasks
 **Estimated complexity:** [S/M/L overall]
+**Parallel-safe tasks:** [list tasks that have non-overlapping files and can run in parallel]
 
 [Full plan content from Step 4]
 

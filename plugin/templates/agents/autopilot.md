@@ -116,23 +116,26 @@ Proceed with implementation? (approve / redirect / abort)
 
 Wait for human confirmation before proceeding.
 
-### Phase 4: Build (via builder agent)
+### Phase 4: Build (via builder agents)
 
-Spawn the `builder` agent with the approved plan and task.
+Check the plan for parallel-safe tasks (non-overlapping `files:` ownership).
 
-The builder will:
-- Write the code in an isolated worktree
-- Run existing tests as smoke check
-- Run code formatting
-- Spawn a code review sub-agent
-- The tester agent auto-spawns via SubagentStop hook when builder finishes
+**If tasks can run in parallel:**
+1. Spawn one `builder` agent per parallel-safe task, each with its file list
+2. Each builder runs in its own isolated worktree
+3. Wait for ALL builders to complete (testers auto-spawn via SubagentStop hook)
+4. Collect all results
 
-Wait for the builder AND the tester to complete.
+**If tasks must be serial** (dependencies or overlapping files):
+1. Spawn one `builder` at a time, in dependency order
+2. Wait for each to complete before starting the next
 
-If the tester reports bugs:
-- Present the bugs to the human
-- Ask whether to have the builder fix them (up to 3 cycles) or abort
-- Respawn the builder with the bug report if approved
+**Fix loop (max 3 cycles):**
+After builders + testers complete, if the tester reported bugs:
+1. Spawn targeted fix builders — scoped to specific FAIL items, not the full task
+2. Fix builders get the bug diagnosis and suggested fix, not the original task description
+3. Tester auto-runs again on the fix
+4. If issues persist after 3 cycles, escalate to human with remaining FAILs
 
 ### Phase 5: Validate (via validator agent)
 

@@ -29,6 +29,9 @@ Hard constraints. If any of these are violated, STOP and tell the human.
 
 - If no approved plan exists for the task, STOP. Do not improvise.
 - If the codebase does not match what the plan describes, STOP. Do not work around mismatches.
+- When executing planned tasks, spawn builder agents rather than coding in the main conversation. Builders run in isolated worktrees with automatic testing.
+- When tasks have non-overlapping file ownership, spawn builders in parallel.
+- Fix loop: if tests fail, respawn targeted fix builders (max 3 cycles). Then escalate.
 
 ## Testing
 

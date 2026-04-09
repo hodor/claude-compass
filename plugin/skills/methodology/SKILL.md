@@ -61,6 +61,58 @@ ADRs live in `.compass/decisions/` and follow the `ADR-NNN-descriptive-name.md` 
 
 Tests are the safety net that allows humans to trust AI-written code. Skipping tests is never acceptable.
 
+## Task Execution
+
+When a plan has approved tasks in `active.md`, they should be executed by **builder agents**, not by the main conversation writing code inline. This is important because:
+- Builders run in isolated worktrees (changes are reviewable before merge)
+- Builders auto-trigger the tester agent via SubagentStop hook
+- Builders follow the full protocol (scope check, smoke test, code review)
+- The main conversation loses none of this if it codes directly
+
+The main conversation's job during execution is **orchestration**: spawn builders, review their output, handle failures, update vault state.
+
+## Parallel Execution Pattern
+
+When a plan has multiple tasks that can run in parallel (non-overlapping file ownership), use this pattern:
+
+```
+Phase 1: PARALLEL BUILDERS
+  ├── Builder A (files: X, Y) — isolated worktree
+  ├── Builder B (files: Z, W) — isolated worktree
+  └── Builder C (files: V) — isolated worktree
+         ↓ all complete, tester auto-runs on each
+Phase 2: QA REVIEW (validator agent)
+  → Structured report: PASS / FAIL / PARTIAL per task
+         ↓
+Phase 3: TARGETED FIXES (conditional)
+  ├── Fix Builder 1 (FAIL items from task A)
+  └── Fix Builder 2 (FAIL items from task B)
+         ↓ re-test
+Phase 4: RE-REVIEW (loop back to Phase 3, max 3 iterations)
+         ↓ all PASS or stuck
+Phase 5: HANDOFF TO HUMAN
+  → Final report, diff summary, manual verification guide
+```
+
+**Key rules:**
+- **File exclusivity**: each builder owns non-overlapping files. The planner assigns `files:` per task.
+- **QA as gate**: the validator runs AFTER all builders finish, not during.
+- **Targeted fixes**: fix builders get the specific FAIL diagnosis, not the full task. Surgical fixes.
+- **Loop cap**: max 3 QA cycles. If issues persist, escalate to human with remaining FAILs.
+- **Integration testing**: when a test environment exists, QA should deploy and test, not just static analysis.
+
+**When to use:**
+- Plan has 3+ tasks that touch non-overlapping files
+- Tasks are well-specified (not exploratory)
+- A checkpoint exists to rollback to
+
+**When NOT to use:**
+- Exploratory work where requirements are unclear
+- Single-file changes (just run one builder)
+- Tasks with heavy file overlap (serialize instead)
+
+This pattern also applies to **research**: spawn N researchers in parallel → reviewer consolidates → targeted follow-up researchers for gaps → re-review. Same structure, different agents.
+
 ## TODO Priority Annotations
 
 Use a priority-based TODO annotation system throughout the codebase. These are greppable and can be enforced by CI:
