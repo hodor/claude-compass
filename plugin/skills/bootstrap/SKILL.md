@@ -33,7 +33,7 @@ argument-hint: "[new | migrate | update]"
 
 If the argument is `update`:
 1. Skip project state detection
-2. Go directly to Step 2 (Install Agents and Rules) — overwrite without asking
+2. Go directly to Step 2 (Install Agents, Rules, and Skills) — overwrite without asking
 3. Go to Step 2b (Configure Hooks) — overwrite without asking
 4. Report what was updated
 5. STOP — do not scaffold vault, create specs, or touch CLAUDE.md
@@ -79,7 +79,17 @@ echo "Agents copied: $(ls .claude/agents/*.md | wc -l) files"
 mkdir -p .claude/rules
 cp "$PLUGIN_ROOT/templates/rules/"*.md .claude/rules/
 echo "Rules copied: $(ls .claude/rules/*.md | wc -l) files"
+
+# Step 4: Copy skills (makes project self-contained — no plugin needed after this)
+for skill_dir in "$PLUGIN_ROOT/skills/"*/; do
+  skill_name=$(basename "$skill_dir")
+  mkdir -p ".claude/skills/$skill_name"
+  cp "$skill_dir"*.md ".claude/skills/$skill_name/"
+done
+echo "Skills copied: $(ls -d .claude/skills/*/ | wc -l) directories"
 ```
+
+After this, the project is fully self-contained. Anyone who clones the repo gets agents, skills, and rules — no plugin install needed.
 
 Run this as a single Bash command. Verify the output shows 15 agents and 1 rules file. If the plugin can't be found, ask the human for the path.
 
