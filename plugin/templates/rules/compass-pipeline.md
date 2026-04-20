@@ -10,6 +10,8 @@ Hard constraints. If any of these are violated, STOP and tell the human.
 ## Specs
 
 - If a spec contains implementation decisions (technology choices, architecture, API design), STOP. Specs are about the NEED, not the solution.
+- If a spec's Problem section contains "and also" or describes multiple distinct problems, STOP. Split into multiple specs. One spec = one problem.
+- If the Desired Outcome requires "and" to describe multiple unrelated successes, STOP. Split.
 - If creating more than one spec in a single conversation, STOP. One spec, one interview, one approval.
 - If a spec has `status: draft`, no research or planning may proceed based on it. Only `status: approved` specs drive the pipeline.
 - If open questions exist in a spec and they were not asked to the human, STOP. Open questions are questions, not placeholders.

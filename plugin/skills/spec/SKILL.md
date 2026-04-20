@@ -11,6 +11,7 @@ argument-hint: "<what to spec>"
 
 Interview the human one question at a time. Capture the PROBLEM and the NEED. Never the solution.
 
+=== CRITICAL: ONE SPEC = ONE PROBLEM. IF YOU WRITE "AND ALSO", SPLIT THE SPEC ===
 === CRITICAL: SPECS ARE ABOUT THE PROBLEM AND THE NEED — NEVER THE SOLUTION ===
 === CRITICAL: ONE QUESTION AT A TIME — NEVER DUMP A LIST OF QUESTIONS ===
 === CRITICAL: NEVER FILL IN BLANKS WITHOUT EXPLICIT PERMISSION ===
@@ -27,11 +28,14 @@ Interview the human one question at a time. Capture the PROBLEM and the NEED. Ne
 - Be SKEPTICAL of vague or contradictory answers — probe before moving on
 - ONE SPEC AT A TIME — never batch-create. One spec, one interview, one approval, then offer the next
 - Every spec starts as `status: draft`. Only the human promotes to `approved`
-- Each spec follows the single responsibility principle — one spec owns one concern
+- ONE SPEC = ONE PROBLEM. If the Problem section says "and also" or "additionally", that's two specs. Split it.
+- The test: can the Desired Outcome be stated as ONE coherent success? If you need "and" to describe it, it's multiple specs.
 
 ## Know Your Failure Modes
 
 You WILL be tempted to:
+- Bundle multiple concerns into one spec because "they're related" — STOP. "Related" ≠ "same problem". If the Problem section has multiple distinct problems, you have multiple specs. Split them.
+- Write a spec with a compound Problem ("we need X and also Y") — split into two specs
 - Describe HOW something should work instead of WHAT problem it solves — "We need REST/WebSocket" is implementation; "Artists need real-time feedback without leaving AE" is a spec
 - Make technology choices — that's research, not spec
 - Structure specs around system components ("Plugin Architecture") — structure them around user needs ("Artist Workflow")
@@ -66,6 +70,35 @@ layer — no manual export/import, no context switch.
 - Project files must stay organized inside the AE project
 ```
 
+**Bloated spec — Bad (this is 3 specs pretending to be 1):**
+```
+## AI Tools for Artists
+### Problem
+Artists need AI image editing in AE. They also need AI video generation
+for previz. And they need a shared asset library to organize AI outputs.
+
+### Desired Outcome
+Artists can use AI image edits, generate AI videos, and have everything
+organized in a shared library.
+```
+(Three distinct problems: editing, generation, library. Three specs.)
+
+**Same work — Good (split into focused specs):**
+```
+SPEC-001: AI Image Editing in After Effects
+  Problem: Artists need AI image edits without leaving AE
+  Outcome: Select frame → describe → result as layer
+
+SPEC-002: AI Video Generation for Previz
+  Problem: Previz takes too long with traditional methods
+  Outcome: Describe scene → video preview in under N minutes
+
+SPEC-003: Shared AI Asset Library
+  Problem: AI outputs are scattered across projects
+  Outcome: All AI outputs auto-organized by project, tagged, searchable
+```
+(Each spec is one problem. They may share context, but they're separate concerns with separate outcomes.)
+
 ## Protocol
 
 ### Step 1: Read Hot Path
@@ -79,6 +112,11 @@ layer — no manual export/import, no context switch.
 
 Ask the human what they want to spec:
 > "What do you want to specify? Give me the one-sentence version."
+
+**Scope check**: If the one-sentence version has "and" joining distinct problems ("users can do X and admins can do Y"), STOP and ask:
+> "That sounds like more than one spec. I hear [problem A] and [problem B]. Should these be separate specs, or is there one underlying problem that covers both?"
+
+Do NOT proceed with a compound spec without the human explicitly confirming it's ONE problem.
 
 Assess readiness:
 > "This sounds like it's at the [ideation / planning / ready to implement] stage. Should we proceed with a full spec, or does this need more thinking first?"
@@ -99,7 +137,24 @@ Ask ONE question at a time. Only two questions are required. Read the room.
 
 **Reading signals:** If the human gives short answers, says "whatever", "continue", "skip", or seems impatient — wrap up. A thin spec with a clear problem statement beats a thick spec the human didn't care to finish.
 
-After the problem and desired outcome are clear, save a first draft. Then ask optional questions to deepen. Stop when you have enough.
+### Step 3b: Bloat Check (before saving)
+
+Before writing the spec file, re-read the Problem and Desired Outcome:
+
+- Does the Problem contain multiple distinct problems joined by "and" or "also"?
+- Does the Desired Outcome require "and" to describe multiple unrelated successes?
+- Are there multiple user types with different needs bundled together?
+
+If YES to any → STOP and tell the human:
+> "This looks like N separate specs. I see:
+> 1. [problem A with its own outcome]
+> 2. [problem B with its own outcome]
+> 
+> I can split these, or you can confirm they should be one spec. Which?"
+
+Wait for human decision. Never silently bundle.
+
+After the problem and desired outcome are clear (and it's one concern), save a first draft. Then ask optional questions to deepen. Stop when you have enough.
 
 ### Step 4: Create Spec File
 
@@ -199,4 +254,4 @@ Does that capture it? I can adjust.
 Next question: What does success look like?
 ```
 
-=== REMINDER: SPECS ARE ABOUT THE NEED, NOT THE SOLUTION. ONE QUESTION AT A TIME. NEVER FILL IN BLANKS. NO IMPLEMENTATION DECISIONS. ===
+=== REMINDER: ONE PROBLEM PER SPEC. IF YOU WRITE "AND ALSO", SPLIT. SPECS ARE ABOUT THE NEED, NOT THE SOLUTION. ONE QUESTION AT A TIME. ===
