@@ -113,6 +113,41 @@ Phase 5: HANDOFF TO HUMAN
 
 This pattern also applies to **research**: spawn N researchers in parallel → reviewer consolidates → targeted follow-up researchers for gaps → re-review. Same structure, different agents.
 
+## Deep Research Pattern (Citation Graph)
+
+When researching a technique, paper, algorithm, or implementation — going deep requires three perspectives:
+
+```
+        (Backward — why it works)
+              ↓
+    ┌─────────────────────┐
+    │ The thing itself    │   (Current — what it is)
+    └─────────────────────┘
+              ↓
+        (Forward — how it evolved)
+```
+
+Spawn three researchers in parallel:
+
+1. **Deep researcher (Current)**: read the original paper and source code. Understand exactly what it does, how it works, and the authors' claims.
+
+2. **Backward researcher (Ancestors)**: find the papers, references, and prior work that the original cites or builds on. This answers "why does it work the way it works?" Critical for understanding trade-offs and knowing what breaks if you change something.
+
+3. **Forward researcher (Descendants)**: find newer work that built on the original — papers that cite it, implementations that extend it, real-world usage. This answers "what have others done with this?" Provides inspiration for the plan.
+
+Then the reviewer consolidates all three perspectives.
+
+**When to use this pattern:**
+- Implementing a specific technique from a paper
+- Adopting an algorithm or approach
+- Working with a technology whose internals matter (not just its API)
+- High-stakes decisions where understanding foundations matters
+
+**When NOT to use:**
+- Quick feasibility checks
+- Looking up syntax or API usage
+- Short-term implementation details
+
 ## TODO Priority Annotations
 
 Use a priority-based TODO annotation system throughout the codebase. These are greppable and can be enforced by CI:
