@@ -36,19 +36,23 @@ For going deep on a technique, paper, algorithm, or implementation. Understandin
 Spawn three researchers in parallel, each with a distinct charter:
 
 **Researcher A — Current (Deep Source):**
-- Read the original paper(s) and source code
+- Use the `/compass:papers` skill to fetch the paper as markdown and its metadata
+- Read the paper and follow the GitHub repo link for source code
 - Understand exactly what it does, how it works, authors' claims
 - Note assumptions, limitations, and stated trade-offs
+- List the linked models/datasets/spaces (real implementations)
 
 **Researcher B — Backward (Ancestors):**
-- Find the papers, references, and prior work the original cites or builds on
+- Read the paper's References/Bibliography (from the markdown)
+- For each significant reference, use `/compass:papers` to fetch it
+- Focus on papers cited in Background, Related Work, or Method sections
 - Answer: why does it work the way it works?
-- Critical for understanding what breaks if you change something
-- Gives foundational understanding
+- Build the ancestor graph — what prior work the original builds on
 
 **Researcher C — Forward (Descendants):**
-- Find newer work that built on the original
-- Papers that cite it, implementations that extend it, real-world usage
+- Use `/compass:papers` search to find papers citing the original's keywords
+- Check the HF paper page's linked models/datasets for real implementations
+- Look at arXiv for newer work on the same topic
 - Answer: what have others done with this?
 - Provides inspiration for the plan
 
@@ -69,19 +73,23 @@ If the user invoked with `deep` as the first argument, use Mode 3.
 Per the chosen mode. For Mode 3, be very explicit in each researcher's charter about which perspective they own:
 
 ```
-Researcher A charter: Read the original paper at [URL] and the reference
-implementation at [repo]. Understand exactly what it does and how. Note
-assumptions, limitations, authors' stated trade-offs.
+Researcher A charter: Use /compass:papers to fetch the paper at arXiv {ID}
+as markdown and metadata. Read it fully. Follow the GitHub repo link and
+read the implementation. Understand exactly what it does and how. Note
+assumptions, limitations, authors' stated trade-offs. List all linked
+models and datasets (real implementations).
 
-Researcher B charter: Find the prior work this paper cites and builds on.
-Focus on the "Related Work" section and key references. Answer: what were
-the core insights this paper inherited? What problems did earlier work
-have that this one solves?
+Researcher B charter: Use /compass:papers to fetch the paper, then extract
+the References section. For each significant reference (especially those
+in Related Work, Background, or Method), use /compass:papers again to
+fetch that cited paper. Answer: what core insights did this paper
+inherit? What prior work does it depend on?
 
-Researcher C charter: Find newer work that builds on this paper. Look for
-citing papers, implementations, blog posts, and real-world usage. Answer:
-what have others done with this? What limitations did they hit? What
-extensions exist?
+Researcher C charter: Use /compass:papers search with keywords from the
+original paper's title and key concepts. Find newer papers that build on
+it. Also check the HF paper page's linked models/datasets for real-world
+implementations. Answer: what have others done with this? What
+limitations did they hit? What extensions exist?
 ```
 
 ### Step 3: Consolidate
