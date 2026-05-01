@@ -50,10 +50,13 @@ Classify the situation:
 I see this project doesn't have Compass set up yet.
 
 Compass gives you a structured development workflow:
-  Spec → Research → Plan → Build → Test → Validate
+  Vision → Spec → Research → Plan → Build → Test → Validate
 
 To get started, run:
   /compass:bootstrap
+
+After bootstrap, run /compass:vision to capture the project's overall
+goal and the roadmap of specs you'll create.
 
 This will:
 1. Install 15 specialized agents to .claude/agents/
@@ -68,23 +71,39 @@ If the user says yes, invoke `/compass:bootstrap`.
 
 ---
 
-## Situation B: Compass Installed, Empty Vault — Guide to First Spec
+## Situation B: Compass Installed, Empty Vault — Guide to Vision
 
+Check whether `.compass/vision.md` exists.
+
+**If no vision yet:**
 ```
-Compass is set up! Your vault is empty — let's create your first spec.
+Compass is set up! Before creating specs, let's capture the vision —
+the project's overall goal and the landscape of needs that will become
+specs. This prevents your first spec from absorbing everything.
 
-The Compass workflow starts with a SPECIFICATION — a document that captures
-WHAT you want to build and WHY, before diving into HOW.
+Run /compass:vision and I'll interview you about the big picture, then
+propose a list of specs to create one at a time.
 
-Your options:
-1. **New feature** → I'll spawn the spec-writer to interview you one question at a time
-2. **Existing work to document** → I'll spawn the retroactive agent to create specs from git history
-3. **Just exploring** → I'll explain the full pipeline so you know what each agent does
-
-Which sounds right?
+Want to start now?
 ```
 
-Then spawn the appropriate agent.
+**If vision exists but no specs:**
+```
+Vision is captured. Time to write specs from the roadmap.
+
+Your spec roadmap (from vision.md):
+1. [SPEC name 1]
+2. [SPEC name 2]
+...
+
+Which one should we start with? I'll spawn /compass:spec for it.
+```
+
+**If user wants to document existing work** (no vision needed):
+```
+Use /compass:retroactive to document existing work from git history.
+Vision and forward-looking specs aren't required for this path.
+```
 
 ---
 

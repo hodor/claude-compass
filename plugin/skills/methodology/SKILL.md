@@ -12,10 +12,16 @@ Compass provides a structured development pipeline that ensures humans own strat
 ## The Pipeline
 
 ```
-Spec → Research → Plan → Tasks → Build → Validate
+Vision → Spec → Research → Plan → Tasks → Build → Validate
 ```
 
 Each stage produces artifacts that feed the next. Stages can be revisited, but never skipped.
+
+**Vision** captures the project's overall goal and the landscape of needs (run once per project, or per major pivot). It produces `.compass/vision.md` and a roadmap of specs to write.
+
+**Specs** are SINGLE-PROBLEM. One spec = one problem = one outcome. The vision step prevents the natural tendency to bundle multiple needs into a single spec.
+
+Without vision, projects either get crammed into one giant spec or fragmented into incoherent specs without shared direction.
 
 ## Hot Path
 

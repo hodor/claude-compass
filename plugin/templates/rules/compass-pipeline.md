@@ -7,8 +7,15 @@ paths:
 
 Hard constraints. If any of these are violated, STOP and tell the human.
 
+## Vision
+
+- For a new project, capture the vision FIRST (run `/compass:vision`). Do not let a project's first spec absorb the whole vision — that creates a bloated spec.
+- The vision document lives at `.compass/vision.md`. It captures the goal, users, project-level success, and the roadmap of specs to write.
+- One vision per project. Re-run vision only on major pivots, not for each new spec.
+
 ## Specs
 
+- If no vision document exists for a NEW project, STOP and run `/compass:vision` first. Existing projects may skip if the vision is implicit in existing artifacts.
 - If a spec contains implementation decisions (technology choices, architecture, API design), STOP. Specs are about the NEED, not the solution.
 - If a spec's Problem section contains "and also" or describes multiple distinct problems, STOP. Split into multiple specs. One spec = one problem.
 - If the Desired Outcome requires "and" to describe multiple unrelated successes, STOP. Split.

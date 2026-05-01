@@ -130,6 +130,7 @@ Create the complete vault structure:
   index.md
   active.md
   backlog.md
+  vision.md               # created by /compass:vision (NOT by bootstrap)
   .annotations/           # sidecar annotations (see annotate skill)
   meta/
     config.yaml
@@ -143,6 +144,8 @@ Create the complete vault structure:
   prs/
   archive/
 ```
+
+Note: bootstrap does NOT create `vision.md` — the human runs `/compass:vision` after bootstrap. Same principle as specs (bootstrap doesn't create them either).
 
 Initialize `config.yaml`:
 ```yaml
@@ -160,7 +163,10 @@ lessons: []
 
 Create a minimal `index.md` and empty `active.md` and `backlog.md`.
 
-Do NOT create any specs. That is the spec-writer's job.
+The `index.md` should have a "Vision" section at the top with `_Run /compass:vision to capture._` as a placeholder.
+
+Do NOT create vision.md — that's `/compass:vision`'s job.
+Do NOT create any specs — that's `/compass:spec`'s job.
 
 ### Step 3B: Existing Project — Migrate
 
@@ -186,12 +192,14 @@ Draft a Compass section for CLAUDE.md. Keep it short — rules, not essays:
 
 `.compass/` is the knowledge vault. Open it in Obsidian for graph view.
 
-**Pipeline:** Spec → Research → Plan → Build → Test → Validate. Don't skip phases.
+**Pipeline:** Vision → Spec → Research → Plan → Build → Test → Validate. Don't skip phases.
 
 **Key rules:**
-- Compass agents are available for specs, research, planning, building, testing, and validation. Use them for structured work.
+- Vision is captured ONCE per project (or per major pivot). It produces a spec roadmap. Run `/compass:vision` at the start.
+- Specs are SINGLE-PROBLEM. ONE spec = ONE problem. If you write "and also", split into two specs.
 - Specs are about the NEED, not the solution. No implementation decisions in specs.
 - Specs start as `draft`. Nothing happens until the human approves.
+- Compass agents are available for research, planning, building, testing, and validation.
 - All code changes require tests.
 - `git add <file>` — never `-A` or `.`
 
@@ -210,15 +218,20 @@ After scaffolding, verify:
 - [ ] `.compass/index.md` exists
 - [ ] `.compass/active.md` exists
 
-### Step 6: Hand Off to Spec-Writer
+### Step 6: Hand Off to Vision
 
-Bootstrap is done. Tell the human:
+Bootstrap is done. For NEW projects, the next step is to capture the vision — NOT to jump into a single spec. Specs are single-problem, but most projects have multiple needs that should be tracked together.
 
-> "Compass is set up. Your next step is to create your first spec.
-> 
-> Would you like me to start the spec-writer now? It will interview you one question at a time about what you're building."
+Tell the human:
 
-If the human says yes, invoke the spec-writer agent.
+> "Compass is set up. Before creating individual specs, let's capture the project vision — the overall goal and the landscape of needs that will become specs.
+>
+> Run `/compass:vision` to start. It will interview you about the big picture, then propose a list of specs to create one at a time.
+>
+> Want me to run `/compass:vision` now?"
+
+For MIGRATE mode (existing project): the vision may already exist implicitly in code/docs. Ask the human:
+> "Should we capture the vision retroactively (run `/compass:vision`), or do you want to skip straight to documenting specific work via `/compass:retroactive`?"
 
 ## Output Format
 
@@ -242,7 +255,8 @@ Open `.compass/` as an Obsidian vault:
 ### Next Steps
 1. Open `.compass/` in Obsidian
 2. Approve the CLAUDE.md addition
-3. Create your first spec: the spec-writer will interview you
+3. Run `/compass:vision` to capture the project goal and the spec roadmap
+4. Then create specs one at a time with `/compass:spec`
 ```
 
 ## Know Your Failure Modes

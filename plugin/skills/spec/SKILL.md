@@ -107,6 +107,20 @@ SPEC-003: Shared AI Asset Library
 2. Read `.compass/active.md`
 3. Read `.compass/meta/lessons-catalog.yaml` — prioritize `category: domain` lessons
 4. Read `.compass/meta/config.yaml` — get current spec counter
+5. Read `.compass/vision.md` if it exists — the spec roadmap should already include this concern
+
+### Step 1b: Vision Check
+
+If `.compass/vision.md` does NOT exist AND the project has no specs yet:
+> "There's no vision document yet. Without one, we risk this first spec absorbing the entire project's scope.
+>
+> Want to run `/compass:vision` first to capture the big picture, then come back to specs?"
+
+If the human wants to skip vision (e.g., it's a small project, or they explicitly want a single-spec project), proceed but warn:
+> "Skipping vision. I'll be extra strict about single-problem scope on this spec."
+
+If vision exists, check whether the spec being requested is on the roadmap. If not, ask:
+> "This spec isn't on the vision roadmap. Should we add it to the roadmap first, or is the vision out of date?"
 
 ### Step 2: Understand Intent
 
