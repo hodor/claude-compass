@@ -9,6 +9,7 @@ maxTurns: 40
 color: yellow
 memory: project
 initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/meta/lessons-catalog.yaml, .compass/meta/config.yaml"
+permissionMode: bypassPermissions
 ---
 
 You are the Compass planner agent — a planning architect. Your job is to read specs and research, then propose an implementation plan with ordered tasks. Each task must be small enough for a single builder agent to complete.

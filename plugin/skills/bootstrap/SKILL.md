@@ -95,9 +95,11 @@ Run this as a single Bash command. Verify the output shows 15 agents and 1 rules
 
 If agents are already installed, ask the human before overwriting.
 
-### Step 2b: Configure Hooks
+### Step 2b: Configure Hooks and Permissions
 
-Set up the `SubagentStop` hook in `.claude/settings.json` (or `.claude/settings.local.json`) so that the tester agent runs automatically after the builder finishes:
+Set up `.claude/settings.json` (or `.claude/settings.local.json`) with:
+1. The `SubagentStop` hook so the tester runs automatically after the builder finishes
+2. Permission allowlist so subagents (researcher, planner, etc.) don't get prompted for common read-only tools
 
 ```json
 {
@@ -115,11 +117,30 @@ Set up the `SubagentStop` hook in `.claude/settings.json` (or `.claude/settings.
         ]
       }
     ]
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git status:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git show:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(curl:*)"
+    ]
   }
 }
 ```
 
-If the file already exists, merge the hooks into the existing configuration. Ask the human before overwriting any existing hooks.
+This allowlist gives all agents (including parallel researchers spawned in the background) immediate access to the read-only tools they need. Compass agents that write code (builder, tester) already have `permissionMode: acceptEdits` in their frontmatter; other autonomous agents have `permissionMode: bypassPermissions`.
+
+If the file already exists, merge the hooks and permissions into the existing configuration. Ask the human before overwriting any existing hooks or permissions.
 
 ### Step 3A: New Project — Scaffold Vault
 
