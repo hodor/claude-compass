@@ -218,20 +218,20 @@ After scaffolding, verify:
 - [ ] `.compass/index.md` exists
 - [ ] `.compass/active.md` exists
 
-### Step 6: Hand Off to Vision
+### Step 6: Run Vision Capture
 
-Bootstrap is done. For NEW projects, the next step is to capture the vision — NOT to jump into a single spec. Specs are single-problem, but most projects have multiple needs that should be tracked together.
+Bootstrap is done with infrastructure. For NEW projects, IMMEDIATELY run the vision capture — do not stop and ask. New users won't know what to do next, and skipping vision is the #1 cause of bloated first specs.
 
 Tell the human:
 
-> "Compass is set up. Before creating individual specs, let's capture the project vision — the overall goal and the landscape of needs that will become specs.
->
-> Run `/compass:vision` to start. It will interview you about the big picture, then propose a list of specs to create one at a time.
->
-> Want me to run `/compass:vision` now?"
+> "Compass infrastructure is set up. Now I'll run the vision capture to understand what you're building. This is a quick interview about the project goal — answers will produce a vision document and a roadmap of specs."
 
-For MIGRATE mode (existing project): the vision may already exist implicitly in code/docs. Ask the human:
-> "Should we capture the vision retroactively (run `/compass:vision`), or do you want to skip straight to documenting specific work via `/compass:retroactive`?"
+Then immediately invoke the `/compass:vision` skill. Pass any context already gathered during bootstrap (e.g., the project description from migration analysis, or anything the human said when invoking bootstrap).
+
+For MIGRATE mode (existing project with code/docs): the vision may already exist implicitly. Ask once:
+> "I see this project already has code and docs. Should I capture the vision retroactively from what exists (run `/compass:vision`), or skip straight to documenting specific work via `/compass:retroactive`?"
+
+Only skip vision if the human explicitly requests it.
 
 ## Output Format
 
@@ -255,8 +255,8 @@ Open `.compass/` as an Obsidian vault:
 ### Next Steps
 1. Open `.compass/` in Obsidian
 2. Approve the CLAUDE.md addition
-3. Run `/compass:vision` to capture the project goal and the spec roadmap
-4. Then create specs one at a time with `/compass:spec`
+3. Vision capture is starting now — answer the questions to produce vision.md and the spec roadmap
+4. After vision: create specs one at a time with `/compass:spec`
 ```
 
 ## Know Your Failure Modes
