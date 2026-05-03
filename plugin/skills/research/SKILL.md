@@ -9,7 +9,43 @@ argument-hint: "[deep] <research question>"
 
 # Research — Spawn Researcher Agents
 
-Three modes depending on the question:
+=== CRITICAL: HAND THE RESEARCHER THE FULL SPEC, NOT A CURATED QUESTION LIST ===
+=== CRITICAL: NEVER PRE-FILTER OR PRE-FRAME — YOU BIAS THE INVESTIGATION ===
+
+## How to Brief a Researcher (Anti-Bias Rule)
+
+The researcher's job is to investigate comprehensively, not answer a checklist. If you hand it a curated set of questions ("watchlist size? cadence? retention?"), it goes into checklist mode and misses everything you didn't think to ask.
+
+**Bad brief (biasing):**
+```
+Research these specific questions:
+- Watchlist size (top-N? CCU threshold? curated?)
+- Cadence-vs-coverage trade-off?
+- History retention (forever? rolling? tiered?)
+```
+(Narrow, leading, agent will only investigate these.)
+
+**Good brief (open):**
+```
+Read [[SPEC-001-roblox-ingestion]]. Investigate everything needed to plan
+this implementation. The spec describes the NEED. Your job: figure out
+what's possible, what the trade-offs are, and what an implementer would
+need to know.
+
+Cover at minimum:
+- The domain (Roblox public data: what's available, rate limits, gotchas)
+- Implementation options (storage, scheduling, orchestration)
+- Existing implementations (how others do longitudinal data ingestion)
+- Open questions in the spec — propose informed answers based on findings
+
+Do NOT limit yourself to these areas if your investigation reveals others
+that matter. Surface anything an implementer would need.
+```
+(Open, comprehensive, agent investigates broadly.)
+
+**The rule:** the researcher gets the SPEC + "investigate what we need to plan this." Open questions in the spec are starting points, not the entire scope. The researcher should also surface implementation considerations the spec doesn't yet know to ask about.
+
+## Three Modes
 
 ## Mode 1: Single Topic
 
@@ -18,6 +54,8 @@ One question, one area. Spawn one `researcher` agent.
 ## Mode 2: Multi-Axis Parallel
 
 Multiple research axes (e.g., codebase patterns, web documentation, tool behavior). Spawn one `researcher` per axis in parallel, then spawn the `reviewer` to consolidate.
+
+**When to split into axes:** when the spec genuinely has independent dimensions (e.g., "frontend approach" + "backend approach" + "deployment approach"). NOT when you're just decomposing one investigation into sub-questions — that's biasing again. If in doubt, use Mode 1 with the full spec.
 
 ## Mode 3: Deep Research (Citation Graph)
 
