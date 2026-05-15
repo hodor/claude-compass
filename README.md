@@ -4,9 +4,9 @@ A Claude Code plugin for working on a project across many sessions without conte
 
 ## The problem
 
-Context rots. Specs drift, decisions get forgotten, old assumptions linger, the model that picks up tomorrow does not know what you and the model from yesterday already figured out. The longer the project, the worse it gets.
+Project knowledge degrades over time. A new session has to rediscover what's been decided, re-explore the codebase, and re-ask questions you already answered.
 
-What you want is the opposite: an agent that, when it joins the project, finds the relevant context fast and moves forward from where things actually are.
+What you want is an agent that joins the project, finds the relevant context fast, and picks up from where things actually are.
 
 ## How it works
 
