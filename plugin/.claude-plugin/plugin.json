@@ -6,6 +6,6 @@
     "name": "Roger Gasi"
   },
   "repository": "https://github.com/hodor/claude-compass",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "keywords": ["workflow", "methodology", "obsidian", "specs", "planning", "testing", "validation"]
 }

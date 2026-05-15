@@ -1,85 +1,62 @@
 # Compass
 
-A development workflow for working with Claude Code that does not lose its mind between sessions.
+A Claude Code plugin for working on a project across many sessions without context rotting over time.
 
 ## The problem
 
-You start a project with Claude. You build something. Two weeks later, you come back. Claude has forgotten everything. You re-explain the project, re-explain the decisions, re-explain why that one weird workaround exists. You start over, half-remembered.
+Context rots. Specs drift, decisions get forgotten, old assumptions linger, the model that picks up tomorrow does not know what you and the model from yesterday already figured out. The longer the project, the worse it gets.
 
-If you have used Claude Code or any other LLM coding tool for more than a week, you know this feeling. Context windows fill up. Sessions end. Knowledge evaporates. The model is brilliant in the moment and amnesiac the next day.
-
-Compass fixes this by giving every project a structured knowledge vault that lives in `.compass/` next to your code. Every decision, plan, lesson, and handoff goes in there. Next session, Claude reads the vault first and picks up where you left off.
-
-## What you get
-
-A folder called `.compass/` in your project, organized like this:
-
-- **vision** captures what the project is and the roadmap of needs to address
-- **specs** capture problems to solve, one problem per spec, no implementation
-- **research** captures evidence and trade-offs for each spec
-- **plans** turn approved specs into ordered tasks with verification criteria
-- **decisions** record significant architectural choices, with reasoning
-- **lessons** capture surprising discoveries so the project gets smarter over time
-- **handoffs** summarize sessions so the next one starts oriented
-
-The vault is plain markdown with YAML frontmatter. You can open it in Obsidian for graph view, or read it as plain files. Humans curate it; agents read and write to it.
+What you want is the opposite: an agent that, when it joins the project, finds the relevant context fast and moves forward from where things actually are.
 
 ## How it works
 
-Compass installs a set of agents and skills into Claude Code. They follow a pipeline:
+Compass stores project knowledge in a `.compass/` folder next to your code. Plain markdown with YAML frontmatter, Obsidian-compatible. The folder is the source of truth for what the project is, what has been decided, what is in progress, and what was learned.
 
-```
-vision → spec → research → plan → build → test → validate
-```
+Every agent reads the hot path first (`index.md`, `active.md`, `lessons-catalog.yaml`) so it orients in seconds, not turns.
 
-Each step has a dedicated agent or skill, with one job and clear constraints. The builder writes code in an isolated git worktree. When it finishes, a hook fires the tester, which writes adversarial tests. Then the validator runs the final quality gate against the plan. Each handoff between phases produces an artifact in the vault.
+The vault contains:
 
-You drive the pipeline through slash commands:
+- `vision.md`: the project goal and the roadmap of needs.
+- `specs/`: one spec per problem. Specs describe the need, not the solution.
+- `research/`: evidence and trade-offs gathered to inform a spec.
+- `plans/`: ordered tasks with verification criteria, derived from approved specs.
+- `decisions/`: ADRs for choices that future-you would not be able to reconstruct from code.
+- `lessons/`: surprising discoveries, tagged so future sessions surface them.
+- `handoffs/`: end-of-session snapshots so the next session starts oriented.
+- `.annotations/`: sidecar notes attached to specific files.
 
-- `/compass:vision` to capture the project vision and spec roadmap
-- `/compass:spec` to write a single specification
-- `/compass:research` to investigate options and evidence
-- `/compass:plan` to turn an approved spec into tasks
-- `/compass:build` to execute tasks (one or many in parallel)
-- `/compass:validate` to run the final gate
-- `/compass:handoff` to save context at end of session, restore at start
-- `/compass:guide` to figure out what to do next
-- `/compass:checkup` to find drift and stale state in the vault
+The pipeline is `vision -> spec -> research -> plan -> build -> test -> validate`. Each step has a dedicated agent or skill with one job and bounded behavior. Specs cannot make implementation decisions. Researchers cannot recommend. Validators cannot edit. The builder writes code in an isolated git worktree, the tester is auto-spawned via a `SubagentStop` hook, the validator gates the result.
 
-There are more, but those are the core flow.
+Human approval gates the strategic transitions: specs need approval before research, plans need approval before tasks.
 
-## Why this works
+## Slash commands
 
-Three reasons.
+| Command | What it does |
+|---|---|
+| `/compass:bootstrap` | Install the plugin into a project, scaffold the vault, configure hooks. |
+| `/compass:vision` | Capture the project goal and the spec roadmap. |
+| `/compass:spec` | Interview to produce one spec. One problem per spec. |
+| `/compass:research` | Investigate options. Supports parallel and citation-graph modes. |
+| `/compass:plan` | Turn an approved spec into ordered tasks. |
+| `/compass:build` | Execute tasks. Parallel when file ownership allows. |
+| `/compass:validate` | Final gate against the plan. |
+| `/compass:handoff` | Save context at session end, restore at session start. |
+| `/compass:guide` | Detects where you are and tells you what to do next. |
+| `/compass:checkup` | Find drift, stale handoffs, broken links, counter mismatches. |
+| `/compass:autopilot` | Run the full pipeline for small tasks with checkpoints. |
+| `/compass:papers` | Fetch and search academic papers via Hugging Face. |
+| `/compass:annotate` | Manage sidecar notes on vault files. |
 
-First, the vault gives the model durable context. The hot path (`index.md`, `active.md`, `lessons-catalog.yaml`) is always read first by every agent, so the model orients quickly even on a cold start.
+## Quick start
 
-Second, the agents are bounded. The spec writer cannot make implementation decisions. The researcher cannot recommend solutions. The validator cannot edit files. Each one knows its lane, refuses to leave it, and hands off cleanly. This is what makes the pipeline trustworthy.
-
-Third, humans approve at the strategic gates. Specs need approval before research starts. Plans need approval before tasks get created. The model executes inside the bounds the human sets. You stay in control without doing the typing.
-
-## Who this is for
-
-You are using an AI coding tool (Claude Code, Cursor, etc.) on a real project, you have hit the "the model lost the thread again" wall, and you want a workflow where knowledge accumulates instead of evaporating.
-
-If you have read about context engineering and thought "yes, but how do I actually do that on my projects," Compass is one answer.
-
-## Getting started
-
-You need Claude Code installed. Then:
+Requires Claude Code.
 
 ```bash
 claude --plugin-dir "/path/to/claude-compass/plugin"
 ```
 
-Inside Claude Code:
+Inside Claude Code, run `/compass:bootstrap`. It copies agents, skills, and rules into your project's `.claude/`, scaffolds the vault, configures hooks, and runs `/compass:vision` to capture what you are building. After bootstrap, the project is self-contained: anyone who clones the repo has the same agents and skills, no plugin install required.
 
-```
-/compass:bootstrap
-```
+## License
 
-This installs the agents, sets up the vault, configures hooks, and runs `/compass:vision` to capture what you are building. After that you have a self-contained project. Anyone who clones the repo gets the same agents and skills, no plugin install required.
-
-## Open source
-
-Apache 2.0. Issues and contributions welcome.
+Apache 2.0.
