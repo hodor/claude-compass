@@ -121,7 +121,7 @@ Grep pattern: "type: spec" in .compass/ glob: "*.md"
 
 ## Document Templates
 
-**Length rule for ALL templates below:** keep documents short. Bullets over paragraphs. No filler. Empty optional sections should be omitted, not stubbed. The only exception is research, which can be long because it captures evidence. Specs, plans, ADRs, lessons, vision, handoffs: aim for one screen.
+**Conciseness rule for ALL templates below:** make every word count. Never verbose. The agent picks the format (prose, list, table, whatever) that best communicates the content. Empty optional sections get omitted, not stubbed. Research is the only exception, since it captures evidence rather than asking for approval.
 
 ### Spec
 

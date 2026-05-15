@@ -7,12 +7,12 @@ paths:
 
 Hard constraints. If any of these are violated, STOP and tell the human.
 
-## Document Length
+## Document Conciseness
 
-- Compass documents (specs, plans, ADRs, lessons, vision, handoffs) MUST be short and easy to scan. Bullets over paragraphs. No filler. No restating the obvious.
-- Research is the only document type that can be long. Everything else is read by humans for approval, and verbose docs do not get read.
+- Every Compass document (specs, plans, ADRs, lessons, vision, handoffs) MUST make every word count. Never verbose. Easy to read.
+- The format is up to the agent. Use whatever best communicates the content. Do not prescribe bullets, paragraphs, tables, or length.
 - Test: would removing this sentence change the meaning? If not, cut it.
-- A spec under one screen is better than a thorough spec the human skips.
+- Why: humans read these to approve. Verbose documents do not get read. Research is the exception, since it captures evidence rather than asking for approval.
 
 ## Vision
 
