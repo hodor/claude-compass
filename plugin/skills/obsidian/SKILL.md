@@ -121,7 +121,7 @@ Grep pattern: "type: spec" in .compass/ glob: "*.md"
 
 ## Document Templates
 
-**Conciseness rule for ALL templates below:** make every word count. Never verbose. The agent picks the format (prose, list, table, whatever) that best communicates the content. Empty optional sections get omitted, not stubbed. Research is the only exception, since it captures evidence rather than asking for approval.
+**Writing rule for ALL templates below:** easy to read, short, sweet. Long only when needed. Never verbose. Empty optional sections get omitted, not stubbed. Research is the exception, since it captures evidence.
 
 ### Spec
 

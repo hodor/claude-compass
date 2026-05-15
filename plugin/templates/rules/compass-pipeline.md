@@ -7,12 +7,11 @@ paths:
 
 Hard constraints. If any of these are violated, STOP and tell the human.
 
-## Document Conciseness
+## Document Writing
 
-- Every Compass document (specs, plans, ADRs, lessons, vision, handoffs) MUST make every word count. Never verbose. Easy to read.
-- The format is up to the agent. Use whatever best communicates the content. Do not prescribe bullets, paragraphs, tables, or length.
-- Test: would removing this sentence change the meaning? If not, cut it.
-- Why: humans read these to approve. Verbose documents do not get read. Research is the exception, since it captures evidence rather than asking for approval.
+Compass documents should be a pleasure to read. Easy to read, short, sweet. Long only when needed. Never verbose.
+
+Research is the exception: it captures evidence and can be as long as required.
 
 ## Vision
 

@@ -17,11 +17,11 @@ Vision → Spec → Research → Plan → Tasks → Build → Validate
 
 Each stage produces artifacts that feed the next. Stages can be revisited, but never skipped.
 
-## Document Conciseness
+## Document Writing
 
-Every Compass document MUST make every word count. Never verbose. Easy to read. The agent chooses the format that best communicates the content; the rule is not about bullets or length, it is about word economy.
+Compass documents should be a pleasure to read. Easy to read, short, sweet. Long only when needed. Never verbose.
 
-Why: humans read these to approve. AI writes faster than humans read. Verbose documents get skipped. The only exception is research, which captures evidence rather than asking for approval.
+Research is the exception: it captures evidence and can be as long as required.
 
 **Vision** captures the project's overall goal and the landscape of needs (run once per project, or per major pivot). It produces `.compass/vision.md` and a roadmap of specs to write.
 
