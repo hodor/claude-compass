@@ -121,6 +121,8 @@ Grep pattern: "type: spec" in .compass/ glob: "*.md"
 
 ## Document Templates
 
+**Length rule for ALL templates below:** keep documents short. Bullets over paragraphs. No filler. Empty optional sections should be omitted, not stubbed. The only exception is research, which can be long because it captures evidence. Specs, plans, ADRs, lessons, vision, handoffs: aim for one screen.
+
 ### Spec
 
 The Compass spec template is the default, but agents MAY use an alternative format (Rust RFC, Python PEP, Go Proposal, or any established spec format) when it better fits the domain. The alternative format must still include the YAML frontmatter above and at minimum a **Problem** and **Desired Outcome** section.

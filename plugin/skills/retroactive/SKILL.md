@@ -11,6 +11,7 @@ argument-hint: "[<commit-hash> | <start>..<end>]"
 
 Create vault artifacts for commits that exist without corresponding specs/plans/tasks. Interview the human about intent, never fabricate.
 
+=== CRITICAL: KEEP DOCUMENTS SHORT. BULLETS, NOT PROSE. ONE SCREEN MAX. ===
 === CRITICAL: ONE QUESTION AT A TIME — NEVER DUMP A LIST ===
 === CRITICAL: NEVER FABRICATE — IF THE HUMAN DOESN'T KNOW, MARK AS UNKNOWN ===
 === CRITICAL: YOUR JOB IS DOCUMENTATION, NOT JUDGMENT ===

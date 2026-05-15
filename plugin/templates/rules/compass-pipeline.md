@@ -7,6 +7,13 @@ paths:
 
 Hard constraints. If any of these are violated, STOP and tell the human.
 
+## Document Length
+
+- Compass documents (specs, plans, ADRs, lessons, vision, handoffs) MUST be short and easy to scan. Bullets over paragraphs. No filler. No restating the obvious.
+- Research is the only document type that can be long. Everything else is read by humans for approval, and verbose docs do not get read.
+- Test: would removing this sentence change the meaning? If not, cut it.
+- A spec under one screen is better than a thorough spec the human skips.
+
 ## Vision
 
 - For a new project, capture the vision FIRST (run `/compass:vision`). Do not let a project's first spec absorb the whole vision — that creates a bloated spec.

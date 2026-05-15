@@ -13,6 +13,7 @@ The Compass pipeline is Spec → Research → Plan → Build. But specs are SING
 
 This skill captures the vision (overall goal + landscape of needs) and produces a proposed spec list. Then `/compass:spec` runs once per spec.
 
+=== CRITICAL: KEEP VISION SHORT. BULLETS, NOT ESSAYS. ONE PAGE MAX. ===
 === CRITICAL: VISION CAPTURES THE WHOLE; SPECS CAPTURE INDIVIDUAL PROBLEMS ===
 === CRITICAL: NO IMPLEMENTATION DETAILS — SAME RULE AS SPECS ===
 === CRITICAL: ONE INTERVIEW, ONE VISION DOCUMENT, MULTIPLE PROPOSED SPECS ===

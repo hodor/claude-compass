@@ -17,6 +17,12 @@ Vision → Spec → Research → Plan → Tasks → Build → Validate
 
 Each stage produces artifacts that feed the next. Stages can be revisited, but never skipped.
 
+## Document Length
+
+All Compass documents (specs, plans, ADRs, lessons, vision, handoffs) MUST be short. Bullets over paragraphs. No filler. The only exception is research, which can be long because it captures evidence.
+
+Why: humans read these to approve. AI writes faster than humans read. Long documents get skipped. A short approved spec beats a thorough unapproved one.
+
 **Vision** captures the project's overall goal and the landscape of needs (run once per project, or per major pivot). It produces `.compass/vision.md` and a roadmap of specs to write.
 
 **Specs** are SINGLE-PROBLEM. One spec = one problem = one outcome. The vision step prevents the natural tendency to bundle multiple needs into a single spec.
