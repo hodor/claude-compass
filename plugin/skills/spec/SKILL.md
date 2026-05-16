@@ -22,7 +22,7 @@ Interview the human one question at a time. Capture the PROBLEM and the NEED. Ne
 
 - A spec captures the PROBLEM, the NEED, and what SUCCESS looks like — NEVER the solution, the architecture, or the implementation
 - Ask ONE question at a time — never dump a list of questions
-- NEVER fill in blanks without explicit permission — suggest, then ask "Should I include this?"
+- Suggest content when context supports it, but be transparent about what came from the human vs what you added. Mark guesses as guesses.
 - NEVER make implementation decisions. If the human starts describing implementation, redirect: "That sounds like it belongs in the research/planning phase. For the spec, what PROBLEM does this solve?"
 - Save progress after every 2-3 answers — persist incrementally
 - ALWAYS read + increment the counter from `meta/config.yaml` for SPEC-NNN numbering
@@ -112,29 +112,24 @@ SPEC-003: Shared AI Asset Library
 
 ### Step 1b: Vision Check
 
-If `.compass/vision.md` does NOT exist AND the project has no specs yet:
-> "There's no vision document yet. Without one, we risk this first spec absorbing the entire project's scope.
->
-> Want to run `/compass:vision` first to capture the big picture, then come back to specs?"
+If `.compass/vision.md` does NOT exist AND the project has no specs yet, run `/compass:vision` first. Do not write a spec without a vision for new projects.
 
-If the human wants to skip vision (e.g., it's a small project, or they explicitly want a single-spec project), proceed but warn:
-> "Skipping vision. I'll be extra strict about single-problem scope on this spec."
-
-If vision exists, check whether the spec being requested is on the roadmap. If not, ask:
-> "This spec isn't on the vision roadmap. Should we add it to the roadmap first, or is the vision out of date?"
+If vision exists and the requested spec is not on the roadmap, note this in your draft and surface it when presenting for approval. Don't gate the interview on it.
 
 ### Step 2: Understand Intent
 
 Ask the human what they want to spec:
 > "What do you want to specify? Give me the one-sentence version."
 
-**Scope check**: If the one-sentence version has "and" joining distinct problems ("users can do X and admins can do Y"), STOP and ask:
-> "That sounds like more than one spec. I hear [problem A] and [problem B]. Should these be separate specs, or is there one underlying problem that covers both?"
+If the one-sentence version describes multiple distinct problems ("users can do X and admins can do Y"), tell the human and split:
+> "That's two specs: [problem A] and [problem B]. I'll start with [problem A]."
 
-Do NOT proceed with a compound spec without the human explicitly confirming it's ONE problem.
+Then proceed with one. Don't ask for permission; specs are single-problem by rule.
 
-Assess readiness:
-> "This sounds like it's at the [ideation / planning / ready to implement] stage. Should we proceed with a full spec, or does this need more thinking first?"
+If the topic is genuinely embryonic and not ready to spec (the human has no clear problem statement, just a vague idea), say so:
+> "This sounds early-stage. A spec needs a clear problem. Want to talk it through first, or come back when the problem is clearer?"
+
+Otherwise proceed.
 
 ### Step 3: Question Flow
 
@@ -154,22 +149,9 @@ Ask ONE question at a time. Only two questions are required. Read the room.
 
 ### Step 3b: Bloat Check (before saving)
 
-Before writing the spec file, re-read the Problem and Desired Outcome:
+Before writing the spec file, re-read the Problem and Desired Outcome. If they describe multiple distinct problems or unrelated successes, split into multiple specs. Don't bundle. Don't ask for permission to split — splitting is the rule. Tell the human you're splitting and proceed with the first one.
 
-- Does the Problem contain multiple distinct problems joined by "and" or "also"?
-- Does the Desired Outcome require "and" to describe multiple unrelated successes?
-- Are there multiple user types with different needs bundled together?
-
-If YES to any → STOP and tell the human:
-> "This looks like N separate specs. I see:
-> 1. [problem A with its own outcome]
-> 2. [problem B with its own outcome]
-> 
-> I can split these, or you can confirm they should be one spec. Which?"
-
-Wait for human decision. Never silently bundle.
-
-After the problem and desired outcome are clear (and it's one concern), save a first draft. Then ask optional questions to deepen. Stop when you have enough.
+After the problem and desired outcome are clear and scoped to one concern, save a first draft. Then ask optional questions to deepen. Stop when you have enough.
 
 ### Step 4: Create Spec File
 
@@ -249,10 +231,7 @@ After approval, offer:
 
 ## Suggesting Content
 
-You MAY suggest content, but ALWAYS frame as a question:
-- "Based on what you've said, a constraint might be 'must work offline'. Should I include that?"
-
-NEVER write suggestions as if they were the human's words. Always ask.
+Suggesting content is fine. Just don't put your interpretation in the human's mouth. Make it clear what came from them and what you're adding. If you're confident from context (e.g. "must work offline" follows clearly from what they said), include it and flag it. If you're guessing, mark it as a guess.
 
 ## Output Format Between Questions
 

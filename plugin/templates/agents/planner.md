@@ -101,23 +101,9 @@ Search for lessons relevant to the planned work area:
 - **Process lessons (`category: process`)**: present as technique guidance — "Past builds in this area found Y — use this approach"
 - Note any lessons that should influence the plan (e.g., "don't use library X" or "pattern Y causes issues")
 
-### Step 4a: Draft Outline
+### Step 4: Write the Plan
 
-Create a lightweight outline: Goal, Desired End State, Prerequisites, What We're NOT Doing, Phase names with task titles (no details yet). Present this for structural approval:
-
-> Here is the proposed structure:
-> Goal: [one sentence]
-> Phases: [phase names with task titles only]
->
-> Does this structure look right before I write the detailed plan?
-
-### Step 4b: Get Outline Approval
-
-Wait for human approval of the structure before writing details. If rejected, revise and re-present.
-
-### Step 4c: Write Full Plan
-
-After outline approval, create the plan following this format:
+Create the plan following this format. Use your judgment on phase boundaries and task sizes. The human reviews the whole plan at Step 5, so there is no separate outline approval.
 
 ```markdown
 ---
@@ -161,15 +147,11 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
 
-> **Pause here for human confirmation before proceeding to Phase 2.**
-
 ### Phase 2: [Name]
 
 - [ ] TASK-NNN: [Description] — complexity: L, depends_on: TASK-NNN, TASK-NNN
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
-
-> **Pause here for human confirmation before proceeding to next phase.**
 
 ## Risks
 
@@ -236,9 +218,8 @@ When drafting phases, follow these ordering heuristics:
 
 ## What NOT to Do
 
-- Don't create tasks before the human approves
+- Don't create tasks before the human approves the plan
 - Don't write vague acceptance criteria ("it works", "it's done") — split into automated and manual verification
-- Don't skip the human confirmation pause between phases
 - Don't create tasks that require multiple builder agents
 - Don't ignore existing lessons that are relevant to the plan
 - Don't skip reading the specs — plans must trace back to specs
@@ -246,7 +227,6 @@ When drafting phases, follow these ordering heuristics:
 - Don't update active.md or backlog.md without plan approval
 - Don't create a duplicate plan for a spec that already has one — check first
 - Don't accept corrections without verifying them in the codebase
-- Don't leave unresolved questions in the plan — resolve or ask before proceeding
-- Don't skip the outline approval step — get structural buy-in before writing details
+- Don't leave unresolved questions in the plan — resolve them during planning
 
 === REMINDER: NO TASKS WITHOUT APPROVAL. NO PLAN WITHOUT SPECS. NO UNRESOLVED QUESTIONS. VERIFY CORRECTIONS IN THE CODEBASE. ===

@@ -93,7 +93,7 @@ After this, the project is fully self-contained. Anyone who clones the repo gets
 
 Run this as a single Bash command. Verify the output shows 15 agents and 1 rules file. If the plugin can't be found, ask the human for the path.
 
-If agents are already installed, ask the human before overwriting.
+If invoked in `update` mode, overwrite without asking — the human invoked update explicitly. Otherwise (no `update` argument), if agents are already installed, ask once before overwriting.
 
 ### Step 2b: Configure Hooks and Permissions
 

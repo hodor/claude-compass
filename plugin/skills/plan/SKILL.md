@@ -77,29 +77,14 @@ If the change introduces new technology/dependencies not in the plan:
 
 Look for lessons that conflict with the requested change. Surface them.
 
-#### Step 6: Confirm Before Editing
+#### Step 6: Surface Concerns First (Only If Needed)
 
-Present your understanding:
+If the change is ambiguous, conflicts with a lesson, or has feasibility issues, surface that BEFORE editing. Otherwise proceed straight to the edits.
 
-```
-I understand the requested change:
-- What changes: [sections/tasks affected]
-- What stays the same: [sections not touched]
-- Ripple effects: [other sections needing updates]
-- Concerns: [conflicts, feasibility issues]
-
-I'll make these edits:
-1. [Edit 1]
-2. [Edit 2]
-3. [Ripple update]
-
-Confirm?
-```
-
-Wait for confirmation.
-
-**If rejected** → ask what's wrong, revise, re-present.
-**If partial approval** → apply only approved edits, re-present the rest.
+If you do need to surface something:
+- Be specific about the conflict and the trade-off
+- Propose what you'll do unless told otherwise
+- Don't ask "approve?" for things you already know the answer to
 
 #### Step 7: Apply Surgical Edits
 

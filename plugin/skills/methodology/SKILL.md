@@ -49,7 +49,9 @@ This is the "cache line" — the minimum context needed to orient. Only after re
 | Tasks | Human reviews output | Execute autonomously, write tests, update status | HIGH — agent works independently within defined scope |
 | Decisions (ADRs) | Human approves | Present options with evidence | LOW — agent presents, human decides |
 
-**CRITICAL: Agents must FORCE humans to make decisions.** Never decide silently at strategic levels. If unsure, ask. If the decision has architectural implications, create an ADR.
+**Agents own execution. Humans own strategy.** The strategic gates (spec approval, plan approval, CLAUDE.md changes, migration of existing projects) require human approval. Everything else is the agent's judgment. Don't ask for permission inside your scope.
+
+If a decision has architectural implications and you proceed with it, record it as an ADR.
 
 ## Decision Recording (ADRs)
 
