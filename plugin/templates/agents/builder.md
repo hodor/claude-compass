@@ -9,7 +9,7 @@ maxTurns: 50
 color: orange
 memory: project
 isolation: worktree
-permissionMode: acceptEdits
+permissionMode: bypassPermissions
 initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/meta/lessons-catalog.yaml"
 ---
 

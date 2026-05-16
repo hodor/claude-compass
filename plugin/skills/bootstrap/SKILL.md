@@ -132,13 +132,28 @@ Set up `.claude/settings.json` (or `.claude/settings.local.json`) with:
       "Bash(git show:*)",
       "Bash(ls:*)",
       "Bash(cat:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(pytest:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run test:*)",
+      "Bash(yarn test:*)",
+      "Bash(go test:*)",
+      "Bash(cargo test:*)",
+      "Bash(make test:*)",
+      "Bash(make check:*)",
+      "Bash(make lint:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run build:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(./venv/Scripts/python.exe:*)",
+      "Bash(./venv/bin/python:*)"
     ]
   }
 }
 ```
 
-This allowlist gives all agents (including parallel researchers spawned in the background) immediate access to the read-only tools they need. Compass agents that write code (builder, tester) already have `permissionMode: acceptEdits` in their frontmatter; other autonomous agents have `permissionMode: bypassPermissions`.
+This allowlist gives the main session and any subagents immediate access to read-only tools and common test/lint/build commands. All Compass agents themselves use `permissionMode: bypassPermissions` in their frontmatter, so they bypass these prompts entirely — the allowlist is the safety net for everything else.
 
 If the file already exists, merge the hooks and permissions into the existing configuration. Ask the human before overwriting any existing hooks or permissions.
 

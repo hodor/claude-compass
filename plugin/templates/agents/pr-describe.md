@@ -8,7 +8,7 @@ effort: high
 maxTurns: 25
 color: green
 memory: project
-permissionMode: acceptEdits
+permissionMode: bypassPermissions
 initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/meta/lessons-catalog.yaml"
 ---
 
