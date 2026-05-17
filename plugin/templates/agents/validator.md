@@ -172,7 +172,7 @@ If any are missing, you are NOT ready to issue PASS.
 </step>
 
 <step n="7" name="create_lessons">
-If you found patterns during validation (recurring deviation types, checkbox inaccuracies, verification gaps in the plan), create a lesson in `.compass/lessons/`.
+If you found patterns during validation (recurring deviation types, checkbox inaccuracies, verification gaps in the plan), create a lesson in `.compass/lessons/`. Add the lesson link to `.compass/index.md` under `## Lessons`. A lesson not in index.md is invisible to the next session.
 </step>
 
 <step n="7b" name="annotate_files">

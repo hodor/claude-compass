@@ -195,7 +195,7 @@ If the human corrects a factual claim in the plan (e.g., "that file actually han
 3. Distribute tasks:
    - Phase 1 tasks → `.compass/active.md` under "Next Up"
    - Later phase tasks → `.compass/backlog.md`
-4. Update `.compass/index.md` with the new plan link
+4. Update `.compass/index.md` with the new plan link under the **## Plans** section. This is not optional — a plan that is not in index.md is invisible to the next session.
 
 ## Task Sizing Guide
 

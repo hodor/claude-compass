@@ -64,7 +64,7 @@ Research is the exception: it captures evidence and can be as long as required.
 ## Vault State
 
 - After completing a task, update `.compass/active.md`.
-- After creating a vault document, add it to `.compass/index.md`.
+- After creating ANY vault document (spec, plan, research, ADR, lesson, vision, handoff, review), add a link to it in `.compass/index.md` under the appropriate section. This is mandatory in the same step that creates the document, not a follow-up. Documents not in index.md are invisible to the next session.
 
 ## Linking
 

@@ -134,9 +134,11 @@ The following specs will be created from this vision (one at a time):
 [Based on dependencies and priorities — which spec to write first, what can run in parallel later]
 ```
 
-### Phase 5: Update index.md
+### Phase 5: Update index.md — REQUIRED
 
-Add the vision document to `.compass/index.md` as a top-level entry (above Specs).
+Add the vision document to `.compass/index.md` as the top entry (above Specs). Add a `## Vision` section with `[[vision]]` and a one-line summary.
+
+This is not optional. `index.md` is what the next session reads first.
 
 ### Phase 6: Hand Off
 

@@ -197,9 +197,50 @@ Initialize `lessons-catalog.yaml`:
 lessons: []
 ```
 
-Create a minimal `index.md` and empty `active.md` and `backlog.md`.
+Create `index.md` with the section headers Compass agents will append to. Use this template:
 
-The `index.md` should have a "Vision" section at the top with `_Run /compass:vision to capture._` as a placeholder.
+```markdown
+---
+title: "Project Index"
+type: index
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+---
+
+# Project Index
+
+The master map. Every vault document is linked here.
+
+## Vision
+
+_Run `/compass:vision` to capture._
+
+## Specs
+
+_None yet._
+
+## Research
+
+_None yet._
+
+## Plans
+
+_None yet._
+
+## Decisions
+
+_None yet._
+
+## Lessons
+
+_None yet._
+
+## Handoffs
+
+_None yet._
+```
+
+Then create empty `active.md` and `backlog.md`.
 
 Do NOT create vision.md — that's `/compass:vision`'s job.
 Do NOT create any specs — that's `/compass:spec`'s job.

@@ -98,6 +98,15 @@ git_commit: <short hash>
 
 # Handoff: [Description]
 
+## Start Here
+
+If you are resuming from this handoff, read these in order before doing anything else:
+
+1. [[SPEC-NNN-name]] — source spec
+2. [[PLAN-NNN-name]] — plan being executed (currently Phase N)
+3. [[RESEARCH-name]] — key findings
+4. Code references: `path/to/file.py:42` — [why this location matters]
+
 ## Session Summary
 [2-3 sentences: goal + progress]
 
@@ -106,16 +115,8 @@ git_commit: <short hash>
 |------|--------|-------|
 | [Task] | done/in-progress/blocked | [note] |
 
-## Critical References
-- `file:line` — [why this matters]
-
 ## Recent Changes
 - `file:line` — [what changed]
-
-## Artifacts (Load in Order)
-1. [[SPEC-NNN-name]] — source spec
-2. [[PLAN-NNN-name]] — plan being executed (Phase N)
-3. [[RESEARCH-name]] — key findings
 
 ## Decisions Made
 - [Decision]: [Why] — consider ADR if significant
@@ -137,15 +138,29 @@ git_commit: <short hash>
 [Nuance that would be lost — edge cases, abandoned approaches, almost-working state]
 ```
 
-#### Step 5: Update Vault
+#### Step 5: Reconcile index.md
 
-1. Update `.compass/active.md` for status changes
-2. Add handoff link to `.compass/index.md`
-3. If a plan was being executed, annotate it:
+This step is the single most important part of the handoff. The next session reads `index.md` first to orient. If index.md is stale, the next agent will not find the work that was done.
+
+Compare every vault document against `index.md`:
+
+```bash
+# Every .md file under .compass/ (except tmp/, handoffs/, archive/)
+find .compass -type f -name "*.md" -not -path "*/tmp/*" -not -path "*/archive/*" -not -path "*/handoffs/*"
+```
+
+For each file found, verify it has a link in `index.md`. If not, add it under the appropriate section (Specs, Research, Plans, Decisions, Lessons). Use `[[wikilinks]]`. Add a one-line description from the file's frontmatter title.
+
+Then add the handoff itself to a `## Handoffs` section in `index.md`.
+
+#### Step 6: Update Vault State
+
+1. Update `.compass/active.md` for status changes from this session.
+2. If a plan was being executed, annotate it:
    ```
    > **Last session:** YYYY-MM-DD — ended mid-Phase N. See handoff [[YYYY-MM-DD_HH-MM-SS_description]] for context.
    ```
-4. `git add .compass/handoffs/<filename>.md`. Remind human to commit.
+3. `git add .compass/handoffs/<filename>.md` and any updated index.md / active.md / plan files. Remind the human to commit.
 
 ---
 

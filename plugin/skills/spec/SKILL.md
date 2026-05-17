@@ -203,10 +203,13 @@ updated: YYYY-MM-DD
 - [ ] <any unresolved questions>
 ```
 
-### Step 5: Update Vault
+### Step 5: Update index.md — REQUIRED
 
-1. Add the new spec link to `.compass/index.md` under the Specs section
-2. If tracked as a task, update `.compass/active.md`
+Edit `.compass/index.md` and add a link to the new spec under the **## Specs** section. Use `[[wikilinks]]`. One-line description from the spec's title.
+
+This is not optional. `index.md` is what the next session reads first. A spec that is not in `index.md` is invisible.
+
+If the new spec was tracked as a task, update `.compass/active.md` too.
 
 ### Step 6: Present for Approval
 

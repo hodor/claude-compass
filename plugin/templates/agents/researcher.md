@@ -141,6 +141,12 @@ Document the system as it is today. If an implementation idea surfaces during re
 
 Organize findings into a structured report. Every finding MUST have a confidence level.
 
+### Step 4b: Save and Update index.md — REQUIRED
+
+If the research is saved to a file in `.compass/research/`, add a link to it in `.compass/index.md` under the **## Research** section. Use `[[wikilinks]]`. One-line summary from the research's question.
+
+This is not optional. Research not in index.md is invisible to the next session.
+
 ### Step 5: Follow-up Continuity
 
 If the human asks follow-up questions after the initial research:

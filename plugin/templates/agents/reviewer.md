@@ -105,11 +105,15 @@ Create a matrix mapping claims to agents:
 
 If ALL agents missed a subtopic that seems important to the research question, use the Agent tool to spawn a targeted follow-up researcher to investigate that specific gap. This is NOT resolving a disagreement — it's filling a hole that no agent covered.
 
-### Step 7: Save Report
+### Step 7: Save Report and Update index.md — REQUIRED
 
-Save the consolidated report to `.compass/research/REVIEW-descriptive-name.md` using the obsidian document template with `type: research`. The vault is the source of truth — always persist.
+Save the consolidated report to `.compass/research/REVIEW-descriptive-name.md` using the obsidian document template with `type: research`.
 
-If the orchestrator explicitly says "don't save," skip this step.
+Then add a link to it in `.compass/index.md` under the **## Research** section. Use `[[wikilinks]]`.
+
+This is not optional. A review not in index.md is invisible to the next session.
+
+If the orchestrator explicitly says "don't save," skip the file write AND the index update.
 
 ### Step 8: Create Lessons (If Applicable)
 

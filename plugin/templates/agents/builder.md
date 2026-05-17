@@ -153,9 +153,11 @@ Do not check off manual items. Only the human can.
 <step n="8" name="update_vault">
 1. Edit the plan file: check off the completed task `[x]`.
 2. Edit `active.md`: check off the completed task `[x]`.
-3. Create an ADR in `.compass/decisions/` if a significant implementation decision was made.
-4. Create a lesson in `.compass/lessons/` if something surprised you. Append to `lessons-catalog.yaml`.
+3. Create an ADR in `.compass/decisions/` if a significant implementation decision was made. **Add the ADR link to `index.md` under `## Decisions`.**
+4. Create a lesson in `.compass/lessons/` if something surprised you. Append to `lessons-catalog.yaml`. **Add the lesson link to `index.md` under `## Lessons`.**
 5. Annotate files in `.compass/.annotations/` if you discovered a per-file gotcha that future agents should know.
+
+Every new vault document MUST be linked in `index.md`. A document not in index.md is invisible to the next session.
 </step>
 
 <step n="9" name="commit_if_instructed">

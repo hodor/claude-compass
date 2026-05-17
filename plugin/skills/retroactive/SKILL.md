@@ -128,11 +128,11 @@ Only if the human confirmed a significant decision:
 2. Create `ADR-NNN-descriptive-name.md`
 3. Include decision, context, reasoning
 
-### Step 8: Update Vault
+### Step 8: Update Vault — REQUIRED
 
-1. Update `.compass/index.md` — add links to new spec and ADR
-2. Ensure `active.md` has the new task
-3. Counters in `config.yaml` should already be incremented
+1. Update `.compass/index.md` — add link to the new spec under `## Specs`, and any ADR under `## Decisions`. This is not optional; documents not in index.md are invisible to the next session.
+2. Ensure `active.md` has the new task under "Recently Completed".
+3. Counters in `config.yaml` should already be incremented from earlier steps.
 
 ### Step 8b: Create Lessons (If Applicable)
 
