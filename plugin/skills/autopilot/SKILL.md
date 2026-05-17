@@ -9,51 +9,29 @@ argument-hint: "<task description or TASK-NNN>"
 
 # Autopilot — Full Pipeline Orchestrator
 
-Runs the full Compass pipeline by spawning the actual dedicated agents in sequence. Does NOT reimplement their work — coordinates them and makes gating decisions.
+Runs the full Compass pipeline by spawning the dedicated agents in sequence. You orchestrate; you don't reimplement their work.
 
-=== CRITICAL: ONLY S/M COMPLEXITY — NEVER L OR LARGER ===
-=== CRITICAL: ORCHESTRATE AGENTS, DO NOT DO THEIR WORK ===
-=== CRITICAL: ALWAYS PAUSE AT CHECKPOINTS FOR HUMAN CONFIRMATION ===
+S/M complexity only — hard exit on L or larger. Spawn the agents. Pause at checkpoints for real human confirmation.
 
-## Know Your Failure Modes
+## When to use
 
-You WILL be tempted to:
-- Do the research yourself instead of spawning the researcher — spawn it
-- Write a quick plan inline instead of spawning the planner — spawn it
-- Write the code yourself instead of spawning the builder — spawn it
-- Skip the tester because "this is a small task" — it always runs
-- Skip the validator because "everything passed" — it's the final gate
-- Rush through checkpoints — present findings and wait for real confirmation
-- Continue after a weak research phase — if research is thin, spawn another researcher
+Appropriate when the task has clear acceptance criteria, complexity is S or M (single file to ~5 files), risk is low (not auth, payments, data migration), and it is self-contained.
 
-## When to Use
-
-Appropriate when:
-- The task is well-defined with clear acceptance criteria
-- Complexity is S or M (single file to ~5 files)
-- Risk is low (not touching critical infrastructure, auth, data migration)
-- The task is self-contained
-
-NOT appropriate when:
-- The task is L or larger
-- Multiple approaches need human evaluation (use `/compass:spec` + `/compass:research` instead)
-- The task involves sensitive systems (security, payments, user data)
-- Requirements are ambiguous (use `/compass:spec` first)
+Not appropriate for L+ tasks, ambiguous requirements (run `/compass:spec` first), or sensitive systems.
 
 ## Protocol
 
-### Phase 1: Orient
+### 1. Orient
 
-1. Read `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`, `.compass/meta/config.yaml`
-2. Read the parent plan and source spec for the task
-3. **Complexity gate**: If the task is complexity L or larger, STOP:
-   > "This task is too large for autopilot (complexity: [L/XL]). Use the full pipeline with human approval at each stage."
+Read `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`, `.compass/meta/config.yaml`. Read the parent plan and source spec. If complexity is L+, exit:
 
-### Phase 2: Research (via researcher agent)
+> "This task is too large for autopilot (complexity: [L/XL]). Use the full pipeline with human approval at each stage."
+
+### 2. Research
 
 Spawn the `researcher` agent. Wait for completion.
 
-**Checkpoint 1 — Present research summary:**
+**Checkpoint 1:**
 ```
 Research complete for: [task description]
 [Summary of findings with confidence levels]
@@ -62,13 +40,13 @@ Approach based on research: [proposed implementation approach]
 Proceed with planning? (approve / redirect / abort)
 ```
 
-Wait for confirmation.
+If research is thin, spawn another researcher instead of moving on.
 
-### Phase 3: Plan (via planner agent)
+### 3. Plan
 
-Spawn the `planner` agent with the spec and research findings. Wait for completion.
+Spawn the `planner` agent with the spec and research. Wait for completion.
 
-**Checkpoint 2 — Present plan:**
+**Checkpoint 2:**
 ```
 Plan ready for: [task description]
 [Summary of phases, tasks, complexity, verification]
@@ -76,77 +54,54 @@ Plan ready for: [task description]
 Proceed with implementation? (approve / redirect / abort)
 ```
 
-Wait for confirmation.
-
-### Phase 4: Build (via builder agents)
+### 4. Build
 
 Check the plan for parallel-safe tasks (non-overlapping `files:` ownership).
 
-**Parallel-safe tasks:**
-1. Spawn one `builder` per task, all in parallel (isolated worktrees)
-2. Wait for ALL builders + testers to complete
+- **Parallel-safe:** spawn one `builder` per task, all at once (isolated worktrees). Wait for all builders + testers.
+- **Serial:** spawn one `builder` at a time, in dependency order.
 
-**Serial tasks:**
-1. Spawn one `builder` at a time, in dependency order
+**Fix loop (max 3 cycles):** if testers report bugs, spawn targeted fix builders with the specific FAIL diagnosis. Tester auto-runs again. After 3 cycles, escalate.
 
-**Fix loop (max 3 cycles):**
-If testers report bugs:
-1. Spawn targeted fix builders with the specific FAIL diagnosis
-2. Tester auto-runs again
-3. After 3 cycles, escalate to human with remaining FAILs
-
-### Phase 5: Validate (via validator agent)
+### 5. Validate
 
 Spawn the `validator` agent with the plan file.
 
-- **VERDICT: PASS** → proceed to vault update
-- **VERDICT: FAIL** → present report, ask whether to respawn builder or abort
-- **VERDICT: PARTIAL** → present what passed/failed, ask how to proceed
+- **PASS** → proceed to vault update.
+- **FAIL** → present report, ask whether to respawn builder or abort.
+- **PARTIAL** → present what passed/failed, ask how to proceed.
 
-### Phase 6: Update Vault
+### 6. Update the vault
 
-Verify that:
-- `active.md` has completed tasks checked off
-- ADRs created for significant decisions
-- Lessons created for surprising discoveries
-- `index.md` updated with new documents
-- `config.yaml` counters incremented
+Verify `active.md` has completed tasks checked off, ADRs exist for significant decisions, lessons captured for surprises, `index.md` includes any new documents, `config.yaml` counters incremented.
 
-### Phase 6b: Commit (If Approved)
+### 7. Commit (if the human approved)
 
-If the human approved a commit:
-1. Stage specific files with `git add <file>` — never `-A` or `.`
-2. Never stage `.compass/tmp/`
-3. Write commit message explaining *why*
-4. Run `git log --oneline -3` to confirm
+1. Stage specific files with `git add <file>` — never `-A` or `.`.
+2. Never stage `.compass/tmp/`.
+3. Commit message explains *why*.
+4. `git log --oneline -3` to confirm.
 
-### Phase 7: Report
+### 8. Report
 
 ```markdown
-## Autopilot Report: [Task Description]
+## Autopilot Report: [Task]
 
 ### Pipeline Summary
 | Phase | Agent | Status | Key Output |
 |-------|-------|--------|------------|
-| Research | researcher | complete | [N findings, confidence levels] |
+| Research | researcher | complete | [N findings] |
 | Plan | planner | complete | [N tasks across M phases] |
 | Build | builder | complete | [N files changed] |
-| Test | tester | complete | [N tests written, all passing] |
+| Test | tester | complete | [N tests, all passing] |
 | Validate | validator | VERDICT: [PASS/FAIL/PARTIAL] |
 
-### Research Summary
-[Key findings]
-
-### Changes Made
+### Changes
 - [[file.py]] — [what and why]
 
 ### Test Results
 **Command run:** [from tester]
 **Output:** [from tester]
-- Tests: N passed, 0 failed
-
-### Validation
-[Validator's verdict and key findings]
 
 ### Decisions
 - [Decision]: [Why] → [[ADR-NNN-name]]
@@ -155,18 +110,16 @@ If the human approved a commit:
 - [Lesson]: [What was surprising] → [[LESSON-name]]
 
 ### Estimation Calibration
-- **Estimated:** [S/M]
-- **Actual:** [S/M/L]
-- **Note:** [if actual differed from estimated, why]
+- Estimated: [S/M] | Actual: [S/M/L] | Note: [why if differed]
 ```
 
-## What NOT to Do
+## Failure modes worth naming
 
-- Don't use autopilot for large or risky tasks
-- Don't do the agents' work yourself — spawn them
-- Don't skip checkpoints — the human must confirm research and plan
-- Don't skip the tester or validator
-- Don't continue if the human says abort or redirect
-- Don't proceed on L+ complexity tasks — hard exit
-
-=== REMINDER: ORCHESTRATE, DON'T IMPLEMENT. SPAWN THE AGENTS. PAUSE AT CHECKPOINTS. HARD EXIT ON L+ TASKS. ===
+- Doing the research yourself instead of spawning the researcher.
+- Writing a quick inline plan instead of spawning the planner.
+- Writing code yourself instead of spawning the builder.
+- Skipping the tester because "this is small." It always runs.
+- Skipping the validator because "everything passed." It's the final gate.
+- Rushing checkpoints — present findings and wait for real confirmation.
+- Continuing past a weak research phase instead of respawning.
+- Proceeding on an L+ task instead of hard-exiting.

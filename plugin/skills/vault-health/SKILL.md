@@ -9,94 +9,65 @@ argument-hint: "[validate | links | orphans | counters | full]"
 
 # Vault Health — Compass Vault Integrity Check
 
-Run validation checks on the `.compass/` vault. Reports issues with actionable fixes. Does NOT auto-fix unless explicitly asked.
+Runs validation on `.compass/` and reports issues with fixes. Doesn't auto-fix unless asked.
 
 ## Checks
 
-### 1. Frontmatter Validation (`validate`)
+### 1. Frontmatter validation (`validate`)
 
-Every `.compass/` markdown file (except in `tmp/`) MUST have valid YAML frontmatter with:
+Every vault markdown file (except `tmp/`) needs valid YAML frontmatter with:
 
-**Required fields:**
-- `title` — non-empty string
-- `type` — one of: spec, research, plan, task, lesson, decision, handoff
-- `status` — one of: draft, review, approved, active, done, archived, done (retroactive)
+- **Required:** `title` (non-empty), `type` (spec, research, plan, task, lesson, decision, handoff), `status` (draft, review, approved, active, done, archived, done (retroactive))
+- **Recommended:** `area`, `tags`, `created`, `updated`
 
-**Recommended fields:**
-- `area` — project area
-- `tags` — array of strings
-- `created` — YYYY-MM-DD
-- `updated` — YYYY-MM-DD
+Glob `.compass/**/*.md` (excluding `tmp/`), read each frontmatter, report missing/invalid.
 
-**Check procedure:**
-1. `Glob: .compass/**/*.md` (exclude `.compass/tmp/`)
-2. Read each file's frontmatter
-3. Report: missing frontmatter, missing required fields, invalid field values
-
-**Output:**
 ```
 ## Frontmatter Validation
 
 | File | Status | Issues |
 |------|--------|--------|
 | specs/SPEC-001-setup.md | OK | — |
-| plans/PLAN-002-auth.md | WARN | missing `updated` field |
+| plans/PLAN-002-auth.md | WARN | missing `updated` |
 | research/RESEARCH-api.md | FAIL | no frontmatter |
 
 Summary: 12 OK, 2 WARN, 1 FAIL
 ```
 
-### 2. Wikilink Check (`links`)
+### 2. Wikilink check (`links`)
 
-All `[[wikilinks]]` in vault files must resolve to existing files.
+All `[[wikilinks]]` should resolve. Grep `\[\[.*?\]\]` across `.compass/**/*.md`, check the target exists, report broken links with file:line.
 
-**Check procedure:**
-1. `Grep: \[\[.*?\]\]` across `.compass/**/*.md`
-2. For each wikilink, check if the target file exists
-3. Report broken links with the file and line where they appear
-
-**Output:**
 ```
 ## Wikilink Check
 
-Broken links:
+Broken:
 - specs/SPEC-003-api.md:15 — [[PLAN-005-api-impl]] — file not found
 - active.md:8 — [[SPEC-999-nonexistent]] — file not found
 
 Summary: 45 links checked, 2 broken
 ```
 
-### 3. Orphan Detection (`orphans`)
+### 3. Orphan detection (`orphans`)
 
-Files that exist in the vault but are not referenced by `index.md` or any other file.
+Files in the vault not referenced by `index.md` or any other file.
 
-**Check procedure:**
-1. Read `.compass/index.md` and extract all wikilinks
-2. Read all other vault files and extract wikilinks
-3. List files in `.compass/` (excluding `tmp/`, `meta/`, `.annotations/`)
-4. Report files not referenced by any wikilink
+Read `index.md` and all other vault files for wikilinks. List files in `.compass/` (excluding `tmp/`, `meta/`, `.annotations/`). Report unreferenced.
 
-**Output:**
 ```
 ## Orphan Detection
 
-Unreferenced files:
+Unreferenced:
 - research/RESEARCH-old-api-study.md — not linked from any vault file
 - lessons/LESSON-stale-cache.md — not linked from index.md
 
 Summary: 18 files, 2 orphans
 ```
 
-### 4. Counter Consistency (`counters`)
+### 4. Counter consistency (`counters`)
 
-Verify that `meta/config.yaml` counters match the actual highest-numbered files.
+`meta/config.yaml` counters must be ahead of the highest-numbered file of each type.
 
-**Check procedure:**
-1. Read `.compass/meta/config.yaml` counters (spec, adr, task, plan)
-2. Scan for highest-numbered file of each type (e.g., `SPEC-005-*.md` → counter should be >= 6)
-3. Report mismatches
-
-**Output:**
 ```
 ## Counter Consistency
 
@@ -110,31 +81,24 @@ Verify that `meta/config.yaml` counters match the actual highest-numbered files.
 Summary: 2 OK, 2 FAIL (counters would cause collisions)
 ```
 
-### 5. Wikilink Usage (`linking`)
+### 5. Wikilink usage (`linking`)
 
-Check that vault documents reference each other using `[[wikilinks]]` in prose, not bare names or file paths.
+Vault references should use `[[wikilinks]]`, not bare names or paths. Grep for SPEC-NNN/PLAN-NNN/ADR-NNN/RESEARCH-/LESSON- across vault files; check each occurrence is wrapped in `[[...]]`.
 
-**Check procedure:**
-1. Grep for vault document identifiers (SPEC-NNN, PLAN-NNN, ADR-NNN, RESEARCH-, LESSON-) across all `.compass/**/*.md`
-2. For each match, check if it's wrapped in `[[...]]`
-3. Report references that should be wikilinks but aren't
-
-**Output:**
 ```
 ## Wikilink Usage
 
-Bare references (should be [[wikilinks]]):
+Bare references:
 - plans/PLAN-002-auth.md:15 — mentions "SPEC-001" without [[...]]
-- handoffs/2026-04-05_session.md:42 — uses file path `.compass/specs/SPEC-003.md` instead of [[SPEC-003-name]]
+- handoffs/2026-04-05_session.md:42 — uses `.compass/specs/SPEC-003.md` instead of [[SPEC-003-name]]
 
-Summary: 30 vault references checked, 2 not using wikilinks
+Summary: 30 references checked, 2 not using wikilinks
 ```
 
-### 6. Full Report (`full`)
+### 6. Full report (`full`)
 
-Runs all checks and produces a combined report. Default when no argument is provided.
+Runs everything. Default when no argument is given.
 
-**Output:**
 ```
 ## Vault Health Report — YYYY-MM-DD
 
@@ -147,21 +111,21 @@ Runs all checks and produces a combined report. Default when no argument is prov
 Overall: NEEDS ATTENTION (5 issues found)
 ```
 
-## Fixing Issues
+## Fixing issues
 
-This skill reports but does NOT auto-fix. To fix:
+Report first. If the human says "fix it":
 
-- **Missing frontmatter**: Ask the human which type/status to assign, then add it
-- **Broken links**: Either create the missing file or update the link
-- **Orphans**: Either add to index.md or archive the file
-- **Counter mismatches**: Update `meta/config.yaml` to max(counter, highest_file_number + 1)
+- **Missing frontmatter:** ask which type/status to assign, then add.
+- **Broken links:** either create the missing file or update the link.
+- **Orphans:** add to index.md or archive.
+- **Counter mismatches:** set `config.yaml` counter to `max(counter, highest_file_number + 1)`.
 
-If the human says "fix it", apply the fixes using Write/Edit tools. Always confirm before bulk fixes.
+Always confirm before bulk fixes.
 
-## When to Run
+## When to run
 
-- After a sprint of builder/tester/validator work
-- Before creating a handoff (ensure vault is clean)
-- When the planner reports stale research artifacts
-- Periodically (e.g., weekly) as a maintenance task
-- After bootstrap sets up a new project
+- After a sprint of builder/tester/validator work.
+- Before creating a handoff (ensure the vault is clean).
+- When the planner reports stale research.
+- Periodically as maintenance.
+- After bootstrap sets up a new project.

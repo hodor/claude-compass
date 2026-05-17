@@ -9,59 +9,52 @@ argument-hint: "[new | migrate | update]"
 
 # Bootstrap — Compass Project Setup
 
-=== CRITICAL: NEVER WRITE TO CLAUDE.md WITHOUT HUMAN APPROVAL ===
-=== CRITICAL: NEVER SKIP MIGRATION APPROVAL — HUMAN APPROVES LINE BY LINE ===
-=== CRITICAL: NEVER MAKE STRATEGIC DECISIONS ABOUT THE PROJECT ===
+Sets up Compass in a project:
 
-## What This Skill Does
-
-1. Detects project state (new vs existing)
-2. Installs Compass agents from the plugin to `.claude/agents/` (full-featured versions with initialPrompt, permissionMode, etc.)
-3. Creates the `.compass/` vault structure
-4. Proposes CLAUDE.md additions (human approves before writing)
-5. Creates SPEC-001 documenting the project setup
+1. Detects project state (new vs existing).
+2. Installs full-featured agents from the plugin to `.claude/agents/`.
+3. Creates the `.compass/` vault.
+4. Proposes CLAUDE.md additions — human approves before any write.
+5. Kicks off vision capture for new projects.
 
 ## Modes
 
-- **`/compass:bootstrap new`** — Full setup: agents + rules + hooks + vault + SPEC-001 + CLAUDE.md
-- **`/compass:bootstrap migrate`** — Full setup for a project with existing docs
-- **`/compass:bootstrap update`** — Quick refresh: overwrite agents + rules + hooks only. Does NOT touch the vault, CLAUDE.md, or existing specs. Use this to get the latest Compass agents during development.
+- `/compass:bootstrap new` — full setup: agents + rules + hooks + vault + CLAUDE.md.
+- `/compass:bootstrap migrate` — full setup for a project with existing docs.
+- `/compass:bootstrap update` — refresh agents + rules + hooks only. Does NOT touch the vault, CLAUDE.md, or specs.
 
 ## Protocol
 
-### Step 0: Check for Update Mode
+### 0. Update mode shortcut
 
 If the argument is `update`:
-1. Skip project state detection
-2. Go directly to Step 2 (Install Agents, Rules, and Skills) — overwrite without asking
-3. Go to Step 2b (Configure Hooks) — overwrite without asking
-4. Report what was updated
-5. STOP — do not scaffold vault, create specs, or touch CLAUDE.md
+1. Skip state detection.
+2. Go to step 2 (install agents/rules/skills) — overwrite without asking.
+3. Go to step 2b (hooks) — overwrite without asking.
+4. Report what changed.
+5. Stop. Don't scaffold vault, create specs, or touch CLAUDE.md.
 
-### Step 1: Detect Project State
+### 1. Detect state
 
 ```
-Glob: .compass/ — does the vault already exist?
-Glob: .claude/agents/ — are Compass agents already installed?
+Glob: .compass/          — vault already exists?
+Glob: .claude/agents/    — Compass agents already installed?
 Glob: *.md, docs/**/*.md — existing documentation?
-Glob: CLAUDE.md — existing project instructions?
+Glob: CLAUDE.md          — existing project instructions?
 ```
 
-**New project** = no `.compass/` directory exists
-**Existing project** = `.compass/` exists OR significant existing docs to migrate
-**Agents already installed** = `.claude/agents/` contains Compass agent files
+- **New project** — no `.compass/`.
+- **Existing project** — `.compass/` exists OR docs to migrate.
+- **Agents already installed** — `.claude/agents/` contains Compass agents.
 
-### Step 2: Install Agents and Rules
+### 2. Install agents, rules, and skills
 
-=== CRITICAL: USE BASH cp COMMANDS ONLY — DO NOT READ THE TEMPLATE FILES ===
-
-Find the Compass plugin, then use Bash to copy files. Do NOT use the Read tool on any template file. Do NOT use the Write tool. ONLY use Bash.
+Use Bash `cp` only. Do NOT use Read on template files. Do NOT use Write. The template content must never pass through your context window — that's expensive and unnecessary.
 
 ```bash
-# Step 1: Find the plugin root
+# Find the plugin root
 PLUGIN_ROOT=$(find / -path "*/compass/plugin/.claude-plugin/plugin.json" -type f 2>/dev/null | head -1 | sed 's|/.claude-plugin/plugin.json||')
 
-# If not found, try common locations
 if [ -z "$PLUGIN_ROOT" ]; then
   for p in "$HOME/.claude/plugins/compass/plugin" "F:/claude/plugins/compass/plugin"; do
     [ -f "$p/.claude-plugin/plugin.json" ] && PLUGIN_ROOT="$p" && break
@@ -70,17 +63,17 @@ fi
 
 echo "Plugin root: $PLUGIN_ROOT"
 
-# Step 2: Copy agents
+# Agents
 mkdir -p .claude/agents
 cp "$PLUGIN_ROOT/templates/agents/"*.md .claude/agents/
 echo "Agents copied: $(ls .claude/agents/*.md | wc -l) files"
 
-# Step 3: Copy rules
+# Rules
 mkdir -p .claude/rules
 cp "$PLUGIN_ROOT/templates/rules/"*.md .claude/rules/
 echo "Rules copied: $(ls .claude/rules/*.md | wc -l) files"
 
-# Step 4: Copy skills (makes project self-contained — no plugin needed after this)
+# Skills (makes project self-contained)
 for skill_dir in "$PLUGIN_ROOT/skills/"*/; do
   skill_name=$(basename "$skill_dir")
   mkdir -p ".claude/skills/$skill_name"
@@ -89,17 +82,15 @@ done
 echo "Skills copied: $(ls -d .claude/skills/*/ | wc -l) directories"
 ```
 
-After this, the project is fully self-contained. Anyone who clones the repo gets agents, skills, and rules — no plugin install needed.
+Run as one Bash call. Verify 15 agents and 1 rules file. If the plugin can't be found, ask the human for the path.
 
-Run this as a single Bash command. Verify the output shows 15 agents and 1 rules file. If the plugin can't be found, ask the human for the path.
+After this, the project is self-contained — anyone who clones gets agents, skills, and rules without installing the plugin.
 
-If invoked in `update` mode, overwrite without asking — the human invoked update explicitly. Otherwise (no `update` argument), if agents are already installed, ask once before overwriting.
+In `update` mode, overwrite without asking. In other modes, if agents are already installed, ask once before overwriting.
 
-### Step 2b: Configure Hooks and Permissions
+### 2b. Hooks and permissions
 
-Set up `.claude/settings.json` (or `.claude/settings.local.json`) with:
-1. The `SubagentStop` hook so the tester runs automatically after the builder finishes
-2. Permission allowlist so subagents (researcher, planner, etc.) don't get prompted for common read-only tools
+Set up `.claude/settings.json` (or `.claude/settings.local.json`):
 
 ```json
 {
@@ -153,21 +144,18 @@ Set up `.claude/settings.json` (or `.claude/settings.local.json`) with:
 }
 ```
 
-This allowlist gives the main session and any subagents immediate access to read-only tools and common test/lint/build commands. All Compass agents themselves use `permissionMode: bypassPermissions` in their frontmatter, so they bypass these prompts entirely — the allowlist is the safety net for everything else.
+Compass agents use `permissionMode: bypassPermissions`, so they bypass these prompts entirely — the allowlist is the safety net for everything else.
 
-If the file already exists, merge the hooks and permissions into the existing configuration. Ask the human before overwriting any existing hooks or permissions.
+If the file already exists, merge. Ask before overwriting existing hooks or permissions.
 
-### Step 3A: New Project — Scaffold Vault
-
-Create the complete vault structure:
+### 3A. New project — scaffold the vault
 
 ```
 .compass/
   index.md
   active.md
   backlog.md
-  vision.md               # created by /compass:vision (NOT by bootstrap)
-  .annotations/           # sidecar annotations (see annotate skill)
+  .annotations/           # sidecar annotations
   meta/
     config.yaml
     lessons-catalog.yaml
@@ -181,9 +169,9 @@ Create the complete vault structure:
   archive/
 ```
 
-Note: bootstrap does NOT create `vision.md` — the human runs `/compass:vision` after bootstrap. Same principle as specs (bootstrap doesn't create them either).
+Bootstrap does NOT create `vision.md` — `/compass:vision` does that. Bootstrap does NOT create specs — `/compass:spec` does that.
 
-Initialize `config.yaml`:
+`config.yaml`:
 ```yaml
 counters:
   spec: 1
@@ -192,13 +180,12 @@ counters:
   plan: 1
 ```
 
-Initialize `lessons-catalog.yaml`:
+`lessons-catalog.yaml`:
 ```yaml
 lessons: []
 ```
 
-Create `index.md` with the section headers Compass agents will append to. Use this template:
-
+`index.md`:
 ```markdown
 ---
 title: "Project Index"
@@ -212,43 +199,33 @@ updated: YYYY-MM-DD
 The master map. Every vault document is linked here.
 
 ## Vision
-
 _Run `/compass:vision` to capture._
 
 ## Specs
-
 _None yet._
 
 ## Research
-
 _None yet._
 
 ## Plans
-
 _None yet._
 
 ## Decisions
-
 _None yet._
 
 ## Lessons
-
 _None yet._
 
 ## Handoffs
-
 _None yet._
 ```
 
 Then create empty `active.md` and `backlog.md`.
 
-Do NOT create vision.md — that's `/compass:vision`'s job.
-Do NOT create any specs — that's `/compass:spec`'s job.
+### 3B. Existing project — migrate
 
-### Step 3B: Existing Project — Migrate
-
-1. **Inventory**: Scan for existing documentation, TODOs, specs, decisions
-2. **Propose migration table**:
+1. Inventory existing docs, TODOs, specs, decisions.
+2. Propose a migration table:
    ```
    | Source | Destination | Action |
    |--------|------------|--------|
@@ -256,13 +233,13 @@ Do NOT create any specs — that's `/compass:spec`'s job.
    | TODO.md items | active.md / backlog.md | Migrate tasks |
    | docs/decisions/ | decisions/ | Rename to ADR-NNN format |
    ```
-3. **Human approves line by line** — never execute without approval
-4. Execute approved migrations
-5. Update `index.md`
+3. Human approves line by line.
+4. Execute approved migrations.
+5. Update `index.md`.
 
-### Step 4: Propose CLAUDE.md Addition
+### 4. Propose CLAUDE.md addition
 
-Draft a Compass section for CLAUDE.md. Keep it short — rules, not essays:
+Draft a short Compass section — rules, not essays:
 
 ```markdown
 ## Compass
@@ -276,7 +253,7 @@ Draft a Compass section for CLAUDE.md. Keep it short — rules, not essays:
 - Specs are SINGLE-PROBLEM. ONE spec = ONE problem. If you write "and also", split into two specs.
 - Specs are about the NEED, not the solution. No implementation decisions in specs.
 - Specs start as `draft`. Nothing happens until the human approves.
-- Compass agents are available for research, planning, building, testing, and validation.
+- Compass agents are available for research, planning, building, testing, validation.
 - All code changes require tests.
 - `git add <file>` — never `-A` or `.`
 
@@ -284,33 +261,31 @@ Draft a Compass section for CLAUDE.md. Keep it short — rules, not essays:
 **Help:** `/compass:guide` (workflow) or `/compass:checkup` (health).
 ```
 
-Present this to the human. Write ONLY after they approve.
+Present and wait for approval. Write only after approval.
 
-### Step 5: Verify Installation
+### 5. Verify
 
-After scaffolding, verify:
-- [ ] `.claude/agents/` contains all Compass agent files
-- [ ] `.compass/meta/config.yaml` exists with valid counters
-- [ ] `.compass/meta/lessons-catalog.yaml` exists
-- [ ] `.compass/index.md` exists
-- [ ] `.compass/active.md` exists
+- [ ] `.claude/agents/` has all Compass agents.
+- [ ] `.compass/meta/config.yaml` exists with valid counters.
+- [ ] `.compass/meta/lessons-catalog.yaml` exists.
+- [ ] `.compass/index.md` exists.
+- [ ] `.compass/active.md` exists.
 
-### Step 6: Run Vision Capture
+### 6. Run vision capture
 
-Bootstrap is done with infrastructure. For NEW projects, IMMEDIATELY run the vision capture — do not stop and ask. New users won't know what to do next, and skipping vision is the #1 cause of bloated first specs.
+For NEW projects, immediately invoke `/compass:vision` — don't stop and ask. Skipping vision is the #1 cause of bloated first specs.
 
-Tell the human:
+> "Compass infrastructure is set up. Now I'll run the vision capture to understand what you're building. A quick interview about the project goal — produces a vision document and a spec roadmap."
 
-> "Compass infrastructure is set up. Now I'll run the vision capture to understand what you're building. This is a quick interview about the project goal — answers will produce a vision document and a roadmap of specs."
+Pass any context already gathered during bootstrap (the project description, anything the human said when invoking bootstrap).
 
-Then immediately invoke the `/compass:vision` skill. Pass any context already gathered during bootstrap (e.g., the project description from migration analysis, or anything the human said when invoking bootstrap).
+For MIGRATE mode (existing project with code/docs), ask once:
 
-For MIGRATE mode (existing project with code/docs): the vision may already exist implicitly. Ask once:
 > "I see this project already has code and docs. Should I capture the vision retroactively from what exists (run `/compass:vision`), or skip straight to documenting specific work via `/compass:retroactive`?"
 
 Only skip vision if the human explicitly requests it.
 
-## Output Format
+## Output format
 
 ```markdown
 ## Bootstrap Report
@@ -318,41 +293,28 @@ Only skip vision if the human explicitly requests it.
 ### Project State
 New project / Existing project with N existing documents
 
-### Agents Installed
+### Installed
 - [x] 15 agents copied to .claude/agents/
 - [x] 1 rules file copied to .claude/rules/
 - [x] .compass/ vault scaffolded
 - [x] Hooks configured
 
 ### Obsidian
-
-Open `.compass/` as an Obsidian vault:
-  **Obsidian → Open folder as vault → `<project-root>/.compass/`**
+Open `.compass/` as a vault: **Obsidian → Open folder as vault → `<project-root>/.compass/`**
 
 ### Next Steps
 1. Open `.compass/` in Obsidian
 2. Approve the CLAUDE.md addition
-3. Vision capture is starting now — answer the questions to produce vision.md and the spec roadmap
+3. Vision capture is starting — answer the questions to produce vision.md and the spec roadmap
 4. After vision: create specs one at a time with `/compass:spec`
 ```
 
-## Know Your Failure Modes
+## Failure modes worth naming
 
-You WILL be tempted to:
-- Read all the agent template files into your context and then use Write to recreate them — DO NOT do this. Use Bash `cp` to copy files. NEVER use the Read tool on template files. NEVER use the Write tool for template files. The content must never pass through your context window.
-- Write to CLAUDE.md without asking — always present and wait for approval
-- Skip the migration table for existing projects — always present it line by line
-- Make assumptions about what the project does — ask the human
-- Create more documents than the basic scaffold — keep it minimal, the human builds from here
-
-## What NOT to Do
-
-- Don't make strategic decisions about the project
-- Don't write lengthy CLAUDE.md sections — keep it concise
-- Don't skip human approval for migrations or CLAUDE.md changes
-- Don't create documents beyond the basic scaffold without human input
-- Don't assume what the project is about — ask if unclear
-- Don't modify existing files outside `.compass/` and `.claude/` without explicit approval
-- Don't overwrite existing agents without asking
-
-=== REMINDER: NEVER WRITE TO CLAUDE.md WITHOUT HUMAN APPROVAL ===
+- Reading template files into context and writing them back with the Write tool. Use Bash `cp`. The content never goes through your window.
+- Writing to CLAUDE.md without approval.
+- Skipping the migration table — always present line by line.
+- Making strategic assumptions about the project.
+- Creating documents beyond the basic scaffold.
+- Modifying files outside `.compass/` and `.claude/` without approval.
+- Overwriting existing agents without asking (except in `update` mode).

@@ -8,13 +8,11 @@ when_to_use: "Use when learning Compass, unsure what to do next, starting a new 
 
 # Guide — Compass Workflow Assistant
 
-Interactive guide that detects where you are and helps you do the right thing. Knows the full Compass pipeline and all agents.
+Detects where the user is and points them at the right next step. Knows the full pipeline and every agent.
 
 ## Protocol
 
-### Step 1: Detect Current State
-
-Read the project to understand where the user is:
+### 1. Detect current state
 
 ```
 Glob: .compass/          — vault exists?
@@ -23,75 +21,65 @@ Read: .compass/active.md — current tasks?
 Read: .compass/index.md  — what exists?
 ```
 
-Classify the situation:
+| Situation | Trigger |
+|-----------|---------|
+| A. No Compass | No `.compass/`, no agents |
+| B. Empty vault | Vault exists, no specs/plans/tasks |
+| C. Active work | Tasks in active.md |
+| D. Porting | User has an existing project to bring in |
+| E. Stuck | User doesn't know what to do |
 
-**A. No Compass at all** — no `.compass/`, no agents
-→ Guide to bootstrap
-
-**B. Compass installed but empty** — vault exists, no specs/plans/tasks
-→ Guide to first spec
-
-**C. Active work exists** — tasks in active.md
-→ Guide to continue work
-
-**D. Porting request** — user has an existing project they want to bring into Compass
-→ Guide to migration
-
-**E. Stuck or confused** — user doesn't know what to do
-→ Explain the pipeline and help pick the right next step
-
-### Step 2: Respond Based on Situation
+### 2. Respond
 
 ---
 
-## Situation A: No Compass — Guide to Bootstrap
+## A — No Compass
 
 ```
 I see this project doesn't have Compass set up yet.
 
-Compass gives you a structured development workflow:
+Compass gives you a structured workflow:
   Vision → Spec → Research → Plan → Build → Test → Validate
 
-To get started, run:
-  /compass:bootstrap
+To get started: /compass:bootstrap
 
-After bootstrap, run /compass:vision to capture the project's overall
-goal and the roadmap of specs you'll create.
+After bootstrap, run /compass:vision to capture the project's goal
+and the roadmap of specs you'll create.
 
-This will:
+Bootstrap will:
 1. Install 15 specialized agents to .claude/agents/
 2. Create the .compass/ knowledge vault
 3. Set up hooks (auto-testing after builds)
 4. Propose additions to your CLAUDE.md
 
-Want me to run bootstrap for you?
+Want me to run bootstrap?
 ```
 
-If the user says yes, invoke `/compass:bootstrap`.
+If yes, invoke `/compass:bootstrap`.
 
 ---
 
-## Situation B: Compass Installed, Empty Vault — Guide to Vision
+## B — Empty vault
 
-Check whether `.compass/vision.md` exists.
+If no `.compass/vision.md`:
 
-**If no vision yet:**
 ```
-Compass is set up! Before creating specs, let's capture the vision —
-the project's overall goal and the landscape of needs that will become
-specs. This prevents your first spec from absorbing everything.
+Compass is set up. Before specs, let's capture the vision — the overall
+goal and the landscape of needs. This prevents your first spec from
+absorbing everything.
 
-Run /compass:vision and I'll interview you about the big picture, then
-propose a list of specs to create one at a time.
+Run /compass:vision and I'll interview you, then propose a spec list
+to create one at a time.
 
-Want to start now?
+Want to start?
 ```
 
-**If vision exists but no specs:**
+If vision exists but no specs:
+
 ```
 Vision is captured. Time to write specs from the roadmap.
 
-Your spec roadmap (from vision.md):
+Your roadmap:
 1. [SPEC name 1]
 2. [SPEC name 2]
 ...
@@ -99,136 +87,120 @@ Your spec roadmap (from vision.md):
 Which one should we start with? I'll spawn /compass:spec for it.
 ```
 
-**If user wants to document existing work** (no vision needed):
-```
-Use /compass:retroactive to document existing work from git history.
-Vision and forward-looking specs aren't required for this path.
-```
+If the user wants to document existing work, point to `/compass:retroactive`.
 
 ---
 
-## Situation C: Active Work Exists — Guide to Continue
+## C — Active work
 
 Read `active.md` and present:
 
 ```
-Here's where things stand:
-
 **In Progress:**
 - [ ] TASK-005: Add auth endpoint — Phase 2 of PLAN-002
-  → Next step: spawn the builder agent to implement this
+  → Next: spawn the builder
 
 **Blocked:**
-- [ ] TASK-007: Deploy to staging — blocked by: TASK-005
-  → Unblock by completing TASK-005 first
+- [ ] TASK-007: Deploy to staging — blocked by TASK-005
 
 **Recently Completed:**
 - [x] TASK-004: Database schema migration
 
-**What would you like to do?**
-1. Continue building TASK-005 → I'll spawn the builder
-2. Review what was built → I'll spawn the validator
-3. Start something new → I'll help pick or create a task
-4. Create a handoff → I'll spawn handoff-create to capture session state
-5. Check project health → I'll run /compass:checkup
+What would you like to do?
+1. Continue building TASK-005 → spawn builder
+2. Review what was built → spawn validator
+3. Start something new
+4. Create a handoff → spawn handoff-create
+5. Check project health → /compass:checkup
 ```
 
 ---
 
-## Situation D: Port an Existing Project
+## D — Port an existing project
 
 ```
-You want to bring an existing project into Compass. Here's how it works:
+Here's how porting works:
 
-1. **Bootstrap** sets up the vault and agents (if not already done)
-2. **Retroactive agent** documents existing work from git history
-3. **Spec-writer** captures the project's goals and constraints
-4. From there, you follow the normal pipeline for new work
+1. Bootstrap sets up the vault and agents
+2. Retroactive agent documents existing work from git history
+3. Spec-writer captures the project's goals and constraints
+4. From there, normal pipeline for new work
 
-Let me check what you already have...
+Let me check what you have...
 ```
 
-Then:
-1. Check if bootstrap has been run. If not, run it first.
-2. Scan git history: `git log --oneline -20` — show recent work
-3. Ask: "Which of these commits/features should be documented?"
-4. Spawn the retroactive agent for each piece of work the user wants documented
-5. After retroactive docs are created, offer to create a forward-looking spec for the next piece of work
+1. If bootstrap hasn't run, run it.
+2. `git log --oneline -20` to show recent work.
+3. Ask which commits to document.
+4. Spawn retroactive per piece.
+5. Offer a forward-looking spec for the next piece.
 
 ---
 
-## Situation E: Stuck or Confused — Explain the Pipeline
+## E — Stuck
 
 ```
-Here's how Compass works:
-
 **The Pipeline:**
   Spec → Research → Plan → Build → Test → Validate
-  
-Each step has a dedicated agent:
 
 | Step | Agent | What it does |
 |------|-------|-------------|
-| Spec | spec-writer | Interviews you to capture WHAT and WHY |
+| Spec | spec-writer | Interviews you for WHAT and WHY |
 | Research | researcher | Investigates unknowns (spawn N in parallel) |
-| Review | reviewer | Consolidates parallel research findings |
+| Review | reviewer | Consolidates parallel research |
 | Plan | planner | Proposes implementation with ordered tasks |
-| Iterate | planner-iterate | Surgically edits plans based on feedback |
-| Build | builder | Writes code (auto-triggers tester when done) |
-| Test | tester | Writes adversarial tests to break the code |
-| Validate | validator | Final quality gate — compares plan vs reality |
+| Iterate | planner-iterate | Surgically edits plans |
+| Build | builder | Writes code (auto-triggers tester) |
+| Test | tester | Adversarial tests |
+| Validate | validator | Final quality gate |
 
-**Session management:**
+**Session:**
 | Agent | What it does |
 |-------|-------------|
-| handoff-create | End of session — saves context for next time |
-| handoff-resume | Start of session — restores context, checks for drift |
+| handoff-create | Save context for next session |
+| handoff-resume | Restore context, check for drift |
 
 **Utilities:**
 | Agent | What it does |
 |-------|-------------|
-| debug | Investigates errors (read-only, separate context) |
-| pattern-finder | Finds existing code patterns (fast, read-only) |
-| autopilot | Runs the full pipeline for small tasks |
-| retroactive | Documents work that happened without Compass |
-| pr-describe | Creates PR descriptions from Compass artifacts |
+| debug | Investigate errors (read-only, isolated context) |
+| pattern-finder | Find existing code patterns |
+| autopilot | Full pipeline for small tasks |
+| retroactive | Document past work |
+| pr-describe | Create PR descriptions |
 
-**Skills (invoke with /):**
-| Skill | What it does |
-|-------|-------------|
-| /compass:bootstrap | Set up Compass in a project |
-| /compass:guide | This guide — helps you navigate |
-| /compass:checkup | Health check — finds problems |
-| /compass:vault-health | Vault integrity checks |
-| /compass:annotate | View/manage sidecar annotations |
+**Skills:**
+- /compass:bootstrap — set up
+- /compass:guide — this guide
+- /compass:checkup — find problems
+- /compass:vault-health — vault integrity
+- /compass:annotate — sidecar annotations
 
-**The vault (.compass/):**
-Your project's knowledge base. Specs, plans, research, decisions, lessons,
-handoffs — all in Obsidian-compatible markdown with YAML frontmatter.
+The vault (.compass/) is your knowledge base: specs, plans, research,
+decisions, lessons, handoffs — Obsidian-compatible markdown with YAML
+frontmatter.
 
 What would you like to do?
 ```
 
 ---
 
-## After Any Action
+## After any action
 
-After spawning an agent or completing a guide step, offer the next logical action:
+Offer the next logical step:
 
-- After spec-writer → "Spec done. Want to research this topic next?"
-- After researcher → "Research done. Want to review findings or start planning?"
-- After planner → "Plan approved. Ready to start building?"
-- After builder → "Build done. Tester ran automatically. Want to validate?"
-- After validator → "Validation complete. Want to create a PR description?"
-- After handoff-create → "Handoff saved. Safe to end the session."
-- After checkup → "Here are the issues. Want me to help fix them?"
+- After spec-writer → "Spec done. Research next?"
+- After researcher → "Research done. Review or plan?"
+- After planner → "Plan approved. Start building?"
+- After builder → "Build done. Tester ran. Validate?"
+- After validator → "Validation done. PR description?"
+- After handoff-create → "Handoff saved. Safe to end."
+- After checkup → "Here are the issues. Help fix them?"
 
-This creates a guided flow where the user always knows the next step.
+## Failure modes worth naming
 
-## What NOT to Do
-
-- Don't assume the user knows Compass terminology — explain as you go
-- Don't dump the full pipeline on someone who just wants to continue a task
-- Don't skip the state detection — always check where the user actually is
-- Don't spawn agents without confirming — present the option, let the user decide
-- Don't be condescending to experienced users — if they ask a specific question, answer it directly
+- Assuming the user knows Compass terminology. Explain as you go.
+- Dumping the full pipeline on someone who just wants to continue a task.
+- Skipping state detection.
+- Spawning agents without confirmation. Present, let the user pick.
+- Being condescending to experienced users. Specific question → direct answer.

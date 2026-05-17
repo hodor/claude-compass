@@ -9,46 +9,19 @@ argument-hint: "[<commit-hash> | <start>..<end>]"
 
 # Retroactive — Document Work After the Fact
 
-Create vault artifacts for commits that exist without corresponding specs/plans/tasks. Interview the human about intent, never fabricate.
-
-=== CRITICAL: EASY TO READ, SHORT, SWEET. LONG ONLY WHEN NEEDED. NEVER VERBOSE. ===
-=== CRITICAL: ONE QUESTION AT A TIME — NEVER DUMP A LIST ===
-=== CRITICAL: NEVER FABRICATE — IF THE HUMAN DOESN'T KNOW, MARK AS UNKNOWN ===
-=== CRITICAL: YOUR JOB IS DOCUMENTATION, NOT JUDGMENT ===
-
-## CRITICAL CONSTRAINTS
-
-- Ask ONE question at a time — never dump a list
-- NEVER fabricate answers — if the human doesn't know, mark as unknown
-- ALWAYS read the git history to understand what actually changed before asking
-- ALWAYS create artifacts with `status: done (retroactive)` to distinguish from normal workflow
-- ALWAYS read + increment counters from `meta/config.yaml`
-- The human did the work already — respect that. Document, don't judge.
-
-## Know Your Failure Modes
-
-You WILL be tempted to:
-- Ask multiple questions to speed up the interview — one at a time
-- Invent acceptance criteria because the human is uncertain — mark as unknown
-- Skip reading the git diff — always read it, don't rely on commit messages
-- Create an ADR for every change — only if the human confirms a significant decision
-- Judge the code quality — not your job
-- Skip the hot path — read vault context first to avoid duplicates
-- Guess at the problem statement from the code — ask, the human knows why
+Create vault artifacts for commits that exist without corresponding specs, plans, or tasks. Interview the human about intent. Never fabricate. The human did the work — your job is documentation, not judgment.
 
 ## Protocol
 
-### Step 1: Identify the Work
+### 1. Identify the work
 
-Progressive fallback:
-1. **Commit hash provided** → use it
-2. **No hash** → `git log --oneline -20`, present commits, ask which to document
+If a commit hash was given, use it. Otherwise `git log --oneline -20`, present the commits, ask which to document.
 
-### Step 2: Read Hot Path
+### 2. Read the hot path
 
-Read `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`, `.compass/meta/config.yaml`
+`.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`, `.compass/meta/config.yaml`.
 
-### Step 3: Analyze the Commits
+### 3. Analyze the commits yourself
 
 ```bash
 git show <hash> --stat
@@ -56,23 +29,21 @@ git show <hash>
 git log --oneline <hash>~1..<hash>
 ```
 
-For a range:
-```bash
-git log --oneline <start>..<end>
-git diff <start>..<end> --stat
-```
+For a range: `git log --oneline <start>..<end>` and `git diff <start>..<end> --stat`.
 
-Build your own understanding before asking questions.
+Build your own understanding before asking questions. Don't rely on commit messages alone.
 
-### Step 4: Interview (One Question at a Time)
+### 4. Interview, one question at a time
 
-**Q1:** "What problem did this solve?" → Problem section
-**Q2:** "What does success look like now?" → Desired Outcome + acceptance criteria
+**Q1:** "What problem did this solve?" → Problem section.
+**Q2:** "What does success look like now?" → Desired Outcome + acceptance criteria.
 
-If the change involved architectural choice, also ask:
-> "Was there a key decision here that future developers should know about? (If yes, I'll create an ADR.)"
+If the change involved an architectural choice:
+> "Was there a key decision here future developers should know about? (If yes, I'll create an ADR.)"
 
-### Step 5: Create Retroactive Spec
+If the human doesn't know an answer, mark it as unknown. Don't invent.
+
+### 5. Create the retroactive spec
 
 Increment the SPEC counter in `config.yaml`. Create `SPEC-NNN-descriptive-name.md`:
 
@@ -107,13 +78,11 @@ This spec was created retroactively. Implementation already exists at commit `<h
 <from git diff --stat>
 ```
 
-### Step 6: Create Retroactive Task
+### 6. Create the retroactive task
 
-Increment the TASK counter. Add to `.compass/active.md` under "Recently Completed":
+Increment the TASK counter. Add under "Recently Completed" in `active.md`:
 
 ```markdown
-### Recently Completed
-
 - [x] TASK-NNN: [Description] — complexity: [S/M/L], retroactive
   - Automated verification: [inferred]
   - Manual verification: [from Q2]
@@ -121,33 +90,29 @@ Increment the TASK counter. Add to `.compass/active.md` under "Recently Complete
   - Commit: `<hash>`
 ```
 
-### Step 7: Create ADR (If Applicable)
+### 7. Create ADR (if applicable)
 
-Only if the human confirmed a significant decision:
-1. Increment ADR counter
-2. Create `ADR-NNN-descriptive-name.md`
-3. Include decision, context, reasoning
+Only if the human confirmed a significant decision. Increment the ADR counter, create `ADR-NNN-descriptive-name.md` with decision, context, and reasoning.
 
-### Step 8: Update Vault — REQUIRED
+### 8. Update the vault — REQUIRED
 
-1. Update `.compass/index.md` — add link to the new spec under `## Specs`, and any ADR under `## Decisions`. This is not optional; documents not in index.md are invisible to the next session.
-2. Ensure `active.md` has the new task under "Recently Completed".
-3. Counters in `config.yaml` should already be incremented from earlier steps.
+1. `.compass/index.md` — add the new spec under `## Specs` and any ADR under `## Decisions`. Documents not in `index.md` are invisible next session.
+2. Confirm the new task is in `active.md` under "Recently Completed".
+3. Counters in `config.yaml` should already be incremented.
 
-### Step 8b: Create Lessons (If Applicable)
+### 9. Capture lessons (if applicable)
 
-Ask:
 > "Did this work reveal any lessons or patterns future developers should know?"
 
 If yes, create a lesson in `.compass/lessons/` and append to `lessons-catalog.yaml`.
 
-### Step 9: Offer Plan Traceability
+### 10. Offer plan traceability
 
 > "No plan existed for this work. Should I create a retroactive PLAN for traceability? (Usually only worth it for M or L complexity.)"
 
 If yes, create a minimal plan with `status: done (retroactive)`.
 
-## Output Format
+## Output format
 
 ```markdown
 ## Retroactive Report
@@ -169,4 +134,12 @@ If yes, create a minimal plan with `status: done (retroactive)`.
 - [ ] Create retroactive plan? (awaiting human decision)
 ```
 
-=== REMINDER: ONE QUESTION AT A TIME. NO FABRICATION. DOCUMENTATION, NOT JUDGMENT. ===
+## Failure modes worth naming
+
+- Dumping multiple questions at once to "speed up" the interview.
+- Inventing acceptance criteria because the human is uncertain. Mark unknown.
+- Skipping the git diff and trusting commit messages.
+- Creating an ADR for every change. Only when the human confirms a real decision.
+- Judging the code quality. Not your job.
+- Skipping the hot path and creating duplicate specs.
+- Guessing the problem statement from the code instead of asking.

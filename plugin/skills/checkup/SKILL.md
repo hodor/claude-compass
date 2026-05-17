@@ -8,15 +8,13 @@ when_to_use: "Use when something feels off, after a long break, before starting 
 
 # Checkup — Compass Project Health Scanner
 
-Scans your project's Compass installation for problems and reports them with actionable fixes. Does NOT auto-fix — reports only.
+Scans your project's Compass installation and reports problems with actionable fixes. Report only — never auto-fix.
 
-## What Gets Checked
+## What gets checked
 
-### 1. Agent Installation
+### 1. Agents
 
-```
-Check: .claude/agents/ contains all 15 Compass agents
-```
+`.claude/agents/` should contain all 15 Compass agents:
 
 | Agent | Required? |
 |-------|-----------|
@@ -36,128 +34,77 @@ Check: .claude/agents/ contains all 15 Compass agents
 | retroactive | YES |
 | pr-describe | YES |
 
-For each agent file found, verify:
-- Has valid YAML frontmatter
-- Has `name` and `description` fields
-- Has `model`, `effort`, `maxTurns` fields (warn if missing)
+For each agent: valid YAML frontmatter, `name` and `description` present, `model`/`effort`/`maxTurns` present (warn if missing).
 
-Report:
-- Missing agents
-- Agents with invalid/incomplete frontmatter
-- Agents that may be outdated (compare against plugin templates if accessible)
+Report missing agents, agents with invalid frontmatter, and agents that may be outdated.
 
-### 2. Vault Structure
+### 2. Vault structure
 
-```
-Check: .compass/ exists with required structure
-```
+Required files: `.compass/index.md`, `.compass/active.md`, `.compass/backlog.md`, `.compass/meta/config.yaml`, `.compass/meta/lessons-catalog.yaml`.
 
-Required:
-- [ ] `.compass/index.md`
-- [ ] `.compass/active.md`
-- [ ] `.compass/backlog.md`
-- [ ] `.compass/meta/config.yaml`
-- [ ] `.compass/meta/lessons-catalog.yaml`
+Required directories: `specs/`, `research/`, `plans/`, `decisions/`, `lessons/`, `handoffs/`, `prs/`, `.annotations/`.
 
-Required directories:
-- [ ] `.compass/specs/`
-- [ ] `.compass/research/`
-- [ ] `.compass/plans/`
-- [ ] `.compass/decisions/`
-- [ ] `.compass/lessons/`
-- [ ] `.compass/handoffs/`
-- [ ] `.compass/prs/`
-- [ ] `.compass/.annotations/`
+### 3. Vault integrity
 
-Report: missing files/directories.
+Same checks as the vault-health skill: frontmatter validation, wikilink resolution, counter consistency (config.yaml ahead of highest-numbered file), orphan detection (files not referenced by index.md).
 
-### 3. Vault Integrity
+### 4. Task hygiene
 
-Run the same checks as the vault-health skill:
-- **Frontmatter validation** — all vault .md files have valid frontmatter
-- **Wikilink check** — all `[[links]]` resolve
-- **Counter consistency** — config.yaml counters are ahead of highest-numbered files
-- **Orphan detection** — files not referenced by index.md
+In `.compass/active.md`:
 
-### 4. Task Hygiene
+- Tasks marked `[x]` done but no corresponding plan checkoff.
+- Tasks marked `[ ]` but commits exist for them.
+- Tasks referencing plans that don't exist.
+- Tasks older than 14 days without progress (stale).
 
-```
-Check: .compass/active.md for stale or inconsistent state
-```
+### 5. Handoff freshness
 
-- Tasks marked `[x]` done but no corresponding plan checkoff
-- Tasks marked `[ ]` not done but commits exist for them (check git log)
-- Tasks in active.md that reference plans that don't exist
-- Tasks older than 14 days without progress (stale)
+In `.compass/handoffs/`:
 
-### 5. Handoff Freshness
+- Handoffs with `status: active` older than 7 days.
+- Handoffs referencing commits >20 behind HEAD.
+- Handoffs never marked `done`.
 
-```
-Check: .compass/handoffs/ for stale or orphaned handoffs
-```
+### 6. Hooks
 
-- Handoffs with `status: active` older than 7 days — likely stale
-- Handoffs referencing commits that are far behind HEAD (>20 commits)
-- Handoffs that were never marked `done`
+`.claude/settings.json` should have a `SubagentStop` hook with `matcher: "builder"` that spawns the tester agent.
 
-### 6. Hook Configuration
+### 7. Rules
 
-```
-Check: .claude/settings.json for required Compass hooks
-```
+`.claude/rules/compass-agent-patterns.md` should be installed.
 
-Required hooks:
-- `SubagentStop` hook with `matcher: "builder"` that spawns the tester agent
+### 8. Git state
 
-Report: missing or misconfigured hooks.
+Uncommitted vault files (handoffs, specs, plans) are invisible to other sessions. Flag them.
 
-### 7. Rules Installation
-
-```
-Check: .claude/rules/ contains Compass rules
-```
-
-Required:
-- [ ] `.claude/rules/compass-agent-patterns.md`
-
-### 8. Git State
-
-```
-Check: uncommitted changes in .compass/
-```
-
-- Uncommitted vault files (handoffs, specs, plans) — these are invisible to other sessions
-- Unstaged annotation files
-
-## Output Format
+## Output format
 
 ```markdown
 ## Compass Checkup Report
 
 ### Agents
 - [x] 15/15 agents installed
-- [ ] builder.md missing `maxTurns` field (WARN)
+- [ ] builder.md missing `maxTurns` (WARN)
 
 ### Vault Structure
 - [x] All required files present
-- [ ] `.compass/.annotations/` missing (WARN — run bootstrap or create manually)
+- [ ] `.compass/.annotations/` missing (WARN)
 
 ### Vault Integrity
 - [x] Frontmatter: 12 OK, 0 FAIL
 - [ ] Wikilinks: 1 broken — active.md:8 references [[SPEC-999]]
-- [x] Counters: all consistent
+- [x] Counters consistent
 
 ### Task Hygiene
-- [ ] TASK-003 in active.md is 21 days old with no progress (STALE)
+- [ ] TASK-003 in active.md: 21 days old, no progress (STALE)
 - [x] No orphaned task references
 
 ### Handoffs
-- [ ] 2026-03-12_session-2.md is still `status: active` (15 days old — STALE)
-- [x] No orphaned handoffs
+- [ ] 2026-03-12_session-2.md still `status: active` (15 days, STALE)
 
 ### Hooks
 - [x] SubagentStop builder→tester hook configured
-  
+
 ### Rules
 - [x] compass-agent-patterns.md installed
 
@@ -165,25 +112,22 @@ Check: uncommitted changes in .compass/
 - [ ] 2 uncommitted files in .compass/ — commit before ending session
 
 ### Summary
-- OK: 6 checks passed
-- WARN: 2 warnings
-- FAIL: 1 failure (broken wikilink)
-- STALE: 2 items need attention
+- OK: 6 | WARN: 2 | FAIL: 1 | STALE: 2
 
 HEALTH: NEEDS ATTENTION
 ```
 
-## Severity Levels
+## Severity
 
 | Level | Meaning | Action |
 |-------|---------|--------|
-| **OK** | Everything is fine | None |
-| **WARN** | Not broken but should be addressed | Fix when convenient |
-| **FAIL** | Something is broken | Fix before continuing work |
-| **STALE** | Something is outdated | Review and archive or update |
+| OK | Everything fine | None |
+| WARN | Not broken but should be addressed | Fix when convenient |
+| FAIL | Broken | Fix before continuing |
+| STALE | Outdated | Review, archive, or update |
 
-## What NOT to Do
+## Failure modes worth naming
 
-- Don't auto-fix anything — report only, let the human decide
-- Don't skip checks because "the project is small" — run them all
-- Don't ignore uncommitted vault files — they're the most common source of lost context
+- Auto-fixing instead of reporting. The human decides.
+- Skipping checks because "the project is small."
+- Ignoring uncommitted vault files — they are the most common source of lost context.

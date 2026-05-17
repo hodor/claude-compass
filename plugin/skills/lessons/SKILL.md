@@ -7,21 +7,18 @@ allowed-tools: [Glob, Grep, Read]
 
 # Lessons — Search, Apply & Create
 
-Lessons capture hard-won knowledge that prevents the same mistake from being made twice.
+Lessons capture hard-won knowledge that prevents the same mistake twice. Per Reinertsen (*Principles of Product Development Flow*), two types:
 
-Per Reinertsen (*The Principles of Product Development Flow*), product development generates two distinct types of knowledge:
+- **Process** (`category: process`) — how to build. "Mocking the DB in integration tests hides migration bugs."
+- **Domain** (`category: domain`) — what to build. "Users need batch export, not single-file."
 
-- **Process lessons** (`category: process`): Knowledge about *how* to build — methods, tools, techniques, workflow. Example: "Mocking the DB in integration tests hides migration bugs."
-- **Domain lessons** (`category: domain`): Knowledge about *what* to build — the product, users, requirements, the problem space. Example: "Users need batch export, not single-file export."
+Process lessons improve how agents work. Domain lessons improve what agents build.
 
-Both types are equally valuable but serve different purposes. Process lessons improve how agents work. Domain lessons improve what agents build.
+## Catalog
 
-## Catalog Structure
-
-The lessons catalog lives at `.compass/meta/lessons-catalog.yaml`. It provides O(1) tag lookup instead of O(n) grep across all lesson files.
+`.compass/meta/lessons-catalog.yaml` provides O(1) tag lookup instead of grepping every lesson file.
 
 ```yaml
-# meta/lessons-catalog.yaml
 lessons:
   - file: "LESSON-yaml-frontmatter-quoting.md"
     status: active
@@ -40,89 +37,75 @@ lessons:
 ```
 
 Fields:
-- `file`: Filename of the lesson in `.compass/lessons/` — named as `LESSON-<descriptive-slug>.md`
-- `status`: `active` or `archived`
-- `category`: `process` (how to build) or `domain` (what to build)
-- `area`: Matches the frontmatter `area` field
-- `tags`: List of tags for matching
-- `score`: 1-10, higher = more broadly applicable. Starts at 5, adjusted over time.
-- `summary`: One-line description for quick scanning
+- `file` — lesson filename in `.compass/lessons/`.
+- `status` — `active` or `archived`.
+- `category` — `process` or `domain`.
+- `area` — from frontmatter.
+- `tags` — for matching.
+- `score` — 1-10, higher = more broadly applicable. Starts at 5.
+- `summary` — one-line description.
 
-## When to Search for Lessons
+## When to search
 
-Search for relevant lessons before **making plans**, **implementing plans**, or **starting any task that changes code or vault structure**. The catalog is cheap to read — when in doubt, check it.
+Before making plans, implementing plans, or starting any task that changes code or vault structure. The catalog is cheap to read — when in doubt, check it.
 
-## Search Algorithm
+## Search algorithm
 
-When looking for relevant lessons:
+1. Load `.compass/meta/lessons-catalog.yaml`.
+2. Skip `status: archived`.
+3. Judge relevance from summaries, tags, areas, categories. Use judgment about the intent of the work, not just keyword overlap.
+4. Read the full lesson files for the ones you judged relevant (3-5 max).
+5. Apply.
 
-1. **Read catalog**: Load `.compass/meta/lessons-catalog.yaml`
-2. **Filter out archived**: Skip entries with `status: archived`
-3. **Judge relevance**: Read the summaries, tags, areas, and categories. Use your judgment to decide which lessons are relevant to the current task — don't rely on mechanical tag matching. Consider the intent of the work, not just keyword overlap.
-4. **Load relevant lessons**: Read the full lesson files for the ones you judged relevant (typically 3-5 max)
-5. **Apply**: Incorporate relevant lessons into your approach
+For large catalogs (20+ entries), spawn a subagent to filter and return just the relevant filenames — keeps the main context clean.
 
-For large catalogs (20+ entries), spawn a subagent to review the catalog and return the relevant filenames — this keeps the main context clean.
-
-If the catalog doesn't exist or is empty, fall back to:
+If the catalog doesn't exist:
 ```
 Glob: .compass/lessons/*.md
 Grep: tags matching current work area/tags
 ```
 
-## When to Create Lessons
+## When to create
 
 ### Process lessons (how to build)
 
-Create when you encounter:
-
-- **Surprising bugs**: Something that behaved differently than expected, especially if the fix was non-obvious
-- **Counter-intuitive patterns**: The correct approach was the opposite of what seemed natural
-- **Misleading documentation**: Official docs were wrong, incomplete, or led you astray
-- **Environment-specific gotchas**: Something that works on one platform but not another
-- **Tool quirks**: Unexpected behavior in tools, libraries, or frameworks
-- **Performance traps**: Code that looked fine but caused performance issues
+- Surprising bugs where the fix was non-obvious.
+- Counter-intuitive patterns — the right approach was the opposite of natural.
+- Misleading documentation.
+- Environment-specific gotchas.
+- Tool quirks.
+- Performance traps.
 
 ### Domain lessons (what to build)
 
-Create when you discover:
+- Requirement corrections — what users actually need vs. what was assumed.
+- Domain model insights — a concept was misunderstood.
+- User behavior surprises.
+- Constraint discoveries — a business rule, regulation, or technical constraint not known at design time.
+- Integration realities — an external system behaves differently than its docs suggest.
 
-- **Requirement corrections**: What users actually need vs. what was assumed
-- **Domain model insights**: A concept was misunderstood or modeled incorrectly
-- **User behavior surprises**: Users interact with the system differently than expected
-- **Constraint discoveries**: A business rule, regulation, or technical constraint that wasn't known at design time
-- **Integration realities**: An external system or API behaves differently than its docs suggest
+### Don't create lessons for
 
-### Do NOT create lessons for
+- Standard patterns in official docs.
+- Personal preferences or style.
+- Things obvious once you know the technology.
+- Ephemeral session context (use handoffs).
 
-- Standard patterns documented in official docs
-- Personal preferences or style choices
-- Things that are obvious once you know the technology
-- Ephemeral information (use handoffs for session context)
+## File format
 
-## Lesson File Format
+Lessons live in `.compass/lessons/`. Use the Lesson template from the obsidian skill.
 
-Lessons live in `.compass/lessons/` and follow the Lesson template defined in the **obsidian** skill (`plugin/skills/obsidian/SKILL.md` → Templates → Lesson).
+## Catalog update protocol
 
-## Catalog Update Protocol
+Append-only — entries are never deleted, only archived.
 
-The catalog is **append-only** (entries are never deleted, only marked as archived):
+1. Create the lesson file in `.compass/lessons/`.
+2. Append an entry to `meta/lessons-catalog.yaml` with: `file`, `status: active`, `category`, `area`, `tags`, `score: 5`, `summary`.
+3. Never reorder existing entries.
+4. To retire, set `status: archived` in both the file and the catalog. Don't delete.
 
-1. Create the lesson file in `.compass/lessons/`
-2. Append an entry to `meta/lessons-catalog.yaml` with:
-   - `file`: the lesson filename (`LESSON-<descriptive-slug>.md`)
-   - `status`: `active`
-   - `category`: `process` or `domain` from the lesson frontmatter
-   - `area`: from the lesson frontmatter
-   - `tags`: from the lesson frontmatter
-   - `score`: start at 5 (default)
-   - `summary`: one-line description
-3. Never reorder existing entries
-4. To retire a lesson, set its status to `archived` in both the file and catalog — do not delete
+## Score adjustment
 
-## Score Adjustment
-
-Scores can be adjusted over time:
-- **Increase** (+1 to +3) when a lesson prevents a repeated mistake or applies broadly
-- **Decrease** (-1 to -3) when a lesson turns out to be environment-specific or no longer relevant
-- Range: 1-10, never go below 1 or above 10
+- Increase (+1 to +3) when a lesson prevents a repeated mistake or applies broadly.
+- Decrease (-1 to -3) when a lesson turns out to be environment-specific or no longer relevant.
+- Range: 1-10.

@@ -10,96 +10,59 @@ argument-hint: "[new | iterate <PLAN-NNN>]"
 # Plan — Create or Iterate Implementation Plans
 
 Two modes:
-- **`new`** (or no argument) — spawn the `planner` agent to create a new plan from an approved spec
-- **`iterate <PLAN-NNN>`** — surgically edit an existing plan with confirmation gates
 
-## Mode: New Plan
+- **`new`** (or no argument) — spawn the `planner` agent to create a new plan from an approved spec.
+- **`iterate <PLAN-NNN>`** — surgically edit an existing plan.
 
-Spawn the `planner` agent. It will:
-- Read the approved spec and research findings
-- Propose an outline (waits for approval)
-- Create a detailed plan with ordered tasks
-- Present the full plan for approval
+## New plan
 
-## Mode: Iterate
+Spawn the `planner` agent. It reads the approved spec and research, drafts the full plan, and presents it for approval.
 
-Surgical plan editing. DO NOT rewrite the plan — make targeted changes with ripple-checks.
+## Iterate
 
-=== CRITICAL: NEVER REWRITE THE PLAN — SURGICAL EDITS ONLY ===
-=== CRITICAL: ALWAYS CONFIRM UNDERSTANDING BEFORE EDITING ===
-=== CRITICAL: ALWAYS RIPPLE-CHECK CONSISTENCY ACROSS ALL AFFECTED SECTIONS ===
-
-### CRITICAL CONSTRAINTS
-
-- NEVER rewrite the plan from scratch — use Edit for surgical changes only
-- ALWAYS confirm your understanding before editing
-- ALWAYS ripple-check: if one section changes, propagate to all affected sections
-- NEVER leave open questions in a finalized plan
-- NEVER accept vague requests at face value
-- ALWAYS preserve two-tier success criteria (automated + manual verification) on every task
-- Be SKEPTICAL: question whether the requested change actually improves the plan
-
-### Know Your Failure Modes
-
-You WILL be tempted to:
-- Rewrite the entire plan because it's faster than surgical edits — use Edit instead
-- Skip the confirmation step because the change seems obvious — always confirm
-- Ignore ripple effects in sections far from the edit — check the whole document
-- Accept vague feedback ("make it better") without pushing back
-- Remove two-tier verification criteria to simplify — every task needs both
-- Skip reading the full plan — partial reads cause inconsistent edits
-- Keep patching a plan that's been iterated 4+ times — flag whether re-planning would be better
+Surgical edits only — never rewrite the plan. Confirm understanding before editing. Ripple-check across all affected sections.
 
 ### Protocol
 
-#### Step 1: Identify Plan and Changes
+#### 1. Identify the plan and the changes
 
-Progressive fallback:
-1. **Plan path provided + specific changes described** — proceed directly
-2. **Plan path provided, changes unclear** — read the plan, ask: "What do you want changed?"
-3. **Neither provided** — read `.compass/active.md` and `.compass/index.md` to identify the active plan, then ask
+- Plan path + specific changes → proceed.
+- Plan path, changes unclear → read it, ask: "What do you want changed?"
+- Neither → read `.compass/active.md` and `index.md` to find the active plan, then ask.
 
-#### Step 2: Read Hot Path
+#### 2. Read the hot path
 
-Read `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`, `.compass/meta/config.yaml`
+`.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`, `.compass/meta/config.yaml`.
 
-#### Step 3: Read the Full Plan
+#### 3. Read the full plan
 
-Understand: goal, prerequisites, all phases and tasks, depends_on chains, risks, open questions, non-goals.
+Goal, prerequisites, all phases and tasks, depends_on chains, risks, open questions, non-goals.
 
-#### Step 4: Conditional Research
+#### 4. Conditional research
 
-If the change introduces new technology/dependencies not in the plan:
-- Use Grep/Glob/Read to verify feasibility (lightweight)
-- OR spawn a researcher if deeper investigation is needed
+If the change introduces new tech/dependencies not in the plan, verify feasibility with Grep/Glob/Read. Spawn a researcher only if deeper investigation is needed.
 
-#### Step 5: Check Lessons
+#### 5. Check lessons
 
-Look for lessons that conflict with the requested change. Surface them.
+Surface any lessons that conflict with the requested change.
 
-#### Step 6: Surface Concerns First (Only If Needed)
+#### 6. Surface concerns first (only if needed)
 
-If the change is ambiguous, conflicts with a lesson, or has feasibility issues, surface that BEFORE editing. Otherwise proceed straight to the edits.
+If the change is ambiguous, conflicts with a lesson, or has feasibility issues, raise it before editing. Be specific about the trade-off. Propose what you'll do unless told otherwise. Don't ask "approve?" for things you already know the answer to.
 
-If you do need to surface something:
-- Be specific about the conflict and the trade-off
-- Propose what you'll do unless told otherwise
-- Don't ask "approve?" for things you already know the answer to
+#### 7. Apply surgical edits
 
-#### Step 7: Apply Surgical Edits
+- One Edit call per logical change.
+- Preserve formatting exactly.
+- New tasks use provisional TASK-NNN from the counter.
+- Every task keeps automated + manual verification.
 
-Use Edit for every change:
-- One Edit call per logical change
-- Preserve formatting exactly
-- New tasks use provisional TASK-NNN from the counter
-- Every task needs automated + manual verification
-
-After all edits, append to the plan's `## Revision Log`:
+Append to `## Revision Log`:
 ```
 - YYYY-MM-DD: [What changed] — [Why, from human feedback]
 ```
 
-#### Step 8: Ripple-Check Consistency
+#### 8. Ripple-check
 
 | If this changed... | Check and update... |
 |---------------------|---------------------|
@@ -107,33 +70,28 @@ After all edits, append to the plan's `## Revision Log`:
 | Task added/removed | Phase structure, depends_on chains, numbering |
 | Approach / technology | Prerequisites, risks, relevant tasks |
 | Prerequisites | Phase ordering |
-| Task complexity | Whether task should split or merge |
+| Task complexity | Whether the task should split or merge |
 | Phase removed | Backlog entries, depends_on references |
 
-Apply ripple updates via Edit.
-
-#### Step 9: Assess Research Needs
+#### 9. Assess research needs
 
 If the change introduces unresearched technology:
 1. Flag: "This change introduces [X] with no existing research."
-2. Add a research task to `active.md` or `backlog.md`
-3. Mark affected tasks as `blocked_by: research` if needed
+2. Add a research task to `active.md` or `backlog.md`.
+3. Mark affected tasks `blocked_by: research` if needed.
 
-#### Step 10: No Open Questions
+#### 10. No open questions
 
-Review Open Questions:
-- Resolved? Check off `[x]`
-- New uncertainty? Resolve now or escalate
-- A finalized plan has zero unchecked open questions
+Resolve or escalate every unchecked open question. A finalized plan has zero.
 
-#### Step 11: Update Vault (If Task Structure Changed)
+#### 11. Update the vault
 
-- Update `.compass/active.md`
-- Update `.compass/meta/config.yaml` (TASK counter)
-- Update `.compass/index.md` only if title/scope changed significantly
-- Move tasks between active.md and backlog.md if phases changed
+- `active.md` — task list reflects the changes.
+- `config.yaml` — TASK counter incremented.
+- `index.md` — only if title/scope changed significantly.
+- Move tasks between `active.md` and `backlog.md` if phases changed.
 
-### Output Format
+### Output format
 
 ```markdown
 ## Plan Iteration Report
@@ -161,4 +119,12 @@ Review Open Questions:
 - [Concerns about the changes]
 ```
 
-=== REMINDER: SURGICAL EDITS ONLY. CONFIRM BEFORE EDITING. RIPPLE-CHECK EVERYTHING. NO UNRESOLVED QUESTIONS. ===
+## Failure modes worth naming
+
+- Rewriting the plan because it's faster than surgical edits. Use Edit.
+- Skipping confirmation because the change "seems obvious."
+- Ignoring ripple effects in sections far from the edit.
+- Accepting vague feedback ("make it better") without pushing back.
+- Removing two-tier verification to simplify. Every task needs both.
+- Partial reads causing inconsistent edits.
+- Patching a plan iterated 4+ times instead of flagging re-planning as the better option.

@@ -9,58 +9,38 @@ argument-hint: "[brief project description]"
 
 # Vision — Capture the Big Picture Before Specs
 
-The Compass pipeline is Spec → Research → Plan → Build. But specs are SINGLE-PROBLEM. Without a vision step first, projects get crammed into one giant spec or fragmented into specs without coherence.
+The Compass pipeline is Spec → Research → Plan → Build. Specs are single-problem. Without a vision step first, projects get crammed into one giant spec or fragmented into incoherent ones.
 
 This skill captures the vision (overall goal + landscape of needs) and produces a proposed spec list. Then `/compass:spec` runs once per spec.
 
-=== CRITICAL: EASY TO READ, SHORT, SWEET. LONG ONLY WHEN NEEDED. NEVER VERBOSE. ===
-=== CRITICAL: VISION CAPTURES THE WHOLE; SPECS CAPTURE INDIVIDUAL PROBLEMS ===
-=== CRITICAL: NO IMPLEMENTATION DETAILS — SAME RULE AS SPECS ===
-=== CRITICAL: ONE INTERVIEW, ONE VISION DOCUMENT, MULTIPLE PROPOSED SPECS ===
-
-## What a Vision Is
-
-- The project's overall purpose
-- The user/audience
-- The shape of the problem space (the multiple needs)
-- High-level constraints that apply to everything
-- What success looks like at the project level
-
-## What a Vision Is NOT
-
-- A spec (specs are per-problem)
-- An implementation plan (no tech choices)
-- A roadmap with dates (just the landscape)
-- A pitch deck (terse, structured, written for agents to read)
+A vision is the project's purpose, its users, the shape of the problem space, project-wide constraints, and what success looks like. It is not a spec (those are per-problem), not an implementation plan (no tech choices), and not a roadmap with dates.
 
 ## Protocol
 
-### Phase 1: Braindump
+### 1. Braindump
 
 Ask the human:
 > "Tell me everything about what you want to build. Don't worry about structure — just dump it. Goals, problems, users, ideas. I'll organize it after."
 
 Wait. Don't interrupt. Don't ask questions yet.
 
-### Phase 2: Targeted Questions
+### 2. Targeted questions, one at a time
 
-After the braindump, ask ONE question at a time. Required:
-
-1. **Overall goal**: "In one sentence, what's the goal of this project?"
-2. **Users**: "Who uses this? What do they currently do without it?"
-3. **What success looks like**: "If this is wildly successful, what's true that wasn't true before?"
+Required:
+1. **Overall goal:** "In one sentence, what's the goal of this project?"
+2. **Users:** "Who uses this? What do they currently do without it?"
+3. **Success:** "If this is wildly successful, what's true that wasn't true before?"
 
 Optional, ask if not covered:
-
-4. **Hard constraints**: "What constraints apply to the whole project? (budget, infrastructure, regulatory, team)"
-5. **Non-goals at project level**: "What is this project NOT trying to do?"
-6. **Existing context**: "What exists today? What have you tried? What's in the way?"
+4. **Hard constraints:** budget, infrastructure, regulatory, team.
+5. **Non-goals at project level:** what this project is NOT trying to do.
+6. **Existing context:** what exists today, what's been tried, what's in the way.
 
 Read the room. Don't force every question.
 
-### Phase 3: Identify Distinct Needs
+### 3. Identify distinct needs
 
-From the braindump and answers, identify the distinct user needs. Each becomes ONE spec. Use the same rule as the spec skill: if you write "and also" between two needs, they're separate.
+Each distinct need becomes one spec. Use the spec rule: if you write "and also" between two needs, they're separate.
 
 Present:
 
@@ -71,11 +51,7 @@ Based on what you've described, I see N distinct needs that would each become a 
    - User: [who needs this]
    - Success: [what success looks like]
 
-2. **[Need name]** — [one-line problem statement]
-   - User: [who needs this]
-   - Success: [what success looks like]
-
-3. **[Need name]** — ...
+2. ...
 
 Does this list cover everything? Should I:
 - merge any of these (if they're really one problem)?
@@ -84,9 +60,9 @@ Does this list cover everything? Should I:
 - remove any (out of scope)?
 ```
 
-Iterate until the human approves the list.
+Iterate until the human approves.
 
-### Phase 4: Write the Vision Document
+### 4. Write the vision document
 
 Save to `.compass/vision.md`:
 
@@ -102,59 +78,47 @@ updated: YYYY-MM-DD
 # Vision: [Project Name]
 
 ## Goal
-
 [One paragraph — overall purpose and what the world looks like with this project succeeding]
 
 ## Users
-
 [Who uses this and what they currently do without it]
 
 ## Success
-
-[Project-level success criteria — not per-spec, but for the whole thing]
+[Project-level success criteria — not per-spec]
 
 ## Project-Level Constraints
-
-[Constraints that apply across all specs — infrastructure, budget, regulatory, team]
+[Constraints that apply across all specs]
 
 ## Non-Goals
-
 [What this project explicitly is NOT]
 
 ## Spec Roadmap
-
 The following specs will be created from this vision (one at a time):
 
 1. [[SPEC-001-name]] — [one-line problem statement] — status: not yet created
 2. [[SPEC-002-name]] — [one-line problem statement] — status: not yet created
-3. [[SPEC-003-name]] — [one-line problem statement] — status: not yet created
 
 ## Suggested Order
-
-[Based on dependencies and priorities — which spec to write first, what can run in parallel later]
+[Which spec to write first, what can parallelize later]
 ```
 
-### Phase 5: Update index.md — REQUIRED
+### 5. Update index.md — REQUIRED
 
-Add the vision document to `.compass/index.md` as the top entry (above Specs). Add a `## Vision` section with `[[vision]]` and a one-line summary.
+Add a `## Vision` section to `.compass/index.md` (above Specs) with `[[vision]]` and a one-line summary. `index.md` is what the next session reads first.
 
-This is not optional. `index.md` is what the next session reads first.
-
-### Phase 6: Hand Off
-
-Tell the human:
+### 6. Hand off
 
 > "Vision captured. The spec roadmap has N items.
 >
-> Next: pick one need from the list and run `/compass:spec` to interview deeply on just that one.
+> Next: pick one need and run `/compass:spec` to interview deeply on just that one.
 >
 > Want to start with [first item], or pick a different one?"
 
-DO NOT spawn the spec writer automatically. The human chooses.
+Don't auto-spawn the spec writer. The human chooses.
 
-## Bad/Good Examples
+## Examples
 
-**Bloated single spec — Bad:**
+**Bloated single spec — bad:**
 ```
 SPEC-001: Build the AE plugin
   - AI image editing
@@ -163,12 +127,11 @@ SPEC-001: Build the AE plugin
   - User auth
   - Billing
 ```
-(Five problems crammed into one spec.)
 
-**Vision + spec list — Good:**
+**Vision + spec list — good:**
 ```
 vision.md
-  Goal: Bring AI capabilities natively into After Effects so artists never leave AE
+  Goal: Bring AI natively into After Effects so artists never leave AE
   Users: VFX artists working on production shots
   Success: Artists complete AI-assisted edits in AE without context switching
 
@@ -179,14 +142,20 @@ Spec Roadmap:
   4. SPEC-004: User authentication
   5. SPEC-005: Usage-based billing
 ```
-(Each spec captures one need. They share the vision but have separate problems and outcomes.)
 
-## When to Re-Run Vision
+## When to re-run vision
 
-- New major direction (re-think the project, not just add a spec)
-- Pivot (the original vision no longer applies)
-- After a project milestone (vision evolves with learning)
+- New major direction (rethink, not just add).
+- Pivot — the original vision no longer applies.
+- After a milestone — vision evolves with learning.
 
-For "I just want to add one more spec," skip vision and run `/compass:spec` directly.
+For "just add one more spec," skip vision and run `/compass:spec` directly.
 
-=== REMINDER: VISION IS THE LANDSCAPE. SPECS ARE INDIVIDUAL PROBLEMS. NEVER SKIP VISION FOR NEW PROJECTS. ===
+## Failure modes worth naming
+
+- Treating the vision as a pitch deck instead of an agent-readable landscape.
+- Asking targeted questions before the braindump finishes.
+- Letting implementation details slip in — vision is about the WHAT, not the HOW.
+- Skipping the distinct-needs check and producing one giant spec list with everything fused.
+- Forgetting to update `index.md` — the vision becomes invisible next session.
+- Auto-spawning the spec writer instead of letting the human pick the first need.

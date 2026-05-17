@@ -7,9 +7,9 @@ allowed-tools: [Read, Glob, Grep]
 
 # Methodology — The Compass Workflow
 
-Compass provides a structured development pipeline that ensures humans own strategic decisions while AI handles execution. Every agent in the Compass system follows this methodology.
+Compass is a structured development pipeline. Humans own strategic decisions; AI handles execution. Every Compass agent follows this methodology.
 
-## The Pipeline
+## The pipeline
 
 ```
 Vision → Spec → Research → Plan → Tasks → Build → Validate
@@ -17,77 +17,68 @@ Vision → Spec → Research → Plan → Tasks → Build → Validate
 
 Each stage produces artifacts that feed the next. Stages can be revisited, but never skipped.
 
-## Document Writing
+## Document writing
 
-Compass documents should be a pleasure to read. Easy to read, short, sweet. Long only when needed. Never verbose.
+Compass documents are a pleasure to read. Short, sweet, long only when needed, never verbose. Research is the exception: it captures evidence and can be as long as required.
 
-Research is the exception: it captures evidence and can be as long as required.
+- **Vision** captures the overall project goal and the landscape of needs (once per project, or per major pivot). Produces `vision.md` and a spec roadmap.
+- **Specs** are single-problem. One spec = one problem = one outcome. Vision prevents bundling.
 
-**Vision** captures the project's overall goal and the landscape of needs (run once per project, or per major pivot). It produces `.compass/vision.md` and a roadmap of specs to write.
+Without vision, projects get crammed into one giant spec or fragmented into incoherent ones.
 
-**Specs** are SINGLE-PROBLEM. One spec = one problem = one outcome. The vision step prevents the natural tendency to bundle multiple needs into a single spec.
+## Hot path
 
-Without vision, projects either get crammed into one giant spec or fragmented into incoherent specs without shared direction.
+Every agent reads first, before anything else:
 
-## Hot Path
+1. `.compass/index.md` — master map.
+2. `.compass/active.md` — current tasks.
+3. `.compass/meta/lessons-catalog.yaml` — scan for relevant lessons.
 
-Every agent MUST read the hot path first, before doing any other work:
+This is the cache line — minimum context to orient. Load specific specs/research/plans only after.
 
-1. `.compass/index.md` — Master map of all project documents
-2. `.compass/active.md` — Current tasks (in-progress + blocked)
-3. `.compass/meta/lessons-catalog.yaml` — Scan for relevant lessons
+## Human involvement gradient
 
-This is the "cache line" — the minimum context needed to orient. Only after reading the hot path should an agent load additional documents (specs, research, plans) as needed.
-
-## Human Involvement Gradient
-
-| Level | Human Role | AI Role | Autonomy |
+| Level | Human role | AI role | Autonomy |
 |-------|-----------|---------|----------|
-| Specs | Human models, makes decisions | Ask questions one at a time, structure answers | LOW — agent never fills blanks without permission |
-| Research | Human reviews findings, redirects | Execute autonomously, present evidence with confidence | MEDIUM — agent works independently but never decides |
-| Plans | Human approves before tasks are created | Propose based on specs + research | MEDIUM — agent proposes, human approves |
-| Tasks | Human reviews output | Execute autonomously, write tests, update status | HIGH — agent works independently within defined scope |
-| Decisions (ADRs) | Human approves | Present options with evidence | LOW — agent presents, human decides |
+| Specs | Models and decides | Asks one question at a time, structures answers | LOW |
+| Research | Reviews, redirects | Executes autonomously, presents evidence | MEDIUM |
+| Plans | Approves before tasks are created | Proposes from spec + research | MEDIUM |
+| Tasks | Reviews output | Executes autonomously, writes tests | HIGH |
+| ADRs | Approves | Presents options with evidence | LOW |
 
-**Agents own execution. Humans own strategy.** The strategic gates (spec approval, plan approval, CLAUDE.md changes, migration of existing projects) require human approval. Everything else is the agent's judgment. Don't ask for permission inside your scope.
+Agents own execution. Humans own strategy. Strategic gates (spec approval, plan approval, CLAUDE.md changes, project migration) require human approval. Everything else is the agent's judgment. Don't ask for permission inside your scope.
 
-If a decision has architectural implications and you proceed with it, record it as an ADR.
+If a decision has architectural implications and you proceed, record it as an ADR.
 
-## Decision Recording (ADRs)
+## ADRs (decision records)
 
-Architecture Decision Records are **orthogonal to the pipeline** — they can be created at any stage when a significant decision is made.
+Orthogonal to the pipeline — create at any stage when a significant decision is made:
+- Choosing between approaches with meaningful trade-offs.
+- Adopting or abandoning a technology, pattern, or convention.
+- Anything that would surprise a future team member.
 
-When to create an ADR:
-- Choosing between competing approaches with meaningful trade-offs
-- Adopting or abandoning a technology, pattern, or convention
-- Any decision that would surprise a future team member
+Live in `.compass/decisions/`, named `ADR-NNN-descriptive-name.md`.
 
-ADRs live in `.compass/decisions/` and follow the `ADR-NNN-descriptive-name.md` naming convention.
+## Testing mandate
 
-## Testing Mandate
+Non-negotiable. Every agent that writes code:
 
-**Non-negotiable.** Every agent that writes code MUST:
+1. Picks the test type (property-based, unit, integration — agent's call).
+2. Tests live outside `.compass/`, in the project's normal test directory.
+3. Covers the code being written or modified.
+4. Runs the full suite to ensure nothing is broken.
 
-1. **Determine test type**: Analyze the project and code to decide between property-based tests, unit tests, or integration tests. The agent decides — this is not prescribed.
-2. **Set up test location**: Tests live OUTSIDE `.compass/`, integrated with the project's own code. The agent defines a centralized test structure appropriate for the project's language and framework.
-3. **Write tests**: Cover the code being written or modified.
-4. **Run full test suite**: Execute ALL existing tests to ensure nothing is broken.
+Tests are the safety net that lets humans trust AI-written code.
 
-Tests are the safety net that allows humans to trust AI-written code. Skipping tests is never acceptable.
+## Task execution
 
-## Task Execution
+When `active.md` has approved tasks, execute via **builder agents**, not inline in the main conversation. Builders run in isolated worktrees (reviewable before merge), auto-trigger the tester via SubagentStop, and follow the full protocol (scope check, smoke test, code review).
 
-When a plan has approved tasks in `active.md`, they should be executed by **builder agents**, not by the main conversation writing code inline. This is important because:
-- Builders run in isolated worktrees (changes are reviewable before merge)
-- Builders auto-trigger the tester agent via SubagentStop hook
-- Builders follow the full protocol (scope check, smoke test, code review)
-- The main conversation loses none of this if it codes directly
+The main conversation's job during execution: orchestration — spawn builders, review output, handle failures, update vault state.
 
-The main conversation's job during execution is **orchestration**: spawn builders, review their output, handle failures, update vault state.
+## Parallel execution
 
-## Parallel Execution Pattern
-
-When a plan has multiple tasks that can run in parallel (non-overlapping file ownership), use this pattern:
+When a plan has multiple tasks with non-overlapping file ownership:
 
 ```
 Phase 1: PARALLEL BUILDERS
@@ -95,41 +86,27 @@ Phase 1: PARALLEL BUILDERS
   ├── Builder B (files: Z, W) — isolated worktree
   └── Builder C (files: V) — isolated worktree
          ↓ all complete, tester auto-runs on each
-Phase 2: QA REVIEW (validator agent)
-  → Structured report: PASS / FAIL / PARTIAL per task
+Phase 2: QA REVIEW (validator)
+  → PASS / FAIL / PARTIAL per task
          ↓
 Phase 3: TARGETED FIXES (conditional)
   ├── Fix Builder 1 (FAIL items from task A)
   └── Fix Builder 2 (FAIL items from task B)
          ↓ re-test
-Phase 4: RE-REVIEW (loop back to Phase 3, max 3 iterations)
+Phase 4: RE-REVIEW (max 3 iterations)
          ↓ all PASS or stuck
 Phase 5: HANDOFF TO HUMAN
-  → Final report, diff summary, manual verification guide
 ```
 
-**Key rules:**
-- **File exclusivity**: each builder owns non-overlapping files. The planner assigns `files:` per task.
-- **QA as gate**: the validator runs AFTER all builders finish, not during.
-- **Targeted fixes**: fix builders get the specific FAIL diagnosis, not the full task. Surgical fixes.
-- **Loop cap**: max 3 QA cycles. If issues persist, escalate to human with remaining FAILs.
-- **Integration testing**: when a test environment exists, QA should deploy and test, not just static analysis.
+Rules: file exclusivity (planner assigns `files:` per task); validator runs AFTER all builders, not during; fix builders get the specific FAIL, not the full task; loop cap 3, then escalate; integration testing when an environment exists.
 
-**When to use:**
-- Plan has 3+ tasks that touch non-overlapping files
-- Tasks are well-specified (not exploratory)
-- A checkpoint exists to rollback to
+Use when: 3+ tasks on non-overlapping files, well-specified, rollback point exists. Skip for: exploratory work, single-file changes, heavy file overlap.
 
-**When NOT to use:**
-- Exploratory work where requirements are unclear
-- Single-file changes (just run one builder)
-- Tasks with heavy file overlap (serialize instead)
+This pattern applies to research too: N researchers parallel → reviewer consolidates → targeted follow-up → re-review.
 
-This pattern also applies to **research**: spawn N researchers in parallel → reviewer consolidates → targeted follow-up researchers for gaps → re-review. Same structure, different agents.
+## Deep research (citation graph)
 
-## Deep Research Pattern (Citation Graph)
-
-When researching a technique, paper, algorithm, or implementation — going deep requires three perspectives:
+When the technique/paper/algorithm matters deeply, three perspectives:
 
 ```
         (Backward — why it works)
@@ -141,57 +118,38 @@ When researching a technique, paper, algorithm, or implementation — going deep
         (Forward — how it evolved)
 ```
 
-Spawn three researchers in parallel:
+1. **Current:** read the paper and source. Understand exactly what it does.
+2. **Backward:** read references and prior work. Answers "why does it work the way it works?"
+3. **Forward:** newer work that built on it. Answers "what have others done with this?"
 
-1. **Deep researcher (Current)**: read the original paper and source code. Understand exactly what it does, how it works, and the authors' claims.
+Reviewer consolidates all three.
 
-2. **Backward researcher (Ancestors)**: find the papers, references, and prior work that the original cites or builds on. This answers "why does it work the way it works?" Critical for understanding trade-offs and knowing what breaks if you change something.
+Use for: implementing a paper's technique, adopting an algorithm, technologies whose internals matter. Skip for: feasibility checks, API lookups, short-term details.
 
-3. **Forward researcher (Descendants)**: find newer work that built on the original — papers that cite it, implementations that extend it, real-world usage. This answers "what have others done with this?" Provides inspiration for the plan.
-
-Then the reviewer consolidates all three perspectives.
-
-**When to use this pattern:**
-- Implementing a specific technique from a paper
-- Adopting an algorithm or approach
-- Working with a technology whose internals matter (not just its API)
-- High-stakes decisions where understanding foundations matters
-
-**When NOT to use:**
-- Quick feasibility checks
-- Looking up syntax or API usage
-- Short-term implementation details
-
-## TODO Priority Annotations
-
-Use a priority-based TODO annotation system throughout the codebase. These are greppable and can be enforced by CI:
+## TODO priorities
 
 | Annotation | Severity | Meaning |
 |------------|----------|---------|
-| `TODO(0)` | Critical | Never merge — must be resolved before PR |
-| `TODO(1)` | High | Architectural flaw or major bug — fix before release |
+| `TODO(0)` | Critical | Never merge — resolve before PR |
+| `TODO(1)` | High | Major bug or architectural flaw — fix before release |
 | `TODO(2)` | Medium | Minor bug or missing feature — fix soon |
-| `TODO(3)` | Low | Polish, tests, documentation — fix when convenient |
-| `TODO(4)` | Question | Investigation needed — resolve before finalizing design |
-| `PERF` | Performance | Optimization opportunity — not a bug, but worth revisiting |
+| `TODO(3)` | Low | Polish, tests, docs — fix when convenient |
+| `TODO(4)` | Question | Investigation — resolve before finalizing design |
+| `PERF` | Performance | Optimization opportunity |
 
-Rules:
-- `TODO(0)` and `TODO(1)` are merge blockers — agents MUST resolve them before marking a task done
-- `TODO(2)` and `TODO(3)` are acceptable in merged code but should be tracked
-- `TODO(4)` should be converted to a research question or resolved before the plan is finalized
-- Always include a brief description: `TODO(2): handle edge case where input is empty`
+`TODO(0)` and `TODO(1)` are merge blockers. `TODO(4)` should become a research question or resolve before plan finalization. Always include a brief description: `TODO(2): handle empty input`.
 
-## Commit Conventions
+## Commits
 
 When an agent is instructed to commit:
 
-- Always use `git add <specific-file>` — never `git add -A` or `git add .`
-- Never commit `.compass/tmp/` contents or draft handoffs not ready for source control
-- Commit messages use imperative mood and explain *why* (from conversation context), not just *what* (from diff)
-- After committing, run `git log --oneline -3` to confirm
-- Agents should only commit when explicitly instructed — never auto-commit without human approval
+- `git add <specific-file>` — never `-A` or `.`.
+- Never commit `.compass/tmp/` or draft handoffs not ready for source control.
+- Imperative mood. Explain *why* (from conversation), not just *what* (from diff).
+- After committing: `git log --oneline -3` to confirm.
+- Only commit when explicitly instructed.
 
-## Status Transitions
+## Status transitions
 
 ```
 draft → review → approved → active → done → archived
@@ -199,161 +157,130 @@ draft → review → approved → active → done → archived
 
 | Transition | Who | When |
 |-----------|-----|------|
-| draft → review | Agent | Work is complete, ready for human review |
-| review → approved | Human | Human has reviewed and approved |
-| approved → active | Agent/Human | Work has begun |
-| active → done | Agent | Task completed, tests pass |
+| draft → review | Agent | Ready for human review |
+| review → approved | Human | Reviewed and approved |
+| approved → active | Agent/Human | Work begun |
+| active → done | Agent | Task complete, tests pass |
 | done → archived | Agent/Human | Moved out of hot path |
 
-## Required Artifacts Enforcement
+## Required artifacts
 
-A Compass project is not properly set up unless it has:
+A Compass project isn't properly set up without:
 
-- [ ] At least one **spec** (the vision/purpose of the project)
-- [ ] At least one **ADR** (a recorded decision)
-- [ ] An `index.md` with links to all documents
-- [ ] An `active.md` tracking current work
-- [ ] A `meta/config.yaml` with numbering counters
-- [ ] A `meta/lessons-catalog.yaml` (can be empty)
+- [ ] At least one **spec** (project vision/purpose).
+- [ ] At least one **ADR** (recorded decision).
+- [ ] `index.md` linking all documents.
+- [ ] `active.md` tracking current work.
+- [ ] `meta/config.yaml` with counters.
+- [ ] `meta/lessons-catalog.yaml` (can be empty).
 
-**If any of these are missing, the agent MUST flag this and request their creation.** These are not optional — they are the minimum viable vault.
+If any are missing, flag and request creation.
 
-## Compass Uses Compass
+## Compass uses Compass
 
-When bootstrapping a new project, Compass applies its own methodology:
-- Bootstrap creates `SPEC-001` for the project setup itself
-- Tasks for onboarding are tracked in `active.md`
-- Decisions about project setup become ADRs
+Bootstrapping a new project applies the same methodology — Bootstrap creates `SPEC-001` for project setup, tasks tracked in `active.md`, decisions become ADRs. Not a special case; the standard workflow applied to itself.
 
-This is not a special case — it's the standard workflow applied to itself.
+## Handoffs
 
-## Handoffs (Session Continuity)
+When a session ends with work in progress, create a handoff. Use `handoff-create`:
+- Compress session state into a portable document.
+- Capture git state (branch, commit), task progress, file references, decisions, blockers.
+- Use `file:line` references, never copy large code blocks.
+- Save to `.compass/handoffs/YYYY-MM-DD_HH-MM-SS_description.md`.
 
-When a conversation ends with work in progress, create a handoff document to preserve context for the next session.
+When resuming, use `handoff-resume`:
+- Verify git branch, commit, file existence.
+- Classify scenario: clean continuation, diverged codebase, incomplete work, or stale handoff.
+- Present situational report before acting.
+- Never blindly trust a handoff.
 
-**Creating a handoff** (use the `handoff-create` agent):
-- Compress session state into a portable document
-- Capture git state (branch, commit hash), task progress, file references, decisions, blockers
-- Use `file:line` references, never copy large code blocks
-- Save to `.compass/handoffs/YYYY-MM-DD_HH-MM-SS_description.md`
+## Debug isolation
 
-**Resuming from a handoff** (use the `handoff-resume` agent):
-- Read the handoff, verify current state matches (git branch, commit, file existence)
-- Classify scenario: clean continuation, diverged codebase, incomplete work, or stale handoff
-- Present situational report before taking any action
-- Never blindly trust a handoff — always verify
+For errors and test failures, use the `debug` agent, not the main conversation. Preserves the main context window, keeps scope focused, produces a structured report. Read-only.
 
-## Debug Isolation
+## Autopilot
 
-When investigating errors, test failures, or unexpected behavior, use the `debug` agent instead of debugging in the main conversation. This:
-- Preserves the main conversation's context window for implementation
-- Keeps the investigation scope focused
-- Produces a structured report that the builder can act on
-- Is read-only — the debug agent never edits files
-
-## Autopilot Mode
-
-For well-scoped S/M tasks, the `autopilot` agent can run the full pipeline (research → plan → build) in a single session. Constraints:
-- Only for S or M complexity tasks
-- Pauses for human confirmation after research and after planning
-- Follows all standard rules (testing mandate, ADRs, lessons)
-- Never appropriate for L+ tasks, sensitive systems, or ambiguous requirements
+For well-scoped S/M tasks, `autopilot` runs the full pipeline in one session. Pauses for human confirmation after research and after planning. Never use for L+, sensitive systems, or ambiguous requirements.
 
 ## Validation
 
-After the builder marks tasks done, the `validator` agent can verify that the implementation matches the plan:
-- Reads the plan and diffs git history against it
-- Classifies changes as "matches plan", "deviation (improvement)", or "deviation (problem)"
-- Audits checkbox state — flags items marked done with no corresponding changes
-- Compiles manual verification steps into a final checklist
-- Read-only: reports findings, does not edit files
+After the builder marks tasks done, the `validator` verifies that implementation matches plan:
+- Reads the plan and diffs git history.
+- Classifies as "matches plan," "deviation (improvement)," or "deviation (problem)."
+- Audits checkbox state — flags items marked done with no changes.
+- Compiles a manual verification checklist.
+- Read-only.
 
-Invoke the validator before creating a handoff or PR for any non-trivial implementation.
+Run before any handoff or PR on non-trivial work.
 
-## Retroactive Entry
+## Retroactive entry
 
-`status: done` is a valid initial status for retroactively documented work. When a commit exists without Compass artifacts, the `retroactive` agent can create minimal vault entries:
-- A SPEC with status: done capturing what was built and why
-- A pre-checked task in active.md under "Recently Completed"
-- Optional ADR if the implementation involved a significant decision
+`status: done` is valid as an initial status for retroactively documented work. When a commit exists without Compass artifacts, the `retroactive` agent creates minimal entries: a spec with status `done (retroactive)`, a pre-checked task under "Recently Completed", optionally an ADR. Recovery path, not a shortcut.
 
-This is not a shortcut around the pipeline — it's a recovery path for work that preceded the vault.
+## Plan iteration
 
-## Plan Iteration
+Plans are living. When feedback requires updating an approved plan, use `planner-iterate`, not `planner`. Surgical edits only, confirm understanding, ripple-check across sections, no unresolved questions at close.
 
-Plans are living documents. When feedback requires updating an approved plan, use the `planner-iterate` agent — not the planner (which creates new plans). Plan iteration follows these principles:
-- Surgical edits only — never rewrite the plan wholesale
-- Confirm understanding before making changes
-- Check consistency ripples — a change in one section may require updates in others
-- No unresolved questions — resolve before closing the iteration
+## Tool availability
 
-## Tool Availability
+Agents depending on external tools (MCP, `gh`, specific runtimes) verify availability as step 0. If unavailable, present a clear recovery message rather than failing mid-execution.
 
-Agents that depend on external tools (MCP servers, CLI tools like `gh`, specific runtimes) should verify availability as Step 0 before beginning work. If a required tool is unavailable, present a clear message with recovery instructions rather than failing mid-execution.
-
-## File Organization
+## File organization
 
 ```
 .compass/
 ├── index.md              — HOT: master map with 1-line summaries + [[links]]
-├── active.md             — HOT: current tasks (in-progress + blocked + next up)
+├── active.md             — HOT: current tasks
 ├── backlog.md            — Cold: future tasks
 ├── meta/
 │   ├── config.yaml       — Counters for SPEC/ADR/TASK numbering
-│   └── lessons-catalog.yaml — O(1) tag lookup for lessons
+│   └── lessons-catalog.yaml — O(1) tag lookup
 ├── specs/                — Specifications
 ├── research/             — Research findings
 ├── plans/                — Implementation plans
-├── decisions/            — Architecture Decision Records
-├── lessons/              — Lessons learned
-├── handoffs/             — Session continuity documents
+├── decisions/            — ADRs
+├── lessons/              — Lessons
+├── handoffs/             — Session continuity
 ├── prs/                  — PR descriptions
-└── archive/              — Completed/retired documents
+└── archive/              — Completed/retired
 ```
 
-## Pattern Discovery
+## Pattern discovery
 
-When implementing new code, use the `pattern-finder` agent to see how existing code handles similar patterns before writing your own. The pattern-finder:
-- Returns concrete code snippets with `file:line` references
-- Shows multiple variations if they exist
-- Is a documentarian — it does not critique or recommend, only shows what exists
-- Runs on the `sonnet` model for speed — it's a lightweight lookup, not deep analysis
+Use the `pattern-finder` agent before writing new code to see how existing code handles similar patterns. Returns snippets with `file:line` references, shows variations, documents rather than critiques. Runs on `sonnet` for speed.
 
-Use it when: "How does this codebase handle X?" before implementing your own version of X.
+Use it when: "How does this codebase handle X?" before implementing X.
 
-## Artifact Traceability
+## Artifact traceability
 
-All research, handoff, plan, and decision documents MUST include git traceability in their frontmatter:
+All research, handoff, plan, and decision documents include in frontmatter:
 
 ```yaml
-git_branch: "branch-name"     # Current branch when document was created
-git_commit: "abc1234"         # Short commit hash at creation time
-author: "human or agent name" # Who created the document
+git_branch: "branch-name"
+git_commit: "abc1234"
+author: "human or agent name"
 ```
 
-This enables:
-- Detecting when a document was written against a different state of the codebase
-- Tracing decisions back to the code they were based on
-- Knowing who (or what agent) produced each artifact
+Enables detecting documents written against different code states, tracing decisions to the code they were based on, and knowing who produced each artifact.
 
-## Two-Tier Success Criteria
+## Two-tier success criteria
 
-Every task in a plan MUST have two types of verification:
+Every task has two verification types:
 
-1. **Automated verification**: Commands, tests, or scripts that an agent can run to verify the task is complete. Examples: `pytest tests/`, `npm run lint`, `curl localhost:3000/health`.
-2. **Manual verification**: Checks that require a human to perform. Examples: "UI renders correctly on mobile", "error message is user-friendly", "flow matches the spec's intent".
+1. **Automated:** commands an agent can run (`pytest tests/`, `npm run lint`, `curl localhost:3000/health`).
+2. **Manual:** checks requiring a human ("UI renders correctly on mobile", "error message is user-friendly").
 
-After each phase's automated verification passes, **pause for the human to perform manual verification** before proceeding to the next phase.
+After each phase's automated checks pass, pause for the human to confirm manual checks before moving to the next phase.
 
-Agents MUST NOT check off manual verification items in a plan or active.md until the human explicitly confirms those checks passed. Automated verification items may be checked off by the agent after the command succeeds.
+Agents may check off automated items after the command succeeds. They must NOT check off manual items until the human explicitly confirms.
 
-## Agent Protocol (Common to All Agents)
+## Common agent protocol
 
-0. Verify tool availability (if the agent depends on external tools)
-1. Read the hot path (index.md, active.md, lessons catalog)
-2. Identify what you're here to do
-3. Load additional context as needed (specific specs, research, plans)
-4. Search for relevant lessons
-5. Do the work
-6. Update vault state (active.md, index.md) to reflect changes
-7. Create lessons if you encountered something surprising
+0. Verify tool availability (if dependent on external tools).
+1. Read the hot path.
+2. Identify what you're here to do.
+3. Load additional context as needed.
+4. Search lessons.
+5. Do the work.
+6. Update vault state (active.md, index.md) to reflect changes.
+7. Create lessons for surprises.

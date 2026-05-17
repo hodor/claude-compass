@@ -9,23 +9,17 @@ argument-hint: "[deep] <research question>"
 
 # Research — Spawn Researcher Agents
 
-=== CRITICAL: HAND THE RESEARCHER THE FULL SPEC, NOT A CURATED QUESTION LIST ===
-=== CRITICAL: NEVER PRE-FILTER OR PRE-FRAME — YOU BIAS THE INVESTIGATION ===
+Hand the researcher the full spec, not a curated question list. Pre-filtering biases the investigation — the agent goes into checklist mode and misses everything you didn't think to ask.
 
-## How to Brief a Researcher (Anti-Bias Rule)
-
-The researcher's job is to investigate comprehensively, not answer a checklist. If you hand it a curated set of questions ("watchlist size? cadence? retention?"), it goes into checklist mode and misses everything you didn't think to ask.
-
-**Bad brief (biasing):**
+**Bad brief — biasing:**
 ```
 Research these specific questions:
 - Watchlist size (top-N? CCU threshold? curated?)
 - Cadence-vs-coverage trade-off?
 - History retention (forever? rolling? tiered?)
 ```
-(Narrow, leading, agent will only investigate these.)
 
-**Good brief (open):**
+**Good brief — open:**
 ```
 Read [[SPEC-001-roblox-ingestion]]. Investigate everything needed to plan
 this implementation. The spec describes the NEED. Your job: figure out
@@ -41,25 +35,22 @@ Cover at minimum:
 Do NOT limit yourself to these areas if your investigation reveals others
 that matter. Surface anything an implementer would need.
 ```
-(Open, comprehensive, agent investigates broadly.)
 
-**The rule:** the researcher gets the SPEC + "investigate what we need to plan this." Open questions in the spec are starting points, not the entire scope. The researcher should also surface implementation considerations the spec doesn't yet know to ask about.
+Open questions in the spec are starting points, not the full scope.
 
-## Three Modes
+## Modes
 
-## Mode 1: Single Topic
+### Mode 1 — Single topic
 
-One question, one area. Spawn one `researcher` agent.
+One question, one area. Spawn one `researcher`.
 
-## Mode 2: Multi-Axis Parallel
+### Mode 2 — Multi-axis parallel
 
-Multiple research axes (e.g., codebase patterns, web documentation, tool behavior). Spawn one `researcher` per axis in parallel, then spawn the `reviewer` to consolidate.
+Spawn one `researcher` per genuinely independent dimension (e.g., frontend / backend / deployment) in parallel, then spawn `reviewer` to consolidate. Don't split when you're really just decomposing sub-questions — that's biasing again. When in doubt, use Mode 1.
 
-**When to split into axes:** when the spec genuinely has independent dimensions (e.g., "frontend approach" + "backend approach" + "deployment approach"). NOT when you're just decomposing one investigation into sub-questions — that's biasing again. If in doubt, use Mode 1 with the full spec.
+### Mode 3 — Deep research (citation graph)
 
-## Mode 3: Deep Research (Citation Graph)
-
-For going deep on a technique, paper, algorithm, or implementation. Understanding requires THREE perspectives:
+For going deep on a paper, algorithm, or implementation. Three perspectives:
 
 ```
         (Backward — why it works)
@@ -71,83 +62,60 @@ For going deep on a technique, paper, algorithm, or implementation. Understandin
         (Forward — how it evolved)
 ```
 
-Spawn three researchers in parallel, each with a distinct charter:
+Spawn three researchers in parallel:
 
-**Researcher A — Current (Deep Source):**
-- Use the `/compass:papers` skill to fetch the paper as markdown and its metadata
-- Read the paper and follow the GitHub repo link for source code
-- Understand exactly what it does, how it works, authors' claims
-- Note assumptions, limitations, and stated trade-offs
-- List the linked models/datasets/spaces (real implementations)
+- **Researcher A — Current:** use `/compass:papers` to fetch the paper as markdown + metadata. Read it fully. Follow the GitHub repo. Understand exactly what it does. Note assumptions, limitations, stated trade-offs. List linked models/datasets.
+- **Researcher B — Backward (ancestors):** extract References. For each significant cite (Related Work, Background, Method), fetch with `/compass:papers`. Answer: what insights did this paper inherit?
+- **Researcher C — Forward (descendants):** search `/compass:papers` with keywords from the title and key concepts. Check HF paper page for linked models/datasets. Answer: what have others done with this?
 
-**Researcher B — Backward (Ancestors):**
-- Read the paper's References/Bibliography (from the markdown)
-- For each significant reference, use `/compass:papers` to fetch it
-- Focus on papers cited in Background, Related Work, or Method sections
-- Answer: why does it work the way it works?
-- Build the ancestor graph — what prior work the original builds on
-
-**Researcher C — Forward (Descendants):**
-- Use `/compass:papers` search to find papers citing the original's keywords
-- Check the HF paper page's linked models/datasets for real implementations
-- Look at arXiv for newer work on the same topic
-- Answer: what have others done with this?
-- Provides inspiration for the plan
-
-Then spawn the `reviewer` to consolidate all three perspectives.
+Then spawn `reviewer` to consolidate.
 
 ## Protocol
 
-### Step 1: Classify the Question
+### 1. Classify
 
-- Is it a quick feasibility check or API lookup? → Mode 1
-- Does it have multiple independent axes? → Mode 2
-- Is it about a specific paper, algorithm, technique, or implementation that matters deeply? → Mode 3
+- Quick feasibility or API lookup → Mode 1.
+- Multiple independent axes → Mode 2.
+- Specific paper/algorithm/technique that matters deeply → Mode 3.
 
 If the user invoked with `deep` as the first argument, use Mode 3.
 
-### Step 2: Spawn Researchers
+### 2. Spawn
 
-Per the chosen mode. For Mode 3, be very explicit in each researcher's charter about which perspective they own:
+For Mode 3, be explicit about which perspective each researcher owns:
 
 ```
 Researcher A charter: Use /compass:papers to fetch the paper at arXiv {ID}
 as markdown and metadata. Read it fully. Follow the GitHub repo link and
 read the implementation. Understand exactly what it does and how. Note
 assumptions, limitations, authors' stated trade-offs. List all linked
-models and datasets (real implementations).
+models and datasets.
 
 Researcher B charter: Use /compass:papers to fetch the paper, then extract
-the References section. For each significant reference (especially those
-in Related Work, Background, or Method), use /compass:papers again to
-fetch that cited paper. Answer: what core insights did this paper
-inherit? What prior work does it depend on?
+the References. For each significant reference (Related Work, Background,
+Method), use /compass:papers again. Answer: what core insights did this
+paper inherit? What prior work does it depend on?
 
 Researcher C charter: Use /compass:papers search with keywords from the
-original paper's title and key concepts. Find newer papers that build on
+original paper's title and key concepts. Find newer papers building on
 it. Also check the HF paper page's linked models/datasets for real-world
 implementations. Answer: what have others done with this? What
 limitations did they hit? What extensions exist?
 ```
 
-### Step 3: Consolidate
+### 3. Consolidate
 
-If multiple researchers were spawned (Mode 2 or 3), spawn the `reviewer` agent to consolidate findings into a single report.
+If multiple researchers were spawned, spawn `reviewer` to merge findings into one report.
 
-### Step 4: Present to Human
+### 4. Present
 
 Show the consolidated findings. Save to `.compass/research/RESEARCH-topic-name.md`.
 
-## When to Use Deep Research
+## When to use deep research
 
-- Implementing a specific technique from a paper
-- Adopting an algorithm or approach whose internals matter
-- High-stakes architectural decisions
-- Working with a technology where the foundations matter (not just the API)
+- Implementing a specific technique from a paper.
+- Adopting an algorithm whose internals matter.
+- High-stakes architectural decisions.
+- Technologies where foundations matter, not just the API.
 
-## When NOT to Use Deep Research
-
-- Quick feasibility checks
-- Looking up syntax or API usage
-- Short-term implementation details
-- Topics without primary sources (papers, original implementations)
+Skip for: quick feasibility checks, API/syntax lookups, short-term details, topics without primary sources.
