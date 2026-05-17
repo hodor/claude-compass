@@ -147,11 +147,15 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
 
+**Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before proceeding to Phase 2. Skip if the human asked for `all-phases` mode.
+
 ### Phase 2: [Name]
 
 - [ ] TASK-NNN: [Description] — complexity: L, depends_on: TASK-NNN, TASK-NNN
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
+
+**Pause point:** same as above.
 
 ## Risks
 
