@@ -28,17 +28,19 @@ Use the appropriate agent instead of doing work manually in the main conversatio
 
 | Agent | When to use |
 |-------|-------------|
-| `researcher` | Investigating a topic - spawn N in parallel, then consolidate with `reviewer` |
-| `reviewer` | Consolidating parallel agent outputs - builds convergence matrix |
-| `planner` | Proposing implementation plans from specs + research |
-| `builder` | Executing tasks - codes, runs smoke test, updates vault |
+| `researcher` | General-purpose investigation - used by /compass:research-papers and /compass:research as fallback |
+| `codebase-locator` | Cheap: where do files live? Grep/Glob/LS only, no Read |
+| `codebase-analyzer` | How does this code work? Read-only, traces flow with file:line refs |
+| `pattern-finder` | Concrete examples of patterns already in use (snippets allowed) |
+| `reviewer` | Consolidates parallel agent outputs - convergence matrix |
+| `planner` | Proposes implementation plans from specs + research |
+| `builder` | Executes tasks - codes, runs smoke test, updates vault |
 | `tester` | Auto-spawned after the builder finishes; writes adversarial tests |
 | `validator` | Post-build verification - compares plan vs actual implementation |
-| `debug` | Investigating errors/failures - read-only, isolated context |
-| `pattern-finder` | Finding existing code patterns before writing new code |
-| `pr-describe` | Creating/updating PR descriptions from Compass artifacts |
+| `debug` | Investigating errors / failures - read-only, isolated context |
+| `pr-describe` | Creates / updates PR descriptions from Compass artifacts |
 
-Interactive workflows run as skills (`/compass:spec`, `/compass:plan`, `/compass:handoff`, `/compass:build`, `/compass:autopilot`, `/compass:retroactive`, `/compass:bootstrap`, `/compass:checkup`, `/compass:diagnose`, `/compass:vault-health`, `/compass:vision`, `/compass:papers`, `/compass:research`, `/compass:annotate`, `/compass:guide`).
+Interactive workflows run as skills: `/compass:spec`, `/compass:plan`, `/compass:handoff`, `/compass:build`, `/compass:autopilot`, `/compass:retroactive`, `/compass:bootstrap`, `/compass:checkup`, `/compass:diagnose`, `/compass:vault-health`, `/compass:vision`, `/compass:papers`, `/compass:research`, `/compass:research-codebase`, `/compass:research-papers`, `/compass:annotate`, `/compass:guide`.
 
 ## Skills
 

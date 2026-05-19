@@ -14,7 +14,7 @@ Scans your project's Compass installation and reports problems with actionable f
 
 ### 1. Agents
 
-`.claude/agents/` should contain all 9 Compass agents: `builder`, `debug`, `pattern-finder`, `planner`, `pr-describe`, `researcher`, `reviewer`, `tester`, `validator`.
+`.claude/agents/` should contain all 11 Compass agents: `builder`, `codebase-analyzer`, `codebase-locator`, `debug`, `pattern-finder`, `planner`, `pr-describe`, `researcher`, `reviewer`, `tester`, `validator`.
 
 For each agent: valid YAML frontmatter, `name` and `description` present, `model`/`effort`/`maxTurns` present (warn if missing). Report missing agents, agents with invalid frontmatter, agents that may be outdated.
 
@@ -53,7 +53,7 @@ In `.compass/handoffs/`:
 
 ### 7. Rules
 
-`.claude/rules/` should have: `compass-agent-patterns.md`, `compass-output.md`, `compass-pipeline.md`, `session-start.md`, `wikilinks.md`.
+`.claude/rules/` should have: `compass-agent-patterns.md`, `compass-pipeline.md`, `session-start.md`, `wikilinks.md`.
 
 ### 8. Git state
 
@@ -65,7 +65,7 @@ Uncommitted vault files (handoffs, specs, plans) are invisible to other sessions
 ## Compass Checkup Report
 
 ### Agents
-- [x] 9/9 agents installed
+- [x] 11/11 agents installed
 - [ ] builder.md missing `maxTurns` (WARN)
 
 ### Vault Structure
@@ -88,7 +88,7 @@ Uncommitted vault files (handoffs, specs, plans) are invisible to other sessions
 - [x] SubagentStop builder→tester hook configured
 
 ### Rules
-- [x] 5/5 rule files installed
+- [x] 4/4 rule files installed
 
 ### Git State
 - [ ] 2 uncommitted files in .compass/ - commit before ending session

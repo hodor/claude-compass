@@ -70,7 +70,7 @@ If the branch is pushed, promote `file:line` references to `https://github.com/{
 
 ## Report format
 
-Field lengths: Question (1 sentence), Methodology (1-2 sentences), Finding description (2-3 sentences), Evidence quote (≤125 chars then `...`). Omit Contradictions, Gaps, Raw Evidence sections if empty.
+Field lengths: Question (1 sentence), Methodology (1-2 sentences), Finding description (2-3 sentences for simple findings, OR a 3-5 bullet breakdown when the finding is a flow or algorithm that needs decomposition). Evidence: prefer `file:line` or `arXiv:{ID} §{section}` refs over quotes. If a quote is needed (exact wording matters), cap at ≤125 chars then `...`. Omit Contradictions, Gaps, Raw Evidence if empty.
 
 ```markdown
 ## Research: [Topic]
@@ -86,9 +86,14 @@ From [[SPEC-NNN-name]].
 ### Findings
 
 1. **[Title]** (confidence: high)
-   [2-3 sentences]
-   - `file.py:42` - [≤125 char quote or summary]
-   - [URL] - [≤125 char summary]
+   [2-3 sentences, OR 3-5 bullets for a flow]
+   - `file.py:42` - [what it shows]
+   - [URL] - [what it shows]
+
+2. **[Title]** (confidence: medium)
+   - Step 1: [what happens] (`file.py:10`)
+   - Step 2: [transformation] (`file.py:25`)
+   - Step 3: [output] (`file.py:42`)
 
 ### Contradictions
 - [Finding X] says A; [Finding Y] suggests B. [One-line explanation if known]

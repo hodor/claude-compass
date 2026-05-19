@@ -102,7 +102,7 @@ Grep pattern: "type: spec" in .compass/ glob: "*.md"
 
 ## Document templates
 
-These show every section a document type CAN have, not what every document MUST have. Per `compass-output.md` rule 3: omit empty sections in the file you write - don't stub them. Only required sections are mandatory.
+These show every section a document type CAN have, not what every document MUST have. Omit empty sections in the file you write - don't stub them. Only required sections are mandatory.
 
 Required sections per type:
 - **Spec:** Problem, Desired Outcome.

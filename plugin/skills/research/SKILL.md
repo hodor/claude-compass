@@ -1,98 +1,45 @@
 ---
 name: research
-description: Investigate a topic by spawning researcher agents. Supports single-topic, multi-axis parallel, and deep (citation graph) research modes. Consolidates via the reviewer.
+description: Router for research. Dispatches to /compass:research-codebase or /compass:research-papers depending on whether the question is about code or about an academic paper / algorithm.
 version: 1.0.0
-allowed-tools: [Agent]
-when_to_use: "Use when the user wants to research something. Triggers: 'research this', 'investigate', 'find out how X works', 'what are the options for', 'deep research'."
-argument-hint: "[deep] <research question>"
+allowed-tools: [Read, Bash]
+when_to_use: "Use when the user wants to research something but the type (code vs paper) isn't obvious. Triggers: 'research this', 'investigate', 'find out how X works', 'do some research'. If the user already said 'research the codebase' or 'research this paper', use the specific skill directly."
+argument-hint: "[codebase | papers] <question>"
 ---
 
-# Research - Spawn Researcher Agents
+# Research - Router
 
-Hand the researcher the full spec, not a curated question list. Pre-filtering biases the investigation - the agent goes into checklist mode and misses what an implementer actually needs.
+Compass has two research skills with different shapes. Pick the right one.
 
-The brief shape: "Read [[SPEC-NNN]]. Investigate everything needed to plan this implementation. The spec describes the NEED. Cover at minimum [domain, implementation options, existing solutions, open questions]. Don't limit yourself to these - surface anything an implementer would need."
-
-Open questions in the spec are starting points, not the full scope.
-
-## Modes
-
-### Mode 1 - Single topic
-
-One question, one area. Spawn one `researcher`.
-
-### Mode 2 - Multi-axis parallel
-
-Spawn one `researcher` per genuinely independent dimension (e.g., frontend / backend / deployment) in parallel, then spawn `reviewer` to consolidate. Don't split when you're really just decomposing sub-questions - that's biasing again. When in doubt, use Mode 1.
-
-### Mode 3 - Deep research (citation graph)
-
-For going deep on a paper, algorithm, or implementation. Three perspectives:
-
-```
-        (Backward - why it works)
-              ↓
-    ┌─────────────────────┐
-    │ The thing itself    │   (Current - what it is)
-    └─────────────────────┘
-              ↓
-        (Forward - how it evolved)
-```
-
-Spawn three researchers in parallel:
-
-- **Researcher A - Current:** use `/compass:papers` to fetch the paper as markdown + metadata. Read it fully. Follow the GitHub repo. Understand exactly what it does. Note assumptions, limitations, stated trade-offs. List linked models/datasets.
-- **Researcher B - Backward (ancestors):** extract References. For each significant cite (Related Work, Background, Method), fetch with `/compass:papers`. Answer: what insights did this paper inherit?
-- **Researcher C - Forward (descendants):** search `/compass:papers` with keywords from the title and key concepts. Check HF paper page for linked models/datasets. Answer: what have others done with this?
-
-Then spawn `reviewer` to consolidate.
+| Skill | When | What it spawns |
+|-------|------|----------------|
+| `/compass:research-codebase` | "How does X work in the codebase?", "Where is Y handled?", "Trace this flow" | codebase-locator, codebase-analyzer, pattern-finder. Synthesizes a code-research doc. |
+| `/compass:research-papers` | "Explain this paper", "What's the prior art for X", "Deep research on this algorithm" | Three researchers (Current / Backward / Forward) + reviewer. Synthesizes a paper-research doc with citation graph. |
 
 ## Protocol
 
-### 1. Classify
+### 1. Parse the argument
 
-- Quick feasibility or API lookup → Mode 1.
-- Multiple independent axes → Mode 2.
-- Specific paper/algorithm/technique that matters deeply → Mode 3.
+- `codebase <question>` → dispatch to `/compass:research-codebase`.
+- `papers <topic | arXiv ID>` → dispatch to `/compass:research-papers`.
+- No prefix → classify the question.
 
-If the user invoked with `deep` as the first argument, use Mode 3.
+### 2. Classify if needed
 
-### 2. Spawn
+If the question is ambiguous, ask once:
 
-For Mode 3, be explicit about which perspective each researcher owns:
+> Codebase or papers?
+> - Codebase: how something in this repo works
+> - Papers: an algorithm, technique, or academic paper
 
-```
-Researcher A charter: Use /compass:papers to fetch the paper at arXiv {ID}
-as markdown and metadata. Read it fully. Follow the GitHub repo link and
-read the implementation. Understand exactly what it does and how. Note
-assumptions, limitations, authors' stated trade-offs. List all linked
-models and datasets.
+If the question clearly maps (e.g., mentions an arXiv ID, paper title, "algorithm", "technique"; or mentions a file path, function name, "where", "trace"), skip the question and dispatch.
 
-Researcher B charter: Use /compass:papers to fetch the paper, then extract
-the References. For each significant reference (Related Work, Background,
-Method), use /compass:papers again. Answer: what core insights did this
-paper inherit? What prior work does it depend on?
+### 3. Dispatch
 
-Researcher C charter: Use /compass:papers search with keywords from the
-original paper's title and key concepts. Find newer papers building on
-it. Also check the HF paper page's linked models/datasets for real-world
-implementations. Answer: what have others done with this? What
-limitations did they hit? What extensions exist?
-```
+Invoke the chosen skill with the question. Don't reimplement either skill's logic here.
 
-### 3. Consolidate
+## Failure modes worth naming
 
-If multiple researchers were spawned, spawn `reviewer` to merge findings into one report.
-
-### 4. Present
-
-Show the consolidated findings. Save to `.compass/research/RESEARCH-topic-name.md`.
-
-## When to use deep research
-
-- Implementing a specific technique from a paper.
-- Adopting an algorithm whose internals matter.
-- High-stakes architectural decisions.
-- Technologies where foundations matter, not just the API.
-
-Skip for: quick feasibility checks, API/syntax lookups, short-term details, topics without primary sources.
+- Reimplementing one of the two research flows inline. This skill is a router.
+- Forcing the user to clarify when the question is clearly one type or the other.
+- Defaulting to codebase research when the user clearly asked about a paper (or vice versa).

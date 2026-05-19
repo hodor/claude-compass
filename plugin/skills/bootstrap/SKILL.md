@@ -82,7 +82,7 @@ done
 echo "Skills copied: $(ls -d .claude/skills/*/ | wc -l) directories"
 ```
 
-Run as one Bash call. Verify 9 agents and 5 rules files. If the plugin can't be found, ask the human for the path.
+Run as one Bash call. Verify 11 agents and 4 rules files. If the plugin can't be found, ask the human for the path.
 
 After this, the project is self-contained - anyone who clones gets agents, skills, and rules without installing the plugin.
 
@@ -245,7 +245,7 @@ Present and wait for approval. Write only after approval.
 ### 5. Verify
 
 - [ ] `.claude/agents/` has 9 Compass agents.
-- [ ] `.claude/rules/` has 5 rule files.
+- [ ] `.claude/rules/` has 4 rule files.
 - [ ] `.compass/meta/config.yaml` exists with valid counters.
 - [ ] `.compass/meta/lessons-catalog.yaml` exists.
 - [ ] `.compass/index.md` exists.
@@ -274,8 +274,8 @@ Only skip vision if the human explicitly requests it.
 New project / Existing project with N existing documents
 
 ### Installed
-- [x] 9 agents copied to .claude/agents/
-- [x] 5 rules files copied to .claude/rules/
+- [x] 11 agents copied to .claude/agents/
+- [x] 4 rules files copied to .claude/rules/
 - [x] .compass/ vault scaffolded
 - [x] Hooks configured
 

@@ -32,7 +32,7 @@ Read: .compass/index.md  - what exists?
 ### 2. Respond
 
 **A - No Compass:**
-> Compass isn't set up. Run `/compass:bootstrap` (installs 9 agents, scaffolds `.compass/`, sets up hooks, proposes CLAUDE.md additions). Then `/compass:vision` to capture the project goal and spec roadmap. Want me to run bootstrap?
+> Compass isn't set up. Run `/compass:bootstrap` (installs 11 agents, scaffolds `.compass/`, sets up hooks, proposes CLAUDE.md additions). Then `/compass:vision` to capture the project goal and spec roadmap. Want me to run bootstrap?
 
 **B - Empty vault, no vision:**
 > Compass is set up. Run `/compass:vision` to capture the project goal and a spec roadmap before writing individual specs. Want to start?
@@ -55,15 +55,16 @@ Pipeline: Spec → Research → Plan → Build → Test → Validate
 | Step | Where | What |
 |------|-------|------|
 | Spec | /compass:spec | Capture a single problem |
-| Research | researcher agent (or /compass:research) | Investigate |
+| Research | /compass:research-codebase or /compass:research-papers | Investigate code or papers |
 | Review | reviewer agent | Consolidate parallel research |
 | Plan | /compass:plan or planner agent | Order tasks |
 | Build | /compass:build or builder agent | Write code |
 | Test | tester agent | Auto-spawned after builder |
 | Validate | /compass:validate or validator agent | Final quality gate |
 
+Research sub-agents: codebase-locator (where), codebase-analyzer (how), pattern-finder (examples)
 Session: /compass:handoff (create | resume)
-Utilities: debug agent (errors), pattern-finder (find code), pr-describe (PRs)
+Utilities: debug agent (errors), pr-describe (PRs)
 Skills: /compass:bootstrap, /compass:guide, /compass:checkup, /compass:vault-health, /compass:annotate, /compass:autopilot, /compass:vision, /compass:retroactive, /compass:papers
 ```
 

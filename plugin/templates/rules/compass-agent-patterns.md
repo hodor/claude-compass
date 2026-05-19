@@ -52,4 +52,13 @@ permissionMode: [bypassPermissions for write agents; omit for read-only]
 
 ## Output rules
 
-For what your agent emits, see `compass-output.md`. It applies to every file an agent or skill produces.
+Inline the relevant constraints directly in each agent's prompt - one source of truth per agent, no shared global file. The common ones, applied where they matter:
+
+- Use `file:line` refs, never paste code (exception: `pattern-finder`, whose contract is showing snippets).
+- Show commands and verbatim output, not descriptions of what you would do.
+- Omit empty sections in any output template - don't stub them.
+- No editorial sections (Suggested Follow-ups, Maintenance Assessment) unless the agent's contract is editorial.
+- Open with the result. No preamble, no "I'll help you", no recap.
+- Bound length per field where you can: "(2-3 sentences)", "(one line)".
+
+Pick the subset each agent actually needs and write it into that agent's prompt. Don't reach for a global rule file.
