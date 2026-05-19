@@ -82,7 +82,7 @@ done
 echo "Skills copied: $(ls -d .claude/skills/*/ | wc -l) directories"
 ```
 
-Run as one Bash call. Verify 11 agents and 4 rules files. If the plugin can't be found, ask the human for the path.
+Run as one Bash call. Verify 13 agents and 4 rules files. If the plugin can't be found, ask the human for the path.
 
 After this, the project is self-contained - anyone who clones gets agents, skills, and rules without installing the plugin.
 
@@ -274,7 +274,7 @@ Only skip vision if the human explicitly requests it.
 New project / Existing project with N existing documents
 
 ### Installed
-- [x] 11 agents copied to .claude/agents/
+- [x] 13 agents copied to .claude/agents/
 - [x] 4 rules files copied to .claude/rules/
 - [x] .compass/ vault scaffolded
 - [x] Hooks configured

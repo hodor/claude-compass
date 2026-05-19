@@ -56,7 +56,7 @@ Proceed with implementation? (approve / redirect / abort)
 
 ### 4. Build
 
-Delegate to `/compass:build`. It spawns one builder per task (each in its own worktree per `builder.md`'s `isolation: worktree`), runs the fix loop, then merges task branches back in `depends_on` order with a smoke check after each merge. Halts and escalates if a merge conflicts (would only happen if `files:` ownership was wrong).
+Delegate to `/compass:build`. It spawns one builder per task (each in its own worktree per `builder.md`'s `isolation: worktree`), runs the fix loop, then merges task branches back in `depends_on` order with the tester re-spawned after each merge to catch integration issues. Builders never run tests; the tester does. Halts and escalates if a merge conflicts (would only happen if `files:` ownership was wrong).
 
 ### 5. Validate
 

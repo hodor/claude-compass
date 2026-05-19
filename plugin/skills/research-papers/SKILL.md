@@ -37,7 +37,15 @@ Then wait.
 
 ### 1. Read the hot path
 
-`.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`. Check `.compass/research/` for prior work on this paper or topic - don't duplicate.
+`.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`.
+
+### 1b. Check the vault for prior research
+
+Spawn `vault-locator` with the paper title, arXiv ID, and key technique keywords as the topic. If it returns prior research, plans, or lessons on the same paper, spawn `vault-analyzer` on the most relevant. Surface what the vault already knows before spawning the citation triad - don't redo work the vault already captured.
+
+If the vault already has thorough research on this exact paper, ask the human:
+
+> "[[RESEARCH-name]] already covers this paper. Re-research, follow-up only, or use the existing research?"
 
 ### 2. Identify the seminal paper
 

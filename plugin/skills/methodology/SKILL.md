@@ -72,7 +72,7 @@ Tests are the safety net that lets humans trust AI-written code.
 
 ## Task execution
 
-When `active.md` has approved tasks, execute via **builder agents**, not inline in the main conversation. Builders run in isolated worktrees (reviewable before merge), auto-trigger the tester via SubagentStop, and follow the full protocol (scope check, smoke test, code review).
+When `active.md` has approved tasks, execute via **builder agents**, not inline in the main conversation. Builders run in isolated worktrees (reviewable before merge), follow the full protocol (scope check, code review, vault update), and never run tests themselves. The `tester` is auto-spawned via the `SubagentStop` hook after the builder finishes and handles all test execution.
 
 The main conversation's job during execution: orchestration - spawn builders, review output, handle failures, update vault state.
 
@@ -96,7 +96,7 @@ Phase 4: RE-REVIEW (max 3 iterations)
          ↓ all PASS or stuck
 Phase 5: MERGE BACK - orchestrator (`/compass:build`) merges each task
          branch into the working branch in depends_on order,
-         re-running the smoke check after each merge
+         spawning the tester after each merge to catch integration issues
 Phase 6: HANDOFF TO HUMAN
 ```
 

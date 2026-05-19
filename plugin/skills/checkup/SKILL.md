@@ -14,7 +14,7 @@ Scans your project's Compass installation and reports problems with actionable f
 
 ### 1. Agents
 
-`.claude/agents/` should contain all 11 Compass agents: `builder`, `codebase-analyzer`, `codebase-locator`, `debug`, `pattern-finder`, `planner`, `pr-describe`, `researcher`, `reviewer`, `tester`, `validator`.
+`.claude/agents/` should contain all 13 Compass agents: `builder`, `codebase-analyzer`, `codebase-locator`, `debug`, `pattern-finder`, `planner`, `pr-describe`, `researcher`, `reviewer`, `tester`, `validator`, `vault-analyzer`, `vault-locator`.
 
 For each agent: valid YAML frontmatter, `name` and `description` present, `model`/`effort`/`maxTurns` present (warn if missing). Report missing agents, agents with invalid frontmatter, agents that may be outdated.
 
@@ -65,7 +65,7 @@ Uncommitted vault files (handoffs, specs, plans) are invisible to other sessions
 ## Compass Checkup Report
 
 ### Agents
-- [x] 11/11 agents installed
+- [x] 13/13 agents installed
 - [ ] builder.md missing `maxTurns` (WARN)
 
 ### Vault Structure

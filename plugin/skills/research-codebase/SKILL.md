@@ -45,13 +45,23 @@ Break the question into composable areas: components to investigate, patterns to
 
 ### 4. Spawn parallel sub-agents
 
-Use these specialists - they know their jobs, brief them lightly:
+Two pairs plus pattern-finder. Brief them lightly - they know their jobs.
 
+**Code pair:**
 - **`codebase-locator`** - where files live (cheap, no Reads, returns paths grouped by purpose)
 - **`codebase-analyzer`** - how specific code works (Reads + traces, returns file:line walkthroughs)
+
+**Vault pair:**
+- **`vault-locator`** - which vault docs (specs, ADRs, lessons, prior research) relate to the topic (cheap, no Reads, returns paths grouped by type)
+- **`vault-analyzer`** - extracts what those docs actually say with section refs
+
+**Patterns:**
 - **`pattern-finder`** - concrete examples of patterns already in use (short snippets allowed)
 
-Typical sequence: locator first to map the territory, then analyzer on the promising findings, optionally pattern-finder for "how do we usually do X."
+Typical sequence in parallel:
+1. Spawn `codebase-locator` and `vault-locator` simultaneously - both are cheap, both filter candidates.
+2. When their reports arrive, spawn `codebase-analyzer` on the most promising code paths and `vault-analyzer` on the most relevant vault docs. Both in parallel.
+3. Optionally spawn `pattern-finder` if "how do we usually do X" matters for the question.
 
 All sub-agents are documentarians. Remind them in the brief if needed.
 
@@ -112,8 +122,9 @@ author: codebase-research
 [Patterns and conventions found in the codebase]
 
 ## Related Vault Documents
-- [[SPEC-NNN-name]] - relevant spec
+- [[SPEC-NNN-name]] - relevant spec (from vault-analyzer)
 - [[LESSON-name]] - prior lesson about this area
+- [[ADR-NNN-name]] - decision that constrains this work
 
 ## Open Questions
 [Anything that needs further investigation]

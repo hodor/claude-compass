@@ -31,10 +31,12 @@ Use the appropriate agent instead of doing work manually in the main conversatio
 | `researcher` | General-purpose investigation - used by /compass:research-papers and /compass:research as fallback |
 | `codebase-locator` | Cheap: where do files live? Grep/Glob/LS only, no Read |
 | `codebase-analyzer` | How does this code work? Read-only, traces flow with file:line refs |
+| `vault-locator` | Cheap: which vault docs relate to the topic? Grep/Glob/LS only, no Read |
+| `vault-analyzer` | What do those vault docs say? Read-only, extracts with section refs |
 | `pattern-finder` | Concrete examples of patterns already in use (snippets allowed) |
 | `reviewer` | Consolidates parallel agent outputs - convergence matrix |
 | `planner` | Proposes implementation plans from specs + research |
-| `builder` | Executes tasks - codes, runs smoke test, updates vault |
+| `builder` | Executes tasks - codes, formats, code review, updates vault. Runs no tests; tester does that. |
 | `tester` | Auto-spawned after the builder finishes; writes adversarial tests |
 | `validator` | Post-build verification - compares plan vs actual implementation |
 | `debug` | Investigating errors / failures - read-only, isolated context |
