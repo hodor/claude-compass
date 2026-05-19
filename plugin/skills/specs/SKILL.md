@@ -6,34 +6,34 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Agent]
 when_to_use: "Use when the user has multiple specs to create. Triggers: 'I have a bunch of specs', 'multiple specs', 'braindump', 'organize my ideas into specs'."
 ---
 
-# Specs — Braindump to Multiple Specs
+# Specs - Braindump to Multiple Specs
 
 For when you have many ideas at once and don't want to be asked the same setup questions N times.
 
-=== CRITICAL: BATCH THE SHARED CONTEXT — ASK SHARED QUESTIONS ONCE, NOT PER SPEC ===
-=== CRITICAL: ONE SPEC PER CONCERN — DON'T COLLAPSE UNRELATED IDEAS INTO ONE SPEC ===
+=== CRITICAL: BATCH THE SHARED CONTEXT - ASK SHARED QUESTIONS ONCE, NOT PER SPEC ===
+=== CRITICAL: ONE SPEC PER CONCERN - DON'T COLLAPSE UNRELATED IDEAS INTO ONE SPEC ===
 
 ## Protocol
 
 ### Step 1: Capture the Braindump
 
 Ask the user to dump everything:
-> "Tell me everything you have in your head about what you want to build. Don't worry about structure or completeness — just get it all out. I'll organize it into specs after."
+> "Tell me everything you have in your head about what you want to build. Don't worry about structure or completeness - just get it all out. I'll organize it into specs after."
 
 Wait for the response. Don't interrupt with questions.
 
 ### Step 2: Propose the Spec List
 
-Read the braindump. Identify distinct concerns — each becomes one spec. Present the list:
+Read the braindump. Identify distinct concerns - each becomes one spec. Present the list:
 
 ```
 I see N specs in here:
 
-1. **SPEC: [name]** — [one-line description of the problem/need]
-2. **SPEC: [name]** — [one-line description]
-3. **SPEC: [name]** — [one-line description]
+1. **SPEC: [name]** - [one-line description of the problem/need]
+2. **SPEC: [name]** - [one-line description]
+3. **SPEC: [name]** - [one-line description]
 
-Each follows single responsibility — they could be worked on in parallel.
+Each follows single responsibility - they could be worked on in parallel.
 
 Confirm the list, or tell me what to merge/split/remove?
 ```
@@ -56,7 +56,7 @@ Save these as shared context for all specs.
 
 ### Step 4: Write Each Spec (Lightweight)
 
-For EACH approved spec, write a draft using the shared context PLUS the braindump content for that spec. Do NOT spawn the full spec-writer interview per spec — that would be hundreds of repeated questions.
+For EACH approved spec, write a draft using the shared context PLUS the braindump content for that spec. Do NOT spawn the full spec-writer interview per spec - that would be hundreds of repeated questions.
 
 For each spec, ask only the spec-SPECIFIC questions that aren't already answered:
 - What's the desired outcome for THIS spec?
@@ -71,8 +71,8 @@ After all drafts are written, present them together:
 ```
 N specs drafted (all status: draft):
 
-1. [[SPEC-NNN-name]] — [problem statement summary]
-2. [[SPEC-NNN-name]] — [problem statement summary]
+1. [[SPEC-NNN-name]] - [problem statement summary]
+2. [[SPEC-NNN-name]] - [problem statement summary]
 ...
 
 Want to:
@@ -89,9 +89,9 @@ Based on dependencies between specs (read each spec's content), suggest a sequen
 
 ```
 Suggested order based on dependencies:
-1. SPEC-NNN — foundation, others depend on it
-2. SPEC-NNN, SPEC-NNN — can run in parallel after #1
-3. SPEC-NNN — depends on #2
+1. SPEC-NNN - foundation, others depend on it
+2. SPEC-NNN, SPEC-NNN - can run in parallel after #1
+3. SPEC-NNN - depends on #2
 ```
 
 This gives the human a roadmap without forcing them to figure out dependencies themselves.
@@ -99,12 +99,12 @@ This gives the human a roadmap without forcing them to figure out dependencies t
 ## Know Your Failure Modes
 
 You WILL be tempted to:
-- Ask the same setup questions for each spec — DON'T. Capture shared context ONCE in Step 3.
-- Spawn the full spec-writer for each spec — DON'T. That's hundreds of questions for the user.
-- Collapse multiple concerns into one spec to be efficient — DON'T. Single responsibility.
-- Make implementation decisions in any of the specs — DON'T. Same rule as spec-writer: NEED, not solution.
-- Skip the braindump and start asking structured questions immediately — DON'T. Let the human dump first.
-- Force the human to approve specs one at a time when they want to batch-approve — let them approve all at once.
+- Ask the same setup questions for each spec - DON'T. Capture shared context ONCE in Step 3.
+- Spawn the full spec-writer for each spec - DON'T. That's hundreds of questions for the user.
+- Collapse multiple concerns into one spec to be efficient - DON'T. Single responsibility.
+- Make implementation decisions in any of the specs - DON'T. Same rule as spec-writer: NEED, not solution.
+- Skip the braindump and start asking structured questions immediately - DON'T. Let the human dump first.
+- Force the human to approve specs one at a time when they want to batch-approve - let them approve all at once.
 
 ## When NOT to Use This Skill
 

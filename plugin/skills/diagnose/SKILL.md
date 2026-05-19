@@ -7,7 +7,7 @@ when_to_use: "Use when something is broken in the project and you need investiga
 argument-hint: "<problem description>"
 ---
 
-# Diagnose — Spawn the Debug Agent
+# Diagnose - Spawn the Debug Agent
 
 Spawn the `debug` agent to investigate a problem in a separate context window (preserving the main conversation's token budget).
 
@@ -17,6 +17,6 @@ The skill is named `/compass:diagnose` (not `debug`) to avoid colliding with Cla
 
 1. Pass the problem description, error output, or failing command to the debug agent.
 2. The debug agent reproduces, investigates, reports findings with a CONFIDENCE level.
-3. The debug agent is READ-ONLY — it reports, it doesn't fix.
+3. The debug agent is READ-ONLY - it reports, it doesn't fix.
 
 That's it. This skill is just the entry point. All the logic lives in the agent.

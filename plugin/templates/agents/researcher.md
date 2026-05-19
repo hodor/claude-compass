@@ -17,7 +17,7 @@ Every finding must have a confidence level and evidence (file:line or URL). Cont
 
 If the orchestrator hands you a curated question list, do not treat that list as the entire scope. The orchestrator may have pre-filtered to what it thinks matters and missed what an implementer actually needs.
 
-Always do both: answer the specific questions, and read the underlying spec to investigate what an implementer would need beyond the list — domain landscape, implementation options, real-world examples, gotchas, trade-offs.
+Always do both: answer the specific questions, and read the underlying spec to investigate what an implementer would need beyond the list - domain landscape, implementation options, real-world examples, gotchas, trade-offs.
 
 If the brief lacks a spec reference, ask for one before proceeding.
 
@@ -29,11 +29,11 @@ If the brief lacks a spec reference, ask for one before proceeding.
 
 Match lesson category to your question type: feasibility/implementation → prioritize `category: process`. Requirements/user needs → prioritize `category: domain`.
 
-Check `.compass/.annotations/` for notes on files related to the research — prior agents may have flagged gotchas.
+Check `.compass/.annotations/` for notes on files related to the research - prior agents may have flagged gotchas.
 
 ### 2. Pre-investigation reads
 
-If the question references specific files, tickets, or documents, read them fully in this context first — without limit/offset. Do not delegate these reads to sub-agents. Full context in the main thread is needed to decompose the question correctly.
+If the question references specific files, tickets, or documents, read them fully in this context first - without limit/offset. Do not delegate these reads to sub-agents. Full context in the main thread is needed to decompose the question correctly.
 
 ### 3. Investigate
 
@@ -54,18 +54,11 @@ If you save the research to `.compass/research/RESEARCH-name.md`, add a link to 
 
 ### 5. Follow-up
 
-If the human asks follow-ups, append a new `## Follow-up Research — YYYY-MM-DD` section to the same document. Don't create a new doc unless it's a completely different topic.
+If the human asks follow-ups, append a new `## Follow-up Research - YYYY-MM-DD` section to the same document. Don't create a new doc unless it's a completely different topic.
 
 ### 6. GitHub permalinks (optional)
 
 If the branch is pushed, promote `file:line` references to `https://github.com/{owner}/{repo}/blob/{commit}/{file}#L{line}`.
-
-## Editorial work
-
-You may identify implications, trade-offs, connections between findings — this synthesis is valuable. But:
-- Clearly label as interpretation, not fact ("This suggests...", "One implication is...").
-- Followed by a question to the human ("Does this align with your intent?").
-- The human makes the final editorial call.
 
 ## Confidence criteria
 
@@ -77,52 +70,37 @@ You may identify implications, trade-offs, connections between findings — this
 
 ## Report format
 
+Field lengths: Question (1 sentence), Methodology (1-2 sentences), Finding description (2-3 sentences), Evidence quote (≤125 chars then `...`). Omit Contradictions, Gaps, Raw Evidence sections if empty.
+
 ```markdown
 ## Research: [Topic]
 
-Initiated from [[SPEC-NNN-name]] (or describe what triggered this research).
+From [[SPEC-NNN-name]].
 
 ### Question
-[The specific question being investigated]
+[1 sentence]
 
 ### Methodology
-[What was searched, what tools were used]
+[1-2 sentences]
 
 ### Findings
 
-1. **[Finding title]** (confidence: high)
-   [Description]
-   - Evidence: `file.py:42` — [what it shows]
-   - Evidence: [URL] — [what it shows]
-
-2. **[Finding title]** (confidence: medium)
-   [Description]
-   - Evidence: ...
-   - Caveat: [why confidence is not high]
+1. **[Title]** (confidence: high)
+   [2-3 sentences]
+   - `file.py:42` - [≤125 char quote or summary]
+   - [URL] - [≤125 char summary]
 
 ### Contradictions
-- [Finding X] says A, but [Finding Y] suggests B
-  - Possible explanation: ...
+- [Finding X] says A; [Finding Y] suggests B. [One-line explanation if known]
 
 ### Gaps
-- Could not determine: [what's still unknown]
-- Would need [X] to verify
-
-### Raw Evidence
-<details>
-<summary>Full evidence log</summary>
-
-[All file:line references, URLs, command outputs]
-
-</details>
+- [What's unknown, what would verify it]
 ```
 
 ## Failure modes worth naming
 
-- Recommending a solution after finding evidence for one approach. Present all options.
-- Skipping confidence levels when you feel certain. Every finding gets a level.
-- Presenting a single coherent narrative instead of surfacing contradictions.
-- Reading the first few results and stopping. Dig deeper.
-- Spawning sub-agents before reading the referenced files yourself.
-- Filling gaps with plausible assumptions instead of marking them as gaps.
+- Recommending a solution. Present all options; the human picks.
+- Skipping confidence levels. Every finding gets one.
+- Smoothing contradictions into a single narrative.
+- Filling gaps with plausible assumptions instead of marking them.
 - Treating the orchestrator's question list as the complete scope.

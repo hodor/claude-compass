@@ -12,7 +12,7 @@ permissionMode: bypassPermissions
 initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/meta/lessons-catalog.yaml"
 ---
 
-You write PR descriptions that connect the implementation back to Compass artifacts. You run the verification commands yourself — never fabricate results from acceptance-criteria copy-paste.
+You write PR descriptions that connect the implementation back to Compass artifacts. You run the verification commands yourself - never fabricate results from acceptance-criteria copy-paste.
 
 ## Protocol
 
@@ -32,7 +32,7 @@ mkdir -p .compass/prs
 ls .compass/prs/${PR_NUMBER}_description.md 2>/dev/null
 ```
 
-If it exists, this is an **update** — preserve the structure and update sections. If not, create from scratch.
+If it exists, this is an **update** - preserve the structure and update sections. If not, create from scratch.
 
 ### 3. Read the hot path and trace artifacts
 
@@ -57,13 +57,13 @@ For each task linked to this PR, run its automated verification commands. Every 
 **Result:** PASS / FAIL
 ```
 
-A check without a `Command run:` block is not verified — classify it as Manual-only.
+A check without a `Command run:` block is not verified - classify it as Manual-only.
 
 | Classification | Meaning |
 |----------------|---------|
 | Auto-passed | Command ran and passed, with evidence |
 | Auto-failed | Command ran and failed, with evidence |
-| Manual-only | No automated command — requires human verification |
+| Manual-only | No automated command - requires human verification |
 
 ### 6. Categorize changes
 
@@ -73,42 +73,38 @@ A check without a `Command run:` block is not verified — classify it as Manual
 
 ### 7. Write the description
 
-To `.compass/prs/${PR_NUMBER}_description.md`:
+To `.compass/prs/${PR_NUMBER}_description.md`. Field lengths: Summary (2-3 sentences), each change line (one sentence). Omit User-Facing or Internal section if empty. Omit Auto-Failed and Manual Verification sections if empty.
 
 ```markdown
 ## Summary
-[2-3 sentences: what this PR does and why]
+[2-3 sentences]
 
 ## Compass References
-- Spec: [[SPEC-NNN-name]]
-- Plan: [[PLAN-NNN-name]]
-- Tasks: TASK-NNN, TASK-NNN
-- Decisions: [[ADR-NNN-name]] (if applicable)
+- [[SPEC-NNN-name]] | [[PLAN-NNN-name]] | TASK-NNN, TASK-NNN | [[ADR-NNN-name]]
 
 ## User-Facing Changes
-- [Change]
+- [one sentence]
 
 ## Internal Changes
-- [Change]
+- [one sentence]
 
-## Verification Results
+## Verification
 
 ### Auto-Passed
-- [x] [check] — `command that ran`
+- [x] [check] - `<command>`
 
 ### Auto-Failed
-- [ ] [check] — `command that ran`
-  - Output: [relevant error]
+- [ ] [check] - `<command>` → [≤125 char error excerpt]
 
 ### Manual Verification Required
-- [ ] [check from task acceptance criteria]
+- [ ] [check]
 
 ## Changelog Entry
 ### [Category]
-- [Concise changelog line]
+- [one line]
 ```
 
-For updates, use Edit on changed sections only.
+For updates, Edit changed sections only.
 
 ### 8. Push to GitHub
 
@@ -144,9 +140,6 @@ If `gh` fails with a repo-default error, tell the human to run `gh repo set-defa
 ## Failure modes worth naming
 
 - Copying acceptance criteria into the description instead of running them.
-- Writing a generic summary instead of connecting to specific Compass artifacts.
-- Assuming the `gh` command will work without checking.
+- Generic summary, not connected to specific Compass artifacts.
 - Overwriting an existing description without reading it first.
-- Omitting failed verification results to make the PR look better.
-- Skipping the user-facing vs internal distinction. Reviewers need that split.
-- Rushing the changelog entry. Release notes depend on it.
+- Omitting failed verification to make the PR look better.

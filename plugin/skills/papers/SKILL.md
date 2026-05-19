@@ -7,9 +7,9 @@ when_to_use: "Use when researching a specific paper, algorithm, or technique. Tr
 argument-hint: "<arxiv ID, HF paper URL, or search query>"
 ---
 
-# Papers — Academic Paper Lookup
+# Papers - Academic Paper Lookup
 
-Fetches academic papers as markdown, structured metadata, linked resources, and citation information. Based on the [Hugging Face paper pages API](https://huggingface.co/papers) — no authentication required for reads.
+Fetches academic papers as markdown, structured metadata, linked resources, and citation information. Based on the [Hugging Face paper pages API](https://huggingface.co/papers) - no authentication required for reads.
 
 ## Parsing the paper ID
 
@@ -91,10 +91,10 @@ The `/compass:research deep` pattern uses three researchers: Current, Backward, 
 
 1. Fetch the paper as markdown: `curl -s "https://huggingface.co/papers/{ID}.md"`
 2. Fetch structured metadata for authors, abstract, linked artifacts
-3. Follow the GitHub repo link if present — read the source code
+3. Follow the GitHub repo link if present - read the source code
 4. Note: assumptions, limitations, stated trade-offs
 
-### Backward Researcher (find ancestors — why it works)
+### Backward Researcher (find ancestors - why it works)
 
 1. Fetch the paper markdown
 2. Extract the References / Bibliography section
@@ -102,15 +102,15 @@ The `/compass:research deep` pattern uses three researchers: Current, Backward, 
    - If cited by arXiv ID → fetch via this skill
    - If cited by title → search via `/api/papers/search?q=<title>`
 4. Focus on papers cited in Background, Related Work, or Method sections
-5. Build the ancestor graph — what prior work the original builds on
+5. Build the ancestor graph - what prior work the original builds on
 
-### Forward Researcher (find descendants — how it evolved)
+### Forward Researcher (find descendants - how it evolved)
 
 1. Use search to find papers that cite the original's title or key concepts:
    ```bash
    curl -s "https://huggingface.co/api/papers/search?q=<original title keywords>"
    ```
-2. Check the HF paper page's linked models/datasets — these are real-world implementations
+2. Check the HF paper page's linked models/datasets - these are real-world implementations
 3. Look at arXiv for papers published AFTER the original on the same topic
 4. Focus on papers that extend, improve, or challenge the original
 
@@ -123,8 +123,8 @@ The `/compass:research deep` pattern uses three researchers: Current, Backward, 
 ### Fallbacks
 
 If HF doesn't have the paper, fall back to arXiv directly:
-- `https://arxiv.org/abs/{PAPER_ID}` — abstract page
-- `https://arxiv.org/pdf/{PAPER_ID}` — full PDF
+- `https://arxiv.org/abs/{PAPER_ID}` - abstract page
+- `https://arxiv.org/pdf/{PAPER_ID}` - full PDF
 
 ## When to Use
 
@@ -136,7 +136,7 @@ If HF doesn't have the paper, fall back to arXiv directly:
 
 ## When NOT to Use
 
-- Non-ML papers (HF index may not have them — use arXiv directly)
+- Non-ML papers (HF index may not have them - use arXiv directly)
 - Informal technical blog posts (not papers)
 - API/library documentation (use WebFetch or the docs directly)
 

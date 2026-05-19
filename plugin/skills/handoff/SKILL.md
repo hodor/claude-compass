@@ -34,7 +34,7 @@ A handoff is read first by the next session. Keep it lean. Use `file:line` refer
 
 3. **Meaningful-work check.** If no tasks advanced, no decisions made, no files modified: report "no meaningful work to hand off" and stop. Don't create empty handoffs.
 
-4. **Reconcile index.md.** Walk the vault, find anything not yet linked in `index.md`, add it under the right section. This is the single most important step — the next session reads index.md first. A document not in it is invisible.
+4. **Reconcile index.md.** Walk the vault, find anything not yet linked in `index.md`, add it under the right section. This is the single most important step - the next session reads index.md first. A document not in it is invisible.
 
    ```bash
    find .compass -type f -name "*.md" -not -path "*/tmp/*" -not -path "*/archive/*" -not -path "*/handoffs/*"
@@ -63,10 +63,10 @@ A handoff is read first by the next session. Keep it lean. Use `file:line` refer
    ## Start Here
 
    Read these in order before doing anything else:
-   1. [[SPEC-NNN-name]] — source spec
-   2. [[PLAN-NNN-name]] — plan being executed (currently Phase N)
-   3. [[RESEARCH-name]] — key findings
-   4. `path/to/file.py:42` — [why this location matters]
+   1. [[SPEC-NNN-name]] - source spec
+   2. [[PLAN-NNN-name]] - plan being executed (currently Phase N)
+   3. [[RESEARCH-name]] - key findings
+   4. `path/to/file.py:42` - [why this location matters]
 
    ## Session Summary
    [2-3 sentences: goal + progress]
@@ -77,13 +77,13 @@ A handoff is read first by the next session. Keep it lean. Use `file:line` refer
    | [Task] | done/in-progress/blocked | [note] |
 
    ## Recent Changes
-   - `file:line` — [what changed]
+   - `file:line` - [what changed]
 
    ## Decisions
-   - [Decision]: [Why] — consider ADR if significant
+   - [Decision]: [Why] - consider ADR if significant
 
    ## Learnings
-   - [Surprise/insight] — consider lesson if broadly applicable
+   - [Surprise/insight] - consider lesson if broadly applicable
 
    ## Blockers
    - [What stopped or slowed progress]
@@ -96,12 +96,12 @@ A handoff is read first by the next session. Keep it lean. Use `file:line` refer
    2. [ ] [Second thing]
 
    ## Context for Resuming
-   [Nuance that would be lost — edge cases, abandoned approaches, almost-working state]
+   [Nuance that would be lost - edge cases, abandoned approaches, almost-working state]
    ```
 
 7. **Annotate the plan** (if one is active):
    ```
-   > **Last session:** YYYY-MM-DD — ended mid-Phase N. See handoff [[YYYY-MM-DD_HH-MM-SS_description]] for context.
+   > **Last session:** YYYY-MM-DD - ended mid-Phase N. See handoff [[YYYY-MM-DD_HH-MM-SS_description]] for context.
    ```
 
 8. **Stage.** `git add` the handoff and any updated index/active/plan files. Tell the human to commit.
@@ -116,7 +116,7 @@ The handoff is a snapshot. Trust current state over the handoff. Don't start wor
 
 1. **Resolve the handoff.**
    - If no argument: `ls -t .compass/handoffs/**/*.md | head -5`, present, ask which.
-   - If argument looks like a `PLAN-NNN`: `ls -t .compass/handoffs/<PLAN-NNN>/*.md | head -1` — most recent for that plan.
+   - If argument looks like a `PLAN-NNN`: `ls -t .compass/handoffs/<PLAN-NNN>/*.md | head -1` - most recent for that plan.
    - If argument is a path: use it directly.
 
 2. **Read hot path.** `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`.
@@ -134,10 +134,10 @@ The handoff is a snapshot. Trust current state over the handoff. Don't start wor
    Check each critical file: does it still exist? Modified since the handoff?
 
 5. **Classify scenario:**
-   - **A. Clean continuation** — same branch, same/ahead commit, no unexpected changes → resume from action items.
-   - **B. Diverged** — different branch OR commits by others since handoff → flag, show what changed, ask how to reconcile.
-   - **C. Incomplete work** — uncommitted changes not in handoff → flag, present, ask for intent.
-   - **D. Stale** — >7 days old OR >20 commits since handoff → treat handoff as historical context only, recommend fresh summary.
+   - **A. Clean continuation** - same branch, same/ahead commit, no unexpected changes → resume from action items.
+   - **B. Diverged** - different branch OR commits by others since handoff → flag, show what changed, ask how to reconcile.
+   - **C. Incomplete work** - uncommitted changes not in handoff → flag, present, ask for intent.
+   - **D. Stale** - >7 days old OR >20 commits since handoff → treat handoff as historical context only, recommend fresh summary.
 
 6. **Present the situational report:**
 
@@ -161,7 +161,7 @@ The handoff is a snapshot. Trust current state over the handoff. Don't start wor
    | `file.py` | Modified at :42 | Unchanged | Yes |
 
    ### Action Items from Handoff
-   1. [ ] [Item] — [still relevant?]
+   1. [ ] [Item] - [still relevant?]
 
    ### Recommended Approach
    [Based on scenario]

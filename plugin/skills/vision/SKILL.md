@@ -7,7 +7,7 @@ when_to_use: "Use at the start of a project, or whenever the user has multiple i
 argument-hint: "[brief project description]"
 ---
 
-# Vision — Capture the Big Picture Before Specs
+# Vision - Capture the Big Picture Before Specs
 
 The Compass pipeline is Spec → Research → Plan → Build. Specs are single-problem. Without a vision step first, projects get crammed into one giant spec or fragmented into incoherent ones.
 
@@ -20,7 +20,7 @@ A vision is the project's purpose, its users, the shape of the problem space, pr
 ### 1. Braindump
 
 Ask the human:
-> "Tell me everything about what you want to build. Don't worry about structure — just dump it. Goals, problems, users, ideas. I'll organize it after."
+> "Tell me everything about what you want to build. Don't worry about structure - just dump it. Goals, problems, users, ideas. I'll organize it after."
 
 Wait. Don't interrupt. Don't ask questions yet.
 
@@ -47,7 +47,7 @@ Present:
 ```
 Based on what you've described, I see N distinct needs that would each become a spec:
 
-1. **[Need name]** — [one-line problem statement]
+1. **[Need name]** - [one-line problem statement]
    - User: [who needs this]
    - Success: [what success looks like]
 
@@ -78,13 +78,13 @@ updated: YYYY-MM-DD
 # Vision: [Project Name]
 
 ## Goal
-[One paragraph — overall purpose and what the world looks like with this project succeeding]
+[One paragraph - overall purpose and what the world looks like with this project succeeding]
 
 ## Users
 [Who uses this and what they currently do without it]
 
 ## Success
-[Project-level success criteria — not per-spec]
+[Project-level success criteria - not per-spec]
 
 ## Project-Level Constraints
 [Constraints that apply across all specs]
@@ -95,14 +95,14 @@ updated: YYYY-MM-DD
 ## Spec Roadmap
 The following specs will be created from this vision (one at a time):
 
-1. [[SPEC-001-name]] — [one-line problem statement] — status: not yet created
-2. [[SPEC-002-name]] — [one-line problem statement] — status: not yet created
+1. [[SPEC-001-name]] - [one-line problem statement] - status: not yet created
+2. [[SPEC-002-name]] - [one-line problem statement] - status: not yet created
 
 ## Suggested Order
 [Which spec to write first, what can parallelize later]
 ```
 
-### 5. Update index.md — REQUIRED
+### 5. Update index.md - REQUIRED
 
 Add a `## Vision` section to `.compass/index.md` (above Specs) with `[[vision]]` and a one-line summary. `index.md` is what the next session reads first.
 
@@ -118,7 +118,7 @@ Don't auto-spawn the spec writer. The human chooses.
 
 ## Examples
 
-**Bloated single spec — bad:**
+**Bloated single spec - bad:**
 ```
 SPEC-001: Build the AE plugin
   - AI image editing
@@ -128,7 +128,7 @@ SPEC-001: Build the AE plugin
   - Billing
 ```
 
-**Vision + spec list — good:**
+**Vision + spec list - good:**
 ```
 vision.md
   Goal: Bring AI natively into After Effects so artists never leave AE
@@ -146,8 +146,8 @@ Spec Roadmap:
 ## When to re-run vision
 
 - New major direction (rethink, not just add).
-- Pivot — the original vision no longer applies.
-- After a milestone — vision evolves with learning.
+- Pivot - the original vision no longer applies.
+- After a milestone - vision evolves with learning.
 
 For "just add one more spec," skip vision and run `/compass:spec` directly.
 
@@ -155,7 +155,7 @@ For "just add one more spec," skip vision and run `/compass:spec` directly.
 
 - Treating the vision as a pitch deck instead of an agent-readable landscape.
 - Asking targeted questions before the braindump finishes.
-- Letting implementation details slip in — vision is about the WHAT, not the HOW.
+- Letting implementation details slip in - vision is about the WHAT, not the HOW.
 - Skipping the distinct-needs check and producing one giant spec list with everything fused.
-- Forgetting to update `index.md` — the vision becomes invisible next session.
+- Forgetting to update `index.md` - the vision becomes invisible next session.
 - Auto-spawning the spec writer instead of letting the human pick the first need.

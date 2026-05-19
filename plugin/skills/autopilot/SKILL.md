@@ -7,11 +7,11 @@ when_to_use: "Use for small-to-medium tasks that should run the full pipeline au
 argument-hint: "<task description or TASK-NNN>"
 ---
 
-# Autopilot — Full Pipeline Orchestrator
+# Autopilot - Full Pipeline Orchestrator
 
 Runs the full Compass pipeline by spawning the dedicated agents in sequence. You orchestrate; you don't reimplement their work.
 
-S/M complexity only — hard exit on L or larger. Spawn the agents. Pause at checkpoints for real human confirmation.
+S/M complexity only - hard exit on L or larger. Spawn the agents. Pause at checkpoints for real human confirmation.
 
 ## When to use
 
@@ -56,12 +56,7 @@ Proceed with implementation? (approve / redirect / abort)
 
 ### 4. Build
 
-Check the plan for parallel-safe tasks (non-overlapping `files:` ownership).
-
-- **Parallel-safe:** spawn one `builder` per task, all at once (isolated worktrees). Wait for all builders + testers.
-- **Serial:** spawn one `builder` at a time, in dependency order.
-
-**Fix loop (max 3 cycles):** if testers report bugs, spawn targeted fix builders with the specific FAIL diagnosis. Tester auto-runs again. After 3 cycles, escalate.
+Delegate to `/compass:build`. It spawns one builder per task (each in its own worktree per `builder.md`'s `isolation: worktree`), runs the fix loop, then merges task branches back in `depends_on` order with a smoke check after each merge. Halts and escalates if a merge conflicts (would only happen if `files:` ownership was wrong).
 
 ### 5. Validate
 
@@ -77,7 +72,7 @@ Verify `active.md` has completed tasks checked off, ADRs exist for significant d
 
 ### 7. Commit (if the human approved)
 
-1. Stage specific files with `git add <file>` — never `-A` or `.`.
+1. Stage specific files with `git add <file>` - never `-A` or `.`.
 2. Never stage `.compass/tmp/`.
 3. Commit message explains *why*.
 4. `git log --oneline -3` to confirm.
@@ -97,7 +92,7 @@ Verify `active.md` has completed tasks checked off, ADRs exist for significant d
 | Validate | validator | VERDICT: [PASS/FAIL/PARTIAL] |
 
 ### Changes
-- [[file.py]] — [what and why]
+- [[file.py]] - [what and why]
 
 ### Test Results
 **Command run:** [from tester]
@@ -120,6 +115,6 @@ Verify `active.md` has completed tasks checked off, ADRs exist for significant d
 - Writing code yourself instead of spawning the builder.
 - Skipping the tester because "this is small." It always runs.
 - Skipping the validator because "everything passed." It's the final gate.
-- Rushing checkpoints — present findings and wait for real confirmation.
+- Rushing checkpoints - present findings and wait for real confirmation.
 - Continuing past a weak research phase instead of respawning.
 - Proceeding on an L+ task instead of hard-exiting.

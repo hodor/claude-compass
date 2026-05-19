@@ -49,7 +49,7 @@ Read the top 3-5 matches in full.
 
 ### 3. Group by variation
 
-If multiple patterns exist for the same thing, present each as a separate group. Show all of them — let the caller decide which fits.
+If multiple patterns exist for the same thing, present each as a separate group. Show all of them - let the caller decide which fits.
 
 ## Report format
 

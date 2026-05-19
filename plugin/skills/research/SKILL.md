@@ -7,11 +7,11 @@ when_to_use: "Use when the user wants to research something. Triggers: 'research
 argument-hint: "[deep] <research question>"
 ---
 
-# Research — Spawn Researcher Agents
+# Research - Spawn Researcher Agents
 
-Hand the researcher the full spec, not a curated question list. Pre-filtering biases the investigation — the agent goes into checklist mode and misses everything you didn't think to ask.
+Hand the researcher the full spec, not a curated question list. Pre-filtering biases the investigation - the agent goes into checklist mode and misses everything you didn't think to ask.
 
-**Bad brief — biasing:**
+**Bad brief - biasing:**
 ```
 Research these specific questions:
 - Watchlist size (top-N? CCU threshold? curated?)
@@ -19,7 +19,7 @@ Research these specific questions:
 - History retention (forever? rolling? tiered?)
 ```
 
-**Good brief — open:**
+**Good brief - open:**
 ```
 Read [[SPEC-001-roblox-ingestion]]. Investigate everything needed to plan
 this implementation. The spec describes the NEED. Your job: figure out
@@ -30,7 +30,7 @@ Cover at minimum:
 - The domain (Roblox public data: what's available, rate limits, gotchas)
 - Implementation options (storage, scheduling, orchestration)
 - Existing implementations (how others do longitudinal data ingestion)
-- Open questions in the spec — propose informed answers based on findings
+- Open questions in the spec - propose informed answers based on findings
 
 Do NOT limit yourself to these areas if your investigation reveals others
 that matter. Surface anything an implementer would need.
@@ -40,33 +40,33 @@ Open questions in the spec are starting points, not the full scope.
 
 ## Modes
 
-### Mode 1 — Single topic
+### Mode 1 - Single topic
 
 One question, one area. Spawn one `researcher`.
 
-### Mode 2 — Multi-axis parallel
+### Mode 2 - Multi-axis parallel
 
-Spawn one `researcher` per genuinely independent dimension (e.g., frontend / backend / deployment) in parallel, then spawn `reviewer` to consolidate. Don't split when you're really just decomposing sub-questions — that's biasing again. When in doubt, use Mode 1.
+Spawn one `researcher` per genuinely independent dimension (e.g., frontend / backend / deployment) in parallel, then spawn `reviewer` to consolidate. Don't split when you're really just decomposing sub-questions - that's biasing again. When in doubt, use Mode 1.
 
-### Mode 3 — Deep research (citation graph)
+### Mode 3 - Deep research (citation graph)
 
 For going deep on a paper, algorithm, or implementation. Three perspectives:
 
 ```
-        (Backward — why it works)
+        (Backward - why it works)
               ↓
     ┌─────────────────────┐
-    │ The thing itself    │   (Current — what it is)
+    │ The thing itself    │   (Current - what it is)
     └─────────────────────┘
               ↓
-        (Forward — how it evolved)
+        (Forward - how it evolved)
 ```
 
 Spawn three researchers in parallel:
 
-- **Researcher A — Current:** use `/compass:papers` to fetch the paper as markdown + metadata. Read it fully. Follow the GitHub repo. Understand exactly what it does. Note assumptions, limitations, stated trade-offs. List linked models/datasets.
-- **Researcher B — Backward (ancestors):** extract References. For each significant cite (Related Work, Background, Method), fetch with `/compass:papers`. Answer: what insights did this paper inherit?
-- **Researcher C — Forward (descendants):** search `/compass:papers` with keywords from the title and key concepts. Check HF paper page for linked models/datasets. Answer: what have others done with this?
+- **Researcher A - Current:** use `/compass:papers` to fetch the paper as markdown + metadata. Read it fully. Follow the GitHub repo. Understand exactly what it does. Note assumptions, limitations, stated trade-offs. List linked models/datasets.
+- **Researcher B - Backward (ancestors):** extract References. For each significant cite (Related Work, Background, Method), fetch with `/compass:papers`. Answer: what insights did this paper inherit?
+- **Researcher C - Forward (descendants):** search `/compass:papers` with keywords from the title and key concepts. Check HF paper page for linked models/datasets. Answer: what have others done with this?
 
 Then spawn `reviewer` to consolidate.
 

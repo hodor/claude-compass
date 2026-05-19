@@ -6,7 +6,7 @@ allowed-tools: [Read, Glob, Grep, Bash, Agent]
 when_to_use: "Use when learning Compass, unsure what to do next, starting a new task, or porting an existing project. Triggers: 'how do I use compass', 'what do I do next', 'compass help', 'guide me', 'port this project'."
 ---
 
-# Guide — Compass Workflow Assistant
+# Guide - Compass Workflow Assistant
 
 Detects where the user is and points them at the right next step. Knows the full pipeline and every agent.
 
@@ -15,10 +15,10 @@ Detects where the user is and points them at the right next step. Knows the full
 ### 1. Detect current state
 
 ```
-Glob: .compass/          — vault exists?
-Glob: .claude/agents/    — agents installed?
-Read: .compass/active.md — current tasks?
-Read: .compass/index.md  — what exists?
+Glob: .compass/          - vault exists?
+Glob: .claude/agents/    - agents installed?
+Read: .compass/active.md - current tasks?
+Read: .compass/index.md  - what exists?
 ```
 
 | Situation | Trigger |
@@ -33,7 +33,7 @@ Read: .compass/index.md  — what exists?
 
 ---
 
-## A — No Compass
+## A - No Compass
 
 ```
 I see this project doesn't have Compass set up yet.
@@ -59,12 +59,12 @@ If yes, invoke `/compass:bootstrap`.
 
 ---
 
-## B — Empty vault
+## B - Empty vault
 
 If no `.compass/vision.md`:
 
 ```
-Compass is set up. Before specs, let's capture the vision — the overall
+Compass is set up. Before specs, let's capture the vision - the overall
 goal and the landscape of needs. This prevents your first spec from
 absorbing everything.
 
@@ -91,17 +91,17 @@ If the user wants to document existing work, point to `/compass:retroactive`.
 
 ---
 
-## C — Active work
+## C - Active work
 
 Read `active.md` and present:
 
 ```
 **In Progress:**
-- [ ] TASK-005: Add auth endpoint — Phase 2 of PLAN-002
+- [ ] TASK-005: Add auth endpoint - Phase 2 of PLAN-002
   → Next: spawn the builder
 
 **Blocked:**
-- [ ] TASK-007: Deploy to staging — blocked by TASK-005
+- [ ] TASK-007: Deploy to staging - blocked by TASK-005
 
 **Recently Completed:**
 - [x] TASK-004: Database schema migration
@@ -116,7 +116,7 @@ What would you like to do?
 
 ---
 
-## D — Port an existing project
+## D - Port an existing project
 
 ```
 Here's how porting works:
@@ -137,7 +137,7 @@ Let me check what you have...
 
 ---
 
-## E — Stuck
+## E - Stuck
 
 ```
 **The Pipeline:**
@@ -170,14 +170,14 @@ Let me check what you have...
 | pr-describe | Create PR descriptions |
 
 **Skills:**
-- /compass:bootstrap — set up
-- /compass:guide — this guide
-- /compass:checkup — find problems
-- /compass:vault-health — vault integrity
-- /compass:annotate — sidecar annotations
+- /compass:bootstrap - set up
+- /compass:guide - this guide
+- /compass:checkup - find problems
+- /compass:vault-health - vault integrity
+- /compass:annotate - sidecar annotations
 
 The vault (.compass/) is your knowledge base: specs, plans, research,
-decisions, lessons, handoffs — Obsidian-compatible markdown with YAML
+decisions, lessons, handoffs - Obsidian-compatible markdown with YAML
 frontmatter.
 
 What would you like to do?

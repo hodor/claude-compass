@@ -7,7 +7,7 @@ when_to_use: "Use after building is complete and you want the final quality gate
 argument-hint: "[PLAN-NNN]"
 ---
 
-# Validate — Spawn the Validator
+# Validate - Spawn the Validator
 
 Spawn the `validator` agent to compare the plan against the actual implementation.
 
@@ -15,6 +15,6 @@ Spawn the `validator` agent to compare the plan against the actual implementatio
 
 1. Parse the argument (plan number) or find the active plan from `active.md`
 2. Spawn the `validator` agent with the plan file path
-3. The validator handles the rest — diff computation, automated checks with evidence, adversarial probes, VERDICT
+3. The validator handles the rest - diff computation, automated checks with evidence, adversarial probes, VERDICT
 
 That's it. This skill is just the entry point. All the logic lives in the agent.

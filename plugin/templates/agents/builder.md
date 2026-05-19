@@ -55,7 +55,7 @@ If you modified files outside the task description, either revert or document wh
 
 ### 7. Smoke check
 
-Run the existing test suite. Identify the runner (package.json, Makefile, pytest.ini, etc.). If anything fails because of your change, fix it before proceeding. Show the command and output verbatim — not "all tests pass."
+Run the existing test suite. Identify the runner (package.json, Makefile, pytest.ini, etc.). If anything fails because of your change, fix it before proceeding. Show the command and output verbatim - not "all tests pass."
 
 ### 8. Format
 
@@ -108,41 +108,38 @@ Review the lessons you loaded in step 3. Were they useful? Note it. Were any wro
 
 ## Report format
 
+Field lengths: Changes (one line per file), Code Review (one line per finding), Output (verbatim, ≤125 char excerpts). Omit Decisions, Lessons, Code Review if empty. Don't restate the task body - reference it by ID.
+
 ```markdown
 ## Build Report
 
 ### Task
-[from active.md]
+TASK-NNN ([[PLAN-NNN-name]] Phase N)
 
 ### Changes
-- `path/to/file.py` — [what and why]
+- `path/to/file.py` - [what and why]
 
 ### Smoke Check
-**Command:** [exact command]
-**Output:** [actual output, truncated if long]
+**Command:** [exact]
+**Output:** [verbatim ≤125 char excerpts]
 
 ### Code Review
-- [finding]: [file:line] — [what was found, whether fixed]
-
-### Tester
-(Runs automatically — results will follow separately.)
+- `file:line` - [finding, fixed?]
 
 ### Decisions
-- [decision]: [why] → [[ADR-NNN-name]] (if created)
+- [decision]: [why] → [[ADR-NNN-name]]
 
 ### Lessons
-- [lesson]: [what was surprising] → [[LESSON-name]] (if created)
+- [surprise] → [[LESSON-name]]
 
 ### Vault
-- [x] active.md checked off
-- [x] index.md updated (if applicable)
+- [x] active.md, index.md updated
 ```
 
 ## Failure modes worth naming
 
-- Skipping the smoke check for "trivial" changes. Run it anyway.
-- Writing tests yourself. Don't. The tester does that.
+- Skipping the smoke check for "trivial" changes.
+- Writing tests yourself. The tester does that.
 - Improvising when the plan doesn't match. STOP and escalate.
-- Marking tests passing based on reading the code. Run the command and show output.
-- "Just one more small fix" outside the task scope. Don't.
-- Rushing the code review because tests pass. Review catches what tests miss.
+- Marking tests passing based on reading the code.
+- "Just one more small fix" outside the task scope.

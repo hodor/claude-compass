@@ -1,11 +1,11 @@
 ---
 name: methodology
-description: The Compass development workflow pipeline — Spec, Research, Plan, Tasks, Build, Validate — with human involvement gradient, status transitions, testing mandate, and required artifacts enforcement
+description: The Compass development workflow pipeline - Spec, Research, Plan, Tasks, Build, Validate - with human involvement gradient, status transitions, testing mandate, and required artifacts enforcement
 version: 1.0.0
 allowed-tools: [Read, Glob, Grep]
 ---
 
-# Methodology — The Compass Workflow
+# Methodology - The Compass Workflow
 
 Compass is a structured development pipeline. Humans own strategic decisions; AI handles execution. Every Compass agent follows this methodology.
 
@@ -30,11 +30,11 @@ Without vision, projects get crammed into one giant spec or fragmented into inco
 
 Every agent reads first, before anything else:
 
-1. `.compass/index.md` — master map.
-2. `.compass/active.md` — current tasks.
-3. `.compass/meta/lessons-catalog.yaml` — scan for relevant lessons.
+1. `.compass/index.md` - master map.
+2. `.compass/active.md` - current tasks.
+3. `.compass/meta/lessons-catalog.yaml` - scan for relevant lessons.
 
-This is the cache line — minimum context to orient. Load specific specs/research/plans only after.
+This is the cache line - minimum context to orient. Load specific specs/research/plans only after.
 
 ## Human involvement gradient
 
@@ -52,7 +52,7 @@ If a decision has architectural implications and you proceed, record it as an AD
 
 ## ADRs (decision records)
 
-Orthogonal to the pipeline — create at any stage when a significant decision is made:
+Orthogonal to the pipeline - create at any stage when a significant decision is made:
 - Choosing between approaches with meaningful trade-offs.
 - Adopting or abandoning a technology, pattern, or convention.
 - Anything that would surprise a future team member.
@@ -63,7 +63,7 @@ Live in `.compass/decisions/`, named `ADR-NNN-descriptive-name.md`.
 
 Non-negotiable. Every agent that writes code:
 
-1. Picks the test type (property-based, unit, integration — agent's call).
+1. Picks the test type (property-based, unit, integration - agent's call).
 2. Tests live outside `.compass/`, in the project's normal test directory.
 3. Covers the code being written or modified.
 4. Runs the full suite to ensure nothing is broken.
@@ -74,31 +74,33 @@ Tests are the safety net that lets humans trust AI-written code.
 
 When `active.md` has approved tasks, execute via **builder agents**, not inline in the main conversation. Builders run in isolated worktrees (reviewable before merge), auto-trigger the tester via SubagentStop, and follow the full protocol (scope check, smoke test, code review).
 
-The main conversation's job during execution: orchestration — spawn builders, review output, handle failures, update vault state.
+The main conversation's job during execution: orchestration - spawn builders, review output, handle failures, update vault state.
 
 ## Parallel execution
 
 When a plan has multiple tasks with non-overlapping file ownership:
 
 ```
-Phase 1: PARALLEL BUILDERS
-  ├── Builder A (files: X, Y) — isolated worktree
-  ├── Builder B (files: Z, W) — isolated worktree
-  └── Builder C (files: V) — isolated worktree
+Phase 1: PARALLEL BUILDERS (each in its own worktree)
+  ├── Builder A (files: X, Y) - branch builder-task-001
+  ├── Builder B (files: Z, W) - branch builder-task-002
+  └── Builder C (files: V)    - branch builder-task-003
          ↓ all complete, tester auto-runs on each
-Phase 2: QA REVIEW (validator)
-  → PASS / FAIL / PARTIAL per task
+Phase 2: QA REVIEW (validator) - PASS / FAIL / PARTIAL per task
          ↓
 Phase 3: TARGETED FIXES (conditional)
-  ├── Fix Builder 1 (FAIL items from task A)
-  └── Fix Builder 2 (FAIL items from task B)
+  ├── Fix Builder 1 (FAIL items from task A, same branch)
+  └── Fix Builder 2 (FAIL items from task B, same branch)
          ↓ re-test
 Phase 4: RE-REVIEW (max 3 iterations)
          ↓ all PASS or stuck
-Phase 5: HANDOFF TO HUMAN
+Phase 5: MERGE BACK - orchestrator (`/compass:build`) merges each task
+         branch into the working branch in depends_on order,
+         re-running the smoke check after each merge
+Phase 6: HANDOFF TO HUMAN
 ```
 
-Rules: file exclusivity (planner assigns `files:` per task); validator runs AFTER all builders, not during; fix builders get the specific FAIL, not the full task; loop cap 3, then escalate; integration testing when an environment exists.
+Rules: file exclusivity (planner assigns `files:` per task); validator runs AFTER all builders, not during; fix builders get the specific FAIL, not the full task; loop cap 3, then escalate; merge-back is the orchestrator's job (builders never merge their own branch); a merge conflict halts and escalates - it means file ownership was wrong.
 
 Use when: 3+ tasks on non-overlapping files, well-specified, rollback point exists. Skip for: exploratory work, single-file changes, heavy file overlap.
 
@@ -109,13 +111,13 @@ This pattern applies to research too: N researchers parallel → reviewer consol
 When the technique/paper/algorithm matters deeply, three perspectives:
 
 ```
-        (Backward — why it works)
+        (Backward - why it works)
               ↓
     ┌─────────────────────┐
-    │ The thing itself    │   (Current — what it is)
+    │ The thing itself    │   (Current - what it is)
     └─────────────────────┘
               ↓
-        (Forward — how it evolved)
+        (Forward - how it evolved)
 ```
 
 1. **Current:** read the paper and source. Understand exactly what it does.
@@ -130,11 +132,11 @@ Use for: implementing a paper's technique, adopting an algorithm, technologies w
 
 | Annotation | Severity | Meaning |
 |------------|----------|---------|
-| `TODO(0)` | Critical | Never merge — resolve before PR |
-| `TODO(1)` | High | Major bug or architectural flaw — fix before release |
-| `TODO(2)` | Medium | Minor bug or missing feature — fix soon |
-| `TODO(3)` | Low | Polish, tests, docs — fix when convenient |
-| `TODO(4)` | Question | Investigation — resolve before finalizing design |
+| `TODO(0)` | Critical | Never merge - resolve before PR |
+| `TODO(1)` | High | Major bug or architectural flaw - fix before release |
+| `TODO(2)` | Medium | Minor bug or missing feature - fix soon |
+| `TODO(3)` | Low | Polish, tests, docs - fix when convenient |
+| `TODO(4)` | Question | Investigation - resolve before finalizing design |
 | `PERF` | Performance | Optimization opportunity |
 
 `TODO(0)` and `TODO(1)` are merge blockers. `TODO(4)` should become a research question or resolve before plan finalization. Always include a brief description: `TODO(2): handle empty input`.
@@ -143,7 +145,7 @@ Use for: implementing a paper's technique, adopting an algorithm, technologies w
 
 When an agent is instructed to commit:
 
-- `git add <specific-file>` — never `-A` or `.`.
+- `git add <specific-file>` - never `-A` or `.`.
 - Never commit `.compass/tmp/` or draft handoffs not ready for source control.
 - Imperative mood. Explain *why* (from conversation), not just *what* (from diff).
 - After committing: `git log --oneline -3` to confirm.
@@ -178,7 +180,7 @@ If any are missing, flag and request creation.
 
 ## Compass uses Compass
 
-Bootstrapping a new project applies the same methodology — Bootstrap creates `SPEC-001` for project setup, tasks tracked in `active.md`, decisions become ADRs. Not a special case; the standard workflow applied to itself.
+Bootstrapping a new project applies the same methodology - Bootstrap creates `SPEC-001` for project setup, tasks tracked in `active.md`, decisions become ADRs. Not a special case; the standard workflow applied to itself.
 
 ## Handoffs
 
@@ -207,7 +209,7 @@ For well-scoped S/M tasks, `autopilot` runs the full pipeline in one session. Pa
 After the builder marks tasks done, the `validator` verifies that implementation matches plan:
 - Reads the plan and diffs git history.
 - Classifies as "matches plan," "deviation (improvement)," or "deviation (problem)."
-- Audits checkbox state — flags items marked done with no changes.
+- Audits checkbox state - flags items marked done with no changes.
 - Compiles a manual verification checklist.
 - Read-only.
 
@@ -229,20 +231,20 @@ Agents depending on external tools (MCP, `gh`, specific runtimes) verify availab
 
 ```
 .compass/
-├── index.md              — HOT: master map with 1-line summaries + [[links]]
-├── active.md             — HOT: current tasks
-├── backlog.md            — Cold: future tasks
+├── index.md              - HOT: master map with 1-line summaries + [[links]]
+├── active.md             - HOT: current tasks
+├── backlog.md            - Cold: future tasks
 ├── meta/
-│   ├── config.yaml       — Counters for SPEC/ADR/TASK numbering
-│   └── lessons-catalog.yaml — O(1) tag lookup
-├── specs/                — Specifications
-├── research/             — Research findings
-├── plans/                — Implementation plans
-├── decisions/            — ADRs
-├── lessons/              — Lessons
-├── handoffs/             — Session continuity
-├── prs/                  — PR descriptions
-└── archive/              — Completed/retired
+│   ├── config.yaml       - Counters for SPEC/ADR/TASK numbering
+│   └── lessons-catalog.yaml - O(1) tag lookup
+├── specs/                - Specifications
+├── research/             - Research findings
+├── plans/                - Implementation plans
+├── decisions/            - ADRs
+├── lessons/              - Lessons
+├── handoffs/             - Session continuity
+├── prs/                  - PR descriptions
+└── archive/              - Completed/retired
 ```
 
 ## Pattern discovery

@@ -48,7 +48,7 @@ Research is the exception: it captures evidence and can be as long as required.
 
 ## Testing
 
-- Every code change gets tests. Tests are adversarial — designed to break the code.
+- Every code change gets tests. Tests are adversarial - designed to break the code.
 
 ## Validation
 

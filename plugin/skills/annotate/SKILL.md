@@ -7,7 +7,7 @@ when_to_use: "Reference for the sidecar annotation system. Agents use this direc
 argument-hint: "<action> <vault-path> [note]"
 ---
 
-# Annotate — Sidecar Notes for Vault Files
+# Annotate - Sidecar Notes for Vault Files
 
 Persistent agent notes that live OUTSIDE the content itself, in `.compass/.annotations/`. Notes auto-surface when vault files are read, so agent knowledge compounds across sessions.
 
@@ -30,7 +30,7 @@ Each file:
   "path": "specs/SPEC-001-project-setup.md",
   "notes": [
     {
-      "text": "Section 3 contradicts ADR-002 — check before implementing",
+      "text": "Section 3 contradicts ADR-002 - check before implementing",
       "by": "validator",
       "date": "2026-04-05",
       "tags": ["conflict", "needs-resolution"]
@@ -54,8 +54,8 @@ Each file:
 ```
 
 Optional flags:
-- `--by <agent-name>` — who is annotating (defaults to current agent)
-- `--tags <tag1,tag2>` — categorize the note
+- `--by <agent-name>` - who is annotating (defaults to current agent)
+- `--tags <tag1,tag2>` - categorize the note
 
 ### Show notes for a file
 
@@ -121,13 +121,13 @@ Returns the file content followed by:
 ## Integration with Other Agents
 
 Agents that should ADD annotations:
-- **validator** — flag deviations, stale specs, contradictions
-- **builder** — note implementation surprises per-file
-- **debug** — flag known issues in specific modules
-- **reviewer** — note convergence patterns about specific artifacts
+- **validator** - flag deviations, stale specs, contradictions
+- **builder** - note implementation surprises per-file
+- **debug** - flag known issues in specific modules
+- **reviewer** - note convergence patterns about specific artifacts
 
 Agents that should READ annotations (via `get`):
-- **researcher** — see prior agent notes before investigating
-- **planner** — see flags on specs before planning
-- **builder** — see warnings on files before modifying
-- **handoff-resume** — see accumulated knowledge on artifacts
+- **researcher** - see prior agent notes before investigating
+- **planner** - see flags on specs before planning
+- **builder** - see warnings on files before modifying
+- **handoff-resume** - see accumulated knowledge on artifacts

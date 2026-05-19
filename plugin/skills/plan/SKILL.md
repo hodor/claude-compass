@@ -7,12 +7,12 @@ when_to_use: "Use when the user wants to plan work or modify an existing plan. T
 argument-hint: "[new | iterate <PLAN-NNN>]"
 ---
 
-# Plan — Create or Iterate Implementation Plans
+# Plan - Create or Iterate Implementation Plans
 
 Two modes:
 
-- **`new`** (or no argument) — spawn the `planner` agent to create a new plan from an approved spec.
-- **`iterate <PLAN-NNN>`** — surgically edit an existing plan.
+- **`new`** (or no argument) - spawn the `planner` agent to create a new plan from an approved spec.
+- **`iterate <PLAN-NNN>`** - surgically edit an existing plan.
 
 ## New plan
 
@@ -20,7 +20,7 @@ Spawn the `planner` agent. It reads the approved spec and research, drafts the f
 
 ## Iterate
 
-Surgical edits only — never rewrite the plan. Confirm understanding before editing. Ripple-check across all affected sections.
+Surgical edits only - never rewrite the plan. Confirm understanding before editing. Ripple-check across all affected sections.
 
 ### Protocol
 
@@ -59,7 +59,7 @@ If the change is ambiguous, conflicts with a lesson, or has feasibility issues, 
 
 Append to `## Revision Log`:
 ```
-- YYYY-MM-DD: [What changed] — [Why, from human feedback]
+- YYYY-MM-DD: [What changed] - [Why, from human feedback]
 ```
 
 #### 8. Ripple-check
@@ -86,9 +86,9 @@ Resolve or escalate every unchecked open question. A finalized plan has zero.
 
 #### 11. Update the vault
 
-- `active.md` — task list reflects the changes.
-- `config.yaml` — TASK counter incremented.
-- `index.md` — only if title/scope changed significantly.
+- `active.md` - task list reflects the changes.
+- `config.yaml` - TASK counter incremented.
+- `index.md` - only if title/scope changed significantly.
 - Move tasks between `active.md` and `backlog.md` if phases changed.
 
 ### Output format

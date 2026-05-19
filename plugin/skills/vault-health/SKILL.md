@@ -1,13 +1,13 @@
 ---
 name: vault-health
-description: Validate Compass vault integrity — check frontmatter, wikilinks, orphaned files, and counter consistency. Reports vault health with actionable fixes.
+description: Validate Compass vault integrity - check frontmatter, wikilinks, orphaned files, and counter consistency. Reports vault health with actionable fixes.
 version: 1.0.0
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash]
 when_to_use: "Use when checking vault quality, after a series of changes, before a release, or when something feels off. Triggers: 'vault health', 'check vault', 'validate vault', 'vault build'."
 argument-hint: "[validate | links | orphans | counters | full]"
 ---
 
-# Vault Health — Compass Vault Integrity Check
+# Vault Health - Compass Vault Integrity Check
 
 Runs validation on `.compass/` and reports issues with fixes. Doesn't auto-fix unless asked.
 
@@ -27,7 +27,7 @@ Glob `.compass/**/*.md` (excluding `tmp/`), read each frontmatter, report missin
 
 | File | Status | Issues |
 |------|--------|--------|
-| specs/SPEC-001-setup.md | OK | — |
+| specs/SPEC-001-setup.md | OK | - |
 | plans/PLAN-002-auth.md | WARN | missing `updated` |
 | research/RESEARCH-api.md | FAIL | no frontmatter |
 
@@ -42,8 +42,8 @@ All `[[wikilinks]]` should resolve. Grep `\[\[.*?\]\]` across `.compass/**/*.md`
 ## Wikilink Check
 
 Broken:
-- specs/SPEC-003-api.md:15 — [[PLAN-005-api-impl]] — file not found
-- active.md:8 — [[SPEC-999-nonexistent]] — file not found
+- specs/SPEC-003-api.md:15 - [[PLAN-005-api-impl]] - file not found
+- active.md:8 - [[SPEC-999-nonexistent]] - file not found
 
 Summary: 45 links checked, 2 broken
 ```
@@ -58,8 +58,8 @@ Read `index.md` and all other vault files for wikilinks. List files in `.compass
 ## Orphan Detection
 
 Unreferenced:
-- research/RESEARCH-old-api-study.md — not linked from any vault file
-- lessons/LESSON-stale-cache.md — not linked from index.md
+- research/RESEARCH-old-api-study.md - not linked from any vault file
+- lessons/LESSON-stale-cache.md - not linked from index.md
 
 Summary: 18 files, 2 orphans
 ```
@@ -89,8 +89,8 @@ Vault references should use `[[wikilinks]]`, not bare names or paths. Grep for S
 ## Wikilink Usage
 
 Bare references:
-- plans/PLAN-002-auth.md:15 — mentions "SPEC-001" without [[...]]
-- handoffs/2026-04-05_session.md:42 — uses `.compass/specs/SPEC-003.md` instead of [[SPEC-003-name]]
+- plans/PLAN-002-auth.md:15 - mentions "SPEC-001" without [[...]]
+- handoffs/2026-04-05_session.md:42 - uses `.compass/specs/SPEC-003.md` instead of [[SPEC-003-name]]
 
 Summary: 30 references checked, 2 not using wikilinks
 ```
@@ -100,7 +100,7 @@ Summary: 30 references checked, 2 not using wikilinks
 Runs everything. Default when no argument is given.
 
 ```
-## Vault Health Report — YYYY-MM-DD
+## Vault Health Report - YYYY-MM-DD
 
 ### Frontmatter: 12 OK, 2 WARN, 1 FAIL
 ### Wikilinks: 45 checked, 2 broken

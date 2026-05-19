@@ -1,11 +1,11 @@
 ---
 name: obsidian
-description: Obsidian-compatible formatting conventions — YAML frontmatter schema, wikilinks, file naming, vault search patterns, and document templates for the .compass/ vault
+description: Obsidian-compatible formatting conventions - YAML frontmatter schema, wikilinks, file naming, vault search patterns, and document templates for the .compass/ vault
 version: 1.0.0
 allowed-tools: [Glob, Grep, Read]
 ---
 
-# Obsidian — Vault Formatting & Conventions
+# Obsidian - Vault Formatting & Conventions
 
 Reference for reading and writing `.compass/` documents. Obsidian-compatible markdown with YAML frontmatter and wikilinks.
 
@@ -17,7 +17,7 @@ When you mention a vault document in prose, use `[[wikilinks]]`. Every time. No 
 - Not: "This plan implements the project setup spec"
 - Not: "This plan implements `.compass/specs/SPEC-001-project-setup.md`"
 
-Wikilinks are how documents connect — for agents (grep finds them) and for humans (Obsidian renders the graph). Frontmatter `depends_on` is for structured queries. Inline wikilinks are for navigation.
+Wikilinks are how documents connect - for agents (grep finds them) and for humans (Obsidian renders the graph). Frontmatter `depends_on` is for structured queries. Inline wikilinks are for navigation.
 
 ## YAML frontmatter
 
@@ -25,21 +25,21 @@ Every vault document needs frontmatter:
 
 ```yaml
 ---
-title: "Human-readable title"                    # REQUIRED — all
-type: spec | research | plan | task | lesson | decision | handoff  # REQUIRED — all
-status: draft | review | approved | active | done | archived  # REQUIRED — all
+title: "Human-readable title"                    # REQUIRED - all
+type: spec | research | plan | task | lesson | decision | handoff  # REQUIRED - all
+status: draft | review | approved | active | done | archived  # REQUIRED - all
 confidence: low | medium | high                  # REQUIRED for spec, research, decision
 category: process | domain                       # REQUIRED for lesson
-area: architecture | frontend | backend | testing | devops | infra | docs | workflow  # REQUIRED — all
-tags: [tag1, tag2]                               # REQUIRED — all
-created: YYYY-MM-DD                              # REQUIRED — all
-updated: YYYY-MM-DD                              # REQUIRED — update on every edit
+area: architecture | frontend | backend | testing | devops | infra | docs | workflow  # REQUIRED - all
+tags: [tag1, tag2]                               # REQUIRED - all
+created: YYYY-MM-DD                              # REQUIRED - all
+updated: YYYY-MM-DD                              # REQUIRED - update on every edit
 git_branch: "branch-name"                        # REQUIRED for research, handoff, plan
 git_commit: "abc1234"                            # REQUIRED for research, handoff, plan
 author: "human or agent name"                    # REQUIRED for research, handoff, plan, decision
-blocked_by: "description or [[link]]"            # OPTIONAL — tasks only
-depends_on: ["[[link1]]", "[[link2]]"]           # OPTIONAL — any document
-supersedes: "[[link]]"                           # OPTIONAL — replacing an older document
+blocked_by: "description or [[link]]"            # OPTIONAL - tasks only
+depends_on: ["[[link1]]", "[[link2]]"]           # OPTIONAL - any document
+supersedes: "[[link]]"                           # OPTIONAL - replacing an older document
 ---
 ```
 
@@ -49,12 +49,12 @@ supersedes: "[[link]]"                           # OPTIONAL — replacing an old
 draft → review → approved → active → done → archived
 ```
 
-- `draft` — work in progress, not for review.
-- `review` — ready for human review.
-- `approved` — human approved, not yet started.
-- `active` — currently being worked on.
-- `done` — completed.
-- `archived` — no longer relevant, kept for history.
+- `draft` - work in progress, not for review.
+- `review` - ready for human review.
+- `approved` - human approved, not yet started.
+- `active` - currently being worked on.
+- `done` - completed.
+- `archived` - no longer relevant, kept for history.
 
 ## Wikilinks
 
@@ -79,7 +79,7 @@ Pattern: `TYPE-NNN-descriptive-name.md`
 | Lesson | `LESSON-descriptive-name.md` | `LESSON-yaml-frontmatter-quoting.md` |
 | Handoff | `YYYY-MM-DD_HH-MM-SS_descriptive-name.md` | `2026-03-12_14-30-00_implement-auth-flow.md` |
 
-`NNN` numbers come from `meta/config.yaml` counters. Names must be self-descriptive — `SPEC-001.md` is never acceptable. Lowercase kebab-case for the descriptive part. Research files omit the number.
+`NNN` numbers come from `meta/config.yaml` counters. Names must be self-descriptive - `SPEC-001.md` is never acceptable. Lowercase kebab-case for the descriptive part. Research files omit the number.
 
 ## Vault search patterns
 
@@ -102,7 +102,7 @@ Grep pattern: "type: spec" in .compass/ glob: "*.md"
 
 ## Document templates
 
-Writing rule for all templates: short, sweet, long only when needed, never verbose. Omit empty optional sections — don't stub them. Research is the exception (captures evidence).
+Writing rule for all templates: short, sweet, long only when needed, never verbose. Omit empty optional sections - don't stub them. Research is the exception (captures evidence).
 
 ### Spec
 
@@ -141,7 +141,7 @@ What does success look like when this is done?
 - [ ] Criterion 2
 
 ## Constraints
-Hard limits — technical, legal, organizational, time.
+Hard limits - technical, legal, organizational, time.
 
 ## Assumptions & Dependencies
 What are we betting on? What must be true for this to work?
@@ -158,14 +158,14 @@ Explicitly out of scope.
 
 ### Research
 
-Compass research is a survey of what already exists — not original research. Pick the approach that fits the question:
+Compass research is a survey of what already exists - not original research. Pick the approach that fits the question:
 
 | Approach | When to use | Primary output |
 |----------|------------|----------------|
-| **Scoping Review** (Arksey & O'Malley) | Broad, exploratory — "What is the extent and nature of X?" | Narrative synthesis with gap analysis |
-| **Systematic Literature Review** (Kitchenham) | Focused, evidence-based — "What is the evidence for/against X?" | Synthesized evidence with quality ratings |
-| **Systematic Mapping Study** (Petersen et al.) | Structuring a known field — "What approaches exist and how do they relate?" | Classification scheme + visual map |
-| **Technology Landscape** (Gartner/ThoughtWorks) | Evaluating options — "What tools exist and how do they compare?" | Per-item profiles + comparison matrix |
+| **Scoping Review** (Arksey & O'Malley) | Broad, exploratory - "What is the extent and nature of X?" | Narrative synthesis with gap analysis |
+| **Systematic Literature Review** (Kitchenham) | Focused, evidence-based - "What is the evidence for/against X?" | Synthesized evidence with quality ratings |
+| **Systematic Mapping Study** (Petersen et al.) | Structuring a known field - "What approaches exist and how do they relate?" | Classification scheme + visual map |
+| **Technology Landscape** (Gartner/ThoughtWorks) | Evaluating options - "What tools exist and how do they compare?" | Per-item profiles + comparison matrix |
 
 State the chosen approach in Methodology. Only **Question** and **Findings** are required.
 
@@ -193,22 +193,22 @@ What are we investigating? What would constitute a complete answer?
 What is included and excluded.
 
 ## Methodology
-How the survey was conducted — search terms, sources, tools, inclusion/exclusion criteria. State the chosen approach (scoping review, systematic mapping, technology landscape) and why.
+How the survey was conducted - search terms, sources, tools, inclusion/exclusion criteria. State the chosen approach (scoping review, systematic mapping, technology landscape) and why.
 
 ## Findings
 1. **Finding title** (confidence: high/medium/low)
    Description with specifics.
-   - Evidence: `file:line` — what it shows
-   - Evidence: [URL] — what it shows
+   - Evidence: `file:line` - what it shows
+   - Evidence: [URL] - what it shows
    - Caveat: [why confidence is not higher, if applicable]
 
 Confidence:
-- **High** — multiple independent sources agree, directly verified.
-- **Medium** — single reliable source, or minor inconsistencies, not directly tested.
-- **Low** — inferred from indirect evidence, conflicting information.
+- **High** - multiple independent sources agree, directly verified.
+- **Medium** - single reliable source, or minor inconsistencies, not directly tested.
+- **Low** - inferred from indirect evidence, conflicting information.
 
 ## Taxonomy
-Classification scheme — categories, subcategories, relationships. Core deliverable of a mapping study. Scoping reviews use thematic groupings; landscapes use comparison dimensions.
+Classification scheme - categories, subcategories, relationships. Core deliverable of a mapping study. Scoping reviews use thematic groupings; landscapes use comparison dimensions.
 
 ## Prior Art
 How others have solved this. Per-entity narratives with lessons.
@@ -255,10 +255,10 @@ What this plan achieves.
 
 ## Current State
 What exists today. Reference specific files and lines.
-- `path/to/file:line` — what it does / what's missing
+- `path/to/file:line` - what it does / what's missing
 
 ## Desired End State
-Concrete, verifiable. Not aspirational — testable.
+Concrete, verifiable. Not aspirational - testable.
 
 ## Not Doing
 Explicitly out of scope.
@@ -269,10 +269,10 @@ What must be true before starting.
 ## Phases
 
 ### Phase 1: ...
-- [ ] TASK-NNN: Description — files: [path/to/file], complexity: S/M/L, depends_on: none
+- [ ] TASK-NNN: Description - files: [path/to/file], complexity: S/M/L, depends_on: none
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
-- [ ] TASK-NNN: Description — files: [path/to/file], complexity: S/M/L, depends_on: TASK-NNN
+- [ ] TASK-NNN: Description - files: [path/to/file], complexity: S/M/L, depends_on: TASK-NNN
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
 
@@ -281,7 +281,7 @@ What must be true before starting.
 ### Phase 2: ...
 
 ## Testing Strategy
-Overall testing approach — new fixtures, integration test needs, performance benchmarks. Per-task verification covers details.
+Overall testing approach - new fixtures, integration test needs, performance benchmarks. Per-task verification covers details.
 
 ## Open Questions
 - [ ] Question 1
@@ -293,8 +293,8 @@ Overall testing approach — new fixtures, integration test needs, performance b
 
 Two types (per Reinertsen's *Principles of Product Development Flow*):
 
-- **Process** (`category: process`) — how to build. "Mocking the DB in tests hides migration bugs."
-- **Domain** (`category: domain`) — what to build. "Users need batch export, not single-file."
+- **Process** (`category: process`) - how to build. "Mocking the DB in tests hides migration bugs."
+- **Domain** (`category: domain`) - what to build. "Users need batch export, not single-file."
 
 ```markdown
 ---
@@ -358,11 +358,11 @@ What was the goal and how far did we get?
 
 ## Artifacts
 Documents produced or updated this session:
-- `[[SPEC-NNN-name]]` — what's relevant
-- `[[RESEARCH-name]]` — what's relevant
+- `[[SPEC-NNN-name]]` - what's relevant
+- `[[RESEARCH-name]]` - what's relevant
 
 ## Code Changes
-- `path/to/file` — what was changed and why
+- `path/to/file` - what was changed and why
 
 ## Decisions Made
 - Decision: reasoning
@@ -380,7 +380,7 @@ Documents produced or updated this session:
 [`git status --short` + `git diff --stat`, or "None"]
 
 ## Context for Resuming
-[Nuance lost without this — edge cases, approaches tried and abandoned, "almost works"]
+[Nuance lost without this - edge cases, approaches tried and abandoned, "almost works"]
 ```
 
 ### Decision (ADR)

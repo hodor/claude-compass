@@ -7,9 +7,9 @@ when_to_use: "Use when bringing existing work into the vault. Triggers: 'documen
 argument-hint: "[<commit-hash> | <start>..<end>]"
 ---
 
-# Retroactive — Document Work After the Fact
+# Retroactive - Document Work After the Fact
 
-Create vault artifacts for commits that exist without corresponding specs, plans, or tasks. Interview the human about intent. Never fabricate. The human did the work — your job is documentation, not judgment.
+Create vault artifacts for commits that exist without corresponding specs, plans, or tasks. Interview the human about intent. Never fabricate. The human did the work - your job is documentation, not judgment.
 
 ## Protocol
 
@@ -66,7 +66,7 @@ git_commit: <hash>
 <from Q1>
 
 ## Context
-<from git diff analysis — what existed before, what changed>
+<from git diff analysis - what existed before, what changed>
 
 ## Desired Outcome
 <from Q2>
@@ -83,7 +83,7 @@ This spec was created retroactively. Implementation already exists at commit `<h
 Increment the TASK counter. Add under "Recently Completed" in `active.md`:
 
 ```markdown
-- [x] TASK-NNN: [Description] — complexity: [S/M/L], retroactive
+- [x] TASK-NNN: [Description] - complexity: [S/M/L], retroactive
   - Automated verification: [inferred]
   - Manual verification: [from Q2]
   - Spec: [[SPEC-NNN-name]]
@@ -94,9 +94,9 @@ Increment the TASK counter. Add under "Recently Completed" in `active.md`:
 
 Only if the human confirmed a significant decision. Increment the ADR counter, create `ADR-NNN-descriptive-name.md` with decision, context, and reasoning.
 
-### 8. Update the vault — REQUIRED
+### 8. Update the vault - REQUIRED
 
-1. `.compass/index.md` — add the new spec under `## Specs` and any ADR under `## Decisions`. Documents not in `index.md` are invisible next session.
+1. `.compass/index.md` - add the new spec under `## Specs` and any ADR under `## Decisions`. Documents not in `index.md` are invisible next session.
 2. Confirm the new task is in `active.md` under "Recently Completed".
 3. Counters in `config.yaml` should already be incremented.
 
@@ -121,8 +121,8 @@ If yes, create a minimal plan with `status: done (retroactive)`.
 - `<hash>`: [message]
 
 ### Artifacts Created
-- [[SPEC-NNN-name]] — status: done (retroactive)
-- TASK-NNN in active.md — [x] completed
+- [[SPEC-NNN-name]] - status: done (retroactive)
+- TASK-NNN in active.md - [x] completed
 - [[ADR-NNN-name]] (if applicable)
 
 ### Vault Updates

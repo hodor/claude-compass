@@ -1,14 +1,14 @@
 ---
 name: checkup
-description: Scan a Compass project for problems — missing agents, stale handoffs, unclosed tasks, vault inconsistencies, broken hooks, missing config. Reports what's wrong and how to fix it.
+description: Scan a Compass project for problems - missing agents, stale handoffs, unclosed tasks, vault inconsistencies, broken hooks, missing config. Reports what's wrong and how to fix it.
 version: 1.0.0
 allowed-tools: [Read, Glob, Grep, Bash]
 when_to_use: "Use when something feels off, after a long break, before starting a sprint, or periodically as maintenance. Triggers: 'compass check', 'checkup', 'is compass set up right', 'diagnose compass'."
 ---
 
-# Checkup — Compass Project Health Scanner
+# Checkup - Compass Project Health Scanner
 
-Scans your project's Compass installation and reports problems with actionable fixes. Report only — never auto-fix.
+Scans your project's Compass installation and reports problems with actionable fixes. Report only - never auto-fix.
 
 ## What gets checked
 
@@ -92,7 +92,7 @@ Uncommitted vault files (handoffs, specs, plans) are invisible to other sessions
 
 ### Vault Integrity
 - [x] Frontmatter: 12 OK, 0 FAIL
-- [ ] Wikilinks: 1 broken — active.md:8 references [[SPEC-999]]
+- [ ] Wikilinks: 1 broken - active.md:8 references [[SPEC-999]]
 - [x] Counters consistent
 
 ### Task Hygiene
@@ -109,7 +109,7 @@ Uncommitted vault files (handoffs, specs, plans) are invisible to other sessions
 - [x] compass-agent-patterns.md installed
 
 ### Git State
-- [ ] 2 uncommitted files in .compass/ — commit before ending session
+- [ ] 2 uncommitted files in .compass/ - commit before ending session
 
 ### Summary
 - OK: 6 | WARN: 2 | FAIL: 1 | STALE: 2
@@ -130,4 +130,4 @@ HEALTH: NEEDS ATTENTION
 
 - Auto-fixing instead of reporting. The human decides.
 - Skipping checks because "the project is small."
-- Ignoring uncommitted vault files — they are the most common source of lost context.
+- Ignoring uncommitted vault files - they are the most common source of lost context.

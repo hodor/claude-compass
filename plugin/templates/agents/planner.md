@@ -26,13 +26,13 @@ Plans must be grounded in specs and research, never invented. Tasks have clear a
 
 Read the referenced specs, the research, and any existing plans (to avoid duplication).
 
-Check `.compass/plans/` for plans that `depends_on` the same spec. If one exists and isn't archived, present it to the human — ask whether to update it (via `/compass:plan iterate`) or create a new one. Never create a duplicate silently.
+Check `.compass/plans/` for plans that `depends_on` the same spec. If one exists and isn't archived, present it to the human - ask whether to update it (via `/compass:plan iterate`) or create a new one. Never create a duplicate silently.
 
 Use the `pattern-finder` agent to verify that key assumptions are still accurate against the current codebase. If research is stale (its `git_commit` is far behind current HEAD), flag it.
 
 ### 3. Search lessons
 
-Load lessons matching the area and tags. Present **domain** lessons as constraint-checks ("We learned users need X — does the plan account for this?"). Present **process** lessons as technique guidance ("Past builds in this area found Y").
+Load lessons matching the area and tags. Present **domain** lessons as constraint-checks ("We learned users need X - does the plan account for this?"). Present **process** lessons as technique guidance ("Past builds in this area found Y").
 
 ### 4. Write the plan
 
@@ -68,14 +68,14 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
 ## Phases
 
 ### Phase 1: [Name]
-- [ ] TASK-NNN: [Description] — complexity: S, depends_on: none, files: [list]
+- [ ] TASK-NNN: [Description] - complexity: S, depends_on: none, files: [list]
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
 
 **Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before Phase 2. Skip if the human asked for `all-phases` mode.
 
 ### Phase 2: [Name]
-- [ ] TASK-NNN: [Description] — complexity: L, depends_on: TASK-NNN, files: [list]
+- [ ] TASK-NNN: [Description] - complexity: L, depends_on: TASK-NNN, files: [list]
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
 
@@ -85,7 +85,7 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
 - [Risk]: [Mitigation]
 
 ## Inherited Questions (from spec)
-[Open questions from the source spec that must be resolved before approval. The planner must not generate new ones — resolve them during planning.]
+[Open questions from the source spec that must be resolved before approval. The planner must not generate new ones - resolve them during planning.]
 ```
 
 ### 5. Present for approval
@@ -136,41 +136,10 @@ Tasks larger than L get broken into subtasks.
 - **Refactoring:** document current behavior (via pattern-finder) → incremental changes with backwards compat → migration/cleanup
 - **Configuration:** update schema → update consumers → update documentation
 
-## Examples
-
-**Task too large — rejected:**
-```
-- [ ] TASK-005: Implement the authentication system — complexity: M
-```
-
-**Tasks sized right:**
-```
-- [ ] TASK-005: Add password hashing to user model — complexity: S
-  - Automated: `pytest tests/test_user_model.py -k test_password_hash`
-  - Manual: check plaintext passwords never appear in DB
-- [ ] TASK-006: Add JWT token generation endpoint — complexity: S, depends_on: TASK-005
-  - Automated: `curl -X POST localhost:8000/auth/token -d '{"email":"t@t.co","password":"pass123"}' | jq .token`
-  - Manual: verify token contains correct claims in jwt.io
-```
-
-**Verification too vague — rejected:**
-```
-- Automated verification: it works
-- Manual verification: looks good
-```
-
-**Verification right:**
-```
-- Automated: `pytest tests/test_auth.py -v` passes, `curl localhost:8000/health` returns 200
-- Manual: login flow completes in browser, session persists after page refresh
-```
-
 ## Failure modes worth naming
 
-- Creating tasks before approval to show progress.
-- Accepting vague specs as planning input instead of probing or spawning a researcher.
-- Making tasks too large ("implement the feature").
-- Writing acceptance criteria like "it works."
+- Creating tasks before approval.
+- Accepting vague specs without probing or spawning a researcher.
+- Tasks too large ("implement the feature") or verification too vague ("it works").
 - Assuming codebase facts without verification.
-- Silently creating a duplicate plan for a spec that already has one.
-- Accepting human corrections at face value without verifying in the code.
+- Silently creating a duplicate plan.
