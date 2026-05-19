@@ -36,15 +36,21 @@ Human approval gates the strategic transitions: specs need approval before resea
 | `/compass:bootstrap` | Install the plugin into a project, scaffold the vault, configure hooks. |
 | `/compass:vision` | Capture the project goal and the spec roadmap. |
 | `/compass:spec` | Interview to produce one spec. One problem per spec. |
-| `/compass:research` | Investigate options. Supports parallel and citation-graph modes. |
-| `/compass:plan` | Turn an approved spec into ordered tasks. |
-| `/compass:build` | Execute tasks. Parallel when file ownership allows. |
+| `/compass:specs` | Braindump to multiple specs at once when several ideas are in hand. |
+| `/compass:research` | Router: dispatches to research-codebase or research-papers. |
+| `/compass:research-codebase` | Document how code in the repo works. Spawns codebase-locator, codebase-analyzer, pattern-finder. |
+| `/compass:research-papers` | Citation-graph triad (Current / Backward / Forward) on a paper, algorithm, or technique. |
+| `/compass:papers` | Fetch and search academic papers via Hugging Face. |
+| `/compass:plan` | Turn an approved spec into ordered tasks. Supports iterate mode for surgical edits. |
+| `/compass:build` | Execute tasks. Parallel when file ownership allows, merges branches back after each phase. |
 | `/compass:validate` | Final gate against the plan. |
+| `/compass:diagnose` | Spawn the debug agent in an isolated context to investigate errors. |
 | `/compass:handoff` | Save context at session end, restore at session start. |
+| `/compass:autopilot` | Run the full pipeline for small tasks with checkpoints. |
+| `/compass:retroactive` | Document existing commits that predate the vault. |
 | `/compass:guide` | Detects where you are and tells you what to do next. |
 | `/compass:checkup` | Find drift, stale handoffs, broken links, counter mismatches. |
-| `/compass:autopilot` | Run the full pipeline for small tasks with checkpoints. |
-| `/compass:papers` | Fetch and search academic papers via Hugging Face. |
+| `/compass:vault-health` | Validate vault integrity: frontmatter, wikilinks, orphans, counters. |
 | `/compass:annotate` | Manage sidecar notes on vault files. |
 
 ## Quick start
