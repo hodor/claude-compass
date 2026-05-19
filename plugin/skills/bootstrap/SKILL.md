@@ -82,7 +82,7 @@ done
 echo "Skills copied: $(ls -d .claude/skills/*/ | wc -l) directories"
 ```
 
-Run as one Bash call. Verify 15 agents and 1 rules file. If the plugin can't be found, ask the human for the path.
+Run as one Bash call. Verify 9 agents and 5 rules files. If the plugin can't be found, ask the human for the path.
 
 After this, the project is self-contained - anyone who clones gets agents, skills, and rules without installing the plugin.
 
@@ -196,31 +196,10 @@ updated: YYYY-MM-DD
 
 # Project Index
 
-The master map. Every vault document is linked here.
-
-## Vision
-_Run `/compass:vision` to capture._
-
-## Specs
-_None yet._
-
-## Research
-_None yet._
-
-## Plans
-_None yet._
-
-## Decisions
-_None yet._
-
-## Lessons
-_None yet._
-
-## Handoffs
-_None yet._
+The master map. Every vault document is linked here. Sections (Vision, Specs, Research, Plans, Decisions, Lessons, Handoffs) are appended by the agents that create those documents. Run `/compass:vision` next.
 ```
 
-Then create empty `active.md` and `backlog.md`.
+Don't stub empty sections. They appear when content arrives. Then create empty `active.md` and `backlog.md`.
 
 ### 3B. Existing project - migrate
 
@@ -265,7 +244,8 @@ Present and wait for approval. Write only after approval.
 
 ### 5. Verify
 
-- [ ] `.claude/agents/` has all Compass agents.
+- [ ] `.claude/agents/` has 9 Compass agents.
+- [ ] `.claude/rules/` has 5 rule files.
 - [ ] `.compass/meta/config.yaml` exists with valid counters.
 - [ ] `.compass/meta/lessons-catalog.yaml` exists.
 - [ ] `.compass/index.md` exists.
@@ -294,8 +274,8 @@ Only skip vision if the human explicitly requests it.
 New project / Existing project with N existing documents
 
 ### Installed
-- [x] 15 agents copied to .claude/agents/
-- [x] 1 rules file copied to .claude/rules/
+- [x] 9 agents copied to .claude/agents/
+- [x] 5 rules files copied to .claude/rules/
 - [x] .compass/ vault scaffolded
 - [x] Hooks configured
 

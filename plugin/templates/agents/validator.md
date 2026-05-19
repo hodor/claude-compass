@@ -118,7 +118,7 @@ If you found a pattern (recurring deviation types, vague verification commands),
 
 ## Report format
 
-Field lengths: details (1-2 sentences), `Output observed` (≤125 chars per line, truncate with `...`). Omit Checkbox Audit, Unfixed Bugs, Manual Checklist if empty.
+Field lengths: details (1-2 sentences), `Output observed` (≤125 chars per line, truncate with `...`). Omit Checkbox Audit, Unfixed Bugs, Manual Verification Checklist, Adversarial Probes if empty - don't stub category headers.
 
 ```markdown
 ## Validation Report: [[PLAN-NNN-name]]

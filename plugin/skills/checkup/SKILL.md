@@ -14,29 +14,11 @@ Scans your project's Compass installation and reports problems with actionable f
 
 ### 1. Agents
 
-`.claude/agents/` should contain all 15 Compass agents:
+`.claude/agents/` should contain all 9 Compass agents: `builder`, `debug`, `pattern-finder`, `planner`, `pr-describe`, `researcher`, `reviewer`, `tester`, `validator`.
 
-| Agent | Required? |
-|-------|-----------|
-| spec-writer | YES |
-| researcher | YES |
-| reviewer | YES |
-| planner | YES |
-| planner-iterate | YES |
-| builder | YES |
-| tester | YES |
-| validator | YES |
-| handoff-create | YES |
-| handoff-resume | YES |
-| debug | YES |
-| pattern-finder | YES |
-| autopilot | YES |
-| retroactive | YES |
-| pr-describe | YES |
+For each agent: valid YAML frontmatter, `name` and `description` present, `model`/`effort`/`maxTurns` present (warn if missing). Report missing agents, agents with invalid frontmatter, agents that may be outdated.
 
-For each agent: valid YAML frontmatter, `name` and `description` present, `model`/`effort`/`maxTurns` present (warn if missing).
-
-Report missing agents, agents with invalid frontmatter, and agents that may be outdated.
+Interactive flows (spec writing, planning iteration, handoffs, autopilot, retroactive, etc.) live as skills in `.claude/skills/`, not as agents.
 
 ### 2. Vault structure
 
@@ -71,7 +53,7 @@ In `.compass/handoffs/`:
 
 ### 7. Rules
 
-`.claude/rules/compass-agent-patterns.md` should be installed.
+`.claude/rules/` should have: `compass-agent-patterns.md`, `compass-output.md`, `compass-pipeline.md`, `session-start.md`, `wikilinks.md`.
 
 ### 8. Git state
 
@@ -83,7 +65,7 @@ Uncommitted vault files (handoffs, specs, plans) are invisible to other sessions
 ## Compass Checkup Report
 
 ### Agents
-- [x] 15/15 agents installed
+- [x] 9/9 agents installed
 - [ ] builder.md missing `maxTurns` (WARN)
 
 ### Vault Structure
@@ -106,7 +88,7 @@ Uncommitted vault files (handoffs, specs, plans) are invisible to other sessions
 - [x] SubagentStop builder→tester hook configured
 
 ### Rules
-- [x] compass-agent-patterns.md installed
+- [x] 5/5 rule files installed
 
 ### Git State
 - [ ] 2 uncommitted files in .compass/ - commit before ending session

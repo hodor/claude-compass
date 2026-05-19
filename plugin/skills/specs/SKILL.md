@@ -8,108 +8,84 @@ when_to_use: "Use when the user has multiple specs to create. Triggers: 'I have 
 
 # Specs - Braindump to Multiple Specs
 
-For when you have many ideas at once and don't want to be asked the same setup questions N times.
-
-=== CRITICAL: BATCH THE SHARED CONTEXT - ASK SHARED QUESTIONS ONCE, NOT PER SPEC ===
-=== CRITICAL: ONE SPEC PER CONCERN - DON'T COLLAPSE UNRELATED IDEAS INTO ONE SPEC ===
+For when the human has many ideas at once and shouldn't be asked the same setup questions N times. Batch shared context. One spec per concern. Never run the full spec interview per spec.
 
 ## Protocol
 
-### Step 1: Capture the Braindump
+### 1. Capture the braindump
 
-Ask the user to dump everything:
-> "Tell me everything you have in your head about what you want to build. Don't worry about structure or completeness - just get it all out. I'll organize it into specs after."
+> "Tell me everything you have in your head about what you want to build. Don't worry about structure - just get it all out. I'll organize it into specs after."
 
-Wait for the response. Don't interrupt with questions.
+Wait for the response. Don't interrupt.
 
-### Step 2: Propose the Spec List
+### 2. Propose the spec list
 
-Read the braindump. Identify distinct concerns - each becomes one spec. Present the list:
+Identify distinct concerns from the braindump. Each becomes one spec.
 
 ```
-I see N specs in here:
+I see N specs:
 
-1. **SPEC: [name]** - [one-line description of the problem/need]
-2. **SPEC: [name]** - [one-line description]
-3. **SPEC: [name]** - [one-line description]
+1. **SPEC: [name]** - [one-line problem]
+2. **SPEC: [name]** - [one-line problem]
+...
 
-Each follows single responsibility - they could be worked on in parallel.
-
-Confirm the list, or tell me what to merge/split/remove?
+Confirm, or tell me what to merge / split / remove?
 ```
 
-Iterate until the human approves the list.
+Iterate until approved.
 
-### Step 3: Capture Shared Context Once
+### 3. Capture shared context once
 
-Ask shared questions ONCE for the whole batch (not per spec):
-
-> "Before I write each spec, a few shared questions that apply to all of them:
-> 
-> 1. Who is the user/audience for these?
-> 2. Are there shared constraints (deadlines, budget, infrastructure)?
-> 3. Are there shared non-goals?
-> 
+> "Shared questions for the whole batch:
+> 1. Who is the user/audience?
+> 2. Shared constraints (deadlines, budget, infrastructure)?
+> 3. Shared non-goals?
+>
 > (Skip any that don't apply.)"
 
-Save these as shared context for all specs.
+Save as shared context.
 
-### Step 4: Write Each Spec (Lightweight)
+### 4. Write each spec lightweight
 
-For EACH approved spec, write a draft using the shared context PLUS the braindump content for that spec. Do NOT spawn the full spec-writer interview per spec - that would be hundreds of repeated questions.
-
-For each spec, ask only the spec-SPECIFIC questions that aren't already answered:
+For each approved spec, write a draft using shared context + the braindump content for that spec. Ask only spec-specific questions that aren't already answered:
 - What's the desired outcome for THIS spec?
-- Anything specific to THIS spec that's not covered by shared context?
+- Anything specific to THIS spec not covered by shared context?
 
 Save each as `status: draft`.
 
-### Step 5: Batch Review
-
-After all drafts are written, present them together:
+### 5. Batch review
 
 ```
 N specs drafted (all status: draft):
 
-1. [[SPEC-NNN-name]] - [problem statement summary]
-2. [[SPEC-NNN-name]] - [problem statement summary]
+1. [[SPEC-NNN-name]] - [one line]
+2. [[SPEC-NNN-name]] - [one line]
 ...
 
-Want to:
-- Approve all → I'll mark them all status: approved
-- Review one by one → I'll show you each
-- Approve some, refine others → tell me which
+Approve all / review one by one / approve some refine others?
 ```
 
-Update statuses based on the human's response. Update `index.md` with all new specs.
+Update statuses. Update `index.md` with all new specs.
 
-### Step 6: Suggest Order
-
-Based on dependencies between specs (read each spec's content), suggest a sequence:
+### 6. Suggest order
 
 ```
-Suggested order based on dependencies:
-1. SPEC-NNN - foundation, others depend on it
-2. SPEC-NNN, SPEC-NNN - can run in parallel after #1
+Suggested order:
+1. SPEC-NNN - foundation
+2. SPEC-NNN, SPEC-NNN - parallel after #1
 3. SPEC-NNN - depends on #2
 ```
 
-This gives the human a roadmap without forcing them to figure out dependencies themselves.
+## When NOT to use
 
-## Know Your Failure Modes
+- Single spec → `/compass:spec` (deep interview).
+- Need deep clarity per spec → `/compass:spec` per spec.
+- Specs are deeply interconnected → `/compass:spec` for the parent first.
 
-You WILL be tempted to:
-- Ask the same setup questions for each spec - DON'T. Capture shared context ONCE in Step 3.
-- Spawn the full spec-writer for each spec - DON'T. That's hundreds of questions for the user.
-- Collapse multiple concerns into one spec to be efficient - DON'T. Single responsibility.
-- Make implementation decisions in any of the specs - DON'T. Same rule as spec-writer: NEED, not solution.
-- Skip the braindump and start asking structured questions immediately - DON'T. Let the human dump first.
-- Force the human to approve specs one at a time when they want to batch-approve - let them approve all at once.
+## Failure modes worth naming
 
-## When NOT to Use This Skill
-
-- Single spec → use `/compass:spec` (deep interview)
-- Need deep clarity on each spec → use `/compass:spec` per spec
-- Specs are deeply interconnected and can't be cleanly separated → use `/compass:spec` for the parent concept first
-
-=== REMINDER: BATCH SHARED CONTEXT. ONE SPEC PER CONCERN. NEVER SPAWN FULL SPEC-WRITER PER SPEC. ===
+- Asking shared setup questions per spec instead of once.
+- Spawning the full spec-writer per spec (hundreds of repeated questions).
+- Collapsing multiple concerns into one spec to be efficient.
+- Making implementation decisions in any spec.
+- Skipping the braindump and starting structured questions immediately.

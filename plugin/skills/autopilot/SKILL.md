@@ -79,33 +79,34 @@ Verify `active.md` has completed tasks checked off, ADRs exist for significant d
 
 ### 8. Report
 
+Field lengths: one line per change, one line per decision/lesson. Omit Decisions, Lessons, Estimation Calibration if empty.
+
 ```markdown
 ## Autopilot Report: [Task]
 
-### Pipeline Summary
+### Pipeline
 | Phase | Agent | Status | Key Output |
 |-------|-------|--------|------------|
 | Research | researcher | complete | [N findings] |
-| Plan | planner | complete | [N tasks across M phases] |
+| Plan | planner | complete | [N tasks / M phases] |
 | Build | builder | complete | [N files changed] |
-| Test | tester | complete | [N tests, all passing] |
-| Validate | validator | VERDICT: [PASS/FAIL/PARTIAL] |
+| Test | tester | complete | [N tests pass] |
+| Validate | validator | [PASS/FAIL/PARTIAL] |
 
 ### Changes
-- [[file.py]] - [what and why]
+- [[file.py]] - [one line]
 
 ### Test Results
-**Command run:** [from tester]
-**Output:** [from tester]
+`<command>` - [verbatim ≤125 char excerpt]
 
 ### Decisions
-- [Decision]: [Why] → [[ADR-NNN-name]]
+- [decision] → [[ADR-NNN-name]]
 
 ### Lessons
-- [Lesson]: [What was surprising] → [[LESSON-name]]
+- [surprise] → [[LESSON-name]]
 
 ### Estimation Calibration
-- Estimated: [S/M] | Actual: [S/M/L] | Note: [why if differed]
+Estimated [S/M] | Actual [S/M/L] | [one line why if differed]
 ```
 
 ## Failure modes worth naming

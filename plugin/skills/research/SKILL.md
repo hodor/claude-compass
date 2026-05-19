@@ -9,32 +9,9 @@ argument-hint: "[deep] <research question>"
 
 # Research - Spawn Researcher Agents
 
-Hand the researcher the full spec, not a curated question list. Pre-filtering biases the investigation - the agent goes into checklist mode and misses everything you didn't think to ask.
+Hand the researcher the full spec, not a curated question list. Pre-filtering biases the investigation - the agent goes into checklist mode and misses what an implementer actually needs.
 
-**Bad brief - biasing:**
-```
-Research these specific questions:
-- Watchlist size (top-N? CCU threshold? curated?)
-- Cadence-vs-coverage trade-off?
-- History retention (forever? rolling? tiered?)
-```
-
-**Good brief - open:**
-```
-Read [[SPEC-001-roblox-ingestion]]. Investigate everything needed to plan
-this implementation. The spec describes the NEED. Your job: figure out
-what's possible, what the trade-offs are, and what an implementer would
-need to know.
-
-Cover at minimum:
-- The domain (Roblox public data: what's available, rate limits, gotchas)
-- Implementation options (storage, scheduling, orchestration)
-- Existing implementations (how others do longitudinal data ingestion)
-- Open questions in the spec - propose informed answers based on findings
-
-Do NOT limit yourself to these areas if your investigation reveals others
-that matter. Surface anything an implementer would need.
-```
+The brief shape: "Read [[SPEC-NNN]]. Investigate everything needed to plan this implementation. The spec describes the NEED. Cover at minimum [domain, implementation options, existing solutions, open questions]. Don't limit yourself to these - surface anything an implementer would need."
 
 Open questions in the spec are starting points, not the full scope.
 

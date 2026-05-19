@@ -28,21 +28,17 @@ Use the appropriate agent instead of doing work manually in the main conversatio
 
 | Agent | When to use |
 |-------|-------------|
-| `spec-writer` | Creating new specifications - asks one question at a time |
 | `researcher` | Investigating a topic - spawn N in parallel, then consolidate with `reviewer` |
 | `reviewer` | Consolidating parallel agent outputs - builds convergence matrix |
 | `planner` | Proposing implementation plans from specs + research |
-| `planner-iterate` | Surgically editing an existing plan based on feedback |
-| `builder` | Executing tasks - codes, tests, updates vault |
+| `builder` | Executing tasks - codes, runs smoke test, updates vault |
+| `tester` | Auto-spawned after the builder finishes; writes adversarial tests |
 | `validator` | Post-build verification - compares plan vs actual implementation |
-| `handoff-create` | End of session - compresses context into portable handoff |
-| `handoff-resume` | Start of session - verifies state and presents situational report |
 | `debug` | Investigating errors/failures - read-only, isolated context |
 | `pattern-finder` | Finding existing code patterns before writing new code |
-| `autopilot` | Full pipeline (research → plan → build) for small/medium tasks |
-| `retroactive` | Creating vault entries for work that happened without Compass |
 | `pr-describe` | Creating/updating PR descriptions from Compass artifacts |
-| `bootstrap` | Setting up Compass in a new project |
+
+Interactive workflows run as skills (`/compass:spec`, `/compass:plan`, `/compass:handoff`, `/compass:build`, `/compass:autopilot`, `/compass:retroactive`, `/compass:bootstrap`, `/compass:checkup`, `/compass:diagnose`, `/compass:vault-health`, `/compass:vision`, `/compass:papers`, `/compass:research`, `/compass:annotate`, `/compass:guide`).
 
 ## Skills
 

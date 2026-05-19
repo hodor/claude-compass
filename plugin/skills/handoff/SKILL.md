@@ -44,7 +44,7 @@ A handoff is read first by the next session. Keep it lean. Use `file:line` refer
    - If a plan is currently being executed: `.compass/handoffs/<PLAN-NNN>/YYYY-MM-DD_HH-MM-SS_description.md` (creates the subdirectory if needed). Plan-grouped handoffs make `resume <PLAN-NNN>` work.
    - Otherwise: `.compass/handoffs/YYYY-MM-DD_HH-MM-SS_description.md` (flat).
 
-6. **Write the handoff:**
+6. **Write the handoff.** Field lengths: Session Summary (2-3 sentences), notes (one line each). Omit Decisions, Learnings, Blockers, Uncommitted Changes, Context for Resuming if empty.
 
    ```markdown
    ---
@@ -55,48 +55,45 @@ A handoff is read first by the next session. Keep it lean. Use `file:line` refer
    updated: YYYY-MM-DD
    git_branch: <branch>
    git_commit: <short hash>
-   plan: [[PLAN-NNN-name]]  # if a plan is active
+   plan: [[PLAN-NNN-name]]
    ---
 
    # Handoff: [Description]
 
    ## Start Here
-
-   Read these in order before doing anything else:
    1. [[SPEC-NNN-name]] - source spec
-   2. [[PLAN-NNN-name]] - plan being executed (currently Phase N)
+   2. [[PLAN-NNN-name]] - plan in flight (Phase N)
    3. [[RESEARCH-name]] - key findings
-   4. `path/to/file.py:42` - [why this location matters]
+   4. `path/to/file.py:42` - [one-line why]
 
    ## Session Summary
-   [2-3 sentences: goal + progress]
+   [2-3 sentences]
 
    ## Tasks
    | Task | Status | Notes |
    |------|--------|-------|
-   | [Task] | done/in-progress/blocked | [note] |
+   | [Task] | done / in-progress / blocked | [one line] |
 
    ## Recent Changes
-   - `file:line` - [what changed]
+   - `file:line` - [one line]
 
    ## Decisions
-   - [Decision]: [Why] - consider ADR if significant
+   - [decision]: [one-line why]
 
    ## Learnings
-   - [Surprise/insight] - consider lesson if broadly applicable
+   - [surprise]
 
    ## Blockers
-   - [What stopped or slowed progress]
+   - [what stopped progress]
 
    ## Uncommitted Changes
-   [git status --short and diff --stat output]
+   [git status --short + diff --stat]
 
    ## Action Items
-   1. [ ] [First thing]
-   2. [ ] [Second thing]
+   1. [ ] [first thing]
 
    ## Context for Resuming
-   [Nuance that would be lost - edge cases, abandoned approaches, almost-working state]
+   [Nuance lost without this: edge cases, abandoned approaches, "almost working" state]
    ```
 
 7. **Annotate the plan** (if one is active):
