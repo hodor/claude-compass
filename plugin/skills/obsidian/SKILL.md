@@ -102,7 +102,15 @@ Grep pattern: "type: spec" in .compass/ glob: "*.md"
 
 ## Document templates
 
-Writing rule for all templates: short, sweet, long only when needed, never verbose. Omit empty optional sections - don't stub them. Research is the exception (captures evidence).
+These show every section a document type CAN have, not what every document MUST have. Per `compass-output.md` rule 3: omit empty sections in the file you write - don't stub them. Only required sections are mandatory.
+
+Required sections per type:
+- **Spec:** Problem, Desired Outcome.
+- **Research:** Question, Findings. (Research is the one type that may emit all sections - it captures evidence.)
+- **Plan:** Goal, Phases.
+- **Lesson:** Context, Lesson.
+- **Handoff:** Session Summary, Start Here, Action Items.
+- **Decision:** Context, Decision, Consequences.
 
 ### Spec
 

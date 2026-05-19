@@ -126,8 +126,8 @@ Agents that should ADD annotations:
 - **debug** - flag known issues in specific modules
 - **reviewer** - note convergence patterns about specific artifacts
 
-Agents that should READ annotations (via `get`):
+Agents (and skills) that should READ annotations (via `get`):
 - **researcher** - see prior agent notes before investigating
 - **planner** - see flags on specs before planning
 - **builder** - see warnings on files before modifying
-- **handoff-resume** - see accumulated knowledge on artifacts
+- **/compass:handoff resume** - see accumulated knowledge on artifacts

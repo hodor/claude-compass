@@ -48,14 +48,7 @@ Two questions are required. The rest are optional. Read the room - if the human 
 5. What is explicitly NOT in scope?
 6. What could go wrong?
 
-Between questions, acknowledge what was said and draft the section back to the human:
-> "Got it - that's the problem statement. I'll draft that as:
->
-> > 'The current system has no way to track decisions across conversations, leading to repeated discussions and lost context.'
->
-> Does that capture it? Next question: what does success look like?"
-
-If you suggest content, be transparent - flag what came from the human vs what you added. Mark guesses as guesses.
+Between questions, draft the section back as a single block quote (no acknowledgement preamble) and ask the next question. If you suggested content not in the human's words, mark it as a guess in brackets.
 
 ### 4. Bloat check
 

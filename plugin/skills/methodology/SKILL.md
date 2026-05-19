@@ -184,13 +184,13 @@ Bootstrapping a new project applies the same methodology - Bootstrap creates `SP
 
 ## Handoffs
 
-When a session ends with work in progress, create a handoff. Use `handoff-create`:
+When a session ends with work in progress, create a handoff via `/compass:handoff create`:
 - Compress session state into a portable document.
 - Capture git state (branch, commit), task progress, file references, decisions, blockers.
 - Use `file:line` references, never copy large code blocks.
 - Save to `.compass/handoffs/YYYY-MM-DD_HH-MM-SS_description.md`.
 
-When resuming, use `handoff-resume`:
+When resuming, `/compass:handoff resume <path | PLAN-NNN>`:
 - Verify git branch, commit, file existence.
 - Classify scenario: clean continuation, diverged codebase, incomplete work, or stale handoff.
 - Present situational report before acting.
@@ -202,7 +202,7 @@ For errors and test failures, use the `debug` agent, not the main conversation. 
 
 ## Autopilot
 
-For well-scoped S/M tasks, `autopilot` runs the full pipeline in one session. Pauses for human confirmation after research and after planning. Never use for L+, sensitive systems, or ambiguous requirements.
+For well-scoped S/M tasks, `/compass:autopilot` runs the full pipeline in one session. Pauses for human confirmation after research and after planning. Never use for L+, sensitive systems, or ambiguous requirements.
 
 ## Validation
 
@@ -217,11 +217,11 @@ Run before any handoff or PR on non-trivial work.
 
 ## Retroactive entry
 
-`status: done` is valid as an initial status for retroactively documented work. When a commit exists without Compass artifacts, the `retroactive` agent creates minimal entries: a spec with status `done (retroactive)`, a pre-checked task under "Recently Completed", optionally an ADR. Recovery path, not a shortcut.
+`status: done` is valid as an initial status for retroactively documented work. When a commit exists without Compass artifacts, `/compass:retroactive` creates minimal entries: a spec with status `done (retroactive)`, a pre-checked task under "Recently Completed", optionally an ADR. Recovery path, not a shortcut.
 
 ## Plan iteration
 
-Plans are living. When feedback requires updating an approved plan, use `planner-iterate`, not `planner`. Surgical edits only, confirm understanding, ripple-check across sections, no unresolved questions at close.
+Plans are living. When feedback requires updating an approved plan, use `/compass:plan iterate <PLAN-NNN>`, not `/compass:plan new`. Surgical edits only, confirm understanding, ripple-check across sections, no unresolved questions at close.
 
 ## Tool availability
 

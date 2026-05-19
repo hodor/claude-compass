@@ -71,7 +71,7 @@ If the orchestrator explicitly says "don't save," skip both the file write and t
 
 ## Report format
 
-Field lengths: claims (one line), evidence (≤125 chars or file:line). Omit Partial, Divergent, Gaps, Recommended Next Steps if empty. Skip "Recommended Next Steps" entirely unless the human asked for it.
+Field lengths: claims (one line), evidence (≤125 chars or file:line). Omit Convergence Summary table if there's only one category (just show that category directly). Omit Partial, Divergent, Gaps sections if empty.
 
 ```markdown
 ## Review: [Topic]
