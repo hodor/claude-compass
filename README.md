@@ -25,7 +25,7 @@ The vault contains:
 - `handoffs/`: end-of-session snapshots so the next session starts oriented.
 - `.annotations/`: sidecar notes attached to specific files.
 
-The pipeline is `vision -> spec -> research -> plan -> build -> test -> validate`. Each step has a dedicated agent or skill with one job and bounded behavior. Specs cannot make implementation decisions. Researchers cannot recommend. Validators cannot edit. The builder writes code in an isolated git worktree, the tester is auto-spawned via a `SubagentStop` hook, the validator gates the result.
+The pipeline is `vision -> spec -> research -> plan -> build -> test -> validate`. Each step has a dedicated agent or skill with one job and bounded behavior. Specs cannot make implementation decisions. Researchers cannot recommend. Validators cannot edit. The builder writes code in an isolated git worktree and runs no tests; the tester is auto-spawned via a `SubagentStop` hook and handles all test execution; the validator gates the result.
 
 Human approval gates the strategic transitions: specs need approval before research, plans need approval before tasks.
 
@@ -38,7 +38,7 @@ Human approval gates the strategic transitions: specs need approval before resea
 | `/compass:spec` | Interview to produce one spec. One problem per spec. |
 | `/compass:specs` | Braindump to multiple specs at once when several ideas are in hand. |
 | `/compass:research` | Router: dispatches to research-codebase or research-papers. |
-| `/compass:research-codebase` | Document how code in the repo works. Spawns codebase-locator, codebase-analyzer, pattern-finder. |
+| `/compass:research-codebase` | Document how code and prior vault knowledge cover a topic. Spawns codebase-locator, codebase-analyzer, vault-locator, vault-analyzer, pattern-finder in parallel. |
 | `/compass:research-papers` | Citation-graph triad (Current / Backward / Forward) on a paper, algorithm, or technique. |
 | `/compass:papers` | Fetch and search academic papers via Hugging Face. |
 | `/compass:plan` | Turn an approved spec into ordered tasks. Supports iterate mode for surgical edits. |
