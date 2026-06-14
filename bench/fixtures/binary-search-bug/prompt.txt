@@ -1,0 +1,1 @@
+The file src/search.py contains an implementation of binary search that fails some of the tests in src/test_search.py. Find and fix the bug so all tests pass. Run `cd src && pytest test_search.py` to verify. You may edit only src/search.py.

@@ -53,6 +53,17 @@ Human approval gates the strategic transitions: specs need approval before resea
 | `/compass:vault-health` | Validate vault integrity: frontmatter, wikilinks, orphans, counters. |
 | `/compass:annotate` | Manage sidecar notes on vault files. |
 
+## Repo layout
+
+| Path | Distributed to users? | Purpose |
+|---|---|---|
+| `plugin/` | Yes - this is the install target | Agents, skills, rules, hooks. Everything `/compass:bootstrap` copies into a project. |
+| `bench/` | No | Benchmark harness used to evaluate Compass against a plain-Claude-Code baseline. Lives at the repo root for contributors; not part of any user install. |
+| `.compass/` | No | Compass's own dogfood vault. The plugin is developed via its own methodology; this is where its specs, plans, ADRs, and lessons live. Not part of any user install. |
+| `README.md`, `CLAUDE.md` | No | Repo-level docs. |
+
+`claude --plugin-dir` and `/compass:bootstrap` both target `plugin/` specifically, so siblings of `plugin/` never reach a user's project.
+
 ## Quick start
 
 Requires Claude Code.

@@ -1,10 +1,10 @@
 ---
 name: vault-health
-description: Validate Compass vault integrity - check frontmatter, wikilinks, orphaned files, and counter consistency. Reports vault health with actionable fixes.
+description: Validate Compass vault integrity - check frontmatter, wikilinks, orphaned files. Reports vault health with actionable fixes.
 version: 1.0.0
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash]
 when_to_use: "Use when checking vault quality, after a series of changes, before a release, or when something feels off. Triggers: 'vault health', 'check vault', 'validate vault', 'vault build'."
-argument-hint: "[validate | links | orphans | counters | full]"
+argument-hint: "[validate | links | orphans | full]"
 ---
 
 # Vault Health - Compass Vault Integrity Check
@@ -64,24 +64,7 @@ Unreferenced:
 Summary: 18 files, 2 orphans
 ```
 
-### 4. Counter consistency (`counters`)
-
-`meta/config.yaml` counters must be ahead of the highest-numbered file of each type.
-
-```
-## Counter Consistency
-
-| Counter | config.yaml | Highest file | Status |
-|---------|-------------|--------------|--------|
-| spec | 6 | SPEC-005-api.md | OK (6 > 5) |
-| adr | 3 | ADR-004-auth.md | FAIL (3 <= 4) |
-| plan | 2 | PLAN-002-refactor.md | FAIL (2 <= 2) |
-| task | 10 | TASK-009-tests.md | OK (10 > 9) |
-
-Summary: 2 OK, 2 FAIL (counters would cause collisions)
-```
-
-### 5. Wikilink usage (`linking`)
+### 4. Wikilink usage (`linking`)
 
 Vault references should use `[[wikilinks]]`, not bare names or paths. Grep for SPEC-NNN/PLAN-NNN/ADR-NNN/RESEARCH-/LESSON- across vault files; check each occurrence is wrapped in `[[...]]`.
 
@@ -95,7 +78,7 @@ Bare references:
 Summary: 30 references checked, 2 not using wikilinks
 ```
 
-### 6. Full report (`full`)
+### 5. Full report (`full`)
 
 Runs everything. Default when no argument is given.
 
@@ -105,7 +88,6 @@ Runs everything. Default when no argument is given.
 ### Frontmatter: 12 OK, 2 WARN, 1 FAIL
 ### Wikilinks: 45 checked, 2 broken
 ### Orphans: 18 files, 2 unreferenced
-### Counters: 2 OK, 2 FAIL
 ### Linking: 30 references, 2 not using wikilinks
 
 Overall: NEEDS ATTENTION (5 issues found)
@@ -118,7 +100,6 @@ Report first. If the human says "fix it":
 - **Missing frontmatter:** ask which type/status to assign, then add.
 - **Broken links:** either create the missing file or update the link.
 - **Orphans:** add to index.md or archive.
-- **Counter mismatches:** set `config.yaml` counter to `max(counter, highest_file_number + 1)`.
 
 Always confirm before bulk fixes.
 

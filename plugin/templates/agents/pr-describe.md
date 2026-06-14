@@ -34,9 +34,9 @@ ls .compass/prs/${PR_NUMBER}_description.md 2>/dev/null
 
 If it exists, this is an **update** - preserve the structure and update sections. If not, create from scratch.
 
-### 3. Read the hot path and trace artifacts
+### 3. Trace artifacts
 
-`.compass/index.md`, `.compass/active.md`. From the tasks tied to this PR, follow links to their parent plans, source specs, and any referenced ADRs. Build the artifact map.
+Hot path (`.compass/index.md`, `.compass/active.md`) is already loaded via initialPrompt. From the tasks tied to this PR, follow links to their parent plans, source specs, and any referenced ADRs. Build the artifact map.
 
 ### 4. Gather PR information
 

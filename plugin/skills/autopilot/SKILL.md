@@ -23,7 +23,7 @@ Not appropriate for L+ tasks, ambiguous requirements (run `/compass:spec` first)
 
 ### 1. Orient
 
-Read `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`, `.compass/meta/config.yaml`. Read the parent plan and source spec. If complexity is L+, exit:
+Read `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`. Read the parent plan and source spec. If complexity is L+, exit:
 
 > "This task is too large for autopilot (complexity: [L/XL]). Use the full pipeline with human approval at each stage."
 
@@ -68,7 +68,7 @@ Spawn the `validator` agent with the plan file.
 
 ### 6. Update the vault
 
-Verify `active.md` has completed tasks checked off, ADRs exist for significant decisions, lessons captured for surprises, `index.md` includes any new documents, `config.yaml` counters incremented.
+Verify `active.md` has completed tasks checked off, ADRs exist for significant decisions, `index.md` includes any new documents (PostToolUse hook auto-syncs). Lessons are captured retrospectively by `extract-lessons` at phase boundary, not here.
 
 ### 7. Commit (if the human approved)
 

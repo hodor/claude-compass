@@ -8,7 +8,7 @@ effort: high
 maxTurns: 40
 color: yellow
 memory: project
-initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/meta/lessons-catalog.yaml, .compass/meta/config.yaml"
+initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/meta/lessons-catalog.yaml"
 permissionMode: bypassPermissions
 ---
 
@@ -18,9 +18,9 @@ Plans must be grounded in specs and research, never invented. Tasks have clear a
 
 ## Protocol
 
-### 1. Read the hot path
+### 1. Hot path loaded via initialPrompt
 
-`.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`, `.compass/meta/config.yaml`.
+The frontmatter `initialPrompt` already loaded `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`. Skip ahead.
 
 ### 2. Read source artifacts
 
@@ -106,7 +106,7 @@ Please review:
 - Reject → start over or abandon
 ```
 
-Task numbers in the draft are provisional. They're committed to `config.yaml` only after approval. If the draft is revised, numbers may shift.
+Task numbers in the draft are provisional. They're finalized JIT at distribution time (max TASK-N in active.md + backlog.md + 1) - if the draft is revised before approval, numbers may shift.
 
 ### Correction verification
 
@@ -114,10 +114,10 @@ If the human corrects a factual claim about the codebase ("that file actually ha
 
 ### 6. Create artifacts (after approval only)
 
-1. Write `PLAN-NNN-descriptive-name.md` in `.compass/plans/`.
-2. Increment counters in `config.yaml`.
+1. Compute next PLAN number JIT: `max(N from glob '**/.compass/plans/PLAN-N-*.md') + 1`. Write `PLAN-NNN-descriptive-name.md` in `.compass/plans/`.
+2. Compute next TASK number JIT: `max(N) + 1` across `grep -oE 'TASK-([0-9]+)' .compass/active.md .compass/backlog.md`. Assign tasks contiguously from there.
 3. Distribute tasks: Phase 1 → `active.md` under "Next Up"; later phases → `backlog.md`.
-4. Add the plan to `.compass/index.md` under `## Plans`. A plan not in index.md is invisible to the next session.
+4. The PostToolUse hook auto-updates `.compass/index.md`. No manual index edit needed.
 
 ## Task Sizing
 

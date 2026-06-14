@@ -1,0 +1,1 @@
+Implement `merge_sorted_lists(a, b)` in `merge.py`. The function takes two sorted input lists and returns a single sorted list containing all elements from both. Run `pytest test_merge.py` to verify your implementation. You may edit only `merge.py`.

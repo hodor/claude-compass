@@ -1,0 +1,1 @@
+{"task_id": "binary-search-bug", "benchmark": "compass-smoke", "split": null, "success": true, "score": 1.0, "tokens_total": 21696, "tokens_input": null, "tokens_output": null, "tokens_cache_read": null, "tokens_cache_write": null, "wall_seconds": 23.915, "model": "inherited-from-orchestrator", "turn_budget": null, "turns_used": 4}

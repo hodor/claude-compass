@@ -32,7 +32,7 @@ Surgical edits only - never rewrite the plan. Confirm understanding before editi
 
 #### 2. Read the hot path
 
-`.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`, `.compass/meta/config.yaml`.
+`.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`.
 
 #### 3. Read the full plan
 
@@ -54,7 +54,7 @@ If the change is ambiguous, conflicts with a lesson, or has feasibility issues, 
 
 - One Edit call per logical change.
 - Preserve formatting exactly.
-- New tasks use provisional TASK-NNN from the counter.
+- New tasks use provisional TASK-NNN computed JIT (`max(N) + 1` across active.md + backlog.md).
 - Every task keeps automated + manual verification.
 
 Append to `## Revision Log`:
@@ -87,7 +87,6 @@ Resolve or escalate every unchecked open question. A finalized plan has zero.
 #### 11. Update the vault
 
 - `active.md` - task list reflects the changes.
-- `config.yaml` - TASK counter incremented.
 - `index.md` - only if title/scope changed significantly.
 - Move tasks between `active.md` and `backlog.md` if phases changed.
 
@@ -112,7 +111,6 @@ Resolve or escalate every unchecked open question. A finalized plan has zero.
 ### Vault Updates
 - [x] Plan file edited
 - [ ] active.md updated
-- [ ] config.yaml counter incremented
 - [ ] index.md updated
 
 ### Warnings

@@ -22,13 +22,13 @@ Interactive flows (spec writing, planning iteration, handoffs, autopilot, retroa
 
 ### 2. Vault structure
 
-Required files: `.compass/index.md`, `.compass/active.md`, `.compass/backlog.md`, `.compass/meta/config.yaml`, `.compass/meta/lessons-catalog.yaml`.
+Required files: `.compass/index.md`, `.compass/active.md`, `.compass/backlog.md`, `.compass/meta/lessons-catalog.yaml`, `.compass/meta/plugin.yaml`.
 
 Required directories: `specs/`, `research/`, `plans/`, `decisions/`, `lessons/`, `handoffs/`, `prs/`, `.annotations/`.
 
 ### 3. Vault integrity
 
-Same checks as the vault-health skill: frontmatter validation, wikilink resolution, counter consistency (config.yaml ahead of highest-numbered file), orphan detection (files not referenced by index.md).
+Same checks as the vault-health skill: frontmatter validation, wikilink resolution, orphan detection (files not referenced by index.md). Counter consistency check removed per [[ADR-003-drop-counter-file-jit-compute]].
 
 ### 4. Task hygiene
 
@@ -75,7 +75,6 @@ Uncommitted vault files (handoffs, specs, plans) are invisible to other sessions
 ### Vault Integrity
 - [x] Frontmatter: 12 OK, 0 FAIL
 - [ ] Wikilinks: 1 broken - active.md:8 references [[SPEC-999]]
-- [x] Counters consistent
 
 ### Task Hygiene
 - [ ] TASK-003 in active.md: 21 days old, no progress (STALE)

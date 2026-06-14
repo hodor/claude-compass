@@ -50,13 +50,15 @@ The higher up the chain, the more human involvement required:
 
 **Agents must FORCE humans to make decisions.** Never decide silently at strategic levels.
 
-### 3. Bayesian Convergence
+### 3. Multi-Agent Convergence Voting
 
 For critical decisions, spawn ~5 agents doing the same task independently. Check convergence:
-- **Convergence** → high confidence, proceed
-- **Divergence** → needs more human input, surface the disagreements
+- **Convergence** (>=80% agree) → high confidence, proceed
+- **Divergence** (<50% agree) → needs more human input, surface the disagreements
 
 Apply to: research, plan review, any judgment calls.
+
+This is majority voting across independent samples, not Bayesian updating. A true Bayesian protocol would require each agent to emit a posterior probability with its prior and likelihood and combine via log-odds pooling; the current pattern uses agreement counts and thresholds. Previously labeled "Bayesian Convergence"; renamed to match what the reviewer agent actually does.
 
 ### 4. Testing Mandate
 

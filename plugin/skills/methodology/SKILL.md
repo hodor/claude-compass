@@ -30,11 +30,29 @@ Without vision, projects get crammed into one giant spec or fragmented into inco
 
 Every agent reads first, before anything else:
 
-1. `.compass/index.md` - master map.
+1. `.compass/index.md` - master map (the tree, pointers only, never spec bodies).
 2. `.compass/active.md` - current tasks.
 3. `.compass/meta/lessons-catalog.yaml` - scan for relevant lessons.
 
 This is the cache line - minimum context to orient. Load specific specs/research/plans only after.
+
+### Three-tier mental model
+
+Compass is a MemGPT-inspired three-tier memory system (see [[ADR-004-hierarchical-specs-with-facets]]):
+
+- **Hot tier (always loaded):** the 3 files above. Hard cap: 5,000 tokens combined.
+- **Warm tier (fetched on navigation):** folder-level `index.md` files. RAPTOR-style branch summaries with a one-line per child.
+- **Cold tier (fetched on demand):** full spec bodies, full research docs, archived artifacts.
+
+Movement between tiers is reactive (query-driven), not predictive. Read the hot path; if a question requires more, read the relevant folder index; if that requires more, read the leaf spec.
+
+### Hot path positioning matters
+
+Load the hot path at the START of your reasoning, never in the middle of a longer context. The "lost in the middle" effect (Liu et al. TACL 2024, replicated by RULER and Chroma 2025 across all frontier models) costs 20-30 points of retrieval accuracy when load-bearing context sits in the middle of a long prompt instead of at the start or end.
+
+### Multi-perspective navigation
+
+When a question spans facets (e.g. "find all rendering-related specs across the vault"), use `.compass/meta/tag-index.yaml` - the tag index. Do NOT crawl folders. The tag index is the cold-tier retrieval primitive for multi-parent queries.
 
 ## Human involvement gradient
 
@@ -173,7 +191,8 @@ A Compass project isn't properly set up without:
 - [ ] At least one **ADR** (recorded decision).
 - [ ] `index.md` linking all documents.
 - [ ] `active.md` tracking current work.
-- [ ] `meta/config.yaml` with counters.
+- [ ] `meta/lessons-catalog.yaml` (O(1) lesson tag lookup; can start empty).
+- [ ] `meta/plugin.yaml` (plugin source path + installed version; written by `/compass:bootstrap`; load-bearing for `/compass:bootstrap update`).
 - [ ] `meta/lessons-catalog.yaml` (can be empty).
 
 If any are missing, flag and request creation.
@@ -235,8 +254,8 @@ Agents depending on external tools (MCP, `gh`, specific runtimes) verify availab
 ├── active.md             - HOT: current tasks
 ├── backlog.md            - Cold: future tasks
 ├── meta/
-│   ├── config.yaml       - Counters for SPEC/ADR/TASK numbering
-│   └── lessons-catalog.yaml - O(1) tag lookup
+│   ├── lessons-catalog.yaml - O(1) lesson tag lookup (numbering is JIT, no counter file)
+│   └── plugin.yaml          - Plugin source path + installed version (written by bootstrap)
 ├── specs/                - Specifications
 ├── research/             - Research findings
 ├── plans/                - Implementation plans

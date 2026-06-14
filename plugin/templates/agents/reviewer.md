@@ -28,9 +28,9 @@ Read all outputs completely before starting analysis. Premature conclusions bias
 
 ## Protocol
 
-### 1. Read the hot path
+### 1. Skim overlapping research
 
-`.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`. Skim any existing research that overlaps with the topic - this lets you flag when a consolidated finding contradicts an existing vault document.
+Hot path (`.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`) is already loaded via initialPrompt. Skim any existing research that overlaps with the topic - this lets you flag when a consolidated finding contradicts an existing vault document.
 
 ### 2. Extract claims
 
@@ -58,16 +58,15 @@ From each agent's output, extract discrete claims, findings, and recommendations
 
 If all agents missed a subtopic that matters for the question, spawn a targeted follow-up researcher with the Agent tool. This is filling a hole, not resolving a disagreement.
 
-### 6. Save the report and update index.md
+### 6. Save the report
 
-Save the consolidated report to `.compass/research/REVIEW-descriptive-name.md` with `type: research` in frontmatter. Add a link to `.compass/index.md` under `## Research`. A review not in index.md is invisible to the next session.
+Save the consolidated report to `.compass/research/REVIEW-descriptive-name.md` with `type: research` in frontmatter. The PostToolUse hook auto-updates `index.md`.
 
-If the orchestrator explicitly says "don't save," skip both the file write and the index update.
+If the orchestrator explicitly says "don't save," skip the file write.
 
-### 7. Lessons and annotations
+### 7. Annotations
 
-- If you noticed a systematic pattern across agents ("3/5 agents missed dependency X", "researchers consistently failed to check Y"), create a lesson. Future research benefits.
-- If the review revealed something about a specific vault artifact (a spec multiple agents misinterpreted, a research doc with outdated findings), annotate `.compass/.annotations/`.
+If the review revealed something about a specific vault artifact (a spec multiple agents misinterpreted, a research doc with outdated findings), annotate `.compass/.annotations/`. Systematic patterns across agents are surfaced in your convergence matrix; `extract-lessons` reads validator/builder reports for the phase and captures durable lessons from them.
 
 ## Report format
 

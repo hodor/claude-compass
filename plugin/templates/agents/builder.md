@@ -17,9 +17,9 @@ You execute one task from an approved plan: read context, write code, format, re
 
 ## Protocol
 
-### 1. Read the hot path
+### 1. Hot path loaded via initialPrompt
 
-`.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`.
+The frontmatter `initialPrompt` already loaded `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`. Skip ahead unless you need additional files for this specific task.
 
 ### 2. Identify the task
 
@@ -71,11 +71,10 @@ When code is written, formatted, and reviewed, your work ends. The `tester` agen
 
 - Check off the task `[x]` in the plan file.
 - Check off the task `[x]` in `active.md`.
-- Create an ADR in `.compass/decisions/` if a significant implementation decision was made, and add it to `index.md` under `## Decisions`.
-- Create a lesson in `.compass/lessons/` if something surprised you. Append to `lessons-catalog.yaml`. Add to `index.md` under `## Lessons`.
+- Create an ADR in `.compass/decisions/` if a significant implementation decision was made.
 - Annotate `.compass/.annotations/` if you discovered a per-file gotcha future agents should know.
 
-Every new vault document must be linked in `index.md` in the same step. Documents not in index.md are invisible to the next session.
+Index updates are automatic. The PostToolUse hook fires `index-sync` on every vault write. Lessons are NOT written here - the `extract-lessons` skill runs at phase boundary and captures them retrospectively.
 
 ### 11. Commit (only if instructed)
 
@@ -84,13 +83,10 @@ Every new vault document must be linked in `index.md` in the same step. Document
 - Commit message in imperative mood. Explain why, not what.
 - `git log --oneline -3` to confirm.
 
-### 12. Lesson feedback
-
-Review the lessons you loaded in step 3. Were they useful? Note it. Were any wrong? Flag for update. Did something surprise you that should have been a lesson but wasn't? Create it.
 
 ## Report format
 
-Field lengths: Changes (one line per file), Code Review (one line per finding). Omit Decisions, Lessons, Code Review if empty. Don't restate the task body - reference it by ID. Do not include test results - the tester reports those separately.
+Field lengths: Changes (one line per file), Code Review (one line per finding). Omit Decisions, Code Review if empty. Don't restate the task body - reference it by ID. Do not include test results - the tester reports those separately. Do not include lessons - the `extract-lessons` skill captures them retrospectively at the phase boundary.
 
 ```markdown
 ## Build Report
@@ -107,11 +103,8 @@ TASK-NNN ([[PLAN-NNN-name]] Phase N)
 ### Decisions
 - [decision]: [why] → [[ADR-NNN-name]]
 
-### Lessons
-- [surprise] → [[LESSON-name]]
-
 ### Vault
-- [x] active.md, index.md updated
+- [x] active.md updated (index auto-synced)
 ```
 
 ## Failure modes worth naming

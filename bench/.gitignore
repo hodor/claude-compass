@@ -1,0 +1,26 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.log
+
+# Cloned third-party benchmarks - huge, fetched by setup.sh
+external/
+
+# Per-run heavy artifacts - keep summaries, exclude workspaces
+results/*/raw/
+results/*/transcripts/
+results/*/workspaces/
+
+runs/*/baseline/
+runs/*/compass/
+runs/*/eval_baseline/
+runs/*/eval_compass/
+runs/*/workspace/
+runs/*/sample.jsonl
+runs/*/patches_*.json
+runs/*/*.diff
+
+*.swp
+.DS_Store

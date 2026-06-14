@@ -37,7 +37,25 @@ Spawn builder agents to execute tasks. The main conversation orchestrates; it do
    ```
    After each merge, spawn the `tester` agent on the merged state to catch cross-task integration issues. Do not run tests yourself; the tester handles all test execution. If a merge conflicts, halt and present the list of remaining branches to the human - planner enforces file exclusivity so conflicts mean either a planner bug or a builder that wrote outside its `files:`.
 
-6. **Phase pause.** When all tasks in a phase are done and the post-merge tester reports passing, pause for the human to perform manual verification before the next phase. Skip the pause in `all-phases` mode; pause only after the last phase.
+6. **Phase pause.** When all tasks in a phase are done and the post-merge tester reports passing:
+
+   **6a. Assemble phase reports from SubagentStop captures.** The SubagentStop hook has already captured each subagent's final message to `.compass/tmp/subagent-captures/<timestamp>_<agent_type>.md`. For this phase:
+
+   1. List captures created since this phase started (orchestrator knows the phase start time from when it began Phase N).
+   2. For each capture, match the agent_type and the spawn history to a task. Rename and move into `.compass/tmp/phase-reports/<phase-id>/`:
+      - builder capture → `task-<NNN>-build.md`
+      - tester capture → `task-<NNN>-test.md`
+      - debug capture → `task-<NNN>-debug.md`
+      - validator capture → `validator.md`
+   3. Write `phase-summary.yaml` with structured signals: `phase_id`, `plan`, `tasks` list, `completed_at`, `fix_loop_cycles` per task, `validator_deviations`, `debug_invocations`, `stop_and_report_events`, `plan_revisions`. See `extract-lessons/SKILL.md` for the exact schema.
+
+   Only `phase-summary.yaml` is original content the orchestrator writes; the per-task reports are just renames of hook-captured files. This is the [[LESSON-no-agent-bookkeeping]] principle applied to subagent reports.
+
+   **6b. Invoke extract-lessons.** Run the `extract-lessons` skill with the phase report directory as argument. It checks binary triggers, applies the anti-list, hands survivors to `lesson-write`. Surface its summary line to the human as part of the pause.
+
+   **6c. Pause for human.** Present manual verification items from the plan, plus the extract-lessons summary. Wait for human confirmation before proceeding to next phase.
+
+   Skip the pause (but NOT 6a and 6b) in `all-phases` mode; pause only after the last phase. Reports and extraction still run between phases so lessons are captured incrementally.
 
 7. **Validate (optional).** Offer to spawn the validator with the plan file.
 

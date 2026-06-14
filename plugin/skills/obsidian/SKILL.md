@@ -30,6 +30,11 @@ type: spec | research | plan | task | lesson | decision | handoff  # REQUIRED - 
 status: draft | review | approved | active | done | archived  # REQUIRED - all
 confidence: low | medium | high                  # REQUIRED for spec, research, decision
 category: process | domain                       # REQUIRED for lesson
+summary: "one-line summary"                      # REQUIRED for lesson
+seen: [YYYY-MM-DD, ...]                          # OPTIONAL for lesson - recurrence dates, cap 3
+escalated: YYYY-MM-DD                            # OPTIONAL for lesson - set when seen would exceed 3
+escalation_reason: "..."                         # OPTIONAL for lesson - paired with escalated
+score: 5                                         # REQUIRED for lesson, range 1-10
 area: architecture | frontend | backend | testing | devops | infra | docs | workflow  # REQUIRED - all
 tags: [tag1, tag2]                               # REQUIRED - all
 created: YYYY-MM-DD                              # REQUIRED - all
@@ -66,6 +71,38 @@ draft → review → approved → active → done → archived
 
 Always wikilinks for cross-references. Never relative markdown links.
 
+## Math (LaTeX)
+
+**Scope: `.md` files only.** LaTeX rules below apply to vault documents written to disk. Never use LaTeX in chat output, terminal responses, or agent reports surfaced to the user - the terminal does not render MathJax, so `$x^2$` displays as literal characters. For chat, use plain prose or unicode (≤, ≥, →, ∑, π, σ) or code-fenced expressions like `O(n log n)`.
+
+Both Obsidian and GitHub render LaTeX math via MathJax. Use it when prose would be less clear than a formula. Especially common in research documents (statistical analysis, complexity, ML, probability) and in plans or specs that quantify behavior.
+
+| Syntax | Use | Example |
+|--------|-----|---------|
+| `$...$` | Inline math | `the cost is $O(n \log n)$` |
+| `$$...$$` | Block / display math | `$$P(A \cap B) = P(A) \cdot P(B \mid A)$$` |
+| `\$` | Literal dollar sign in prose | `the budget was \$500` |
+
+Rules:
+
+- Use LaTeX standard syntax (`\frac`, `\sum`, `\sqrt`, `\cdot`, `\mid`, `\to`, Greek letters, etc.).
+- Inline math goes inside one sentence. If the expression spans multiple lines or needs to be referenced, use block math.
+- Escape literal `$` as `\$` to avoid the parser treating it as a math delimiter.
+- Do NOT use math notation to dress up prose. If the formula does not add precision a sentence cannot, drop it.
+- Research is the type most likely to need it; specs and plans use it sparingly; lessons and handoffs rarely.
+
+Examples in context:
+
+```markdown
+The dedup judgment runs in $O(n)$ over the catalog where $n$ is the active lesson count.
+
+Bayes update for relevance score:
+
+$$P(\text{relevant} \mid \text{tags}) = \frac{P(\text{tags} \mid \text{relevant}) \cdot P(\text{relevant})}{P(\text{tags})}$$
+
+Convergence threshold across $N$ agents is $\geq 0.8$ before promoting a finding.
+```
+
 ## File naming
 
 Pattern: `TYPE-NNN-descriptive-name.md`
@@ -79,7 +116,107 @@ Pattern: `TYPE-NNN-descriptive-name.md`
 | Lesson | `LESSON-descriptive-name.md` | `LESSON-yaml-frontmatter-quoting.md` |
 | Handoff | `YYYY-MM-DD_HH-MM-SS_descriptive-name.md` | `2026-03-12_14-30-00_implement-auth-flow.md` |
 
-`NNN` numbers come from `meta/config.yaml` counters. Names must be self-descriptive - `SPEC-001.md` is never acceptable. Lowercase kebab-case for the descriptive part. Research files omit the number.
+`NNN` numbers are computed JIT at creation, not stored anywhere. There is NO counter file. Numbers are LOCAL to each folder (resets at each level). See [[ADR-003-drop-counter-file-jit-compute]] for the rationale and [[ADR-004-hierarchical-specs-with-facets]] for the hierarchy rules.
+
+**JIT compute rule (the single source of truth):**
+
+| Artifact | Next-number rule |
+|---|---|
+| SPEC | `max(N from glob '**/.compass/specs/SPEC-N-*.md') + 1`, default 1 |
+| ADR | `max(N from glob '**/.compass/decisions/ADR-N-*.md') + 1`, default 1 |
+| PLAN | `max(N from glob '**/.compass/plans/PLAN-N-*.md') + 1`, default 1 |
+| TASK | `max(N) + 1` across `grep -oE 'TASK-([0-9]+)' .compass/active.md .compass/backlog.md`, default 1 |
+| RESEARCH | no number; descriptive name only |
+| LESSON | no number; descriptive slug only |
+| Handoff | no number; `YYYY-MM-DD_HH-MM-SS_name` timestamp |
+
+The filesystem is the source of truth. Skip the `**/` prefix and Glob returns zero (see [[LESSON-glob-hidden-dirs-prefix]]).
+
+Names must be self-descriptive - `SPEC-001.md` is never acceptable. Lowercase kebab-case for the descriptive part.
+
+## Hierarchical specs and plans (folders)
+
+A flat spec is a single `.md` file. A complex spec is a **folder** whose `index.md` is the parent spec at that level. Children inside the folder follow the same convention recursively. Path is identity; numbering resets per folder.
+
+**A spec earns its own folder when** it has 3+ sub-concerns OR its body would exceed roughly 2,000 tokens. Below the threshold the extra hop costs more than the split saves; above it, leaving content flat creates a mid-context blob that triggers the documented "lost in the middle" penalty (Liu et al. TACL 2024, 20-30 point accuracy hit).
+
+```
+.compass/specs/
+├── SPEC-001-flat-thing.md                   leaf
+├── SPEC-002-tile-editor/                    folder = complex spec
+│   ├── index.md                             the parent spec at this level
+│   ├── SPEC-001-master-material.md          child (local numbering resets)
+│   ├── SPEC-002-brush-system/               sub-complex = nested folder
+│   │   ├── index.md
+│   │   ├── SPEC-001-stroke-rendering.md
+│   │   └── SPEC-002-blending-modes.md
+│   └── SPEC-003-tile-grid.md
+```
+
+Same convention for `plans/`. Plans typically map to specs and inherit the spec's structure.
+
+### Wikilinks across folders
+
+Obsidian wikilinks accept slashes. Reference a child spec by its full path inside the type root:
+
+- `[[SPEC-002-tile-editor]]` resolves to `SPEC-002-tile-editor/index.md`
+- `[[SPEC-002-tile-editor/SPEC-001-master-material]]` resolves to the child
+- `[[SPEC-002-tile-editor/SPEC-002-brush-system/SPEC-001-stroke-rendering]]` for nested
+
+### Folder-level index.md (the warm tier branch summary)
+
+A folder's `index.md` is the parent spec body PLUS a RAPTOR-style summary of its children. Required structure for folder index.md:
+
+```markdown
+---
+title: "..."
+type: spec | plan
+status: ...
+area: ...
+tags: [...]            # REQUIRED - facets for this branch
+children_count: N      # REQUIRED - synced by index-sync
+summary: "..."         # REQUIRED - one-line representation of the branch
+---
+
+[Parent spec body. Hold decisions and concerns that stay at this level. Delegate sub-concerns to children.]
+
+## Children
+
+- [[SPEC-001-master-material]] — one-line summary of what the child covers
+- [[SPEC-002-brush-system]] — one-line summary
+- [[SPEC-003-tile-grid]] — one-line summary
+```
+
+When the children change, the `## Children` section must be refreshed (`/compass:consolidate` does this).
+
+## Facet tags (the multi-parent layer)
+
+Every spec, plan, lesson, ADR, and research doc has a `tags: [...]` frontmatter field. Tags are folksonomy - free-form, not a controlled vocabulary. A spec belongs to whatever facets describe it. A master material spec is `tags: [rendering, tile-editor, materials, shaders]` even though its folder is `tile-editor/`.
+
+Tags are the multi-parent retrieval primitive. The agent reaches multi-perspective specs by reading `.compass/meta/tag-index.yaml`, not by crawling folders.
+
+### Tag index file (auto-generated)
+
+`.compass/meta/tag-index.yaml` is regenerated by `index-sync` whenever a tagged file is written. Format:
+
+```yaml
+tags:
+  rendering:
+    - specs/SPEC-002-tile-editor/SPEC-001-master-material.md
+    - specs/SPEC-002-tile-editor/SPEC-002-brush-system/SPEC-001-stroke-rendering.md
+  tile-editor:
+    - specs/SPEC-002-tile-editor/index.md
+    - specs/SPEC-002-tile-editor/SPEC-001-master-material.md
+    - specs/SPEC-002-tile-editor/SPEC-002-brush-system/index.md
+  materials:
+    - specs/SPEC-002-tile-editor/SPEC-001-master-material.md
+```
+
+The tag index is NOT in the hot path. The agent reads it only when answering a multi-tag question. This is the cold-tier retrieval primitive.
+
+### Tag hygiene
+
+Folksonomy invites synonyms (`tile-editor`, `tileEditor`, `tile_editor`) and typos. `/compass:consolidate` runs a vocabulary pass that proposes merges and rewrites all spec frontmatter atomically. Human approves.
 
 ## Vault search patterns
 
@@ -108,7 +245,7 @@ Required sections per type:
 - **Spec:** Problem, Desired Outcome.
 - **Research:** Question, Findings. (Research is the one type that may emit all sections - it captures evidence.)
 - **Plan:** Goal, Phases.
-- **Lesson:** Context, Lesson.
+- **Lesson:** none (body is free-form, hard-capped at 5 lines).
 - **Handoff:** Session Summary, Start Here, Action Items.
 - **Decision:** Context, Decision, Consequences.
 
@@ -304,6 +441,8 @@ Two types (per Reinertsen's *Principles of Product Development Flow*):
 - **Process** (`category: process`) - how to build. "Mocking the DB in tests hides migration bugs."
 - **Domain** (`category: domain`) - what to build. "Users need batch export, not single-file."
 
+**Body is free-form, hard-capped at 5 lines.** No template sections. Compression is the discipline. Lessons longer than 5 lines must be rewritten before they can be written. The `lesson-write` skill enforces the cap.
+
 ```markdown
 ---
 title: "Title"
@@ -315,25 +454,16 @@ tags: [tag1, tag2]
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 score: 5
+summary: "One-line summary, <=120 characters"
+seen: []                    # OPTIONAL - dates lesson was rediscovered, cap 3
+escalated: YYYY-MM-DD       # OPTIONAL - set when seen would exceed 3
+escalation_reason: "..."    # OPTIONAL - paired with escalated
 ---
 
-# Title
-
-## Context
-What were you doing? What was the goal or expected behavior?
-
-## What Happened
-What actually happened? What was surprising?
-
-## Why
-Root cause or contributing factors.
-
-## Lesson
-What is the correct approach or understanding?
-
-## Applicability
-When should this be recalled? What signals make it relevant?
+Free-form markdown body. **Hard cap 5 physical lines including embedded blank lines.** No `# Title` H1 - the frontmatter `title` field is the canonical title. Common shape (not required): the rule, the reason, the trigger condition. Compress.
 ```
+
+Lessons are never authored by agents in prose. Creation goes through the `lesson-write` skill, invoked by `extract-lessons` (auto at phase boundary) or `/compass:learned` (manual). Both paths share dedup, anti-list filtering, and the 5-line cap.
 
 ### Handoff
 

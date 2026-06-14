@@ -1,0 +1,24 @@
+arm:
+  name: compass
+  description: |
+    Workspace receives a scaffolded .compass/ vault. Claude Code loads the
+    Compass plugin via --plugin-dir, so all agents, skills, rules, and hooks
+    are active for the run.
+  wrapper: agents/compass-agent.sh
+
+runtime:
+  claude_binary: claude
+  model: claude-opus-4-7
+  budget_usd: 2.00
+  tool_allowlist:
+    - Read
+    - Edit
+    - Write
+    - Bash
+    - Grep
+    - Glob
+    - Task
+  output_format: stream-json
+  timeout_seconds: 3600
+
+plugin_source: ../plugin

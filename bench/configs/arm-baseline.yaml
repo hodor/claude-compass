@@ -1,0 +1,21 @@
+arm:
+  name: baseline
+  description: |
+    Workspace is the raw task workspace. No plugin loaded, no scaffold.
+    Claude Code runs the task with default behavior only.
+  wrapper: agents/baseline-agent.sh
+
+runtime:
+  claude_binary: claude
+  model: claude-opus-4-7
+  budget_usd: 2.00
+  tool_allowlist:
+    - Read
+    - Edit
+    - Write
+    - Bash
+    - Grep
+    - Glob
+    - Task
+  output_format: stream-json
+  timeout_seconds: 3600

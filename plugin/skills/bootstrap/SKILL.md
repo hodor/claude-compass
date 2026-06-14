@@ -29,10 +29,13 @@ Sets up Compass in a project:
 
 If the argument is `update`:
 1. Skip state detection.
-2. Go to step 2 (install agents/rules/skills) - overwrite without asking.
-3. Go to step 2b (hooks) - overwrite without asking.
-4. Report what changed.
-5. Stop. Don't scaffold vault, create specs, or touch CLAUDE.md.
+2. Read `.compass/meta/plugin.yaml` to get the recorded plugin source path. This is the load-bearing reference - it eliminates the filesystem discovery in step 2 and tells bootstrap exactly where to pull updates from. If the file is missing (project bootstrapped before this feature), fall back to step 2's discovery and write the file at the end.
+3. Read the plugin source's `plugin.json` `version` field. Read the project's `.compass/meta/plugin.yaml` `plugin.version`. If they match, ask the human whether to force-update anyway. If source is newer, proceed.
+4. Go to step 2 (install agents/rules/skills) - overwrite without asking, using the recorded source path.
+5. Go to step 2b (hooks) - overwrite without asking.
+6. Update `.compass/meta/plugin.yaml` with the new version, today's date, and `installed_mode: update`.
+7. Report what changed (which files, version delta).
+8. Stop. Don't scaffold vault, create specs, or touch CLAUDE.md.
 
 ### 1. Detect state
 
@@ -85,6 +88,20 @@ echo "Skills copied: $(ls -d .claude/skills/*/ | wc -l) directories"
 Run as one Bash call. Verify 13 agents and 4 rules files. If the plugin can't be found, ask the human for the path.
 
 After this, the project is self-contained - anyone who clones gets agents, skills, and rules without installing the plugin.
+
+**Record the plugin source.** After the copy succeeds, write `.compass/meta/plugin.yaml`:
+
+```yaml
+plugin:
+  name: compass
+  version: <plugin.json version>
+  source: <PLUGIN_ROOT path used above>
+  repository: <plugin.json repository>
+  installed_at: <today YYYY-MM-DD>
+  installed_mode: new | migrate | update
+```
+
+This file is the single source of truth for "where did this project's Compass install come from." Future `/compass:bootstrap update` runs read it directly; no filesystem rediscovery. `/compass:checkup` can diff the recorded version against the source's current version to detect drift.
 
 In `update` mode, overwrite without asking. In other modes, if agents are already installed, ask once before overwriting.
 
@@ -155,10 +172,10 @@ If the file already exists, merge. Ask before overwriting existing hooks or perm
   index.md
   active.md
   backlog.md
-  .annotations/           # sidecar annotations
+  .annotations/             # sidecar annotations
   meta/
-    config.yaml
-    lessons-catalog.yaml
+    plugin.yaml             # plugin source reference (step 2 writes this)
+    lessons-catalog.yaml    # numbering is JIT, no counter file - see ADR-003
   specs/
   research/
   plans/
@@ -169,16 +186,7 @@ If the file already exists, merge. Ask before overwriting existing hooks or perm
   archive/
 ```
 
-Bootstrap does NOT create `vision.md` - `/compass:vision` does that. Bootstrap does NOT create specs - `/compass:spec` does that.
-
-`config.yaml`:
-```yaml
-counters:
-  spec: 1
-  adr: 1
-  task: 1
-  plan: 1
-```
+Bootstrap does NOT create `vision.md` - `/compass:vision` does that. Bootstrap does NOT create specs - `/compass:spec` does that. Bootstrap does NOT create a counter file - numbering is computed JIT from the filesystem.
 
 `lessons-catalog.yaml`:
 ```yaml
@@ -246,8 +254,8 @@ Present and wait for approval. Write only after approval.
 
 - [ ] `.claude/agents/` has 9 Compass agents.
 - [ ] `.claude/rules/` has 4 rule files.
-- [ ] `.compass/meta/config.yaml` exists with valid counters.
 - [ ] `.compass/meta/lessons-catalog.yaml` exists.
+- [ ] `.compass/meta/plugin.yaml` exists with `name`, `version`, `source`, `installed_at`.
 - [ ] `.compass/index.md` exists.
 - [ ] `.compass/active.md` exists.
 

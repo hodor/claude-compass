@@ -2,7 +2,7 @@
 title: Compass Plugin — Project Index
 project: compass
 created: 2026-03-12
-updated: 2026-03-12
+updated: 2026-05-24
 status: active
 ---
 
@@ -18,18 +18,26 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 ## Specs
 
 - [[SPEC-001-compass-vision-and-architecture]] — Core vision, principles, architecture, and resolved design decisions
+- [[SPEC-002-lessons-and-index-subsystem]] - Lessons capture, dedup, anti-list, and index freshness mechanism (approved)
+- [[SPEC-003-hierarchical-vault-organization]] - Hierarchical folders + faceted tags + MemGPT 3-tier model, with falsifiable 30% read-reduction hypothesis (approved)
 
 ## Research
 
-_None yet._
+- [[RESEARCH-lessons-and-index-architecture]] - literature review across 5 reference codebases on capture timing, index freshness, dedup, and lesson shape
+- [[RESEARCH-evaluation-benchmarks]] - benchmarks for evaluating Compass methodology layer; A/B pitfalls; field-gap analysis
+- [[RESEARCH-scientific-method-in-compass]] - does Compass actually embody the scientific method, or only borrow the vocabulary; 8 specific gaps with file:line evidence
+- [[RESEARCH-hierarchical-knowledge-base-design]] - MemGPT + RAPTOR + Ranganathan + Denning synthesis with 11 verified findings and 4 open questions, informs hierarchical specs design
 
 ## Plans
 
-_None yet._
+- [[PLAN-001-lessons-and-index-implementation]] - 12 tasks across 6 phases implementing SPEC-002 (done 2026-05-24)
 
 ## Decisions
 
-_None yet. First ADR should document why Compass was adopted and key architectural choices._
+- [[ADR-001-methodology-as-skill-with-vault]] - Methodology lives in a skill; project state in per-project `.compass/` Obsidian-compatible vault
+- [[ADR-002-retrospective-lessons-subsystem]] - Retrospective lesson capture at phase boundary with binary triggers, anti-list, and single writer
+- [[ADR-003-drop-counter-file-jit-compute]] - Drop `meta/config.yaml` counter file; compute next artifact number JIT from filesystem
+- [[ADR-004-hierarchical-specs-with-facets]] - 3-tier MemGPT memory + folder hierarchy + faceted tags + admission control; hot path at prompt start
 
 ## Active Work
 
@@ -43,7 +51,15 @@ See [[backlog]].
 
 - [[2026-03-12_review-all-plugin-files]] — File-by-file review of all 21 plugin files (active)
 - [[2026-03-12_23-50-59_session-3-skills-approved]] — All 3 skills approved, duplication audit complete
+- [[2026-03-12_session-2-obsidian-approved]] - Handoff: Obsidian skill fully reviewed, HumanLayer insights adopted
 
 ## Lessons
 
-_None yet._
+- [[LESSON-glob-hidden-dirs-prefix]] - Glob tool needs `**/` prefix to traverse hidden dirs like .compass/
+- [[LESSON-hook-if-clause-no-or]] - Hook `if` does not support `||`; split into N entries or use matcher for multi-tool
+- [[LESSON-hook-type-prompt-no-skills]] - Hook `type: prompt` is single-shot; cannot call Skill tool; use `type: agent` instead
+- [[LESSON-no-agent-bookkeeping]] - Mechanical bookkeeping (counters, indexes, catalogs) belongs in scripts/hooks/JIT, not agent steps
+- [[LESSON-wikilink-validator-skip-code]] - Wikilink validators must skip fenced code blocks AND inline code spans; example refs in docs are noise
+- [[LESSON-test-driven-tasks-dont-discriminate]] - When tests fully encode the spec, frontier models already read-tests-first; methodology can't be measured on such tasks
+- [[LESSON-windows-crlf-breaks-linux-container-scripts]] - Python `open(p, 'w')` on Windows writes CRLF; mount that into a Linux container and bash chokes on $'\r'
+- [[LESSON-tag-index-trades-cost-for-directed-retrieval]] - Tag index gives directed retrieval and faster wall-time; token cost depends on query shape; SPEC-003's 30% claim falsified on N=1

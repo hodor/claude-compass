@@ -1,11 +1,11 @@
 ---
 name: lessons
-description: How to search, apply, and create lessons in the .compass/ vault - catalog structure, search algorithm, creation criteria, and catalog update protocol
+description: How to search and apply lessons from the .compass/ vault. Catalog structure and search algorithm. Creation is handled by the lesson-write skill, called by extract-lessons or /compass:learned - never created in agent prose.
 version: 1.0.0
 allowed-tools: [Glob, Grep, Read]
 ---
 
-# Lessons - Search, Apply & Create
+# Lessons - Search & Apply
 
 Lessons capture hard-won knowledge that prevents the same mistake twice. Per Reinertsen (*Principles of Product Development Flow*), two types:
 
@@ -16,7 +16,7 @@ Process lessons improve how agents work. Domain lessons improve what agents buil
 
 ## Catalog
 
-`.compass/meta/lessons-catalog.yaml` provides O(1) tag lookup instead of grepping every lesson file.
+`.compass/meta/lessons-catalog.yaml` is the O(1) tag lookup. Single source of truth for what lessons exist.
 
 ```yaml
 lessons:
@@ -37,17 +37,17 @@ lessons:
 ```
 
 Fields:
-- `file` - lesson filename in `.compass/lessons/`.
-- `status` - `active` or `archived`.
-- `category` - `process` or `domain`.
-- `area` - from frontmatter.
-- `tags` - for matching.
-- `score` - 1-10, higher = more broadly applicable. Starts at 5.
-- `summary` - one-line description.
+- `file` - lesson filename in `.compass/lessons/`
+- `status` - `active` or `archived`
+- `category` - `process` or `domain`
+- `area` - from the lesson's frontmatter
+- `tags` - for matching
+- `score` - 1-10, higher = more reinforced (bumped on recurrence by `lesson-write`)
+- `summary` - one line, matches the lesson's own frontmatter `summary`
 
 ## When to search
 
-Before making plans, implementing plans, or starting any task that changes code or vault structure. The catalog is cheap to read - when in doubt, check it.
+Before making plans, implementing tasks, or starting any work that changes code or vault structure. The catalog is cheap to read - when in doubt, check it.
 
 ## Search algorithm
 
@@ -59,53 +59,30 @@ Before making plans, implementing plans, or starting any task that changes code 
 
 For large catalogs (20+ entries), spawn a subagent to filter and return just the relevant filenames - keeps the main context clean.
 
-If the catalog doesn't exist:
+If the catalog does not exist:
+
 ```
 Glob: .compass/lessons/*.md
-Grep: tags matching current work area/tags
+Grep: tags matching current work area
 ```
 
-## When to create
+This fallback is malformed-vault recovery only. The catalog should always exist.
 
-### Process lessons (how to build)
+## Escalated lessons
 
-- Surprising bugs where the fix was non-obvious.
-- Counter-intuitive patterns - the right approach was the opposite of natural.
-- Misleading documentation.
-- Environment-specific gotchas.
-- Tool quirks.
-- Performance traps.
+A lesson with `escalated: <date>` in its frontmatter has recurred 3 times despite being captured. Surface it with extra emphasis in the next session's hot path. The lesson is either worded too vaguely to apply, or the search algorithm is failing to retrieve it before work. Flag for human review.
 
-### Domain lessons (what to build)
+`/compass:consolidate` does not archive escalated lessons. The human clears the flag after rewording or fixing the retrieval gap.
 
-- Requirement corrections - what users actually need vs. what was assumed.
-- Domain model insights - a concept was misunderstood.
-- User behavior surprises.
-- Constraint discoveries - a business rule, regulation, or technical constraint not known at design time.
-- Integration realities - an external system behaves differently than its docs suggest.
+## Creating lessons
 
-### Don't create lessons for
+Do NOT write lessons from agent prose. Creation goes through the `lesson-write` skill, called by:
 
-- Standard patterns in official docs.
-- Personal preferences or style.
-- Things obvious once you know the technology.
-- Ephemeral session context (use handoffs).
+- `extract-lessons` - retrospective capture at phase boundary (auto)
+- `/compass:learned` - in-the-moment human capture (manual)
+
+Both paths share dedup, anti-list filtering, atomic 3-file writes, and the 5-line body cap. See `lesson-write/SKILL.md` for the protocol.
 
 ## File format
 
-Lessons live in `.compass/lessons/`. Use the Lesson template from the obsidian skill.
-
-## Catalog update protocol
-
-Append-only - entries are never deleted, only archived.
-
-1. Create the lesson file in `.compass/lessons/`.
-2. Append an entry to `meta/lessons-catalog.yaml` with: `file`, `status: active`, `category`, `area`, `tags`, `score: 5`, `summary`.
-3. Never reorder existing entries.
-4. To retire, set `status: archived` in both the file and the catalog. Don't delete.
-
-## Score adjustment
-
-- Increase (+1 to +3) when a lesson prevents a repeated mistake or applies broadly.
-- Decrease (-1 to -3) when a lesson turns out to be environment-specific or no longer relevant.
-- Range: 1-10.
+Lessons live in `.compass/lessons/` as markdown files with YAML frontmatter. The body is free-form, hard-capped at 5 lines. See the Lesson template in `obsidian/SKILL.md` for the frontmatter schema.

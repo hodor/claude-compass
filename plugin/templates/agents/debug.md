@@ -19,9 +19,9 @@ Running commands is investigation. Reading code is not.
 
 ## Protocol
 
-### 1. Read the hot path
+### 1. Check for matching lessons
 
-`.compass/index.md` and `.compass/meta/lessons-catalog.yaml`. Load any matching lessons - the fix may already be documented.
+Hot path (`.compass/index.md`, `.compass/meta/lessons-catalog.yaml`) is already loaded via initialPrompt. Load any matching lessons by tag - the fix may already be documented.
 
 If a task, plan, or spec was referenced when you were invoked, read it first. The spec's Desired Outcome is the ground truth for "expected behavior."
 

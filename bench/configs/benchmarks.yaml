@@ -1,0 +1,42 @@
+benchmarks:
+  terminal-bench:
+    repo: https://github.com/harbor-framework/terminal-bench
+    ref: main
+    homepage: https://www.tbench.ai/
+    notes: |
+      Native Claude Code harness. Cleanest signal isolation for a methodology
+      layer comparison.
+    subsets:
+      smoke: 3
+      mini: 20
+      full: all
+
+  swe-bench-pro:
+    repo: https://github.com/scaleapi/SWE-bench_Pro-os
+    ref: main
+    homepage: https://scale.com/blog/swe-bench-pro
+    notes: |
+      Multi-language enterprise-repo issue resolution. Replaces SWE-bench
+      Verified (contaminated per OpenAI audit, 59% flawed tests on the
+      hardest items).
+    subsets:
+      smoke: 5
+      mini: 50
+      full: all
+
+  swe-lancer:
+    repo: https://github.com/openai/swelancer-benchmark
+    ref: main
+    homepage: https://openai.com/index/swe-lancer/
+    notes: |
+      Two splits: IC engineering tasks and managerial pick-best-proposal
+      tasks. The managerial split is the only public benchmark that scores
+      spec / plan quality rather than code, so it is the highest-signal
+      target for evaluating Compass.
+    splits:
+      - ic
+      - managerial
+    subsets:
+      smoke: 5
+      mini: 50
+      full: all

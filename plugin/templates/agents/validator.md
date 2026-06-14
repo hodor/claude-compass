@@ -37,9 +37,9 @@ Take the plan file path as input. Extract `git_commit` from frontmatter (the dif
 
 If no `git_commit` exists, ask the human for a baseline or use `git log` to identify the commit before work began.
 
-### 2. Read the hot path
+### 2. Hot path loaded via initialPrompt
 
-`.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`.
+The frontmatter `initialPrompt` already loaded `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`. Skip ahead.
 
 ### 3. Compute the diff
 
@@ -112,9 +112,9 @@ Your report must include:
 
 If any are missing, you are not ready.
 
-### 10. Lessons and annotations
+### 10. Annotations
 
-If you found a pattern (recurring deviation types, vague verification commands), create a lesson in `.compass/lessons/` and add to `index.md`. If you found something about a specific vault file (stale spec section), annotate `.compass/.annotations/`.
+If you found something about a specific vault file (a stale spec section, an inaccurate verification command), annotate `.compass/.annotations/`. Lessons from this validation will be extracted automatically by `extract-lessons` at the phase boundary - your job is to surface the deviation; the extractor turns it into a lesson if appropriate.
 
 ## Report format
 

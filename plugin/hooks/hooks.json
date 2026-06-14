@@ -1,0 +1,68 @@
+{
+  "description": "Compass plugin hooks. PostToolUse fires index-sync on any vault write to keep index.md and lessons-catalog.yaml fresh without per-agent discipline. Stop fires extract-lessons as a backstop for phases that bypassed /compass:build. Hooks use type=agent (not prompt) because they invoke skills via the Skill tool - prompt hooks are single-shot with no tool loop and cannot call skills. The PostToolUse entry is split three ways (Write, Edit, MultiEdit) because the `if` clause does not support `||` boolean OR; each entry has its own permission-rule pattern.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "agent",
+            "if": "Write(.compass/**/*.md)",
+            "statusMessage": "Syncing .compass index",
+            "timeout": 60,
+            "prompt": "A Write tool just wrote to a .compass vault file. Tool input: $ARGUMENTS. First check: if the file_path is .compass/index.md or .compass/meta/lessons-catalog.yaml, exit immediately with 'no-op: own write' to prevent the sync looping on its own writes. Otherwise invoke the index-sync skill to update index.md, lessons-catalog.yaml, and clean extraction logs older than 30 days."
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "agent",
+            "if": "Edit(.compass/**/*.md)",
+            "statusMessage": "Syncing .compass index",
+            "timeout": 60,
+            "prompt": "An Edit tool just edited a .compass vault file. Tool input: $ARGUMENTS. First check: if the file_path is .compass/index.md or .compass/meta/lessons-catalog.yaml, exit immediately with 'no-op: own write' to prevent the sync looping on its own writes. Otherwise invoke the index-sync skill to update index.md, lessons-catalog.yaml, and clean extraction logs older than 30 days."
+          }
+        ]
+      },
+      {
+        "matcher": "MultiEdit",
+        "hooks": [
+          {
+            "type": "agent",
+            "if": "MultiEdit(.compass/**/*.md)",
+            "statusMessage": "Syncing .compass index",
+            "timeout": 60,
+            "prompt": "A MultiEdit tool just edited a .compass vault file. Tool input: $ARGUMENTS. First check: if the file_path is .compass/index.md or .compass/meta/lessons-catalog.yaml, exit immediately with 'no-op: own write' to prevent the sync looping on its own writes. Otherwise invoke the index-sync skill to update index.md, lessons-catalog.yaml, and clean extraction logs older than 30 days."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "agent",
+            "statusMessage": "Checking for unprocessed phase reports",
+            "timeout": 90,
+            "prompt": "The main agent just ended a turn. Check whether a phase boundary completed outside /compass:build. Algorithm: glob .compass/tmp/phase-reports/*/ for any directory containing a phase-summary.yaml file but no .processed marker file. If none found, exit silently with 'no-op: no unprocessed phases'. If one or more found, for the most recently modified one, invoke the extract-lessons skill with that directory path as argument. The extract-lessons skill writes the .processed marker itself, providing the mutex against double-firing with the /compass:build primary path."
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "builder|tester|debug|validator|planner|researcher|reviewer|spec-writer|pr-describe",
+        "hooks": [
+          {
+            "type": "agent",
+            "statusMessage": "Capturing subagent report",
+            "timeout": 30,
+            "prompt": "A Compass subagent just stopped. The hook input includes 'agent_type' (e.g. 'builder', 'tester') and 'last_assistant_message' (the final assistant message text from the subagent). Write the last_assistant_message verbatim as the body of a file at .compass/tmp/subagent-captures/<UTC_timestamp>_<agent_type>.md. The UTC_timestamp format is YYYY-MM-DDTHH-MM-SS. Create the .compass/tmp/subagent-captures/ directory if it does not exist. Prepend this YAML frontmatter to the file:\n\n---\ntype: subagent_capture\nagent_type: <agent_type>\nagent_id: <agent_id from input>\ncaptured_at: <ISO-8601 timestamp>\n---\n\nThis is purely mechanical capture - do not summarize or transform the message. The /compass:build skill at phase end will move these captures into .compass/tmp/phase-reports/<phase-id>/ with task-specific names."
+          }
+        ]
+      }
+    ]
+  }
+}

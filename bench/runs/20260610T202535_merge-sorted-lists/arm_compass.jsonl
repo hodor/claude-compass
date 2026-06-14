@@ -1,0 +1,1 @@
+{"task_id": "merge-sorted-lists", "benchmark": "compass-smoke", "split": null, "success": true, "score": 1.0, "tokens_total": 23580, "wall_seconds": 33.091, "model": "inherited-from-orchestrator", "turn_budget": null, "turns_used": 4}

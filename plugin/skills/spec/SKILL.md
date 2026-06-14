@@ -15,7 +15,7 @@ One spec captures one problem. If the Problem section needs "and also" or the De
 
 ### 1. Read the hot path
 
-`.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml` (prioritize `category: domain` lessons), `.compass/meta/config.yaml` (for the spec counter), `.compass/vision.md` (if it exists - the spec roadmap should already include this concern).
+`.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml` (prioritize `category: domain` lessons), `.compass/vision.md` (if it exists - the spec roadmap should already include this concern).
 
 If `vision.md` doesn't exist and the project has no specs yet, run `/compass:vision` first. Don't write a spec without a vision for a new project.
 
@@ -56,7 +56,7 @@ Before saving, re-read Problem and Desired Outcome. If they cover multiple disti
 
 ### 5. Create the spec file
 
-`.compass/specs/SPEC-NNN-descriptive-name.md` (NNN from `config.yaml`, increment). Required sections: Problem and Desired Outcome. Optional: User Scenarios, Constraints, Non-Goals, Risks, Open Questions. Omit any optional section if empty - don't include a heading with no content.
+`.compass/specs/SPEC-NNN-descriptive-name.md` (NNN computed JIT: `max(N from glob '**/.compass/specs/SPEC-N-*.md') + 1`, default 1). Required sections: Problem and Desired Outcome. Optional: User Scenarios, Constraints, Non-Goals, Risks, Open Questions. Omit any optional section if empty - don't include a heading with no content.
 
 ```markdown
 ---

@@ -19,7 +19,7 @@ If a commit hash was given, use it. Otherwise `git log --oneline -20`, present t
 
 ### 2. Read the hot path
 
-`.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`, `.compass/meta/config.yaml`.
+`.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`.
 
 ### 3. Analyze the commits yourself
 
@@ -45,7 +45,7 @@ If the human doesn't know an answer, mark it as unknown. Don't invent.
 
 ### 5. Create the retroactive spec
 
-Increment the SPEC counter in `config.yaml`. Create `SPEC-NNN-descriptive-name.md`:
+Compute next SPEC number JIT (`max(N from glob '**/.compass/specs/SPEC-N-*.md') + 1`). Create `SPEC-NNN-descriptive-name.md`:
 
 ```markdown
 ---
@@ -80,7 +80,7 @@ This spec was created retroactively. Implementation already exists at commit `<h
 
 ### 6. Create the retroactive task
 
-Increment the TASK counter. Add under "Recently Completed" in `active.md`:
+Compute next TASK number JIT (`max(N) + 1` across active.md + backlog.md). Add under "Recently Completed" in `active.md`:
 
 ```markdown
 - [x] TASK-NNN: [Description] - complexity: [S/M/L], retroactive
@@ -92,13 +92,12 @@ Increment the TASK counter. Add under "Recently Completed" in `active.md`:
 
 ### 7. Create ADR (if applicable)
 
-Only if the human confirmed a significant decision. Increment the ADR counter, create `ADR-NNN-descriptive-name.md` with decision, context, and reasoning.
+Only if the human confirmed a significant decision. Compute next ADR number JIT (`max(N from glob '**/.compass/decisions/ADR-N-*.md') + 1`). Create `ADR-NNN-descriptive-name.md` with decision, context, and reasoning.
 
 ### 8. Update the vault - REQUIRED
 
-1. `.compass/index.md` - add the new spec under `## Specs` and any ADR under `## Decisions`. Documents not in `index.md` are invisible next session.
+1. `.compass/index.md` - the PostToolUse hook auto-syncs; no manual index edit needed.
 2. Confirm the new task is in `active.md` under "Recently Completed".
-3. Counters in `config.yaml` should already be incremented.
 
 ### 9. Capture lessons (if applicable)
 
@@ -126,8 +125,7 @@ If yes, create a minimal plan with `status: done (retroactive)`.
 - [[ADR-NNN-name]] (if applicable)
 
 ### Vault Updates
-- [x] config.yaml counters incremented
-- [x] index.md updated
+- [x] index.md updated (via PostToolUse hook)
 - [x] active.md updated
 
 ### Open Items

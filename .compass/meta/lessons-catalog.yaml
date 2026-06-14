@@ -1,1 +1,57 @@
-lessons: []
+lessons:
+  - file: "LESSON-glob-hidden-dirs-prefix.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [glob, hidden-dirs, vault-traversal, tool-quirks]
+    score: 5
+    summary: "Glob tool needs `**/` prefix to traverse hidden dirs like .compass/"
+  - file: "LESSON-hook-if-clause-no-or.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [hooks, if-clause, permission-rules, plugin-config]
+    score: 5
+    summary: "Hook `if` does not support `||`; split into N entries or use matcher for multi-tool"
+  - file: "LESSON-hook-type-prompt-no-skills.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [hooks, hook-type, skills, plugin-config]
+    score: 5
+    summary: "Hook `type: prompt` is single-shot; cannot call Skill tool; use `type: agent` instead"
+  - file: "LESSON-no-agent-bookkeeping.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [token-efficiency, automation, hooks, skill-design, jit]
+    score: 5
+    summary: "Mechanical bookkeeping (counters, indexes, catalogs) belongs in scripts/hooks/JIT, not agent steps"
+  - file: "LESSON-wikilink-validator-skip-code.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [validation, wikilinks, false-positives, content-aware]
+    score: 5
+    summary: "Wikilink validators must skip fenced code blocks AND inline code spans; example refs in docs are noise"
+  - file: "LESSON-test-driven-tasks-dont-discriminate.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [benchmarks, evaluation, bench-design, frontier-models, methodology-eval]
+    score: 5
+    summary: "When tests fully encode the spec, frontier models already read-tests-first; methodology can't be measured on such tasks"
+  - file: "LESSON-windows-crlf-breaks-linux-container-scripts.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [windows, crlf, docker, line-endings, cross-platform]
+    score: 5
+    summary: "Python `open(p, 'w')` on Windows writes CRLF; mount that into a Linux container and bash chokes on $'\\\\r'"
+  - file: "LESSON-tag-index-trades-cost-for-directed-retrieval.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [tag-index, retrieval, cost, hypothesis-falsified, empirical]
+    score: 5
+    summary: "Tag index makes agents more thorough and faster wall-time, but does not automatically reduce tokens; the cost win depends on the query shape"

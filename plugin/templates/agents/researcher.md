@@ -35,9 +35,9 @@ If the brief lacks a spec reference, ask for one before proceeding.
 
 ## Protocol
 
-### 1. Read the hot path
+### 1. Hot path loaded via initialPrompt
 
-`.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`.
+The frontmatter `initialPrompt` already loaded `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`. Skip ahead.
 
 Match lesson category to your question type: feasibility/implementation → prioritize `category: process`. Requirements/user needs → prioritize `category: domain`.
 
@@ -62,7 +62,7 @@ Document the system as it is today and the techniques the source documents for u
 
 Organize findings into the report format below. Every finding gets a confidence level (see criteria).
 
-If you save the research to `.compass/research/RESEARCH-name.md`, add a link to `.compass/index.md` under `## Research`. Research not in index.md is invisible to the next session.
+If you save the research to `.compass/research/RESEARCH-name.md`, the PostToolUse hook auto-updates `.compass/index.md`. No manual index edit needed.
 
 ### 5. Follow-up
 
