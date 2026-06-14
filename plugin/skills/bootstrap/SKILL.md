@@ -28,14 +28,27 @@ Sets up Compass in a project:
 ### 0. Update mode shortcut
 
 If the argument is `update`:
+
 1. Skip state detection.
-2. Read `.compass/meta/plugin.yaml` to get the recorded plugin source path. This is the load-bearing reference - it eliminates the filesystem discovery in step 2 and tells bootstrap exactly where to pull updates from. If the file is missing (project bootstrapped before this feature), fall back to step 2's discovery and write the file at the end.
-3. Read the plugin source's `plugin.json` `version` field. Read the project's `.compass/meta/plugin.yaml` `plugin.version`. If they match, ask the human whether to force-update anyway. If source is newer, proceed.
-4. Go to step 2 (install agents/rules/skills) - overwrite without asking, using the recorded source path.
-5. Go to step 2b (hooks) - overwrite without asking.
-6. Update `.compass/meta/plugin.yaml` with the new version, today's date, and `installed_mode: update`.
-7. Report what changed (which files, version delta).
-8. Stop. Don't scaffold vault, create specs, or touch CLAUDE.md.
+2. **Pull the latest plugin source from GitHub, never from the local install folder.** The local install can be stale or hand-edited; the GitHub repository is the canonical source for updates. Read `.compass/meta/plugin.yaml` `repository:` field (or use `--repository <url>` override). Clone shallow to a temp directory:
+
+   ```bash
+   TMP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t compass-update)"
+   git clone --depth=1 "$REPOSITORY" "$TMP_DIR/clone"
+   PLUGIN_SOURCE="$TMP_DIR/clone/plugin"
+   ```
+
+   If the project's `plugin.yaml` is missing (project bootstrapped before this feature) and no `--repository` override was passed, ask the human for the repository URL.
+
+3. Read the cloned source's `plugin/.claude-plugin/plugin.json` `version` field. Read the project's `.compass/meta/plugin.yaml` `plugin.version`. If they match, ask the human whether to force-update anyway. If GitHub source is newer, proceed.
+4. Go to step 2 (install agents/rules/skills) using `$PLUGIN_SOURCE` from the clone. Overwrite without asking.
+5. Go to step 2b (hooks) using the cloned `$PLUGIN_SOURCE/hooks/hooks.json`. Overwrite without asking.
+6. Update `.compass/meta/plugin.yaml`: bump `version` to the cloned version, set `installed_at: <today>`, set `installed_mode: update`. Leave `source:` pointing at whatever it pointed at before (it is documentation of the original install, not the update channel).
+7. Remove the temp clone: `rm -rf "$TMP_DIR"`.
+8. Report what changed (which files, version delta).
+9. Stop. Don't scaffold vault, create specs, or touch CLAUDE.md.
+
+**Why always GitHub:** the local install at `source:` is fine as the initial-install reference but is unreliable as the update channel. The dev's local copy may be stale, hand-edited, or on a branch. GitHub is the single source of truth for releases. This matches the principle in [[LESSON-no-agent-bookkeeping]]: trust the authoritative remote, not a cached local copy.
 
 ### 1. Detect state
 

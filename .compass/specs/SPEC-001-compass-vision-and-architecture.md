@@ -26,6 +26,15 @@ Compass is a Claude Code plugin that installs per-project and creates a `.compas
 
 The core workflow: **Spec → Research → Plan → Tasks → Build**
 
+## North Star Goals
+
+Every design decision in Compass serves at least one of these four goals. When a tradeoff arises, ranking is in the order shown.
+
+1. **Accuracy** - outputs are correct, claims are verified, predictions get checked after build.
+2. **Perfect memory** - nothing learned is forgotten across sessions; the vault is the single source of truth.
+3. **Almost zero cache misses** - every navigation finds what it needs in one or two reads; hot path stays bounded regardless of vault size (see [[ADR-004-hierarchical-specs-with-facets]]).
+4. **Low token usage** - mechanical work runs in scripts and hooks, never in agent tokens (see [[LESSON-no-agent-bookkeeping]]).
+
 ## Core Principles
 
 ### 1. Token Efficiency (Cache-Line Thinking)
