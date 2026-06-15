@@ -11,6 +11,11 @@ updated: 2026-05-24
 
 - [ ] **Diagnose and redesign the human-review model in plans.** Problem (Roger, 2026-06-14): phase pauses rarely land on anything he actually needs to review, so they read as interruptions, not checkpoints - "I don't think it's working well." Phase boundaries should be driven by *dependencies*, not by review checkpoints; lesson extraction does not justify a boundary (run it once at the end). The open question is what *should* trigger a human look - event-based? decision-point-based? confidence-based? Diagnose why phase-gated review fails before proposing a fix (do not jump to a solution); survey how other agentic-dev systems checkpoint humans. Touches `build`, `plan`, `methodology`, `extract-lessons` skills. Becomes a SPEC + research effort. [[PLAN-002-compass-cli-implementation]] already applies the interim rule (phases = dependencies, lessons at end).
 
+## compass CLI follow-ups (surfaced 2026-06-14 during live hook test)
+
+- [ ] `compass sync` is append-only for `index.md`, so deleting an artifact leaves a stale index line (the tag-index, full-regen, drops it correctly). Add a `stale_entry` finding to `compass validate` (or a `sync --prune` opt-in) so deletions surface instead of lingering silently.
+- [ ] `compass validate` checks wikilinks only inside the type-dir artifacts it scans; it does NOT validate `index.md`'s own wikilinks, so a broken link there slips through. Add `index.md` / `active.md` / `backlog.md` to the link-resolution pass.
+
 ## Other
 
 - [ ] Build `/compass` orchestrator skill - single entry point that delegates to agents based on project state

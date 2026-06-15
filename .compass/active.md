@@ -67,7 +67,7 @@ _None._
 
 ### Deferred (not blocking)
 
-- [ ] Live dogfood cutover: copy `plugin/cli/` into the `.claude/` local install + wire the hook command path (no `$CLAUDE_PLUGIN_ROOT` in local installs); needs a bootstrap-update change + session reload. Plugin source is correct and simulated; this is deployment only.
+- [x] Live dogfood cutover CONFIRMED (2026-06-14, post-restart): a throwaway vault Write auto-fired `compass sync` via the command hook - index.md + tag-index updated with zero agent tokens and no blocking prompt. Mid-session hook edits do not reload; a restart loads them. SPEC-004 now confirmed live, not just structurally.
 - [ ] Teach `/compass:bootstrap` to copy `plugin/cli/` and register the command hook on install/update.
 - [ ] Optional: live two-session A/B to convert the per-fire token floor into an end-to-end measured number.
 
