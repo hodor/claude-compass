@@ -192,14 +192,14 @@ A Compass project isn't properly set up without:
 - [ ] `index.md` linking all documents.
 - [ ] `active.md` tracking current work.
 - [ ] `meta/lessons-catalog.yaml` (O(1) lesson tag lookup; can start empty).
-- [ ] `meta/plugin.yaml` (plugin source path + installed version; written by `/compass:bootstrap`; load-bearing for `/compass:bootstrap update`).
+- [ ] `meta/plugin.yaml` (plugin source path + installed version; written by `/compass:setup`; load-bearing for `/compass:update`).
 - [ ] `meta/lessons-catalog.yaml` (can be empty).
 
 If any are missing, flag and request creation.
 
 ## Compass uses Compass
 
-Bootstrapping a new project applies the same methodology - Bootstrap creates `SPEC-001` for project setup, tasks tracked in `active.md`, decisions become ADRs. Not a special case; the standard workflow applied to itself.
+Setting up a new project applies the same methodology - Setup creates `SPEC-001` for project setup, tasks tracked in `active.md`, decisions become ADRs. Not a special case; the standard workflow applied to itself.
 
 ## Handoffs
 
@@ -255,7 +255,7 @@ Agents depending on external tools (MCP, `gh`, specific runtimes) verify availab
 ├── backlog.md            - Cold: future tasks
 ├── meta/
 │   ├── lessons-catalog.yaml - O(1) lesson tag lookup (numbering is JIT, no counter file)
-│   └── plugin.yaml          - Plugin source path + installed version (written by bootstrap)
+│   └── plugin.yaml          - Plugin source path + installed version (written by setup)
 ├── specs/                - Specifications
 ├── research/             - Research findings
 ├── plans/                - Implementation plans

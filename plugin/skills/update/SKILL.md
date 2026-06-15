@@ -4,7 +4,7 @@ description: Update an existing Compass install in this project from GitHub - re
 version: 1.0.0
 allowed-tools: [Read, Write, Bash]
 argument-hint: "[--repository <url>]"
-when_to_use: "Use to pull the latest Compass plugin into a project that already has it installed. Triggers: 'update compass', 'compass update', 'pull the latest compass'. For first-time setup use /compass:bootstrap instead."
+when_to_use: "Use to pull the latest Compass plugin into a project that already has it installed. Triggers: 'update compass', 'compass update', 'pull the latest compass'. For first-time setup use /compass:setup instead."
 ---
 
 # /compass:update - Update a Compass install from GitHub
@@ -43,6 +43,12 @@ cp "$SRC/templates/rules/"*.md  .claude/rules/
 for d in "$SRC/skills/"*/; do
   n=$(basename "$d"); mkdir -p ".claude/skills/$n"; cp "$d"*.md ".claude/skills/$n/"
 done
+# Remove installed skills that no longer exist in the source (handles a renamed
+# or deleted skill, e.g. bootstrap -> setup, so no stale command lingers).
+for existing in .claude/skills/*/; do
+  n=$(basename "$existing")
+  [ -d "$SRC/skills/$n" ] || rm -rf "$existing"
+done
 
 # The compass CLI the PostToolUse hook runs
 rm -rf .claude/cli
@@ -62,7 +68,7 @@ fi
 
 ### 5. Record the new version
 
-Update `.compass/meta/plugin.yaml`: set `version` to the clone's version, `installed_at: <today>`, `installed_mode: update`. Preserve `repository:` and `source:` (the latter documents the original install, not the update channel). If `plugin.yaml` does not exist, create it with the fields from [[bootstrap]] step 2's template.
+Update `.compass/meta/plugin.yaml`: set `version` to the clone's version, `installed_at: <today>`, `installed_mode: update`. Preserve `repository:` and `source:` (the latter documents the original install, not the update channel). If `plugin.yaml` does not exist, create it with the fields from [[setup]] step 2's template.
 
 ### 6. Clean up and report
 
@@ -80,7 +86,7 @@ Hooks load at session start, so the refreshed `.claude/hooks/hooks.json` (and th
 
 - Touch the `.compass/` vault (specs, plans, research, lessons, index). Only `.compass/meta/plugin.yaml` is updated.
 - Modify `CLAUDE.md`.
-- Run vision/spec scaffolding. That is `/compass:bootstrap` territory.
+- Run vision/spec scaffolding. That is `/compass:setup` territory.
 
 ## Failure modes worth naming
 

@@ -1,54 +1,31 @@
 ---
-name: bootstrap
-description: Set up the Compass development workflow in a project. Creates the .compass/ vault, installs full-featured agents to .claude/agents/, and proposes CLAUDE.md additions.
-version: 1.0.0
+name: setup
+description: Set up Compass in a project for the first time - creates the .compass/ vault, installs agents, rules, skills, the compass CLI, and hooks into .claude/, and proposes CLAUDE.md additions. To refresh an existing install, use /compass:update.
+version: 2.0.0
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash]
-when_to_use: "Use when the user wants to set up Compass in a project, update Compass agents, or install Compass agents. Triggers: 'set up compass', 'initialize compass', 'bootstrap compass', 'install compass', 'update compass'."
-argument-hint: "[new | migrate | update]"
+when_to_use: "Use for first-time Compass setup in a project. Triggers: 'set up compass', 'initialize compass', 'install compass', 'compass setup'. To refresh an existing install from git, use /compass:update instead."
+argument-hint: "[new | migrate]"
 ---
 
-# Bootstrap - Compass Project Setup
+# Setup - Compass Project Setup
 
-Sets up Compass in a project:
+Sets up Compass in a project for the first time:
 
 1. Detects project state (new vs existing).
-2. Installs full-featured agents from the plugin to `.claude/agents/`.
-3. Creates the `.compass/` vault.
-4. Proposes CLAUDE.md additions - human approves before any write.
-5. Kicks off vision capture for new projects.
+2. Installs agents, rules, skills, and the compass CLI from the plugin to `.claude/`.
+3. Configures hooks and permissions.
+4. Creates the `.compass/` vault.
+5. Proposes CLAUDE.md additions - human approves before any write.
+6. Kicks off vision capture for new projects.
+
+Updating an existing install is a separate command: **`/compass:update`** - it pulls the latest from GitHub, refreshes `.claude/`, and leaves the vault untouched. This skill is for first-time setup only.
 
 ## Modes
 
-- `/compass:bootstrap new` - full setup: agents + rules + hooks + vault + CLAUDE.md.
-- `/compass:bootstrap migrate` - full setup for a project with existing docs.
-- `/compass:bootstrap update` - refresh agents + rules + hooks only. Does NOT touch the vault, CLAUDE.md, or specs.
+- `/compass:setup new` - full setup: agents + rules + skills + CLI + hooks + vault + CLAUDE.md.
+- `/compass:setup migrate` - full setup for a project that already has docs to fold in.
 
 ## Protocol
-
-### 0. Update mode shortcut
-
-If the argument is `update`:
-
-1. Skip state detection.
-2. **Pull the latest plugin source from GitHub, never from the local install folder.** The local install can be stale or hand-edited; the GitHub repository is the canonical source for updates. Read `.compass/meta/plugin.yaml` `repository:` field (or use `--repository <url>` override). Clone shallow to a temp directory:
-
-   ```bash
-   TMP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t compass-update)"
-   git clone --depth=1 "$REPOSITORY" "$TMP_DIR/clone"
-   PLUGIN_SOURCE="$TMP_DIR/clone/plugin"
-   ```
-
-   If the project's `plugin.yaml` is missing (project bootstrapped before this feature) and no `--repository` override was passed, ask the human for the repository URL.
-
-3. Read the cloned source's `plugin/.claude-plugin/plugin.json` `version` field. Read the project's `.compass/meta/plugin.yaml` `plugin.version`. If they match, ask the human whether to force-update anyway. If GitHub source is newer, proceed.
-4. Go to step 2 (install agents/rules/skills) using `$PLUGIN_SOURCE` from the clone. Overwrite without asking.
-5. Go to step 2b (hooks) using the cloned `$PLUGIN_SOURCE/hooks/hooks.json`. Overwrite without asking.
-6. Update `.compass/meta/plugin.yaml`: bump `version` to the cloned version, set `installed_at: <today>`, set `installed_mode: update`. Leave `source:` pointing at whatever it pointed at before (it is documentation of the original install, not the update channel).
-7. Remove the temp clone: `rm -rf "$TMP_DIR"`.
-8. Report what changed (which files, version delta).
-9. Stop. Don't scaffold vault, create specs, or touch CLAUDE.md.
-
-**Why always GitHub:** the local install at `source:` is fine as the initial-install reference but is unreliable as the update channel. The dev's local copy may be stale, hand-edited, or on a branch. GitHub is the single source of truth for releases. This matches the principle in [[LESSON-no-agent-bookkeeping]]: trust the authoritative remote, not a cached local copy.
 
 ### 1. Detect state
 
@@ -125,9 +102,9 @@ plugin:
   installed_mode: new | migrate | update
 ```
 
-This file is the single source of truth for "where did this project's Compass install come from." Future `/compass:bootstrap update` runs read it directly; no filesystem rediscovery. `/compass:checkup` can diff the recorded version against the source's current version to detect drift.
+This file is the single source of truth for "where did this project's Compass install come from." Future `/compass:update` runs read it directly; no filesystem rediscovery. `/compass:checkup` can diff the recorded version against the source's current version to detect drift.
 
-In `update` mode, overwrite without asking. In other modes, if agents are already installed, ask once before overwriting.
+If agents are already installed (re-running setup on a project), ask once before overwriting. Refreshing an existing install from git is `/compass:update`, not this skill.
 
 ### 2b. Hooks and permissions
 
@@ -208,7 +185,7 @@ If `.claude/hooks/hooks.json` or `.claude/settings.json` already exists, merge. 
   archive/
 ```
 
-Bootstrap does NOT create `vision.md` - `/compass:vision` does that. Bootstrap does NOT create specs - `/compass:spec` does that. Bootstrap does NOT create a counter file - numbering is computed JIT from the filesystem.
+Setup does NOT create `vision.md` - `/compass:vision` does that. Setup does NOT create specs - `/compass:spec` does that. Setup does NOT create a counter file - numbering is computed JIT from the filesystem.
 
 `lessons-catalog.yaml`:
 ```yaml
@@ -287,7 +264,7 @@ For NEW projects, immediately invoke `/compass:vision` - don't stop and ask. Ski
 
 > "Compass infrastructure is set up. Now I'll run the vision capture to understand what you're building. A quick interview about the project goal - produces a vision document and a spec roadmap."
 
-Pass any context already gathered during bootstrap (the project description, anything the human said when invoking bootstrap).
+Pass any context already gathered during setup (the project description, anything the human said when invoking setup).
 
 For MIGRATE mode (existing project with code/docs), ask once:
 
@@ -298,7 +275,7 @@ Only skip vision if the human explicitly requests it.
 ## Output format
 
 ```markdown
-## Bootstrap Report
+## Setup Report
 
 ### Project State
 New project / Existing project with N existing documents

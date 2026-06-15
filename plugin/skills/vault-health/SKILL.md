@@ -80,4 +80,4 @@ Always confirm before bulk fixes.
 - After a sprint of builder/tester/validator work.
 - Before creating a handoff.
 - When the planner reports stale research.
-- Periodically as maintenance, or after bootstrap sets up a new project.
+- Periodically as maintenance, or after setup sets up a new project.
