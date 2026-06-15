@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+"""Launcher for the compass CLI.
+
+Invoked as `python3 "$CLAUDE_PLUGIN_ROOT/cli/compass" <command>` by the
+PostToolUse hook, and directly by humans and skills. Adds its own directory to
+the import path so the flat `maincli` / `vaultlib` / `commands` modules resolve
+regardless of the caller's working directory.
+"""
+
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from maincli import main  # noqa: E402
+
+raise SystemExit(main())

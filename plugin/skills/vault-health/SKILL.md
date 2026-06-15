@@ -1,58 +1,31 @@
 ---
 name: vault-health
-description: Validate Compass vault integrity - check frontmatter, wikilinks, orphaned files. Reports vault health with actionable fixes.
-version: 1.0.0
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash]
+description: Validate Compass vault integrity - frontmatter and wikilinks via `compass validate`, plus orphan and bare-reference detection. Reports vault health with actionable fixes.
+version: 2.0.0
+allowed-tools: [Read, Glob, Grep, Bash]
 when_to_use: "Use when checking vault quality, after a series of changes, before a release, or when something feels off. Triggers: 'vault health', 'check vault', 'validate vault', 'vault build'."
-argument-hint: "[validate | links | orphans | full]"
+argument-hint: "[validate | orphans | linking | full]"
 ---
 
 # Vault Health - Compass Vault Integrity Check
 
-Runs validation on `.compass/` and reports issues with fixes. Doesn't auto-fix unless asked.
+Reports issues in `.compass/` with fixes. Does not auto-fix unless asked.
 
-## Checks
+Two layers: the `compass` CLI does the deterministic checks (frontmatter, wikilink resolution, hot-path cap); this skill adds the judgment checks (orphans, bare references) and the combined report.
 
-### 1. Frontmatter validation (`validate`)
+## 1. Frontmatter and wikilinks (`validate`)
 
-Every vault markdown file (except `tmp/`) needs valid YAML frontmatter with:
-
-- **Required:** `title` (non-empty), `type` (spec, research, plan, task, lesson, decision, handoff), `status` (draft, review, approved, active, done, archived, done (retroactive))
-- **Recommended:** `area`, `tags`, `created`, `updated`
-
-Glob `.compass/**/*.md` (excluding `tmp/`), read each frontmatter, report missing/invalid.
-
-```
-## Frontmatter Validation
-
-| File | Status | Issues |
-|------|--------|--------|
-| specs/SPEC-001-setup.md | OK | - |
-| plans/PLAN-002-auth.md | WARN | missing `updated` |
-| research/RESEARCH-api.md | FAIL | no frontmatter |
-
-Summary: 12 OK, 2 WARN, 1 FAIL
+```bash
+python3 "$CLAUDE_PLUGIN_ROOT/cli/compass" validate
 ```
 
-### 2. Wikilink check (`links`)
+`compass validate` checks required frontmatter per type, resolves every `[[wikilink]]` (skipping code blocks and inline code), and flags hot-path cap breaches. It exits 0 when clean, 1 with a per-defect report otherwise. Surface its output. Each finding is one of: `frontmatter_error`, `frontmatter_missing_field`, `broken_wikilink`, `cap_exceeded`.
 
-All `[[wikilinks]]` should resolve. Grep `\[\[.*?\]\]` across `.compass/**/*.md`, check the target exists, report broken links with file:line.
+## 2. Orphan detection (`orphans`)
 
-```
-## Wikilink Check
+Files not referenced by `index.md` or any other vault file. The CLI does not check this; do it here.
 
-Broken:
-- specs/SPEC-003-api.md:15 - [[PLAN-005-api-impl]] - file not found
-- active.md:8 - [[SPEC-999-nonexistent]] - file not found
-
-Summary: 45 links checked, 2 broken
-```
-
-### 3. Orphan detection (`orphans`)
-
-Files in the vault not referenced by `index.md` or any other file.
-
-Read `index.md` and all other vault files for wikilinks. List files in `.compass/` (excluding `tmp/`, `meta/`, `.annotations/`). Report unreferenced.
+Read `index.md` and every vault file's wikilinks. List files in `.compass/` (excluding `tmp/`, `meta/`, `.annotations/`). Report any not referenced anywhere.
 
 ```
 ## Orphan Detection
@@ -64,9 +37,9 @@ Unreferenced:
 Summary: 18 files, 2 orphans
 ```
 
-### 4. Wikilink usage (`linking`)
+## 3. Bare-reference check (`linking`)
 
-Vault references should use `[[wikilinks]]`, not bare names or paths. Grep for SPEC-NNN/PLAN-NNN/ADR-NNN/RESEARCH-/LESSON- across vault files; check each occurrence is wrapped in `[[...]]`.
+Vault references should use `[[wikilinks]]`, not bare names or paths. Grep for `SPEC-NNN` / `PLAN-NNN` / `ADR-NNN` / `RESEARCH-` / `LESSON-` across vault files; report any occurrence not wrapped in `[[...]]`.
 
 ```
 ## Wikilink Usage
@@ -78,35 +51,33 @@ Bare references:
 Summary: 30 references checked, 2 not using wikilinks
 ```
 
-### 5. Full report (`full`)
+## 4. Full report (`full`, default)
 
-Runs everything. Default when no argument is given.
+Run `compass validate`, then the orphan and bare-reference checks, then summarize.
 
 ```
 ## Vault Health Report - YYYY-MM-DD
 
-### Frontmatter: 12 OK, 2 WARN, 1 FAIL
-### Wikilinks: 45 checked, 2 broken
+### Frontmatter + wikilinks (compass validate): clean | N findings
 ### Orphans: 18 files, 2 unreferenced
-### Linking: 30 references, 2 not using wikilinks
+### Bare references: 30 references, 2 not using wikilinks
 
-Overall: NEEDS ATTENTION (5 issues found)
+Overall: NEEDS ATTENTION (N issues found)
 ```
 
 ## Fixing issues
 
 Report first. If the human says "fix it":
 
-- **Missing frontmatter:** ask which type/status to assign, then add.
-- **Broken links:** either create the missing file or update the link.
-- **Orphans:** add to index.md or archive.
+- **Missing frontmatter / broken links:** from the `compass validate` findings - add the field, or create the missing file / correct the link.
+- **Orphans:** add to `index.md` (run `compass sync`) or archive.
+- **Bare references:** wrap in `[[...]]`.
 
 Always confirm before bulk fixes.
 
 ## When to run
 
 - After a sprint of builder/tester/validator work.
-- Before creating a handoff (ensure the vault is clean).
+- Before creating a handoff.
 - When the planner reports stale research.
-- Periodically as maintenance.
-- After bootstrap sets up a new project.
+- Periodically as maintenance, or after bootstrap sets up a new project.

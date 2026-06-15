@@ -1,7 +1,7 @@
 ---
 title: "Handoff: Python busywork CLI is next; everything through ADR-004 shipped"
 type: handoff
-status: active
+status: done
 area: methodology
 tags: [handoff, python-cli, busywork, mcp, validation, hierarchical-specs]
 created: 2026-06-10

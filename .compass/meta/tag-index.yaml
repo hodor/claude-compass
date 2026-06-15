@@ -13,9 +13,16 @@ tags:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   architecture:
   - specs/SPEC-001-compass-vision-and-architecture.md
+  argparse:
+  - research/RESEARCH-cli-and-hook-command-contract.md
+  autocrlf:
+  - lessons/LESSON-autocrlf-churns-lf-writers.md
   automation:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
+  - decisions/ADR-005-compass-cli-for-mechanical-work.md
   - lessons/LESSON-no-agent-bookkeeping.md
+  - plans/PLAN-002-compass-cli-implementation.md
+  - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   bayesian:
   - research/RESEARCH-scientific-method-in-compass.md
   bench-design:
@@ -23,15 +30,32 @@ tags:
   benchmarks:
   - lessons/LESSON-test-driven-tasks-dont-discriminate.md
   - research/RESEARCH-evaluation-benchmarks.md
+  bookkeeping:
+  - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
+  busywork:
+  - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   cache:
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - specs/SPEC-003-hierarchical-vault-organization.md
+  churn:
+  - lessons/LESSON-autocrlf-churns-lf-writers.md
+  claude-code:
+  - research/RESEARCH-cli-and-hook-command-contract.md
+  cli:
+  - decisions/ADR-005-compass-cli-for-mechanical-work.md
+  - plans/PLAN-002-compass-cli-implementation.md
+  - research/RESEARCH-cli-and-hook-command-contract.md
+  - research/RESEARCH-cli-token-reduction-measurement.md
+  command-hook:
+  - research/RESEARCH-cli-and-hook-command-contract.md
   config:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
   content-aware:
   - lessons/LESSON-wikilink-validator-skip-code.md
   core:
   - specs/SPEC-001-compass-vision-and-architecture.md
+  cost:
+  - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   counters:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
   crlf:
@@ -49,6 +73,8 @@ tags:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   docker:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
+  empirical:
+  - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   evaluation:
   - lessons/LESSON-test-driven-tasks-dont-discriminate.md
   - research/RESEARCH-evaluation-benchmarks.md
@@ -56,6 +82,8 @@ tags:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - specs/SPEC-003-hierarchical-vault-organization.md
+  fail-safe:
+  - research/RESEARCH-cli-and-hook-command-contract.md
   false-positives:
   - lessons/LESSON-wikilink-validator-skip-code.md
   falsifiability:
@@ -64,10 +92,18 @@ tags:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   frontier-models:
   - lessons/LESSON-test-driven-tasks-dont-discriminate.md
+  git:
+  - lessons/LESSON-autocrlf-churns-lf-writers.md
+  gitattributes:
+  - lessons/LESSON-autocrlf-churns-lf-writers.md
   glob:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
+  handoff:
+  - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   hidden-dirs:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
+  hierarchical-specs:
+  - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   hierarchy:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
@@ -76,18 +112,29 @@ tags:
   - lessons/LESSON-hook-type-prompt-no-skills.md
   hooks:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
+  - decisions/ADR-005-compass-cli-for-mechanical-work.md
+  - lessons/LESSON-autocrlf-churns-lf-writers.md
   - lessons/LESSON-hook-if-clause-no-or.md
   - lessons/LESSON-hook-type-prompt-no-skills.md
   - lessons/LESSON-no-agent-bookkeeping.md
   - plans/PLAN-001-lessons-and-index-implementation.md
+  - plans/PLAN-002-compass-cli-implementation.md
+  - research/RESEARCH-cli-and-hook-command-contract.md
+  - research/RESEARCH-cli-token-reduction-measurement.md
   - research/RESEARCH-lessons-and-index-architecture.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
+  - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   hot-path:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
+  - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   humanlayer:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   hypothesis:
   - research/RESEARCH-scientific-method-in-compass.md
+  hypothesis-confirmed:
+  - research/RESEARCH-cli-token-reduction-measurement.md
+  hypothesis-falsified:
+  - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   if-clause:
   - lessons/LESSON-hook-if-clause-no-or.md
   index:
@@ -103,9 +150,16 @@ tags:
   - research/RESEARCH-lessons-and-index-architecture.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
   line-endings:
+  - lessons/LESSON-autocrlf-churns-lf-writers.md
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   lost-in-the-middle:
   - research/RESEARCH-hierarchical-knowledge-base-design.md
+  mcp:
+  - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
+  mcp-rejected:
+  - decisions/ADR-005-compass-cli-for-mechanical-work.md
+  measurement:
+  - research/RESEARCH-cli-token-reduction-measurement.md
   memgpt:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
@@ -130,16 +184,25 @@ tags:
   - research/RESEARCH-scientific-method-in-compass.md
   pre-registration:
   - research/RESEARCH-scientific-method-in-compass.md
+  python:
+  - decisions/ADR-005-compass-cli-for-mechanical-work.md
+  - plans/PLAN-002-compass-cli-implementation.md
+  python-cli:
+  - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   raptor:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - specs/SPEC-003-hierarchical-vault-organization.md
+  reference:
+  - research/RESEARCH-cli-and-hook-command-contract.md
   reinertsen:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   replication:
   - research/RESEARCH-scientific-method-in-compass.md
   research-redesign:
   - handoffs/2026-03-12_review-all-plugin-files.md
+  retrieval:
+  - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   retrospective:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   - research/RESEARCH-lessons-and-index-architecture.md
@@ -160,6 +223,8 @@ tags:
   - plans/PLAN-001-lessons-and-index-implementation.md
   spec-redesign:
   - handoffs/2026-03-12_review-all-plugin-files.md
+  tag-index:
+  - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   taxonomy:
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - specs/SPEC-003-hierarchical-vault-organization.md
@@ -168,11 +233,18 @@ tags:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   token-efficiency:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
+  - decisions/ADR-005-compass-cli-for-mechanical-work.md
   - lessons/LESSON-no-agent-bookkeeping.md
+  - plans/PLAN-002-compass-cli-implementation.md
+  - research/RESEARCH-cli-token-reduction-measurement.md
+  - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   tool-quirks:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
   validation:
+  - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   - lessons/LESSON-wikilink-validator-skip-code.md
+  - plans/PLAN-002-compass-cli-implementation.md
+  - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   vault:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   vault-traversal:

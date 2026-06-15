@@ -55,3 +55,10 @@ lessons:
     tags: [tag-index, retrieval, cost, hypothesis-falsified, empirical]
     score: 5
     summary: "Tag index makes agents more thorough and faster wall-time, but does not automatically reduce tokens; the cost win depends on the query shape"
+  - file: "LESSON-autocrlf-churns-lf-writers.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [git, autocrlf, line-endings, gitattributes, churn, hooks]
+    score: 5
+    summary: "With core.autocrlf=true and no .gitattributes, git checks files out as CRLF; a tool that writes LF rewrites them every run, causing perpetual diffs"

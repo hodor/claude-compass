@@ -1,0 +1,11 @@
+# Force LF in the working tree for all text files. `compass sync` always writes
+# LF; without this, git's autocrlf checks files out as CRLF on Windows and every
+# sync churns them back to LF, re-firing the PostToolUse hook. LF everywhere also
+# keeps vault files safe to mount into Linux containers, where CRLF breaks bash.
+* text=auto eol=lf
+
+# Treat these as binary so they are never line-ending normalized.
+*.png binary
+*.jpg binary
+*.gif binary
+*.pdf binary

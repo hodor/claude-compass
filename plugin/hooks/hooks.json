@@ -1,16 +1,16 @@
 {
-  "description": "Compass plugin hooks. PostToolUse fires index-sync on any vault write to keep index.md and lessons-catalog.yaml fresh without per-agent discipline. Stop fires extract-lessons as a backstop for phases that bypassed /compass:build. Hooks use type=agent (not prompt) because they invoke skills via the Skill tool - prompt hooks are single-shot with no tool loop and cannot call skills. The PostToolUse entry is split three ways (Write, Edit, MultiEdit) because the `if` clause does not support `||` boolean OR; each entry has its own permission-rule pattern.",
+  "description": "Compass plugin hooks. PostToolUse runs `compass sync` (a command, not an agent) on any vault write to regenerate index.md and the tag index off the agent's token budget. The CLI parses the hook's stdin JSON, self-filters its own generated outputs to avoid a write loop, and never exits 2 (which would block the user's edit). The entry is split three ways (Write, Edit, MultiEdit) because the `if` clause does not support `||` boolean OR; each entry has its own permission-rule pattern. Stop fires extract-lessons and SubagentStop captures subagent reports - these remain agent-type because they involve judgment, not mechanical bookkeeping.",
   "hooks": {
     "PostToolUse": [
       {
         "matcher": "Write",
         "hooks": [
           {
-            "type": "agent",
+            "type": "command",
             "if": "Write(.compass/**/*.md)",
             "statusMessage": "Syncing .compass index",
-            "timeout": 60,
-            "prompt": "A Write tool just wrote to a .compass vault file. Tool input: $ARGUMENTS. First check: if the file_path is .compass/index.md or .compass/meta/lessons-catalog.yaml, exit immediately with 'no-op: own write' to prevent the sync looping on its own writes. Otherwise invoke the index-sync skill to update index.md, lessons-catalog.yaml, and clean extraction logs older than 30 days."
+            "timeout": 30,
+            "command": "python3 \"$CLAUDE_PLUGIN_ROOT/cli/compass\" sync"
           }
         ]
       },
@@ -18,11 +18,11 @@
         "matcher": "Edit",
         "hooks": [
           {
-            "type": "agent",
+            "type": "command",
             "if": "Edit(.compass/**/*.md)",
             "statusMessage": "Syncing .compass index",
-            "timeout": 60,
-            "prompt": "An Edit tool just edited a .compass vault file. Tool input: $ARGUMENTS. First check: if the file_path is .compass/index.md or .compass/meta/lessons-catalog.yaml, exit immediately with 'no-op: own write' to prevent the sync looping on its own writes. Otherwise invoke the index-sync skill to update index.md, lessons-catalog.yaml, and clean extraction logs older than 30 days."
+            "timeout": 30,
+            "command": "python3 \"$CLAUDE_PLUGIN_ROOT/cli/compass\" sync"
           }
         ]
       },
@@ -30,11 +30,11 @@
         "matcher": "MultiEdit",
         "hooks": [
           {
-            "type": "agent",
+            "type": "command",
             "if": "MultiEdit(.compass/**/*.md)",
             "statusMessage": "Syncing .compass index",
-            "timeout": 60,
-            "prompt": "A MultiEdit tool just edited a .compass vault file. Tool input: $ARGUMENTS. First check: if the file_path is .compass/index.md or .compass/meta/lessons-catalog.yaml, exit immediately with 'no-op: own write' to prevent the sync looping on its own writes. Otherwise invoke the index-sync skill to update index.md, lessons-catalog.yaml, and clean extraction logs older than 30 days."
+            "timeout": 30,
+            "command": "python3 \"$CLAUDE_PLUGIN_ROOT/cli/compass\" sync"
           }
         ]
       }

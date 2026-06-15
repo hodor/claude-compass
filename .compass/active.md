@@ -45,6 +45,32 @@ updated: 2026-05-24
 
 _None._
 
+## Building: [[PLAN-002-compass-cli-implementation]] (approved 2026-06-14)
+
+### Phase 1 - Foundation (dispatch + shared library)
+
+- [x] TASK-001: Build `plugin/cli/` package skeleton - `vaultlib.py` + argparse dispatch + exit helpers (never-exit-2). 17 tests pass. (2026-06-14)
+
+### Phase 2 - All commands (parallel tracks, after Phase 1)
+
+- [x] TASK-002: `compass next-num` | TASK-003: `compass tree` + `hot-path` (read-only track) - clean on real vault (2026-06-14)
+- [x] TASK-004/005/006: `compass sync` core + caps/cleanup + hook mode - idempotent on real vault, found+fixed missing handoff in index (2026-06-14)
+- [x] TASK-007: `compass validate` - zero false positives on real vault, exit 0 (2026-06-14)
+- [x] TASK-008: `compass promote` + `clean-tmp` | TASK-009: `compass touched` + `admit-check` (2026-06-14)
+
+### Phase 3 - Cutover, measurement, lessons (after Phase 2)
+
+- [x] **Pre-req: `.gitattributes` with `eol=lf`** added; `git check-attr` confirms LF, CRLF churn warning gone (2026-06-14)
+- [x] TASK-010: hooks.json PostToolUse → `type: command` running `compass sync`. Verified via faithful hook simulation (vault write → suppressOutput; own-output + non-vault → no-op; all exit 0). (2026-06-14)
+- [x] TASK-011: shrunk `index-sync` (262→~45 lines), `vault-health`, `promote-spec` to CLI wrappers; grep checks pass (2026-06-14)
+- [x] TASK-012: [[RESEARCH-cli-token-reduction-measurement]] - ~99.8% reduction (target >=80%), integrity preserved + improved. Hypothesis CONFIRMED. (2026-06-14)
+
+### Deferred (not blocking)
+
+- [ ] Live dogfood cutover: copy `plugin/cli/` into the `.claude/` local install + wire the hook command path (no `$CLAUDE_PLUGIN_ROOT` in local installs); needs a bootstrap-update change + session reload. Plugin source is correct and simulated; this is deployment only.
+- [ ] Teach `/compass:bootstrap` to copy `plugin/cli/` and register the command hook on install/update.
+- [ ] Optional: live two-session A/B to convert the per-fire token floor into an end-to-end measured number.
+
 ## Next Up
 
 ### Next: integration testing of PLAN-001 output
