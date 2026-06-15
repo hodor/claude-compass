@@ -185,7 +185,7 @@ class HookModeTests(SyncFixture):
         out = io.StringIO()
         from contextlib import redirect_stdout
         with redirect_stdout(out):
-            code = sync_cmd.run([])
+            code = sync_cmd.run(["--hook"])
         self.assertEqual(code, 0)
         self.assertEqual(out.getvalue(), json.dumps({"suppressOutput": True}))
         self.assertIn("[[SPEC-002-new]]", self.index_text())
@@ -198,7 +198,7 @@ class HookModeTests(SyncFixture):
             "tool_name": "Write",
             "tool_input": {"file_path": "/some/other/project/main.py"},
         })
-        code = sync_cmd.run([])
+        code = sync_cmd.run(["--hook"])
         self.assertEqual(code, 0)
         self.assertNotIn("[[SPEC-002-new]]", self.index_text())
 
@@ -210,7 +210,7 @@ class HookModeTests(SyncFixture):
             "tool_name": "Write",
             "tool_input": {"file_path": str(self.root / "index.md")},
         })
-        code = sync_cmd.run([])
+        code = sync_cmd.run(["--hook"])
         self.assertEqual(code, 0)
         # loop guard: sync did not run, so the orphan was NOT linked
         self.assertNotIn("[[SPEC-002-new]]", self.index_text())
@@ -225,10 +225,36 @@ class HookModeTests(SyncFixture):
         original = sync_cmd.sync
         sync_cmd.sync = lambda root: (_ for _ in ()).throw(RuntimeError("boom"))
         try:
-            code = sync_cmd.run([])
+            code = sync_cmd.run(["--hook"])
         finally:
             sync_cmd.sync = original
         self.assertEqual(code, 1)
+
+
+class HumanModeTests(SyncFixture):
+    def test_run_without_hook_flag_never_reads_stdin(self):
+        old = os.environ.get("CLAUDE_PROJECT_DIR")
+        os.environ["CLAUDE_PROJECT_DIR"] = str(self.root.parent)
+        self.addCleanup(
+            lambda: os.environ.__setitem__("CLAUDE_PROJECT_DIR", old) if old
+            else os.environ.pop("CLAUDE_PROJECT_DIR", None)
+        )
+        self.write("specs/SPEC-002-new.md", spec("New"))
+
+        # A stdin whose read() raises proves human mode never touches it - the
+        # regression guard for the no-input hang in a non-interactive shell.
+        class _Boom:
+            def read(self_inner):
+                raise AssertionError("human mode must not read stdin")
+
+        self.addCleanup(setattr, sys, "stdin", sys.stdin)
+        sys.stdin = _Boom()
+        out = io.StringIO()
+        from contextlib import redirect_stdout
+        with redirect_stdout(out):
+            code = sync_cmd.run([])
+        self.assertEqual(code, 0)
+        self.assertIn("[[SPEC-002-new]]", self.index_text())
 
 
 if __name__ == "__main__":

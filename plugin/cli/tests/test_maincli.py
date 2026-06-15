@@ -33,11 +33,24 @@ class HelpTests(unittest.TestCase):
 
 
 class ExitCodePolicyTests(unittest.TestCase):
-    def test_unknown_command_exits_1_not_2(self):
+    def test_unknown_command_returns_1_not_2(self):
         err = io.StringIO()
-        with self.assertRaises(SystemExit) as ctx, redirect_stderr(err):
-            maincli.main(["no-such-command"])
-        self.assertEqual(ctx.exception.code, 1)
+        with redirect_stderr(err):
+            code = maincli.main(["no-such-command"])
+        self.assertEqual(code, 1)
+        self.assertIn("unknown command", err.getvalue())
+
+    def test_subcommand_receives_flag_args(self):
+        # `sync --hook` must pass --hook through to the command, not error on it.
+        captured = {}
+        original = maincli.dispatch
+        maincli.dispatch = lambda name, args: (captured.update(name=name, args=args), 0)[1]
+        try:
+            code = maincli.main(["sync", "--hook"])
+        finally:
+            maincli.dispatch = original
+        self.assertEqual(code, 0)
+        self.assertEqual(captured, {"name": "sync", "args": ["--hook"]})
 
     def test_absent_command_module_returns_1(self):
         # dispatch() for a name with no module reports not-implemented rather

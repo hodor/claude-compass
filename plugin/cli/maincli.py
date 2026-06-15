@@ -56,12 +56,17 @@ class _Parser(argparse.ArgumentParser):
         sys.exit(status)
 
 
+VALID_COMMANDS = {name for name, _ in COMMAND_SPECS}
+
+
 def build_parser():
+    """Top-level parser, used only to render `compass --help`. Command args are
+    not parsed here - they are passed to the command verbatim (see `main`), so a
+    command can accept its own flags like `sync --hook`."""
     parser = _Parser(prog="compass", description="Compass vault bookkeeping CLI.")
     sub = parser.add_subparsers(dest="command", metavar="<command>")
     for name, help_text in COMMAND_SPECS:
-        subparser = sub.add_parser(name, help=help_text)
-        subparser.add_argument("args", nargs="*", help=argparse.SUPPRESS)
+        sub.add_parser(name, help=help_text, add_help=False)
     return parser
 
 
@@ -76,15 +81,22 @@ def dispatch(name, args):
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
-    parser = build_parser()
-    namespace = parser.parse_args(argv)
-    if not namespace.command:
-        parser.print_help()
+    if not argv:
+        build_parser().print_help()
         return EXIT_OK
+    if argv[0] in ("-h", "--help"):
+        build_parser().parse_args(["--help"])  # prints help, exits 0
+        return EXIT_OK
+
+    command, rest = argv[0], argv[1:]
+    if command not in VALID_COMMANDS:
+        cli_err(f"compass: unknown command '{command}'")
+        build_parser().print_help(sys.stderr)
+        return EXIT_ERROR
     try:
-        return dispatch(namespace.command, namespace.args)
+        return dispatch(command, rest)
     except Exception as exc:  # never surface as a crash/exit-2 that blocks a write
-        return cli_err(f"compass {namespace.command}: {exc}")
+        return cli_err(f"compass {command}: {exc}")
 
 
 if __name__ == "__main__":

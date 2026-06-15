@@ -247,31 +247,27 @@ def _is_generated_output(file_path):
     return any(norm.endswith(suffix) for suffix in GENERATED_OUTPUTS)
 
 
-def _read_hook_stdin():
-    try:
-        if sys.stdin is None or sys.stdin.isatty():
-            return None
-        data = sys.stdin.read()
-    except (OSError, ValueError):
-        return None
-    data = data.strip()
+def _parse_hook_stdin():
+    """Parse the PostToolUse event JSON the hook runtime pipes on stdin."""
+    data = sys.stdin.read().strip()
     if not data:
-        return None
+        return {}
     try:
         obj = json.loads(data)
     except ValueError:
-        return None
-    if isinstance(obj, dict) and "hook_event_name" in obj:
-        return obj
-    return None
+        return {}
+    return obj if isinstance(obj, dict) else {}
 
 
 def run(args):
     vault_root = vaultlib.find_vault_root()
-    hook_input = _read_hook_stdin()
 
-    if hook_input is not None:
+    if "--hook" in args:
+        # PostToolUse invocation: the event JSON arrives on stdin. Read it only
+        # here, so the human/skill path below never touches stdin and cannot
+        # block in a non-interactive shell with no input.
         try:
+            hook_input = _parse_hook_stdin()
             file_path = (hook_input.get("tool_input") or {}).get("file_path", "")
             norm = str(file_path).replace("\\", "/")
             if "/.compass/" not in norm and not norm.startswith(".compass/"):
@@ -285,5 +281,6 @@ def run(args):
             sys.stderr.write(f"compass sync: {exc}\n")
             return 1
 
+    # Human / skill invocation: sync the whole vault and print a report.
     sys.stdout.write(format_report(sync(vault_root)) + "\n")
     return 0

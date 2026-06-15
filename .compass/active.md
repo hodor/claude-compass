@@ -65,11 +65,19 @@ _None._
 - [x] TASK-011: shrunk `index-sync` (262→~45 lines), `vault-health`, `promote-spec` to CLI wrappers; grep checks pass (2026-06-14)
 - [x] TASK-012: [[RESEARCH-cli-token-reduction-measurement]] - ~99.8% reduction (target >=80%), integrity preserved + improved. Hypothesis CONFIRMED. (2026-06-14)
 
-### Deferred (not blocking)
+### Done (deployment)
 
-- [x] Live dogfood cutover CONFIRMED (2026-06-14, post-restart): a throwaway vault Write auto-fired `compass sync` via the command hook - index.md + tag-index updated with zero agent tokens and no blocking prompt. Mid-session hook edits do not reload; a restart loads them. SPEC-004 now confirmed live, not just structurally.
-- [ ] Teach `/compass:bootstrap` to copy `plugin/cli/` and register the command hook on install/update.
-- [ ] Optional: live two-session A/B to convert the per-fire token floor into an end-to-end measured number.
+- [x] Live dogfood cutover CONFIRMED (2026-06-14, post-restart): a throwaway vault Write auto-fired `compass sync` via the command hook - index.md + tag-index updated with zero agent tokens, no blocking prompt. Mid-session hook edits do not reload; a restart loads them.
+- [x] `/compass:bootstrap` now copies `plugin/cli/` -> `.claude/cli/`, installs `.claude/hooks/hooks.json` from the plugin, checks for python3, and the shipped hook runs `python3 "$CLAUDE_PROJECT_DIR/.claude/cli/compass" sync --hook`. Verified end-to-end by simulating a fresh self-contained install into a temp project (hook syncs, own-output no-ops, validate clean). So on other repos: `/compass:bootstrap update` + restart is now sufficient (python3 required).
+- [x] Fixed two CLI bugs the deployment test surfaced: `sync` hung on stdin in non-interactive shells (now gated behind `--hook`, see [[LESSON-hook-cli-gate-stdin-on-flag]]); argparse rejected pass-through flags (now argv split manually).
+
+### Note for human
+
+- bootstrap step 2b previously documented (but never actually installed - no settings.json exists in the dogfood) an old `SubagentStop` "run tester after builder" hook. The rewrite drops it; testing is handled by `/compass:build`'s fix loop now. Flag if you want that auto-tester hook back.
+
+### Deferred (optional)
+
+- [ ] Live two-session A/B to convert the per-fire token floor into an end-to-end measured number.
 
 ## Next Up
 

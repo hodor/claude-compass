@@ -14,6 +14,7 @@ tags:
   architecture:
   - specs/SPEC-001-compass-vision-and-architecture.md
   argparse:
+  - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   - research/RESEARCH-cli-and-hook-command-contract.md
   autocrlf:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
@@ -43,6 +44,7 @@ tags:
   - research/RESEARCH-cli-and-hook-command-contract.md
   cli:
   - decisions/ADR-005-compass-cli-for-mechanical-work.md
+  - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   - plans/PLAN-002-compass-cli-implementation.md
   - research/RESEARCH-cli-and-hook-command-contract.md
   - research/RESEARCH-cli-token-reduction-measurement.md
@@ -100,6 +102,8 @@ tags:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
   handoff:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
+  hang:
+  - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   hidden-dirs:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
   hierarchical-specs:
@@ -114,6 +118,7 @@ tags:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   - decisions/ADR-005-compass-cli-for-mechanical-work.md
   - lessons/LESSON-autocrlf-churns-lf-writers.md
+  - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   - lessons/LESSON-hook-if-clause-no-or.md
   - lessons/LESSON-hook-type-prompt-no-skills.md
   - lessons/LESSON-no-agent-bookkeeping.md
@@ -173,6 +178,8 @@ tags:
   - lessons/LESSON-test-driven-tasks-dont-discriminate.md
   methodology-layer:
   - research/RESEARCH-evaluation-benchmarks.md
+  non-interactive:
+  - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   obsidian:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   permission-rules:
@@ -223,6 +230,8 @@ tags:
   - plans/PLAN-001-lessons-and-index-implementation.md
   spec-redesign:
   - handoffs/2026-03-12_review-all-plugin-files.md
+  stdin:
+  - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   tag-index:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   taxonomy:

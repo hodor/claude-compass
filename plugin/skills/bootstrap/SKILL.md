@@ -96,9 +96,19 @@ for skill_dir in "$PLUGIN_ROOT/skills/"*/; do
   cp "$skill_dir"*.md ".claude/skills/$skill_name/"
 done
 echo "Skills copied: $(ls -d .claude/skills/*/ | wc -l) directories"
+
+# CLI (the compass binary the PostToolUse hook runs; makes the project self-contained)
+rm -rf .claude/cli
+cp -r "$PLUGIN_ROOT/cli" .claude/cli
+echo "CLI copied: $(ls .claude/cli/commands/*.py | wc -l) command modules"
+
+# The PostToolUse hook runs `python3 .claude/cli/compass sync`. Verify python3 exists.
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "WARNING: python3 not found on PATH. The vault-sync hook will be a silent no-op until python3 is installed. The CLI never blocks writes (it can only exit 0/1), so nothing breaks - sync just will not run. Install python3, or run 'python3 .claude/cli/compass sync' manually."
+fi
 ```
 
-Run as one Bash call. Verify 13 agents and 4 rules files. If the plugin can't be found, ask the human for the path.
+Run as one Bash call. Verify 13 agents, 4 rules files, and that `.claude/cli/compass` exists. If the plugin can't be found, ask the human for the path.
 
 After this, the project is self-contained - anyone who clones gets agents, skills, and rules without installing the plugin.
 
@@ -120,25 +130,22 @@ In `update` mode, overwrite without asking. In other modes, if agents are alread
 
 ### 2b. Hooks and permissions
 
-Set up `.claude/settings.json` (or `.claude/settings.local.json`):
+Hooks install to `.claude/hooks/hooks.json`, which Claude Code auto-loads for the project. Permissions go in `.claude/settings.json`.
+
+```bash
+# Hooks: PostToolUse runs `compass sync` as a command; Stop runs extract-lessons;
+# SubagentStop captures subagent reports. Copied verbatim from the plugin.
+mkdir -p .claude/hooks
+cp "$PLUGIN_ROOT/hooks/hooks.json" .claude/hooks/hooks.json
+echo "Hooks installed -> .claude/hooks/hooks.json"
+```
+
+The PostToolUse hook runs `python3 "$CLAUDE_PROJECT_DIR/.claude/cli/compass" sync --hook`, resolving the CLI copied in step 2 via the project-root env var the hook runtime sets. It self-filters non-vault and generated-output writes and never exits 2, so it can neither loop nor block an edit.
+
+Then write the permission allowlist to `.claude/settings.json` (or `.claude/settings.local.json`):
 
 ```json
 {
-  "hooks": {
-    "SubagentStop": [
-      {
-        "matcher": "builder",
-        "hooks": [
-          {
-            "type": "agent",
-            "prompt": "You are the Compass tester agent. The builder just finished implementing code. Run `git diff` to see the changes, then read .claude/agents/tester.md for your full instructions. Write adversarial tests and run the full test suite.",
-            "model": "claude-sonnet-4-6",
-            "statusMessage": "Running tester agent..."
-          }
-        ]
-      }
-    ]
-  },
   "permissions": {
     "allow": [
       "Read",
@@ -154,6 +161,7 @@ Set up `.claude/settings.json` (or `.claude/settings.local.json`):
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(curl:*)",
+      "Bash(python3:*)",
       "Bash(pytest:*)",
       "Bash(npm test:*)",
       "Bash(npm run test:*)",
@@ -174,9 +182,9 @@ Set up `.claude/settings.json` (or `.claude/settings.local.json`):
 }
 ```
 
-Compass agents use `permissionMode: bypassPermissions`, so they bypass these prompts entirely - the allowlist is the safety net for everything else.
+`Bash(python3:*)` lets skills invoke the `compass` CLI (e.g. `/compass:vault-health` running `compass validate`). Compass agents use `permissionMode: bypassPermissions`, so they bypass these prompts entirely - the allowlist is the safety net for everything else.
 
-If the file already exists, merge. Ask before overwriting existing hooks or permissions.
+If `.claude/hooks/hooks.json` or `.claude/settings.json` already exists, merge. Ask before overwriting existing hooks or permissions.
 
 ### 3A. New project - scaffold the vault
 

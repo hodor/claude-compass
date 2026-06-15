@@ -62,3 +62,10 @@ lessons:
     tags: [git, autocrlf, line-endings, gitattributes, churn, hooks]
     score: 5
     summary: "With core.autocrlf=true and no .gitattributes, git checks files out as CRLF; a tool that writes LF rewrites them every run, causing perpetual diffs"
+  - file: "LESSON-hook-cli-gate-stdin-on-flag.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [cli, hooks, stdin, argparse, non-interactive, hang]
+    score: 5
+    summary: "Gate hook-stdin reads behind an explicit flag (--hook), not isatty probing; probing blocks forever in a non-interactive shell with no piped input"
