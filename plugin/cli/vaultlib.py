@@ -12,6 +12,9 @@ from pathlib import Path
 # Directories under `.compass/` that are never artifact type directories.
 NON_TYPE_DIRS = {"meta", "tmp", "archive", ".annotations"}
 
+# Always-present artifact directories, scanned even when empty.
+CORE_TYPE_DIRS = ["specs", "plans", "research", "decisions", "lessons", "handoffs", "prs"]
+
 # Maps an artifact's `type` frontmatter value to its directory name. Used by
 # numbering; artifact scanning discovers type directories from disk instead.
 TYPE_TO_DIR = {
@@ -25,16 +28,33 @@ TYPE_TO_DIR = {
 }
 
 
-def discover_type_dirs(vault_root):
-    """Every artifact type directory in the vault, discovered from disk.
+def _has_typed_artifact(directory):
+    """True if the directory holds at least one markdown file with a `type:`
+    frontmatter field - the signal that it is an artifact directory rather than
+    an incidental folder (e.g. a stray `.compass/claude/` of agent files)."""
+    candidates = list(directory.glob("*.md")) + list(directory.glob("*/index.md"))
+    for path in candidates:
+        data, error = parse_frontmatter(path)
+        if not error and data.get("type"):
+            return True
+    return False
 
-    Any direct subdirectory of `.compass/` is a type directory except the
-    reserved ones (`meta`, `tmp`, `archive`, `.annotations`) and dotfiles.
-    This lets a vault add its own types (e.g. `retro/`) without code changes.
+
+def discover_type_dirs(vault_root):
+    """Artifact type directories in the vault: the known core dirs (always),
+    plus any other subdirectory that actually contains typed artifacts.
+
+    Always scanning the core dirs keeps numbering and sections stable even when
+    a dir is empty. Requiring a typed artifact for extra dirs lets a vault add
+    its own type (e.g. `retro/`) without code changes, while skipping incidental
+    folders some projects drop in `.compass/` (`claude/`, `configs/`, ...).
     """
+    vault_root = Path(vault_root)
     result = []
-    for child in sorted(Path(vault_root).iterdir()):
-        if child.is_dir() and child.name not in NON_TYPE_DIRS and not child.name.startswith("."):
+    for child in sorted(vault_root.iterdir()):
+        if not child.is_dir() or child.name in NON_TYPE_DIRS or child.name.startswith("."):
+            continue
+        if child.name in CORE_TYPE_DIRS or _has_typed_artifact(child):
             result.append(child.name)
     return result
 

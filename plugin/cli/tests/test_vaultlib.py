@@ -104,6 +104,35 @@ class ScanArtifactsTests(unittest.TestCase):
         self.assertEqual(len(records), 1)
 
 
+class DiscoverTypeDirsTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = make_tempdir(self)
+
+    def _write(self, rel, body):
+        path = self.tmp / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body, encoding="utf-8")
+
+    def test_core_dirs_typed_extras_yes_untyped_junk_no(self):
+        # core dir (always), even empty
+        (self.tmp / "specs").mkdir()
+        # custom dir WITH a typed artifact -> included
+        self._write("retro/RETRO-1.md", "---\ntype: retro\n---\nx\n")
+        # incidental dir of non-artifact md (e.g. a symlinked install) -> excluded
+        self._write("claude/CLAUDE.md", "# Project instructions\n")
+        self._write("claude/agents/builder.md", "---\nname: builder\n---\nx\n")
+        # reserved dirs -> excluded
+        (self.tmp / "meta").mkdir()
+        (self.tmp / "tmp").mkdir()
+
+        dirs = vaultlib.discover_type_dirs(self.tmp)
+        self.assertIn("specs", dirs)
+        self.assertIn("retro", dirs)
+        self.assertNotIn("claude", dirs)
+        self.assertNotIn("meta", dirs)
+        self.assertNotIn("tmp", dirs)
+
+
 class WriteTextLfTests(unittest.TestCase):
     def test_no_carriage_return_in_output(self):
         target = make_tempdir(self) / "out.md"
