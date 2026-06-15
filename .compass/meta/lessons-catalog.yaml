@@ -76,3 +76,10 @@ lessons:
     tags: [cli, vault, discovery, overfit, false-positives, validation]
     score: 5
     summary: "Treating every .compass subdir as an artifact type dir breaks on vaults that store non-artifact dirs there; require the known core dirs OR a typed-artifact signal"
+  - file: "LESSON-installer-removes-only-what-it-installed.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [install, update, cleanup, data-loss, user-files]
+    score: 5
+    summary: "A tool that installs into a shared dir must delete only its own named artifacts on cleanup; 'remove anything not in my source' destroys user files"

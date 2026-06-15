@@ -42,6 +42,8 @@ tags:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   claude-code:
   - research/RESEARCH-cli-and-hook-command-contract.md
+  cleanup:
+  - lessons/LESSON-installer-removes-only-what-it-installed.md
   cli:
   - decisions/ADR-005-compass-cli-for-mechanical-work.md
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
@@ -65,6 +67,8 @@ tags:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   cross-platform:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
+  data-loss:
+  - lessons/LESSON-installer-removes-only-what-it-installed.md
   dedup:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   - plans/PLAN-001-lessons-and-index-implementation.md
@@ -150,6 +154,8 @@ tags:
   - plans/PLAN-001-lessons-and-index-implementation.md
   - research/RESEARCH-lessons-and-index-architecture.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
+  install:
+  - lessons/LESSON-installer-removes-only-what-it-installed.md
   jit:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
   - lessons/LESSON-no-agent-bookkeeping.md
@@ -255,6 +261,10 @@ tags:
   - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   tool-quirks:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
+  update:
+  - lessons/LESSON-installer-removes-only-what-it-installed.md
+  user-files:
+  - lessons/LESSON-installer-removes-only-what-it-installed.md
   validation:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md

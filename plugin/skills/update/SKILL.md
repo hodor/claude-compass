@@ -43,11 +43,12 @@ cp "$SRC/templates/rules/"*.md  .claude/rules/
 for d in "$SRC/skills/"*/; do
   n=$(basename "$d"); mkdir -p ".claude/skills/$n"; cp "$d"*.md ".claude/skills/$n/"
 done
-# Remove installed skills that no longer exist in the source (handles a renamed
-# or deleted skill, e.g. bootstrap -> setup, so no stale command lingers).
-for existing in .claude/skills/*/; do
-  n=$(basename "$existing")
-  [ -d "$SRC/skills/$n" ] || rm -rf "$existing"
+# Remove skills Compass has renamed or retired, so their stale command does not
+# linger. ONLY these named Compass skills are removed - user-authored project
+# skills in .claude/skills/ are never touched. Add a name here when a Compass
+# skill is renamed or deleted (e.g. bootstrap -> setup).
+for retired in bootstrap; do
+  [ -d ".claude/skills/$retired" ] && rm -rf ".claude/skills/$retired" && echo "removed retired Compass skill: $retired"
 done
 
 # The compass CLI the PostToolUse hook runs
