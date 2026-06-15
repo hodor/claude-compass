@@ -55,6 +55,7 @@ compass tree       # render the spec hierarchy
 | `/compass:checkup` | Find drift: stale handoffs, broken links, missing agents or config. |
 | `/compass:vault-health` | Validate vault integrity (frontmatter, wikilinks, orphans) via `compass validate`. |
 | `/compass:annotate` | Manage sidecar notes on vault files. |
+| `/compass:report-bug` | Report a Compass bug as a deduplicated GitHub issue (the CLI also auto-captures its own crashes). |
 
 **Capture and design**
 

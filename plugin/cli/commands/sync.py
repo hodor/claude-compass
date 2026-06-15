@@ -284,6 +284,11 @@ def run(args):
             sys.stdout.write(json.dumps({"suppressOutput": True}))
             return 0
         except Exception as exc:  # never block the user's write
+            try:
+                import bugs
+                bugs.capture_exception(vault_root, "sync", exc)
+            except Exception:
+                pass
             sys.stderr.write(f"compass sync: {exc}\n")
             return 1
 

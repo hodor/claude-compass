@@ -64,8 +64,25 @@ class ExitCodePolicyTests(unittest.TestCase):
     def test_cli_err_clamps_code_2_to_1(self):
         self.assertEqual(maincli.cli_err("boom", code=2), 1)
 
-    def test_dispatch_exception_becomes_exit_1(self):
-        # A handler that raises must surface as exit 1, never a crash or exit 2.
+    def test_dispatch_exception_becomes_exit_1_and_captures(self):
+        # A handler that raises must surface as exit 1 (never crash/exit 2) and
+        # the crash is auto-captured for later GitHub-issue filing.
+        import os
+        import shutil
+        import tempfile
+        from pathlib import Path
+        import bugs
+
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / ".compass").mkdir()
+        old = os.environ.get("CLAUDE_PROJECT_DIR")
+        os.environ["CLAUDE_PROJECT_DIR"] = str(tmp)
+        self.addCleanup(
+            lambda: os.environ.__setitem__("CLAUDE_PROJECT_DIR", old) if old
+            else os.environ.pop("CLAUDE_PROJECT_DIR", None)
+        )
+
         original = maincli.dispatch
         maincli.dispatch = lambda name, args: (_ for _ in ()).throw(RuntimeError("kaboom"))
         try:
@@ -76,6 +93,10 @@ class ExitCodePolicyTests(unittest.TestCase):
             self.assertIn("kaboom", err.getvalue())
         finally:
             maincli.dispatch = original
+
+        captured = bugs.load_all(tmp / ".compass")
+        self.assertTrue(captured)
+        self.assertIn("RuntimeError", captured[0]["signature"])
 
 
 if __name__ == "__main__":
