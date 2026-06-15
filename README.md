@@ -33,7 +33,7 @@ Human approval gates the strategic transitions: specs need approval before resea
 
 | Command | What it does |
 |---|---|
-| `/compass:bootstrap` | Install the plugin into a project, scaffold the vault, configure hooks. |
+| `/compass:setup` | Install the plugin into a project, scaffold the vault, configure hooks. |
 | `/compass:vision` | Capture the project goal and the spec roadmap. |
 | `/compass:spec` | Interview to produce one spec. One problem per spec. |
 | `/compass:specs` | Braindump to multiple specs at once when several ideas are in hand. |
@@ -57,12 +57,12 @@ Human approval gates the strategic transitions: specs need approval before resea
 
 | Path | Distributed to users? | Purpose |
 |---|---|---|
-| `plugin/` | Yes - this is the install target | Agents, skills, rules, hooks. Everything `/compass:bootstrap` copies into a project. |
+| `plugin/` | Yes - this is the install target | Agents, skills, rules, hooks. Everything `/compass:setup` copies into a project. |
 | `bench/` | No | Benchmark harness used to evaluate Compass against a plain-Claude-Code baseline. Lives at the repo root for contributors; not part of any user install. |
 | `.compass/` | No | Compass's own dogfood vault. The plugin is developed via its own methodology; this is where its specs, plans, ADRs, and lessons live. Not part of any user install. |
 | `README.md`, `CLAUDE.md` | No | Repo-level docs. |
 
-`claude --plugin-dir` and `/compass:bootstrap` both target `plugin/` specifically, so siblings of `plugin/` never reach a user's project.
+`claude --plugin-dir` and `/compass:setup` both target `plugin/` specifically, so siblings of `plugin/` never reach a user's project.
 
 ## Quick start
 
@@ -72,7 +72,7 @@ Requires Claude Code.
 claude --plugin-dir "/path/to/claude-compass/plugin"
 ```
 
-Inside Claude Code, run `/compass:bootstrap`. It copies agents, skills, and rules into your project's `.claude/`, scaffolds the vault, configures hooks, and runs `/compass:vision` to capture what you are building. After bootstrap, the project is self-contained: anyone who clones the repo has the same agents and skills, no plugin install required.
+Inside Claude Code, run `/compass:setup`. It copies agents, skills, and rules into your project's `.claude/`, scaffolds the vault, configures hooks, and runs `/compass:vision` to capture what you are building. After setup, the project is self-contained: anyone who clones the repo has the same agents and skills, no plugin install required.
 
 ## License
 

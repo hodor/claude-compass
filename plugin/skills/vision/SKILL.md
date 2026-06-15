@@ -3,7 +3,7 @@ name: vision
 description: Capture the project's overall goal, scope, and the full set of needs that will become specs. Run BEFORE creating individual specs to avoid bundling unrelated needs into one giant spec. Output is a vision document and a proposed spec list.
 version: 1.0.0
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion]
-when_to_use: "Use at the start of a project, or whenever the user has multiple ideas to spec. Triggers: 'what should we build', 'capture the vision', 'I have a bunch of ideas', 'plan the project', 'I'm starting a new project'. Bootstrap calls this automatically for new projects."
+when_to_use: "Use at the start of a project, or whenever the user has multiple ideas to spec. Triggers: 'what should we build', 'capture the vision', 'I have a bunch of ideas', 'plan the project', 'I'm starting a new project'. Setup calls this automatically for new projects."
 argument-hint: "[brief project description]"
 ---
 

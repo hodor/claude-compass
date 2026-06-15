@@ -32,7 +32,7 @@ Read: .compass/index.md  - what exists?
 ### 2. Respond
 
 **A - No Compass:**
-> Compass isn't set up. Run `/compass:bootstrap` (installs 13 agents, scaffolds `.compass/`, sets up hooks, proposes CLAUDE.md additions). Then `/compass:vision` to capture the project goal and spec roadmap. Want me to run bootstrap?
+> Compass isn't set up. Run `/compass:setup` (installs 13 agents, scaffolds `.compass/`, sets up hooks, proposes CLAUDE.md additions). Then `/compass:vision` to capture the project goal and spec roadmap. Want me to run setup?
 
 **B - Empty vault, no vision:**
 > Compass is set up. Run `/compass:vision` to capture the project goal and a spec roadmap before writing individual specs. Want to start?
@@ -45,7 +45,7 @@ Read: .compass/index.md  - what exists?
 
 **C - Active work:** read `active.md`, present in-progress + blocked + recently completed, then list options (continue building, validate, new task, handoff, checkup).
 
-**D - Port an existing project:** if bootstrap hasn't run, run it. Then `git log --oneline -20` to show recent work, ask which commits to document, run `/compass:retroactive` per piece, then offer a forward-looking spec.
+**D - Port an existing project:** if setup hasn't run, run it. Then `git log --oneline -20` to show recent work, ask which commits to document, run `/compass:retroactive` per piece, then offer a forward-looking spec.
 
 **E - Stuck:** show the pipeline table.
 
@@ -65,7 +65,7 @@ Pipeline: Spec → Research → Plan → Build → Test → Validate
 Research sub-agents: codebase-locator (where in code), codebase-analyzer (how code works), vault-locator (where in vault), vault-analyzer (what vault says), pattern-finder (code examples)
 Session: /compass:handoff (create | resume)
 Utilities: debug agent (errors), pr-describe (PRs)
-Skills: /compass:bootstrap, /compass:guide, /compass:checkup, /compass:vault-health, /compass:annotate, /compass:autopilot, /compass:vision, /compass:retroactive, /compass:papers
+Skills: /compass:setup, /compass:guide, /compass:checkup, /compass:vault-health, /compass:annotate, /compass:autopilot, /compass:vision, /compass:retroactive, /compass:papers
 ```
 
 ### 3. After any action
