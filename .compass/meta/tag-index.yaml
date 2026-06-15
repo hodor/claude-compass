@@ -45,6 +45,7 @@ tags:
   cli:
   - decisions/ADR-005-compass-cli-for-mechanical-work.md
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
+  - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   - plans/PLAN-002-compass-cli-implementation.md
   - research/RESEARCH-cli-and-hook-command-contract.md
   - research/RESEARCH-cli-token-reduction-measurement.md
@@ -73,6 +74,8 @@ tags:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
   denning:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
+  discovery:
+  - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   docker:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   empirical:
@@ -87,6 +90,7 @@ tags:
   fail-safe:
   - research/RESEARCH-cli-and-hook-command-contract.md
   false-positives:
+  - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   - lessons/LESSON-wikilink-validator-skip-code.md
   falsifiability:
   - research/RESEARCH-scientific-method-in-compass.md
@@ -182,6 +186,8 @@ tags:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   obsidian:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
+  overfit:
+  - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   permission-rules:
   - lessons/LESSON-hook-if-clause-no-or.md
   plugin-config:
@@ -251,11 +257,13 @@ tags:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
   validation:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
+  - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   - lessons/LESSON-wikilink-validator-skip-code.md
   - plans/PLAN-002-compass-cli-implementation.md
   - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   vault:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
+  - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   vault-traversal:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
   vision:

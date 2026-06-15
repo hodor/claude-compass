@@ -69,3 +69,10 @@ lessons:
     tags: [cli, hooks, stdin, argparse, non-interactive, hang]
     score: 5
     summary: "Gate hook-stdin reads behind an explicit flag (--hook), not isatty probing; probing blocks forever in a non-interactive shell with no piped input"
+  - file: "LESSON-type-dir-discovery-needs-content-signal.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [cli, vault, discovery, overfit, false-positives, validation]
+    score: 5
+    summary: "Treating every .compass subdir as an artifact type dir breaks on vaults that store non-artifact dirs there; require the known core dirs OR a typed-artifact signal"

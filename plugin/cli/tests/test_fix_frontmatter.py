@@ -60,6 +60,10 @@ class FixFrontmatterTests(unittest.TestCase):
 
     def test_title_falls_back_to_filename(self):
         root = make_vault(self)
+        # A custom dir is recognized once it holds a typed artifact; the untyped
+        # sibling then gets fixed with type from the dir and title from filename.
+        write(root, "retro/RETRO-existing.md",
+              "---\ntitle: E\ntype: retro\nstatus: active\n---\nx\n")
         p = write(root, "retro/RETRO-2026-01-01-day.md", "no heading here\n")
         with redirect_stdout(io.StringIO()):
             fix_frontmatter.run(["--apply"])
