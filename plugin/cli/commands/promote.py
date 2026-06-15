@@ -17,7 +17,7 @@ def _resolve(vault_root, target):
     if target.endswith(".md") or "/" in target:
         candidate = vault_root / target
         return candidate if candidate.is_file() else None
-    for type_dir in vaultlib.TYPE_DIRS:
+    for type_dir in vaultlib.discover_type_dirs(vault_root):
         candidate = vault_root / type_dir / f"{target}.md"
         if candidate.is_file():
             return candidate

@@ -115,36 +115,59 @@ class ValidateTests(unittest.TestCase):
         (root / "index.md").write_text("# Index\n", encoding="utf-8")
         return root
 
-    def test_clean_vault_has_no_findings(self):
-        root = self._clean_vault()
-        self.assertEqual(validate.check_vault(root), [])
+    def test_clean_vault(self):
+        self.assertEqual(validate.check_vault(self._clean_vault()), ([], []))
 
-    def test_broken_wikilink_reported(self):
+    def test_broken_wikilink_is_warning_not_error(self):
         root = self._clean_vault()
         write(root, "specs/SPEC-002-bad.md",
               self.SPEC_OK.replace("[[SPEC-001-target]]", "[[NoSuchSpec]]"))
-        findings = validate.check_vault(root)
-        self.assertTrue(any("broken_wikilink" in f and "NoSuchSpec" in f for f in findings))
+        errors, warnings = validate.check_vault(root)
+        self.assertTrue(any("NoSuchSpec" in w for w in warnings))
+        self.assertFalse(any("NoSuchSpec" in e for e in errors))
 
-    def test_missing_required_field_reported(self):
+    def test_missing_core_field_is_error(self):
         root = self._clean_vault()
-        body = self.SPEC_OK.replace("status: approved\n", "")
-        write(root, "specs/SPEC-003-nostatus.md", body)
-        findings = validate.check_vault(root)
-        self.assertTrue(any("frontmatter_missing_field" in f and "status" in f for f in findings))
+        write(root, "specs/SPEC-003-nostatus.md", self.SPEC_OK.replace("status: approved\n", ""))
+        errors, _ = validate.check_vault(root)
+        self.assertTrue(any("status" in e for e in errors))
 
-    def test_wikilinks_in_code_are_ignored(self):
+    def test_missing_recommended_field_is_warning(self):
+        root = self._clean_vault()
+        write(root, "specs/SPEC-004-noarea.md", self.SPEC_OK.replace("area: x\n", ""))
+        errors, warnings = validate.check_vault(root)
+        self.assertTrue(any("area" in w for w in warnings))
+        self.assertFalse(any("area" in e for e in errors))
+
+    def test_wikilinks_in_code_ignored(self):
         root = self._clean_vault()
         body = self.SPEC_OK + "\nInline `[[NotReal]]` and fenced:\n```\n[[AlsoNotReal]]\n```\n"
-        write(root, "specs/SPEC-004-code.md", body)
-        findings = validate.check_vault(root)
-        self.assertFalse(any("NotReal" in f for f in findings))
+        write(root, "specs/SPEC-005-code.md", body)
+        errors, warnings = validate.check_vault(root)
+        self.assertFalse(any("NotReal" in f for f in errors + warnings))
 
-    def test_line_cap_breach_reported(self):
+    def test_link_to_custom_type_dir_resolves(self):
+        root = self._clean_vault()
+        write(root, "retro/RETRO-2026-01-01-day.md",
+              "---\ntitle: R\ntype: retro\nstatus: active\n---\nbody\n")
+        write(root, "specs/SPEC-006-ref.md",
+              self.SPEC_OK.replace("[[SPEC-001-target]]", "[[RETRO-2026-01-01-day]]"))
+        errors, warnings = validate.check_vault(root)
+        self.assertFalse(any("RETRO-2026-01-01-day" in f for f in errors + warnings))
+
+    def test_link_to_archived_artifact_resolves(self):
+        root = self._clean_vault()
+        write(root, "archive/SPEC-099-old.md", "---\ntitle: O\ntype: spec\nstatus: archived\n---\nx\n")
+        write(root, "specs/SPEC-007-ref.md",
+              self.SPEC_OK.replace("[[SPEC-001-target]]", "[[SPEC-099-old]]"))
+        errors, warnings = validate.check_vault(root)
+        self.assertFalse(any("SPEC-099-old" in f for f in errors + warnings))
+
+    def test_line_cap_is_warning(self):
         root = self._clean_vault()
         (root / "index.md").write_text("\n".join(f"line {i}" for i in range(260)), encoding="utf-8")
-        findings = validate.check_vault(root)
-        self.assertTrue(any("cap_exceeded" in f and "lines" in f for f in findings))
+        errors, warnings = validate.check_vault(root)
+        self.assertTrue(any("cap_exceeded" in w and "lines" in w for w in warnings))
 
 
 if __name__ == "__main__":
