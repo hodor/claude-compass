@@ -26,7 +26,20 @@ COMMAND_SPECS = [
     ("clean-tmp", "Delete extraction logs older than 30 days."),
     ("touched", "Record a working-set marker for admission control."),
     ("admit-check", "Exit 0/1 for whether a spec may enter the hot path."),
+    ("capture-bug", "Record a Compass bug locally (deduped by fingerprint) for later filing."),
+    ("file-bugs", "File captured Compass bugs as deduplicated GitHub issues (dry-run; --apply to create)."),
 ]
+
+
+def _try_capture(command, exc):
+    """Record an unexpected CLI crash for later GitHub-issue filing. Best-effort:
+    never let bug capture itself raise."""
+    try:
+        import bugs
+        import vaultlib
+        bugs.capture_exception(vaultlib.find_vault_root(), command, exc)
+    except Exception:
+        pass
 
 
 def cli_ok(message=None):
@@ -97,6 +110,7 @@ def main(argv=None):
     try:
         return dispatch(command, rest)
     except Exception as exc:  # never surface as a crash/exit-2 that blocks a write
+        _try_capture(command, exc)
         return cli_err(f"compass {command}: {exc}")
 
 
