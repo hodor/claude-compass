@@ -10,7 +10,7 @@
             "if": "Write(.compass/**/*.md)",
             "statusMessage": "Syncing .compass index",
             "timeout": 30,
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" sync --hook"
+            "command": "if command -v python3 >/dev/null 2>&1; then python3 \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" sync --hook; else python \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" sync --hook; fi"
           }
         ]
       },
@@ -22,7 +22,7 @@
             "if": "Edit(.compass/**/*.md)",
             "statusMessage": "Syncing .compass index",
             "timeout": 30,
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" sync --hook"
+            "command": "if command -v python3 >/dev/null 2>&1; then python3 \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" sync --hook; else python \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" sync --hook; fi"
           }
         ]
       },
@@ -34,7 +34,7 @@
             "if": "MultiEdit(.compass/**/*.md)",
             "statusMessage": "Syncing .compass index",
             "timeout": 30,
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" sync --hook"
+            "command": "if command -v python3 >/dev/null 2>&1; then python3 \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" sync --hook; else python \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" sync --hook; fi"
           }
         ]
       }

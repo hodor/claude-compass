@@ -102,9 +102,10 @@ rm -rf .claude/cli
 cp -r "$PLUGIN_ROOT/cli" .claude/cli
 echo "CLI copied: $(ls .claude/cli/commands/*.py | wc -l) command modules"
 
-# The PostToolUse hook runs `python3 .claude/cli/compass sync`. Verify python3 exists.
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "WARNING: python3 not found on PATH. The vault-sync hook will be a silent no-op until python3 is installed. The CLI never blocks writes (it can only exit 0/1), so nothing breaks - sync just will not run. Install python3, or run 'python3 .claude/cli/compass sync' manually."
+# The PostToolUse hook runs the CLI via `python3` if present, else `python`
+# (python3 is canonical on POSIX; Windows often only has `python`). Verify one exists.
+if ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
+  echo "WARNING: neither python3 nor python found on PATH. The vault-sync hook will be a silent no-op until a Python 3 interpreter is installed. The CLI never blocks writes (it can only exit 0/1), so nothing breaks - sync just will not run. Install Python 3, or run the CLI manually."
 fi
 ```
 
@@ -140,7 +141,7 @@ cp "$PLUGIN_ROOT/hooks/hooks.json" .claude/hooks/hooks.json
 echo "Hooks installed -> .claude/hooks/hooks.json"
 ```
 
-The PostToolUse hook runs `python3 "$CLAUDE_PROJECT_DIR/.claude/cli/compass" sync --hook`, resolving the CLI copied in step 2 via the project-root env var the hook runtime sets. It self-filters non-vault and generated-output writes and never exits 2, so it can neither loop nor block an edit.
+The PostToolUse hook runs the CLI as `python3 "$CLAUDE_PROJECT_DIR/.claude/cli/compass" sync --hook` (falling back to `python` when `python3` is absent, e.g. on Windows), resolving the CLI copied in step 2 via the project-root env var the hook runtime sets. It self-filters non-vault and generated-output writes and never exits 2, so it can neither loop nor block an edit.
 
 Then write the permission allowlist to `.claude/settings.json` (or `.claude/settings.local.json`):
 
