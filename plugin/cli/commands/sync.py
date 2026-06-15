@@ -19,15 +19,14 @@ from pathlib import Path
 
 import vaultlib
 
-SECTION_BY_TYPE = {
-    "spec": "## Specs",
-    "plan": "## Plans",
-    "research": "## Research",
-    "decision": "## Decisions",
-    "lesson": "## Lessons",
-    "handoff": "## Handoffs",
-    "pr": "## PRs",
-}
+# A type directory's index section is its name title-cased, with overrides for
+# names that do not title-case cleanly. Unknown dirs (e.g. retro -> ## Retro)
+# work without code changes.
+SECTION_OVERRIDES = {"prs": "PRs"}
+
+
+def section_for(type_dir):
+    return "## " + SECTION_OVERRIDES.get(type_dir, type_dir.capitalize())
 
 # Files `sync` itself writes; a hook fire for any of these is its own echo.
 GENERATED_OUTPUTS = [
@@ -81,23 +80,30 @@ def _sync_index(vault_root, records):
     lines = index_path.read_text(encoding="utf-8").split("\n")
     added = {}
 
-    by_type = {}
+    by_dir = {}
     for record in records:
         if record["_data"].get("status") == "archived":
             continue
-        by_type.setdefault(record["_data"].get("type"), []).append(record)
+        by_dir.setdefault(record["type_dir"], []).append(record)
 
-    for artifact_type, recs in by_type.items():
-        section = SECTION_BY_TYPE.get(artifact_type)
-        if not section:
-            continue
+    for type_dir in sorted(by_dir):
+        recs = by_dir[type_dir]
+        section = section_for(type_dir)
         start = next((i for i, l in enumerate(lines) if l.strip() == section), None)
         if start is None:
-            continue
-        end = next(
-            (i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")),
-            len(lines),
-        )
+            # Section absent (e.g. a newly introduced type dir): create it at
+            # the end of the file so the new artifacts are not lost.
+            if lines and lines[-1].strip() != "":
+                lines.append("")
+            lines.append(section)
+            lines.append("")
+            start = len(lines) - 2
+            end = len(lines)
+        else:
+            end = next(
+                (i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")),
+                len(lines),
+            )
         existing = set()
         for line in lines[start + 1:end]:
             existing.update(WIKILINK.findall(line))
@@ -112,7 +118,7 @@ def _sync_index(vault_root, records):
         while insert_at - 1 > start and lines[insert_at - 1].strip() == "":
             insert_at -= 1
         lines[insert_at:insert_at] = new_lines
-        added[artifact_type] = len(new_lines)
+        added[type_dir] = len(new_lines)
 
     if added:
         vaultlib.write_text_lf(index_path, "\n".join(lines))

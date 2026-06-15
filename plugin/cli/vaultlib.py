@@ -9,10 +9,11 @@ import os
 import re
 from pathlib import Path
 
-# Artifact type directories under `.compass/`, in index display order.
-TYPE_DIRS = ["specs", "plans", "research", "decisions", "lessons", "handoffs", "prs"]
+# Directories under `.compass/` that are never artifact type directories.
+NON_TYPE_DIRS = {"meta", "tmp", "archive", ".annotations"}
 
-# Maps an artifact's `type` frontmatter value to its directory name.
+# Maps an artifact's `type` frontmatter value to its directory name. Used by
+# numbering; artifact scanning discovers type directories from disk instead.
 TYPE_TO_DIR = {
     "spec": "specs",
     "plan": "plans",
@@ -22,6 +23,38 @@ TYPE_TO_DIR = {
     "handoff": "handoffs",
     "pr": "prs",
 }
+
+
+def discover_type_dirs(vault_root):
+    """Every artifact type directory in the vault, discovered from disk.
+
+    Any direct subdirectory of `.compass/` is a type directory except the
+    reserved ones (`meta`, `tmp`, `archive`, `.annotations`) and dotfiles.
+    This lets a vault add its own types (e.g. `retro/`) without code changes.
+    """
+    result = []
+    for child in sorted(Path(vault_root).iterdir()):
+        if child.is_dir() and child.name not in NON_TYPE_DIRS and not child.name.startswith("."):
+            result.append(child.name)
+    return result
+
+
+def all_markdown_files(vault_root):
+    """Every markdown file anywhere under the vault, for wikilink resolution.
+
+    Includes type dirs, `archive/`, and any other subdir so a link to an
+    archived or non-standard artifact still resolves. Excludes only `tmp/`,
+    `meta/`, and `.annotations/` (generated or non-document content).
+    """
+    vault_root = Path(vault_root)
+    skip = {"tmp", "meta", ".annotations"}
+    files = []
+    for path in sorted(vault_root.rglob("*.md")):
+        rel_parts = path.relative_to(vault_root).parts
+        if rel_parts and rel_parts[0] in skip:
+            continue
+        files.append(path)
+    return files
 
 
 def find_vault_root(start=None):
@@ -133,10 +166,8 @@ def scan_artifacts(vault_root):
     """
     vault_root = Path(vault_root)
     records = []
-    for type_dir in TYPE_DIRS:
+    for type_dir in discover_type_dirs(vault_root):
         base = vault_root / type_dir
-        if not base.is_dir():
-            continue
         for path in sorted(base.rglob("*.md")):
             rel = path.relative_to(base)
             parts = rel.parts
