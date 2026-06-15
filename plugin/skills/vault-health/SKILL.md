@@ -69,7 +69,8 @@ Overall: NEEDS ATTENTION (N issues found)
 
 Report first. If the human says "fix it":
 
-- **Missing frontmatter / broken links:** from the `compass validate` findings - add the field, or create the missing file / correct the link.
+- **Missing frontmatter / core fields:** run `compass fix-frontmatter` (dry-run) to see what it would scaffold, then `compass fix-frontmatter --apply`. It deterministically adds a frontmatter block (or missing title/type/status) using the directory and first heading; then fill the judgment fields (`area`, `tags`, the real `status`) it left as warnings.
+- **Broken links:** from the `compass validate` findings - create the missing file or correct the link.
 - **Orphans:** add to `index.md` (run `compass sync`) or archive.
 - **Bare references:** wrap in `[[...]]`.
 

@@ -18,6 +18,7 @@ EXIT_ERROR = 1
 COMMAND_SPECS = [
     ("sync", "Regenerate index.md + tag-index.yaml, check caps, clean tmp logs. Hook entry point."),
     ("validate", "Check wikilinks, frontmatter, and the hot-path cap. Non-zero exit on any defect."),
+    ("fix-frontmatter", "Add missing frontmatter / core fields to artifacts (dry-run; --apply to write)."),
     ("next-num", "Print the next local artifact number for a type."),
     ("tree", "Render the hierarchical spec/folder tree."),
     ("hot-path", "Print the hot-path token count against the cap."),
