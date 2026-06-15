@@ -30,6 +30,10 @@ EXPECTED_FIELDS = {
 }
 
 SPECIAL_TARGETS = {"active", "backlog", "index", "vision"}
+# Top-level vault files whose own wikilinks are validated. A stale index entry
+# (a link to a deleted artifact) surfaces here, since sync is append-only for
+# index.md and cannot remove it.
+TOP_LEVEL_FILES = ["index.md", "active.md", "backlog.md", "vision.md"]
 INDEX_LINE_CAP = 250
 
 WIKILINK = re.compile(r"\[\[([^\]]+)\]\]")
@@ -88,6 +92,14 @@ def check_vault(vault_root):
                 msg = f"frontmatter_missing_field: {rel}: {field}"
                 (errors if field in CORE_REQUIRED else warnings).append(msg)
 
+        for lineno, target in _wikilinks_in(path.read_text(encoding="utf-8")):
+            if target not in names:
+                warnings.append(f"broken_wikilink: {rel}:{lineno}: [[{target}]]")
+
+    for rel in TOP_LEVEL_FILES:
+        path = vault_root / rel
+        if not path.is_file():
+            continue
         for lineno, target in _wikilinks_in(path.read_text(encoding="utf-8")):
             if target not in names:
                 warnings.append(f"broken_wikilink: {rel}:{lineno}: [[{target}]]")

@@ -163,6 +163,15 @@ class ValidateTests(unittest.TestCase):
         errors, warnings = validate.check_vault(root)
         self.assertFalse(any("SPEC-099-old" in f for f in errors + warnings))
 
+    def test_stale_index_entry_is_warning(self):
+        root = self._clean_vault()
+        (root / "index.md").write_text(
+            "# Index\n\n- [[SPEC-001-target]]\n- [[SPEC-999-deleted]]\n", encoding="utf-8"
+        )
+        errors, warnings = validate.check_vault(root)
+        self.assertTrue(any("index.md" in w and "SPEC-999-deleted" in w for w in warnings))
+        self.assertFalse(any("SPEC-001-target" in f for f in errors + warnings))
+
     def test_line_cap_is_warning(self):
         root = self._clean_vault()
         (root / "index.md").write_text("\n".join(f"line {i}" for i in range(260)), encoding="utf-8")
