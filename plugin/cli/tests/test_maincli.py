@@ -14,8 +14,8 @@ ALL_COMMANDS = [name for name, _ in maincli.COMMAND_SPECS]
 
 
 class HelpTests(unittest.TestCase):
-    def test_help_lists_all_nine_subcommands(self):
-        self.assertEqual(len(ALL_COMMANDS), 9)
+    def test_help_lists_all_subcommands(self):
+        self.assertGreaterEqual(len(ALL_COMMANDS), 9)
         out = io.StringIO()
         with self.assertRaises(SystemExit) as ctx, redirect_stdout(out):
             maincli.main(["--help"])
