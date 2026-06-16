@@ -39,7 +39,8 @@ Read `MEMORY.md` and every memory file. Group them by `metadata.type` (user / fe
 - **Merge duplicates and near-duplicates** into one file. Several files about the same decision, build quirk, or component become one.
 - **Delete one-session / ephemeral content** - "session-details", "phase1-followups", "what we did today" notes, anything that reads like a diary rather than a durable fact.
 - **Delete the contradicted** - verify any `file:line`, flag, or code claim against the actual repo; if it no longer holds, cut it.
-- **Condense verbose bodies** to the single durable fact plus its `**Why:**` / `**How to apply:**` for feedback/project. Strip narration.
+- **Condense verbose bodies HARD** to the single durable fact in 1-5 dense lines. Strip examples, restated context, and narration; keep `**Why:**` / `**How to apply:**` for feedback/project only when they carry real signal. A body over ~120 tokens almost always has cuttable verbosity - aim for the fact, not the story. A well-condensed store lands near 1-3K tokens total, not 10K+; if you only cut ~half, you stopped at pruning and skipped condensing.
+- **Fold small always-relevant memories into the index.** If a memory is short and used every session (build/test commands, operating rules, hard constraints), put it directly in `MEMORY.md` as a dense bullet rather than a separate file - fewer files, and it should always load anyway. Keep separate files for larger or topic-specific facts that genuinely benefit from recall-on-demand.
 - **Never delete a durable `user` or `feedback` fact** (who the human is, how they want you to work). Those are the highest-value, lowest-churn memories.
 - `project` memories: keep only if the work is ongoing; archive/delete when shipped. `reference`: keep only if the pointer is still live.
 
