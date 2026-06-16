@@ -10,7 +10,7 @@ when_to_use: "Use when a project's memory has grown - many memory files, or a ME
 
 The file-based memory at `~/.claude/projects/<this-project>/memory/` loads into every session's context (the `MEMORY.md` index always; recalled files on top). It grows unbounded because memories are written but rarely pruned. This skill is the consolidation pass - the memory analogue of `/compass:consolidate` for lessons.
 
-This is judgment work: you read the memory, decide what is durable, and rewrite it tighter. Be conservative with durable facts; aggressive with noise.
+This is judgment work, run with one directive: **be aggressive, and make the new memory as simple and non-verbose as possible - keep each critical fact in its barest form.** Be conservative about exactly one thing: never DELETE a durable user or feedback fact. Be aggressive about everything else - merge, cut, and condense hard. (This directive came from the run that cut a project's memory 92% while keeping every operational fact.)
 
 ## 1. Locate the memory directory
 
