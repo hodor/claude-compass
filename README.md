@@ -86,6 +86,7 @@ compass tree       # render the spec hierarchy
 | `/compass:handoff` | Save context at session end, restore at session start. |
 | `/compass:learned` | Capture an in-the-moment lesson. |
 | `/compass:consolidate` | Merge, prune, and demote lessons when the catalog grows past its cap. |
+| `/compass:consolidate-memory` | Condense the project's file-based memory store (merge, prune, rebuild the index) to cut per-session context. |
 | `/compass:retroactive` | Document existing commits that predate the vault. |
 | `/compass:promote-spec` | Promote a flat spec into a folder spec (via `compass promote`). |
 | `/compass:taxonomize` | Bulk-migrate a flat vault to the hierarchical + faceted scheme. |
