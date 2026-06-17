@@ -34,14 +34,17 @@ Human approval gates the strategic transitions: specs need approval before resea
 
 Keeping the vault consistent is mechanical: regenerating `index.md` and the tag index, validating wikilinks and frontmatter, numbering artifacts, pruning old logs. Compass does this with a small standard-library Python CLI (`compass`), not with agent tokens.
 
-A `PostToolUse` hook runs `compass sync` **as a command** on every vault write, so the index and tag index stay fresh at roughly zero agent cost. The command self-filters its own writes (no loops), never blocks an edit, and produces no visible output on success. This is the core of the design (SPEC-004 / ADR-005): a deterministic tool owns the upkeep that an LLM should never spend tokens re-deriving. The CLI ships as part of the install and is also runnable by hand:
+A `PostToolUse` hook runs `compass sync` **as a command** on every vault write, so the index and tag index stay fresh at roughly zero agent cost. The command self-filters its own writes (no loops), never blocks an edit, and produces no visible output on success. This is the core of the design (SPEC-004 / ADR-005): a deterministic tool owns the upkeep that an LLM should never spend tokens re-deriving. The CLI is stdlib-only (runs under `python` or `python3`), ships as part of the install, and is also runnable by hand:
 
 ```
-compass sync       # regenerate index + tag index, check caps, clean logs
-compass validate   # check frontmatter + wikilinks; errors fail, dangling links warn
-compass next-num   # next artifact number, computed from the filesystem
-compass tree       # render the spec hierarchy
+compass sync             # regenerate index + tag index, check caps, clean logs
+compass validate         # check frontmatter + wikilinks; errors fail, dangling links warn
+compass fix-frontmatter  # scaffold missing frontmatter / core fields (--apply to write)
+compass next-num         # next artifact number, computed from the filesystem
+compass tree             # render the spec hierarchy
 ```
+
+The CLI also captures its own crashes to a local queue; `compass file-bugs` (or `/compass:report-bug`) deduplicates them against existing issues and files them on the Compass repo.
 
 ## Slash commands
 
