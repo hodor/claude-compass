@@ -133,6 +133,191 @@ class DiscoverTypeDirsTests(unittest.TestCase):
         self.assertNotIn("tmp", dirs)
 
 
+UNIT_INDEX = """---
+title: Compass CLI
+type: unit
+status: active
+---
+
+# Compass CLI
+
+One body of work: the CLI and everything that shaped it.
+"""
+
+
+class UnitVaultFixture(unittest.TestCase):
+    """A vault with root type dirs, a marked unit, an unmarked look-alike,
+    a custom type dir, a stray markdown folder, and an empty junk dir."""
+
+    def setUp(self):
+        self.tmp = make_tempdir(self)
+        self._write("specs/SPEC-001-root.md", "---\ntype: spec\n---\nx\n")
+        self._write("compass-cli/index.md", UNIT_INDEX)
+        self._write("compass-cli/specs/SPEC-001-cli-spec.md", "---\ntype: spec\n---\nx\n")
+        self._write("compass-cli/specs/SPEC-002-sub/index.md", "---\ntype: spec\n---\nx\n")
+        self._write("compass-cli/specs/SPEC-002-sub/SPEC-001-leaf.md", "---\ntype: spec\n---\nx\n")
+        self._write("compass-cli/research/RESEARCH-cli-notes.md", "---\ntype: research\n---\nx\n")
+        # typed files at depth 2 but no `type: unit` marker: not a unit
+        self._write("bare-unit/specs/SPEC-001-hidden.md", "---\ntype: spec\n---\nx\n")
+        # custom type dir: typed markdown at depth 1 (the content signal)
+        self._write("retro/RETRO-1.md", "---\ntype: retro\n---\nx\n")
+        # stray folder holding non-artifact markdown
+        self._write("claude/CLAUDE.md", "# Project instructions\n")
+        # junk with no markdown at all
+        (self.tmp / "assets").mkdir()
+        (self.tmp / "assets" / "logo.png").write_bytes(b"\x89PNG")
+        (self.tmp / "meta").mkdir()
+
+    def _write(self, rel, body):
+        path = self.tmp / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body, encoding="utf-8")
+
+
+class ClassifyRootDirsTests(UnitVaultFixture):
+    def test_classification_matrix(self):
+        layout = vaultlib.classify_root_dirs(self.tmp)
+        self.assertEqual(layout["type_dirs"], ["retro", "specs"])
+        self.assertEqual(layout["units"], ["compass-cli"])
+        self.assertEqual(layout["unclassified"], ["bare-unit", "claude"])
+
+    def test_no_markdown_dir_appears_nowhere(self):
+        layout = vaultlib.classify_root_dirs(self.tmp)
+        for names in layout.values():
+            self.assertNotIn("assets", names)
+            self.assertNotIn("meta", names)
+
+    def test_discover_type_dirs_excludes_units_and_unclassified(self):
+        self.assertEqual(vaultlib.discover_type_dirs(self.tmp), ["retro", "specs"])
+
+    def test_reserved_name_stays_type_dir_even_with_unit_marked_index(self):
+        self._write("plans/index.md", UNIT_INDEX)
+        layout = vaultlib.classify_root_dirs(self.tmp)
+        self.assertIn("plans", layout["type_dirs"])
+        self.assertNotIn("plans", layout["units"])
+
+
+class ScanArtifactsUnitTests(UnitVaultFixture):
+    def test_unit_records_carry_unit_type_dir_and_vault_relative_name(self):
+        by_name = {r["name"]: r for r in vaultlib.scan_artifacts(self.tmp)}
+
+        flat = by_name["compass-cli/specs/SPEC-001-cli-spec"]
+        self.assertEqual(flat["unit"], "compass-cli")
+        self.assertEqual(flat["type_dir"], "specs")
+        self.assertEqual(flat["kind"], "flat")
+        self.assertEqual(flat["rel"], "SPEC-001-cli-spec.md")
+        self.assertEqual(flat["depth"], 0)
+
+        folder = by_name["compass-cli/specs/SPEC-002-sub"]
+        self.assertEqual(folder["kind"], "folder-index")
+        self.assertEqual(folder["unit"], "compass-cli")
+
+        child = by_name["compass-cli/specs/SPEC-002-sub/SPEC-001-leaf"]
+        self.assertEqual(child["kind"], "child")
+        self.assertEqual(child["depth"], 1)
+
+        research = by_name["compass-cli/research/RESEARCH-cli-notes"]
+        self.assertEqual(research["type_dir"], "research")
+
+    def test_unit_own_index_is_not_an_artifact_record(self):
+        paths = {r["path"] for r in vaultlib.scan_artifacts(self.tmp)}
+        self.assertNotIn(self.tmp / "compass-cli" / "index.md", paths)
+
+    def test_unmarked_folder_is_not_scanned(self):
+        names = {r["name"] for r in vaultlib.scan_artifacts(self.tmp)}
+        self.assertFalse(any("SPEC-001-hidden" in n for n in names))
+
+    def test_root_records_have_unit_none(self):
+        by_name = {r["name"]: r for r in vaultlib.scan_artifacts(self.tmp)}
+        self.assertIsNone(by_name["SPEC-001-root"]["unit"])
+        self.assertIsNone(by_name["RETRO-1"]["unit"])
+
+
+class FlatVaultRecordsUnchangedTests(unittest.TestCase):
+    """Pre-unit record shape on a units-free vault: every field keeps its
+    exact prior value, and `unit` is the only added key."""
+
+    def setUp(self):
+        self.tmp = make_tempdir(self)
+
+    def _write(self, rel, body="---\ntype: spec\n---\n"):
+        path = self.tmp / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body, encoding="utf-8")
+
+    def test_records_match_pre_unit_output_field_for_field(self):
+        self._write("specs/SPEC-001-flat.md")
+        self._write("specs/SPEC-002-tile/index.md")
+        self._write("specs/SPEC-002-tile/SPEC-001-master.md")
+        records = vaultlib.scan_artifacts(self.tmp)
+        expected = [
+            {"path": self.tmp / "specs" / "SPEC-001-flat.md", "type_dir": "specs",
+             "kind": "flat", "rel": "SPEC-001-flat.md", "name": "SPEC-001-flat",
+             "depth": 0, "unit": None},
+            {"path": self.tmp / "specs" / "SPEC-002-tile" / "SPEC-001-master.md",
+             "type_dir": "specs", "kind": "child",
+             "rel": "SPEC-002-tile/SPEC-001-master.md",
+             "name": "SPEC-002-tile/SPEC-001-master", "depth": 1, "unit": None},
+            {"path": self.tmp / "specs" / "SPEC-002-tile" / "index.md",
+             "type_dir": "specs", "kind": "folder-index",
+             "rel": "SPEC-002-tile/index.md", "name": "SPEC-002-tile",
+             "depth": 0, "unit": None},
+        ]
+        # Path.rglob order differs across platforms (WindowsPath sorts
+        # case-insensitively), so compare records keyed by name.
+        self.assertEqual(
+            sorted(records, key=lambda r: r["name"]),
+            sorted(expected, key=lambda r: r["name"]),
+        )
+
+
+class ResolvableNamesMapTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = make_tempdir(self)
+
+    def _write(self, rel, body="---\ntype: spec\n---\n"):
+        path = self.tmp / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body, encoding="utf-8")
+
+    def test_colliding_stem_maps_to_both_paths(self):
+        self._write("specs/SPEC-001-setup.md")
+        self._write("compass-cli/index.md", UNIT_INDEX)
+        self._write("compass-cli/specs/SPEC-001-setup.md")
+        mapping = vaultlib.resolvable_names_map(self.tmp)
+        self.assertEqual(
+            mapping["SPEC-001-setup"],
+            ["compass-cli/specs/SPEC-001-setup.md", "specs/SPEC-001-setup.md"],
+        )
+
+    def test_path_qualified_names_are_unambiguous(self):
+        self._write("specs/SPEC-001-setup.md")
+        self._write("compass-cli/index.md", UNIT_INDEX)
+        self._write("compass-cli/specs/SPEC-001-setup.md")
+        mapping = vaultlib.resolvable_names_map(self.tmp)
+        self.assertEqual(mapping["specs/SPEC-001-setup"], ["specs/SPEC-001-setup.md"])
+        self.assertEqual(
+            mapping["compass-cli/specs/SPEC-001-setup"],
+            ["compass-cli/specs/SPEC-001-setup.md"],
+        )
+
+    def test_index_md_resolves_by_folder_name(self):
+        self._write("compass-cli/index.md", UNIT_INDEX)
+        self._write("specs/SPEC-002-tile/index.md")
+        mapping = vaultlib.resolvable_names_map(self.tmp)
+        self.assertEqual(mapping["compass-cli"], ["compass-cli/index.md"])
+        self.assertEqual(mapping["SPEC-002-tile"], ["specs/SPEC-002-tile/index.md"])
+
+    def test_generated_and_archived_coverage_matches_all_markdown_files(self):
+        self._write("archive/SPEC-099-old.md")
+        self._write("meta/notes.md", "generated\n")
+        self._write("tmp/scratch.md", "scratch\n")
+        mapping = vaultlib.resolvable_names_map(self.tmp)
+        self.assertIn("SPEC-099-old", mapping)
+        self.assertNotIn("notes", mapping)
+        self.assertNotIn("scratch", mapping)
+
+
 class WriteTextLfTests(unittest.TestCase):
     def test_no_carriage_return_in_output(self):
         target = make_tempdir(self) / "out.md"

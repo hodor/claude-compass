@@ -9,10 +9,11 @@ import os
 import re
 from pathlib import Path
 
-# Directories under `.compass/` that are never artifact type directories.
+# Reserved infrastructure directories: never artifact type directories, never
+# units, skipped by classification wherever they appear.
 NON_TYPE_DIRS = {"meta", "tmp", "archive", ".annotations"}
 
-# Always-present artifact directories, scanned even when empty.
+# Reserved artifact type directories, scanned even when empty.
 CORE_TYPE_DIRS = ["specs", "plans", "research", "decisions", "lessons", "handoffs", "prs"]
 
 # Maps an artifact's `type` frontmatter value to its directory name. Used by
@@ -40,23 +41,59 @@ def _has_typed_artifact(directory):
     return False
 
 
+def _is_unit(directory):
+    """True if the directory's own `index.md` declares `type: unit` in its
+    frontmatter - the explicit marker that the folder is a unit of work
+    (holding its own type subdirectories) rather than a type directory."""
+    index = directory / "index.md"
+    if not index.is_file():
+        return False
+    data, error = parse_frontmatter(index)
+    return error is None and data.get("type") == "unit"
+
+
+def classify_root_dirs(root):
+    """Classify every subdirectory of `root` (the vault root, or a unit folder
+    when scanning the unit's own type dirs).
+
+    Returns `{"type_dirs": [...], "units": [...], "unclassified": [...]}`,
+    each a name list in sorted order. Reserved infra dirs (NON_TYPE_DIRS and
+    dot-dirs) are skipped outright. Reserved type names are always type dirs.
+    A non-reserved dir is a unit iff its `index.md` carries the `type: unit`
+    marker; failing that it is a custom type dir when it holds a typed
+    artifact (the content signal that keeps e.g. `retro/` working); failing
+    that, if it contains markdown at any depth it is unclassified - never
+    scanned, surfaced by `validate` for the human to resolve. Directories
+    with no markdown at all are silently ignored.
+    """
+    root = Path(root)
+    result = {"type_dirs": [], "units": [], "unclassified": []}
+    for child in sorted(root.iterdir()):
+        if not child.is_dir() or child.name in NON_TYPE_DIRS or child.name.startswith("."):
+            continue
+        if child.name in CORE_TYPE_DIRS:
+            result["type_dirs"].append(child.name)
+        elif _is_unit(child):
+            result["units"].append(child.name)
+        elif _has_typed_artifact(child):
+            result["type_dirs"].append(child.name)
+        elif any(child.rglob("*.md")):
+            result["unclassified"].append(child.name)
+    return result
+
+
 def discover_type_dirs(vault_root):
-    """Artifact type directories in the vault: the known core dirs (always),
-    plus any other subdirectory that actually contains typed artifacts.
+    """Artifact type directories directly under `vault_root`: the reserved
+    core dirs (always), plus any other subdirectory that actually contains
+    typed artifacts. Unit folders are not type directories; `scan_artifacts`
+    reaches their type dirs through `classify_root_dirs`.
 
     Always scanning the core dirs keeps numbering and sections stable even when
     a dir is empty. Requiring a typed artifact for extra dirs lets a vault add
     its own type (e.g. `retro/`) without code changes, while skipping incidental
     folders some projects drop in `.compass/` (`claude/`, `configs/`, ...).
     """
-    vault_root = Path(vault_root)
-    result = []
-    for child in sorted(vault_root.iterdir()):
-        if not child.is_dir() or child.name in NON_TYPE_DIRS or child.name.startswith("."):
-            continue
-        if child.name in CORE_TYPE_DIRS or _has_typed_artifact(child):
-            result.append(child.name)
-    return result
+    return classify_root_dirs(vault_root)["type_dirs"]
 
 
 def all_markdown_files(vault_root):
@@ -177,46 +214,92 @@ def parse_frontmatter(path):
     return parse_frontmatter_text(text)
 
 
-def scan_artifacts(vault_root):
-    """Walk the type directories and classify every artifact markdown file.
+def _scan_type_dir(base, type_dir, unit):
+    """Classify every artifact markdown file under one type directory.
 
-    Each record is a dict with: `path`, `type_dir`, `kind`
-    (`flat` | `folder-index` | `child`), `rel` (POSIX path within the type
-    dir), `name` (wikilink identity), and `depth` (folder nesting level).
+    `base` is the directory on disk; `unit` is the owning unit folder name,
+    or None when the type dir sits at the vault root. A unit artifact's
+    `name` is its vault-relative path without extension, so links to it are
+    path-qualified and unambiguous across units.
+    """
+    records = []
+    for path in sorted(base.rglob("*.md")):
+        rel = path.relative_to(base)
+        parts = rel.parts
+        if path.name == "index.md":
+            if len(parts) == 1:
+                # A bare `<type>/index.md` is not an artifact; skip it.
+                continue
+            kind = "folder-index"
+            name = "/".join(parts[:-1])
+            # A folder spec renders at the depth of its folder, which sits
+            # one level above its own `index.md` file.
+            depth = len(parts) - 2
+        elif len(parts) == 1:
+            kind = "flat"
+            name = path.stem
+            depth = 0
+        else:
+            kind = "child"
+            name = "/".join(list(parts[:-1]) + [path.stem])
+            depth = len(parts) - 1
+        if unit is not None:
+            name = f"{unit}/{type_dir}/{name}"
+        records.append({
+            "path": path,
+            "type_dir": type_dir,
+            "kind": kind,
+            "rel": str(rel).replace("\\", "/"),
+            "name": name,
+            "depth": depth,
+            "unit": unit,
+        })
+    return records
+
+
+def scan_artifacts(vault_root):
+    """Walk the type directories - at the vault root and inside each marked
+    unit folder - and classify every artifact markdown file.
+
+    Each record is a dict with: `path`, `type_dir` (bare type dir name, e.g.
+    `specs` even inside a unit), `kind` (`flat` | `folder-index` | `child`),
+    `rel` (POSIX path within the type dir), `name` (wikilink identity;
+    vault-relative for unit artifacts), `depth` (folder nesting level), and
+    `unit` (owning unit folder name, None for root artifacts). A unit's own
+    `index.md` is the unit's marker, not an artifact, and is not scanned.
     """
     vault_root = Path(vault_root)
+    layout = classify_root_dirs(vault_root)
     records = []
-    for type_dir in discover_type_dirs(vault_root):
-        base = vault_root / type_dir
-        for path in sorted(base.rglob("*.md")):
-            rel = path.relative_to(base)
-            parts = rel.parts
-            if path.name == "index.md":
-                if len(parts) == 1:
-                    # A bare `<type>/index.md` is not an artifact; skip it.
-                    continue
-                kind = "folder-index"
-                name = "/".join(parts[:-1])
-                # A folder spec renders at the depth of its folder, which sits
-                # one level above its own `index.md` file.
-                depth = len(parts) - 2
-            elif len(parts) == 1:
-                kind = "flat"
-                name = path.stem
-                depth = 0
-            else:
-                kind = "child"
-                name = "/".join(list(parts[:-1]) + [path.stem])
-                depth = len(parts) - 1
-            records.append({
-                "path": path,
-                "type_dir": type_dir,
-                "kind": kind,
-                "rel": str(rel).replace("\\", "/"),
-                "name": name,
-                "depth": depth,
-            })
+    for type_dir in layout["type_dirs"]:
+        records.extend(_scan_type_dir(vault_root / type_dir, type_dir, None))
+    for unit in layout["units"]:
+        unit_dir = vault_root / unit
+        for type_dir in classify_root_dirs(unit_dir)["type_dirs"]:
+            records.extend(_scan_type_dir(unit_dir / type_dir, type_dir, unit))
     return records
+
+
+def resolvable_names_map(vault_root):
+    """Every name a wikilink may resolve to, mapped to the vault-relative
+    POSIX paths (extension kept) of the files bearing that name.
+
+    Names per file: its bare stem, its folder's name when the file is a
+    folder `index.md`, and its path-qualified name (vault-relative, no
+    extension). Drawn from every markdown file in the vault, so archive/
+    and custom type dirs are covered. A name mapping to more than one path
+    is an ambiguous wikilink.
+    """
+    vault_root = Path(vault_root)
+    mapping = {}
+    for path in all_markdown_files(vault_root):
+        rel = path.relative_to(vault_root)
+        names = {path.stem, str(rel.with_suffix("")).replace("\\", "/")}
+        if path.name == "index.md":
+            names.add(path.parent.name)
+        for name in names:
+            mapping.setdefault(name, []).append(str(rel).replace("\\", "/"))
+    return mapping
 
 
 def count_tokens(text):
