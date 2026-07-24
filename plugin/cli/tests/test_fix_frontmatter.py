@@ -91,6 +91,20 @@ class FixFrontmatterTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("nothing to fix", out.getvalue())
 
+    def test_unit_artifact_type_from_type_dir(self):
+        root = make_vault(self)
+        marker = write(root, "compass-cli/index.md", "---\ntitle: CLI\ntype: unit\n---\n")
+        before = marker.read_text(encoding="utf-8")
+        p = write(root, "compass-cli/specs/SPEC-001-thing.md", "# Thing\n\nbody\n")
+        out = io.StringIO()
+        with redirect_stdout(out):
+            fix_frontmatter.run(["--apply"])
+        data, error = vaultlib.parse_frontmatter(p)
+        self.assertIsNone(error)
+        self.assertEqual(data["type"], "spec")  # from the unit's own type dir
+        self.assertIn("compass-cli/specs/SPEC-001-thing.md", out.getvalue())
+        self.assertEqual(marker.read_text(encoding="utf-8"), before)  # marker not an artifact
+
     def test_apply_clears_validate_errors(self):
         root = make_vault(self)
         write(root, "research/READING-NOTES.md", "# Notes\nbody\n")

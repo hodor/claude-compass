@@ -284,11 +284,11 @@ def resolvable_names_map(vault_root):
     """Every name a wikilink may resolve to, mapped to the vault-relative
     POSIX paths (extension kept) of the files bearing that name.
 
-    Names per file: its bare stem, its folder's name when the file is a
-    folder `index.md`, and its path-qualified name (vault-relative, no
-    extension). Drawn from every markdown file in the vault, so archive/
-    and custom type dirs are covered. A name mapping to more than one path
-    is an ambiguous wikilink.
+    Names per file: its bare stem, its path-qualified name (vault-relative,
+    no extension), and - when the file is a folder `index.md` - the folder's
+    name and the folder's vault-relative path. Drawn from every markdown
+    file in the vault, so archive/ and custom type dirs are covered. A name
+    mapping to more than one path is an ambiguous wikilink.
     """
     vault_root = Path(vault_root)
     mapping = {}
@@ -297,6 +297,9 @@ def resolvable_names_map(vault_root):
         names = {path.stem, str(rel.with_suffix("")).replace("\\", "/")}
         if path.name == "index.md":
             names.add(path.parent.name)
+            folder_rel = rel.parent.as_posix()
+            if folder_rel != ".":
+                names.add(folder_rel)
         for name in names:
             mapping.setdefault(name, []).append(str(rel).replace("\\", "/"))
     return mapping

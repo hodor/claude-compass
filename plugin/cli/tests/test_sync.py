@@ -12,8 +12,8 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import vaultlib  # noqa: E402
 from commands import sync as sync_cmd  # noqa: E402
+from commands import validate as validate_cmd  # noqa: E402
 
 INDEX_TEMPLATE = """# Index
 
@@ -56,6 +56,28 @@ def lesson(name, tags="[c]"):
         f"area: workflow\ntags: {tags}\ncreated: 2026-06-14\nupdated: 2026-06-14\n"
         f"score: 5\nsummary: \"summary of {name}\"\n---\n\nbody\n"
     )
+
+
+def folder_spec(name, summary):
+    return (
+        f"---\ntitle: {name}\ntype: spec\nstatus: approved\narea: w\ntags: [x]\n"
+        f"children_count: 1\nsummary: \"{summary}\"\ncreated: 2026-06-14\n"
+        f"updated: 2026-06-14\n---\n\nbody\n"
+    )
+
+
+UNIT_INDEX = """---
+title: "Unit X"
+type: unit
+status: active
+area: w
+tags: [unitx]
+created: 2026-07-24
+updated: 2026-07-24
+---
+
+# Unit X
+"""
 
 
 class SyncFixture(unittest.TestCase):
@@ -159,6 +181,111 @@ class LogCleanupTests(SyncFixture):
         self.assertEqual(deleted, 1)
         self.assertFalse(old.exists())
         self.assertTrue(new.exists())
+
+
+class ResolutionMatchingTests(SyncFixture):
+    def test_stem_entry_for_folder_child_not_reappended(self):
+        self.write("specs/SPEC-004-pack/index.md", folder_spec("Pack", "the pack folder"))
+        self.write("specs/SPEC-004-pack/SPEC-001-inner.md", spec("Inner"))
+        seeded = INDEX_TEMPLATE.replace(
+            "## Plans", "- [[SPEC-001-inner]] - noted by hand\n\n## Plans"
+        )
+        (self.root / "index.md").write_text(seeded, encoding="utf-8")
+        sync_cmd.sync(self.root)
+        self.assertEqual(self.index_text().count("[[SPEC-001-inner]]"), 1)
+        self.assertIn("noted by hand", self.index_text())
+
+    def test_root_folder_children_get_bare_stem_links(self):
+        self.write("specs/SPEC-004-pack/index.md", folder_spec("Pack", "the pack folder"))
+        self.write("specs/SPEC-004-pack/SPEC-001-inner.md", spec("Inner"))
+        sync_cmd.sync(self.root)
+        text = self.index_text()
+        self.assertIn("  - [[SPEC-001-inner]] - Inner", text)
+        self.assertIn("- [[SPEC-004-pack]] (folder, 1 children) - the pack folder", text)
+        self.assertNotIn("[[SPEC-004-pack/SPEC-001-inner]]", text)
+
+
+class UnitSyncTests(SyncFixture):
+    def make_unit(self):
+        self.write("unitx/index.md", UNIT_INDEX)
+        self.write("unitx/specs/SPEC-001-alpha.md", spec("Alpha", tags="[alpha]"))
+        self.write("unitx/lessons/LESSON-unit-fresh.md", lesson("Unit Fresh"))
+
+    def _snapshot(self):
+        return {
+            p.relative_to(self.root).as_posix(): p.read_bytes()
+            for p in self.root.rglob("*") if p.is_file()
+        }
+
+    def test_unit_entries_path_qualified_under_unit_section(self):
+        self.make_unit()
+        sync_cmd.sync(self.root)
+        text = self.index_text()
+        self.assertIn("## Unit X", text)
+        section = text.split("## Unit X", 1)[1]
+        self.assertIn("- [[unitx/lessons/LESSON-unit-fresh]] - summary of Unit Fresh", section)
+        self.assertIn("- [[unitx/specs/SPEC-001-alpha]] - Alpha", section)
+        self.assertNotIn("[[SPEC-001-alpha]] -", text.split("## Unit X", 1)[0])
+
+    def test_unit_folder_spec_links_by_folder_path(self):
+        self.make_unit()
+        self.write("unitx/specs/SPEC-002-sub/index.md", folder_spec("Sub", "the sub folder"))
+        self.write("unitx/specs/SPEC-002-sub/SPEC-001-leaf.md", spec("Leaf"))
+        sync_cmd.sync(self.root)
+        text = self.index_text()
+        self.assertIn("- [[unitx/specs/SPEC-002-sub]] (folder, 1 children) - the sub folder", text)
+        self.assertIn("  - [[unitx/specs/SPEC-002-sub/SPEC-001-leaf]] - Leaf", text)
+
+    def test_sync_written_links_validate_clean(self):
+        self.make_unit()
+        self.write("unitx/specs/SPEC-002-sub/index.md", folder_spec("Sub", "the sub folder"))
+        self.write("unitx/specs/SPEC-002-sub/SPEC-001-leaf.md", spec("Leaf"))
+        sync_cmd.sync(self.root)
+        _, warnings = validate_cmd.check_vault(self.root)
+        index_broken = [w for w in warnings if w.startswith("broken_wikilink: index.md")]
+        self.assertEqual(index_broken, [])
+
+    def test_unit_lesson_reaches_catalog(self):
+        self.make_unit()
+        report = sync_cmd.sync(self.root)
+        self.assertEqual(report["catalog_added"], 1)
+        self.assertEqual(report["catalog_collisions"], [])
+        catalog = (self.root / "meta" / "lessons-catalog.yaml").read_text(encoding="utf-8")
+        self.assertIn('file: "LESSON-unit-fresh.md"', catalog)
+
+    def test_duplicate_lesson_filename_reported_not_overwritten(self):
+        self.make_unit()
+        self.write("lessons/LESSON-unit-fresh.md", lesson("Root Twin"))
+        report = sync_cmd.sync(self.root)
+        self.assertEqual(
+            report["catalog_collisions"],
+            ["LESSON-unit-fresh.md: lessons/LESSON-unit-fresh.md, unitx/lessons/LESSON-unit-fresh.md"],
+        )
+        catalog = (self.root / "meta" / "lessons-catalog.yaml").read_text(encoding="utf-8")
+        self.assertEqual(catalog.count('file: "LESSON-unit-fresh.md"'), 1)
+        self.assertIn("summary of Root Twin", catalog)
+
+    def test_unit_tags_vault_relative_in_tag_index(self):
+        self.make_unit()
+        sync_cmd.sync(self.root)
+        text = (self.root / "meta" / "tag-index.yaml").read_text(encoding="utf-8")
+        self.assertIn("  alpha:\n  - unitx/specs/SPEC-001-alpha.md\n", text)
+
+    def test_second_sync_with_unit_is_a_noop(self):
+        self.make_unit()
+        sync_cmd.sync(self.root)
+        first = self._snapshot()
+        sync_cmd.sync(self.root)
+        self.assertEqual(self._snapshot(), first)
+
+    def test_lesson_cap_counts_unit_lessons(self):
+        self.make_unit()
+        self.write("lessons/LESSON-rootie.md", lesson("Rootie"))
+        old_cap = sync_cmd.LESSON_COUNT_CAP
+        sync_cmd.LESSON_COUNT_CAP = 1
+        self.addCleanup(setattr, sync_cmd, "LESSON_COUNT_CAP", old_cap)
+        warnings = sync_cmd.sync(self.root)["caps"]
+        self.assertIn("lessons-catalog.yaml", warnings)
 
 
 class HookModeTests(SyncFixture):

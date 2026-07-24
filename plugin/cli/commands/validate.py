@@ -2,15 +2,19 @@
 
 Reports two severities. Errors are things that break machine-readability (a
 file with no frontmatter, or missing a core field title/type/status) and make
-the command exit 1. Warnings are advisory (dangling wikilinks, missing
-recommended fields, hot-path cap breaches) and do not fail the command -
-dangling links are valid stubs in an Obsidian vault. Wikilinks resolve against
-every markdown file in the vault, including archive/ and custom type dirs.
+the command exit 1. Warnings are advisory (dangling wikilinks, ambiguous
+wikilinks, unclassified root folders, missing recommended fields, hot-path cap
+breaches) and do not fail the command - dangling links are valid stubs in an
+Obsidian vault. Wikilinks resolve through `vaultlib.resolvable_names_map`, the
+same resolution `sync` emits against, covering every markdown file in the
+vault including archive/ and custom type dirs. A link name that maps to more
+than one file is flagged `ambiguous_wikilink`; a root folder that is neither
+reserved, a marked unit, nor a typed artifact dir is flagged
+`unclassified_root_folder` - reported for the human, never guessed at.
 """
 
 import re
 import sys
-from pathlib import Path
 
 import vaultlib
 from commands.hot_path import HOT_PATH_CAP, measure
@@ -40,22 +44,21 @@ WIKILINK = re.compile(r"\[\[([^\]]+)\]\]")
 INLINE_CODE = re.compile(r"`[^`]*`")
 
 
-def _resolvable_names(vault_root):
-    """Every name a wikilink may resolve to, drawn from all vault markdown.
-
-    Includes each file's bare stem, a folder spec's folder name, and the
-    path-qualified name (relative to the vault, no extension). Covers archive/
-    and any custom type dir so links there are not flagged.
-    """
-    vault_root = Path(vault_root)
-    names = set(SPECIAL_TARGETS)
-    for path in vaultlib.all_markdown_files(vault_root):
-        names.add(path.stem)
-        if path.name == "index.md":
-            names.add(path.parent.name)
-        rel = path.relative_to(vault_root).with_suffix("")
-        names.add(str(rel).replace("\\", "/"))
-    return names
+def _check_links(rel, text, resolve, warnings):
+    """Append a warning for each wikilink in `text` that does not resolve to
+    exactly one file: `broken_wikilink` when the name maps to nothing,
+    `ambiguous_wikilink` (with every matching path listed) when it maps to
+    more than one. `resolve` is `vaultlib.resolvable_names_map` output, the
+    same resolution `sync` emits links against."""
+    for lineno, target in _wikilinks_in(text):
+        if target in SPECIAL_TARGETS:
+            continue
+        paths = resolve.get(target)
+        if paths is None:
+            warnings.append(f"broken_wikilink: {rel}:{lineno}: [[{target}]]")
+        elif len(paths) > 1:
+            listed = ", ".join(sorted(paths))
+            warnings.append(f"ambiguous_wikilink: {rel}:{lineno}: [[{target}]] -> {listed}")
 
 
 def _wikilinks_in(text):
@@ -78,11 +81,18 @@ def check_vault(vault_root):
     """Return (errors, warnings), each a list of human-readable strings."""
     errors, warnings = [], []
     records = vaultlib.scan_artifacts(vault_root)
-    names = _resolvable_names(vault_root)
+    resolve = vaultlib.resolvable_names_map(vault_root)
+
+    for name in vaultlib.classify_root_dirs(vault_root)["unclassified"]:
+        warnings.append(
+            f"unclassified_root_folder: {name}: holds markdown but is not a "
+            f"reserved dir, has no 'type: unit' index.md marker, and has no "
+            f"typed artifacts - not scanned"
+        )
 
     for record in records:
         path = record["path"]
-        rel = f"{record['type_dir']}/{record['rel']}"
+        rel = str(path.relative_to(vault_root)).replace("\\", "/")
         data, error = vaultlib.parse_frontmatter(path)
         if error:
             errors.append(f"frontmatter_error: {rel}: {error}")
@@ -92,17 +102,13 @@ def check_vault(vault_root):
                 msg = f"frontmatter_missing_field: {rel}: {field}"
                 (errors if field in CORE_REQUIRED else warnings).append(msg)
 
-        for lineno, target in _wikilinks_in(path.read_text(encoding="utf-8")):
-            if target not in names:
-                warnings.append(f"broken_wikilink: {rel}:{lineno}: [[{target}]]")
+        _check_links(rel, path.read_text(encoding="utf-8"), resolve, warnings)
 
     for rel in TOP_LEVEL_FILES:
         path = vault_root / rel
         if not path.is_file():
             continue
-        for lineno, target in _wikilinks_in(path.read_text(encoding="utf-8")):
-            if target not in names:
-                warnings.append(f"broken_wikilink: {rel}:{lineno}: [[{target}]]")
+        _check_links(rel, path.read_text(encoding="utf-8"), resolve, warnings)
 
     index_path = vault_root / "index.md"
     if index_path.is_file():

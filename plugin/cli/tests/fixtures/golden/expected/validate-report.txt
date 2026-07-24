@@ -1,6 +1,3 @@
-compass validate: 0 error(s), 5 warning(s)
+compass validate: 0 error(s), 2 warning(s)
   warning frontmatter_missing_field: research/RESEARCH-tiling-landscape.md: updated
-  warning broken_wikilink: index.md:8: [[SPEC-002-tile-editor/SPEC-001-master-material]]
-  warning broken_wikilink: index.md:9: [[SPEC-002-tile-editor/SPEC-002-brush-system/SPEC-001-stroke-rendering]]
-  warning broken_wikilink: index.md:10: [[SPEC-002-tile-editor/SPEC-002-brush-system]]
   warning broken_wikilink: active.md:9: [[SPEC-999-mythical]]

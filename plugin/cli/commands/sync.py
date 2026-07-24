@@ -2,8 +2,13 @@
 
 Reproduces the mechanical half of the former index-sync skill: append missing
 entries to the root index (append-only, human lines preserved), append missing
-lesson rows to the catalog, fully regenerate the tag index, check hot-path caps,
-and prune old extraction logs.
+lesson rows to the catalog (aggregating unit `lessons/` dirs), fully regenerate
+the tag index, check hot-path caps, and prune old extraction logs.
+
+Root artifacts are indexed under per-type sections with bare-stem wikilinks;
+unit artifacts under one section per unit with path-qualified wikilinks. Every
+link sync writes resolves through `vaultlib.resolvable_names_map`, the same
+resolution `validate` checks against.
 
 Runs in two modes. Human mode (no hook stdin) syncs the whole vault and prints a
 report. Hook mode (PostToolUse JSON on stdin) self-filters its own generated
@@ -55,11 +60,42 @@ def _load_data(records):
         record["_data"] = data
 
 
+def _rel_path(vault_root, record):
+    """Vault-relative POSIX path of a record's file, the resolution identity
+    `vaultlib.resolvable_names_map` maps names onto."""
+    return record["path"].relative_to(vault_root).as_posix()
+
+
+def _link_name(record):
+    """Wikilink target sync emits for a record.
+
+    Root artifacts get bare-stem links (folder specs: the folder name), the
+    shortest resolvable form. Unit artifacts get path-qualified links
+    (vault-relative, no extension) so they stay unambiguous across units; a
+    folder spec inside a unit links by its folder's vault-relative path,
+    mirroring the folder-name convention root folder specs use.
+    """
+    if record["unit"] is None:
+        if record["kind"] == "folder-index":
+            return record["path"].parent.name
+        return record["path"].stem
+    return record["name"]
+
+
+def _unit_title(vault_root, unit):
+    """Index section title for a unit: the `title` frontmatter of the unit's
+    own `index.md`, falling back to the folder name."""
+    data, error = vaultlib.parse_frontmatter(Path(vault_root) / unit / "index.md")
+    if not error and data.get("title"):
+        return data["title"]
+    return unit
+
+
 def _entry_line(record, child_count):
     data = record["_data"]
     summary = data.get("summary") or data.get("title") or record["name"]
     indent = "  " * record["depth"]
-    label = f"[[{record['name']}]]"
+    label = f"[[{_link_name(record)}]]"
     if record["kind"] == "folder-index":
         return f"{indent}- {label} (folder, {child_count} children) - {summary}"
     return f"{indent}- {label} - {summary}"
@@ -74,28 +110,46 @@ def _child_count(folder_record, records):
 
 
 def _sync_index(vault_root, records):
-    """Append missing entries per type section. Append-only: existing lines,
-    including human-authored descriptions, are never rewritten or removed."""
+    """Append missing entries: one section per root type dir, one section per
+    unit titled from the unit's `index.md`. Append-only: existing lines,
+    including human-authored descriptions, are never rewritten or removed.
+    An artifact counts as already indexed when any existing wikilink in its
+    section resolves to the artifact's file, so sync never re-appends an
+    entry `validate` already resolves regardless of the link form used."""
     index_path = vault_root / "index.md"
     lines = index_path.read_text(encoding="utf-8").split("\n")
+    resolve = vaultlib.resolvable_names_map(vault_root)
     added = {}
 
-    by_dir = {}
+    root_by_dir = {}
+    unit_recs = {}
     for record in records:
         if record["_data"].get("status") == "archived":
             continue
-        by_dir.setdefault(record["type_dir"], []).append(record)
+        if record["unit"] is None:
+            root_by_dir.setdefault(record["type_dir"], []).append(record)
+        else:
+            unit_recs.setdefault(record["unit"], []).append(record)
 
-    for type_dir in sorted(by_dir):
-        recs = by_dir[type_dir]
-        section = section_for(type_dir)
-        start = next((i for i, l in enumerate(lines) if l.strip() == section), None)
+    sections = [
+        (type_dir, section_for(type_dir), sorted(recs, key=lambda r: r["rel"]))
+        for type_dir, recs in sorted(root_by_dir.items())
+    ]
+    sections += [
+        (unit, "## " + _unit_title(vault_root, unit),
+         sorted(recs, key=lambda r: (r["type_dir"], r["rel"])))
+        for unit, recs in sorted(unit_recs.items())
+    ]
+
+    for key, header, recs in sections:
+        start = next((i for i, l in enumerate(lines) if l.strip() == header), None)
         if start is None:
-            # Section absent (e.g. a newly introduced type dir): create it at
-            # the end of the file so the new artifacts are not lost.
+            # Section absent (e.g. a newly introduced type dir or unit):
+            # create it at the end of the file so the new artifacts are not
+            # lost.
             if lines and lines[-1].strip() != "":
                 lines.append("")
-            lines.append(section)
+            lines.append(header)
             lines.append("")
             start = len(lines) - 2
             end = len(lines)
@@ -104,21 +158,22 @@ def _sync_index(vault_root, records):
                 (i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")),
                 len(lines),
             )
-        existing = set()
+        indexed_paths = set()
         for line in lines[start + 1:end]:
-            existing.update(WIKILINK.findall(line))
+            for raw in WIKILINK.findall(line):
+                target = raw.split("#")[0].split("|")[0].strip()
+                indexed_paths.update(resolve.get(target, []))
 
-        missing = [r for r in recs if r["name"] not in existing]
+        missing = [r for r in recs if _rel_path(vault_root, r) not in indexed_paths]
         if not missing:
             continue
-        new_lines = [_entry_line(r, _child_count(r, records))
-                     for r in sorted(missing, key=lambda r: r["rel"])]
+        new_lines = [_entry_line(r, _child_count(r, records)) for r in missing]
 
         insert_at = end
         while insert_at - 1 > start and lines[insert_at - 1].strip() == "":
             insert_at -= 1
         lines[insert_at:insert_at] = new_lines
-        added[type_dir] = len(new_lines)
+        added[key] = len(new_lines)
 
     if added:
         vaultlib.write_text_lf(index_path, "\n".join(lines))
@@ -142,30 +197,40 @@ def _catalog_row(filename, data):
 
 
 def _sync_catalog(vault_root, records):
+    """Append missing lesson rows to the root catalog, aggregating lessons
+    from unit `lessons/` dirs so nested lessons stay on the hot path. The
+    filename is the row key; two lesson files sharing a filename are a
+    collision - reported, and only the first (by vault path) gets a row."""
     catalog_path = vault_root / "meta" / "lessons-catalog.yaml"
     if not catalog_path.is_file():
-        return 0
+        return 0, []
     text = catalog_path.read_text(encoding="utf-8")
     existing = set(re.findall(r'file:\s*"?([^"\n]+)"?', text))
-    rows = []
+    by_filename = {}
     for record in records:
         if record["type_dir"] != "lessons":
             continue
-        filename = record["path"].name
+        by_filename.setdefault(record["path"].name, []).append(record)
+    rows, collisions = [], []
+    for filename in sorted(by_filename):
+        recs = sorted(by_filename[filename], key=lambda r: _rel_path(vault_root, r))
+        if len(recs) > 1:
+            paths = ", ".join(_rel_path(vault_root, r) for r in recs)
+            collisions.append(f"{filename}: {paths}")
         if filename in existing:
             continue
-        row = _catalog_row(filename, record["_data"])
+        row = _catalog_row(filename, recs[0]["_data"])
         if row:
             rows.append(row)
     if rows:
         vaultlib.write_text_lf(catalog_path, text.rstrip("\n") + "\n" + "\n".join(rows) + "\n")
-    return len(rows)
+    return len(rows), collisions
 
 
 def _sync_tag_index(vault_root, records):
     tag_map = {}
     for record in records:
-        rel = f"{record['type_dir']}/{record['rel']}"
+        rel = _rel_path(vault_root, record)
         for tag in record["_data"].get("tags") or []:
             tag_map.setdefault(tag, set()).add(rel)
     lines = [
@@ -225,9 +290,12 @@ def sync(vault_root):
     """Run every sync step over the whole vault. Returns a report dict."""
     records = vaultlib.scan_artifacts(vault_root)
     _load_data(records)
+    index_added = _sync_index(vault_root, records)
+    catalog_added, catalog_collisions = _sync_catalog(vault_root, records)
     return {
-        "index_added": _sync_index(vault_root, records),
-        "catalog_added": _sync_catalog(vault_root, records),
+        "index_added": index_added,
+        "catalog_added": catalog_added,
+        "catalog_collisions": catalog_collisions,
         "tags": _sync_tag_index(vault_root, records),
         "caps": _check_caps(vault_root, records),
         "logs_deleted": _clean_logs(vault_root),
@@ -240,6 +308,8 @@ def format_report(report):
         parts.append(f"index: +{count} {atype}")
     if report["catalog_added"]:
         parts.append(f"catalog rows added: {report['catalog_added']}")
+    for collision in report["catalog_collisions"]:
+        parts.append(f"catalog filename collision: {collision}")
     parts.append(f"tags indexed: {report['tags']}")
     if report["caps"]:
         parts.append(f"caps exceeded (warning written): {', '.join(report['caps'])}")
