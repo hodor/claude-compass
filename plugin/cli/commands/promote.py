@@ -24,7 +24,14 @@ def _resolve(vault_root, target):
     return None
 
 
-def _git_mv(repo, src, dest):
+def git_mv(repo, src, dest):
+    """Move `src` to `dest` with `git mv` inside `repo`, preserving history.
+
+    Returns True on success, False when git is unavailable or refuses the
+    move (e.g. the path is untracked or `repo` is not a repository); callers
+    fall back to a plain filesystem rename. Shared by `promote` and
+    `make-unit`.
+    """
     try:
         result = subprocess.run(
             ["git", "mv", str(src), str(dest)],
@@ -59,7 +66,7 @@ def run(args):
     folder = path.with_suffix("")
     dest = folder / "index.md"
     folder.mkdir(parents=True, exist_ok=True)
-    if not _git_mv(vault_root.parent, path, dest):
+    if not git_mv(vault_root.parent, path, dest):
         path.rename(dest)
     _add_children_count(dest)
 

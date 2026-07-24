@@ -263,8 +263,14 @@ Agents depending on external tools (MCP, `gh`, specific runtimes) verify availab
 ├── lessons/              - Lessons
 ├── handoffs/             - Session continuity
 ├── prs/                  - PR descriptions
+├── <unit-name>/          - Unit folder: one large unit of work (index.md has `type: unit`)
+│   ├── index.md          - Unit marker, title, children listing
+│   ├── specs/ plans/ ... - Own type subdirs, unit-local numbering
+│   └── lessons/          - Aggregated into meta/lessons-catalog.yaml by sync
 └── archive/              - Completed/retired
 ```
+
+Unit artifacts are linked path-qualified (`[[<unit>/specs/SPEC-001-name]]`); root artifacts keep bare stems. The obsidian skill documents the full unit-folder conventions.
 
 ## Pattern discovery
 

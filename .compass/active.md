@@ -45,31 +45,9 @@ updated: 2026-05-24
 
 _None._
 
-## Building: [[PLAN-002-compass-cli-implementation]] (approved 2026-06-14)
+## Done: [[PLAN-002-compass-cli-implementation]] (all 12 tasks + deployment, 2026-06-14)
 
-### Phase 1 - Foundation (dispatch + shared library)
-
-- [x] TASK-001: Build `plugin/cli/` package skeleton - `vaultlib.py` + argparse dispatch + exit helpers (never-exit-2). 17 tests pass. (2026-06-14)
-
-### Phase 2 - All commands (parallel tracks, after Phase 1)
-
-- [x] TASK-002: `compass next-num` | TASK-003: `compass tree` + `hot-path` (read-only track) - clean on real vault (2026-06-14)
-- [x] TASK-004/005/006: `compass sync` core + caps/cleanup + hook mode - idempotent on real vault, found+fixed missing handoff in index (2026-06-14)
-- [x] TASK-007: `compass validate` - zero false positives on real vault, exit 0 (2026-06-14)
-- [x] TASK-008: `compass promote` + `clean-tmp` | TASK-009: `compass touched` + `admit-check` (2026-06-14)
-
-### Phase 3 - Cutover, measurement, lessons (after Phase 2)
-
-- [x] **Pre-req: `.gitattributes` with `eol=lf`** added; `git check-attr` confirms LF, CRLF churn warning gone (2026-06-14)
-- [x] TASK-010: hooks.json PostToolUse → `type: command` running `compass sync`. Verified via faithful hook simulation (vault write → suppressOutput; own-output + non-vault → no-op; all exit 0). (2026-06-14)
-- [x] TASK-011: shrunk `index-sync` (262→~45 lines), `vault-health`, `promote-spec` to CLI wrappers; grep checks pass (2026-06-14)
-- [x] TASK-012: [[RESEARCH-cli-token-reduction-measurement]] - ~99.8% reduction (target >=80%), integrity preserved + improved. Hypothesis CONFIRMED. (2026-06-14)
-
-### Done (deployment)
-
-- [x] Live dogfood cutover CONFIRMED (2026-06-14, post-restart): a throwaway vault Write auto-fired `compass sync` via the command hook - index.md + tag-index updated with zero agent tokens, no blocking prompt. Mid-session hook edits do not reload; a restart loads them.
-- [x] `/compass:bootstrap` now copies `plugin/cli/` -> `.claude/cli/`, installs `.claude/hooks/hooks.json` from the plugin, checks for python3, and the shipped hook runs `python3 "$CLAUDE_PROJECT_DIR/.claude/cli/compass" sync --hook`. Verified end-to-end by simulating a fresh self-contained install into a temp project (hook syncs, own-output no-ops, validate clean). So on other repos: `/compass:bootstrap update` + restart is now sufficient (python3 required).
-- [x] Fixed two CLI bugs the deployment test surfaced: `sync` hung on stdin in non-interactive shells (now gated behind `--hook`, see [[LESSON-hook-cli-gate-stdin-on-flag]]); argparse rejected pass-through flags (now argv split manually).
+CLI built, command-hook cutover live, ~99.8% bookkeeping-token reduction confirmed ([[RESEARCH-cli-token-reduction-measurement]]). Details in the plan and [[2026-06-19_10-33-39_cli-shipped-spec005-on-hold]].
 
 ### Note for human
 
@@ -88,11 +66,11 @@ Pipeline state: research DONE (3 docs) -> ADR-006/007/008 DONE -> PLAN-003/004/0
 - [x] TASK-013: Golden fixtures of current sync/validate (S) - 87 tests green, goldens hand-verified, committed 4c44a05 (2026-07-24)
 - [x] TASK-014: Unit-aware discovery + resolvable_names_map in vaultlib (L) - flat records field-identical, zero real-vault regressions, committed 4c44a05 (2026-07-24)
 - [x] TASK-015: sync path-qualified emission + unit sections + lessons aggregation (L) - 10 new tests, goldens regenerated per D-02 amendment; orchestrator ratified folder-path link form (`[[<unit>/<type>/<folder>]]`, map extended) (2026-07-24)
-- [ ] TASK-016: validate ambiguity map + unified resolution + unclassified report (M) - BUILDING (turns the pending sync-validate regression test green)
+- [x] TASK-016: validate ambiguity map + unified resolution + unclassified report (M) - 109 green, real-vault output byte-identical, committed 68ff9ef (2026-07-24)
 - [x] TASK-017: tree / next-num / fix-frontmatter unit-awareness (M) - 4 new tests, traversal scopes rejected, type-invention bug fixed (2026-07-24)
-- [ ] TASK-018: compass unit-check (type-spread detection, report-only) (M)
-- [ ] TASK-019: compass make-unit (migration operation) (L)
-- [ ] TASK-020: path-qualified links in wikilinks rule + obsidian/methodology skills (M)
+- [x] TASK-018: compass unit-check (type-spread detection, report-only) (M) - finds the compass-cli set on the real vault, committed 68ff9ef (2026-07-24)
+- [ ] TASK-019: compass make-unit (migration operation) (L) - BUILDING
+- [x] TASK-020: path-qualified links in wikilinks rule + obsidian/methodology skills (M) - documents landed behavior only (2026-07-24)
 - [ ] TASK-021: Migrate the compass-cli set (dogfood, acceptance) (M)
 
 ### Queued: [[PLAN-004-decision-coverage]] (parallel with 005 after 003)
