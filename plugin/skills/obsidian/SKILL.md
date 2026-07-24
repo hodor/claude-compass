@@ -279,6 +279,16 @@ Grep pattern: "\\[\\[SPEC-001" in .compass/ glob: "*.md"
 Grep pattern: "type: spec" in .compass/ glob: "*.md"
 ```
 
+## Decision bullets (the D-NN convention)
+
+A ruling made in a spec or ADR is written as a discrete, referenceable bullet, not left buried in prose, so later stages can check it was carried through rather than silently dropped.
+
+- **Unit:** `- **D-NN:** text` under a `## Decisions` (spec) or `## Decision` (ADR) heading - the regex is `^#{2,3}\s*Decisions?\b`, case-insensitive, so `## Decisions (made by the human)` and `## Decision` both match. Continuation lines are indented under the bullet. IDs are plain `D-NN`, local to the document - the same number recurs across different documents by design.
+- **Opt-out tags:** a `[informational]` or `[deferred]` bracket tag right after the ID marks the decision non-trackable. It is still parsed and recorded, just never required by the coverage gate. Example: `- **D-07 [deferred]:** revisit connection pooling after the migration lands.`
+- **Discretion subheading:** bullets placed under a subheading whose text ends in "Discretion" (`### Builder discretion`, `### Claude's Discretion`) are non-trackable as a group, without tagging each one.
+- **Citation form:** a plan or task claims a decision with a source-qualified citation, `<doc-stem>/D-NN` (e.g. `SPEC-007-decision-coverage-tracing/D-03`), resolved the same way a wikilink resolves. A bare `D-NN` claims nothing - local IDs collide across documents, so the source name is required.
+- **Coverage:** `compass decisions <doc>` lists a document's decisions and exits 1 on a format mismatch (`could-not-parse`). `compass coverage <plan> [--against <doc>...]` checks that a plan covers every trackable decision of its `depends_on` spec and decision sources, and exits 1 on any gap. Documents predating this convention parse as `none-present` and are not retrofitted.
+
 ## Document templates
 
 These show every section a document type CAN have, not what every document MUST have. Omit empty sections in the file you write - don't stub them. Only required sections are mandatory.
@@ -329,6 +339,10 @@ What does success look like when this is done?
 
 ## Constraints
 Hard limits - technical, legal, organizational, time.
+
+## Decisions (made by the human)
+Explicit rulings made during the interview - a trade-off resolved, an approach chosen. Record each as a `- **D-NN:** text` bullet (see "Decision bullets" above), not as prose elsewhere in the spec.
+- **D-01:** [ruling]
 
 ## Assumptions & Dependencies
 What are we betting on? What must be true for this to work?
@@ -456,10 +470,10 @@ What must be true before starting.
 ## Phases
 
 ### Phase 1: ...
-- [ ] TASK-NNN: Description - files: [path/to/file], complexity: S/M/L, depends_on: none
+- [ ] TASK-NNN: Description - files: [path/to/file], complexity: S/M/L, depends_on: none, decisions: [<doc-stem>/D-NN, ...]
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
-- [ ] TASK-NNN: Description - files: [path/to/file], complexity: S/M/L, depends_on: TASK-NNN
+- [ ] TASK-NNN: Description - files: [path/to/file], complexity: S/M/L, depends_on: TASK-NNN, decisions: [<doc-stem>/D-NN, ...]
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
 
@@ -475,6 +489,8 @@ Overall testing approach - new fixtures, integration test needs, performance ben
 
 > **All open questions must be resolved before `approved` status.**
 ```
+
+`decisions:` is optional and mirrors `files:` - source-qualified citations (`<doc-stem>/D-NN`, see "Decision bullets" above) of the decisions a task implements. `compass coverage <plan>` checks these against the plan's `depends_on` sources.
 
 ### Lesson
 
@@ -590,7 +606,8 @@ Approved / Superseded by [[ADR-NNN-name]]
 What is the issue motivating this decision?
 
 ## Decision
-What is the change we're proposing or doing?
+What is the change we're proposing or doing? Record each ruling as a `- **D-NN:** text` bullet (see "Decision bullets" above) so it can be traced through plans.
+- **D-01:** [ruling]
 
 ## Consequences
 What becomes easier or harder because of this change?

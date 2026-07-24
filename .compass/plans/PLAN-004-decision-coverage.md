@@ -1,7 +1,7 @@
 ---
 title: Decision Coverage Implementation (D-NN Parser, Coverage Gate, Audit)
 type: plan
-status: approved
+status: done
 confidence: high
 area: methodology
 tags: [decision-coverage, parser, cli, gates, planner, validator, traceability]
@@ -82,17 +82,17 @@ Make decisions survive the pipeline mechanically: `- **D-NN:**` bullets in specs
 
 ### Phase 3 - Pipeline integration + dogfood
 
-- [ ] TASK-027: Planner gate + `decisions:` task field - complexity: M, depends_on: TASK-026, files: [plugin/templates/agents/planner.md, plugin/skills/plan/SKILL.md], decisions: [ADR-007-decision-coverage-mechanism/D-05, ADR-007-decision-coverage-mechanism/D-07, SPEC-007-decision-coverage-tracing/D-03, SPEC-007-decision-coverage-tracing/D-04, SPEC-007-decision-coverage-tracing/D-05]
+- [x] TASK-027: Planner gate + `decisions:` task field - complexity: M, depends_on: TASK-026, files: [plugin/templates/agents/planner.md, plugin/skills/plan/SKILL.md], decisions: [ADR-007-decision-coverage-mechanism/D-05, ADR-007-decision-coverage-mechanism/D-07, SPEC-007-decision-coverage-tracing/D-03, SPEC-007-decision-coverage-tracing/D-04, SPEC-007-decision-coverage-tracing/D-05]
   - `planner.md`: task-line grammar gains optional `decisions: [<doc-stem>/D-NN, ...]` (mirrors `files:`); step 5 runs `compass coverage` on the draft and presents the table with the plan; step 6 re-runs it after approval and REFUSES task distribution while exit != 0 (the gate at the plan boundary, bound to the review->approved transition + distribution - D-07, spec D-03/D-05). `plan/SKILL.md` iterate mode: ripple-check row for the `decisions:` field; task edits re-run coverage.
   - Automated verification: grep planner.md for `decisions:` grammar and the `compass coverage` invocation at both steps -> present; grep plan/SKILL.md ripple table -> present.
   - Manual verification: read both docs end-to-end for coherence; confirm the gate wording is post-approval pre-distribution, with no mid-build gating added (spec D-04).
 
-- [ ] TASK-028: Validator coverage audit - complexity: M, depends_on: TASK-026, files: [plugin/templates/agents/validator.md], decisions: [ADR-007-decision-coverage-mechanism/D-07, SPEC-007-decision-coverage-tracing/D-04]
+- [x] TASK-028: Validator coverage audit - complexity: M, depends_on: TASK-026, files: [plugin/templates/agents/validator.md], decisions: [ADR-007-decision-coverage-mechanism/D-07, SPEC-007-decision-coverage-tracing/D-04]
   - New protocol step: run `compass coverage <plan>` REPORT-ONLY with the mandatory `Check / Command run / Output observed / Result` block; per-task audit crossing each task's `decisions:` citations against that task's diff, classifying cited-but-no-evidence and implemented-but-uncited (same shape as the existing checkbox audit). New report section; validator stays read-only and never gates (spec D-04: audit, not gate).
   - Automated verification: grep validator.md for the coverage step, the per-task audit classifications, and the report section -> present.
   - Manual verification: read the amended protocol; confirm it does not turn the audit into a block.
 
-- [ ] TASK-029: Document the convention + dogfood run - complexity: M, depends_on: TASK-026, TASK-027, files: [plugin/skills/obsidian/SKILL.md, plugin/skills/spec/SKILL.md], decisions: [ADR-007-decision-coverage-mechanism/D-01, ADR-007-decision-coverage-mechanism/D-02, ADR-007-decision-coverage-mechanism/D-08, SPEC-007-decision-coverage-tracing/D-01]
+- [x] TASK-029: Document the convention + dogfood run - complexity: M, depends_on: TASK-026, TASK-027, files: [plugin/skills/obsidian/SKILL.md, plugin/skills/spec/SKILL.md], decisions: [ADR-007-decision-coverage-mechanism/D-01, ADR-007-decision-coverage-mechanism/D-02, ADR-007-decision-coverage-mechanism/D-08, SPEC-007-decision-coverage-tracing/D-01]
   - Obsidian skill: spec template's Decisions section and the ADR Decision section document `- **D-NN:** text` bullets, `[informational]`/`[deferred]` tags, the discretion subheading, and the source-qualified citation token; plan template task line shows `decisions:`. Spec skill: teach emitting the Decisions section for human rulings. Note that pre-convention documents parse `none-present` and are not retrofitted (D-08). Dogfood acceptance: `compass decisions` on ADR-006/007/008 -> parsed with 7/9/6 IDs; `compass coverage` on PLAN-003, PLAN-004, PLAN-005 -> exit 0 each (this very plan set passes its own gate).
   - Automated verification: the three `compass decisions` runs and three `compass coverage` runs above, exit codes 0, output captured; full unittest suite green.
   - Manual verification: human reviews the documented convention for ceremony weight (spec falsification criterion: authoring must stay nearly as light as writing the sentence).

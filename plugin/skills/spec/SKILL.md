@@ -50,13 +50,15 @@ Two questions are required. The rest are optional. Read the room - if the human 
 
 Between questions, draft the section back as a single block quote (no acknowledgement preamble) and ask the next question. If you suggested content not in the human's words, mark it as a guess in brackets.
 
+If the human states an explicit ruling during the interview (a trade-off resolved, an approach chosen over an alternative), record it as a `- **D-NN:** text` bullet under `## Decisions (made by the human)`, not as prose folded into Problem or Desired Outcome - see the "Decision bullets" convention in the `obsidian` skill. This makes the ruling a checkable claim later plans must cite.
+
 ### 4. Bloat check
 
 Before saving, re-read Problem and Desired Outcome. If they cover multiple distinct problems or unrelated successes, split into multiple specs and tell the human you're splitting. Don't ask permission.
 
 ### 5. Create the spec file
 
-`.compass/specs/SPEC-NNN-descriptive-name.md` (NNN computed JIT: `max(N from glob '**/.compass/specs/SPEC-N-*.md') + 1`, default 1). Required sections: Problem and Desired Outcome. Optional: User Scenarios, Constraints, Non-Goals, Risks, Open Questions. Omit any optional section if empty - don't include a heading with no content.
+`.compass/specs/SPEC-NNN-descriptive-name.md` (NNN computed JIT: `max(N from glob '**/.compass/specs/SPEC-N-*.md') + 1`, default 1). Required sections: Problem and Desired Outcome. Optional: User Scenarios, Constraints, Decisions, Non-Goals, Risks, Open Questions. Omit any optional section if empty - don't include a heading with no content.
 
 ```markdown
 ---
