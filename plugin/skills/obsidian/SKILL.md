@@ -65,11 +65,12 @@ draft → review → approved → active → done → archived
 
 | Syntax | Use |
 |--------|-----|
-| `[[filename]]` | Link to another vault document (omit `.md`) |
+| `[[filename]]` | Link to a root artifact (omit `.md`) |
+| `[[unit/specs/SPEC-001-name]]` | Link to an artifact inside a unit folder (path-qualified) |
 | `[[filename#Section]]` | Link to a section within a document |
 | `[[filename\|Display Text]]` | Link with custom display text |
 
-Always wikilinks for cross-references. Never relative markdown links.
+Always wikilinks for cross-references. Never relative markdown links. See "Unit folders" below for when a link must be path-qualified.
 
 ## Math (LaTeX)
 
@@ -132,6 +133,8 @@ Pattern: `TYPE-NNN-descriptive-name.md`
 
 The filesystem is the source of truth. Skip the `**/` prefix and Glob returns zero (see [[LESSON-glob-hidden-dirs-prefix]]).
 
+Inside a unit folder the same rule scopes to the unit's own type dir: `compass next-num spec <unit>` computes max+1 over `<unit>/specs/`. Root numbering (`compass next-num spec`) never counts unit artifacts, and vice versa.
+
 Names must be self-descriptive - `SPEC-001.md` is never acceptable. Lowercase kebab-case for the descriptive part.
 
 ## Hierarchical specs and plans (folders)
@@ -188,6 +191,45 @@ summary: "..."         # REQUIRED - one-line representation of the branch
 ```
 
 When the children change, the `## Children` section must be refreshed (`/compass:consolidate` does this).
+
+## Unit folders (the hybrid root)
+
+The vault root is hybrid. Type-first dirs (`specs/`, `plans/`, ...) hold standalone work; a large unit of work gets its own folder at the vault root, named for the work itself, holding its own type subdirs:
+
+```
+.compass/
+├── specs/                            root type dir - standalone work
+├── plans/
+├── compass-cli/                      unit folder - one large unit of work
+│   ├── index.md                      type: unit marker, title, children listing
+│   ├── specs/
+│   │   └── SPEC-001-cli-contract.md  numbering local to the unit
+│   ├── plans/
+│   ├── research/
+│   └── lessons/                      aggregated into meta/lessons-catalog.yaml by sync
+└── ...
+```
+
+A unit declares itself with `type: unit` in the frontmatter of its own `index.md`. The marker is what classifies the folder: a non-reserved root folder without it is ignored by the CLI and reported by `compass validate` as `unclassified_root_folder`, never guessed at. The unit `index.md` carries the title (used as the unit's section header in the root index) and a one-line-per-child listing, refreshed by `/compass:consolidate`.
+
+Inside a unit, folder specs follow the same [[ADR-004-hierarchical-specs-with-facets]] rules as at the root. Unit `lessons/` stay on the hot path: `compass sync` aggregates them into `meta/lessons-catalog.yaml` (filename is the row key, so lesson filenames must be unique vault-wide).
+
+### Bare stems vs path-qualified links
+
+Numbering is local per unit, so `SPEC-001-...` can exist at the root and inside any unit - bare stems are genuinely ambiguous across units. The link form depends on where the target lives:
+
+| Target | Link form | Example |
+|--------|-----------|---------|
+| Root flat artifact | bare stem | `[[SPEC-004-mechanical-work-off-the-agent-budget]]` |
+| Root folder spec | folder name | `[[SPEC-002-tile-editor]]` |
+| Unit artifact | path-qualified `<unit>/<type-dir>/<stem>` | `[[compass-cli/specs/SPEC-001-cli-contract]]` |
+| Folder spec inside a unit | folder's vault-relative path | `[[compass-cli/specs/SPEC-002-brush-system]]` |
+
+Always author unit-artifact links path-qualified. `compass sync` emits exactly these forms in the root index, and `compass validate` warns `ambiguous_wikilink` when a bare stem resolves to more than one file; the path-qualified form resolves to exactly one.
+
+### Where a new artifact goes
+
+Before creating an artifact, resolve its destination root: if the work belongs to an existing unit (its spec, plan, or research lives under `.compass/<unit>/`), create the artifact in that unit's type dir, number it with `compass next-num <type> <unit>`, and link it path-qualified. Otherwise create it in the root type dir with a bare-stem link. Detection of root artifact sets that have outgrown the flat layout is mechanical (`compass unit-check` reports candidates when 3+ artifact types trace to one spec); promotion is the human's decision.
 
 ## Facet tags (the multi-parent layer)
 

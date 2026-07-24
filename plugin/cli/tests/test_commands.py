@@ -3,16 +3,17 @@
 import io
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import vaultlib  # noqa: E402
-from commands import next_num, tree, hot_path, unit_check, validate  # noqa: E402
+from commands import make_unit, next_num, tree, hot_path, unit_check, validate  # noqa: E402
 
 
 def make_vault(test_case):
@@ -332,6 +333,186 @@ class UnitCheckTests(unittest.TestCase):
         with redirect_stdout(out):
             self.assertEqual(unit_check.run([]), 0)
         self.assertIn("no candidates", out.getvalue())
+
+
+class MakeUnitTests(unittest.TestCase):
+    SPEC = (
+        "---\ntitle: Core spec\ntype: spec\nstatus: approved\narea: x\n"
+        "tags: [a]\ncreated: 2026-07-24\nupdated: 2026-07-24\n---\n\nbody\n"
+    )
+    PLAN = (
+        "---\ntitle: Impl plan\ntype: plan\nstatus: active\narea: x\n"
+        "tags: [a]\ncreated: 2026-07-24\nupdated: 2026-07-24\n"
+        'depends_on: ["[[SPEC-001-core]]"]\n---\n\nbody\n'
+    )
+    ADR = (
+        "---\ntitle: Choice\ntype: decision\nstatus: approved\nconfidence: high\n"
+        "area: x\ntags: [a]\ncreated: 2026-07-24\nupdated: 2026-07-24\n---\n\nbody\n"
+    )
+    ARGS = [
+        "core",
+        "specs/SPEC-001-core.md",
+        "plans/PLAN-001-impl.md",
+        "decisions/ADR-001-choice.md",
+    ]
+
+    def _vault(self):
+        root = make_vault(self)
+        (root / "meta").mkdir()
+        (root / "meta" / "lessons-catalog.yaml").write_text("lessons:\n", encoding="utf-8")
+        write(root, "specs/SPEC-001-core.md", self.SPEC)
+        write(root, "plans/PLAN-001-impl.md", self.PLAN)
+        write(root, "decisions/ADR-001-choice.md", self.ADR)
+        (root / "index.md").write_text(
+            "# Index\n\n"
+            "## Specs\n\n- [[SPEC-001-core]] - Core spec\n\n"
+            "## Plans\n\n- [[PLAN-001-impl]] - Impl plan\n\n"
+            "## Decisions\n\n- [[ADR-001-choice]] - Choice\n",
+            encoding="utf-8",
+        )
+        with_vault_env(self, root)
+        return root
+
+    def test_dry_run_makes_no_changes(self):
+        root = self._vault()
+        index_before = (root / "index.md").read_text(encoding="utf-8")
+        files_before = sorted(p.relative_to(root).as_posix() for p in root.rglob("*"))
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(make_unit.run(self.ARGS), 0)
+        self.assertIn("dry-run", out.getvalue())
+        self.assertIn("specs/SPEC-001-core.md -> core/specs/SPEC-001-core.md", out.getvalue())
+        self.assertFalse((root / "core").exists())
+        self.assertEqual(index_before, (root / "index.md").read_text(encoding="utf-8"))
+        files_after = sorted(p.relative_to(root).as_posix() for p in root.rglob("*"))
+        self.assertEqual(files_before, files_after)
+
+    def test_apply_moves_creates_unit_and_rewrites_index(self):
+        root = self._vault()
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(make_unit.run(self.ARGS + ["--apply"]), 0)
+        # Files moved into the unit's type dirs, frontmatter byte-identical.
+        moved = root / "core" / "specs" / "SPEC-001-core.md"
+        self.assertTrue(moved.is_file())
+        self.assertEqual(moved.read_text(encoding="utf-8"), self.SPEC)
+        self.assertFalse((root / "specs" / "SPEC-001-core.md").exists())
+        self.assertTrue((root / "core" / "plans" / "PLAN-001-impl.md").is_file())
+        self.assertTrue((root / "core" / "decisions" / "ADR-001-choice.md").is_file())
+        # The unit marker index exists with the type: unit frontmatter and a
+        # one-line-per-member children listing.
+        data, error = vaultlib.parse_frontmatter(root / "core" / "index.md")
+        self.assertIsNone(error)
+        self.assertEqual(data["type"], "unit")
+        unit_index = (root / "core" / "index.md").read_text(encoding="utf-8")
+        self.assertIn("- [[core/specs/SPEC-001-core]] - Core spec", unit_index)
+        self.assertIn("- [[core/plans/PLAN-001-impl]] - Impl plan", unit_index)
+        self.assertIn("- [[core/decisions/ADR-001-choice]] - Choice", unit_index)
+        # Root index: old bare-stem entries removed, sync appended the unit
+        # section with path-qualified links.
+        index_text = (root / "index.md").read_text(encoding="utf-8")
+        self.assertNotIn("- [[SPEC-001-core]]", index_text)
+        self.assertNotIn("- [[PLAN-001-impl]]", index_text)
+        self.assertNotIn("- [[ADR-001-choice]]", index_text)
+        self.assertIn("## core", index_text)
+        self.assertIn("[[core/specs/SPEC-001-core]]", index_text)
+        self.assertIn("index.md: removed 3 entry line(s)", out.getvalue())
+        self.assertIn("validate:", out.getvalue())
+        # The migrated vault validates with no errors and no link findings.
+        errors, warnings = validate.check_vault(root)
+        self.assertEqual(errors, [])
+        self.assertFalse(any("wikilink" in w for w in warnings))
+
+    def test_apply_git_history_preserved(self):
+        if shutil.which("git") is None:
+            self.skipTest("git unavailable")
+        root = self._vault()
+        repo = str(root.parent)
+        subprocess.run(["git", "init", "-q"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "add", "-A"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=t",
+             "-c", "commit.gpgsign=false", "commit", "-qm", "seed"],
+            cwd=repo, check=True, capture_output=True,
+        )
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(make_unit.run(self.ARGS + ["--apply"]), 0)
+        subprocess.run(["git", "add", "-A"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=t",
+             "-c", "commit.gpgsign=false", "commit", "-qm", "migrate"],
+            cwd=repo, check=True, capture_output=True,
+        )
+        log = subprocess.run(
+            ["git", "log", "--follow", "--oneline", "--",
+             ".compass/core/specs/SPEC-001-core.md"],
+            cwd=repo, capture_output=True, text=True,
+        )
+        self.assertEqual(log.returncode, 0)
+        # Two commits reachable through the rename: the migration and the
+        # pre-move seed, proving `git mv` preserved history.
+        self.assertEqual(len(log.stdout.strip().splitlines()), 2)
+
+    def test_refuses_existing_target(self):
+        root = self._vault()
+        (root / "core").mkdir()
+        err = io.StringIO()
+        with redirect_stderr(err):
+            self.assertEqual(make_unit.run(self.ARGS + ["--apply"]), 1)
+        self.assertIn("target exists: core", err.getvalue())
+        self.assertTrue((root / "specs" / "SPEC-001-core.md").is_file())
+
+    def test_refuses_reserved_name(self):
+        root = self._vault()
+        err = io.StringIO()
+        with redirect_stderr(err):
+            self.assertEqual(make_unit.run(["prs", "specs/SPEC-001-core.md", "--apply"]), 1)
+        self.assertIn("reserved name: prs", err.getvalue())
+        self.assertFalse((root / "prs").exists())
+
+    def test_refuses_ambiguous_artifact_name(self):
+        root = self._vault()
+        write(root, "research/SPEC-001-core.md", self.SPEC)
+        err = io.StringIO()
+        with redirect_stderr(err):
+            self.assertEqual(make_unit.run(["core", "SPEC-001-core", "--apply"]), 1)
+        text = err.getvalue()
+        self.assertIn("ambiguous: SPEC-001-core", text)
+        self.assertIn("specs/SPEC-001-core.md", text)
+        self.assertIn("research/SPEC-001-core.md", text)
+        self.assertFalse((root / "core").exists())
+
+    def test_refuses_missing_artifact(self):
+        root = self._vault()
+        err = io.StringIO()
+        with redirect_stderr(err):
+            self.assertEqual(
+                make_unit.run(["core", "specs/SPEC-999-none.md", "--apply"]), 1
+            )
+        self.assertIn("not found: specs/SPEC-999-none.md", err.getvalue())
+        self.assertFalse((root / "core").exists())
+
+    def test_refuses_artifact_already_inside_unit(self):
+        root = self._vault()
+        write(root, "other/index.md", "---\ntitle: O\ntype: unit\n---\n")
+        write(root, "other/specs/SPEC-001-x.md", self.SPEC)
+        err = io.StringIO()
+        with redirect_stderr(err):
+            self.assertEqual(
+                make_unit.run(["core", "other/specs/SPEC-001-x.md", "--apply"]), 1
+            )
+        self.assertIn("not in a root type directory", err.getvalue())
+        self.assertFalse((root / "core").exists())
+
+    def test_usage_error_exits_one_never_two(self):
+        root = self._vault()
+        err = io.StringIO()
+        with redirect_stderr(err):
+            self.assertEqual(make_unit.run([]), 1)
+            self.assertEqual(make_unit.run(["core"]), 1)
+        self.assertIn("usage", err.getvalue())
+        self.assertFalse((root / "core").exists())
 
 
 if __name__ == "__main__":
