@@ -30,6 +30,9 @@ COMMAND_SPECS = [
     ("admit-check", "Exit 0/1 for whether a spec may enter the hot path."),
     ("capture-bug", "Record a Compass bug locally (deduped by fingerprint) for later filing."),
     ("file-bugs", "File captured Compass bugs as deduplicated GitHub issues (dry-run; --apply to create)."),
+    ("resolve-model", "Print an agent's resolved model and effort (result on stdout, warnings on stderr)."),
+    ("models", "Print the full resolved model/effort roster with the winning source per agent."),
+    ("apply-models", "Rewrite model:/effort: frontmatter of the installed Compass agent files from the resolved table."),
 ]
 
 
