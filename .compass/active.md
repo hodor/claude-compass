@@ -76,7 +76,8 @@ Pipeline state: research DONE (3 docs) -> ADR-006/007/008 DONE -> PLAN-003/004/0
 ### Queued: [[PLAN-004-decision-coverage]] (parallel with 005 after 003)
 
 - [x] TASK-022/023/024: strip_fenced_code + decisionslib parser + real-vault corpus - 47 new tests, legacy ADRs none-present proven (2026-07-24)
-- [ ] TASK-025 compass decisions (M) | TASK-026 compass coverage (L) | TASK-027 planner gate + decisions: field (M) | TASK-028 validator audit (M) | TASK-029 convention docs + dogfood (M)
+- [x] TASK-025/026: compass decisions + compass coverage - 19 new tests; all three plans mechanically PASS (7/7, 15/15, 6/6) (2026-07-24)
+- [ ] TASK-027 planner gate + decisions: field (M) | TASK-028 validator audit (M) | TASK-029 convention docs + dogfood (M)
 
 ### Done: [[PLAN-005-model-table]] (all 6 tasks, 2026-07-24)
 

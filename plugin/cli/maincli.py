@@ -33,6 +33,8 @@ COMMAND_SPECS = [
     ("resolve-model", "Print an agent's resolved model and effort (result on stdout, warnings on stderr)."),
     ("models", "Print the full resolved model/effort roster with the winning source per agent."),
     ("apply-models", "Rewrite model:/effort: frontmatter of the installed Compass agent files from the resolved table."),
+    ("decisions", "List a document's D-NN decisions with trackable flags; exit 1 on a format mismatch."),
+    ("coverage", "Check a plan claims every trackable decision of its sources; exit 1 on any gap."),
 ]
 
 
