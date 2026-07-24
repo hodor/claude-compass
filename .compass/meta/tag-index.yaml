@@ -167,6 +167,7 @@ tags:
   - specs/SPEC-007-decision-coverage-tracing.md
   git:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
+  - lessons/LESSON-subagent-worktrees-fork-stale.md
   gitattributes:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   glob:
@@ -296,6 +297,8 @@ tags:
   - plans/PLAN-005-model-table.md
   - research/RESEARCH-model-resolution-impl.md
   - specs/SPEC-008-central-model-resolution-table.md
+  monitoring:
+  - lessons/LESSON-long-agents-stall-resume-them.md
   multi-host:
   - research/RESEARCH-model-resolution-impl.md
   - specs/SPEC-006-multi-host-agent-cli-support.md
@@ -311,8 +314,13 @@ tags:
   - research/RESEARCH-okf-improvements-for-compass.md
   on-hold:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
+  orchestration:
+  - lessons/LESSON-long-agents-stall-resume-them.md
+  - lessons/LESSON-subagent-worktrees-fork-stale.md
   overfit:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
+  parallel-builders:
+  - lessons/LESSON-subagent-worktrees-fork-stale.md
   parser:
   - decisions/ADR-007-decision-coverage-mechanism.md
   - plans/PLAN-004-decision-coverage.md
@@ -362,6 +370,8 @@ tags:
   - research/RESEARCH-scientific-method-in-compass.md
   research-redesign:
   - handoffs/2026-03-12_review-all-plugin-files.md
+  resume:
+  - lessons/LESSON-long-agents-stall-resume-them.md
   retrieval:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   - research/RESEARCH-rag-fit-for-large-vaults.md
@@ -394,10 +404,17 @@ tags:
   - research/RESEARCH-gsd-core-improvements-for-compass.md
   spec-redesign:
   - handoffs/2026-03-12_review-all-plugin-files.md
+  stale-base:
+  - lessons/LESSON-subagent-worktrees-fork-stale.md
+  stall:
+  - lessons/LESSON-long-agents-stall-resume-them.md
   state-digest:
   - research/RESEARCH-gsd-core-improvements-for-compass.md
   stdin:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
+  subagents:
+  - lessons/LESSON-long-agents-stall-resume-them.md
+  - lessons/LESSON-subagent-worktrees-fork-stale.md
   summaries:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   sync:
@@ -433,6 +450,8 @@ tags:
   - plans/PLAN-004-decision-coverage.md
   - research/RESEARCH-decision-coverage-impl.md
   - specs/SPEC-007-decision-coverage-tracing.md
+  turn-limits:
+  - lessons/LESSON-long-agents-stall-resume-them.md
   units:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
   - plans/PLAN-003-hybrid-hierarchy.md
@@ -486,3 +505,5 @@ tags:
   working-set:
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - specs/SPEC-003-hierarchical-vault-organization.md
+  worktree:
+  - lessons/LESSON-subagent-worktrees-fork-stale.md
