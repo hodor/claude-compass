@@ -315,6 +315,68 @@ def count_tokens(text):
     return len(text) // 4
 
 
+# Fence delimiters: an opening fence may carry an info string (```python);
+# a closing fence is bare, same character, at least as long as the opener.
+_FENCE_OPEN = re.compile(r"^(`{3,}|~{3,})")
+_FENCE_CLOSE = re.compile(r"^(`{3,}|~{3,})\s*$")
+
+# A single-backtick inline code span, never crossing a line break.
+_INLINE_CODE_SPAN = re.compile(r"`[^`\n]+`")
+
+
+def strip_fenced_code(text):
+    """Blank out fenced code blocks, preserving the line count.
+
+    Returns `(stripped_text, unterminated_fence)`. Every line of a fenced
+    block - delimiters included - becomes an empty line, so line numbers
+    computed on the stripped text still point at the original. Both backtick
+    and tilde fences are handled; a closing fence must use the opener's
+    character and be at least as long.
+
+    A fence that never closes runs to the end of the text (CommonMark), so
+    everything from the opener onward is blanked and the flag is True. The
+    flag is how callers tell "content absent" from "content swallowed by a
+    broken fence" - they must fail loud instead of passing silently.
+    """
+    lines = text.split("\n")
+    out = list(lines)
+    open_marker = None
+    open_index = None
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if open_marker is None:
+            match = _FENCE_OPEN.match(stripped)
+            if match:
+                open_marker = match.group(1)
+                open_index = i
+        else:
+            match = _FENCE_CLOSE.match(stripped)
+            if (
+                match
+                and match.group(1)[0] == open_marker[0]
+                and len(match.group(1)) >= len(open_marker)
+            ):
+                for j in range(open_index, i + 1):
+                    out[j] = ""
+                open_marker = None
+                open_index = None
+    unterminated = open_marker is not None
+    if unterminated:
+        for j in range(open_index, len(out)):
+            out[j] = ""
+    return "\n".join(out), unterminated
+
+
+def strip_inline_code(text):
+    """Remove single-backtick inline code spans.
+
+    Spans never cross a line break, so the line count is preserved. Example
+    wikilinks or decision tokens quoted in inline code are documentation, not
+    live references; validators and parsers strip them before matching.
+    """
+    return _INLINE_CODE_SPAN.sub("", text)
+
+
 def write_text_lf(path, text):
     """Write `text` to `path` with LF line endings on every platform.
 

@@ -337,6 +337,68 @@ class WriteTextLfTests(unittest.TestCase):
         self.assertEqual(raw, b"line1\nline2\nline3\n")
 
 
+class StripFencedCodeTests(unittest.TestCase):
+    def test_terminated_fence_blanked_prose_kept(self):
+        text = "before\n```python\ncode [[LINK]]\n```\nafter"
+        stripped, unterminated = vaultlib.strip_fenced_code(text)
+        self.assertFalse(unterminated)
+        self.assertEqual(stripped.split("\n"), ["before", "", "", "", "after"])
+
+    def test_line_count_is_stable(self):
+        text = "a\n```\nx\ny\n```\nb\n~~~\nz\n~~~\nc"
+        stripped, _ = vaultlib.strip_fenced_code(text)
+        self.assertEqual(len(stripped.split("\n")), len(text.split("\n")))
+        self.assertEqual(stripped.split("\n")[5], "b")
+        self.assertEqual(stripped.split("\n")[9], "c")
+
+    def test_unterminated_fence_flags_and_blanks_remainder(self):
+        text = "prose\n```\n- **D-01:** swallowed\nmore"
+        stripped, unterminated = vaultlib.strip_fenced_code(text)
+        self.assertTrue(unterminated)
+        self.assertNotIn("swallowed", stripped)
+        self.assertEqual(stripped.split("\n")[0], "prose")
+        self.assertEqual(len(stripped.split("\n")), len(text.split("\n")))
+
+    def test_no_fence_returns_text_unchanged(self):
+        stripped, unterminated = vaultlib.strip_fenced_code("just\nprose\n")
+        self.assertFalse(unterminated)
+        self.assertEqual(stripped, "just\nprose\n")
+
+    def test_backtick_fence_not_closed_by_tilde(self):
+        text = "```\ncode\n~~~\nstill code\n```\nafter"
+        stripped, unterminated = vaultlib.strip_fenced_code(text)
+        self.assertFalse(unterminated)
+        self.assertNotIn("still code", stripped)
+        self.assertIn("after", stripped)
+
+    def test_closing_fence_must_be_at_least_as_long(self):
+        text = "````\ncode\n```\nstill code\n````\nafter"
+        stripped, unterminated = vaultlib.strip_fenced_code(text)
+        self.assertFalse(unterminated)
+        self.assertNotIn("still code", stripped)
+        self.assertIn("after", stripped)
+
+    def test_indented_fence_delimiters_are_recognized(self):
+        text = "before\n  ```\n  code\n  ```\nafter"
+        stripped, unterminated = vaultlib.strip_fenced_code(text)
+        self.assertFalse(unterminated)
+        self.assertNotIn("code", stripped)
+
+
+class StripInlineCodeTests(unittest.TestCase):
+    def test_spans_removed_prose_kept(self):
+        self.assertEqual(
+            vaultlib.strip_inline_code("keep `drop this` keep"), "keep  keep"
+        )
+
+    def test_span_does_not_cross_lines(self):
+        text = "open `span\nnot closed` here"
+        self.assertEqual(vaultlib.strip_inline_code(text), text)
+
+    def test_multiple_spans_on_one_line(self):
+        self.assertEqual(vaultlib.strip_inline_code("`a` and `b`"), " and ")
+
+
 class CountTokensTests(unittest.TestCase):
     def test_approximation(self):
         self.assertEqual(vaultlib.count_tokens("a" * 40), 10)
