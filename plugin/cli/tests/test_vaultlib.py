@@ -308,6 +308,16 @@ class ResolvableNamesMapTests(unittest.TestCase):
         self.assertEqual(mapping["compass-cli"], ["compass-cli/index.md"])
         self.assertEqual(mapping["SPEC-002-tile"], ["specs/SPEC-002-tile/index.md"])
 
+    def test_index_md_resolves_by_folder_path(self):
+        self._write("specs/SPEC-002-tile/index.md")
+        self._write("compass-cli/specs/SPEC-001-core/index.md")
+        mapping = vaultlib.resolvable_names_map(self.tmp)
+        self.assertEqual(mapping["specs/SPEC-002-tile"], ["specs/SPEC-002-tile/index.md"])
+        self.assertEqual(
+            mapping["compass-cli/specs/SPEC-001-core"],
+            ["compass-cli/specs/SPEC-001-core/index.md"],
+        )
+
     def test_generated_and_archived_coverage_matches_all_markdown_files(self):
         self._write("archive/SPEC-099-old.md")
         self._write("meta/notes.md", "generated\n")

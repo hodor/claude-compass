@@ -2,8 +2,10 @@
 
 Clears the two error-level findings `compass validate` reports: a file with no
 frontmatter, and a file missing a core field (title / type / status). It fills
-only what can be derived deterministically - type from the directory, title
-from the first heading or the filename, dates as today, status as `draft`. It
+only what can be derived deterministically - type from the artifact's type
+directory (`<unit>/specs/` yields `spec` for unit artifacts; a unit's own
+`index.md` marker is not an artifact and is never touched), title from the
+first heading or the filename, dates as today, status as `draft`. It
 does NOT invent judgment fields (area, tags, the real status), which stay as
 validate warnings for a human or agent to fill. Dry-run by default; `--apply`
 writes.
@@ -88,7 +90,10 @@ def run(args):
     for record in vaultlib.scan_artifacts(vault_root):
         new_text, changes = _plan_fix(record, today)
         if new_text is not None:
-            planned.append((f"{record['type_dir']}/{record['rel']}", changes))
+            rel = f"{record['type_dir']}/{record['rel']}"
+            if record["unit"]:
+                rel = f"{record['unit']}/{rel}"
+            planned.append((rel, changes))
             if apply:
                 vaultlib.write_text_lf(record["path"], new_text)
 

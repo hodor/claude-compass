@@ -23,6 +23,7 @@ COMMAND_SPECS = [
     ("tree", "Render the hierarchical spec/folder tree."),
     ("hot-path", "Print the hot-path token count against the cap."),
     ("promote", "Move a flat spec into a folder and rewrite inbound wikilinks."),
+    ("unit-check", "Report unit-promotion candidates: 3+ artifact types tracing to one spec via depends_on."),
     ("clean-tmp", "Delete extraction logs older than 30 days."),
     ("touched", "Record a working-set marker for admission control."),
     ("admit-check", "Exit 0/1 for whether a spec may enter the hot path."),

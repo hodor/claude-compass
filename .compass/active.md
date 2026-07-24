@@ -87,9 +87,9 @@ Pipeline state: research DONE (3 docs) -> ADR-006/007/008 DONE -> PLAN-003/004/0
 
 - [x] TASK-013: Golden fixtures of current sync/validate (S) - 87 tests green, goldens hand-verified, committed 4c44a05 (2026-07-24)
 - [x] TASK-014: Unit-aware discovery + resolvable_names_map in vaultlib (L) - flat records field-identical, zero real-vault regressions, committed 4c44a05 (2026-07-24)
-- [ ] TASK-015: sync path-qualified emission + unit sections + lessons aggregation (L)
-- [ ] TASK-016: validate ambiguity map + unified resolution + unclassified report (M)
-- [ ] TASK-017: tree / next-num / fix-frontmatter unit-awareness (M)
+- [x] TASK-015: sync path-qualified emission + unit sections + lessons aggregation (L) - 10 new tests, goldens regenerated per D-02 amendment; orchestrator ratified folder-path link form (`[[<unit>/<type>/<folder>]]`, map extended) (2026-07-24)
+- [ ] TASK-016: validate ambiguity map + unified resolution + unclassified report (M) - BUILDING (turns the pending sync-validate regression test green)
+- [x] TASK-017: tree / next-num / fix-frontmatter unit-awareness (M) - 4 new tests, traversal scopes rejected, type-invention bug fixed (2026-07-24)
 - [ ] TASK-018: compass unit-check (type-spread detection, report-only) (M)
 - [ ] TASK-019: compass make-unit (migration operation) (L)
 - [ ] TASK-020: path-qualified links in wikilinks rule + obsidian/methodology skills (M)

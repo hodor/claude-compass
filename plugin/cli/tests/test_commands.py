@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import vaultlib  # noqa: E402
-from commands import next_num, tree, hot_path, validate  # noqa: E402
+from commands import next_num, tree, hot_path, unit_check, validate  # noqa: E402
 
 
 def make_vault(test_case):
@@ -78,6 +78,26 @@ class NextNumTests(unittest.TestCase):
         with_vault_env(self, root)
         self.assertEqual(next_num.run(["handoff"]), 1)
 
+    def test_unit_scope_numbers_locally(self):
+        root = make_vault(self)
+        write(root, "specs/SPEC-005-root.md")
+        write(root, "compass-cli/index.md", "---\ntitle: U\ntype: unit\n---\n")
+        write(root, "compass-cli/specs/SPEC-001-a.md")
+        write(root, "compass-cli/specs/SPEC-002-b.md")
+        with_vault_env(self, root)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(next_num.run(["spec", "compass-cli"]), 0)
+            self.assertEqual(next_num.run(["spec"]), 0)
+        self.assertEqual(out.getvalue().split(), ["003", "006"])
+
+    def test_traversal_scope_rejected(self):
+        root = make_vault(self)
+        (root / "specs").mkdir()
+        with_vault_env(self, root)
+        self.assertEqual(next_num.run(["spec", "../elsewhere"]), 1)
+        self.assertEqual(next_num.run(["spec", "a/../../elsewhere"]), 1)
+
 
 class TreeTests(unittest.TestCase):
     def test_nested_rendering(self):
@@ -89,6 +109,28 @@ class TreeTests(unittest.TestCase):
         self.assertEqual(
             rendered,
             "specs\n  SPEC-001-flat\n  SPEC-002-tile/\n    SPEC-001-master",
+        )
+
+    def test_unit_branch_rendering(self):
+        root = make_vault(self)
+        write(root, "specs/SPEC-001-flat.md")
+        write(root, "compass-cli/index.md", "---\ntitle: U\ntype: unit\n---\n")
+        write(root, "compass-cli/specs/SPEC-001-cli.md")
+        write(root, "compass-cli/specs/SPEC-002-sub/index.md")
+        write(root, "compass-cli/specs/SPEC-002-sub/SPEC-001-child.md")
+        write(root, "compass-cli/plans/PLAN-001-impl.md", "---\ntype: plan\n---\n")
+        rendered = tree.render(root)
+        self.assertEqual(
+            rendered,
+            "specs\n"
+            "  SPEC-001-flat\n"
+            "compass-cli\n"
+            "  plans\n"
+            "    PLAN-001-impl\n"
+            "  specs\n"
+            "    SPEC-001-cli\n"
+            "    SPEC-002-sub/\n"
+            "      SPEC-001-child",
         )
 
 
@@ -177,6 +219,119 @@ class ValidateTests(unittest.TestCase):
         (root / "index.md").write_text("\n".join(f"line {i}" for i in range(260)), encoding="utf-8")
         errors, warnings = validate.check_vault(root)
         self.assertTrue(any("cap_exceeded" in w and "lines" in w for w in warnings))
+
+
+class ValidateUnitLinkTests(unittest.TestCase):
+    UNIT_INDEX = "---\ntitle: U\ntype: unit\n---\n"
+
+    def _vault_with_stem_collision(self):
+        root = make_vault(self)
+        (root / "index.md").write_text("# Index\n", encoding="utf-8")
+        write(root, "specs/SPEC-001-target.md", ValidateTests.SPEC_OK)
+        for unit in ("unita", "unitb"):
+            write(root, f"{unit}/index.md", self.UNIT_INDEX)
+            write(root, f"{unit}/specs/SPEC-001-shared.md", ValidateTests.SPEC_OK)
+        return root
+
+    def test_cross_unit_stem_collision_is_ambiguous_warning(self):
+        root = self._vault_with_stem_collision()
+        write(root, "specs/SPEC-002-ref.md",
+              ValidateTests.SPEC_OK.replace("[[SPEC-001-target]]", "[[SPEC-001-shared]]"))
+        errors, warnings = validate.check_vault(root)
+        ambiguous = [w for w in warnings if w.startswith("ambiguous_wikilink")]
+        self.assertEqual(len(ambiguous), 1)
+        self.assertIn("[[SPEC-001-shared]]", ambiguous[0])
+        self.assertIn("unita/specs/SPEC-001-shared.md", ambiguous[0])
+        self.assertIn("unitb/specs/SPEC-001-shared.md", ambiguous[0])
+        self.assertFalse(any("SPEC-001-shared" in e for e in errors))
+        self.assertFalse(any("broken_wikilink" in w and "SPEC-001-shared" in w for w in warnings))
+
+    def test_path_qualified_link_to_collided_stem_is_clean(self):
+        root = self._vault_with_stem_collision()
+        write(root, "specs/SPEC-002-ref.md",
+              ValidateTests.SPEC_OK.replace(
+                  "[[SPEC-001-target]]", "[[unita/specs/SPEC-001-shared]]"))
+        errors, warnings = validate.check_vault(root)
+        self.assertFalse(any("SPEC-001-shared" in f for f in errors + warnings))
+
+    def test_unmarked_root_folder_is_reported_not_scanned(self):
+        root = make_vault(self)
+        (root / "index.md").write_text("# Index\n", encoding="utf-8")
+        write(root, "specs/SPEC-001-target.md", ValidateTests.SPEC_OK)
+        write(root, "bare-unit/specs/SPEC-001-x.md", "---\ntype: spec\n---\n[[NoSuchThing]]\n")
+        errors, warnings = validate.check_vault(root)
+        self.assertTrue(
+            any(w.startswith("unclassified_root_folder: bare-unit") for w in warnings)
+        )
+        # The folder is skipped, never guessed at: its files produce no
+        # frontmatter or wikilink findings.
+        self.assertFalse(any("bare-unit/" in e for e in errors))
+        self.assertFalse(any("NoSuchThing" in f for f in errors + warnings))
+
+
+class UnitCheckTests(unittest.TestCase):
+    SPEC = "---\ntitle: Core\ntype: spec\nstatus: approved\n---\n\nbody\n"
+
+    @staticmethod
+    def doc(type_, deps):
+        dep_items = ", ".join(f'"[[{d}]]"' for d in deps)
+        return (
+            f"---\ntitle: T\ntype: {type_}\nstatus: active\n"
+            f"depends_on: [{dep_items}]\n---\n\nbody\n"
+        )
+
+    def test_chained_type_spread_reported(self):
+        root = make_vault(self)
+        write(root, "specs/SPEC-001-core.md", self.SPEC)
+        write(root, "plans/PLAN-001-impl.md", self.doc("plan", ["SPEC-001-core"]))
+        write(root, "decisions/ADR-001-choice.md", self.doc("decision", ["SPEC-001-core"]))
+        write(root, "research/RESEARCH-notes.md", self.doc("research", ["PLAN-001-impl"]))
+        candidates = unit_check.find_candidates(root)
+        self.assertEqual(len(candidates), 1)
+        spec_rel, members, types = candidates[0]
+        self.assertEqual(spec_rel, "specs/SPEC-001-core.md")
+        self.assertEqual(members, [
+            "decisions/ADR-001-choice.md",
+            "plans/PLAN-001-impl.md",
+            "research/RESEARCH-notes.md",
+            "specs/SPEC-001-core.md",
+        ])
+        self.assertEqual(types, ["decision", "plan", "research", "spec"])
+
+    def test_type_spread_two_not_reported(self):
+        root = make_vault(self)
+        write(root, "specs/SPEC-001-core.md", self.SPEC)
+        for n in range(1, 6):
+            write(root, f"research/RESEARCH-topic-{n}.md",
+                  self.doc("research", ["SPEC-001-core"]))
+        self.assertEqual(unit_check.find_candidates(root), [])
+
+    def test_run_prints_candidate_and_exits_zero(self):
+        root = make_vault(self)
+        write(root, "specs/SPEC-001-core.md", self.SPEC)
+        write(root, "plans/PLAN-001-impl.md", self.doc("plan", ["SPEC-001-core"]))
+        write(root, "decisions/ADR-001-choice.md", self.doc("decision", ["SPEC-001-core"]))
+        with_vault_env(self, root)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(unit_check.run([]), 0)
+        text = out.getvalue()
+        self.assertIn("candidate: core (type-spread 3: decision, plan, spec)", text)
+        self.assertIn("- plans/PLAN-001-impl.md", text)
+        self.assertIn(
+            "compass make-unit core decisions/ADR-001-choice.md "
+            "plans/PLAN-001-impl.md specs/SPEC-001-core.md",
+            text,
+        )
+
+    def test_run_without_candidates_exits_zero(self):
+        root = make_vault(self)
+        write(root, "specs/SPEC-001-core.md", self.SPEC)
+        with_vault_env(self, root)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(unit_check.run([]), 0)
+        self.assertIn("no candidates", out.getvalue())
 
 
 if __name__ == "__main__":
