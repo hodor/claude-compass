@@ -79,14 +79,29 @@ _None._
 
 - [ ] Live two-session A/B to convert the per-fire token floor into an end-to-end measured number.
 
-## Today (2026-07-23): SPEC-007 + SPEC-008 + SPEC-010 to built-and-validated
+## Batch (approved 2026-07-23): SPEC-007 + SPEC-008 + SPEC-010 to built-and-validated
 
-Batch approved by Roger. Full pipeline per spec: research -> ADR -> plan (human approves) -> build -> test -> validate. [[SPEC-009-configurable-pipeline-workflows]] explicitly deferred to [[backlog]].
+Pipeline state: research DONE (3 docs) -> ADR-006/007/008 DONE -> PLAN-003/004/005 approved 2026-07-24 -> BUILDING. [[SPEC-009-configurable-pipeline-workflows]] deferred to [[backlog]].
 
-- [ ] Research: SPEC-010 hierarchy impact on CLI/skills/hooks | SPEC-007 decision parser + gates | SPEC-008 model resolution surface
-- [ ] ADRs from research (expected ADR-006/007/008)
-- [ ] Plans (human approves before task distribution)
-- [ ] Build + tests + validate
+### Building: [[PLAN-003-hybrid-hierarchy]] (first, owns plugin/cli/)
+
+- [x] TASK-013: Golden fixtures of current sync/validate (S) - 87 tests green, goldens hand-verified, committed 4c44a05 (2026-07-24)
+- [x] TASK-014: Unit-aware discovery + resolvable_names_map in vaultlib (L) - flat records field-identical, zero real-vault regressions, committed 4c44a05 (2026-07-24)
+- [ ] TASK-015: sync path-qualified emission + unit sections + lessons aggregation (L)
+- [ ] TASK-016: validate ambiguity map + unified resolution + unclassified report (M)
+- [ ] TASK-017: tree / next-num / fix-frontmatter unit-awareness (M)
+- [ ] TASK-018: compass unit-check (type-spread detection, report-only) (M)
+- [ ] TASK-019: compass make-unit (migration operation) (L)
+- [ ] TASK-020: path-qualified links in wikilinks rule + obsidian/methodology skills (M)
+- [ ] TASK-021: Migrate the compass-cli set (dogfood, acceptance) (M)
+
+### Queued: [[PLAN-004-decision-coverage]] (parallel with 005 after 003)
+
+- [ ] TASK-022 strip_fenced_code (S) | TASK-023 decisionslib parser (L) | TASK-024 real-vault corpus (M) | TASK-025 compass decisions (M) | TASK-026 compass coverage (L) | TASK-027 planner gate + decisions: field (M) | TASK-028 validator audit (M) | TASK-029 convention docs + dogfood (M)
+
+### Queued: [[PLAN-005-model-table]] (parallel with 004 after 003)
+
+- [ ] TASK-030 modelslib (L) | TASK-031 resolve-model + models (M) | TASK-032 apply-models (L) | TASK-033 normalize 13 templates (S) | TASK-034 setup/update integration (M) | TASK-035 dogfood verification (S)
 
 ## Next Up
 

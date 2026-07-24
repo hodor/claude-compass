@@ -23,10 +23,10 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[SPEC-004-mechanical-work-off-the-agent-budget]] - Deterministic vault upkeep must run as a program, not in agent tokens; falsifiable 80% bookkeeping-token reduction (approved)
 - [[SPEC-005-index-auto-maintained-and-mirrored-per-folder]] - Index Auto-Maintained on Add and Remove, Mirrored Per Folder
 - [[SPEC-006-multi-host-agent-cli-support]] - Compass runs on agent CLIs beyond Claude Code (Kimi Code, Codex); problem/need (approved 2026-07-22)
-- [[SPEC-007-decision-coverage-tracing]] - decisions made in specs/ADRs must survive into plans and validation, not silently vanish between stages (draft)
-- [[SPEC-008-central-model-resolution-table]] - model + effort assignment is one harness-resolved policy table with per-project override, not per-agent prose (draft)
-- [[SPEC-009-configurable-pipeline-workflows]] - the pipeline is a configurable workflow (shipped default + reorder/subset/extend), not one hardcoded sequence (draft)
-- [[SPEC-010-universal-hybrid-hierarchy]] - any artifact and any unit of work can nest; type-first root for small work, a root-level folder per large unit co-locating its own types (draft)
+- [[SPEC-007-decision-coverage-tracing]] - decisions made in specs/ADRs must survive into plans and validation, not silently vanish between stages (approved 2026-07-23)
+- [[SPEC-008-central-model-resolution-table]] - model + effort assignment is one harness-resolved policy table with per-project override, not per-agent prose (approved 2026-07-23)
+- [[SPEC-009-configurable-pipeline-workflows]] - the pipeline is a configurable workflow (shipped default + reorder/subset/extend), not one hardcoded sequence (draft, DEFERRED)
+- [[SPEC-010-universal-hybrid-hierarchy]] - any artifact and any unit of work can nest; type-first root for small work, a root-level folder per large unit co-locating its own types (approved 2026-07-23)
 
 ## Research
 
@@ -39,6 +39,9 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-okf-improvements-for-compass]] - what to borrow from Google's Open Knowledge Format: adopt `resource:` field + reader-tolerance posture; skip format alignment (v0.1 draft, convergent design)
 - [[RESEARCH-rag-fit-for-large-vaults]] - RAG/vector search net-negative at current scale; skip until a vault exceeds ~300-500 docs AND queries fail on vocabulary mismatch; lexical rung before vectors
 - [[RESEARCH-gsd-core-improvements-for-compass]] - competitive read of GSD (Git.Ship.Done.): adopt decision-coverage tracing, per-agent model policy, seed triggers, atomic state locking; GSD's runtime split is prior art for SPEC-006
+- [[RESEARCH-decision-coverage-impl]] - Decision Coverage Implementation: Format, Parser, Matcher, Gate, Migration
+- [[RESEARCH-hybrid-hierarchy-impl]] - Hybrid Hierarchy Implementation Impact: CLI, Skills, Wikilinks, Migration
+- [[RESEARCH-model-resolution-impl]] - Model Resolution Table: Current State, Mechanism, and Implementation Options
 
 ## Plans
 
@@ -52,6 +55,9 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[ADR-003-drop-counter-file-jit-compute]] - Drop `meta/config.yaml` counter file; compute next artifact number JIT from filesystem
 - [[ADR-004-hierarchical-specs-with-facets]] - 3-tier MemGPT memory + folder hierarchy + faceted tags + admission control; hot path at prompt start
 - [[ADR-005-compass-cli-for-mechanical-work]] - A Python `compass` CLI owns mechanical vault work; PostToolUse hook becomes a command, not an agent; MCP rejected (approved)
+- [[ADR-006-hybrid-hierarchy-implementation]] - Unit Folders at the Vault Root, Classified by Reserved Names Plus a Marker
+- [[ADR-007-decision-coverage-mechanism]] - Decision Coverage via D-NN Bullets, a Three-Outcome Parser, and an Exit-Code Gate the Planner Honors
+- [[ADR-008-model-resolution-table]] - Abstract Model Tiers Resolved at Install Time by compass apply-models
 
 ## Active Work
 

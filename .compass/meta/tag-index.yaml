@@ -3,10 +3,14 @@
 tags:
   ablation:
   - research/RESEARCH-evaluation-benchmarks.md
+  accuracy:
+  - specs/SPEC-007-decision-coverage-tracing.md
   admission-control:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   anti-list:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
+  apply-models:
+  - decisions/ADR-008-model-resolution-table.md
   approval:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
   - handoffs/2026-03-12_review-all-plugin-files.md
@@ -33,46 +37,78 @@ tags:
   benchmarks:
   - lessons/LESSON-test-driven-tasks-dont-discriminate.md
   - research/RESEARCH-evaluation-benchmarks.md
+  bm25:
+  - research/RESEARCH-rag-fit-for-large-vaults.md
   bookkeeping:
   - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   busywork:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   cache:
   - research/RESEARCH-hierarchical-knowledge-base-design.md
+  - research/RESEARCH-rag-fit-for-large-vaults.md
   - specs/SPEC-003-hierarchical-vault-organization.md
   churn:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
+  classification:
+  - decisions/ADR-006-hybrid-hierarchy-implementation.md
   claude-code:
   - research/RESEARCH-cli-and-hook-command-contract.md
   cleanup:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
   cli:
   - decisions/ADR-005-compass-cli-for-mechanical-work.md
+  - decisions/ADR-007-decision-coverage-mechanism.md
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   - plans/PLAN-002-compass-cli-implementation.md
   - research/RESEARCH-cli-and-hook-command-contract.md
   - research/RESEARCH-cli-token-reduction-measurement.md
+  - research/RESEARCH-decision-coverage-impl.md
+  - research/RESEARCH-hybrid-hierarchy-impl.md
+  - research/RESEARCH-model-resolution-impl.md
+  co-location:
+  - specs/SPEC-010-universal-hybrid-hierarchy.md
+  codex:
+  - specs/SPEC-006-multi-host-agent-cli-support.md
   command-hook:
   - research/RESEARCH-cli-and-hook-command-contract.md
   compass-cli:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
+  competitive:
+  - research/RESEARCH-gsd-core-improvements-for-compass.md
   config:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
+  configurable:
+  - specs/SPEC-009-configurable-pipeline-workflows.md
+  configurable-pipeline:
+  - specs/SPEC-001-compass-vision-and-architecture.md
+  configuration:
+  - research/RESEARCH-model-resolution-impl.md
+  - specs/SPEC-008-central-model-resolution-table.md
   content-aware:
   - lessons/LESSON-wikilink-validator-skip-code.md
   core:
   - specs/SPEC-001-compass-vision-and-architecture.md
   cost:
+  - decisions/ADR-008-model-resolution-table.md
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
+  - research/RESEARCH-model-resolution-impl.md
+  - specs/SPEC-008-central-model-resolution-table.md
   counters:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
   crlf:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   cross-platform:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
+  customization:
+  - specs/SPEC-009-configurable-pipeline-workflows.md
   data-loss:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
+  decision-coverage:
+  - decisions/ADR-007-decision-coverage-mechanism.md
+  - research/RESEARCH-decision-coverage-impl.md
+  - research/RESEARCH-gsd-core-improvements-for-compass.md
+  - specs/SPEC-007-decision-coverage-tracing.md
   dedup:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   - plans/PLAN-001-lessons-and-index-implementation.md
@@ -84,10 +120,16 @@ tags:
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   denning:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
+  determinism:
+  - specs/SPEC-008-central-model-resolution-table.md
   discovery:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
+  distribution:
+  - specs/SPEC-006-multi-host-agent-cli-support.md
   docker:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
+  embeddings:
+  - research/RESEARCH-rag-fit-for-large-vaults.md
   empirical:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   evaluation:
@@ -97,6 +139,8 @@ tags:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - specs/SPEC-003-hierarchical-vault-organization.md
+  fail-loud:
+  - decisions/ADR-007-decision-coverage-mechanism.md
   fail-safe:
   - research/RESEARCH-cli-and-hook-command-contract.md
   false-positives:
@@ -108,26 +152,44 @@ tags:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   frontier-models:
   - lessons/LESSON-test-driven-tasks-dont-discriminate.md
+  frontmatter:
+  - research/RESEARCH-okf-improvements-for-compass.md
+  gates:
+  - decisions/ADR-007-decision-coverage-mechanism.md
+  - research/RESEARCH-decision-coverage-impl.md
+  - specs/SPEC-007-decision-coverage-tracing.md
   git:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   gitattributes:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   glob:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
+  gsd:
+  - research/RESEARCH-decision-coverage-impl.md
+  - research/RESEARCH-gsd-core-improvements-for-compass.md
   handoff:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   hang:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
+  harness:
+  - research/RESEARCH-model-resolution-impl.md
+  - specs/SPEC-001-compass-vision-and-architecture.md
+  - specs/SPEC-008-central-model-resolution-table.md
+  - specs/SPEC-009-configurable-pipeline-workflows.md
   hidden-dirs:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
   hierarchical-specs:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   hierarchy:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
+  - decisions/ADR-006-hybrid-hierarchy-implementation.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
+  - research/RESEARCH-hybrid-hierarchy-impl.md
+  - specs/SPEC-001-compass-vision-and-architecture.md
   - specs/SPEC-003-hierarchical-vault-organization.md
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
+  - specs/SPEC-010-universal-hybrid-hierarchy.md
   hook-type:
   - lessons/LESSON-hook-type-prompt-no-skills.md
   hooks:
@@ -145,12 +207,17 @@ tags:
   - research/RESEARCH-lessons-and-index-architecture.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
   - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
+  host-adapter:
+  - specs/SPEC-006-multi-host-agent-cli-support.md
   hot-path:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   humanlayer:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
+  hybrid:
+  - research/RESEARCH-hybrid-hierarchy-impl.md
+  - specs/SPEC-010-universal-hybrid-hierarchy.md
   hypothesis:
   - research/RESEARCH-scientific-method-in-compass.md
   hypothesis-confirmed:
@@ -167,11 +234,22 @@ tags:
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   install:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
+  interoperability:
+  - research/RESEARCH-okf-improvements-for-compass.md
   jit:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
   - lessons/LESSON-no-agent-bookkeeping.md
+  kimi:
+  - specs/SPEC-006-multi-host-agent-cli-support.md
+  kimi-code:
+  - specs/SPEC-006-multi-host-agent-cli-support.md
+  knowledge-format:
+  - research/RESEARCH-okf-improvements-for-compass.md
+  large-vault:
+  - research/RESEARCH-rag-fit-for-large-vaults.md
   lessons:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
+  - decisions/ADR-006-hybrid-hierarchy-implementation.md
   - plans/PLAN-001-lessons-and-index-implementation.md
   - research/RESEARCH-lessons-and-index-architecture.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
@@ -199,28 +277,66 @@ tags:
   - lessons/LESSON-test-driven-tasks-dont-discriminate.md
   methodology-layer:
   - research/RESEARCH-evaluation-benchmarks.md
+  migration:
+  - decisions/ADR-006-hybrid-hierarchy-implementation.md
+  - research/RESEARCH-hybrid-hierarchy-impl.md
+  - specs/SPEC-010-universal-hybrid-hierarchy.md
+  model-policy:
+  - decisions/ADR-008-model-resolution-table.md
+  - research/RESEARCH-model-resolution-impl.md
+  - specs/SPEC-008-central-model-resolution-table.md
+  multi-host:
+  - research/RESEARCH-model-resolution-impl.md
+  - specs/SPEC-006-multi-host-agent-cli-support.md
+  multi-runtime:
+  - research/RESEARCH-gsd-core-improvements-for-compass.md
+  nesting:
+  - specs/SPEC-010-universal-hybrid-hierarchy.md
   non-interactive:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   obsidian:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
+  okf:
+  - research/RESEARCH-okf-improvements-for-compass.md
   on-hold:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   overfit:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
+  parser:
+  - decisions/ADR-007-decision-coverage-mechanism.md
+  - research/RESEARCH-decision-coverage-impl.md
+  per-agent:
+  - specs/SPEC-008-central-model-resolution-table.md
   permission-rules:
   - lessons/LESSON-hook-if-clause-no-or.md
+  phases:
+  - specs/SPEC-009-configurable-pipeline-workflows.md
+  pipeline:
+  - specs/SPEC-009-configurable-pipeline-workflows.md
+  planner:
+  - decisions/ADR-007-decision-coverage-mechanism.md
+  planning:
+  - specs/SPEC-007-decision-coverage-tracing.md
   plugin-config:
   - lessons/LESSON-hook-if-clause-no-or.md
   - lessons/LESSON-hook-type-prompt-no-skills.md
   popper:
   - research/RESEARCH-scientific-method-in-compass.md
+  portability:
+  - specs/SPEC-006-multi-host-agent-cli-support.md
   pre-registration:
   - research/RESEARCH-scientific-method-in-compass.md
+  prior-art:
+  - research/RESEARCH-decision-coverage-impl.md
+  - research/RESEARCH-gsd-core-improvements-for-compass.md
+  - research/RESEARCH-okf-improvements-for-compass.md
   python:
   - decisions/ADR-005-compass-cli-for-mechanical-work.md
   - plans/PLAN-002-compass-cli-implementation.md
   python-cli:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
+  rag:
+  - research/RESEARCH-rag-fit-for-large-vaults.md
   raptor:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
@@ -235,6 +351,7 @@ tags:
   - handoffs/2026-03-12_review-all-plugin-files.md
   retrieval:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
+  - research/RESEARCH-rag-fit-for-large-vaults.md
   retrospective:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   - research/RESEARCH-lessons-and-index-architecture.md
@@ -243,8 +360,12 @@ tags:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
+  scaling:
+  - research/RESEARCH-rag-fit-for-large-vaults.md
   scientific-method:
   - research/RESEARCH-scientific-method-in-compass.md
+  setup:
+  - decisions/ADR-008-model-resolution-table.md
   skill:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   skill-design:
@@ -255,13 +376,18 @@ tags:
   - plans/PLAN-001-lessons-and-index-implementation.md
   spec-005:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
+  spec-driven-development:
+  - research/RESEARCH-gsd-core-improvements-for-compass.md
   spec-redesign:
   - handoffs/2026-03-12_review-all-plugin-files.md
+  state-digest:
+  - research/RESEARCH-gsd-core-improvements-for-compass.md
   stdin:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   summaries:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   sync:
+  - decisions/ADR-006-hybrid-hierarchy-implementation.md
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   tag-index:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
@@ -271,6 +397,8 @@ tags:
   templates:
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
+  tiers:
+  - decisions/ADR-008-model-resolution-table.md
   token-efficiency:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
   - decisions/ADR-005-compass-cli-for-mechanical-work.md
@@ -279,32 +407,60 @@ tags:
   - research/RESEARCH-cli-token-reduction-measurement.md
   - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   tokens:
+  - decisions/ADR-008-model-resolution-table.md
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
+  - research/RESEARCH-model-resolution-impl.md
+  - specs/SPEC-008-central-model-resolution-table.md
   tool-quirks:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
+  traceability:
+  - research/RESEARCH-decision-coverage-impl.md
+  - specs/SPEC-007-decision-coverage-tracing.md
+  units:
+  - decisions/ADR-006-hybrid-hierarchy-implementation.md
+  units-of-work:
+  - research/RESEARCH-hybrid-hierarchy-impl.md
+  - specs/SPEC-010-universal-hybrid-hierarchy.md
   update:
+  - decisions/ADR-008-model-resolution-table.md
   - lessons/LESSON-installer-removes-only-what-it-installed.md
   user-files:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
+  validate:
+  - decisions/ADR-006-hybrid-hierarchy-implementation.md
   validation:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   - lessons/LESSON-wikilink-validator-skip-code.md
   - plans/PLAN-002-compass-cli-implementation.md
+  - research/RESEARCH-decision-coverage-impl.md
   - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
+  - specs/SPEC-007-decision-coverage-tracing.md
+  validator:
+  - decisions/ADR-007-decision-coverage-mechanism.md
   vault:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
+  vault-design:
+  - research/RESEARCH-okf-improvements-for-compass.md
+  vault-structure:
+  - research/RESEARCH-hybrid-hierarchy-impl.md
+  - specs/SPEC-010-universal-hybrid-hierarchy.md
   vault-traversal:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
+  vector-search:
+  - research/RESEARCH-rag-fit-for-large-vaults.md
   vision:
   - specs/SPEC-001-compass-vision-and-architecture.md
   wikilinks:
+  - decisions/ADR-006-hybrid-hierarchy-implementation.md
   - lessons/LESSON-wikilink-validator-skip-code.md
+  - research/RESEARCH-hybrid-hierarchy-impl.md
   windows:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   workflow:
   - specs/SPEC-001-compass-vision-and-architecture.md
+  - specs/SPEC-009-configurable-pipeline-workflows.md
   working-set:
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - specs/SPEC-003-hierarchical-vault-organization.md
