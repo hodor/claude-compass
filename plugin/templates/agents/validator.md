@@ -4,7 +4,7 @@ description: "Use as the final quality gate after builder and tester finish. Com
 tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit, NotebookEdit
 skills: obsidian, methodology, lessons
-model: inherit
+model: opus
 effort: high
 maxTurns: 25
 color: purple

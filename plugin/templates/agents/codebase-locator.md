@@ -3,8 +3,8 @@ name: codebase-locator
 description: "Locates files, directories, and components relevant to a feature or task. Returns paths grouped by purpose. Cheap and fast - doesn't read file contents."
 tools: Grep, Glob, LS
 disallowedTools: Read, Write, Edit, NotebookEdit
-model: sonnet
-effort: high
+model: haiku
+effort: low
 maxTurns: 15
 color: white
 permissionMode: bypassPermissions

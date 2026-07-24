@@ -65,6 +65,16 @@ echo "Updated: $(ls .claude/agents/*.md | wc -l) agents, $(ls -d .claude/skills/
 if ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
   echo "WARNING: neither python3 nor python on PATH. The vault-sync hook will be a silent no-op (it never blocks writes) until Python 3 is installed."
 fi
+
+# Write the resolved model policy into the refreshed agents. Rewrites only the
+# model:/effort: frontmatter of the 13 Compass agent files, honoring the
+# project override in .compass/meta/models.yaml; any other file in
+# .claude/agents/ is user-authored and never touched.
+if command -v python3 >/dev/null 2>&1; then
+  python3 .claude/cli/compass apply-models
+elif command -v python >/dev/null 2>&1; then
+  python .claude/cli/compass apply-models
+fi
 ```
 
 ### 5. Record the new version
@@ -82,6 +92,8 @@ Report: version delta (old -> new), counts of files refreshed, and whether the p
 ### 7. Remind to restart
 
 Hooks load at session start, so the refreshed `.claude/hooks/hooks.json` (and thus the `compass sync` command hook) takes effect only after a restart. Tell the human to restart this session. After restart, a vault write should sync silently at ~0 agent tokens.
+
+Agents are different: Claude Code hot-reloads `.claude/agents/`, so the refreshed agents and their applied model policy are live immediately. Re-running `compass apply-models` after editing `.compass/meta/models.yaml` also takes effect without a restart.
 
 ## What this does NOT do
 

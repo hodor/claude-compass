@@ -3,7 +3,7 @@ name: planner
 description: "Use when proposing implementation plans from specs and research. Creates ordered, small tasks with two-tier verification. Never creates tasks until the human approves. Spawn after specs and research are ready."
 tools: Read, Grep, Glob, Write, Edit, Bash, Agent
 skills: obsidian, methodology, lessons
-model: inherit
+model: opus
 effort: high
 maxTurns: 40
 color: yellow

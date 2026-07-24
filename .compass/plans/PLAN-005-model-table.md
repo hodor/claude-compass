@@ -1,7 +1,7 @@
 ---
 title: Model Resolution Table Implementation (Tiers, apply-models, Overrides)
 type: plan
-status: approved
+status: done
 confidence: high
 area: methodology
 tags: [model-policy, tiers, apply-models, cli, setup, update, cost]
@@ -71,7 +71,7 @@ Turn model/effort assignment into one harness-resolved policy table: abstract ti
   - Automated verification: unittest - fixture agent dir: fields rewritten correctly for present/missing/absent-field cases; a `custom-user-agent.md` byte-identical after the run; second run reports zero changes; output files contain no `\r` byte; inherit-tier agent gets the field omitted.
   - Manual verification: dry inspection of the change summary on a fixture.
 
-- [ ] TASK-033: Normalize the 13 shipped templates - complexity: S, depends_on: TASK-032, files: [plugin/templates/agents/builder.md, plugin/templates/agents/planner.md, plugin/templates/agents/tester.md, plugin/templates/agents/validator.md, plugin/templates/agents/debug.md, plugin/templates/agents/pr-describe.md, plugin/templates/agents/researcher.md, plugin/templates/agents/reviewer.md, plugin/templates/agents/codebase-locator.md, plugin/templates/agents/vault-locator.md, plugin/templates/agents/pattern-finder.md, plugin/templates/agents/codebase-analyzer.md, plugin/templates/agents/vault-analyzer.md], decisions: [ADR-008-model-resolution-table/D-02, ADR-008-model-resolution-table/D-03]
+- [x] TASK-033: Normalize the 13 shipped templates - complexity: S, depends_on: TASK-032, files: [plugin/templates/agents/builder.md, plugin/templates/agents/planner.md, plugin/templates/agents/tester.md, plugin/templates/agents/validator.md, plugin/templates/agents/debug.md, plugin/templates/agents/pr-describe.md, plugin/templates/agents/researcher.md, plugin/templates/agents/reviewer.md, plugin/templates/agents/codebase-locator.md, plugin/templates/agents/vault-locator.md, plugin/templates/agents/pattern-finder.md, plugin/templates/agents/codebase-analyzer.md, plugin/templates/agents/vault-analyzer.md], decisions: [ADR-008-model-resolution-table/D-02, ADR-008-model-resolution-table/D-03]
   - Run `compass apply-models --dir plugin/templates/agents` with built-in defaults so the SHIPPED templates already carry the table's Claude values (researcher/reviewer gain their missing rows; locators/pr-describe become `haiku` + `effort: low`; the flat `effort: high` split by tier). A verbatim copy is then policy-correct even before install-time apply; apply-models over defaults is a no-op (idempotency proof on real files). Frontmatter `model:`/`effort:` lines ONLY - agent bodies untouched (see ownership boundary: merges after PLAN-004's TASK-027/028 body edits to planner.md/validator.md).
   - Automated verification: grep all 13 templates: every file has `model:` and `effort:`; values match `compass models` output exactly; re-running apply-models on the templates reports zero changes; git diff shows only frontmatter lines changed.
   - Manual verification: human reviews the 13-line assignment diff against the D-03 roster.
@@ -80,12 +80,12 @@ Turn model/effort assignment into one harness-resolved policy table: abstract ti
 
 ### Phase 3 - Install integration + dogfood verification
 
-- [ ] TASK-034: Setup/update integration + policy prose cleanup - complexity: M, depends_on: TASK-032, files: [plugin/skills/setup/SKILL.md, plugin/skills/update/SKILL.md, plugin/skills/methodology/SKILL.md, plugin/skills/checkup/SKILL.md], decisions: [ADR-008-model-resolution-table/D-02, ADR-008-model-resolution-table/D-04]
+- [x] TASK-034: Setup/update integration + policy prose cleanup - complexity: M, depends_on: TASK-032, files: [plugin/skills/setup/SKILL.md, plugin/skills/update/SKILL.md, plugin/skills/methodology/SKILL.md, plugin/skills/checkup/SKILL.md], decisions: [ADR-008-model-resolution-table/D-02, ADR-008-model-resolution-table/D-04]
   - Setup step 2 and update step 4 gain one post-copy step: run `compass apply-models` via the copied CLI (`python3`/`python` fallback, same pattern as the hook), so installed agents get the resolved policy; note Claude Code hot-reloads `.claude/agents/`, so re-apply after editing `models.yaml` takes effect without restart. Setup documents `.compass/meta/models.yaml` as the project override (D-04) next to the existing meta files. Cleanup: drop the "Runs on `sonnet` for speed" prose from methodology SKILL (policy lives in the table, not prose); checkup's agent health check validates installed `model:`/`effort:` against `compass models` output instead of bare field presence.
   - Automated verification: grep setup/update for the apply-models step -> present; grep methodology for `sonnet` -> zero hits; grep checkup for the table-based check -> present.
   - Manual verification: read the amended setup/update steps for coherence with the existing copy-only discipline (templates still never pass through the agent's context).
 
-- [ ] TASK-035: Dogfood verification on this repo - complexity: S, depends_on: TASK-033, TASK-034, files: [.claude/agents/ (regenerated local install, gitignored), .compass/meta/models.yaml (temporary test override, removed after)], decisions: [ADR-008-model-resolution-table/D-02, ADR-008-model-resolution-table/D-03, ADR-008-model-resolution-table/D-04, ADR-008-model-resolution-table/D-05]
+- [x] TASK-035: Dogfood verification on this repo - complexity: S, depends_on: TASK-033, TASK-034, files: [.claude/agents/ (regenerated local install, gitignored), .compass/meta/models.yaml (temporary test override, removed after)], decisions: [ADR-008-model-resolution-table/D-02, ADR-008-model-resolution-table/D-03, ADR-008-model-resolution-table/D-04, ADR-008-model-resolution-table/D-05]
   - Run `compass apply-models` against this repo's `.claude/agents/`. Verify the SPEC-008 success criteria on real files: locators resolve cheap (haiku/low), planner/validator/reviewer/debug resolve strong (opus/high), assignments inspectable via `compass models`. Then: second run -> zero diffs; drop a throwaway user agent file in `.claude/agents/` -> untouched; write a `models.yaml` pinning one agent -> re-apply picks it up, `compass models` shows source=project; remove the override, re-apply restores defaults; no CRLF bytes in any rewritten file.
   - Automated verification: the command sequence above with recorded exit codes and diffs; full unittest suite green.
   - Manual verification: human confirms the resolved roster is the policy they approved in ADR-008 D-03.

@@ -3,6 +3,7 @@ name: researcher
 description: "Use when investigating unknowns: how does X work, what are the options for Y, is Z feasible. Spawn one per research axis. Returns structured findings with confidence levels for the reviewer agent to consolidate."
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch, Write, Edit, Agent
 skills: obsidian, methodology, lessons
+model: sonnet
 effort: high
 maxTurns: 30
 color: cyan

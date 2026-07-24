@@ -3,8 +3,8 @@ name: pr-describe
 description: "Use when creating or updating PR descriptions. Reads Compass artifacts, runs automated verification, classifies results, and pushes to GitHub via gh CLI. Connects PRs back to specs, plans, and tasks."
 tools: Read, Grep, Glob, Write, Edit, Bash
 skills: obsidian, methodology, lessons
-model: inherit
-effort: high
+model: haiku
+effort: low
 maxTurns: 25
 color: green
 memory: project

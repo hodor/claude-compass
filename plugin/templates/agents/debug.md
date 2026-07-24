@@ -4,7 +4,7 @@ description: "Use when investigating errors, test failures, log anomalies, or un
 tools: Read, Grep, Glob, Bash, Agent
 disallowedTools: Write, Edit, NotebookEdit
 skills: obsidian, methodology, lessons
-model: inherit
+model: opus
 effort: high
 maxTurns: 25
 color: red

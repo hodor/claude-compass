@@ -3,7 +3,7 @@ name: builder
 description: "Use when executing implementation tasks. Reads context, writes code, runs formatting and code review, updates vault state. The tester agent runs automatically after you finish and handles all test execution."
 tools: Read, Grep, Glob, Write, Edit, Bash, Agent
 skills: obsidian, methodology, lessons
-model: inherit
+model: sonnet
 effort: high
 maxTurns: 50
 color: orange

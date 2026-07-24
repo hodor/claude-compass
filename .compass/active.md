@@ -78,10 +78,10 @@ Pipeline state: research DONE (3 docs) -> ADR-006/007/008 DONE -> PLAN-003/004/0
 - [x] TASK-022/023/024: strip_fenced_code + decisionslib parser + real-vault corpus - 47 new tests, legacy ADRs none-present proven (2026-07-24)
 - [ ] TASK-025 compass decisions (M) | TASK-026 compass coverage (L) | TASK-027 planner gate + decisions: field (M) | TASK-028 validator audit (M) | TASK-029 convention docs + dogfood (M)
 
-### Queued: [[PLAN-005-model-table]] (parallel with 004 after 003)
+### Done: [[PLAN-005-model-table]] (all 6 tasks, 2026-07-24)
 
 - [x] TASK-030/031/032: modelslib + resolve-model/models + apply-models - 58 new tests, planner->opus high, vault-locator->haiku low (2026-07-24)
-- [ ] TASK-033 normalize 13 templates (S) | TASK-034 setup/update integration (M) | TASK-035 dogfood verification (S)
+- [x] TASK-033/034/035: 13 templates normalized (frontmatter-only diffs), setup/update run apply-models, dogfood verified incl. models.yaml override round-trip (2026-07-24)
 
 ## Next Up
 
