@@ -59,7 +59,7 @@ CLI built, command-hook cutover live, ~99.8% bookkeeping-token reduction confirm
 
 ## Batch (approved 2026-07-23): SPEC-007 + SPEC-008 + SPEC-010 to built-and-validated
 
-Pipeline state: research DONE (3 docs) -> ADR-006/007/008 DONE -> PLAN-003/004/005 approved 2026-07-24 -> BUILDING. [[SPEC-009-configurable-pipeline-workflows]] deferred to [[backlog]].
+Pipeline state: COMPLETE AND VALIDATED (2026-07-24). Research -> ADR-006/007/008 -> PLAN-003/004/005 -> build -> validator BATCH PASS: 23/23 tasks, 13/13 automated checks, 6/6 adversarial probes, 242 tests green. Two non-blocking findings: audit-baseline framing (validator used the correct 7b5b5a8); unit-check SPEC-001 hub inflates one candidate (future heuristic). Manual checklist pending human review (validator report, this session). [[SPEC-009-configurable-pipeline-workflows]] deferred to [[backlog]].
 
 ### Done: [[PLAN-003-hybrid-hierarchy]] (all 9 tasks, 2026-07-24)
 
