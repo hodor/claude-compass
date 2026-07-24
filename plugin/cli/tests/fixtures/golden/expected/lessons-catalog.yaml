@@ -1,0 +1,15 @@
+lessons:
+  - file: "LESSON-known-quoting.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [yaml, quoting]
+    score: 5
+    summary: "Quote YAML frontmatter values that contain colons"
+  - file: "LESSON-fresh-globbing.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [glob, hidden-dirs]
+    score: 5
+    summary: "Glob needs a **/ prefix to traverse hidden directories"

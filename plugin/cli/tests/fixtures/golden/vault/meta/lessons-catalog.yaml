@@ -1,0 +1,8 @@
+lessons:
+  - file: "LESSON-known-quoting.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [yaml, quoting]
+    score: 5
+    summary: "Quote YAML frontmatter values that contain colons"
