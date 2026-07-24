@@ -20,7 +20,6 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[SPEC-001-compass-vision-and-architecture]] — Core vision, principles, architecture, and resolved design decisions
 - [[SPEC-002-lessons-and-index-subsystem]] - Lessons capture, dedup, anti-list, and index freshness mechanism (approved)
 - [[SPEC-003-hierarchical-vault-organization]] - Hierarchical folders + faceted tags + MemGPT 3-tier model, with falsifiable 30% read-reduction hypothesis (approved)
-- [[SPEC-004-mechanical-work-off-the-agent-budget]] - Deterministic vault upkeep must run as a program, not in agent tokens; falsifiable 80% bookkeeping-token reduction (approved)
 - [[SPEC-005-index-auto-maintained-and-mirrored-per-folder]] - Index Auto-Maintained on Add and Remove, Mirrored Per Folder
 - [[SPEC-006-multi-host-agent-cli-support]] - Compass runs on agent CLIs beyond Claude Code (Kimi Code, Codex); problem/need (approved 2026-07-22)
 - [[SPEC-007-decision-coverage-tracing]] - decisions made in specs/ADRs must survive into plans and validation, not silently vanish between stages (approved 2026-07-23)
@@ -34,8 +33,6 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-evaluation-benchmarks]] - benchmarks for evaluating Compass methodology layer; A/B pitfalls; field-gap analysis
 - [[RESEARCH-scientific-method-in-compass]] - does Compass actually embody the scientific method, or only borrow the vocabulary; 8 specific gaps with file:line evidence
 - [[RESEARCH-hierarchical-knowledge-base-design]] - MemGPT + RAPTOR + Ranganathan + Denning synthesis with 11 verified findings and 4 open questions, informs hierarchical specs design
-- [[RESEARCH-cli-and-hook-command-contract]] - Claude Code CLI dispatch pattern + the exact command-hook contract (exit-2 blocks writes, stdin JSON, loop guard); grounds SPEC-004/ADR-005
-- [[RESEARCH-cli-token-reduction-measurement]] - SPEC-004's 80% hypothesis confirmed: ~99.8% bookkeeping-token reduction, integrity preserved and improved (found a defect the LLM hook missed)
 - [[RESEARCH-okf-improvements-for-compass]] - what to borrow from Google's Open Knowledge Format: adopt `resource:` field + reader-tolerance posture; skip format alignment (v0.1 draft, convergent design)
 - [[RESEARCH-rag-fit-for-large-vaults]] - RAG/vector search net-negative at current scale; skip until a vault exceeds ~300-500 docs AND queries fail on vocabulary mismatch; lexical rung before vectors
 - [[RESEARCH-gsd-core-improvements-for-compass]] - competitive read of GSD (Git.Ship.Done.): adopt decision-coverage tracing, per-agent model policy, seed triggers, atomic state locking; GSD's runtime split is prior art for SPEC-006
@@ -46,7 +43,9 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 ## Plans
 
 - [[PLAN-001-lessons-and-index-implementation]] - 12 tasks across 6 phases implementing SPEC-002 (done 2026-05-24)
-- [[PLAN-002-compass-cli-implementation]] - 12 tasks across 3 dependency-driven phases building the Python `compass` CLI + command-hook cutover; implements SPEC-004 (approved)
+- [[PLAN-003-hybrid-hierarchy]] - Hybrid Hierarchy Implementation (Unit Folders)
+- [[PLAN-004-decision-coverage]] - Decision Coverage Implementation (D-NN Parser, Coverage Gate, Audit)
+- [[PLAN-005-model-table]] - Model Resolution Table Implementation (Tiers, apply-models, Overrides)
 
 ## Decisions
 
@@ -54,7 +53,6 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[ADR-002-retrospective-lessons-subsystem]] - Retrospective lesson capture at phase boundary with binary triggers, anti-list, and single writer
 - [[ADR-003-drop-counter-file-jit-compute]] - Drop `meta/config.yaml` counter file; compute next artifact number JIT from filesystem
 - [[ADR-004-hierarchical-specs-with-facets]] - 3-tier MemGPT memory + folder hierarchy + faceted tags + admission control; hot path at prompt start
-- [[ADR-005-compass-cli-for-mechanical-work]] - A Python `compass` CLI owns mechanical vault work; PostToolUse hook becomes a command, not an agent; MCP rejected (approved)
 - [[ADR-006-hybrid-hierarchy-implementation]] - Unit Folders at the Vault Root, Classified by Reserved Names Plus a Marker
 - [[ADR-007-decision-coverage-mechanism]] - Decision Coverage via D-NN Bullets, a Three-Outcome Parser, and an Exit-Code Gate the Planner Honors
 - [[ADR-008-model-resolution-table]] - Abstract Model Tiers Resolved at Install Time by compass apply-models
@@ -89,3 +87,10 @@ See [[backlog]].
 - [[LESSON-hook-cli-gate-stdin-on-flag]] - Gate hook-stdin reads behind an explicit flag (--hook), not isatty probing; probing blocks forever in a non-interactive shell with no piped input
 - [[LESSON-type-dir-discovery-needs-content-signal]] - Treating every .compass subdir as an artifact type dir breaks on vaults that store non-artifact dirs there; require the known core dirs OR a typed-artifact signal
 - [[LESSON-installer-removes-only-what-it-installed]] - A tool that installs into a shared dir must delete only its own named artifacts on cleanup; 'remove anything not in my source' destroys user files
+
+## compass-cli
+- [[compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work]] - A Python `compass` CLI Owns All Mechanical Vault Work; the Hook Calls It as a Command
+- [[compass-cli/plans/PLAN-002-compass-cli-implementation]] - Compass CLI Implementation
+- [[compass-cli/research/RESEARCH-cli-and-hook-command-contract]] - How Claude Code Structures CLIs and the Command-Hook Contract
+- [[compass-cli/research/RESEARCH-cli-token-reduction-measurement]] - Measuring SPEC-004's 80% Bookkeeping-Token Reduction
+- [[compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget]] - Mechanical Vault Work Must Not Cost Agent Tokens
