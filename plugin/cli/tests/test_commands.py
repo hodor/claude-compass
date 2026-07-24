@@ -1,5 +1,5 @@
-"""Tests for the read-only CLI commands, validate, make-unit, and the model
-resolution commands."""
+"""Tests for the read-only CLI commands, validate, make-unit, the model
+resolution commands, and the decision commands (decisions, coverage)."""
 
 import io
 import os
@@ -16,7 +16,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import modelslib  # noqa: E402
 import vaultlib  # noqa: E402
 from commands import (  # noqa: E402
-    make_unit, models, next_num, resolve_model, tree, hot_path, unit_check, validate,
+    coverage, decisions, make_unit, models, next_num, resolve_model, tree,
+    hot_path, unit_check, validate,
 )
 
 
@@ -611,6 +612,233 @@ class MakeUnitTests(unittest.TestCase):
             self.assertEqual(make_unit.run(["core"]), 1)
         self.assertIn("usage", err.getvalue())
         self.assertFalse((root / "core").exists())
+
+
+class DecisionCommandBase(unittest.TestCase):
+    """Shared fixture: an isolated vault plus captured-stream command runs."""
+
+    SPEC_WITH_DECISIONS = (
+        "---\ntitle: Source spec\ntype: spec\nstatus: approved\n---\n\n"
+        "## Decisions\n\n"
+        "- **D-01:** first ruling\n"
+        "- **D-02:** second ruling\n"
+        "- **D-03 [deferred]:** parked ruling\n"
+    )
+    ADR_WITH_DECISIONS = (
+        "---\ntitle: Choice\ntype: decision\nstatus: approved\n---\n\n"
+        "## Decision\n\n"
+        "- **D-01:** adr ruling one\n"
+        "- **D-02:** adr ruling two\n"
+    )
+    MALFORMED = (
+        "---\ntitle: Broken\ntype: decision\nstatus: approved\n---\n\n"
+        "## Decision\n\n"
+        "- **D-01 no separator at all\n"
+    )
+
+    def setUp(self):
+        self.root = make_vault(self)
+        with_vault_env(self, self.root)
+
+    def run_command(self, module, args):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = module.run(args)
+        return code, out.getvalue(), err.getvalue()
+
+    def plan(self, body_lines, deps=("SPEC-001-src",)):
+        dep_items = ", ".join(f'"[[{d}]]"' for d in deps)
+        return (
+            f"---\ntitle: P\ntype: plan\nstatus: approved\n"
+            f"depends_on: [{dep_items}]\n---\n\n## Phases\n\n"
+            + "\n".join(body_lines) + "\n"
+        )
+
+
+class DecisionsCommandTests(DecisionCommandBase):
+    def test_lists_decisions_with_flags_and_tags(self):
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        code, out, err = self.run_command(decisions, ["SPEC-001-src"])
+        self.assertEqual(code, 0)
+        self.assertEqual(err, "")
+        self.assertIn("specs/SPEC-001-src.md - 3 decision(s)", out)
+        lines = out.strip().splitlines()
+        d1 = next(line for line in lines if line.startswith("D-01"))
+        self.assertIn("yes", d1)
+        self.assertIn("first ruling", d1)
+        d3 = next(line for line in lines if line.startswith("D-03"))
+        self.assertIn("no", d3)
+        self.assertIn("deferred", d3)
+
+    def test_none_present_exits_zero(self):
+        write(self.root, "specs/SPEC-001-src.md",
+              "---\ntitle: S\ntype: spec\nstatus: approved\n---\n\nprose only\n")
+        code, out, _ = self.run_command(decisions, ["SPEC-001-src"])
+        self.assertEqual(code, 0)
+        self.assertIn("no decisions present", out)
+
+    def test_malformed_doc_fails_loud_naming_the_file(self):
+        write(self.root, "decisions/ADR-001-broken.md", self.MALFORMED)
+        code, _, err = self.run_command(decisions, ["ADR-001-broken"])
+        self.assertEqual(code, 1)
+        self.assertIn("could not parse decisions", err)
+        self.assertIn("decisions/ADR-001-broken.md", err)
+
+    def test_unknown_doc_exits_one(self):
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        code, _, err = self.run_command(decisions, ["NoSuchDoc"])
+        self.assertEqual(code, 1)
+        self.assertIn("not found: NoSuchDoc", err)
+
+    def test_ambiguous_stem_lists_candidates(self):
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        write(self.root, "research/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        code, _, err = self.run_command(decisions, ["SPEC-001-src"])
+        self.assertEqual(code, 1)
+        self.assertIn("ambiguous", err)
+        self.assertIn("specs/SPEC-001-src.md", err)
+        self.assertIn("research/SPEC-001-src.md", err)
+
+    def test_path_qualified_argument_resolves(self):
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        write(self.root, "research/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        code, out, _ = self.run_command(decisions, ["specs/SPEC-001-src"])
+        self.assertEqual(code, 0)
+        self.assertIn("specs/SPEC-001-src.md", out)
+
+    def test_usage_error_exits_one(self):
+        code, _, err = self.run_command(decisions, [])
+        self.assertEqual(code, 1)
+        self.assertIn("usage", err)
+
+
+class CoverageCommandTests(DecisionCommandBase):
+    def test_uncovered_trackable_decision_fails(self):
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        write(self.root, "plans/PLAN-001-p.md", self.plan([
+            "- [ ] TASK-001: a - decisions: [SPEC-001-src/D-01]",
+        ]))
+        code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 1)
+        d2 = next(line for line in out.splitlines() if "D-02" in line)
+        self.assertIn("NOT COVERED", d2)
+        self.assertIn("1 covered, 1 uncovered", out)
+        self.assertIn("FAIL", out)
+
+    def test_all_trackable_covered_passes(self):
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        write(self.root, "plans/PLAN-001-p.md", self.plan([
+            "- [ ] TASK-001: a - decisions: [SPEC-001-src/D-01, SPEC-001-src/D-02]",
+        ]))
+        code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 0)
+        self.assertIn("2 covered, 0 uncovered", out)
+        self.assertIn("PASS", out)
+
+    def test_deferred_decision_uncovered_is_not_counted(self):
+        # D-03 is [deferred]: shown in the table, excluded from the gate.
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        write(self.root, "plans/PLAN-001-p.md", self.plan([
+            "- [ ] TASK-001: a - decisions: [SPEC-001-src/D-01, SPEC-001-src/D-02]",
+        ]))
+        code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 0)
+        d3 = next(line for line in out.splitlines() if "D-03" in line)
+        self.assertIn("no", d3)
+        self.assertIn("2 trackable decision(s)", out)
+
+    def test_malformed_source_fails_but_prints_other_rows(self):
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        write(self.root, "decisions/ADR-001-broken.md", self.MALFORMED)
+        write(self.root, "plans/PLAN-001-p.md", self.plan(
+            ["- [ ] TASK-001: a - decisions: [SPEC-001-src/D-01, SPEC-001-src/D-02]"],
+            deps=("SPEC-001-src", "ADR-001-broken"),
+        ))
+        code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 1)
+        self.assertIn("COULD NOT PARSE", out)
+        d1 = next(
+            line for line in out.splitlines()
+            if line.startswith("SPEC-001-src") and "D-01" in line
+        )
+        self.assertIn("covered", d1)
+        self.assertIn("could not be parsed", out)
+
+    def test_bare_citation_is_warned_and_not_counted(self):
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        write(self.root, "plans/PLAN-001-p.md", self.plan([
+            "- [ ] TASK-001: a - decisions: [D-01, SPEC-001-src/D-02]",
+        ]))
+        code, out, err = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 1)
+        d1 = next(line for line in out.splitlines() if "D-01" in line)
+        self.assertIn("NOT COVERED", d1)
+        self.assertIn("bare D-NN token(s)", err)
+
+    def test_citations_in_code_never_claim(self):
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        write(self.root, "plans/PLAN-001-p.md", self.plan([
+            "Fenced example:",
+            "```",
+            "- [ ] TASK-001: a - decisions: [SPEC-001-src/D-01]",
+            "```",
+            "Inline example: `SPEC-001-src/D-02`.",
+        ]))
+        code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 1)
+        self.assertIn("0 covered, 2 uncovered", out)
+
+    def test_research_dependency_is_not_a_source(self):
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        write(self.root, "research/RESEARCH-notes.md",
+              "---\ntitle: R\ntype: research\nstatus: done\n---\n\n"
+              "## Decisions\n\n- **D-09:** never scanned\n")
+        write(self.root, "plans/PLAN-001-p.md", self.plan(
+            ["- [ ] TASK-001: a - decisions: [SPEC-001-src/D-01, SPEC-001-src/D-02]"],
+            deps=("SPEC-001-src", "RESEARCH-notes"),
+        ))
+        code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 0)
+        self.assertNotIn("D-09", out)
+        self.assertIn("in 1 source(s)", out)
+
+    def test_against_overrides_default_sources(self):
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        write(self.root, "decisions/ADR-001-choice.md", self.ADR_WITH_DECISIONS)
+        write(self.root, "plans/PLAN-001-p.md", self.plan([
+            "- [ ] TASK-001: a - decisions: "
+            "[ADR-001-choice/D-01, ADR-001-choice/D-02]",
+        ]))
+        code, out, _ = self.run_command(
+            coverage, ["PLAN-001-p", "--against", "ADR-001-choice"]
+        )
+        self.assertEqual(code, 0)
+        self.assertNotIn("SPEC-001-src", out.split("\n", 1)[1])
+        self.assertIn("2 covered, 0 uncovered", out)
+
+    def test_sources_without_decisions_report_none_and_pass(self):
+        write(self.root, "specs/SPEC-001-src.md",
+              "---\ntitle: S\ntype: spec\nstatus: approved\n---\n\nprose only\n")
+        write(self.root, "plans/PLAN-001-p.md", self.plan(["body"]))
+        code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 0)
+        self.assertIn("no trackable decisions", out)
+
+    def test_no_sources_passes_with_note(self):
+        write(self.root, "plans/PLAN-001-p.md", self.plan(["body"], deps=()))
+        code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 0)
+        self.assertIn("no sources", out)
+
+    def test_unknown_plan_exits_one(self):
+        code, _, err = self.run_command(coverage, ["NoSuchPlan"])
+        self.assertEqual(code, 1)
+        self.assertIn("not found", err)
+
+    def test_usage_error_exits_one(self):
+        code, _, err = self.run_command(coverage, [])
+        self.assertEqual(code, 1)
+        self.assertIn("usage", err)
 
 
 if __name__ == "__main__":
