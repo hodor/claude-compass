@@ -21,6 +21,12 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[SPEC-002-lessons-and-index-subsystem]] - Lessons capture, dedup, anti-list, and index freshness mechanism (approved)
 - [[SPEC-003-hierarchical-vault-organization]] - Hierarchical folders + faceted tags + MemGPT 3-tier model, with falsifiable 30% read-reduction hypothesis (approved)
 - [[SPEC-004-mechanical-work-off-the-agent-budget]] - Deterministic vault upkeep must run as a program, not in agent tokens; falsifiable 80% bookkeeping-token reduction (approved)
+- [[SPEC-005-index-auto-maintained-and-mirrored-per-folder]] - Index Auto-Maintained on Add and Remove, Mirrored Per Folder
+- [[SPEC-006-multi-host-agent-cli-support]] - Compass runs on agent CLIs beyond Claude Code (Kimi Code, Codex); problem/need (approved 2026-07-22)
+- [[SPEC-007-decision-coverage-tracing]] - decisions made in specs/ADRs must survive into plans and validation, not silently vanish between stages (draft)
+- [[SPEC-008-central-model-resolution-table]] - model + effort assignment is one harness-resolved policy table with per-project override, not per-agent prose (draft)
+- [[SPEC-009-configurable-pipeline-workflows]] - the pipeline is a configurable workflow (shipped default + reorder/subset/extend), not one hardcoded sequence (draft)
+- [[SPEC-010-universal-hybrid-hierarchy]] - any artifact and any unit of work can nest; type-first root for small work, a root-level folder per large unit co-locating its own types (draft)
 
 ## Research
 
@@ -30,6 +36,9 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-hierarchical-knowledge-base-design]] - MemGPT + RAPTOR + Ranganathan + Denning synthesis with 11 verified findings and 4 open questions, informs hierarchical specs design
 - [[RESEARCH-cli-and-hook-command-contract]] - Claude Code CLI dispatch pattern + the exact command-hook contract (exit-2 blocks writes, stdin JSON, loop guard); grounds SPEC-004/ADR-005
 - [[RESEARCH-cli-token-reduction-measurement]] - SPEC-004's 80% hypothesis confirmed: ~99.8% bookkeeping-token reduction, integrity preserved and improved (found a defect the LLM hook missed)
+- [[RESEARCH-okf-improvements-for-compass]] - what to borrow from Google's Open Knowledge Format: adopt `resource:` field + reader-tolerance posture; skip format alignment (v0.1 draft, convergent design)
+- [[RESEARCH-rag-fit-for-large-vaults]] - RAG/vector search net-negative at current scale; skip until a vault exceeds ~300-500 docs AND queries fail on vocabulary mismatch; lexical rung before vectors
+- [[RESEARCH-gsd-core-improvements-for-compass]] - competitive read of GSD (Git.Ship.Done.): adopt decision-coverage tracing, per-agent model policy, seed triggers, atomic state locking; GSD's runtime split is prior art for SPEC-006
 
 ## Plans
 
@@ -58,6 +67,7 @@ See [[backlog]].
 - [[2026-03-12_23-50-59_session-3-skills-approved]] — All 3 skills approved, duplication audit complete
 - [[2026-03-12_session-2-obsidian-approved]] - Handoff: Obsidian skill fully reviewed, HumanLayer insights adopted
 - [[2026-06-10_23-00-00_python-cli-next-up]] - Handoff: Python busywork CLI is next; everything through ADR-004 shipped
+- [[2026-06-19_10-33-39_cli-shipped-spec005-on-hold]] - Handoff: compass CLI shipped (v0.3.7); SPEC-005 (auto per-folder index + LLM summaries) drafted, ON HOLD
 
 ## Lessons
 

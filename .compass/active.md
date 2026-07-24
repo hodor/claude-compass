@@ -79,6 +79,15 @@ _None._
 
 - [ ] Live two-session A/B to convert the per-fire token floor into an end-to-end measured number.
 
+## Today (2026-07-23): SPEC-007 + SPEC-008 + SPEC-010 to built-and-validated
+
+Batch approved by Roger. Full pipeline per spec: research -> ADR -> plan (human approves) -> build -> test -> validate. [[SPEC-009-configurable-pipeline-workflows]] explicitly deferred to [[backlog]].
+
+- [ ] Research: SPEC-010 hierarchy impact on CLI/skills/hooks | SPEC-007 decision parser + gates | SPEC-008 model resolution surface
+- [ ] ADRs from research (expected ADR-006/007/008)
+- [ ] Plans (human approves before task distribution)
+- [ ] Build + tests + validate
+
 ## Next Up
 
 ### Next: integration testing of PLAN-001 output
