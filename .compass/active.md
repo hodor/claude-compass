@@ -73,11 +73,11 @@ Pipeline state: research DONE (3 docs) -> ADR-006/007/008 DONE -> PLAN-003/004/0
 - [x] TASK-020: path-qualified links in wikilinks rule + obsidian/methodology skills (M) - documents landed behavior only (2026-07-24)
 - [x] TASK-021: Migrate the compass-cli set (dogfood, acceptance) (M) - .compass/compass-cli/ live, validate clean, history preserved (2026-07-24)
 
-### Queued: [[PLAN-004-decision-coverage]] (parallel with 005 after 003)
+### Done: [[PLAN-004-decision-coverage]] (all 8 tasks, 2026-07-24)
 
 - [x] TASK-022/023/024: strip_fenced_code + decisionslib parser + real-vault corpus - 47 new tests, legacy ADRs none-present proven (2026-07-24)
 - [x] TASK-025/026: compass decisions + compass coverage - 19 new tests; all three plans mechanically PASS (7/7, 15/15, 6/6) (2026-07-24)
-- [ ] TASK-027 planner gate + decisions: field (M) | TASK-028 validator audit (M) | TASK-029 convention docs + dogfood (M)
+- [x] TASK-027/028/029: planner gate + validator audit + D-NN convention docs - dogfood 7/9/6 IDs, three plans PASS (2026-07-24)
 
 ### Done: [[PLAN-005-model-table]] (all 6 tasks, 2026-07-24)
 

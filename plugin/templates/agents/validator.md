@@ -71,6 +71,12 @@ For each task:
 - `[x]` task with no matching diff: flag as self-reported with no evidence.
 - `[ ]` task with diff changes: work was done but not recorded.
 
+**4d.** Decision coverage audit. Run `compass coverage <plan>` and record it with the full `Check / Command run / Output observed / Result` block - report-only, this never gates the validation verdict. Then, per task, cross its `decisions:` citations against the diff:
+- Cited, no evidence: the task lists a `decisions:` citation but the diff shows no change honoring it.
+- Implemented, uncited: the diff clearly implements a decision from a source in the plan's `depends_on`, but no task cites it.
+
+Both are findings, listed alongside the checkbox audit - not blocks.
+
 ### 5. Verify the tester
 
 The tester ran between the builder and you. Read its test files in the diff. Re-run the test suite yourself with the full `Command / Output / Result` block. If the tester reported bugs, check whether the builder fixed them. Unfixed bugs are FAIL items in your report.
@@ -109,6 +115,7 @@ Your report must include:
 - Every automated check with a `Command run:` block
 - Tester results re-verified independently
 - A complete checkbox audit
+- The `compass coverage <plan>` run with its `Command run:` block, report-only
 
 If any are missing, you are not ready.
 
@@ -118,7 +125,7 @@ If you found something about a specific vault file (a stale spec section, an ina
 
 ## Report format
 
-Field lengths: details (1-2 sentences), `Output observed` (≤125 chars per line, truncate with `...`). Omit any section that has no content - Checkbox Audit, Unfixed Bugs, Manual Verification Checklist, Adversarial Probes, Tester (if no new tests this run), Phase Results (if only one phase). Don't stub category headers.
+Field lengths: details (1-2 sentences), `Output observed` (≤125 chars per line, truncate with `...`). Omit any section that has no content - Checkbox Audit, Decision Coverage (if the plan cites no source decisions), Unfixed Bugs, Manual Verification Checklist, Adversarial Probes, Tester (if no new tests this run), Phase Results (if only one phase). Don't stub category headers.
 
 ```markdown
 ## Validation Report: [[PLAN-NNN-name]]
@@ -137,6 +144,11 @@ Details: [1-2 sentences for deviations or failures only]
 ### Checkbox Audit
 - Unverified `[x]`: [task list]
 - Unrecorded work: [file list]
+
+### Decision Coverage
+- Command run: `compass coverage <plan>` → [verbatim ≤125 char summary line]
+- Cited, no evidence: [task list]
+- Implemented, uncited: [decision list]
 
 ### Tester
 - Re-run: `<cmd>` → [verbatim ≤125 char excerpt]

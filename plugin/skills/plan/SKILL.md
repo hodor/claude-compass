@@ -56,6 +56,7 @@ If the change is ambiguous, conflicts with a lesson, or has feasibility issues, 
 - Preserve formatting exactly.
 - New tasks use provisional TASK-NNN computed JIT (`max(N) + 1` across active.md + backlog.md).
 - Every task keeps automated + manual verification.
+- `decisions: [<doc-stem>/D-NN, ...]` mirrors `files:` - optional, source-qualified citations of the decisions a task implements.
 
 Append to `## Revision Log`:
 ```
@@ -72,6 +73,9 @@ Append to `## Revision Log`:
 | Prerequisites | Phase ordering |
 | Task complexity | Whether the task should split or merge |
 | Phase removed | Backlog entries, depends_on references |
+| Task `decisions:` field or citations | Re-run `compass coverage <plan>` before closing the iteration |
+
+If the change adds, removes, or recites decisions differently, re-run `compass coverage <plan>` after the edits and note the resulting summary line in the iteration report - iterate mode doesn't gate on it, but a plan already `approved` should not silently regress to an uncovered state.
 
 #### 9. Assess research needs
 

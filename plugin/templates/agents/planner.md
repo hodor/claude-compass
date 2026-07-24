@@ -68,14 +68,14 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
 ## Phases
 
 ### Phase 1: [Name]
-- [ ] TASK-NNN: [Description] - complexity: S, depends_on: none, files: [list]
+- [ ] TASK-NNN: [Description] - complexity: S, depends_on: none, files: [list], decisions: [<doc-stem>/D-NN, ...]
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
 
 **Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before Phase 2. Skip if the human asked for `all-phases` mode.
 
 ### Phase 2: [Name]
-- [ ] TASK-NNN: [Description] - complexity: L, depends_on: TASK-NNN, files: [list]
+- [ ] TASK-NNN: [Description] - complexity: L, depends_on: TASK-NNN, files: [list], decisions: [<doc-stem>/D-NN, ...]
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
 
@@ -88,7 +88,13 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
 [Open questions from the source spec that must be resolved before approval. The planner must not generate new ones - resolve them during planning.]
 ```
 
+`decisions:` is optional and mirrors `files:` - a list of source-qualified citations (`<doc-stem>/D-NN`) for the decisions a task implements, drawn from the `## Decisions`/`## Decision` bullets of the specs and ADRs this plan depends on. Omit it on tasks that claim nothing.
+
+Write the drafted plan to `.compass/plans/PLAN-NNN-descriptive-name.md` with `status: draft` (PLAN number computed JIT as in step 6) before presenting it - the coverage gate in the next step needs a file to check, and a draft file is expected to still change before approval.
+
 ### 5. Present for approval
+
+Run `compass coverage <plan>` against the draft file and carry its summary line into the approval message - the human sees the coverage gap, if any, alongside the plan itself.
 
 ```
 Here is the proposed plan based on [source specs/research]:
@@ -97,6 +103,7 @@ Here is the proposed plan based on [source specs/research]:
 **Phases:** N phases, M total tasks
 **Estimated complexity:** [S/M/L overall]
 **Parallel-safe tasks:** [tasks with non-overlapping files]
+**Decision coverage:** [`compass coverage` summary line, e.g. "3 trackable decision(s) in 2 source(s): 2 covered, 1 uncovered -> FAIL"]
 
 [Full plan content]
 
@@ -114,10 +121,11 @@ If the human corrects a factual claim about the codebase ("that file actually ha
 
 ### 6. Create artifacts (after approval only)
 
-1. Compute next PLAN number JIT: `max(N from glob '**/.compass/plans/PLAN-N-*.md') + 1`. Write `PLAN-NNN-descriptive-name.md` in `.compass/plans/`.
-2. Compute next TASK number JIT: `max(N) + 1` across `grep -oE 'TASK-([0-9]+)' .compass/active.md .compass/backlog.md`. Assign tasks contiguously from there.
-3. Distribute tasks: Phase 1 → `active.md` under "Next Up"; later phases → `backlog.md`.
-4. The PostToolUse hook auto-updates `.compass/index.md`. No manual index edit needed.
+1. Update the draft plan file's frontmatter `status` from `draft` to `approved`.
+2. Re-run `compass coverage <plan>`. While it exits 1, do not distribute tasks: report the uncovered rows to the human, then either add the missing `decisions:` citation to the task that covers it, or - if the decision should not be planned yet - confirm with the human and tag the bullet `[deferred]` or `[informational]` in its source spec/ADR. Re-run after each fix until it exits 0.
+3. Compute next TASK number JIT: `max(N) + 1` across `grep -oE 'TASK-([0-9]+)' .compass/active.md .compass/backlog.md`. Assign tasks contiguously from there.
+4. Distribute tasks: Phase 1 → `active.md` under "Next Up"; later phases → `backlog.md`.
+5. The PostToolUse hook auto-updates `.compass/index.md`. No manual index edit needed.
 
 ## Task Sizing
 
@@ -143,3 +151,4 @@ Tasks larger than L get broken into subtasks.
 - Tasks too large ("implement the feature") or verification too vague ("it works").
 - Assuming codebase facts without verification.
 - Silently creating a duplicate plan.
+- Distributing tasks while `compass coverage` exits 1.
