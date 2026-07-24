@@ -11,6 +11,7 @@ tags:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   apply-models:
   - decisions/ADR-008-model-resolution-table.md
+  - plans/PLAN-005-model-table.md
   approval:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
   - handoffs/2026-03-12_review-all-plugin-files.md
@@ -18,18 +19,18 @@ tags:
   architecture:
   - specs/SPEC-001-compass-vision-and-architecture.md
   argparse:
+  - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
-  - research/RESEARCH-cli-and-hook-command-contract.md
   auto-maintenance:
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   autocrlf:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   automation:
+  - compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work.md
+  - compass-cli/plans/PLAN-002-compass-cli-implementation.md
+  - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/ADR-003-drop-counter-file-jit-compute.md
-  - decisions/ADR-005-compass-cli-for-mechanical-work.md
   - lessons/LESSON-no-agent-bookkeeping.md
-  - plans/PLAN-002-compass-cli-implementation.md
-  - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   bayesian:
   - research/RESEARCH-scientific-method-in-compass.md
   bench-design:
@@ -40,7 +41,7 @@ tags:
   bm25:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   bookkeeping:
-  - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
+  - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   busywork:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   cache:
@@ -52,17 +53,20 @@ tags:
   classification:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
   claude-code:
-  - research/RESEARCH-cli-and-hook-command-contract.md
+  - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   cleanup:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
   cli:
-  - decisions/ADR-005-compass-cli-for-mechanical-work.md
+  - compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work.md
+  - compass-cli/plans/PLAN-002-compass-cli-implementation.md
+  - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
+  - compass-cli/research/RESEARCH-cli-token-reduction-measurement.md
   - decisions/ADR-007-decision-coverage-mechanism.md
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
-  - plans/PLAN-002-compass-cli-implementation.md
-  - research/RESEARCH-cli-and-hook-command-contract.md
-  - research/RESEARCH-cli-token-reduction-measurement.md
+  - plans/PLAN-003-hybrid-hierarchy.md
+  - plans/PLAN-004-decision-coverage.md
+  - plans/PLAN-005-model-table.md
   - research/RESEARCH-decision-coverage-impl.md
   - research/RESEARCH-hybrid-hierarchy-impl.md
   - research/RESEARCH-model-resolution-impl.md
@@ -71,7 +75,7 @@ tags:
   codex:
   - specs/SPEC-006-multi-host-agent-cli-support.md
   command-hook:
-  - research/RESEARCH-cli-and-hook-command-contract.md
+  - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   compass-cli:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   competitive:
@@ -92,6 +96,7 @@ tags:
   cost:
   - decisions/ADR-008-model-resolution-table.md
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
+  - plans/PLAN-005-model-table.md
   - research/RESEARCH-model-resolution-impl.md
   - specs/SPEC-008-central-model-resolution-table.md
   counters:
@@ -106,6 +111,7 @@ tags:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
   decision-coverage:
   - decisions/ADR-007-decision-coverage-mechanism.md
+  - plans/PLAN-004-decision-coverage.md
   - research/RESEARCH-decision-coverage-impl.md
   - research/RESEARCH-gsd-core-improvements-for-compass.md
   - specs/SPEC-007-decision-coverage-tracing.md
@@ -142,7 +148,7 @@ tags:
   fail-loud:
   - decisions/ADR-007-decision-coverage-mechanism.md
   fail-safe:
-  - research/RESEARCH-cli-and-hook-command-contract.md
+  - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   false-positives:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   - lessons/LESSON-wikilink-validator-skip-code.md
@@ -156,6 +162,7 @@ tags:
   - research/RESEARCH-okf-improvements-for-compass.md
   gates:
   - decisions/ADR-007-decision-coverage-mechanism.md
+  - plans/PLAN-004-decision-coverage.md
   - research/RESEARCH-decision-coverage-impl.md
   - specs/SPEC-007-decision-coverage-tracing.md
   git:
@@ -184,6 +191,7 @@ tags:
   hierarchy:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
+  - plans/PLAN-003-hybrid-hierarchy.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - research/RESEARCH-hybrid-hierarchy-impl.md
   - specs/SPEC-001-compass-vision-and-architecture.md
@@ -193,25 +201,25 @@ tags:
   hook-type:
   - lessons/LESSON-hook-type-prompt-no-skills.md
   hooks:
+  - compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work.md
+  - compass-cli/plans/PLAN-002-compass-cli-implementation.md
+  - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
+  - compass-cli/research/RESEARCH-cli-token-reduction-measurement.md
+  - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/ADR-002-retrospective-lessons-subsystem.md
-  - decisions/ADR-005-compass-cli-for-mechanical-work.md
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   - lessons/LESSON-hook-if-clause-no-or.md
   - lessons/LESSON-hook-type-prompt-no-skills.md
   - lessons/LESSON-no-agent-bookkeeping.md
   - plans/PLAN-001-lessons-and-index-implementation.md
-  - plans/PLAN-002-compass-cli-implementation.md
-  - research/RESEARCH-cli-and-hook-command-contract.md
-  - research/RESEARCH-cli-token-reduction-measurement.md
   - research/RESEARCH-lessons-and-index-architecture.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
-  - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   host-adapter:
   - specs/SPEC-006-multi-host-agent-cli-support.md
   hot-path:
+  - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/ADR-004-hierarchical-specs-with-facets.md
-  - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   humanlayer:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
@@ -221,7 +229,7 @@ tags:
   hypothesis:
   - research/RESEARCH-scientific-method-in-compass.md
   hypothesis-confirmed:
-  - research/RESEARCH-cli-token-reduction-measurement.md
+  - compass-cli/research/RESEARCH-cli-token-reduction-measurement.md
   hypothesis-falsified:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   if-clause:
@@ -251,6 +259,7 @@ tags:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
   - plans/PLAN-001-lessons-and-index-implementation.md
+  - plans/PLAN-003-hybrid-hierarchy.md
   - research/RESEARCH-lessons-and-index-architecture.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
   line-endings:
@@ -261,9 +270,9 @@ tags:
   mcp:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   mcp-rejected:
-  - decisions/ADR-005-compass-cli-for-mechanical-work.md
+  - compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work.md
   measurement:
-  - research/RESEARCH-cli-token-reduction-measurement.md
+  - compass-cli/research/RESEARCH-cli-token-reduction-measurement.md
   memgpt:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
@@ -279,10 +288,12 @@ tags:
   - research/RESEARCH-evaluation-benchmarks.md
   migration:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
+  - plans/PLAN-003-hybrid-hierarchy.md
   - research/RESEARCH-hybrid-hierarchy-impl.md
   - specs/SPEC-010-universal-hybrid-hierarchy.md
   model-policy:
   - decisions/ADR-008-model-resolution-table.md
+  - plans/PLAN-005-model-table.md
   - research/RESEARCH-model-resolution-impl.md
   - specs/SPEC-008-central-model-resolution-table.md
   multi-host:
@@ -304,6 +315,7 @@ tags:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   parser:
   - decisions/ADR-007-decision-coverage-mechanism.md
+  - plans/PLAN-004-decision-coverage.md
   - research/RESEARCH-decision-coverage-impl.md
   per-agent:
   - specs/SPEC-008-central-model-resolution-table.md
@@ -315,6 +327,7 @@ tags:
   - specs/SPEC-009-configurable-pipeline-workflows.md
   planner:
   - decisions/ADR-007-decision-coverage-mechanism.md
+  - plans/PLAN-004-decision-coverage.md
   planning:
   - specs/SPEC-007-decision-coverage-tracing.md
   plugin-config:
@@ -331,8 +344,8 @@ tags:
   - research/RESEARCH-gsd-core-improvements-for-compass.md
   - research/RESEARCH-okf-improvements-for-compass.md
   python:
-  - decisions/ADR-005-compass-cli-for-mechanical-work.md
-  - plans/PLAN-002-compass-cli-implementation.md
+  - compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work.md
+  - compass-cli/plans/PLAN-002-compass-cli-implementation.md
   python-cli:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   rag:
@@ -342,7 +355,7 @@ tags:
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - specs/SPEC-003-hierarchical-vault-organization.md
   reference:
-  - research/RESEARCH-cli-and-hook-command-contract.md
+  - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   reinertsen:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   replication:
@@ -366,6 +379,7 @@ tags:
   - research/RESEARCH-scientific-method-in-compass.md
   setup:
   - decisions/ADR-008-model-resolution-table.md
+  - plans/PLAN-005-model-table.md
   skill:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   skill-design:
@@ -388,6 +402,7 @@ tags:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   sync:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
+  - plans/PLAN-003-hybrid-hierarchy.md
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   tag-index:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
@@ -399,13 +414,14 @@ tags:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   tiers:
   - decisions/ADR-008-model-resolution-table.md
+  - plans/PLAN-005-model-table.md
   token-efficiency:
+  - compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work.md
+  - compass-cli/plans/PLAN-002-compass-cli-implementation.md
+  - compass-cli/research/RESEARCH-cli-token-reduction-measurement.md
+  - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/ADR-003-drop-counter-file-jit-compute.md
-  - decisions/ADR-005-compass-cli-for-mechanical-work.md
   - lessons/LESSON-no-agent-bookkeeping.md
-  - plans/PLAN-002-compass-cli-implementation.md
-  - research/RESEARCH-cli-token-reduction-measurement.md
-  - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   tokens:
   - decisions/ADR-008-model-resolution-table.md
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
@@ -414,30 +430,35 @@ tags:
   tool-quirks:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
   traceability:
+  - plans/PLAN-004-decision-coverage.md
   - research/RESEARCH-decision-coverage-impl.md
   - specs/SPEC-007-decision-coverage-tracing.md
   units:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
+  - plans/PLAN-003-hybrid-hierarchy.md
   units-of-work:
   - research/RESEARCH-hybrid-hierarchy-impl.md
   - specs/SPEC-010-universal-hybrid-hierarchy.md
   update:
   - decisions/ADR-008-model-resolution-table.md
   - lessons/LESSON-installer-removes-only-what-it-installed.md
+  - plans/PLAN-005-model-table.md
   user-files:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
   validate:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
+  - plans/PLAN-003-hybrid-hierarchy.md
   validation:
+  - compass-cli/plans/PLAN-002-compass-cli-implementation.md
+  - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   - lessons/LESSON-wikilink-validator-skip-code.md
-  - plans/PLAN-002-compass-cli-implementation.md
   - research/RESEARCH-decision-coverage-impl.md
-  - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - specs/SPEC-007-decision-coverage-tracing.md
   validator:
   - decisions/ADR-007-decision-coverage-mechanism.md
+  - plans/PLAN-004-decision-coverage.md
   vault:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
@@ -455,6 +476,7 @@ tags:
   wikilinks:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
   - lessons/LESSON-wikilink-validator-skip-code.md
+  - plans/PLAN-003-hybrid-hierarchy.md
   - research/RESEARCH-hybrid-hierarchy-impl.md
   windows:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md

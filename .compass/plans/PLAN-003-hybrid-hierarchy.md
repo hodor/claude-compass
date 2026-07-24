@@ -1,7 +1,7 @@
 ---
 title: Hybrid Hierarchy Implementation (Unit Folders)
 type: plan
-status: approved
+status: done
 confidence: high
 area: architecture
 tags: [hierarchy, units, cli, wikilinks, migration, sync, validate, lessons]
@@ -107,7 +107,7 @@ Golden fixtures MUST land before any link-identity code changes, or the tests en
   - Automated verification: grep each file for the path-qualified convention and `type: unit` -> present; `compass validate` on the real vault stays clean (docs use fenced examples, which validate skips).
   - Manual verification: read the three edited docs end-to-end for coherence; confirm no contradiction with the flat-vault instructions that remain.
 
-- [ ] TASK-021: Migrate the compass-cli set (dogfood, final validation) - complexity: M, depends_on: TASK-019, TASK-020, files: [.compass/specs/SPEC-004-mechanical-work-off-the-agent-budget.md, .compass/decisions/ADR-005-compass-cli-for-mechanical-work.md, .compass/plans/PLAN-002-compass-cli-implementation.md, .compass/research/RESEARCH-cli-and-hook-command-contract.md, .compass/research/RESEARCH-cli-token-reduction-measurement.md, .compass/index.md, .compass/compass-cli/], decisions: [ADR-006-hybrid-hierarchy-implementation/D-05, ADR-006-hybrid-hierarchy-implementation/D-06]
+- [x] TASK-021: Migrate the compass-cli set (dogfood, final validation) - complexity: M, depends_on: TASK-019, TASK-020, files: [.compass/specs/SPEC-004-mechanical-work-off-the-agent-budget.md, .compass/decisions/ADR-005-compass-cli-for-mechanical-work.md, .compass/plans/PLAN-002-compass-cli-implementation.md, .compass/research/RESEARCH-cli-and-hook-command-contract.md, .compass/research/RESEARCH-cli-token-reduction-measurement.md, .compass/index.md, .compass/compass-cli/], decisions: [ADR-006-hybrid-hierarchy-implementation/D-05, ADR-006-hybrid-hierarchy-implementation/D-06]
   - Run `compass unit-check` (detection), then `compass make-unit compass-cli` with the five files ADR-006 D-06 names. Borderline members (SPEC-005, the two CLI handoffs) stay put per research Finding 22 unless the human says otherwise at execution. This is the acceptance test of the whole plan on real data.
   - Automated verification: `compass validate` exit 0 with zero broken and zero ambiguous links; `compass sync` idempotent (second run changes nothing); `git log --follow .compass/compass-cli/specs/SPEC-004-*.md` shows pre-move history; full unittest suite green.
   - Manual verification: human opens `.compass/compass-cli/` and confirms the unit reads as one body of work; reviews the rewritten root index and the unit index; confirms in-Obsidian link navigation works.

@@ -61,7 +61,7 @@ CLI built, command-hook cutover live, ~99.8% bookkeeping-token reduction confirm
 
 Pipeline state: research DONE (3 docs) -> ADR-006/007/008 DONE -> PLAN-003/004/005 approved 2026-07-24 -> BUILDING. [[SPEC-009-configurable-pipeline-workflows]] deferred to [[backlog]].
 
-### Building: [[PLAN-003-hybrid-hierarchy]] (first, owns plugin/cli/)
+### Done: [[PLAN-003-hybrid-hierarchy]] (all 9 tasks, 2026-07-24)
 
 - [x] TASK-013: Golden fixtures of current sync/validate (S) - 87 tests green, goldens hand-verified, committed 4c44a05 (2026-07-24)
 - [x] TASK-014: Unit-aware discovery + resolvable_names_map in vaultlib (L) - flat records field-identical, zero real-vault regressions, committed 4c44a05 (2026-07-24)
@@ -69,9 +69,9 @@ Pipeline state: research DONE (3 docs) -> ADR-006/007/008 DONE -> PLAN-003/004/0
 - [x] TASK-016: validate ambiguity map + unified resolution + unclassified report (M) - 109 green, real-vault output byte-identical, committed 68ff9ef (2026-07-24)
 - [x] TASK-017: tree / next-num / fix-frontmatter unit-awareness (M) - 4 new tests, traversal scopes rejected, type-invention bug fixed (2026-07-24)
 - [x] TASK-018: compass unit-check (type-spread detection, report-only) (M) - finds the compass-cli set on the real vault, committed 68ff9ef (2026-07-24)
-- [ ] TASK-019: compass make-unit (migration operation) (L) - BUILDING
+- [x] TASK-019: compass make-unit (migration operation) (L) - dry-run default, refusals exit 1, git history preserved, committed dda2d7f (2026-07-24)
 - [x] TASK-020: path-qualified links in wikilinks rule + obsidian/methodology skills (M) - documents landed behavior only (2026-07-24)
-- [ ] TASK-021: Migrate the compass-cli set (dogfood, acceptance) (M)
+- [x] TASK-021: Migrate the compass-cli set (dogfood, acceptance) (M) - .compass/compass-cli/ live, validate clean, history preserved (2026-07-24)
 
 ### Queued: [[PLAN-004-decision-coverage]] (parallel with 005 after 003)
 
