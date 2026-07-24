@@ -79,7 +79,8 @@ Pipeline state: research DONE (3 docs) -> ADR-006/007/008 DONE -> PLAN-003/004/0
 
 ### Queued: [[PLAN-005-model-table]] (parallel with 004 after 003)
 
-- [ ] TASK-030 modelslib (L) | TASK-031 resolve-model + models (M) | TASK-032 apply-models (L) | TASK-033 normalize 13 templates (S) | TASK-034 setup/update integration (M) | TASK-035 dogfood verification (S)
+- [x] TASK-030/031/032: modelslib + resolve-model/models + apply-models - 58 new tests, planner->opus high, vault-locator->haiku low (2026-07-24)
+- [ ] TASK-033 normalize 13 templates (S) | TASK-034 setup/update integration (M) | TASK-035 dogfood verification (S)
 
 ## Next Up
 

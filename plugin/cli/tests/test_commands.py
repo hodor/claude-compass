@@ -1,4 +1,5 @@
-"""Tests for Phase 2 read-only commands and validate."""
+"""Tests for the read-only CLI commands, validate, make-unit, and the model
+resolution commands."""
 
 import io
 import os
@@ -12,8 +13,11 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import modelslib  # noqa: E402
 import vaultlib  # noqa: E402
-from commands import make_unit, next_num, tree, hot_path, unit_check, validate  # noqa: E402
+from commands import (  # noqa: E402
+    make_unit, models, next_num, resolve_model, tree, hot_path, unit_check, validate,
+)
 
 
 def make_vault(test_case):
@@ -333,6 +337,100 @@ class UnitCheckTests(unittest.TestCase):
         with redirect_stdout(out):
             self.assertEqual(unit_check.run([]), 0)
         self.assertIn("no candidates", out.getvalue())
+
+
+class ModelCommandBase(unittest.TestCase):
+    """Shared fixture: an isolated vault and a COMPASS_*-free environment."""
+
+    def setUp(self):
+        self.root = make_vault(self)
+        (self.root / "meta").mkdir()
+        with_vault_env(self, self.root)
+        saved = {
+            key: os.environ.pop(key)
+            for key in list(os.environ)
+            if key.startswith("COMPASS_MODEL_") or key.startswith("COMPASS_EFFORT_")
+        }
+        self.addCleanup(os.environ.update, saved)
+
+    def run_command(self, module, args):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = module.run(args)
+        return code, out.getvalue(), err.getvalue()
+
+
+class ResolveModelTests(ModelCommandBase):
+    def test_stdout_is_exactly_the_resolved_pair(self):
+        code, out, err = self.run_command(resolve_model, ["planner"])
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "opus high\n")
+        self.assertEqual(err, "")
+
+    def test_cheap_agent_resolves_haiku_low(self):
+        code, out, _ = self.run_command(resolve_model, ["vault-locator"])
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "haiku low\n")
+
+    def test_unknown_agent_inherit_exit_zero(self):
+        code, out, _ = self.run_command(resolve_model, ["no-such-agent"])
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "inherit high\n")
+
+    def test_warnings_go_to_stderr_result_stays_clean(self):
+        (self.root / "meta" / "models.yaml").write_text(
+            ":::garbage:::\n", encoding="utf-8"
+        )
+        code, out, err = self.run_command(resolve_model, ["planner"])
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "opus high\n")
+        self.assertIn("models.yaml", err)
+
+    def test_usage_error_exits_one_never_two(self):
+        code, _, err = self.run_command(resolve_model, [])
+        self.assertEqual(code, 1)
+        self.assertIn("usage", err)
+
+
+class ModelsTests(ModelCommandBase):
+    def test_table_lists_all_roster_rows(self):
+        code, out, _ = self.run_command(models, [])
+        self.assertEqual(code, 0)
+        lines = out.strip().splitlines()
+        # Header plus the 13 agents plus the detached index-summary job row.
+        self.assertEqual(len(lines), 15)
+        self.assertIn("source", lines[0])
+        for agent in modelslib.DEFAULT_ROSTER:
+            self.assertTrue(any(line.startswith(agent) for line in lines[1:]), agent)
+        planner_row = next(line for line in lines if line.startswith("planner"))
+        self.assertIn("opus", planner_row)
+        self.assertIn("built-in", planner_row)
+        locator_row = next(line for line in lines if line.startswith("vault-locator"))
+        self.assertIn("haiku", locator_row)
+        self.assertIn("low", locator_row)
+
+    def test_project_override_shows_project_source(self):
+        (self.root / "meta" / "models.yaml").write_text(
+            "agents:\n  vault-locator: sonnet\n", encoding="utf-8"
+        )
+        code, out, _ = self.run_command(models, [])
+        self.assertEqual(code, 0)
+        locator_row = next(
+            line for line in out.splitlines() if line.startswith("vault-locator")
+        )
+        self.assertIn("sonnet", locator_row)
+        self.assertIn("project", locator_row)
+
+    def test_env_override_shows_env_source(self):
+        os.environ["COMPASS_MODEL_BUILDER"] = "opus"
+        self.addCleanup(os.environ.pop, "COMPASS_MODEL_BUILDER", None)
+        code, out, _ = self.run_command(models, [])
+        self.assertEqual(code, 0)
+        builder_row = next(
+            line for line in out.splitlines() if line.startswith("builder")
+        )
+        self.assertIn("opus", builder_row)
+        self.assertIn("env", builder_row)
 
 
 class MakeUnitTests(unittest.TestCase):
