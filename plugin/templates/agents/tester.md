@@ -3,7 +3,7 @@ name: tester
 description: "Automatically spawned after the builder finishes via SubagentStop hook. Writes tests from an adversarial perspective - tries to break the code, not prove it works. Runs the full test suite."
 tools: Read, Grep, Glob, Write, Edit, Bash, Agent
 skills: obsidian, methodology, lessons
-model: inherit
+model: sonnet
 effort: high
 maxTurns: 30
 color: red

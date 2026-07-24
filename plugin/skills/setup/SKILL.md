@@ -84,11 +84,24 @@ echo "CLI copied: $(ls .claude/cli/commands/*.py | wc -l) command modules"
 if ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
   echo "WARNING: neither python3 nor python found on PATH. The vault-sync hook will be a silent no-op until a Python 3 interpreter is installed. The CLI never blocks writes (it can only exit 0/1), so nothing breaks - sync just will not run. Install Python 3, or run the CLI manually."
 fi
+
+# Write the resolved model policy into the copied agents. Rewrites only the
+# model:/effort: frontmatter of the 13 Compass agent files; any other file in
+# .claude/agents/ is user-authored and never touched. --dir is explicit because
+# the default target resolves through the .compass vault, which step 3 has not
+# created yet.
+if command -v python3 >/dev/null 2>&1; then
+  python3 .claude/cli/compass apply-models --dir .claude/agents
+elif command -v python >/dev/null 2>&1; then
+  python .claude/cli/compass apply-models --dir .claude/agents
+fi
 ```
 
 Run as one Bash call. Verify 13 agents, 4 rules files, and that `.claude/cli/compass` exists. If the plugin can't be found, ask the human for the path.
 
 After this, the project is self-contained - anyone who clones gets agents, skills, and rules without installing the plugin.
+
+`compass apply-models` writes the model policy (which model and effort each agent runs on) into the copied agent frontmatter. The defaults ship in the CLI; a project retunes them via `.compass/meta/models.yaml` (remap a tier or pin a single agent), then re-runs `compass apply-models`. Claude Code hot-reloads `.claude/agents/`, so a re-apply takes effect without restarting the session. Inspect the resolved roster with `compass models`. The host env var `CLAUDE_CODE_SUBAGENT_MODEL`, when set, overrides all subagent frontmatter and masks the table.
 
 **Record the plugin source.** After the copy succeeds, write `.compass/meta/plugin.yaml`:
 
@@ -185,7 +198,7 @@ If `.claude/hooks/hooks.json` or `.claude/settings.json` already exists, merge. 
   archive/
 ```
 
-Setup does NOT create `vision.md` - `/compass:vision` does that. Setup does NOT create specs - `/compass:spec` does that. Setup does NOT create a counter file - numbering is computed JIT from the filesystem.
+Setup does NOT create `vision.md` - `/compass:vision` does that. Setup does NOT create specs - `/compass:spec` does that. Setup does NOT create a counter file - numbering is computed JIT from the filesystem. Setup does NOT create `meta/models.yaml` - it is the optional model-policy override (see step 2), added only when a project retunes the defaults.
 
 `lessons-catalog.yaml`:
 ```yaml
@@ -251,7 +264,7 @@ Present and wait for approval. Write only after approval.
 
 ### 5. Verify
 
-- [ ] `.claude/agents/` has 9 Compass agents.
+- [ ] `.claude/agents/` has 13 Compass agents.
 - [ ] `.claude/rules/` has 4 rule files.
 - [ ] `.compass/meta/lessons-catalog.yaml` exists.
 - [ ] `.compass/meta/plugin.yaml` exists with `name`, `version`, `source`, `installed_at`.

@@ -274,7 +274,7 @@ Unit artifacts are linked path-qualified (`[[<unit>/specs/SPEC-001-name]]`); roo
 
 ## Pattern discovery
 
-Use the `pattern-finder` agent before writing new code to see how existing code handles similar patterns. Returns snippets with `file:line` references, shows variations, documents rather than critiques. Runs on `sonnet` for speed.
+Use the `pattern-finder` agent before writing new code to see how existing code handles similar patterns. Returns snippets with `file:line` references, shows variations, documents rather than critiques. Which model and effort each agent runs on comes from the model policy table; inspect it with `compass models`.
 
 Use it when: "How does this codebase handle X?" before implementing X.
 

@@ -3,8 +3,8 @@ name: vault-locator
 description: "Locates documents in the .compass/ vault relevant to a topic. Returns paths grouped by document type (specs, research, plans, decisions, lessons, handoffs). Cheap and fast - doesn't read file contents. Use before vault-analyzer to filter candidates."
 tools: Grep, Glob, LS
 disallowedTools: Read, Write, Edit, NotebookEdit
-model: sonnet
-effort: high
+model: haiku
+effort: low
 maxTurns: 15
 color: cyan
 permissionMode: bypassPermissions

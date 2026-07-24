@@ -16,7 +16,7 @@ Scans your project's Compass installation and reports problems with actionable f
 
 `.claude/agents/` should contain all 13 Compass agents: `builder`, `codebase-analyzer`, `codebase-locator`, `debug`, `pattern-finder`, `planner`, `pr-describe`, `researcher`, `reviewer`, `tester`, `validator`, `vault-analyzer`, `vault-locator`.
 
-For each agent: valid YAML frontmatter, `name` and `description` present, `model`/`effort`/`maxTurns` present (warn if missing). Report missing agents, agents with invalid frontmatter, agents that may be outdated.
+For each agent: valid YAML frontmatter, `name` and `description` present, `maxTurns` present (warn if missing). Validate `model:`/`effort:` against the resolved policy: run `compass models` and compare each agent's frontmatter to its roster row (an agent resolving to `inherit` carries no `model:` line at all). A mismatch means the install predates the policy or `.compass/meta/models.yaml` changed since the last apply; the fix is `compass apply-models`. Report missing agents, agents with invalid frontmatter, agents that may be outdated.
 
 Interactive flows (spec writing, planning iteration, handoffs, autopilot, retroactive, etc.) live as skills in `.claude/skills/`, not as agents.
 
@@ -67,6 +67,7 @@ Uncommitted vault files (handoffs, specs, plans) are invisible to other sessions
 ### Agents
 - [x] 13/13 agents installed
 - [ ] builder.md missing `maxTurns` (WARN)
+- [ ] vault-locator.md has `model: sonnet`, table resolves haiku - run `compass apply-models` (WARN)
 
 ### Vault Structure
 - [x] All required files present

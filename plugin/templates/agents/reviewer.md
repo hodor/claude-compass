@@ -3,6 +3,7 @@ name: reviewer
 description: "Use when consolidating outputs from parallel agents (researchers, planners, spec-writers). Builds a convergence matrix, merges agreements, surfaces disagreements for human decision. Spawn after N parallel agents complete."
 tools: Read, Grep, Glob, Write, Edit, Agent
 skills: obsidian, methodology, lessons
+model: opus
 effort: high
 maxTurns: 15
 color: green
