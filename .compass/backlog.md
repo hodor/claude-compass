@@ -7,6 +7,10 @@ updated: 2026-05-24
 
 > PLAN-001 Phases 3-6 are now tracked in [[active]] under "Next Up" / "In Progress".
 
+## Candidate specs (raised, not yet drafted)
+
+- [ ] **Lesson-coverage parity (Roger, 2026-07-23).** Question raised while approving unit-nested lessons: lessons surface at plan/build time by tag *search* (advisory, unverified), while ADR rulings are getting *coverage* (enumerable + mechanically audited) via [[SPEC-007-decision-coverage-tracing]]. Should high-score lessons matching a task's area get the same treatment - plan records which lessons were consulted, validator audits that none were skipped? Needs its own spec; interacts with the lessons catalog and the validator.
+
 ## Deferred specs (not current work)
 
 - [ ] **[[SPEC-009-configurable-pipeline-workflows]] (deferred, Roger 2026-07-23).** Draft exists with D-01 (workflows configure cross-phase contracts, not just order) recorded. Deliberately NOT today's work: it ripples through every skill and must be reviewed against SPEC-007's coverage roles and the pipeline rules before any build. Pick up after the hierarchy work ([[SPEC-010-universal-hybrid-hierarchy]]) lands.
