@@ -7,6 +7,10 @@ updated: 2026-05-24
 
 > PLAN-001 Phases 3-6 are now tracked in [[active]] under "Next Up" / "In Progress".
 
+## Deferred specs (not current work)
+
+- [ ] **[[SPEC-009-configurable-pipeline-workflows]] (deferred, Roger 2026-07-23).** Draft exists with D-01 (workflows configure cross-phase contracts, not just order) recorded. Deliberately NOT today's work: it ripples through every skill and must be reviewed against SPEC-007's coverage roles and the pipeline rules before any build. Pick up after the hierarchy work ([[SPEC-010-universal-hybrid-hierarchy]]) lands.
+
 ## Next research effort (queued 2026-06-14)
 
 - [ ] **Diagnose and redesign the human-review model in plans.** Problem (Roger, 2026-06-14): phase pauses rarely land on anything he actually needs to review, so they read as interruptions, not checkpoints - "I don't think it's working well." Phase boundaries should be driven by *dependencies*, not by review checkpoints; lesson extraction does not justify a boundary (run it once at the end). The open question is what *should* trigger a human look - event-based? decision-point-based? confidence-based? Diagnose why phase-gated review fails before proposing a fix (do not jump to a solution); survey how other agentic-dev systems checkpoint humans. Touches `build`, `plan`, `methodology`, `extract-lessons` skills. Becomes a SPEC + research effort. [[PLAN-002-compass-cli-implementation]] already applies the interim rule (phases = dependencies, lessons at end).
@@ -22,6 +26,11 @@ updated: 2026-05-24
 - [x] **Separated update from bootstrap; renamed bootstrap -> setup.** (2026-06-15) `init` was rejected: it shadows Claude Code's built-in `/init` in the bare-invocation model that `.claude/skills/` copies use; `setup`/`update` are collision-free. `/compass:update` is git-based and removes skills deleted in the source (handles the rename). setup is first-time-only. All references fixed; plugin v0.3.0. Verified by an end-to-end update dry-run against the live repo.
 - [x] **Rewrote stale README for v0.3.0.** (2026-06-15) Added the CLI + command-hook section, `/compass:update`, the missing commands, and fixed the dropped-"counters" / old-tester-hook staleness.
 - [ ] **Iteratively test compass against real repos until install works perfectly.** Use real repos (product-owner, others) as fixtures - their `.compass/` vaults stay READ-ONLY. Loop: run `/compass:update` (and `/compass:bootstrap` for fresh setup) -> observe what fails -> fix the skills/CLI in THIS repo -> repeat until install + `compass sync` + `compass validate` work cleanly on every test repo. Track which repos pass. First fixture finding (2026-06-14): the CLI was overfit to the dogfood vault - fixed in commit 02414a5 by generalizing type-dir discovery and validate severity.
+
+## Finish SPEC-004 for Stop/SubagentStop hooks (queued 2026-06-15, from iwyc-unreal investigation)
+
+- [ ] **Convert the `Stop` and `SubagentStop` hooks from `type: agent` to command hooks.** SPEC-004 moved PostToolUse to a command (per-write, ~0 tokens) but left these two as agents. `Stop` (extract-lessons backstop) spawns an agent on EVERY turn-end; `SubagentStop` (capture) spawns one per subagent. Both do mechanical work - a glob check for unprocessed phase-reports, and writing a subagent report verbatim - that belongs in `compass` commands (e.g. `compass stop-check`, `compass capture-subagent`), the same way `compass sync` replaced the PostToolUse agent. This is the biggest remaining ongoing Compass token cost: it fires per-turn, not just on vault writes. Extends [[SPEC-004-mechanical-work-off-the-agent-budget]] / [[ADR-005-compass-cli-for-mechanical-work]]; same `[[LESSON-no-agent-bookkeeping]]` principle.
+- [ ] **Bootstrap/setup should not leave a stale `settings.local.json` tester hook.** Old installs (iwyc-unreal, product-owner) still carry an agent-type "tester-after-builder" SubagentStop hook in `settings.local.json`, redundant with the new capture hook and spawning a full tester agent per builder. Decide: is auto-test-after-builder wanted at all (vs `/compass:build`'s fix loop)? If not, have setup/update remove it; if yes, make it a deliberate, documented opt-in.
 
 ## Other
 

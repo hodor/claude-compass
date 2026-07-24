@@ -16,6 +16,8 @@ tags:
   argparse:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   - research/RESEARCH-cli-and-hook-command-contract.md
+  auto-maintenance:
+  - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   autocrlf:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   automation:
@@ -53,6 +55,8 @@ tags:
   - research/RESEARCH-cli-token-reduction-measurement.md
   command-hook:
   - research/RESEARCH-cli-and-hook-command-contract.md
+  compass-cli:
+  - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   config:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
   content-aware:
@@ -76,6 +80,8 @@ tags:
   - specs/SPEC-002-lessons-and-index-subsystem.md
   deduplication:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
+  delete:
+  - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   denning:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   discovery:
@@ -110,6 +116,7 @@ tags:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
   handoff:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
+  - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   hang:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   hidden-dirs:
@@ -120,6 +127,7 @@ tags:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - specs/SPEC-003-hierarchical-vault-organization.md
+  - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   hook-type:
   - lessons/LESSON-hook-type-prompt-no-skills.md
   hooks:
@@ -140,6 +148,7 @@ tags:
   hot-path:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
+  - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   humanlayer:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   hypothesis:
@@ -151,9 +160,11 @@ tags:
   if-clause:
   - lessons/LESSON-hook-if-clause-no-or.md
   index:
+  - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   - plans/PLAN-001-lessons-and-index-implementation.md
   - research/RESEARCH-lessons-and-index-architecture.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
+  - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   install:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
   jit:
@@ -192,6 +203,8 @@ tags:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   obsidian:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
+  on-hold:
+  - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   overfit:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   permission-rules:
@@ -240,10 +253,16 @@ tags:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
   - lessons/LESSON-hook-type-prompt-no-skills.md
   - plans/PLAN-001-lessons-and-index-implementation.md
+  spec-005:
+  - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   spec-redesign:
   - handoffs/2026-03-12_review-all-plugin-files.md
   stdin:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
+  summaries:
+  - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
+  sync:
+  - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   tag-index:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   taxonomy:
@@ -259,6 +278,8 @@ tags:
   - plans/PLAN-002-compass-cli-implementation.md
   - research/RESEARCH-cli-token-reduction-measurement.md
   - specs/SPEC-004-mechanical-work-off-the-agent-budget.md
+  tokens:
+  - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   tool-quirks:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
   update:
