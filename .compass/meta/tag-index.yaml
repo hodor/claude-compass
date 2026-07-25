@@ -78,6 +78,8 @@ tags:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   compass-cli:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
+  compass-fit:
+  - research/RESEARCH-hermes-vs-compass-fit.md
   competitive:
   - research/RESEARCH-gsd-core-improvements-for-compass.md
   config:
@@ -141,6 +143,8 @@ tags:
   evaluation:
   - lessons/LESSON-test-driven-tasks-dont-discriminate.md
   - research/RESEARCH-evaluation-benchmarks.md
+  extension-surface:
+  - research/RESEARCH-hermes-agent-capabilities.md
   facets:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
@@ -185,6 +189,9 @@ tags:
   - specs/SPEC-001-compass-vision-and-architecture.md
   - specs/SPEC-008-central-model-resolution-table.md
   - specs/SPEC-009-configurable-pipeline-workflows.md
+  hermes-agent:
+  - research/RESEARCH-hermes-agent-capabilities.md
+  - research/RESEARCH-hermes-vs-compass-fit.md
   hidden-dirs:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
   hierarchical-specs:
@@ -218,6 +225,9 @@ tags:
   - specs/SPEC-002-lessons-and-index-subsystem.md
   host-adapter:
   - specs/SPEC-006-multi-host-agent-cli-support.md
+  host-evaluation:
+  - research/RESEARCH-hermes-agent-capabilities.md
+  - research/RESEARCH-hermes-vs-compass-fit.md
   hot-path:
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/ADR-004-hierarchical-specs-with-facets.md
@@ -256,6 +266,9 @@ tags:
   - research/RESEARCH-okf-improvements-for-compass.md
   large-vault:
   - research/RESEARCH-rag-fit-for-large-vaults.md
+  learning-loop:
+  - research/RESEARCH-hermes-agent-capabilities.md
+  - research/RESEARCH-hermes-vs-compass-fit.md
   lessons:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
@@ -412,6 +425,8 @@ tags:
   - research/RESEARCH-gsd-core-improvements-for-compass.md
   stdin:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
+  strategy:
+  - research/RESEARCH-hermes-vs-compass-fit.md
   subagents:
   - lessons/LESSON-long-agents-stall-resume-them.md
   - lessons/LESSON-subagent-worktrees-fork-stale.md

@@ -9,6 +9,8 @@ updated: 2026-05-24
 
 ## Candidate specs (raised, not yet drafted)
 
+- [ ] **Hermes-agent portable techniques (from [[RESEARCH-hermes-vs-compass-fit]], 2026-07-25).** Four host-agnostic mechanisms worth Compass specs of their own: (1) FTS5 session search over past conversations - Compass has NO session-recall equivalent beyond handoffs, and this also serves Roger's fast-contextual-lesson-retrieval wish; (2) the curator's pre-mutation snapshot/rollback gate - a reversibility mechanism /compass:consolidate lacks today; (3) the 50%-of-context compression trigger with head/tail protection; (4) the offline trajectory compressor (bench/ relevance). Also: hermes is a viable SPEC-006 host candidate - its shell-hooks system speaks Claude Code's hook protocol (post_tool_call + matcher = compass sync port, classification (a)); gaps are named subagent roles (adapter) and human approval gates (no equivalent, must be designed).
+
 - [ ] **Lesson-coverage parity (Roger, 2026-07-23).** Question raised while approving unit-nested lessons: lessons surface at plan/build time by tag *search* (advisory, unverified), while ADR rulings are getting *coverage* (enumerable + mechanically audited) via [[SPEC-007-decision-coverage-tracing]]. Should high-score lessons matching a task's area get the same treatment - plan records which lessons were consulted, validator audits that none were skipped? Needs its own spec; interacts with the lessons catalog and the validator.
 
 ## Deferred specs (not current work)

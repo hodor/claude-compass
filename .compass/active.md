@@ -63,26 +63,15 @@ Pipeline state: COMPLETE AND VALIDATED (2026-07-24). Research -> ADR-006/007/008
 
 ### Done: [[PLAN-003-hybrid-hierarchy]] (all 9 tasks, 2026-07-24)
 
-- [x] TASK-013: Golden fixtures of current sync/validate (S) - 87 tests green, goldens hand-verified, committed 4c44a05 (2026-07-24)
-- [x] TASK-014: Unit-aware discovery + resolvable_names_map in vaultlib (L) - flat records field-identical, zero real-vault regressions, committed 4c44a05 (2026-07-24)
-- [x] TASK-015: sync path-qualified emission + unit sections + lessons aggregation (L) - 10 new tests, goldens regenerated per D-02 amendment; orchestrator ratified folder-path link form (`[[<unit>/<type>/<folder>]]`, map extended) (2026-07-24)
-- [x] TASK-016: validate ambiguity map + unified resolution + unclassified report (M) - 109 green, real-vault output byte-identical, committed 68ff9ef (2026-07-24)
-- [x] TASK-017: tree / next-num / fix-frontmatter unit-awareness (M) - 4 new tests, traversal scopes rejected, type-invention bug fixed (2026-07-24)
-- [x] TASK-018: compass unit-check (type-spread detection, report-only) (M) - finds the compass-cli set on the real vault, committed 68ff9ef (2026-07-24)
-- [x] TASK-019: compass make-unit (migration operation) (L) - dry-run default, refusals exit 1, git history preserved, committed dda2d7f (2026-07-24)
-- [x] TASK-020: path-qualified links in wikilinks rule + obsidian/methodology skills (M) - documents landed behavior only (2026-07-24)
-- [x] TASK-021: Migrate the compass-cli set (dogfood, acceptance) (M) - .compass/compass-cli/ live, validate clean, history preserved (2026-07-24)
+All 9 tasks done and validated: unit-aware CLI, make-unit migration, compass-cli unit live. Details in the plan; commits 4c44a05..fcbd291.
 
 ### Done: [[PLAN-004-decision-coverage]] (all 8 tasks, 2026-07-24)
 
-- [x] TASK-022/023/024: strip_fenced_code + decisionslib parser + real-vault corpus - 47 new tests, legacy ADRs none-present proven (2026-07-24)
-- [x] TASK-025/026: compass decisions + compass coverage - 19 new tests; all three plans mechanically PASS (7/7, 15/15, 6/6) (2026-07-24)
-- [x] TASK-027/028/029: planner gate + validator audit + D-NN convention docs - dogfood 7/9/6 IDs, three plans PASS (2026-07-24)
+All 8 tasks done and validated: three-outcome parser, decisions/coverage commands, planner gate, validator audit. Commits e48e55f..df4c3e4.
 
 ### Done: [[PLAN-005-model-table]] (all 6 tasks, 2026-07-24)
 
-- [x] TASK-030/031/032: modelslib + resolve-model/models + apply-models - 58 new tests, planner->opus high, vault-locator->haiku low (2026-07-24)
-- [x] TASK-033/034/035: 13 templates normalized (frontmatter-only diffs), setup/update run apply-models, dogfood verified incl. models.yaml override round-trip (2026-07-24)
+All 6 tasks done and validated: modelslib, resolve-model/models/apply-models, 13 templates normalized, dogfood proven. Commits 96ac14b, f0f9e99.
 
 ## Next Up
 

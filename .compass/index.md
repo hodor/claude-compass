@@ -39,6 +39,8 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-decision-coverage-impl]] - Decision Coverage Implementation: Format, Parser, Matcher, Gate, Migration
 - [[RESEARCH-hybrid-hierarchy-impl]] - Hybrid Hierarchy Implementation Impact: CLI, Skills, Wikilinks, Migration
 - [[RESEARCH-model-resolution-impl]] - Model Resolution Table: Current State, Mechanism, and Implementation Options
+- [[RESEARCH-hermes-agent-capabilities]] - hermes-agent (NousResearch): Capabilities and Extension Surface, Source-Verified
+- [[RESEARCH-hermes-vs-compass-fit]] - Hermes Agent vs Compass: Fit, Feasibility, and Strategic Options
 
 ## Plans
 
