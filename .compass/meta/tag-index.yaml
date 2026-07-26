@@ -176,6 +176,8 @@ tags:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   glob:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
+  graph-engineering:
+  - research/RESEARCH-graph-engineering-for-compass.md
   gsd:
   - research/RESEARCH-decision-coverage-impl.md
   - research/RESEARCH-gsd-core-improvements-for-compass.md
@@ -264,6 +266,8 @@ tags:
   - specs/SPEC-006-multi-host-agent-cli-support.md
   knowledge-format:
   - research/RESEARCH-okf-improvements-for-compass.md
+  knowledge-graph:
+  - research/RESEARCH-graph-engineering-for-compass.md
   large-vault:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   learning-loop:
@@ -362,6 +366,7 @@ tags:
   - research/RESEARCH-scientific-method-in-compass.md
   prior-art:
   - research/RESEARCH-decision-coverage-impl.md
+  - research/RESEARCH-graph-engineering-for-compass.md
   - research/RESEARCH-gsd-core-improvements-for-compass.md
   - research/RESEARCH-okf-improvements-for-compass.md
   python:
@@ -387,6 +392,7 @@ tags:
   - lessons/LESSON-long-agents-stall-resume-them.md
   retrieval:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
+  - research/RESEARCH-graph-engineering-for-compass.md
   - research/RESEARCH-rag-fit-for-large-vaults.md
   retrospective:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
@@ -467,6 +473,8 @@ tags:
   - specs/SPEC-007-decision-coverage-tracing.md
   turn-limits:
   - lessons/LESSON-long-agents-stall-resume-them.md
+  typed-edges:
+  - research/RESEARCH-graph-engineering-for-compass.md
   units:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
   - plans/PLAN-003-hybrid-hierarchy.md
@@ -511,6 +519,7 @@ tags:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
   - lessons/LESSON-wikilink-validator-skip-code.md
   - plans/PLAN-003-hybrid-hierarchy.md
+  - research/RESEARCH-graph-engineering-for-compass.md
   - research/RESEARCH-hybrid-hierarchy-impl.md
   windows:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
