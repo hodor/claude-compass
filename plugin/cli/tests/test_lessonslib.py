@@ -3,6 +3,7 @@
 claims strictness: a row shape that does not match the writer's fixed
 format must fail loud naming the row, never silently drop or guess."""
 
+import builtins
 import io
 import json
 import os
@@ -12,6 +13,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -384,6 +386,146 @@ class LessonsCommandTests(unittest.TestCase):
         with redirect_stderr(err):
             code = maincli.main(["lessons"])
         self.assertEqual(code, 1)
+
+
+class RetrievalLogTests(unittest.TestCase):
+    """`compass lessons` traces every run to
+    `.compass/tmp/retrieval-log.jsonl`. Adversarial where the tracing
+    claims best-effort: a log write failure must never touch the command's
+    exit code or output."""
+
+    def _run(self, args):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = lessons.run(args)
+        return code, out.getvalue(), err.getvalue()
+
+    def _log_path(self, root):
+        return root / "tmp" / "retrieval-log.jsonl"
+
+    def _rows(self, root):
+        path = self._log_path(root)
+        if not path.is_file():
+            return []
+        return [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+
+    def test_run_with_criteria_appends_one_row_with_at_and_query(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_catalog(root, [
+            row("LESSON-a.md", area="workflow", tags=["hooks"], score=5),
+            row("LESSON-b.md", area="methodology", tags=["other"], score=9),
+        ])
+        code, _, _ = self._run(["--tags", "hooks", "--area", "workflow"])
+        self.assertEqual(code, 0)
+        rows = self._rows(root)
+        self.assertEqual(len(rows), 1)
+        self.assertRegex(rows[0]["at"], r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
+        self.assertEqual(rows[0]["query"]["tags"], ["hooks"])
+        self.assertEqual(rows[0]["query"]["area"], "workflow")
+
+    def test_json_run_surfaced_list_matches_stdout_payload(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_catalog(root, [
+            row("LESSON-a.md", area="workflow", tags=["hooks"], score=5),
+            row("LESSON-b.md", area="methodology", tags=["other"], score=9),
+        ])
+        code, out, _ = self._run(["--tags", "hooks", "--json"])
+        self.assertEqual(code, 0)
+        payload = json.loads(out)
+        rows = self._rows(root)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["surfaced"], [r["file"] for r in payload])
+        self.assertEqual(rows[0]["surfaced"], ["LESSON-a.md"])
+
+    def test_context_flag_lands_in_row(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_catalog(root, [row("LESSON-a.md")])
+        self._run(["--context", "builder"])
+        rows = self._rows(root)
+        self.assertEqual(rows[0]["context"], "builder")
+
+    def test_no_context_flag_omits_context_field(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_catalog(root, [row("LESSON-a.md")])
+        self._run([])
+        rows = self._rows(root)
+        self.assertNotIn("context", rows[0])
+
+    def test_repeated_runs_append_one_row_each(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_catalog(root, [row("LESSON-a.md")])
+        self._run([])
+        self._run(["--context", "planner"])
+        self._run(["--tags", "hooks"])
+        rows = self._rows(root)
+        self.assertEqual(len(rows), 3)
+
+    def test_browse_with_no_criteria_logs_empty_query_and_full_surface(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_catalog(root, [row("LESSON-a.md"), row("LESSON-b.md")])
+        code, _, _ = self._run([])
+        self.assertEqual(code, 0)
+        rows = self._rows(root)
+        self.assertEqual(len(rows), 1)
+        query = rows[0]["query"]
+        self.assertIsNone(query["area"])
+        self.assertEqual(query["tags"], [])
+        self.assertIsNone(query["text"])
+        self.assertIsNone(query["for"])
+        self.assertEqual(sorted(rows[0]["surfaced"]), ["LESSON-a.md", "LESSON-b.md"])
+
+    def test_empty_catalog_still_logs_a_row_with_empty_surfaced(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_catalog(root, [])
+        code, _, _ = self._run([])
+        self.assertEqual(code, 0)
+        rows = self._rows(root)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["surfaced"], [])
+
+    def test_unwritable_tmp_dir_preserves_exit_code_and_output(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_catalog(root, [row("LESSON-a.md", tags=["hooks"])])
+        baseline_code, baseline_out, baseline_err = self._run(["--tags", "hooks"])
+
+        real_open = builtins.open
+
+        def boom(file, *args, **kwargs):
+            if str(file).endswith("retrieval-log.jsonl"):
+                raise OSError("unwritable")
+            return real_open(file, *args, **kwargs)
+
+        with mock.patch("builtins.open", boom):
+            code, out, err = self._run(["--tags", "hooks"])
+
+        self.assertEqual(code, baseline_code)
+        self.assertEqual(out, baseline_out)
+        self.assertEqual(err, baseline_err)
+        # The write failure itself is swallowed: only the baseline run's row
+        # exists, nothing added for the run made under the unwritable mock.
+        self.assertEqual(len(self._rows(root)), 1)
+
+    def test_retrieval_log_is_lf_only(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_catalog(root, [row("LESSON-a.md")])
+        self._run([])
+        self._run(["--context", "builder"])
+        raw = self._log_path(root).read_bytes()
+        self.assertNotIn(b"\r\n", raw)
+        self.assertIn(b"\n", raw)
 
 
 if __name__ == "__main__":

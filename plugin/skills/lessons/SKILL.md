@@ -51,15 +51,15 @@ Before making plans, implementing tasks, or starting any work that changes code 
 
 ## Search algorithm
 
-1. Load `.compass/meta/lessons-catalog.yaml`.
-2. Skip `status: archived`.
-3. Judge relevance from summaries, tags, areas, categories. Use judgment about the intent of the work, not just keyword overlap.
-4. Read the full lesson files for the ones you judged relevant (3-5 max).
-5. Apply.
+`compass lessons` is the primary retrieval path: it reads the catalog, ranks rows by tag overlap, area match, text overlap, and score (escalated rows always first), and skips `status: archived`. Nothing here re-implements that ranking by hand.
 
-For large catalogs (20+ entries), spawn a subagent to filter and return just the relevant filenames - keeps the main context clean.
+1. Run `compass lessons --for <doc>` (or `--area`/`--tags`/`--text`) with `--context <agent-or-skill-name>` naming the caller.
+2. Read the full lesson files for the filenames it returns that you judge relevant (3-5 max) - the command surfaces candidates, it doesn't read bodies.
+3. Apply.
 
-If the catalog does not exist:
+Every run appends a row to `.compass/tmp/retrieval-log.jsonl` recording the query and what surfaced, so this step is auditable rather than asserted.
+
+If the catalog does not exist (`compass lessons` exits 1 naming a malformed vault), fall back to a manual crawl:
 
 ```
 Glob: .compass/lessons/*.md

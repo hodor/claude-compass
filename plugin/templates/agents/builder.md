@@ -29,7 +29,7 @@ If the plan has existing `[x]` checkmarks, trust them. Start from the first unch
 
 ### 3. Load relevant lessons
 
-Filter `lessons-catalog.yaml` by area and tags. Prioritize `category: process` lessons (how to build). Load the top 3-5 matches.
+Run `compass lessons --for <plan> --context builder` and read the lessons it names, prioritizing `category: process` (how to build).
 
 ### 4. Understand the existing code
 

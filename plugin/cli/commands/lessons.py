@@ -17,16 +17,28 @@ Flags:
   the document's tags).
 - `--top N` (default 5)
 - `--json`
+- `--context <string>` - free-text label for who is asking (an agent name,
+  a skill), carried into the retrieval trace row. Optional; omitted from
+  the row when not given.
 
 Exit 0 on a ranked result, and on an empty catalog (prints an explicit "no
 lessons" line - a vault that has captured nothing yet is a valid state,
 not an error). Exit 1 on a missing catalog (a malformed vault), a
 malformed catalog row (names the row number), an unresolvable `--for`
 document, or an unknown flag. Never exits 2.
+
+Every run that reaches a ranked result, including an empty catalog and a
+criteria-less browse, appends one row to `.compass/tmp/retrieval-log.jsonl`
+recording what was searched for and what came back - the observable record
+SPEC-012's "surfacing is observable" checks against instead of asserting.
+Logging is best-effort: a write failure never changes the command's exit
+code or output.
 """
 
+import datetime
 import json
 import sys
+from pathlib import Path
 
 import lessonslib
 import vaultlib
@@ -38,7 +50,7 @@ def _parse_args(args):
     exactly one side set."""
     options = {
         "area": None, "tags": [], "text": None, "for_doc": None,
-        "top": 5, "json": False,
+        "top": 5, "json": False, "context": None,
     }
     i = 0
     while i < len(args):
@@ -47,7 +59,7 @@ def _parse_args(args):
             options["json"] = True
             i += 1
             continue
-        if arg not in ("--area", "--tags", "--text", "--for", "--top"):
+        if arg not in ("--area", "--tags", "--text", "--for", "--top", "--context"):
             return None, f"unknown flag {arg}"
         if i + 1 >= len(args):
             return None, f"{arg} expects a value"
@@ -60,6 +72,8 @@ def _parse_args(args):
             options["text"] = value
         elif arg == "--for":
             options["for_doc"] = value
+        elif arg == "--context":
+            options["context"] = value
         elif arg == "--top":
             try:
                 options["top"] = int(value)
@@ -85,6 +99,34 @@ def _resolve_for(vault_root, for_doc):
     if isinstance(tags, str):
         tags = [tags]
     return data.get("area"), tags, None
+
+
+def _log_retrieval(vault_root, area, tags, text, for_doc, context, surfaced):
+    """Append one `{at, query, surfaced, context}` row to
+    `.compass/tmp/retrieval-log.jsonl`. `query` is the effective criteria
+    the ranking actually ran against: `area`, `tags`, `text`, and `for` (the
+    raw `--for` document name, distinct from the `area`/`tags` it resolved
+    to). `context` is included only when the caller passed one. `surfaced`
+    is the list of lesson filenames the run returned, in ranked order.
+
+    Best-effort like every other tmp-log writer on this hook-adjacent path
+    (see `capturelib._log_event`): an unwritable tmp dir must never change
+    the command's exit code or output, so I/O errors are swallowed here.
+    """
+    row = {
+        "at": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
+        "query": {"area": area, "tags": list(tags), "text": text, "for": for_doc},
+        "surfaced": list(surfaced),
+    }
+    if context is not None:
+        row["context"] = context
+    path = Path(vault_root) / "tmp" / "retrieval-log.jsonl"
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "a", encoding="utf-8", newline="") as handle:
+            handle.write(json.dumps(row) + "\n")
+    except OSError:
+        pass
 
 
 def format_report(rows):
@@ -140,10 +182,14 @@ def run(args):
 
     if not catalog:
         sys.stdout.write("compass lessons: no lessons in catalog\n")
+        _log_retrieval(vault_root, area, tags, options["text"], options["for_doc"],
+                        options["context"], [])
         return 0
 
     ranked = lessonslib.rank(catalog, area=area, tags=tags, text=options["text"])
     ranked = ranked[:options["top"]]
+    _log_retrieval(vault_root, area, tags, options["text"], options["for_doc"],
+                    options["context"], [row["file"] for row in ranked])
 
     if options["json"]:
         sys.stdout.write(json.dumps(ranked) + "\n")
