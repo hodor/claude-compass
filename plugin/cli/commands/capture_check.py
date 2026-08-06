@@ -1,6 +1,7 @@
 """`compass capture-check --hook` - the Stop-hook trigger.
 
-Bumps the main-agent turn counter, evaluates `capturelib.due()`, and on due
+Bumps the main-agent turn counter, evaluates `capturelib.due_and_log()` (which
+traces a `skipped` row to the capture log when not due), and on due
 materializes a capture opportunity under
 `.compass/tmp/capture-opportunities/OPP-<UTC>/opportunity.json` holding the
 fired triggers and the evidence gathered from the turn window (the `ref` of
@@ -148,7 +149,7 @@ def run(args):
             _emit(_reason(directory, vault_root))
             return 0
 
-        is_due, reason = capturelib.due(state, config)
+        is_due, reason = capturelib.due_and_log(vault_root, state, config)
         if is_due:
             kind = "signal" if reason.startswith("strong signal") else "interval"
             triggers, evidence = _window_evidence(state.get("signals") or [])
