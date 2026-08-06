@@ -73,6 +73,16 @@ All 8 tasks done and validated: three-outcome parser, decisions/coverage command
 
 All 6 tasks done and validated: modelslib, resolve-model/models/apply-models, 13 templates normalized, dogfood proven. Commits 96ac14b, f0f9e99.
 
+## Learning-loop initiative (Roger, 2026-07-25/26): "Compass is a framework that learns"
+
+Evidence base complete: [[RESEARCH-lesson-capture-failure]] (capture fired organically ONCE across 40 vaults; root cause = coupled to /compass:build phase pauses real sessions never cross), [[RESEARCH-hermes-agent-capabilities]], [[RESEARCH-hermes-vs-compass-fit]], [[RESEARCH-graph-engineering-for-compass]].
+
+- [ ] RESEARCH in flight: hermes memory-update + retrieval mechanics deep-dive -> RESEARCH-hermes-memory-mechanics (Roger requires this reviewed in the plan; background agent writing it directly to research/)
+- [ ] Draft SPEC-012 (learning loop): pillar 1 capture-fix (decouple from build phase; attach to events that happen: session end/handoff, validation, debug resolution; keep anti-list/dedup core; compass doctor for install drift), pillar 2 retrieval (auto-surface lessons in context), pillar 3 application audit (coverage-style). Must cite the hermes-memory research (D-bullet it).
+- [ ] SPEC-011 (graph queries) drafted, NOT approved: Roger's D-02 requires a grep-vs-graph experiment first - if grep answers the query classes cheaply, reject the spec. Retrieval pillar may or may not ride on it.
+- [ ] Then: walkthrough SPEC-012 -> approval -> planner (all research done) -> build
+- [ ] Still queued from earlier: distribute v0.4.0 across repos (fix install drift found by the audit: 19/40 vaults lack the backstop), then SPEC-006 hosts (hermes first, then Kimi Code/Codex)
+
 ## Next Up
 
 ### Next: integration testing of PLAN-001 output

@@ -53,6 +53,7 @@ tags:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   - specs/SPEC-003-hierarchical-vault-organization.md
   capture:
+  - research/RESEARCH-hermes-memory-mechanics.md
   - research/RESEARCH-lesson-capture-failure.md
   churn:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
@@ -143,6 +144,7 @@ tags:
   discovery:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   distribution:
+  - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
   - specs/SPEC-006-multi-host-agent-cli-support.md
   docker:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
@@ -192,12 +194,15 @@ tags:
   - specs/SPEC-011-vault-graph-queries.md
   graph-engineering:
   - research/RESEARCH-graph-engineering-for-compass.md
+  graph-queries:
+  - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
   gsd:
   - research/RESEARCH-decision-coverage-impl.md
   - research/RESEARCH-gsd-core-improvements-for-compass.md
   handoff:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
+  - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
   hang:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   harness:
@@ -206,8 +211,11 @@ tags:
   - specs/SPEC-008-central-model-resolution-table.md
   - specs/SPEC-009-configurable-pipeline-workflows.md
   - specs/SPEC-011-vault-graph-queries.md
+  hermes:
+  - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
   hermes-agent:
   - research/RESEARCH-hermes-agent-capabilities.md
+  - research/RESEARCH-hermes-memory-mechanics.md
   - research/RESEARCH-hermes-vs-compass-fit.md
   hidden-dirs:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
@@ -290,8 +298,12 @@ tags:
   large-vault:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   learning-loop:
+  - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
   - research/RESEARCH-hermes-agent-capabilities.md
+  - research/RESEARCH-hermes-memory-mechanics.md
   - research/RESEARCH-hermes-vs-compass-fit.md
+  lesson-capture:
+  - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
   lessons:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
@@ -316,6 +328,7 @@ tags:
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - specs/SPEC-003-hierarchical-vault-organization.md
   memory:
+  - research/RESEARCH-hermes-memory-mechanics.md
   - research/RESEARCH-lessons-and-index-architecture.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
   methodology:
@@ -345,6 +358,8 @@ tags:
   - specs/SPEC-010-universal-hybrid-hierarchy.md
   non-interactive:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
+  nudges:
+  - research/RESEARCH-hermes-memory-mechanics.md
   obsidian:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   okf:
@@ -417,6 +432,7 @@ tags:
   retrieval:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   - research/RESEARCH-graph-engineering-for-compass.md
+  - research/RESEARCH-hermes-memory-mechanics.md
   - research/RESEARCH-rag-fit-for-large-vaults.md
   retrospective:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
@@ -443,6 +459,8 @@ tags:
   - plans/PLAN-001-lessons-and-index-implementation.md
   spec-005:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
+  spec-012:
+  - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
   spec-driven-development:
   - research/RESEARCH-gsd-core-improvements-for-compass.md
   spec-redesign:
