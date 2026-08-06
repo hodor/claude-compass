@@ -111,3 +111,10 @@ lessons:
     tags: [subagents, orchestration, sendmessage, reports, briefs]
     score: 5
     summary: "A spawned agent's final plain text is invisible to its orchestrator; briefs must mandate an explicit SendMessage delivery"
+  - file: "LESSON-append-only-index-misses-mutations.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [derived-index, sync, append-only, staleness, catalog]
+    score: 5
+    summary: "Append-only derived indexes miss source mutations; the mutator must update the row or the field never propagates"

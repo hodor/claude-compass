@@ -9,6 +9,8 @@ tags:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   anti-list:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
+  append-only:
+  - lessons/LESSON-append-only-index-misses-mutations.md
   application-audit:
   - specs/SPEC-012-learning-loop.md
   apply-models:
@@ -61,6 +63,8 @@ tags:
   - research/RESEARCH-hermes-memory-mechanics.md
   - research/RESEARCH-lesson-capture-failure.md
   - specs/SPEC-012-learning-loop.md
+  catalog:
+  - lessons/LESSON-append-only-index-misses-mutations.md
   churn:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   classification:
@@ -145,6 +149,8 @@ tags:
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   denning:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
+  derived-index:
+  - lessons/LESSON-append-only-index-misses-mutations.md
   determinism:
   - specs/SPEC-008-central-model-resolution-table.md
   diagnosis:
@@ -509,6 +515,8 @@ tags:
   - handoffs/2026-03-12_review-all-plugin-files.md
   stale-base:
   - lessons/LESSON-subagent-worktrees-fork-stale.md
+  staleness:
+  - lessons/LESSON-append-only-index-misses-mutations.md
   stall:
   - lessons/LESSON-long-agents-stall-resume-them.md
   state-digest:
@@ -525,6 +533,7 @@ tags:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   sync:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
+  - lessons/LESSON-append-only-index-misses-mutations.md
   - plans/PLAN-003-hybrid-hierarchy.md
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   tag-index:
