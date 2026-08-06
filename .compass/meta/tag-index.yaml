@@ -46,6 +46,8 @@ tags:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   bookkeeping:
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
+  briefs:
+  - lessons/LESSON-subagent-reports-need-sendmessage.md
   build-skill:
   - research/RESEARCH-lesson-capture-failure.md
   busywork:
@@ -65,6 +67,7 @@ tags:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
   claude-code:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
+  - lessons/LESSON-hooks-load-only-from-settings.md
   cleanup:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
   cli:
@@ -254,6 +257,7 @@ tags:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   - lessons/LESSON-hook-if-clause-no-or.md
   - lessons/LESSON-hook-type-prompt-no-skills.md
+  - lessons/LESSON-hooks-load-only-from-settings.md
   - lessons/LESSON-no-agent-bookkeeping.md
   - plans/PLAN-001-lessons-and-index-implementation.md
   - plans/PLAN-006-learning-loop.md
@@ -295,6 +299,7 @@ tags:
   install:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
   install-drift:
+  - lessons/LESSON-hooks-load-only-from-settings.md
   - plans/PLAN-006-learning-loop.md
   - research/RESEARCH-lesson-capture-failure.md
   - specs/SPEC-012-learning-loop.md
@@ -390,6 +395,7 @@ tags:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   orchestration:
   - lessons/LESSON-long-agents-stall-resume-them.md
+  - lessons/LESSON-subagent-reports-need-sendmessage.md
   - lessons/LESSON-subagent-worktrees-fork-stale.md
   orphans:
   - research/RESEARCH-grep-vs-graph-experiment.md
@@ -445,10 +451,14 @@ tags:
   - specs/SPEC-003-hierarchical-vault-organization.md
   reference:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
+  registration:
+  - lessons/LESSON-hooks-load-only-from-settings.md
   reinertsen:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   replication:
   - research/RESEARCH-scientific-method-in-compass.md
+  reports:
+  - lessons/LESSON-subagent-reports-need-sendmessage.md
   research-redesign:
   - handoffs/2026-03-12_review-all-plugin-files.md
   resume:
@@ -472,6 +482,10 @@ tags:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   scientific-method:
   - research/RESEARCH-scientific-method-in-compass.md
+  sendmessage:
+  - lessons/LESSON-subagent-reports-need-sendmessage.md
+  settings:
+  - lessons/LESSON-hooks-load-only-from-settings.md
   setup:
   - decisions/ADR-008-model-resolution-table.md
   - plans/PLAN-005-model-table.md
@@ -505,6 +519,7 @@ tags:
   - research/RESEARCH-hermes-vs-compass-fit.md
   subagents:
   - lessons/LESSON-long-agents-stall-resume-them.md
+  - lessons/LESSON-subagent-reports-need-sendmessage.md
   - lessons/LESSON-subagent-worktrees-fork-stale.md
   summaries:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md

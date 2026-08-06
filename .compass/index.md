@@ -87,7 +87,7 @@ See [[backlog]].
 ## Lessons
 
 - [[LESSON-glob-hidden-dirs-prefix]] - Glob tool needs `**/` prefix to traverse hidden dirs like .compass/
-- [[LESSON-hook-if-clause-no-or]] - Hook `if` does not support `||`; split into N entries or use matcher for multi-tool
+- [[LESSON-hook-if-clause-no-or]] - Settings hook entries have no `if` clause; select tools via matcher, filter paths in the command
 - [[LESSON-hook-type-prompt-no-skills]] - Hook `type: prompt` is single-shot; cannot call Skill tool; use `type: agent` instead
 - [[LESSON-no-agent-bookkeeping]] - Mechanical bookkeeping (counters, indexes, catalogs) belongs in scripts/hooks/JIT, not agent steps
 - [[LESSON-wikilink-validator-skip-code]] - Wikilink validators must skip fenced code blocks AND inline code spans; example refs in docs are noise
@@ -100,6 +100,8 @@ See [[backlog]].
 - [[LESSON-installer-removes-only-what-it-installed]] - A tool that installs into a shared dir must delete only its own named artifacts on cleanup; 'remove anything not in my source' destroys user files
 - [[LESSON-long-agents-stall-resume-them]] - A subagent completion notice whose final text reads like mid-task narration is a stall, not a result; resume it with 'continue from exactly where you stopped' instead of respawning
 - [[LESSON-subagent-worktrees-fork-stale]] - Worktree-isolated subagents fork from a pre-session commit; without a fast-forward to master and committed prior waves, they see a world where earlier work does not exist
+- [[LESSON-hooks-load-only-from-settings]] - Hooks load only from settings-file hooks keys or registered plugins; a bare .claude/hooks/hooks.json never fires
+- [[LESSON-subagent-reports-need-sendmessage]] - A spawned agent's final plain text is invisible to its orchestrator; briefs must mandate an explicit SendMessage delivery
 
 ## compass-cli
 - [[compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work]] - A Python `compass` CLI Owns All Mechanical Vault Work; the Hook Calls It as a Command
