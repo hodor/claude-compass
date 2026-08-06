@@ -81,7 +81,7 @@ Evidence base complete: [[RESEARCH-lesson-capture-failure]] (capture fired organ
 - [x] [[SPEC-012-learning-loop]] drafted and APPROVED (2026-08-05): 3 pillars (capture-fix, retrieval, application audit), D-01..D-04 recorded incl. hermes-memory research binding (D-03) and SPEC-011 gate (D-04)
 - [x] SPEC-011 D-02 experiment done ([[RESEARCH-grep-vs-graph-experiment]], 2026-08-05); narrowed (D-03), then 3-lens review (all AMEND) drove consumer-first rescope (D-04); APPROVED 2026-08-05. Experiment's ripple ground truth wrong both directions; erratum in the research doc. Lesson retrieval confirmed graph-free.
 - [x] [[PLAN-006-learning-loop]] APPROVED 2026-08-05: 16 tasks, 5 phases, coverage gate PASS
-- [ ] BUILD PLAN-006 Phase 1 (CLI capture substrate): TASK-036 capturelib -> then TASK-037/038/039/040 parallel (all depend on 036, file-disjoint except maincli.py contact point). Commit before spawning worktree builders ([[LESSON-subagent-worktrees-fork-stale]]).
+- [ ] BUILD PLAN-006 Phase 1 (CLI capture substrate): TASK-036 done (274/274 tests, 2026-08-05). Remaining 037->038->039->040 run SEQUENTIAL in main tree: the plan's parallel note undersold contact points (test_capture_commands.py shared by 037/038/039; sync.py+test_sync.py by 039/040; maincli.py by all).
 - [ ] After PLAN-006: SPEC-011 pipeline (research/ADR on substrate + planner), distribute v0.4.0 across repos (19/40 vaults lack the backstop), then SPEC-006 hosts (hermes first, then Kimi Code/Codex)
 
 ## Next Up
