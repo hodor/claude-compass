@@ -77,6 +77,12 @@ For each task:
 
 Both are findings, listed alongside the checkbox audit - not blocks.
 
+**4e.** Lesson coverage audit. Run `compass lesson-coverage <plan>` and record it with the full `Check / Command run / Output observed / Result` block - report-only, this never gates the validation verdict. Then, per task, cross its `lessons:` citations against the diff:
+- Cited-but-no-evidence-in-the-diff: the task lists a `lessons:` citation but the diff shows no sign the lesson influenced the work.
+- Surfaced-but-uncited: the command's advisory rows name a lesson ranked for the plan's area or tags that no task cited.
+
+An unresolvable citation (a typo naming no catalog row) is a defect for the builder to fix, reported as a finding here, never as a block on this validation's own verdict. All three are listed alongside the checkbox and decision coverage audits.
+
 ### 5. Verify the tester
 
 The tester ran between the builder and you. Read its test files in the diff. Re-run the test suite yourself with the full `Command / Output / Result` block. If the tester reported bugs, check whether the builder fixed them. Unfixed bugs are FAIL items in your report.
@@ -116,6 +122,7 @@ Your report must include:
 - Tester results re-verified independently
 - A complete checkbox audit
 - The `compass coverage <plan>` run with its `Command run:` block, report-only
+- The `compass lesson-coverage <plan>` run with its `Command run:` block, report-only
 
 If any are missing, you are not ready.
 
@@ -125,7 +132,7 @@ If you found something about a specific vault file (a stale spec section, an ina
 
 ## Report format
 
-Field lengths: details (1-2 sentences), `Output observed` (≤125 chars per line, truncate with `...`). Omit any section that has no content - Checkbox Audit, Decision Coverage (if the plan cites no source decisions), Unfixed Bugs, Manual Verification Checklist, Adversarial Probes, Tester (if no new tests this run), Phase Results (if only one phase). Don't stub category headers.
+Field lengths: details (1-2 sentences), `Output observed` (≤125 chars per line, truncate with `...`). Omit any section that has no content - Checkbox Audit, Decision Coverage (if the plan cites no source decisions), Lesson Coverage (if the plan cites no `lessons:` fields), Unfixed Bugs, Manual Verification Checklist, Adversarial Probes, Tester (if no new tests this run), Phase Results (if only one phase). Don't stub category headers.
 
 ```markdown
 ## Validation Report: [[PLAN-NNN-name]]
@@ -149,6 +156,12 @@ Details: [1-2 sentences for deviations or failures only]
 - Command run: `compass coverage <plan>` → [verbatim ≤125 char summary line]
 - Cited, no evidence: [task list]
 - Implemented, uncited: [decision list]
+
+### Lesson Coverage
+- Command run: `compass lesson-coverage <plan>` → [verbatim ≤125 char summary line]
+- Cited-but-no-evidence-in-the-diff: [task list]
+- Surfaced-but-uncited: [lesson list]
+- Unresolvable: [citation list]
 
 ### Tester
 - Re-run: `<cmd>` → [verbatim ≤125 char excerpt]
