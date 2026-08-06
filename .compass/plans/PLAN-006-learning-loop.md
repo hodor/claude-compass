@@ -128,7 +128,7 @@ No behavior change reaches a user in this phase. Everything is new CLI surface w
   - Automated verification: unittest over fixture trees - complete install exits 0; missing hooks file, missing plugin.yaml, and a CLI dir missing one command module each exit 1 naming the specific defect; a v0.2.0-shaped install (skills but no hooks dir) is reported as the drift class it is.
   - Manual verification: run `doctor` against this repo before and after TASK-044's refresh and confirm the before-run fails on the stale CLI.
 
-- [ ] TASK-046: Wire `doctor` into update and checkup - complexity: S, depends_on: TASK-045, files: [plugin/skills/update/SKILL.md, plugin/skills/checkup/SKILL.md], decisions: [SPEC-012-learning-loop/D-01]
+- [x] TASK-046: Wire `doctor` into update and checkup - complexity: S, depends_on: TASK-045, files: [plugin/skills/update/SKILL.md, plugin/skills/checkup/SKILL.md], decisions: [SPEC-012-learning-loop/D-01]
   - `update/SKILL.md`: a post-copy step runs `compass doctor` and reports its table as part of the update summary, so a half-applied update is visible at the moment it happens. `checkup/SKILL.md`: the Agents and Hooks sections delegate to `compass doctor` instead of describing checks in prose, and the report format gains its rows. The hooks check in checkup currently names a `SubagentStop` builder-to-tester hook that this repo never installed; replace it with what `doctor` actually verifies.
   - Automated verification: grep both skills for the `compass doctor` invocation and for the removal of the stale hook description.
   - Manual verification: read the amended checkup output format and confirm it still reads as a report a human can act on, not a CLI dump.
