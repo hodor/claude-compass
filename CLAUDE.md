@@ -81,7 +81,7 @@ When proposing a `plugin/` change, ask which goal it serves.
 - Never commit `.claude/` (gitignored - it is a generated local install)
 - Commit messages: imperative mood, explain why not what
 - No `Co-Authored-By` lines
-- Only commit when explicitly instructed
+- Commit at natural milestones (approved artifacts, completed tasks, before spawning worktree builders) without waiting for instruction
 
 ## Vault structure
 
