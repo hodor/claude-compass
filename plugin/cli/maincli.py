@@ -35,6 +35,7 @@ COMMAND_SPECS = [
     ("apply-models", "Rewrite model:/effort: frontmatter of the installed Compass agent files from the resolved table."),
     ("decisions", "List a document's D-NN decisions with trackable flags; exit 1 on a format mismatch."),
     ("coverage", "Check a plan claims every trackable decision of its sources; exit 1 on any gap."),
+    ("capture-signal", "Record a subagent-captures file and a capture signal from SubagentStop event JSON. Hook entry point."),
 ]
 
 
