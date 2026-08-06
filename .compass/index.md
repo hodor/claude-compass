@@ -82,6 +82,7 @@ See [[backlog]].
 - [[2026-06-10_23-00-00_python-cli-next-up]] - Handoff: Python busywork CLI is next; everything through ADR-004 shipped
 - [[2026-06-19_10-33-39_cli-shipped-spec005-on-hold]] - Handoff: compass CLI shipped (v0.3.7); SPEC-005 (auto per-folder index + LLM summaries) drafted, ON HOLD
 - [[2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next]] - Handoff: lesson-capture root-caused fleet-wide; SPEC-012 (learning loop) is next; SPEC-011 needs a grep-vs-graph experiment
+  - [[2026-08-06_06-02-00_phase2-live-hooks-first-firing]] - Handoff: PLAN-006 Phase 2 live; hooks fire from settings.json for the first time ever
 
 ## Lessons
 
