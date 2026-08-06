@@ -31,6 +31,8 @@ tags:
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/ADR-003-drop-counter-file-jit-compute.md
   - lessons/LESSON-no-agent-bookkeeping.md
+  backlinks:
+  - specs/SPEC-011-vault-graph-queries.md
   bayesian:
   - research/RESEARCH-scientific-method-in-compass.md
   bench-design:
@@ -42,12 +44,16 @@ tags:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   bookkeeping:
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
+  build-skill:
+  - research/RESEARCH-lesson-capture-failure.md
   busywork:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   cache:
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - research/RESEARCH-rag-fit-for-large-vaults.md
   - specs/SPEC-003-hierarchical-vault-organization.md
+  capture:
+  - research/RESEARCH-lesson-capture-failure.md
   churn:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   classification:
@@ -117,6 +123,8 @@ tags:
   - research/RESEARCH-decision-coverage-impl.md
   - research/RESEARCH-gsd-core-improvements-for-compass.md
   - specs/SPEC-007-decision-coverage-tracing.md
+  decision-lineage:
+  - specs/SPEC-011-vault-graph-queries.md
   dedup:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   - plans/PLAN-001-lessons-and-index-implementation.md
@@ -130,6 +138,8 @@ tags:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   determinism:
   - specs/SPEC-008-central-model-resolution-table.md
+  diagnosis:
+  - research/RESEARCH-lesson-capture-failure.md
   discovery:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   distribution:
@@ -158,6 +168,8 @@ tags:
   - lessons/LESSON-wikilink-validator-skip-code.md
   falsifiability:
   - research/RESEARCH-scientific-method-in-compass.md
+  fleet-audit:
+  - research/RESEARCH-lesson-capture-failure.md
   foundational:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   frontier-models:
@@ -176,6 +188,8 @@ tags:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   glob:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
+  graph:
+  - specs/SPEC-011-vault-graph-queries.md
   graph-engineering:
   - research/RESEARCH-graph-engineering-for-compass.md
   gsd:
@@ -191,6 +205,7 @@ tags:
   - specs/SPEC-001-compass-vision-and-architecture.md
   - specs/SPEC-008-central-model-resolution-table.md
   - specs/SPEC-009-configurable-pipeline-workflows.md
+  - specs/SPEC-011-vault-graph-queries.md
   hermes-agent:
   - research/RESEARCH-hermes-agent-capabilities.md
   - research/RESEARCH-hermes-vs-compass-fit.md
@@ -247,6 +262,8 @@ tags:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   if-clause:
   - lessons/LESSON-hook-if-clause-no-or.md
+  impact-traversal:
+  - specs/SPEC-011-vault-graph-queries.md
   index:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   - plans/PLAN-001-lessons-and-index-implementation.md
@@ -255,6 +272,8 @@ tags:
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   install:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
+  install-drift:
+  - research/RESEARCH-lesson-capture-failure.md
   interoperability:
   - research/RESEARCH-okf-improvements-for-compass.md
   jit:
@@ -278,6 +297,7 @@ tags:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
   - plans/PLAN-001-lessons-and-index-implementation.md
   - plans/PLAN-003-hybrid-hierarchy.md
+  - research/RESEARCH-lesson-capture-failure.md
   - research/RESEARCH-lessons-and-index-architecture.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
   line-endings:
@@ -334,6 +354,8 @@ tags:
   orchestration:
   - lessons/LESSON-long-agents-stall-resume-them.md
   - lessons/LESSON-subagent-worktrees-fork-stale.md
+  orphans:
+  - specs/SPEC-011-vault-graph-queries.md
   overfit:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   parallel-builders:
@@ -374,6 +396,8 @@ tags:
   - compass-cli/plans/PLAN-002-compass-cli-implementation.md
   python-cli:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
+  queries:
+  - specs/SPEC-011-vault-graph-queries.md
   rag:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   raptor:
@@ -471,6 +495,8 @@ tags:
   - plans/PLAN-004-decision-coverage.md
   - research/RESEARCH-decision-coverage-impl.md
   - specs/SPEC-007-decision-coverage-tracing.md
+  triggers:
+  - research/RESEARCH-lesson-capture-failure.md
   turn-limits:
   - lessons/LESSON-long-agents-stall-resume-them.md
   typed-edges:

@@ -26,6 +26,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[SPEC-008-central-model-resolution-table]] - model + effort assignment is one harness-resolved policy table with per-project override, not per-agent prose (approved 2026-07-23)
 - [[SPEC-009-configurable-pipeline-workflows]] - the pipeline is a configurable workflow (shipped default + reorder/subset/extend), not one hardcoded sequence (draft, DEFERRED)
 - [[SPEC-010-universal-hybrid-hierarchy]] - any artifact and any unit of work can nest; type-first root for small work, a root-level folder per large unit co-locating its own types (approved 2026-07-23)
+- [[SPEC-011-vault-graph-queries]] - The Vault's Graph Is Queryable by the Harness
 
 ## Research
 
@@ -42,6 +43,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-hermes-agent-capabilities]] - hermes-agent (NousResearch): Capabilities and Extension Surface, Source-Verified
 - [[RESEARCH-hermes-vs-compass-fit]] - Hermes Agent vs Compass: Fit, Feasibility, and Strategic Options
 - [[RESEARCH-graph-engineering-for-compass]] - Graph Engineering for Compass - Landscape, Prior Art, and Gap Analysis
+- [[RESEARCH-lesson-capture-failure]] - Why Lesson Capture Almost Never Happens (40-Vault Fleet Diagnosis)
 
 ## Plans
 
