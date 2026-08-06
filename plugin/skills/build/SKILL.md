@@ -51,7 +51,7 @@ Spawn builder agents to execute tasks. The main conversation orchestrates; it do
 
    Only `phase-summary.yaml` is original content the orchestrator writes; the per-task reports are just renames of hook-captured files. This is the [[LESSON-no-agent-bookkeeping]] principle applied to subagent reports.
 
-   **6b. Invoke extract-lessons.** Run the `extract-lessons` skill with the phase report directory as argument. It checks binary triggers, applies the anti-list, hands survivors to `lesson-write`. Surface its summary line to the human as part of the pause.
+   **6b. Invoke extract-lessons.** Run `compass capture-check --hook` so it detects the phase-summary.yaml just written and opens a `.compass/tmp/capture-opportunities/OPP-<UTC>/` directory for it - the same detection the Stop hook itself runs on every turn. Then run the `extract-lessons` skill against that opportunity directory. It checks binary triggers, applies the anti-list, hands survivors to `lesson-write`, and closes the opportunity via `compass capture-close`. Surface its summary line to the human as part of the pause.
 
    **6c. Pause for human.** Present manual verification items from the plan, plus the extract-lessons summary. Wait for human confirmation before proceeding to next phase.
 
