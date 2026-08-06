@@ -1,5 +1,5 @@
 {
-  "description": "Compass plugin hooks. PostToolUse runs `compass sync` (a command, not an agent) on any vault write to regenerate index.md and the tag index off the agent's token budget. The CLI parses the hook's stdin JSON, self-filters its own generated outputs to avoid a write loop, and never exits 2 (which would block the user's edit). The entry is split three ways (Write, Edit, MultiEdit) because the `if` clause does not support `||` boolean OR; each entry has its own permission-rule pattern. Stop fires extract-lessons and SubagentStop captures subagent reports - these remain agent-type because they involve judgment, not mechanical bookkeeping.",
+  "description": "Compass plugin hooks. Every entry runs a command, never an agent, so no hook costs a turn of the agent's token budget. PostToolUse runs `compass sync` on any vault write to regenerate index.md and the tag index, then records a capture signal for the artifact written (`handoff-written` under handoffs/, `vault-write` otherwise). Stop runs `compass capture-check`, which bumps the main-agent turn counter, evaluates whether a capture opportunity is due, and on due emits the stop-hook block contract naming the opportunity directory so the capture pass runs as a real turn rather than as prose the model can skip. SubagentStop runs `compass capture-signal`, which writes the finishing subagent's final report to a capture file under .compass/tmp/subagent-captures/ and records a typed signal keyed on agent_type (validator-finished, debug-finished, builder-finished, or subagent-finished). The CLI parses each hook's stdin JSON, self-filters where relevant to avoid a write loop, and never exits 2 (which would block the user's turn). The PostToolUse entry is split three ways (Write, Edit, MultiEdit) because the `if` clause does not support `||` boolean OR; each entry has its own permission-rule pattern.",
   "hooks": {
     "PostToolUse": [
       {
@@ -43,10 +43,10 @@
       {
         "hooks": [
           {
-            "type": "agent",
-            "statusMessage": "Checking for unprocessed phase reports",
-            "timeout": 90,
-            "prompt": "The main agent just ended a turn. Check whether a phase boundary completed outside /compass:build. Algorithm: glob .compass/tmp/phase-reports/*/ for any directory containing a phase-summary.yaml file but no .processed marker file. If none found, exit silently with 'no-op: no unprocessed phases'. If one or more found, for the most recently modified one, invoke the extract-lessons skill with that directory path as argument. The extract-lessons skill writes the .processed marker itself, providing the mutex against double-firing with the /compass:build primary path."
+            "type": "command",
+            "statusMessage": "Checking for a capture opportunity",
+            "timeout": 30,
+            "command": "if command -v python3 >/dev/null 2>&1; then python3 \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" capture-check --hook; else python \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" capture-check --hook; fi"
           }
         ]
       }
@@ -56,10 +56,10 @@
         "matcher": "builder|tester|debug|validator|planner|researcher|reviewer|spec-writer|pr-describe",
         "hooks": [
           {
-            "type": "agent",
+            "type": "command",
             "statusMessage": "Capturing subagent report",
             "timeout": 30,
-            "prompt": "A Compass subagent just stopped. The hook input includes 'agent_type' (e.g. 'builder', 'tester') and 'last_assistant_message' (the final assistant message text from the subagent). Write the last_assistant_message verbatim as the body of a file at .compass/tmp/subagent-captures/<UTC_timestamp>_<agent_type>.md. The UTC_timestamp format is YYYY-MM-DDTHH-MM-SS. Create the .compass/tmp/subagent-captures/ directory if it does not exist. Prepend this YAML frontmatter to the file:\n\n---\ntype: subagent_capture\nagent_type: <agent_type>\nagent_id: <agent_id from input>\ncaptured_at: <ISO-8601 timestamp>\n---\n\nThis is purely mechanical capture - do not summarize or transform the message. The /compass:build skill at phase end will move these captures into .compass/tmp/phase-reports/<phase-id>/ with task-specific names."
+            "command": "if command -v python3 >/dev/null 2>&1; then python3 \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" capture-signal --hook; else python \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" capture-signal --hook; fi"
           }
         ]
       }
