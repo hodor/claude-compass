@@ -18,6 +18,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import capturelib  # noqa: E402
+from commands import capture_check  # noqa: E402
 from commands import capture_signal  # noqa: E402
 
 
@@ -55,6 +56,23 @@ def feed_stdin(test_case, payload):
 
 def captures_dir(vault_root):
     return vault_root / "tmp" / "subagent-captures"
+
+
+def opportunities_dir(vault_root):
+    return vault_root / "tmp" / "capture-opportunities"
+
+
+def write_capture_config(root, **overrides):
+    """Write `.compass/meta/capture.json` with `DEFAULT_CONFIG` overridden by
+    `overrides`, bypassing `load_config`'s materialize-on-read so a test can
+    set `interval`/`max_reemits`/`enabled` before the first `capture-check`
+    call sees them."""
+    config = dict(capturelib.DEFAULT_CONFIG)
+    config.update(overrides)
+    path = root / "meta" / "capture.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(config), encoding="utf-8")
+    return config
 
 
 class CaptureSignalTests(unittest.TestCase):
@@ -232,6 +250,278 @@ class CaptureSignalTests(unittest.TestCase):
             code, out = self._run()
         finally:
             capturelib.record_signal = original
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "")
+
+
+class CaptureCheckTests(unittest.TestCase):
+    """Tests for `capture-check --hook`, the Stop-hook trigger. Like
+    `capture-signal`, most cases assert "exits 0" under corruption or
+    absence; the happy paths verify the emitted stop-hook JSON and the
+    opportunity.json contract capture-check writes before emitting it."""
+
+    def _run(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = capture_check.run(["--hook"])
+        return code, out.getvalue()
+
+    def _opportunities(self, root):
+        directory = opportunities_dir(root)
+        return sorted(directory.iterdir()) if directory.is_dir() else []
+
+    def test_below_interval_prints_nothing(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "")
+        state = capturelib.load_state(root)
+        self.assertEqual(state["turns_since_capture"], 1)
+        self.assertEqual(self._opportunities(root), [])
+
+    def test_due_via_interval_emits_block_json_and_opportunity(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, interval=1)
+        capturelib.record_signal(root, "vault-write", "specs/SPEC-001.md")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        payload = json.loads(out)
+        self.assertEqual(payload["decision"], "block")
+        self.assertIn("tmp/capture-opportunities/OPP-", payload["reason"])
+        self.assertIn("extract-lessons", payload["reason"])
+
+        opps = self._opportunities(root)
+        self.assertEqual(len(opps), 1)
+        record = json.loads((opps[0] / "opportunity.json").read_text(encoding="utf-8"))
+        self.assertEqual(record["kind"], "interval")
+        self.assertEqual(record["triggers"], ["vault-write"])
+        self.assertEqual(record["evidence"], ["specs/SPEC-001.md"])
+        self.assertIsNone(record["outcome"])
+
+        # The window that produced the opportunity is spent.
+        state = capturelib.load_state(root)
+        self.assertEqual(state["turns_since_capture"], 0)
+        self.assertEqual(state["signals"], [])
+
+    def test_real_subagent_capture_evidence_surfaces_in_opportunity(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        feed_stdin(self, {
+            "agent_type": "validator",
+            "agent_id": "agent-1",
+            "last_assistant_message": "PASS: all checks green",
+        })
+        capture_signal.run(["--hook"])  # a real subagent finishing, in the window
+
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        payload = json.loads(out)
+        self.assertEqual(payload["decision"], "block")
+
+        opps = self._opportunities(root)
+        self.assertEqual(len(opps), 1)
+        record = json.loads((opps[0] / "opportunity.json").read_text(encoding="utf-8"))
+        self.assertEqual(record["kind"], "signal")
+        self.assertEqual(record["triggers"], ["validator-finished"])
+        self.assertEqual(len(record["evidence"]), 1)
+        evidence_path = record["evidence"][0]
+        self.assertTrue(evidence_path.startswith("tmp/subagent-captures/"))
+        self.assertTrue((root / evidence_path).is_file())
+
+    def test_strong_signal_fires_below_interval(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)  # default interval (12), one turn only
+        capturelib.record_signal(root, "handoff-written", "handoffs/HANDOFF-1.md")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        payload = json.loads(out)
+        self.assertEqual(payload["decision"], "block")
+        opps = self._opportunities(root)
+        record = json.loads((opps[0] / "opportunity.json").read_text(encoding="utf-8"))
+        self.assertEqual(record["kind"], "signal")
+        self.assertEqual(record["triggers"], ["handoff-written"])
+        self.assertEqual(record["evidence"], ["handoffs/HANDOFF-1.md"])
+
+    def test_second_call_with_open_opportunity_reemits_within_budget(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, interval=1, max_reemits=3)
+        capturelib.record_signal(root, "vault-write", "specs/SPEC-001.md")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        self._run()  # opens the opportunity
+        opp_id = capturelib.load_state(root)["open_opportunity"]
+        self.assertIsNotNone(opp_id)
+
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        payload = json.loads(out)
+        self.assertEqual(payload["decision"], "block")
+        self.assertIn("still open", payload["reason"])
+        self.assertIn(opp_id, payload["reason"])
+
+        state = capturelib.load_state(root)
+        self.assertEqual(state["open_opportunity"], opp_id)
+        self.assertEqual(state["reemits"], 1)
+        # Re-emitting must not open a second opportunity.
+        self.assertEqual(len(self._opportunities(root)), 1)
+
+    def test_reemit_cap_honored_then_closed_abandoned(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, interval=1, max_reemits=1)
+        capturelib.record_signal(root, "vault-write", "specs/SPEC-001.md")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        self._run()  # opens, reemits=0
+        opp_id = capturelib.load_state(root)["open_opportunity"]
+
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        code, out = self._run()  # 1 reemit, within the budget of 1
+        self.assertIn("still open", json.loads(out)["reason"])
+        self.assertEqual(capturelib.load_state(root)["reemits"], 1)
+
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        code, out = self._run()  # budget exhausted: abandon, go silent
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "")
+        state = capturelib.load_state(root)
+        self.assertIsNone(state["open_opportunity"])
+        record = json.loads(
+            (opportunities_dir(root) / opp_id / "opportunity.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(record["outcome"], "abandoned")
+        self.assertIsNotNone(record["closed_at"])
+
+    def test_unprocessed_phase_summary_opens_phase_opportunity(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        phase_dir = root / "tmp" / "phase-reports" / "PHASE-001-plan-001"
+        phase_dir.mkdir(parents=True)
+        (phase_dir / "phase-summary.yaml").write_text("phase_id: PHASE-001\n", encoding="utf-8")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        payload = json.loads(out)
+        self.assertEqual(payload["decision"], "block")
+        opps = self._opportunities(root)
+        self.assertEqual(len(opps), 1)
+        record = json.loads((opps[0] / "opportunity.json").read_text(encoding="utf-8"))
+        self.assertEqual(record["kind"], "phase")
+        self.assertEqual(record["triggers"], ["phase-summary"])
+        self.assertEqual(record["evidence"], ["tmp/phase-reports/PHASE-001-plan-001"])
+
+    def test_processed_marker_suppresses_phase_opportunity(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        phase_dir = root / "tmp" / "phase-reports" / "PHASE-001-plan-001"
+        phase_dir.mkdir(parents=True)
+        (phase_dir / "phase-summary.yaml").write_text("phase_id: PHASE-001\n", encoding="utf-8")
+        (phase_dir / ".processed").write_text("", encoding="utf-8")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "")
+        self.assertEqual(self._opportunities(root), [])
+
+    def test_disabled_config_silences_everything(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, enabled=False, interval=1)
+        capturelib.record_signal(root, "handoff-written", "handoffs/HANDOFF-1.md")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "")
+        self.assertEqual(self._opportunities(root), [])
+
+    def test_disabled_config_freezes_an_already_open_opportunity(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, interval=1)
+        capturelib.record_signal(root, "vault-write", "specs/SPEC-001.md")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        self._run()  # opens while enabled
+        before = capturelib.load_state(root)
+        self.assertIsNotNone(before["open_opportunity"])
+
+        write_capture_config(root, interval=1, enabled=False)
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "")
+        after = capturelib.load_state(root)
+        self.assertEqual(after["open_opportunity"], before["open_opportunity"])
+        self.assertEqual(after["reemits"], before["reemits"])
+
+    def test_open_opportunity_missing_on_disk_clears_stale_mutex(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        directory = capturelib.open_opportunity(
+            root, "interval", ["vault-write"], ["specs/SPEC-001.md"]
+        )
+        shutil.rmtree(directory)
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "")
+        state = capturelib.load_state(root)
+        self.assertIsNone(state["open_opportunity"])
+
+    def test_corrupt_state_file_exits_0(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        state_path = root / "tmp" / "capture-state.json"
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text("not json at all {{{", encoding="utf-8")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "")
+
+    def test_missing_vault_exits_0(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        old_cwd = os.getcwd()
+        os.chdir(tmp)
+        self.addCleanup(os.chdir, old_cwd)
+        with_vault_env(self, tmp)  # no .compass/ under this dir either
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "")
+
+    def test_no_hook_flag_never_reads_stdin(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+
+        class _Boom:
+            def read(self_inner):
+                raise AssertionError("no --hook flag: stdin must never be read")
+
+        self.addCleanup(setattr, sys, "stdin", sys.stdin)
+        sys.stdin = _Boom()
+        code = capture_check.run([])
+        self.assertEqual(code, 0)
+        self.assertEqual(self._opportunities(root), [])
+
+    def test_internal_error_mid_emit_leaves_no_partial_output(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, interval=1)
+        capturelib.record_signal(root, "vault-write", "specs/SPEC-001.md")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        original = capturelib.open_opportunity
+        capturelib.open_opportunity = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom"))
+        try:
+            code, out = self._run()
+        finally:
+            capturelib.open_opportunity = original
         self.assertEqual(code, 0)
         self.assertEqual(out, "")
 
