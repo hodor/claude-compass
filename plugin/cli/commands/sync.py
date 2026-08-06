@@ -16,6 +16,7 @@ outputs to avoid a write loop, succeeds silently, and never exits 2 - an exit 2
 would block the user's write.
 """
 
+import datetime
 import json
 import re
 import sys
@@ -47,6 +48,7 @@ CATALOG_LINE_CAP = 200
 CATALOG_BYTE_CAP = 25_000
 LESSON_COUNT_CAP = 50
 LOG_MAX_AGE_DAYS = 30
+CAPTURE_LOG_MAX_AGE_DAYS = 365
 
 WIKILINK = re.compile(r"\[\[([^\]]+)\]\]")
 INDEX_WARNING = "<!-- WARNING: index.md exceeded hot-path cap. Run /compass:consolidate before next session. -->"
@@ -273,17 +275,57 @@ def _check_caps(vault_root, records):
     return warnings
 
 
+def _prune_capture_log(vault_root):
+    """Drop rows in `tmp/capture-log.jsonl` older than
+    `CAPTURE_LOG_MAX_AGE_DAYS`, keyed by each row's own `at` timestamp
+    rather than the file's mtime, since the whole log lives in one
+    continuously-appended file. A line that cannot be parsed or dated is
+    dropped along with the aged-out rows: a row that cannot be judged to be
+    recent cannot be judged to have earned another year on disk either."""
+    path = vault_root / "tmp" / "capture-log.jsonl"
+    if not path.is_file():
+        return 0
+    cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+        days=CAPTURE_LOG_MAX_AGE_DAYS
+    )
+    kept, pruned = [], 0
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        try:
+            row = json.loads(stripped)
+            at = datetime.datetime.fromisoformat(row["at"].replace("Z", "+00:00"))
+        except (ValueError, KeyError, TypeError, AttributeError):
+            pruned += 1
+            continue
+        if at < cutoff:
+            pruned += 1
+            continue
+        kept.append(stripped)
+    if pruned:
+        text = "\n".join(kept) + ("\n" if kept else "")
+        vaultlib.write_text_lf(path, text)
+    return pruned
+
+
 def _clean_logs(vault_root):
+    """Prune stale logs under `tmp/`: whole-file deletion of
+    `extraction-log-*.md` past `LOG_MAX_AGE_DAYS`, row-level pruning of
+    `capture-log.jsonl` past `CAPTURE_LOG_MAX_AGE_DAYS` - a much longer
+    horizon, since a fleet-wide fire-rate measurement needs to look back
+    further than one month. Returns `(extraction_deleted, capture_rows_pruned)`.
+    """
     tmp = vault_root / "tmp"
     if not tmp.is_dir():
-        return 0
+        return 0, 0
     cutoff = time.time() - LOG_MAX_AGE_DAYS * 86400
     deleted = 0
     for log in tmp.glob("extraction-log-*.md"):
         if log.is_file() and log.stat().st_mtime < cutoff:
             log.unlink()
             deleted += 1
-    return deleted
+    return deleted, _prune_capture_log(vault_root)
 
 
 def sync(vault_root):
@@ -292,13 +334,15 @@ def sync(vault_root):
     _load_data(records)
     index_added = _sync_index(vault_root, records)
     catalog_added, catalog_collisions = _sync_catalog(vault_root, records)
+    logs_deleted, capture_log_pruned = _clean_logs(vault_root)
     return {
         "index_added": index_added,
         "catalog_added": catalog_added,
         "catalog_collisions": catalog_collisions,
         "tags": _sync_tag_index(vault_root, records),
         "caps": _check_caps(vault_root, records),
-        "logs_deleted": _clean_logs(vault_root),
+        "logs_deleted": logs_deleted,
+        "capture_log_pruned": capture_log_pruned,
     }
 
 
@@ -315,6 +359,8 @@ def format_report(report):
         parts.append(f"caps exceeded (warning written): {', '.join(report['caps'])}")
     if report["logs_deleted"]:
         parts.append(f"extraction logs deleted: {report['logs_deleted']}")
+    if report["capture_log_pruned"]:
+        parts.append(f"capture-log rows pruned: {report['capture_log_pruned']}")
     return "\n".join(parts)
 
 

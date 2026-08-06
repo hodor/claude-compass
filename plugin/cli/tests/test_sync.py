@@ -1,5 +1,6 @@
 """Tests for `compass sync` in both human and hook modes."""
 
+import datetime
 import io
 import json
 import os
@@ -181,6 +182,78 @@ class LogCleanupTests(SyncFixture):
         self.assertEqual(deleted, 1)
         self.assertFalse(old.exists())
         self.assertTrue(new.exists())
+
+
+class CaptureLogRetentionTests(SyncFixture):
+    """`_clean_logs` prunes `capture-log.jsonl` row-level at 365 days, on a
+    horizon independent of the 30-day `extraction-log-*.md` file pruning
+    above - a fleet fire-rate measurement needs to look back further than a
+    month even while extraction logs age out on their own shorter clock."""
+
+    def _row(self, days_old, event="opened", **fields):
+        at = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days_old)
+        row = {"at": at.isoformat().replace("+00:00", "Z"), "event": event}
+        row.update(fields)
+        return row
+
+    def _write_capture_log(self, rows):
+        (self.root / "tmp").mkdir(exist_ok=True)
+        path = self.root / "tmp" / "capture-log.jsonl"
+        path.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+        return path
+
+    def test_31_day_old_extraction_log_pruned_31_day_old_capture_row_kept(self):
+        (self.root / "tmp").mkdir(exist_ok=True)
+        old_extraction = self.root / "tmp" / "extraction-log-old.md"
+        old_extraction.write_text("x", encoding="utf-8")
+        old_time = time.time() - 31 * 86400
+        os.utime(old_extraction, (old_time, old_time))
+
+        path = self._write_capture_log([self._row(31, id="OPP-1", kind="interval", triggers=[])])
+
+        report = sync_cmd.sync(self.root)
+        self.assertEqual(report["logs_deleted"], 1)
+        self.assertFalse(old_extraction.exists())
+        self.assertEqual(report["capture_log_pruned"], 0)
+        rows = [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
+        self.assertEqual(len(rows), 1)
+
+    def test_366_day_old_capture_row_pruned(self):
+        path = self._write_capture_log([
+            self._row(366, id="OPP-old", kind="interval", triggers=[]),
+            self._row(1, id="OPP-new", kind="interval", triggers=[]),
+        ])
+        report = sync_cmd.sync(self.root)
+        self.assertEqual(report["capture_log_pruned"], 1)
+        rows = [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["id"], "OPP-new")
+
+    def test_malformed_capture_log_line_pruned_without_crashing(self):
+        (self.root / "tmp").mkdir(exist_ok=True)
+        path = self.root / "tmp" / "capture-log.jsonl"
+        path.write_text(
+            "{not valid json\n" + json.dumps(self._row(1, id="OPP-new", kind="interval", triggers=[])) + "\n",
+            encoding="utf-8",
+        )
+        report = sync_cmd.sync(self.root)
+        self.assertEqual(report["capture_log_pruned"], 1)
+        rows = [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["id"], "OPP-new")
+
+    def test_no_capture_log_is_a_noop(self):
+        report = sync_cmd.sync(self.root)
+        self.assertEqual(report["capture_log_pruned"], 0)
+
+    def test_pruned_capture_log_is_lf_only(self):
+        self._write_capture_log([
+            self._row(366, id="OPP-old", kind="interval", triggers=[]),
+            self._row(1, id="OPP-new", kind="interval", triggers=[]),
+        ])
+        sync_cmd.sync(self.root)
+        raw = (self.root / "tmp" / "capture-log.jsonl").read_bytes()
+        self.assertNotIn(b"\r\n", raw)
 
 
 class ResolutionMatchingTests(SyncFixture):

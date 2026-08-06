@@ -4,6 +4,8 @@ SubagentStop hook path must never fail the turn that triggered it, so most
 cases assert "exits 0, records nothing" under a malformed or absent input
 rather than a happy path."""
 
+import builtins
+import datetime
 import io
 import json
 import os
@@ -14,12 +16,14 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import capturelib  # noqa: E402
 from commands import capture_check  # noqa: E402
 from commands import capture_signal  # noqa: E402
+from commands import capture_stats  # noqa: E402
 
 
 def make_vault(test_case):
@@ -60,6 +64,17 @@ def captures_dir(vault_root):
 
 def opportunities_dir(vault_root):
     return vault_root / "tmp" / "capture-opportunities"
+
+
+def capture_log_path(vault_root):
+    return vault_root / "tmp" / "capture-log.jsonl"
+
+
+def read_log_rows(vault_root):
+    path = capture_log_path(vault_root)
+    if not path.is_file():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def write_capture_config(root, **overrides):
@@ -524,6 +539,192 @@ class CaptureCheckTests(unittest.TestCase):
             capturelib.open_opportunity = original
         self.assertEqual(code, 0)
         self.assertEqual(out, "")
+
+
+class CaptureLogLifecycleTests(unittest.TestCase):
+    """Tests for the trace rows `capturelib` appends to
+    `.compass/tmp/capture-log.jsonl` around the opportunity lifecycle: the
+    direct answer to hermes Finding 11 that "reviewed and found nothing" and
+    "never ran" must be distinguishable rows, never the same absence."""
+
+    def test_full_lifecycle_produces_expected_row_sequence(self):
+        root = make_vault(self)
+        write_capture_config(root, interval=1)
+        state = capturelib.load_state(root)
+        config = capturelib.load_config(root)
+
+        # Not due yet: a `skipped` row carrying the arithmetic reason.
+        is_due, reason = capturelib.due_and_log(root, state, config)
+        self.assertFalse(is_due)
+
+        # Due: an `opened` row.
+        capturelib.record_signal(root, "vault-write", "specs/SPEC-001.md")
+        state = capturelib.load_state(root)
+        directory = capturelib.open_opportunity(root, "interval", ["vault-write"], ["specs/SPEC-001.md"])
+        opp_id = directory.name
+
+        # Extraction ran and wrote nothing: a `fired` row, not a `closed` one -
+        # "reviewed and found nothing" is distinguishable from "never ran".
+        capturelib.close_opportunity(root, opp_id, "fired", candidate=2, written=0, rejected=2)
+
+        # A second opportunity that ages out unprocessed: a `closed` row.
+        second = capturelib.open_opportunity(root, "phase", ["phase-summary"], [])
+        capturelib.close_opportunity(root, second.name, "abandoned")
+
+        rows = read_log_rows(root)
+        events = [r["event"] for r in rows]
+        self.assertEqual(events, ["skipped", "opened", "fired", "opened", "closed"])
+
+        self.assertEqual(rows[0]["reason"], reason)
+
+        self.assertEqual(rows[1]["id"], opp_id)
+        self.assertEqual(rows[1]["kind"], "interval")
+        self.assertEqual(rows[1]["triggers"], ["vault-write"])
+
+        self.assertEqual(rows[2]["id"], opp_id)
+        self.assertEqual(rows[2]["outcome"], "fired")
+        self.assertEqual(rows[2]["candidate"], 2)
+        self.assertEqual(rows[2]["written"], 0)
+        self.assertEqual(rows[2]["rejected"], 2)
+        self.assertNotIn("recurrence", rows[2])  # never provided, never written
+
+        self.assertEqual(rows[4]["id"], second.name)
+        self.assertEqual(rows[4]["outcome"], "abandoned")
+        self.assertNotIn("written", rows[4])  # abandoned: extraction never ran
+
+        for row in rows:
+            self.assertIn("at", row)
+
+    def test_fired_and_closed_rows_are_lf_only(self):
+        root = make_vault(self)
+        directory = capturelib.open_opportunity(root, "interval", [], [])
+        capturelib.close_opportunity(root, directory.name, "abandoned")
+        raw = capture_log_path(root).read_bytes()
+        self.assertNotIn(b"\r\n", raw)
+        self.assertIn(b"\n", raw)
+
+    def test_logging_failure_does_not_raise_out_of_open_or_close(self):
+        root = make_vault(self)
+        real_open = builtins.open
+
+        def boom(path, *args, **kwargs):
+            if str(path).endswith("capture-log.jsonl"):
+                raise OSError("unwritable")
+            return real_open(path, *args, **kwargs)
+
+        with mock.patch("builtins.open", boom):
+            directory = capturelib.open_opportunity(root, "interval", [], [])
+            capturelib.close_opportunity(root, directory.name, "fired", written=1)
+
+        # The lifecycle itself still completed despite the log write failing.
+        record = json.loads((directory / "opportunity.json").read_text(encoding="utf-8"))
+        self.assertEqual(record["outcome"], "fired")
+
+
+class CaptureStatsTests(unittest.TestCase):
+    def _run(self, args):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = capture_stats.run(args)
+        return code, out.getvalue()
+
+    def _write_log(self, root, rows):
+        path = capture_log_path(root)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            "\n".join(json.dumps(r) if not isinstance(r, str) else r for r in rows) + "\n",
+            encoding="utf-8",
+        )
+
+    def test_rates_computed_from_fixture_log_including_zero_fire_vault(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        self._write_log(root, [
+            {"at": "2026-01-01T00:00:00Z", "event": "opened", "id": "OPP-1", "kind": "interval", "triggers": ["vault-write"]},
+            {"at": "2026-01-01T00:01:00Z", "event": "fired", "id": "OPP-1", "outcome": "fired", "candidate": 1, "written": 1},
+            {"at": "2026-01-02T00:00:00Z", "event": "opened", "id": "OPP-2", "kind": "signal", "triggers": ["handoff-written"]},
+            {"at": "2026-01-02T00:01:00Z", "event": "fired", "id": "OPP-2", "outcome": "fired", "candidate": 3, "written": 0},
+            {"at": "2026-01-03T00:00:00Z", "event": "skipped", "reason": "below interval (2/12)"},
+        ])
+        code, out = self._run([])
+        self.assertEqual(code, 0)
+        self.assertIn("opportunities opened: 2", out)
+        self.assertIn("fired: 2 (100.0%)", out)
+        self.assertIn("written: 1 (50.0%)", out)
+        self.assertIn("vault-write: 1", out)
+        self.assertIn("handoff-written: 1", out)
+
+    def test_zero_fire_vault_reports_zero_percent_not_a_crash(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        self._write_log(root, [
+            {"at": "2026-01-01T00:00:00Z", "event": "opened", "id": "OPP-1", "kind": "interval", "triggers": ["vault-write"]},
+            {"at": "2026-01-01T00:01:00Z", "event": "closed", "id": "OPP-1", "outcome": "abandoned"},
+        ])
+        code, out = self._run([])
+        self.assertEqual(code, 0)
+        self.assertIn("opportunities opened: 1", out)
+        self.assertIn("fired: 0 (0.0%)", out)
+        self.assertIn("written: 0 (0.0%)", out)
+
+    def test_no_log_reports_zero_without_crashing(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        code, out = self._run([])
+        self.assertEqual(code, 0)
+        self.assertIn("opportunities opened: 0", out)
+
+    def test_json_flag_parses(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        self._write_log(root, [
+            {"at": "2026-01-01T00:00:00Z", "event": "opened", "id": "OPP-1", "kind": "interval", "triggers": ["vault-write"]},
+        ])
+        code, out = self._run(["--json"])
+        self.assertEqual(code, 0)
+        payload = json.loads(out)
+        self.assertEqual(payload["opened"], 1)
+        self.assertEqual(payload["fired"], 0)
+        self.assertIn("triggers", payload)
+
+    def test_unknown_event_kind_skipped_without_crashing(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        self._write_log(root, [
+            {"at": "2026-01-01T00:00:00Z", "event": "opened", "id": "OPP-1", "kind": "interval", "triggers": []},
+            {"at": "2026-01-01T00:01:00Z", "event": "mystery-event", "id": "OPP-1"},
+        ])
+        code, out = self._run(["--json"])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out)["opened"], 1)
+
+    def test_malformed_jsonl_line_skipped(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        self._write_log(root, [
+            {"at": "2026-01-01T00:00:00Z", "event": "opened", "id": "OPP-1", "kind": "interval", "triggers": []},
+            "{not valid json at all",
+        ])
+        code, out = self._run(["--json"])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out)["opened"], 1)
+
+    def test_since_filters_older_rows(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        self._write_log(root, [
+            {"at": "2026-01-01T00:00:00Z", "event": "opened", "id": "OPP-1", "kind": "interval", "triggers": []},
+            {"at": "2026-02-01T00:00:00Z", "event": "opened", "id": "OPP-2", "kind": "interval", "triggers": []},
+        ])
+        code, out = self._run(["--json", "--since", "2026-01-15"])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out)["opened"], 1)
+
+    def test_since_bad_value_exits_1(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        code, _ = self._run(["--since", "not-a-date"])
+        self.assertEqual(code, 1)
 
 
 if __name__ == "__main__":

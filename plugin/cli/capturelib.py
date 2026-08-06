@@ -11,6 +11,18 @@ Every other function here sits on that hook path and is best-effort: a
 missing, corrupt, or unreadable file resets to defaults instead of raising,
 and writes swallow I/O errors rather than breaking the turn that triggered
 them.
+
+Every opportunity's lifecycle is traced to the append-only
+`.compass/tmp/capture-log.jsonl`, one JSON object per line: `opened` when
+`open_opportunity` materializes a directory, `skipped` when `due_and_log`
+finds nothing due (carrying the arithmetic reason `due()` returned), `fired`
+when `close_opportunity` is given an outcome other than `abandoned` (an
+extraction pass actually ran, whether or not it wrote anything - "reviewed
+and found nothing" is a `fired` row with `written: 0`, distinct from a
+`closed` row where extraction never ran at all), and `closed` when the
+outcome is `abandoned` (the re-emit budget ran out with no extraction ever
+run). Logging a row is best-effort like everything else on this module's
+hook path: a write failure never raises out of the function that logs it.
 """
 
 import datetime
@@ -56,6 +68,10 @@ def _opportunities_dir(vault_root):
     return Path(vault_root) / "tmp" / "capture-opportunities"
 
 
+def _log_path(vault_root):
+    return Path(vault_root) / "tmp" / "capture-log.jsonl"
+
+
 def _now():
     return datetime.datetime.now(datetime.timezone.utc)
 
@@ -72,6 +88,22 @@ def _write_json(path, data):
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         vaultlib.write_text_lf(path, text)
+    except OSError:
+        pass
+
+
+def _log_event(vault_root, event, **fields):
+    """Append one row to `.compass/tmp/capture-log.jsonl`: `{at, event,
+    **fields}` with a UTC timestamp. Best-effort - a full disk or an
+    unwritable tmp dir must never raise out of the opportunity lifecycle
+    call that triggered the log, so I/O errors are swallowed here."""
+    row = {"at": _iso(_now()), "event": event}
+    row.update(fields)
+    path = _log_path(vault_root)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "a", encoding="utf-8", newline="") as handle:
+            handle.write(json.dumps(row) + "\n")
     except OSError:
         pass
 
@@ -188,6 +220,19 @@ def due(state, config):
     return True, f"interval reached ({turns}/{interval}) with {len(signals)} signal(s)"
 
 
+def due_and_log(vault_root, state, config):
+    """`due()`, plus a `skipped` trace row carrying the arithmetic reason
+    when the result is not due. `due()` itself stays the pure, I/O-free
+    decision function `due()`'s own docstring and SPEC-012 D-03 require;
+    this wrapper is the one caller on the hook path that needs the outcome
+    traced, so the log write sits beside `due()` rather than inside it.
+    Returns the same `(bool, reason)` pair `due()` returns."""
+    is_due, reason = due(state, config)
+    if not is_due:
+        _log_event(vault_root, "skipped", reason=reason)
+    return is_due, reason
+
+
 def open_opportunity(vault_root, kind, triggers, evidence):
     """Materialize a capture opportunity at
     `.compass/tmp/capture-opportunities/OPP-<UTC>/opportunity.json`, holding
@@ -218,15 +263,29 @@ def open_opportunity(vault_root, kind, triggers, evidence):
     state["signals"] = []
     state["last_opportunity_at"] = opened_at
     save_state(vault_root, state)
+    _log_event(vault_root, "opened", id=opp_id, kind=kind, triggers=triggers)
     return directory
 
 
-def close_opportunity(vault_root, opportunity_id, outcome):
-    """Close `opportunity_id` with `outcome` (e.g. `fired`, `abandoned`,
-    `skipped`). Clears the state's `open_opportunity` and `reemits` when
-    `opportunity_id` is the one currently open; records `outcome` and
-    `closed_at` on the opportunity's own `opportunity.json` when that file is
-    still present, independent of whether it was the current mutex holder."""
+def close_opportunity(
+    vault_root, opportunity_id, outcome,
+    candidate=None, written=None, recurrence=None, rejected=None, error=None,
+):
+    """Close `opportunity_id` with `outcome` (e.g. `fired`, `abandoned`).
+    Clears the state's `open_opportunity` and `reemits` when `opportunity_id`
+    is the one currently open; records `outcome` and `closed_at` on the
+    opportunity's own `opportunity.json` when that file is still present,
+    independent of whether it was the current mutex holder.
+
+    `outcome` is an open string, not an enum - the extraction pass supplies
+    whatever value describes what happened. `abandoned` is the one outcome
+    this module itself uses (the re-emit budget ran out with no extraction
+    ever run) and logs as a `closed` trace row. Any other outcome logs as
+    `fired` - an extraction pass actually ran, whether or not it wrote
+    anything - carrying whichever of `candidate`, `written`, `recurrence`,
+    `rejected`, `error` were passed, so "reviewed and found nothing" and
+    "never ran" are always distinguishable rows, never the same absence.
+    """
     state = load_state(vault_root)
     if state.get("open_opportunity") == opportunity_id:
         state["open_opportunity"] = None
@@ -234,15 +293,25 @@ def close_opportunity(vault_root, opportunity_id, outcome):
         save_state(vault_root, state)
 
     path = _opportunities_dir(vault_root) / opportunity_id / "opportunity.json"
-    if not path.is_file():
-        return
-    try:
-        record = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        record = {}
-    if not isinstance(record, dict):
-        record = {}
-    record.setdefault("id", opportunity_id)
-    record["outcome"] = outcome
-    record["closed_at"] = _iso(_now())
-    _write_json(path, record)
+    if path.is_file():
+        try:
+            record = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            record = {}
+        if not isinstance(record, dict):
+            record = {}
+        record.setdefault("id", opportunity_id)
+        record["outcome"] = outcome
+        record["closed_at"] = _iso(_now())
+        _write_json(path, record)
+
+    counts = {
+        name: value
+        for name, value in (
+            ("candidate", candidate), ("written", written),
+            ("recurrence", recurrence), ("rejected", rejected), ("error", error),
+        )
+        if value is not None
+    }
+    event = "closed" if outcome == "abandoned" else "fired"
+    _log_event(vault_root, event, id=opportunity_id, outcome=outcome, **counts)
