@@ -41,6 +41,7 @@ COMMAND_SPECS = [
     ("capture-close", "Close a capture opportunity with an outcome and candidate/written/recurrence/rejected/revised/archived/error counts."),
     ("doctor", "Diagnose install drift: plugin.yaml, hook registration, CLI completeness, agents/skills, lessons catalog. Exit 1 on any FAIL."),
     ("lessons", "Ranked catalog rows for an area, tag set, free text, or a document. Exit 1 on a malformed catalog row or missing catalog."),
+    ("lesson-coverage", "Report cited, surfaced-but-uncited, and unresolvable lesson citations for a plan's `lessons:` fields. Advisory: exit 1 only on an unresolvable citation."),
 ]
 
 

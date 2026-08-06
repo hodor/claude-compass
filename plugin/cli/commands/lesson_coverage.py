@@ -1,0 +1,208 @@
+"""`compass lesson-coverage <plan>` - the lesson-citation audit.
+
+Mirrors `compass coverage` (decisions), grammar and posture both, but audits
+instead of gating: a decision left uncovered fails a plan's approval; a
+lesson left uncited never does. Compass's own citation obligation lives in
+`plugin/cli/decisionslib.py`'s docstring and `commands/coverage.py` - this
+module is the same idea one field over.
+
+Plan task lines gain an optional `lessons: [name, name.md, ...]` field, in
+the same position as `decisions:` on the task's own line (after `files:`).
+Each entry is a lesson catalog filename, with or without the `.md` suffix -
+both resolve to the same row. Fenced code blocks and inline code spans are
+quoted documentation and never claim, exactly as `coverage` treats
+`decisions:` examples.
+
+Every citation resolves against `.compass/meta/lessons-catalog.yaml`
+(`lessonslib.load_catalog`), archived rows included - citing an archived
+lesson is a legal, informative citation, not a mistake. Separately, this
+module computes what `compass lessons --for <plan>` would surface for the
+plan's own `area`/`tags` (`lessonslib.rank`, top 5, the command's default),
+so a lesson ranked highly for this plan but never cited shows up as an
+advisory row.
+
+Output is a `lesson | cited by | status` table with three statuses:
+
+- `cited` - a citation resolved to a catalog row. `cited by` lists every
+  task that cited it.
+- `surfaced-but-uncited` - the lesson ranks for this plan's area/tags but no
+  task cited it. Advisory only: a lesson an author read and correctly judged
+  irrelevant is a normal outcome, not a defect.
+- `unresolvable` - a citation names no catalog row, a typo the author can
+  fix.
+
+Exit 1 only when an unresolvable citation exists. A plan with no `lessons:`
+fields anywhere exits 0 with an explicit "no citations" summary line rather
+than treating the absence as a gap. Never exits 2.
+"""
+
+import json
+import re
+import sys
+
+import lessonslib
+import vaultlib
+from commands.decisions import resolve_doc
+
+# A task line: an optional leading indent, a checkbox, then TASK-<id>:.
+TASK_LINE = re.compile(r"^\s*-\s+\[[ xX]\]\s+(TASK-[A-Za-z0-9_-]+):")
+
+# The lessons: field, wherever it sits on that same task line.
+LESSONS_FIELD = re.compile(r"lessons:\s*\[([^\]]*)\]")
+
+_DEFAULT_TOP = 5
+
+
+def _normalize(name):
+    """Strip surrounding quotes and a trailing `.md`, so a citation resolves
+    the same way with or without the suffix."""
+    name = name.strip()
+    if len(name) >= 2 and name[0] in "\"'" and name[-1] == name[0]:
+        name = name[1:-1]
+    if name.lower().endswith(".md"):
+        name = name[:-3]
+    return name
+
+
+def _parse_citations(plan_text):
+    """Scan the plan body for `lessons:` citations on task lines.
+
+    Returns a list of `{task, raw, line}` dicts, one per cited entry, in the
+    order they appear. Fenced blocks and inline code are stripped first
+    (line count preserved), so quoted examples never claim.
+    """
+    stripped, _ = vaultlib.strip_fenced_code(plan_text)
+    stripped = vaultlib.strip_inline_code(stripped)
+    citations = []
+    for number, line in enumerate(stripped.split("\n"), start=1):
+        task_match = TASK_LINE.match(line)
+        if not task_match:
+            continue
+        field_match = LESSONS_FIELD.search(line)
+        if not field_match:
+            continue
+        task_id = task_match.group(1)
+        for raw in field_match.group(1).split(","):
+            raw = raw.strip()
+            if raw:
+                citations.append({"task": task_id, "raw": raw, "line": number})
+    return citations
+
+
+def _resolve_citations(citations, catalog):
+    """Match citations against catalog rows (archived rows included).
+
+    Returns `(cited, unresolved)`. `cited` maps a canonical catalog filename
+    to the ordered list of tasks that cited it. `unresolved` maps a
+    normalized citation to `{"raw": <as written>, "tasks": [...]}` for
+    entries naming no catalog row.
+    """
+    index = {_normalize(row["file"]): row for row in catalog}
+    cited = {}
+    unresolved = {}
+    for citation in citations:
+        norm = _normalize(citation["raw"])
+        row = index.get(norm)
+        if row is None:
+            entry = unresolved.setdefault(norm, {"raw": citation["raw"], "tasks": []})
+            if citation["task"] not in entry["tasks"]:
+                entry["tasks"].append(citation["task"])
+            continue
+        tasks = cited.setdefault(row["file"], [])
+        if citation["task"] not in tasks:
+            tasks.append(citation["task"])
+    return cited, unresolved
+
+
+def run(args):
+    positional, json_flag = [], False
+    for arg in args:
+        if arg == "--json":
+            json_flag = True
+        elif arg.startswith("--"):
+            sys.stderr.write(f"compass lesson-coverage: unknown flag {arg}\n")
+            return 1
+        else:
+            positional.append(arg)
+    if len(positional) != 1:
+        sys.stderr.write("usage: compass lesson-coverage <plan> [--json]\n")
+        return 1
+
+    vault_root = vaultlib.find_vault_root()
+    resolve = vaultlib.resolvable_names_map(vault_root)
+    plan_path, error = resolve_doc(vault_root, positional[0], resolve)
+    if error:
+        sys.stderr.write(f"compass lesson-coverage: {error}\n")
+        return 1
+    plan_rel = plan_path.relative_to(vault_root).as_posix()
+    plan_text = plan_path.read_text(encoding="utf-8")
+    plan_data, _ = vaultlib.parse_frontmatter_text(plan_text)
+
+    try:
+        catalog = lessonslib.load_catalog(vault_root)
+    except FileNotFoundError:
+        sys.stderr.write(
+            "compass lesson-coverage: lessons catalog not found - vault malformed\n"
+        )
+        return 1
+    except lessonslib.MalformedRow as exc:
+        sys.stderr.write(f"compass lesson-coverage: malformed catalog: {exc}\n")
+        return 1
+
+    citations = _parse_citations(plan_text)
+    cited, unresolved = _resolve_citations(citations, catalog)
+
+    tags = plan_data.get("tags") or []
+    if isinstance(tags, str):
+        tags = [tags]
+    area = plan_data.get("area")
+    surfaced = lessonslib.rank(catalog, area=area, tags=tags)[:_DEFAULT_TOP]
+    surfaced_uncited = [row for row in surfaced if row["file"] not in cited]
+
+    ok = not unresolved
+
+    if json_flag:
+        payload = {
+            "plan": plan_rel,
+            "cited": [
+                {"lesson": file, "cited_by": tasks}
+                for file, tasks in sorted(cited.items())
+            ],
+            "unresolvable": [
+                {"citation": entry["raw"], "cited_by": entry["tasks"]}
+                for _, entry in sorted(unresolved.items())
+            ],
+            "surfaced_but_uncited": [row["file"] for row in surfaced_uncited],
+            "has_citations": bool(citations),
+            "ok": ok,
+        }
+        sys.stdout.write(json.dumps(payload) + "\n")
+        return 0 if ok else 1
+
+    rows = [("lesson", "cited by", "status")]
+    for file in sorted(cited):
+        rows.append((file, ", ".join(cited[file]), "cited"))
+    for _, entry in sorted(unresolved.items()):
+        rows.append((entry["raw"], ", ".join(entry["tasks"]), "unresolvable"))
+    for row in surfaced_uncited:
+        rows.append((row["file"], "-", "surfaced-but-uncited (advisory)"))
+
+    sys.stdout.write(f"compass lesson-coverage: {plan_rel}\n")
+    if len(rows) > 1:
+        widths = [max(len(row[col]) for row in rows) for col in range(3)]
+        for row in rows:
+            line = "  ".join(cell.ljust(w) for cell, w in zip(row, widths))
+            sys.stdout.write(line.rstrip() + "\n")
+
+    if citations:
+        summary = (
+            f"{len(cited)} cited, {len(unresolved)} unresolvable, "
+            f"{len(surfaced_uncited)} surfaced-but-uncited (advisory)"
+        )
+    else:
+        summary = (
+            f"no citations: no lessons: field found in {plan_rel}; "
+            f"{len(surfaced_uncited)} surfaced-but-uncited (advisory)"
+        )
+    sys.stdout.write(f"summary: {summary} -> {'PASS' if ok else 'FAIL'}\n")
+    return 0 if ok else 1

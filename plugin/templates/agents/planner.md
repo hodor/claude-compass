@@ -90,6 +90,8 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
 
 `decisions:` is optional and mirrors `files:` - a list of source-qualified citations (`<doc-stem>/D-NN`) for the decisions a task implements, drawn from the `## Decisions`/`## Decision` bullets of the specs and ADRs this plan depends on. Omit it on tasks that claim nothing.
 
+`lessons:` is optional and mirrors `decisions:` in the same position - a list of catalog lesson filenames (with or without `.md`) the task drew on. `compass lesson-coverage <plan>` audits citations against the catalog; it never gates, so omitting it is always fine.
+
 Write the drafted plan to `.compass/plans/PLAN-NNN-descriptive-name.md` with `status: draft` (PLAN number computed JIT as in step 6) before presenting it - the coverage gate in the next step needs a file to check, and a draft file is expected to still change before approval.
 
 ### 5. Present for approval
