@@ -13,6 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import capturelib  # noqa: E402
 from commands import sync as sync_cmd  # noqa: E402
 from commands import validate as validate_cmd  # noqa: E402
 
@@ -429,6 +430,133 @@ class HookModeTests(SyncFixture):
         finally:
             sync_cmd.sync = original
         self.assertEqual(code, 1)
+
+
+class SignalRecordingTests(SyncFixture):
+    """Hook-mode sync records a capture signal for the artifact it just
+    synced, after the self-filter, wrapped so any capturelib failure never
+    touches sync's own exit code or report."""
+
+    def _set_env(self):
+        old = os.environ.get("CLAUDE_PROJECT_DIR")
+        os.environ["CLAUDE_PROJECT_DIR"] = str(self.root.parent)
+        self.addCleanup(
+            lambda: os.environ.__setitem__("CLAUDE_PROJECT_DIR", old) if old
+            else os.environ.pop("CLAUDE_PROJECT_DIR", None)
+        )
+
+    def _feed_stdin(self, payload):
+        self.addCleanup(setattr, sys, "stdin", sys.stdin)
+        sys.stdin = io.StringIO(json.dumps(payload))
+
+    def _state(self):
+        path = self.root / "tmp" / "capture-state.json"
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def test_handoff_write_records_handoff_written_signal(self):
+        self._set_env()
+        self.write("handoffs/2026-08-05-session.md", spec("Handoff"))
+        self._feed_stdin({
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": str(self.root / "handoffs" / "2026-08-05-session.md")},
+        })
+        code = sync_cmd.run(["--hook"])
+        self.assertEqual(code, 0)
+        signals = self._state()["signals"]
+        self.assertEqual(len(signals), 1)
+        self.assertEqual(signals[0]["kind"], "handoff-written")
+        self.assertEqual(signals[0]["ref"], "handoffs/2026-08-05-session.md")
+
+    def test_spec_write_records_vault_write_signal(self):
+        self._set_env()
+        self.write("specs/SPEC-002-new.md", spec("New"))
+        self._feed_stdin({
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": str(self.root / "specs" / "SPEC-002-new.md")},
+        })
+        code = sync_cmd.run(["--hook"])
+        self.assertEqual(code, 0)
+        signals = self._state()["signals"]
+        self.assertEqual(len(signals), 1)
+        self.assertEqual(signals[0]["kind"], "vault-write")
+        self.assertEqual(signals[0]["ref"], "specs/SPEC-002-new.md")
+
+    def test_generated_output_records_nothing(self):
+        self._set_env()
+        self.write("specs/SPEC-002-new.md", spec("New"))
+        self._feed_stdin({
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": str(self.root / "index.md")},
+        })
+        code = sync_cmd.run(["--hook"])
+        self.assertEqual(code, 0)
+        self.assertFalse((self.root / "tmp" / "capture-state.json").exists())
+
+    def test_tag_index_write_records_nothing(self):
+        self._set_env()
+        (self.root / "tmp").mkdir(exist_ok=True)
+        self._feed_stdin({
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": str(self.root / "meta" / "tag-index.yaml")},
+        })
+        code = sync_cmd.run(["--hook"])
+        self.assertEqual(code, 0)
+        self.assertFalse((self.root / "tmp" / "capture-state.json").exists())
+
+    def test_capturelib_exception_leaves_report_and_exit_code_untouched(self):
+        self._set_env()
+        self.write("specs/SPEC-002-new.md", spec("New"))
+        self._feed_stdin({
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": str(self.root / "specs" / "SPEC-002-new.md")},
+        })
+        original = sync_cmd.capturelib.record_signal
+        sync_cmd.capturelib.record_signal = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom"))
+        try:
+            out = io.StringIO()
+            from contextlib import redirect_stdout
+            with redirect_stdout(out):
+                code = sync_cmd.run(["--hook"])
+        finally:
+            sync_cmd.capturelib.record_signal = original
+        self.assertEqual(code, 0)
+        self.assertEqual(out.getvalue(), json.dumps({"suppressOutput": True}))
+        self.assertIn("[[SPEC-002-new]]", self.index_text())
+
+    def test_non_hook_sync_records_nothing(self):
+        old = os.environ.get("CLAUDE_PROJECT_DIR")
+        os.environ["CLAUDE_PROJECT_DIR"] = str(self.root.parent)
+        self.addCleanup(
+            lambda: os.environ.__setitem__("CLAUDE_PROJECT_DIR", old) if old
+            else os.environ.pop("CLAUDE_PROJECT_DIR", None)
+        )
+        self.write("specs/SPEC-002-new.md", spec("New"))
+        out = io.StringIO()
+        from contextlib import redirect_stdout
+        with redirect_stdout(out):
+            code = sync_cmd.run([])
+        self.assertEqual(code, 0)
+        self.assertFalse((self.root / "tmp" / "capture-state.json").exists())
+
+    def test_signal_readable_by_capturelib_load_state(self):
+        self._set_env()
+        self.write("specs/SPEC-002-new.md", spec("New"))
+        self._feed_stdin({
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": str(self.root / "specs" / "SPEC-002-new.md")},
+        })
+        code = sync_cmd.run(["--hook"])
+        self.assertEqual(code, 0)
+        state = capturelib.load_state(self.root)
+        self.assertEqual(len(state["signals"]), 1)
+        self.assertEqual(state["signals"][0]["kind"], "vault-write")
+        self.assertEqual(state["signals"][0]["ref"], "specs/SPEC-002-new.md")
 
 
 class HumanModeTests(SyncFixture):
