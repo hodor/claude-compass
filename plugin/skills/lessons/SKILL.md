@@ -74,14 +74,26 @@ A lesson with `escalated: <date>` in its frontmatter has recurred 3 times despit
 
 `/compass:consolidate` does not archive escalated lessons. The human clears the flag after rewording or fixing the retrieval gap.
 
+## Capture loop
+
+Capture is harness-owned: no agent decides mid-conversation to go write a lesson. The `Stop` hook runs `compass capture-check` on every turn, bumping a turn counter and evaluating a due condition against the signals recorded so far - `SubagentStop` and `TeammateIdle` run `compass capture-signal`, which records a signal for a finishing subagent (`validator-finished`, `debug-finished`, `builder-finished`, or a weaker `subagent-finished`/idle signal) and, from the vault-write path, `handoff-written` or `vault-write`. An opportunity is due when the turn interval is reached with at least one signal in the window, or immediately on a strong signal alone (a handoff written, a validator or debug subagent finishing, an unprocessed build phase summary). Neither hook spawns an agent - `due()` is arithmetic over counters and signals, not a judgment call.
+
+When due, `capture-check` opens `.compass/tmp/capture-opportunities/OPP-<UTC>/opportunity.json` and emits the Claude Code stop-hook block contract naming it, so the capture pass runs as a real turn instead of prose the model can skip. The `extract-lessons` skill reads the opportunity, checks its binary triggers (fix-loop >=2, validator deviation, debug invoked, STOP-and-report, plan revised, handoff written, interval-reached-with-signal), applies the anti-list, and hands survivors to `lesson-write`. It also runs a contradiction check against the catalog: evidence that falsifies or narrows an existing active lesson routes a revise or archive payload through `lesson-write` instead of a fresh candidate - revise edits the matched lesson's body, archive sets `status: archived` (never deletes). `compass capture-close` then closes the opportunity with its fired/written/rejected/revised/archived counts.
+
+Every step of an opportunity's lifecycle - opened, skipped (with the arithmetic reason), fired, closed - appends a row to `.compass/tmp/capture-log.jsonl`, so "reviewed and found nothing" and "never ran" are always distinguishable rows rather than the same silence. `compass capture-stats` turns that log into fire rate, write rate, and a per-trigger breakdown.
+
 ## Creating lessons
 
 Do NOT write lessons from agent prose. Creation goes through the `lesson-write` skill, called by:
 
-- `extract-lessons` - retrospective capture at phase boundary (auto)
+- `extract-lessons` - retrospective capture at a capture opportunity (auto, see Capture loop above)
 - `/compass:learned` - in-the-moment human capture (manual)
 
 Both paths share dedup, anti-list filtering, atomic 3-file writes, and the 5-line body cap. See `lesson-write/SKILL.md` for the protocol.
+
+## Application audit
+
+`compass lesson-coverage <plan>` checks whether the lessons a plan surfaced were actually used. A plan task line carries an optional `lessons: [LESSON-slug, ...]` field, in the same position as `decisions:`. The command resolves each citation against the catalog (archived rows included - citing one is informative, not a mistake) and reports three statuses: `cited` (the citation resolved to a catalog row), `surfaced-but-uncited` (the lesson ranks for the plan's own area/tags but no task cited it - advisory, since reading a lesson and correctly judging it irrelevant is a normal outcome), and `unresolvable` (a citation naming no catalog row, a typo to fix). The validator runs it report-only as a standard protocol step; low or missing coverage is a finding in its report, never a block on the verdict.
 
 ## File format
 
