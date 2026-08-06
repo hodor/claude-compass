@@ -1,0 +1,5 @@
+{
+  "enabled": true,
+  "interval": 12,
+  "max_reemits": 3
+}
