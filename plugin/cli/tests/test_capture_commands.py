@@ -1,8 +1,11 @@
-"""Tests for the capture-family commands (`capture-signal` today; `capture-check`
-and `capture-stats` land in later tasks and append here). Adversarial: the
-SubagentStop hook path must never fail the turn that triggered it, so most
-cases assert "exits 0, records nothing" under a malformed or absent input
-rather than a happy path."""
+"""Tests for the capture-family commands: `capture-signal` and `capture-check`,
+the two hook entry points, and `capture-stats` and `capture-close`, the
+ordinary CLI surfaces that read and close what the hooks produced.
+Adversarial for the hook path: a SubagentStop or Stop hook must never fail
+the turn that triggered it, so most of those cases assert "exits 0, records
+nothing" under a malformed or absent input rather than a happy path.
+`capture-close` is not hook-gated and reports its own errors, so its cases
+assert ordinary exit-1 failure instead."""
 
 import builtins
 import datetime
@@ -22,6 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import capturelib  # noqa: E402
 from commands import capture_check  # noqa: E402
+from commands import capture_close  # noqa: E402
 from commands import capture_signal  # noqa: E402
 from commands import capture_stats  # noqa: E402
 
@@ -724,6 +728,114 @@ class CaptureStatsTests(unittest.TestCase):
         root = make_vault(self)
         with_vault_env(self, root.parent)
         code, _ = self._run(["--since", "not-a-date"])
+        self.assertEqual(code, 1)
+
+
+class CaptureCloseTests(unittest.TestCase):
+    """Tests for `capture-close`, the extraction pass's own way to close the
+    opportunity it just processed. Unlike the hook commands, this is an
+    ordinary CLI surface: no `--hook` gate, no stdin, and a bad argument or
+    an id the caller has lost track of is a reported error, not a
+    best-effort no-op."""
+
+    def _run(self, args):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = capture_close.run(args)
+        return code, out.getvalue()
+
+    def test_close_writes_fired_row_with_counts_and_clears_mutex(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        directory = capturelib.open_opportunity(
+            root, "interval", ["vault-write"], ["specs/SPEC-001.md"]
+        )
+        opp_id = directory.name
+        self.assertEqual(capturelib.load_state(root)["open_opportunity"], opp_id)
+
+        code, out = self._run([
+            opp_id, "--outcome", "fired",
+            "--candidates", "3", "--written", "2", "--recurrence", "1",
+            "--rejected", "1", "--revised", "1", "--archived", "1", "--errors", "0",
+        ])
+        self.assertEqual(code, 0)
+        self.assertIn(opp_id, out)
+
+        state = capturelib.load_state(root)
+        self.assertIsNone(state["open_opportunity"])
+
+        record = json.loads((directory / "opportunity.json").read_text(encoding="utf-8"))
+        self.assertEqual(record["outcome"], "fired")
+        self.assertIsNotNone(record["closed_at"])
+
+        rows = read_log_rows(root)
+        fired = [r for r in rows if r["event"] == "fired"]
+        self.assertEqual(len(fired), 1)
+        row = fired[0]
+        self.assertEqual(row["id"], opp_id)
+        self.assertEqual(row["candidate"], 3)
+        self.assertEqual(row["written"], 2)
+        self.assertEqual(row["recurrence"], 1)
+        self.assertEqual(row["rejected"], 1)
+        self.assertEqual(row["revised"], 1)
+        self.assertEqual(row["archived"], 1)
+        self.assertEqual(row["error"], 0)
+
+    def test_missing_counts_omitted_from_row_not_zeroed(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        directory = capturelib.open_opportunity(root, "phase", ["phase-summary"], [])
+        opp_id = directory.name
+
+        code, _ = self._run([opp_id, "--outcome", "fired"])
+        self.assertEqual(code, 0)
+
+        rows = read_log_rows(root)
+        row = [r for r in rows if r["event"] == "fired"][0]
+        for key in ("candidate", "written", "recurrence", "rejected", "revised", "archived", "error"):
+            self.assertNotIn(key, row)
+
+    def test_unknown_id_exits_1(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        code, _ = self._run(["OPP-never-existed", "--outcome", "fired"])
+        self.assertEqual(code, 1)
+
+    def test_already_closed_id_exits_1(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        directory = capturelib.open_opportunity(root, "interval", [], [])
+        opp_id = directory.name
+        capturelib.close_opportunity(root, opp_id, "fired", written=1)
+
+        code, _ = self._run([opp_id, "--outcome", "fired", "--written", "1"])
+        self.assertEqual(code, 1)
+
+    def test_missing_outcome_flag_exits_1_not_2(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        directory = capturelib.open_opportunity(root, "interval", [], [])
+        code, _ = self._run([directory.name])
+        self.assertEqual(code, 1)
+
+    def test_non_integer_count_exits_1_not_2(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        directory = capturelib.open_opportunity(root, "interval", [], [])
+        code, _ = self._run([directory.name, "--outcome", "fired", "--written", "not-a-number"])
+        self.assertEqual(code, 1)
+
+    def test_unknown_flag_exits_1_not_2(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        directory = capturelib.open_opportunity(root, "interval", [], [])
+        code, _ = self._run([directory.name, "--outcome", "fired", "--bogus", "1"])
+        self.assertEqual(code, 1)
+
+    def test_no_opportunity_id_exits_1_not_2(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        code, _ = self._run(["--outcome", "fired"])
         self.assertEqual(code, 1)
 
 
