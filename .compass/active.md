@@ -83,7 +83,8 @@ Evidence base complete: [[RESEARCH-lesson-capture-failure]] (capture fired organ
 - [x] [[PLAN-006-learning-loop]] APPROVED 2026-08-05: 16 tasks, 5 phases, coverage gate PASS
 - [x] PLAN-006 Phase 1 COMPLETE (2026-08-05): TASK-036..040, suite 326/326, sequential in main tree (plan's parallel note undersold shared-file contact points).
 - [x] PLAN-006 Phase 2 COMPLETE (2026-08-06): TASK-041..044. Live firing observed and human-approved: handoff-written strong signal -> Stop-hook block -> extraction pass -> 2 lessons created, 1 revised via contradiction check, 2 anti-list rejections, capture-close traced (capture-stats: 1/1/1). Root-cause discovery en route: hooks load ONLY from settings files, never bare hooks.json - fixed via .claude/settings.json, recorded in [[LESSON-hooks-load-only-from-settings]].
-- [ ] PLAN-006 Phase 3 (in progress): TASK-045 doctor (settings-registration check per amendment), TASK-046 wire into update/checkup + setup/update skills gain settings registration.
+- [x] PLAN-006 Phase 3 COMPLETE (2026-08-06): TASK-045 doctor (6 checks, hook-registration core, 21 tests) + TASK-046 (setup/update register hooks in settings.json via manifest translation, checkup delegates to doctor). TeammateIdle payload observed live (teammate_name only) and capture-signal taught its shape; TeammateIdle shipped in the manifest. Suite 364/364; doctor runs clean from the installed CLI.
+- [ ] PLAN-006 Phase 4 next: TASK-047 lessonslib + compass lessons (catalog-row retrieval, no graph), TASK-048 retrieval trace + planner/builder surfacing sites.
 - [ ] After PLAN-006: SPEC-011 pipeline (research/ADR on substrate + planner), distribute v0.4.0 across repos (19/40 vaults lack the backstop), then SPEC-006 hosts (hermes first, then Kimi Code/Codex)
 
 ## Next Up
