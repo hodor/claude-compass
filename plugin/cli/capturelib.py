@@ -98,6 +98,17 @@ def load_config(vault_root):
     return config
 
 
+def _default_state():
+    """A fresh `DEFAULT_STATE` copy with its own `signals` list. `dict(...)`
+    alone only shallow-copies: the nested `signals` list would stay the same
+    object as `DEFAULT_STATE["signals"]`, so every caller that received a
+    "fresh" state and appended to it in place (`record_signal` does) would
+    corrupt every other vault's default for the life of the process."""
+    state = dict(DEFAULT_STATE)
+    state["signals"] = []
+    return state
+
+
 def load_state(vault_root):
     """Load `.compass/tmp/capture-state.json`. A missing, corrupt, or
     unreadable file resets to `DEFAULT_STATE` rather than raising. A `signals`
@@ -105,14 +116,14 @@ def load_state(vault_root):
     empty list while the rest of the state is kept."""
     path = _state_path(vault_root)
     if not path.is_file():
-        return dict(DEFAULT_STATE)
+        return _default_state()
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return dict(DEFAULT_STATE)
+        return _default_state()
     if not isinstance(raw, dict):
-        return dict(DEFAULT_STATE)
-    state = dict(DEFAULT_STATE)
+        return _default_state()
+    state = _default_state()
     state.update(raw)
     if not isinstance(state.get("signals"), list):
         state["signals"] = []
