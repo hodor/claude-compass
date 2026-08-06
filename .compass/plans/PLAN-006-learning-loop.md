@@ -1,8 +1,9 @@
 ---
 title: "Learning Loop Implementation (Harness-Owned Capture, Catalog Retrieval, Lesson Coverage)"
 type: plan
-status: approved
+status: done
 approved: 2026-08-05
+completed: 2026-08-06
 confidence: medium
 area: methodology
 tags: [lessons, learning-loop, capture, triggers, retrieval, lesson-coverage, hooks, cli, install-drift]
@@ -153,17 +154,17 @@ Gated behind Phase 1 to 3 by SPEC-012 D-02: retrieval is worthless until capture
 
 ### Phase 5 - Application is audited
 
-- [ ] TASK-049: `lessons:` task field and `compass lesson-coverage <plan>` - complexity: L, depends_on: TASK-047, files: [plugin/cli/commands/lesson_coverage.py, plugin/cli/maincli.py, plugin/cli/tests/test_lesson_coverage.py, plugin/templates/agents/planner.md], decisions: [SPEC-012-learning-loop/D-02]
+- [x] TASK-049: `lessons:` task field and `compass lesson-coverage <plan>` - complexity: L, depends_on: TASK-047, files: [plugin/cli/commands/lesson_coverage.py, plugin/cli/maincli.py, plugin/cli/tests/test_lesson_coverage.py, plugin/templates/agents/planner.md], decisions: [SPEC-012-learning-loop/D-02]
   - Plan task lines gain an optional `lessons: [LESSON-slug, ...]` field, mirroring the `decisions:` grammar [[PLAN-004-decision-coverage]] introduced. `compass lesson-coverage <plan>` resolves each citation against the catalog, computes what `compass lessons --for <plan>` would surface for the plan's area and tags, and prints a `lesson | cited by | status` table with three statuses: cited, surfaced-but-uncited (advisory), and unresolvable (a citation naming no catalog row). Exit 1 only on an unresolvable citation, which is a typo the author can fix; surfaced-but-uncited never fails the command, because a lesson an author read and correctly judged irrelevant is a normal outcome and gating on it would manufacture ceremony. The planner documents the field and may run the command, but no gate is added at plan approval.
   - Automated verification: unittest over fixture plans - a cited lesson shows cited; a high-ranking uncited lesson shows advisory and exits 0; a citation for a nonexistent lesson exits 1 naming it; a plan with no `lessons:` fields exits 0 with an explicit "no citations" summary; fenced code and inline code never claim (reuse `vaultlib.strip_fenced_code`, as coverage does).
   - Manual verification: add `lessons:` citations to two tasks of this very plan and confirm the command agrees; confirm the ceremony weight is comparable to `decisions:`, which the human judged acceptable in PLAN-004.
 
-- [ ] TASK-050: Validator lesson-coverage audit - complexity: M, depends_on: TASK-049, files: [plugin/templates/agents/validator.md], decisions: [SPEC-012-learning-loop/D-02]
+- [x] TASK-050: Validator lesson-coverage audit - complexity: M, depends_on: TASK-049, files: [plugin/templates/agents/validator.md], decisions: [SPEC-012-learning-loop/D-02]
   - A new report-only protocol step running `compass lesson-coverage <plan>` with the mandatory `Check / Command run / Output observed / Result` evidence block, directly parallel to the decision-coverage audit the validator already carries. Per-task classification: cited-but-no-evidence-in-the-diff, and surfaced-but-uncited. The validator stays read-only and never gates on the result, matching how it treats decision coverage.
   - Automated verification: grep `validator.md` for the command invocation, the evidence block, both classifications, and the new report section.
   - Manual verification: read the amended protocol and confirm the audit is not phrased as a blocker.
 
-- [ ] TASK-051: Document the closed loop, refresh, and acceptance - complexity: M, depends_on: TASK-046, TASK-048, TASK-050, files: [plugin/skills/lessons/SKILL.md, plugin/skills/methodology/SKILL.md, plugin/skills/plan/SKILL.md, .claude/], decisions: [SPEC-012-learning-loop/D-01, SPEC-012-learning-loop/D-02]
+- [x] TASK-051: Document the closed loop, refresh, and acceptance - complexity: M, depends_on: TASK-046, TASK-048, TASK-050, files: [plugin/skills/lessons/SKILL.md, plugin/skills/methodology/SKILL.md, plugin/skills/plan/SKILL.md, .claude/], decisions: [SPEC-012-learning-loop/D-01, SPEC-012-learning-loop/D-02]
   - `methodology/SKILL.md` describes the loop as it now works: capture fires on harness-owned triggers across the whole pipeline rather than at the build phase pause, retrieval runs through `compass lessons`, application is audited at validation. `lessons/SKILL.md` gets the full picture in one place. `plan/SKILL.md` iterate mode gains a ripple-check row for the `lessons:` field, matching the row `decisions:` already has. Then refresh `.claude/` again and run acceptance.
   - Automated verification: full suite `python -m unittest discover -s plugin/cli/tests` green; `python .claude/cli/compass doctor` exits 0; `python .claude/cli/compass capture-stats` reports the opportunities this build produced; `python plugin/cli/compass coverage PLAN-006-learning-loop --against SPEC-012-learning-loop` exits 0.
   - Manual verification: human reads the methodology section and confirms it describes a loop they recognize, and confirms that across the build the capture path fired on its own at least twice without being asked.
