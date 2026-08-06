@@ -81,7 +81,8 @@ Evidence base complete: [[RESEARCH-lesson-capture-failure]] (capture fired organ
 - [x] [[SPEC-012-learning-loop]] drafted and APPROVED (2026-08-05): 3 pillars (capture-fix, retrieval, application audit), D-01..D-04 recorded incl. hermes-memory research binding (D-03) and SPEC-011 gate (D-04)
 - [x] SPEC-011 D-02 experiment done ([[RESEARCH-grep-vs-graph-experiment]], 2026-08-05); narrowed (D-03), then 3-lens review (all AMEND) drove consumer-first rescope (D-04); APPROVED 2026-08-05. Experiment's ripple ground truth wrong both directions; erratum in the research doc. Lesson retrieval confirmed graph-free.
 - [x] [[PLAN-006-learning-loop]] APPROVED 2026-08-05: 16 tasks, 5 phases, coverage gate PASS
-- [x] PLAN-006 Phase 1 COMPLETE (2026-08-05): TASK-036..040 all done, suite 326/326. Ran sequential in main tree, not parallel worktrees (plan's parallel note undersold contact points: test_capture_commands.py shared by 037/038/039, sync.py by 039/040, maincli.py by all). Pause point: human manual check, then Phase 2 (extract-lessons generalization, hook cutover, dogfood).
+- [x] PLAN-006 Phase 1 COMPLETE (2026-08-05): TASK-036..040, suite 326/326, sequential in main tree (plan's parallel note undersold shared-file contact points).
+- [ ] PLAN-006 Phase 2: TASK-041/042/043 done (opportunity contract + capture-close + contradiction branch; 11-bucket anti-list + lesson-write archive branch; hook cutover, suite 341/341). TASK-044 install refresh DONE and verified byte-identical; REMAINING: restart the session so the command hooks load, then observe one live firing and run capture-stats (the manual "did the nudge feel OK" check gates Phase 3).
 - [ ] After PLAN-006: SPEC-011 pipeline (research/ADR on substrate + planner), distribute v0.4.0 across repos (19/40 vaults lack the backstop), then SPEC-006 hosts (hermes first, then Kimi Code/Codex)
 
 ## Next Up
