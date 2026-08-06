@@ -270,6 +270,7 @@ def open_opportunity(vault_root, kind, triggers, evidence):
 def close_opportunity(
     vault_root, opportunity_id, outcome,
     candidate=None, written=None, recurrence=None, rejected=None, error=None,
+    revised=None, archived=None,
 ):
     """Close `opportunity_id` with `outcome` (e.g. `fired`, `abandoned`).
     Clears the state's `open_opportunity` and `reemits` when `opportunity_id`
@@ -283,8 +284,11 @@ def close_opportunity(
     ever run) and logs as a `closed` trace row. Any other outcome logs as
     `fired` - an extraction pass actually ran, whether or not it wrote
     anything - carrying whichever of `candidate`, `written`, `recurrence`,
-    `rejected`, `error` were passed, so "reviewed and found nothing" and
-    "never ran" are always distinguishable rows, never the same absence.
+    `rejected`, `error`, `revised`, `archived` were passed, so "reviewed and
+    found nothing" and "never ran" are always distinguishable rows, never the
+    same absence. `revised` and `archived` count an existing lesson corrected
+    or retired through the contradiction branch, kept apart from `written`
+    and `recurrence` since neither is a fresh candidate outcome.
     """
     state = load_state(vault_root)
     if state.get("open_opportunity") == opportunity_id:
@@ -310,6 +314,7 @@ def close_opportunity(
         for name, value in (
             ("candidate", candidate), ("written", written),
             ("recurrence", recurrence), ("rejected", rejected), ("error", error),
+            ("revised", revised), ("archived", archived),
         )
         if value is not None
     }

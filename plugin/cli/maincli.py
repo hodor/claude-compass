@@ -38,6 +38,7 @@ COMMAND_SPECS = [
     ("capture-signal", "Record a subagent-captures file and a capture signal from SubagentStop event JSON. Hook entry point."),
     ("capture-check", "Bump the turn counter, evaluate due(), and emit the Stop-hook block contract on a capture opportunity. Hook entry point."),
     ("capture-stats", "Report opportunities opened, fire rate, write rate, and per-trigger breakdown from the capture trace log."),
+    ("capture-close", "Close a capture opportunity with an outcome and candidate/written/recurrence/rejected/revised/archived/error counts."),
 ]
 
 
