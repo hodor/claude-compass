@@ -118,3 +118,10 @@ lessons:
     tags: [derived-index, sync, append-only, staleness, catalog]
     score: 5
     summary: "Append-only derived indexes miss source mutations; the mutator must update the row or the field never propagates"
+  - file: "LESSON-scratch-vaults-need-compass-dir.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [cli, vault-root, isolation, probes, hooks, env-var]
+    score: 5
+    summary: "CLAUDE_PROJECT_DIR redirects the compass CLI only when it contains .compass; otherwise cwd-walk silently targets the enclosing vault"

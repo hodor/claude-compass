@@ -81,6 +81,7 @@ tags:
   - compass-cli/research/RESEARCH-cli-token-reduction-measurement.md
   - decisions/ADR-007-decision-coverage-mechanism.md
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
+  - lessons/LESSON-scratch-vaults-need-compass-dir.md
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   - plans/PLAN-003-hybrid-hierarchy.md
   - plans/PLAN-004-decision-coverage.md
@@ -166,6 +167,8 @@ tags:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   empirical:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
+  env-var:
+  - lessons/LESSON-scratch-vaults-need-compass-dir.md
   evaluation:
   - lessons/LESSON-test-driven-tasks-dont-discriminate.md
   - research/RESEARCH-evaluation-benchmarks.md
@@ -265,6 +268,7 @@ tags:
   - lessons/LESSON-hook-type-prompt-no-skills.md
   - lessons/LESSON-hooks-load-only-from-settings.md
   - lessons/LESSON-no-agent-bookkeeping.md
+  - lessons/LESSON-scratch-vaults-need-compass-dir.md
   - plans/PLAN-001-lessons-and-index-implementation.md
   - plans/PLAN-006-learning-loop.md
   - research/RESEARCH-lessons-and-index-architecture.md
@@ -311,6 +315,8 @@ tags:
   - specs/SPEC-012-learning-loop.md
   interoperability:
   - research/RESEARCH-okf-improvements-for-compass.md
+  isolation:
+  - lessons/LESSON-scratch-vaults-need-compass-dir.md
   jit:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
   - lessons/LESSON-no-agent-bookkeeping.md
@@ -441,6 +447,8 @@ tags:
   - research/RESEARCH-graph-engineering-for-compass.md
   - research/RESEARCH-gsd-core-improvements-for-compass.md
   - research/RESEARCH-okf-improvements-for-compass.md
+  probes:
+  - lessons/LESSON-scratch-vaults-need-compass-dir.md
   python:
   - compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work.md
   - compass-cli/plans/PLAN-002-compass-cli-implementation.md
@@ -604,6 +612,8 @@ tags:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   vault-design:
   - research/RESEARCH-okf-improvements-for-compass.md
+  vault-root:
+  - lessons/LESSON-scratch-vaults-need-compass-dir.md
   vault-structure:
   - research/RESEARCH-hybrid-hierarchy-impl.md
   - specs/SPEC-010-universal-hybrid-hierarchy.md

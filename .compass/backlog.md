@@ -23,6 +23,8 @@ updated: 2026-05-24
 
 ## compass CLI follow-ups (surfaced 2026-06-14 during live hook test)
 
+- [ ] **Decide `find_vault_root` fallback semantics (surfaced 2026-08-06 by PLAN-006 validation).** When `CLAUDE_PROJECT_DIR` names a directory without `.compass`, the CLI silently walks up from cwd and can act on the enclosing repo's vault - this is how a read-only validation probe mutated real capture state ([[LESSON-scratch-vaults-need-compass-dir]]), and the same edge means a hook firing in a nested non-Compass dir writes to the parent vault. Open design question: is the fallback wanted (nested dirs delegating to the parent vault) or should an explicitly-set env var that fails validation be an error? Touches every CLI command; decide deliberately, not as a drive-by fix.
+
 - [x] `compass validate` now checks the top-level files' own wikilinks (`index.md`, `active.md`, `backlog.md`, `vision.md`), so a stale index entry (a link to a deleted artifact) surfaces as a `broken_wikilink` warning. Covers both the stale-entry and index-own-links gaps. (2026-06-15)
 
 ## Compass productization (queued 2026-06-14, from Roger)
