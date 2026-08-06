@@ -102,6 +102,18 @@ def run(args):
         event = _parse_hook_stdin()
         if event is None:
             return 0  # no event received: nothing to capture or record
+
+        if event.get("hook_event_name") == "TeammateIdle":
+            # A TeammateIdle event carries a teammate_name but no agent type
+            # and no message, so there is nothing to capture to a file; the
+            # idle itself is recorded as a weak activity signal.
+            name = event.get("teammate_name") or "unknown"
+            vault_root = vaultlib.find_vault_root()
+            capturelib.record_signal(
+                vault_root, DEFAULT_SIGNAL_KIND, f"teammate:{name}"
+            )
+            return 0
+
         agent_type = event.get("agent_type") or DEFAULT_AGENT_TYPE
         agent_id = event.get("agent_id", "")
         message = event.get("last_assistant_message", "")

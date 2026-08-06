@@ -121,19 +121,67 @@ If agents are already installed (re-running setup on a project), ask once before
 
 ### 2b. Hooks and permissions
 
-Hooks install to `.claude/hooks/hooks.json`, which Claude Code auto-loads for the project. Permissions go in `.claude/settings.json`.
+Hooks install as a manifest at `.claude/hooks/hooks.json`, then get registered into `.claude/settings.json`, which is where Claude Code actually reads hooks from. Permissions also go in `.claude/settings.json`.
 
 ```bash
-# Hooks: PostToolUse runs `compass sync` as a command; Stop runs extract-lessons;
-# SubagentStop captures subagent reports. Copied verbatim from the plugin.
+# Hooks manifest: PostToolUse runs `compass sync`, Stop runs `compass
+# capture-check`, SubagentStop runs `compass capture-signal`. Copied verbatim
+# from the plugin. This file is a manifest, not something Claude Code reads
+# directly - the next step translates it into .claude/settings.json.
 mkdir -p .claude/hooks
 cp "$PLUGIN_ROOT/hooks/hooks.json" .claude/hooks/hooks.json
-echo "Hooks installed -> .claude/hooks/hooks.json"
+echo "Hooks manifest installed -> .claude/hooks/hooks.json"
 ```
 
 The PostToolUse hook runs the CLI as `python3 "$CLAUDE_PROJECT_DIR/.claude/cli/compass" sync --hook` (falling back to `python` when `python3` is absent, e.g. on Windows), resolving the CLI copied in step 2 via the project-root env var the hook runtime sets. It self-filters non-vault and generated-output writes and never exits 2, so it can neither loop nor block an edit.
 
-Then write the permission allowlist to `.claude/settings.json` (or `.claude/settings.local.json`):
+**Register the hooks where Claude Code actually reads them.** Hooks load only from a settings file's `hooks` key or a registered plugin, never from a bare `hooks.json` on disk. Translate the manifest into `.claude/settings.json`, merging into whatever is already there rather than overwriting it. Never write hook registration to `.claude/settings.local.json` - that file is user-owned.
+
+```bash
+if command -v python3 >/dev/null 2>&1; then PYBIN=python3; else PYBIN=python; fi
+"$PYBIN" - <<'PY'
+import json
+from pathlib import Path
+
+manifest = json.loads(Path(".claude/hooks/hooks.json").read_text(encoding="utf-8"))["hooks"]
+settings_path = Path(".claude/settings.json")
+settings = json.loads(settings_path.read_text(encoding="utf-8")) if settings_path.is_file() else {}
+hooks = settings.setdefault("hooks", {})
+
+def is_compass_command(text):
+    return "compass" in (text or "")
+
+def is_compass_group(group):
+    return any(is_compass_command(h.get("command")) for h in group.get("hooks", []))
+
+def clean_group(group, matcher_override=None):
+    cleaned = dict(group)
+    if matcher_override is not None:
+        cleaned["matcher"] = matcher_override
+    cleaned["hooks"] = [{k: v for k, v in h.items() if k != "if"} for h in group.get("hooks", [])]
+    return cleaned
+
+translated = {}
+posttool = manifest.get("PostToolUse") or []
+if posttool:
+    # The manifest splits PostToolUse three ways (Write/Edit/MultiEdit) because its
+    # "if" field cannot express boolean OR. The settings schema carries no "if"
+    # field, so the three collapse into one matcher group.
+    translated["PostToolUse"] = [clean_group(posttool[0], "Write|Edit|MultiEdit")]
+for event in ("Stop", "SubagentStop"):
+    if event in manifest:
+        translated[event] = [clean_group(g) for g in manifest[event]]
+
+for event, new_groups in translated.items():
+    kept = [g for g in hooks.get(event, []) if not is_compass_group(g)]
+    hooks[event] = kept + new_groups
+
+settings_path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+print("Hooks registered in .claude/settings.json:", ", ".join(sorted(translated)))
+PY
+```
+
+Then write the permission allowlist into the same `.claude/settings.json` (or `.claude/settings.local.json`), merging alongside the `hooks` key the script above just wrote:
 
 ```json
 {
@@ -175,7 +223,7 @@ Then write the permission allowlist to `.claude/settings.json` (or `.claude/sett
 
 `Bash(python3:*)` lets skills invoke the `compass` CLI (e.g. `/compass:vault-health` running `compass validate`). Compass agents use `permissionMode: bypassPermissions`, so they bypass these prompts entirely - the allowlist is the safety net for everything else.
 
-If `.claude/hooks/hooks.json` or `.claude/settings.json` already exists, merge. Ask before overwriting existing hooks or permissions.
+Hook registration is already a merge (the script above never overwrites `.claude/settings.json` wholesale). The permission allowlist is not scripted the same way: if `.claude/settings.json` already has a `permissions` key, merge the two lists by hand and ask before overwriting existing permissions.
 
 ### 3A. New project - scaffold the vault
 
@@ -262,14 +310,26 @@ Draft a short Compass section - rules, not essays:
 
 Present and wait for approval. Write only after approval.
 
-### 5. Verify
+### 5. Verify with `compass doctor`
 
-- [ ] `.claude/agents/` has 13 Compass agents.
-- [ ] `.claude/rules/` has 4 rule files.
-- [ ] `.compass/meta/lessons-catalog.yaml` exists.
+```bash
+if command -v python3 >/dev/null 2>&1; then
+  python3 .claude/cli/compass doctor
+else
+  python .claude/cli/compass doctor
+fi
+```
+
+This is the install's acceptance check: `plugin.yaml`, hook registration, CLI completeness, `.claude/agents/`, `.claude/skills/`, and `.compass/meta/lessons-catalog.yaml` in one pass, exiting 1 on any FAIL. A FAIL means setup did not fully land - fix the named defect (doctor prints the command) before moving on to vision capture. For a human skimming the report without running the command, the same six checks restated:
+
 - [ ] `.compass/meta/plugin.yaml` exists with `name`, `version`, `source`, `installed_at`.
-- [ ] `.compass/index.md` exists.
-- [ ] `.compass/active.md` exists.
+- [ ] Hooks registered in `.claude/settings.json` (a bare `.claude/hooks/hooks.json` is not enough).
+- [ ] `.claude/cli/` has a module for every command `maincli.py` declares.
+- [ ] `.claude/agents/` has 13 Compass agents.
+- [ ] `.claude/skills/` populated.
+- [ ] `.compass/meta/lessons-catalog.yaml` exists.
+
+Two checks doctor doesn't cover, also worth confirming: `.claude/rules/` has 4 rule files, and `.compass/index.md` / `.compass/active.md` exist.
 
 ### 6. Run vision capture
 
@@ -297,7 +357,8 @@ New project / Existing project with N existing documents
 - [x] 13 agents copied to .claude/agents/
 - [x] 4 rules files copied to .claude/rules/
 - [x] .compass/ vault scaffolded
-- [x] Hooks configured
+- [x] Hooks registered in .claude/settings.json
+- [x] compass doctor: 0 FAIL
 
 ### Obsidian
 Open `.compass/` as a vault: **Obsidian → Open folder as vault → `<project-root>/.compass/`**
@@ -318,3 +379,5 @@ Open `.compass/` as a vault: **Obsidian → Open folder as vault → `<project-r
 - Creating documents beyond the basic scaffold.
 - Modifying files outside `.compass/` and `.claude/` without approval.
 - Overwriting existing agents without asking (except in `update` mode).
+- Overwriting `.claude/settings.json` wholesale when registering hooks - step 2b's script reads-merges-writes; a project's own permissions or hand-added hooks must survive.
+- Writing hook registration to `.claude/settings.local.json` - that file is user-owned; Compass hooks always register in `.claude/settings.json`.

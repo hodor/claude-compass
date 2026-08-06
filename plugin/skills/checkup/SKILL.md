@@ -12,25 +12,29 @@ Scans your project's Compass installation and reports problems with actionable f
 
 ## What gets checked
 
-### 1. Agents
+### 1. Install (`compass doctor`)
 
-`.claude/agents/` should contain all 13 Compass agents: `builder`, `codebase-analyzer`, `codebase-locator`, `debug`, `pattern-finder`, `planner`, `pr-describe`, `researcher`, `reviewer`, `tester`, `validator`, `vault-analyzer`, `vault-locator`.
+Run `compass doctor` first. Its six checks are install-drift checks - whether the plugin landed the way `/compass:setup` or `/compass:update` intended - not vault content: `plugin.yaml` has a version, hooks are registered in a settings file Claude Code actually reads (plus the informational `TeammateIdle` row), `.claude/cli/` has a module for every command `maincli.py` declares, `.claude/agents/` is present and non-empty, `.claude/skills/` is present and non-empty, `.compass/meta/lessons-catalog.yaml` exists. Report its table verbatim under Install; a FAIL row already names its own fix command, so don't re-derive one.
+
+### 2. Agents
+
+Doctor's `agents` and `CLI completeness` rows (Install, above) already confirm `.claude/agents/` is present, non-empty, and that every command the CLI declares has a module. This section goes further: it names all 13 Compass agents - `builder`, `codebase-analyzer`, `codebase-locator`, `debug`, `pattern-finder`, `planner`, `pr-describe`, `researcher`, `reviewer`, `tester`, `validator`, `vault-analyzer`, `vault-locator` - and validates each individually.
 
 For each agent: valid YAML frontmatter, `name` and `description` present, `maxTurns` present (warn if missing). Validate `model:`/`effort:` against the resolved policy: run `compass models` and compare each agent's frontmatter to its roster row (an agent resolving to `inherit` carries no `model:` line at all). A mismatch means the install predates the policy or `.compass/meta/models.yaml` changed since the last apply; the fix is `compass apply-models`. Report missing agents, agents with invalid frontmatter, agents that may be outdated.
 
 Interactive flows (spec writing, planning iteration, handoffs, autopilot, retroactive, etc.) live as skills in `.claude/skills/`, not as agents.
 
-### 2. Vault structure
+### 3. Vault structure
 
 Required files: `.compass/index.md`, `.compass/active.md`, `.compass/backlog.md`, `.compass/meta/lessons-catalog.yaml`, `.compass/meta/plugin.yaml`.
 
 Required directories: `specs/`, `research/`, `plans/`, `decisions/`, `lessons/`, `handoffs/`, `prs/`, `.annotations/`.
 
-### 3. Vault integrity
+### 4. Vault integrity
 
 Same checks as the vault-health skill: frontmatter validation, wikilink resolution, orphan detection (files not referenced by index.md). Counter consistency check removed per [[ADR-003-drop-counter-file-jit-compute]].
 
-### 4. Task hygiene
+### 5. Task hygiene
 
 In `.compass/active.md`:
 
@@ -39,7 +43,7 @@ In `.compass/active.md`:
 - Tasks referencing plans that don't exist.
 - Tasks older than 14 days without progress (stale).
 
-### 5. Handoff freshness
+### 6. Handoff freshness
 
 In `.compass/handoffs/`:
 
@@ -47,15 +51,15 @@ In `.compass/handoffs/`:
 - Handoffs referencing commits >20 behind HEAD.
 - Handoffs never marked `done`.
 
-### 6. Hooks
+### 7. Hooks
 
-`.claude/settings.json` should have a `SubagentStop` hook with `matcher: "builder"` that spawns the tester agent.
+Delegates entirely to `compass doctor`'s hook-registration check, reported under Install (section 1): the required `PostToolUse`, `Stop`, and `SubagentStop` registrations in a settings file, plus the informational `TeammateIdle` row. Nothing here duplicates that check.
 
-### 7. Rules
+### 8. Rules
 
 `.claude/rules/` should have: `compass-agent-patterns.md`, `compass-pipeline.md`, `session-start.md`, `wikilinks.md`.
 
-### 8. Git state
+### 9. Git state
 
 Uncommitted vault files (handoffs, specs, plans) are invisible to other sessions. Flag them.
 
@@ -63,6 +67,15 @@ Uncommitted vault files (handoffs, specs, plans) are invisible to other sessions
 
 ```markdown
 ## Compass Checkup Report
+
+### Install (compass doctor)
+- [x] plugin.yaml: version 0.4.1
+- [x] hook registration: PostToolUse, Stop, SubagentStop all registered
+- [ ] hook registration (TeammateIdle): not registered (WARN)
+- [x] CLI completeness: 24 commands, all modules present
+- [x] agents: 13 present
+- [x] skills: 19 present
+- [x] lessons-catalog.yaml: present
 
 ### Agents
 - [x] 13/13 agents installed
@@ -85,7 +98,7 @@ Uncommitted vault files (handoffs, specs, plans) are invisible to other sessions
 - [ ] 2026-03-12_session-2.md still `status: active` (15 days, STALE)
 
 ### Hooks
-- [x] SubagentStop builder→tester hook configured
+- see Install above (compass doctor)
 
 ### Rules
 - [x] 4/4 rule files installed

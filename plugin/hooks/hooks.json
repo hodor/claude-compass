@@ -1,5 +1,5 @@
 {
-  "description": "Compass plugin hooks. Every entry runs a command, never an agent, so no hook costs a turn of the agent's token budget. PostToolUse runs `compass sync` on any vault write to regenerate index.md and the tag index, then records a capture signal for the artifact written (`handoff-written` under handoffs/, `vault-write` otherwise). Stop runs `compass capture-check`, which bumps the main-agent turn counter, evaluates whether a capture opportunity is due, and on due emits the stop-hook block contract naming the opportunity directory so the capture pass runs as a real turn rather than as prose the model can skip. SubagentStop runs `compass capture-signal`, which writes the finishing subagent's final report to a capture file under .compass/tmp/subagent-captures/ and records a typed signal keyed on agent_type (validator-finished, debug-finished, builder-finished, or subagent-finished). The CLI parses each hook's stdin JSON, self-filters where relevant to avoid a write loop, and never exits 2 (which would block the user's turn). The PostToolUse entry is split three ways (Write, Edit, MultiEdit) because the `if` clause does not support `||` boolean OR; each entry has its own permission-rule pattern.",
+  "description": "Compass plugin hooks. Every entry runs a command, never an agent, so no hook costs a turn of the agent's token budget. PostToolUse runs `compass sync` on any vault write to regenerate index.md and the tag index, then records a capture signal for the artifact written (`handoff-written` under handoffs/, `vault-write` otherwise). Stop runs `compass capture-check`, which bumps the main-agent turn counter, evaluates whether a capture opportunity is due, and on due emits the stop-hook block contract naming the opportunity directory so the capture pass runs as a real turn rather than as prose the model can skip. SubagentStop runs `compass capture-signal`, which writes the finishing subagent's final report to a capture file under .compass/tmp/subagent-captures/ and records a typed signal keyed on agent_type (validator-finished, debug-finished, builder-finished, or subagent-finished). TeammateIdle runs the same capture-signal command; that event's payload carries only a teammate name (no agent type, no message), so it records a weak activity signal and writes no capture file. The CLI parses each hook's stdin JSON, self-filters where relevant to avoid a write loop, and never exits 2 (which would block the user's turn). The PostToolUse entry is split three ways (Write, Edit, MultiEdit) because the `if` clause does not support `||` boolean OR; each entry has its own permission-rule pattern.",
   "hooks": {
     "PostToolUse": [
       {
@@ -47,6 +47,18 @@
             "statusMessage": "Checking for a capture opportunity",
             "timeout": 30,
             "command": "if command -v python3 >/dev/null 2>&1; then python3 \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" capture-check --hook; else python \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" capture-check --hook; fi"
+          }
+        ]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "statusMessage": "Recording teammate idle signal",
+            "timeout": 30,
+            "command": "if command -v python3 >/dev/null 2>&1; then python3 \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" capture-signal --hook; else python \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" capture-signal --hook; fi"
           }
         ]
       }

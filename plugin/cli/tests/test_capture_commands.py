@@ -839,5 +839,40 @@ class CaptureCloseTests(unittest.TestCase):
         self.assertEqual(code, 1)
 
 
+class TeammateIdleTests(unittest.TestCase):
+    def _run(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = capture_signal.run(["--hook"])
+        return code, out.getvalue()
+
+    def test_teammate_idle_records_signal_and_writes_no_capture_file(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        feed_stdin(self, {
+            "hook_event_name": "TeammateIdle",
+            "teammate_name": "build-046",
+            "team_name": "session-x",
+            "session_id": "abc",
+        })
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "")
+        self.assertFalse(captures_dir(root).exists())
+        state = capturelib.load_state(root)
+        self.assertEqual(len(state["signals"]), 1)
+        self.assertEqual(state["signals"][0]["kind"], "subagent-finished")
+        self.assertEqual(state["signals"][0]["ref"], "teammate:build-046")
+
+    def test_teammate_idle_without_name_records_unknown(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        feed_stdin(self, {"hook_event_name": "TeammateIdle"})
+        code, _ = self._run()
+        self.assertEqual(code, 0)
+        state = capturelib.load_state(root)
+        self.assertEqual(state["signals"][0]["ref"], "teammate:unknown")
+
+
 if __name__ == "__main__":
     unittest.main()
