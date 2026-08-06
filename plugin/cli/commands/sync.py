@@ -23,6 +23,7 @@ import sys
 import time
 from pathlib import Path
 
+import capturelib
 import vaultlib
 
 # A type directory's index section is its name title-cased, with overrides for
@@ -369,6 +370,21 @@ def _is_generated_output(file_path):
     return any(norm.endswith(suffix) for suffix in GENERATED_OUTPUTS)
 
 
+def _record_write_signal(vault_root, norm):
+    """Record a capture signal for a hook-mode vault write that already
+    passed the self-filter above: `handoff-written` for a path under
+    `handoffs/`, `vault-write` otherwise, keyed on the vault-relative POSIX
+    path of the written file. Any failure here (a capturelib error, a
+    corrupt state file) is swallowed - the sync report and exit code must
+    never depend on this bookkeeping."""
+    try:
+        ref = norm.split(".compass/", 1)[-1]
+        kind = "handoff-written" if ref.startswith("handoffs/") else "vault-write"
+        capturelib.record_signal(vault_root, kind, ref)
+    except Exception:
+        pass
+
+
 def _parse_hook_stdin():
     """Parse the PostToolUse event JSON the hook runtime pipes on stdin."""
     data = sys.stdin.read().strip()
@@ -396,6 +412,7 @@ def run(args):
                 return 0  # not a vault write
             if _is_generated_output(file_path):
                 return 0  # loop guard: a fire triggered by our own write
+            _record_write_signal(vault_root, norm)
             sync(vault_root)
             sys.stdout.write(json.dumps({"suppressOutput": True}))
             return 0
