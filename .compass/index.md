@@ -103,6 +103,7 @@ See [[backlog]].
 - [[LESSON-hooks-load-only-from-settings]] - Hooks load only from settings-file hooks keys or registered plugins; a bare .claude/hooks/hooks.json never fires
 - [[LESSON-subagent-reports-need-sendmessage]] - A spawned agent's final plain text is invisible to its orchestrator; briefs must mandate an explicit SendMessage delivery
 - [[LESSON-append-only-index-misses-mutations]] - Append-only derived indexes miss source mutations; the mutator must update the row or the field never propagates
+- [[LESSON-scratch-vaults-need-compass-dir]] - CLAUDE_PROJECT_DIR redirects the compass CLI only when it contains .compass; otherwise cwd-walk silently targets the enclosing vault
 
 ## compass-cli
 - [[compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work]] - A Python `compass` CLI Owns All Mechanical Vault Work; the Hook Calls It as a Command
