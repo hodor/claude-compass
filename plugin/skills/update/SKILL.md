@@ -113,8 +113,8 @@ if posttool:
     # "if" field cannot express boolean OR. The settings schema carries no "if"
     # field, so the three collapse into one matcher group.
     translated["PostToolUse"] = [clean_group(posttool[0], "Write|Edit|MultiEdit")]
-for event in ("Stop", "SubagentStop"):
-    if event in manifest:
+for event in manifest:
+    if event != "PostToolUse":
         translated[event] = [clean_group(g) for g in manifest[event]]
 
 for event, new_groups in translated.items():
