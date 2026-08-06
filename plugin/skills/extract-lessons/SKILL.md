@@ -125,9 +125,9 @@ For each candidate, prepare a payload draft:
 For each candidate, and independently for evidence that produced no candidate of its own, check whether it shows an existing active lesson's claim to be wrong: grep `.compass/meta/lessons-catalog.yaml` for rows whose `area`/`tags` overlap the finding, and read any that match. Two outcomes:
 
 - **Revise** - the lesson's rule still holds in general, but this evidence shows it needs a correction or a narrower condition than currently written. Prepare a lesson-write payload naming the correction; `source` records `extract-lessons:contradiction-revise`. Handing this to lesson-write in step 6 the normal way is enough - the tag/area overlap that flagged the contradiction is the same overlap lesson-write's own dedup judgment (its step 3) uses to route the call to its refinement branch (4b), which edits the matched lesson's body in place.
-- **Archive** - the evidence flatly falsifies the lesson: the rule it states no longer holds, or never held the way it was captured. Prepare a payload naming the lesson and the falsifying evidence; `source` records `extract-lessons:contradiction-archive`, and the body states plainly that the lesson is superseded.
+- **Archive** - the evidence flatly falsifies the lesson: the rule it states no longer holds, or never held the way it was captured. Prepare a payload with `intent: archive` and `target: <lesson-filename>`; `source` records `extract-lessons:contradiction-archive`, and the body states plainly that the lesson is superseded by the falsifying evidence. lesson-write's step 4d performs the retirement.
 
-Route both through lesson-write in step 6, exactly like any other candidate - the single-writer rule applies to a contradiction resolution as much as a new candidate; extract-lessons never edits a lesson file directly. A candidate matched here is not also submitted as a fresh new-lesson candidate. Count a revise outcome under `revised` and an archive outcome under `archived` in step 9's return line, based on which branch produced the call - not on lesson-write's return string, since lesson-write's own vocabulary (`created`/`recurrence`/`refined`/`rejected`) does not distinguish an ordinary refinement from one a contradiction check requested.
+Route both through lesson-write in step 6, exactly like any other candidate - the single-writer rule applies to a contradiction resolution as much as a new candidate; extract-lessons never edits a lesson file directly. A candidate matched here is not also submitted as a fresh new-lesson candidate. Count a revise outcome under `revised` and an archive outcome under `archived` in step 9's return line, based on which branch produced the call, not solely on lesson-write's return string: an archive request does surface distinctly as lesson-write's own `archived: <filename>` return, but a revise still returns the same `refined: <filename>` string an ordinary non-contradiction refinement would, so revise must be counted from the branch that produced the call.
 
 ### 5. Anti-list filter
 
@@ -141,6 +141,9 @@ For each candidate, apply the anti-list (defined in `lesson-write/SKILL.md`). Re
 - Personal style preferences
 - Things obvious once you know the technology
 - Ephemeral session state
+- Environment-dependent failures
+- Negative tool claims that would harden into standing refusals
+- Unresolved or untested "recommended approaches" recorded as if validated
 
 For each candidate, record the anti-list outcome: passed, or matched bucket `<name>`.
 
