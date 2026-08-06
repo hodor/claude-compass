@@ -84,9 +84,9 @@ Read the matched lesson file's frontmatter.
 
 If `seen` array has fewer than 3 entries: append today's date (YYYY-MM-DD) to `seen`, increment `score` by 1 (cap at 10), update `updated`. Body unchanged. Return `recurrence: <existing-filename>`.
 
-If `seen` already has 3 entries: do NOT add a 4th date. Instead set `escalated: <today>` and `escalation_reason: "recurred 3 times despite being captured - lesson worded too vaguely OR search retrieval failing"`. Increment `score` by 1. Return `escalated: <existing-filename>`.
+If `seen` already has 3 entries: do NOT add a 4th date. Instead set `escalated: <today>` and `escalation_reason: "recurred 3 times despite being captured - lesson worded too vaguely OR search retrieval failing"`. Increment `score` by 1. Also add `escalated: <today>` to the lesson's row in `.compass/meta/lessons-catalog.yaml` - `compass lessons` ranks escalated rows first, and sync appends rows but never rewrites existing ones, so the flag reaches the catalog here or not at all. Return `escalated: <existing-filename>`.
 
-Do not touch the catalog or index for recurrences - they already point at the same file.
+An ordinary recurrence (a `seen` date added) touches neither the catalog nor the index - they already point at the same file. Escalation's catalog-row update above is the one exception.
 
 ### 4b. Write refinement
 

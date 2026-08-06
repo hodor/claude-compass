@@ -40,6 +40,7 @@ COMMAND_SPECS = [
     ("capture-stats", "Report opportunities opened, fire rate, write rate, and per-trigger breakdown from the capture trace log."),
     ("capture-close", "Close a capture opportunity with an outcome and candidate/written/recurrence/rejected/revised/archived/error counts."),
     ("doctor", "Diagnose install drift: plugin.yaml, hook registration, CLI completeness, agents/skills, lessons catalog. Exit 1 on any FAIL."),
+    ("lessons", "Ranked catalog rows for an area, tag set, free text, or a document. Exit 1 on a malformed catalog row or missing catalog."),
 ]
 
 

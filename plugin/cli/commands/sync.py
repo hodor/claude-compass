@@ -188,7 +188,7 @@ def _catalog_row(filename, data):
     if any(data.get(field) in (None, "", []) for field in required):
         return None
     tags = ", ".join(data.get("tags", []))
-    return (
+    row = (
         f'  - file: "{filename}"\n'
         f'    status: {data["status"]}\n'
         f'    category: {data["category"]}\n'
@@ -197,6 +197,9 @@ def _catalog_row(filename, data):
         f'    score: {data["score"]}\n'
         f'    summary: "{data["summary"]}"'
     )
+    if data.get("escalated") not in (None, ""):
+        row += f'\n    escalated: {data["escalated"]}'
+    return row
 
 
 def _sync_catalog(vault_root, records):
