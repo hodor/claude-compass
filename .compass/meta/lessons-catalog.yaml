@@ -12,7 +12,7 @@ lessons:
     area: workflow
     tags: [hooks, if-clause, permission-rules, plugin-config]
     score: 5
-    summary: "Hook `if` does not support `||`; split into N entries or use matcher for multi-tool"
+    summary: "Settings hook entries have no `if` clause; select tools via matcher, filter paths in the command"
   - file: "LESSON-hook-type-prompt-no-skills.md"
     status: active
     category: process
@@ -97,3 +97,17 @@ lessons:
     tags: [worktree, subagents, parallel-builders, stale-base, orchestration, git]
     score: 5
     summary: "Worktree-isolated subagents fork from a pre-session commit; without a fast-forward to master and committed prior waves, they see a world where earlier work does not exist"
+  - file: "LESSON-hooks-load-only-from-settings.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [hooks, settings, install-drift, registration, claude-code]
+    score: 5
+    summary: "Hooks load only from settings-file hooks keys or registered plugins; a bare .claude/hooks/hooks.json never fires"
+  - file: "LESSON-subagent-reports-need-sendmessage.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [subagents, orchestration, sendmessage, reports, briefs]
+    score: 5
+    summary: "A spawned agent's final plain text is invisible to its orchestrator; briefs must mandate an explicit SendMessage delivery"
