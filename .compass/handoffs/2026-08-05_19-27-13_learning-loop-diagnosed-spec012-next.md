@@ -1,7 +1,7 @@
 ---
 title: "Handoff: lesson-capture root-caused fleet-wide; SPEC-012 (learning loop) is next; SPEC-011 needs a grep-vs-graph experiment"
 type: handoff
-status: active
+status: done
 area: methodology
 tags: [handoff, learning-loop, lesson-capture, hermes, graph-queries, spec-012, distribution]
 created: 2026-08-05

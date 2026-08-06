@@ -26,7 +26,8 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[SPEC-008-central-model-resolution-table]] - model + effort assignment is one harness-resolved policy table with per-project override, not per-agent prose (approved 2026-07-23)
 - [[SPEC-009-configurable-pipeline-workflows]] - the pipeline is a configurable workflow (shipped default + reorder/subset/extend), not one hardcoded sequence (draft, DEFERRED)
 - [[SPEC-010-universal-hybrid-hierarchy]] - any artifact and any unit of work can nest; type-first root for small work, a root-level folder per large unit co-locating its own types (approved 2026-07-23)
-- [[SPEC-011-vault-graph-queries]] - The Vault's Graph Is Queryable by the Harness
+- [[SPEC-011-vault-graph-queries]] - The Vault's Graph Is Queryable by the Harness (approved 2026-08-05 after 3-lens review: orphans + hub ranking + impact traversal with planner consumer)
+- [[SPEC-012-learning-loop]] - Compass learns: capture fires on events that occur, lessons surface at the work, application audited (approved 2026-08-05)
 
 ## Research
 
@@ -45,6 +46,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-graph-engineering-for-compass]] - Graph Engineering for Compass - Landscape, Prior Art, and Gap Analysis
 - [[RESEARCH-lesson-capture-failure]] - Why Lesson Capture Almost Never Happens (40-Vault Fleet Diagnosis)
 - [[RESEARCH-hermes-memory-mechanics]] - hermes-agent: Memory Update and Retrieval Mechanics, Deep-Dive
+- [[RESEARCH-grep-vs-graph-experiment]] - SPEC-011 D-02 experiment: 2 classes grep/CLI-solved, 2 marginal, health analytics grep-insufficient; lesson retrieval needs no graph
 
 ## Plans
 
@@ -52,6 +54,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-003-hybrid-hierarchy]] - Hybrid Hierarchy Implementation (Unit Folders)
 - [[PLAN-004-decision-coverage]] - Decision Coverage Implementation (D-NN Parser, Coverage Gate, Audit)
 - [[PLAN-005-model-table]] - Model Resolution Table Implementation (Tiers, apply-models, Overrides)
+- [[PLAN-006-learning-loop]] - Learning Loop Implementation: harness-owned capture, catalog retrieval, lesson coverage (approved 2026-08-05)
 
 ## Decisions
 

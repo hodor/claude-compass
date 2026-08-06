@@ -77,11 +77,12 @@ All 6 tasks done and validated: modelslib, resolve-model/models/apply-models, 13
 
 Evidence base complete: [[RESEARCH-lesson-capture-failure]] (capture fired organically ONCE across 40 vaults; root cause = coupled to /compass:build phase pauses real sessions never cross), [[RESEARCH-hermes-agent-capabilities]], [[RESEARCH-hermes-vs-compass-fit]], [[RESEARCH-graph-engineering-for-compass]].
 
-- [ ] RESEARCH in flight: hermes memory-update + retrieval mechanics deep-dive -> RESEARCH-hermes-memory-mechanics (Roger requires this reviewed in the plan; background agent writing it directly to research/)
-- [ ] Draft SPEC-012 (learning loop): pillar 1 capture-fix (decouple from build phase; attach to events that happen: session end/handoff, validation, debug resolution; keep anti-list/dedup core; compass doctor for install drift), pillar 2 retrieval (auto-surface lessons in context), pillar 3 application audit (coverage-style). Must cite the hermes-memory research (D-bullet it).
-- [ ] SPEC-011 (graph queries) drafted, NOT approved: Roger's D-02 requires a grep-vs-graph experiment first - if grep answers the query classes cheaply, reject the spec. Retrieval pillar may or may not ride on it.
-- [ ] Then: walkthrough SPEC-012 -> approval -> planner (all research done) -> build
-- [ ] Still queued from earlier: distribute v0.4.0 across repos (fix install drift found by the audit: 19/40 vaults lack the backstop), then SPEC-006 hosts (hermes first, then Kimi Code/Codex)
+- [x] RESEARCH done: [[RESEARCH-hermes-memory-mechanics]] (21 findings; counter-triggered harness-owned capture, judgment-filtered content, no-verification anti-pattern flagged) (2026-08-05)
+- [x] [[SPEC-012-learning-loop]] drafted and APPROVED (2026-08-05): 3 pillars (capture-fix, retrieval, application audit), D-01..D-04 recorded incl. hermes-memory research binding (D-03) and SPEC-011 gate (D-04)
+- [x] SPEC-011 D-02 experiment done ([[RESEARCH-grep-vs-graph-experiment]], 2026-08-05); narrowed (D-03), then 3-lens review (all AMEND) drove consumer-first rescope (D-04); APPROVED 2026-08-05. Experiment's ripple ground truth wrong both directions; erratum in the research doc. Lesson retrieval confirmed graph-free.
+- [x] [[PLAN-006-learning-loop]] APPROVED 2026-08-05: 16 tasks, 5 phases, coverage gate PASS
+- [ ] BUILD PLAN-006 Phase 1 (CLI capture substrate): TASK-036 capturelib -> then TASK-037/038/039/040 parallel (all depend on 036, file-disjoint except maincli.py contact point). Commit before spawning worktree builders ([[LESSON-subagent-worktrees-fork-stale]]).
+- [ ] After PLAN-006: SPEC-011 pipeline (research/ADR on substrate + planner), distribute v0.4.0 across repos (19/40 vaults lack the backstop), then SPEC-006 hosts (hermes first, then Kimi Code/Codex)
 
 ## Next Up
 
