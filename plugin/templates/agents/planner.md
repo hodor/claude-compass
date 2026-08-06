@@ -32,7 +32,7 @@ Use the `pattern-finder` agent to verify that key assumptions are still accurate
 
 ### 3. Search lessons
 
-Load lessons matching the area and tags. Present **domain** lessons as constraint-checks ("We learned users need X - does the plan account for this?"). Present **process** lessons as technique guidance ("Past builds in this area found Y").
+Run `compass lessons --for <spec> --context planner` and read the lessons it names. Present **domain** lessons as constraint-checks; **process** lessons as technique guidance.
 
 ### 4. Write the plan
 
