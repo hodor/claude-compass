@@ -234,6 +234,10 @@ After the builder marks tasks done, the `validator` verifies that implementation
 
 Run before any handoff or PR on non-trivial work.
 
+## Learning loop
+
+Lessons close a loop across the whole pipeline, not at one fixed point in the build phase. Capture fires on harness-owned triggers: the `Stop` and `SubagentStop` hooks run `compass capture-check` and `compass capture-signal`, deterministic commands (no agent spawn) that count turns and record signals - a handoff written, a validator or debug subagent finishing, a build phase summary. An opportunity opens when the turn interval is reached with at least one signal in the window, or immediately on a strong signal alone; the model's judgment is confined to what, if anything, an open opportunity is worth writing, through the `extract-lessons` skill. Retrieval runs through `compass lessons` at the planner and builder work sites in place of a manual catalog crawl. Application is audited, never gated, at validation: `compass lesson-coverage <plan>` reports which `lessons:` task citations resolved, which lessons surfaced for the plan but went uncited, and which citations named no catalog row. See `lessons/SKILL.md` for the full mechanism.
+
 ## Retroactive entry
 
 `status: done` is valid as an initial status for retroactively documented work. When a commit exists without Compass artifacts, `/compass:retroactive` creates minimal entries: a spec with status `done (retroactive)`, a pre-checked task under "Recently Completed", optionally an ADR. Recovery path, not a shortcut.

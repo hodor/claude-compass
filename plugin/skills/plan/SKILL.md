@@ -74,6 +74,7 @@ Append to `## Revision Log`:
 | Task complexity | Whether the task should split or merge |
 | Phase removed | Backlog entries, depends_on references |
 | Task `decisions:` field or citations | Re-run `compass coverage <plan>` before closing the iteration |
+| Task `lessons:` field or citations | Re-run `compass lesson-coverage <plan>` and note the summary line - advisory only, so unlike `decisions:` this never blocks the iteration |
 
 If the change adds, removes, or recites decisions differently, re-run `compass coverage <plan>` after the edits and note the resulting summary line in the iteration report - iterate mode doesn't gate on it, but a plan already `approved` should not silently regress to an uncovered state.
 
