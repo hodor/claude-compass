@@ -585,5 +585,26 @@ class HumanModeTests(SyncFixture):
         self.assertIn("[[SPEC-002-new]]", self.index_text())
 
 
+class CatalogRowEscalatedTests(unittest.TestCase):
+    _data = {
+        "status": "active",
+        "category": "process",
+        "area": "workflow",
+        "tags": ["a", "b"],
+        "score": 6,
+        "summary": "a rule",
+    }
+
+    def test_escalated_frontmatter_lands_in_the_row(self):
+        row = sync_cmd._catalog_row(
+            "LESSON-x.md", {**self._data, "escalated": "2026-08-06"}
+        )
+        self.assertIn("    escalated: 2026-08-06", row)
+
+    def test_row_without_escalated_omits_the_field(self):
+        row = sync_cmd._catalog_row("LESSON-x.md", dict(self._data))
+        self.assertNotIn("escalated", row)
+
+
 if __name__ == "__main__":
     unittest.main()
