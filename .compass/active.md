@@ -93,7 +93,8 @@ Evidence base complete: [[RESEARCH-lesson-capture-failure]] (capture fired organ
 ## Test-quality initiative (Roger, 2026-08-07): "only really good and meaningful tests"
 
 - [x] [[SPEC-013-test-quality]] drafted and APPROVED (2026-08-07): per-test admission bar (D-01), deep research before mechanism (D-02). Trigger: a simple task closing at 841 suite tests; our own 178-in-a-day.
-- [ ] RESEARCH in flight (3 axes, parallel): literature (mutation testing, fault seeding, LLM test-gen), tooling (runnable measurement per language), empirical (grade this repo's 420-test suite as corpus). Consolidation by reviewer, then walkthrough -> planner.
+- [x] RESEARCH COMPLETE (2026-08-07), 4 docs: [[RESEARCH-test-quality-literature]] (22 findings: misguidance effect, TestGen-LLM 75% mechanical discard, RIPR lineage), [[RESEARCH-test-quality-tooling]] (mutmut Windows-refusal, stdlib-ast in-house path, scoping dominates cost), [[RESEARCH-test-quality-empirical]] (own suite 99% D-01-clean, 86.7% seeded-defect kill, 2 boundary holes), [[RESEARCH-test-quality-synthesis]] (63.6%-vs-86.7%-vs-100% tension reconciled from live mutant data: 77% of survivors a scoping artifact; residue = boundary/fixture-aliasing gap two instruments independently found; station model: D-01 authoring bar, AST filter gate, mutation diagnostic-only, seeded defects validate the bar).
+- [ ] AWAITING ROGER: synthesis walkthrough + 5 open questions (Q1 reshapes the plan: regression guard vs cleanup). Then planner.
 - [ ] After PLAN-006: SPEC-011 pipeline (research/ADR on substrate + planner), distribute v0.4.0 across repos (19/40 vaults lack the backstop), then SPEC-006 hosts (hermes first, then Kimi Code/Codex)
 
 ## Next Up
