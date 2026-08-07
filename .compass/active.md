@@ -89,6 +89,11 @@ Evidence base complete: [[RESEARCH-lesson-capture-failure]] (capture fired organ
 - [x] PLAN-006 VALIDATED (2026-08-06): PASS with findings - 16/16 implemented, 15 checks pass, 9/9 adversarial probes pass (incl. 21 signal-free turns never firing, doctor catching unregistered hooks.json and stale CLI). Findings all resolved same-session: TASK-048 checkbox fixed, TASK-049 dogfood done (2 cited, 0 unresolvable, PASS), probe-opened opportunity extracted+closed (3rd organic-quality firing: [[LESSON-scratch-vaults-need-compass-dir]]), find_vault_root fallback question -> [[backlog]]. Validator's manual checklist items were each covered by earlier human approvals this session except the methodology-section read, folded into the next natural review.
 - [x] FLEET DISTRIBUTION COMPLETE (2026-08-06): v0.5.0 pushed to GitHub and rolled to all 42 vaults on this machine from a fresh clone, 42/42 doctor-clean. Every vault now has hooks REGISTERED in .claude/settings.json (incl. TeammateIdle - a translation bug dropping non-Stop/SubagentStop events was found and fixed pre-push), the full capture/retrieval/audit CLI, and plugin.yaml at 0.5.0. The learning loop is live fleet-wide for the first time. Spot-verified: product-owner (permissions preserved by the settings merge).
 - [ ] NEXT: SPEC-011 pipeline (research/ADR on substrate, planner), then SPEC-006 hosts (hermes first). Watch capture-stats across the fleet over the coming days - the falsification test for SPEC-012's hypothesis is now running everywhere.
+
+## Test-quality initiative (Roger, 2026-08-07): "only really good and meaningful tests"
+
+- [x] [[SPEC-013-test-quality]] drafted and APPROVED (2026-08-07): per-test admission bar (D-01), deep research before mechanism (D-02). Trigger: a simple task closing at 841 suite tests; our own 178-in-a-day.
+- [ ] RESEARCH in flight (3 axes, parallel): literature (mutation testing, fault seeding, LLM test-gen), tooling (runnable measurement per language), empirical (grade this repo's 420-test suite as corpus). Consolidation by reviewer, then walkthrough -> planner.
 - [ ] After PLAN-006: SPEC-011 pipeline (research/ADR on substrate + planner), distribute v0.4.0 across repos (19/40 vaults lack the backstop), then SPEC-006 hosts (hermes first, then Kimi Code/Codex)
 
 ## Next Up
