@@ -52,6 +52,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-test-quality-empirical]] - Empirical Grade of Compass's Own CLI Test Suite Against the D-01 Admission Bar
 - [[RESEARCH-test-quality-tooling]] - Test Quality Tooling - Mutation Testing, Cheaper Signals, and Windows/Stdlib Fit
 - [[RESEARCH-test-quality-synthesis]] - Three Instruments, Three Answers: Reconciling the Test-Quality Research
+- [[RESEARCH-test-quality-craft-and-practice]] - Test Craft and AI Testing Practice: The Missing Axis
 
 ## Plans
 

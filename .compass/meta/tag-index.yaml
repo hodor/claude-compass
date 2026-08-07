@@ -11,6 +11,8 @@ tags:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   adversarial:
   - specs/SPEC-013-test-quality.md
+  agentic-testing:
+  - research/RESEARCH-test-quality-craft-and-practice.md
   anti-list:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   append-only:
@@ -132,6 +134,8 @@ tags:
   - specs/SPEC-008-central-model-resolution-table.md
   counters:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
+  craft:
+  - research/RESEARCH-test-quality-craft-and-practice.md
   crlf:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   cross-platform:
@@ -573,10 +577,15 @@ tags:
   taxonomy:
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - specs/SPEC-003-hierarchical-vault-organization.md
+  tdd:
+  - research/RESEARCH-test-quality-craft-and-practice.md
   templates:
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
+  test-design:
+  - research/RESEARCH-test-quality-craft-and-practice.md
   test-quality:
+  - research/RESEARCH-test-quality-craft-and-practice.md
   - research/RESEARCH-test-quality-empirical.md
   - research/RESEARCH-test-quality-literature.md
   - research/RESEARCH-test-quality-synthesis.md
@@ -587,6 +596,7 @@ tags:
   tester-agent:
   - specs/SPEC-013-test-quality.md
   testing:
+  - research/RESEARCH-test-quality-craft-and-practice.md
   - research/RESEARCH-test-quality-empirical.md
   - research/RESEARCH-test-quality-literature.md
   - research/RESEARCH-test-quality-synthesis.md
