@@ -5,6 +5,8 @@ tags:
   - research/RESEARCH-evaluation-benchmarks.md
   accuracy:
   - specs/SPEC-007-decision-coverage-tracing.md
+  admission-bar:
+  - research/RESEARCH-test-quality-synthesis.md
   admission-control:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   adversarial:
@@ -94,6 +96,7 @@ tags:
   - research/RESEARCH-decision-coverage-impl.md
   - research/RESEARCH-hybrid-hierarchy-impl.md
   - research/RESEARCH-model-resolution-impl.md
+  - research/RESEARCH-test-quality-empirical.md
   co-location:
   - specs/SPEC-010-universal-hybrid-hierarchy.md
   codex:
@@ -117,6 +120,8 @@ tags:
   - specs/SPEC-008-central-model-resolution-table.md
   content-aware:
   - lessons/LESSON-wikilink-validator-skip-code.md
+  convergence:
+  - research/RESEARCH-test-quality-synthesis.md
   core:
   - specs/SPEC-001-compass-vision-and-architecture.md
   cost:
@@ -171,6 +176,7 @@ tags:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   empirical:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
+  - research/RESEARCH-test-quality-empirical.md
   env-var:
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
   evaluation:
@@ -193,6 +199,8 @@ tags:
   - lessons/LESSON-wikilink-validator-skip-code.md
   falsifiability:
   - research/RESEARCH-scientific-method-in-compass.md
+  fault-based-testing:
+  - research/RESEARCH-test-quality-literature.md
   fleet-audit:
   - research/RESEARCH-lesson-capture-failure.md
   foundational:
@@ -358,6 +366,8 @@ tags:
   line-endings:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
+  llm-test-generation:
+  - research/RESEARCH-test-quality-literature.md
   lost-in-the-middle:
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   mcp:
@@ -397,6 +407,10 @@ tags:
   - specs/SPEC-006-multi-host-agent-cli-support.md
   multi-runtime:
   - research/RESEARCH-gsd-core-improvements-for-compass.md
+  mutation-testing:
+  - research/RESEARCH-test-quality-literature.md
+  - research/RESEARCH-test-quality-synthesis.md
+  - research/RESEARCH-test-quality-tooling.md
   nesting:
   - specs/SPEC-010-universal-hybrid-hierarchy.md
   non-interactive:
@@ -500,6 +514,8 @@ tags:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   scientific-method:
   - research/RESEARCH-scientific-method-in-compass.md
+  seeded-defects:
+  - research/RESEARCH-test-quality-empirical.md
   sendmessage:
   - lessons/LESSON-subagent-reports-need-sendmessage.md
   settings:
@@ -535,6 +551,8 @@ tags:
   - research/RESEARCH-gsd-core-improvements-for-compass.md
   stdin:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
+  stdlib:
+  - research/RESEARCH-test-quality-tooling.md
   strategy:
   - research/RESEARCH-hermes-vs-compass-fit.md
   subagents:
@@ -548,6 +566,8 @@ tags:
   - lessons/LESSON-append-only-index-misses-mutations.md
   - plans/PLAN-003-hybrid-hierarchy.md
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
+  synthesis:
+  - research/RESEARCH-test-quality-synthesis.md
   tag-index:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   taxonomy:
@@ -557,10 +577,20 @@ tags:
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   test-quality:
+  - research/RESEARCH-test-quality-empirical.md
+  - research/RESEARCH-test-quality-literature.md
+  - research/RESEARCH-test-quality-synthesis.md
+  - research/RESEARCH-test-quality-tooling.md
   - specs/SPEC-013-test-quality.md
+  test-smells:
+  - research/RESEARCH-test-quality-literature.md
   tester-agent:
   - specs/SPEC-013-test-quality.md
   testing:
+  - research/RESEARCH-test-quality-empirical.md
+  - research/RESEARCH-test-quality-literature.md
+  - research/RESEARCH-test-quality-synthesis.md
+  - research/RESEARCH-test-quality-tooling.md
   - specs/SPEC-013-test-quality.md
   tiers:
   - decisions/ADR-008-model-resolution-table.md
@@ -579,6 +609,8 @@ tags:
   - specs/SPEC-008-central-model-resolution-table.md
   tool-quirks:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
+  tooling:
+  - research/RESEARCH-test-quality-tooling.md
   traceability:
   - plans/PLAN-004-decision-coverage.md
   - research/RESEARCH-decision-coverage-impl.md
@@ -643,6 +675,7 @@ tags:
   - research/RESEARCH-hybrid-hierarchy-impl.md
   windows:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
+  - research/RESEARCH-test-quality-tooling.md
   workflow:
   - specs/SPEC-001-compass-vision-and-architecture.md
   - specs/SPEC-009-configurable-pipeline-workflows.md

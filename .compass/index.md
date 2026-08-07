@@ -28,8 +28,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[SPEC-010-universal-hybrid-hierarchy]] - any artifact and any unit of work can nest; type-first root for small work, a root-level folder per large unit co-locating its own types (approved 2026-07-23)
 - [[SPEC-011-vault-graph-queries]] - The Vault's Graph Is Queryable by the Harness (approved 2026-08-05 after 3-lens review: orphans + hub ranking + impact traversal with planner consumer)
 - [[SPEC-012-learning-loop]] - Compass learns: capture fires on events that occur, lessons surface at the work, application audited (approved 2026-08-05)
-- [[SPEC-013-test-quality]] - every agent-written test clears a per-test admission bar (really good and meaningful, or not written); suite size is an outcome, never a target (draft)
-- [[SPEC-013-test-quality]] - Agent-Written Tests Are Measurably Good, Not Merely Numerous
+- [[SPEC-013-test-quality]] - every agent-written test clears a per-test admission bar (really good and meaningful, or not written); suite size is an outcome, never a target (approved 2026-08-07)
 
 ## Research
 
@@ -49,6 +48,10 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-lesson-capture-failure]] - Why Lesson Capture Almost Never Happens (40-Vault Fleet Diagnosis)
 - [[RESEARCH-hermes-memory-mechanics]] - hermes-agent: Memory Update and Retrieval Mechanics, Deep-Dive
 - [[RESEARCH-grep-vs-graph-experiment]] - SPEC-011 D-02 experiment: 2 classes grep/CLI-solved, 2 marginal, health analytics grep-insufficient; lesson retrieval needs no graph
+- [[RESEARCH-test-quality-literature]] - Test-Suite Quality Measurement and LLM Test-Generation Literature
+- [[RESEARCH-test-quality-empirical]] - Empirical Grade of Compass's Own CLI Test Suite Against the D-01 Admission Bar
+- [[RESEARCH-test-quality-tooling]] - Test Quality Tooling - Mutation Testing, Cheaper Signals, and Windows/Stdlib Fit
+- [[RESEARCH-test-quality-synthesis]] - Three Instruments, Three Answers: Reconciling the Test-Quality Research
 
 ## Plans
 
