@@ -7,6 +7,8 @@ tags:
   - specs/SPEC-007-decision-coverage-tracing.md
   admission-control:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
+  adversarial:
+  - specs/SPEC-013-test-quality.md
   anti-list:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   append-only:
@@ -44,6 +46,8 @@ tags:
   benchmarks:
   - lessons/LESSON-test-driven-tasks-dont-discriminate.md
   - research/RESEARCH-evaluation-benchmarks.md
+  bloat:
+  - specs/SPEC-013-test-quality.md
   bm25:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   bookkeeping:
@@ -552,6 +556,12 @@ tags:
   templates:
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
+  test-quality:
+  - specs/SPEC-013-test-quality.md
+  tester-agent:
+  - specs/SPEC-013-test-quality.md
+  testing:
+  - specs/SPEC-013-test-quality.md
   tiers:
   - decisions/ADR-008-model-resolution-table.md
   - plans/PLAN-005-model-table.md
@@ -621,6 +631,8 @@ tags:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
   vector-search:
   - research/RESEARCH-rag-fit-for-large-vaults.md
+  verification:
+  - specs/SPEC-013-test-quality.md
   vision:
   - specs/SPEC-001-compass-vision-and-architecture.md
   wikilinks:

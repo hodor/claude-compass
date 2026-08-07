@@ -28,6 +28,8 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[SPEC-010-universal-hybrid-hierarchy]] - any artifact and any unit of work can nest; type-first root for small work, a root-level folder per large unit co-locating its own types (approved 2026-07-23)
 - [[SPEC-011-vault-graph-queries]] - The Vault's Graph Is Queryable by the Harness (approved 2026-08-05 after 3-lens review: orphans + hub ranking + impact traversal with planner consumer)
 - [[SPEC-012-learning-loop]] - Compass learns: capture fires on events that occur, lessons surface at the work, application audited (approved 2026-08-05)
+- [[SPEC-013-test-quality]] - every agent-written test clears a per-test admission bar (really good and meaningful, or not written); suite size is an outcome, never a target (draft)
+- [[SPEC-013-test-quality]] - Agent-Written Tests Are Measurably Good, Not Merely Numerous
 
 ## Research
 
