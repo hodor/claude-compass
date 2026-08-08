@@ -45,7 +45,15 @@ These three failures are mechanically undetectable from the diff: nothing can te
 
 ## Selecting inputs: classes before edges
 
-Before choosing which values to test, enumerate the equivalence classes: the groups of inputs the code is meant to treat identically. Write one test per class to confirm the class-level behavior, then apply the boundary-and-fixture rule to find the edge of each class. Boundary values chosen without first naming the class they bound are guesses; the class tells you which edge matters and which values inside it are redundant with each other.
+Before choosing which values to test, enumerate the equivalence classes: the groups of inputs the code is meant to treat identically. Cover one case per class, then apply the boundary-and-fixture rule to find the edge of each class. Boundary values chosen without first naming the class they bound are guesses; the class tells you which edge matters and which values inside it are redundant with each other.
+
+## Cases are rows, not tests
+
+A test function exists per public behavior, never per case. The equivalence classes and boundaries of one behavior are named rows in one table-driven test (or one function with named sub-cases); a change under test that fires ten rows still reads as one failing behavior. Test count tracks the number of behaviors the code promises; case count tracks the input space. A feature promising two behaviors gets two tests, however many rows each carries. Each row's claim is one line; a claim needing a paragraph is a sign the row is really a different behavior.
+
+## Test the public contract; helpers are covered through it
+
+An internal helper - private, or existing only to serve one public function - gets no test suite of its own. Its failure modes are rows in the public contract's test, reached the way production reaches them. Testing a helper only directly is how a suite goes green while the helper's call site is deleted: the direct test keeps passing against code nothing uses. A helper earns its own test only when it is a public contract itself (exported, reused across modules, or a boundary another module parses).
 
 ## Design guidance by test type
 
