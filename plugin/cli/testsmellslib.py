@@ -2,7 +2,7 @@
 D-01, D-03, D-06).
 
 A stdlib-`ast` walk over Python test files, scoped strictly to what can be
-decided with no judgment. Four checks, three gate and one advisory:
+decided with no judgment. Five checks, three gate and two advisory:
 
 - **empty-test** (gate) - a test body of only `pass`, `...`, a docstring,
   or a bare `return`.
@@ -35,6 +35,24 @@ decided with no judgment. Four checks, three gate and one advisory:
   `self.assert*` call, no `self.fail(...)`, no `assertRaises`/`pytest.raises`
   call, and no call to a same-module or same-class helper whose name begins
   with `assert`, `_assert`, or `check`.
+- **assertion-roulette** (advisory, permanent) - a test with
+  `--roulette-threshold` (default `DEFAULT_ROULETTE_THRESHOLD`) or more
+  assertion statements that both carry no message and sit outside any
+  `with self.subTest(...):` block. An `assert` statement's own second
+  clause (`assert cond, "message"`) counts as a message; a call-based
+  assertion (`self.assertEqual(a, b, msg="...")`) counts one only through
+  an explicit `msg=` keyword, never through a trailing positional argument
+  - unittest's assert methods vary in arity (`assertTrue` takes one
+  positional argument before `msg`, `assertAlmostEqual` up to four), so
+  telling a message apart from the last regular argument by position alone
+  would need a per-method signature table this check does not keep.
+  `self.fail(...)` is the one exception: its only parameter is `msg`, so
+  any argument to it, positional or keyword, counts. A
+  calibration run over this repository's own suite found no threshold at
+  which the check earns gate severity - a threshold of 3 flagged 31.9% of
+  the suite and a threshold of 8 flagged 2.1%, both entirely false
+  positives on inspection - so it ships advisory permanently: its
+  presence never changes the exit code, with or without `--advisory-only`.
 
 File discovery: a file argument is always checked, regardless of content,
 even when it also appears inside a directory argument scanned in the same
@@ -69,6 +87,13 @@ from pathlib import Path
 
 GATE = "gate"
 ADVISORY = "advisory"
+
+# The only threshold calibration measured (t=3 -> 31.9% of the suite
+# flagged, t=8 -> 2.1%, both entirely false positives on inspection - see
+# the module docstring). 8 is chosen as the default because it is the
+# calibrated point that keeps the advisory report scannable rather than
+# dominated by noise; `--roulette-threshold` overrides it per run.
+DEFAULT_ROULETTE_THRESHOLD = 8
 
 _HELPER_PREFIXES = ("assert", "_assert", "check")
 _BUILTIN_NAMES = frozenset(dir(builtins))
@@ -108,6 +133,13 @@ def _is_assertion_call(node):
         and isinstance(node.func, ast.Attribute)
         and _is_assertion_attr(node.func.attr)
     )
+
+
+def _is_assertion_statement(stmt):
+    """True for a statement that is itself an assertion: an `assert`
+    statement, or a bare expression statement calling an assertion method
+    (`<anything>.assert*` or `<anything>.fail`)."""
+    return isinstance(stmt, ast.Assert) or (isinstance(stmt, ast.Expr) and _is_assertion_call(stmt.value))
 
 
 def _finding(class_name, func_name, line, check, severity, detail=None):
@@ -238,16 +270,9 @@ def _check_empty(class_name, func_name, node):
 # --------------------------------------------------------------------------
 
 def _assertion_statements(body):
-    """Top-level statements of a test body that are assertions: an `assert`
-    statement, or a bare expression statement calling an assertion method
-    (`<anything>.assert*` or `<anything>.fail`)."""
-    stmts = []
-    for stmt in body:
-        if isinstance(stmt, ast.Assert):
-            stmts.append(stmt)
-        elif isinstance(stmt, ast.Expr) and _is_assertion_call(stmt.value):
-            stmts.append(stmt)
-    return stmts
+    """Top-level statements of a test body that are assertions, per
+    `_is_assertion_statement`."""
+    return [stmt for stmt in body if _is_assertion_statement(stmt)]
 
 
 def _names_read(node):
@@ -397,14 +422,76 @@ def _check_assertion_free(class_name, func_name, node, module_functions):
 
 
 # --------------------------------------------------------------------------
+# assertion-roulette
+# --------------------------------------------------------------------------
+
+def _is_subtest_item(item):
+    ctx = item.context_expr
+    return (
+        isinstance(ctx, ast.Call)
+        and isinstance(ctx.func, ast.Attribute)
+        and ctx.func.attr == "subTest"
+        and isinstance(ctx.func.value, ast.Name)
+        and ctx.func.value.id == "self"
+    )
+
+
+def _assertions_under_subtest(node):
+    """Identity set (by `id()`) of assertion-statement nodes nested inside
+    any `with self.subTest(...):` block reachable from `node.body` - these
+    are excluded from the roulette count since subTest already names which
+    case failed."""
+    excluded = set()
+    for n in _iter_body_nodes(node):
+        if isinstance(n, (ast.With, ast.AsyncWith)) and any(_is_subtest_item(item) for item in n.items):
+            for inner in ast.walk(n):
+                if _is_assertion_statement(inner):
+                    excluded.add(id(inner))
+    return excluded
+
+
+def _assertion_has_message(stmt):
+    """True when an assertion statement carries an explicit message: an
+    `assert` statement's own `, message` clause, or a `msg=` keyword on a
+    call-based assertion. `self.fail(...)` is the one exception to "never
+    read a trailing positional argument as a message" - its only
+    parameter is `msg`, so any argument to it is unambiguously one,
+    unlike `assertEqual`/`assertTrue`/etc., whose arity varies and whose
+    last positional argument cannot be told apart from a regular one
+    without a per-method signature table."""
+    if isinstance(stmt, ast.Assert):
+        return stmt.msg is not None
+    call = stmt.value
+    if call.func.attr == "fail":
+        return bool(call.args) or any(kw.arg == "msg" for kw in call.keywords)
+    return any(kw.arg == "msg" for kw in call.keywords)
+
+
+def _check_assertion_roulette(class_name, func_name, node, threshold):
+    excluded = _assertions_under_subtest(node)
+    assertions = [
+        n for n in _iter_body_nodes(node)
+        if _is_assertion_statement(n) and id(n) not in excluded
+    ]
+    unmessaged = [a for a in assertions if not _assertion_has_message(a)]
+    if len(unmessaged) >= threshold:
+        yield _finding(
+            class_name, func_name, node.lineno, "assertion-roulette", ADVISORY,
+            f"{len(unmessaged)} unmessaged assertions (threshold {threshold})",
+        )
+
+
+# --------------------------------------------------------------------------
 # dispatch
 # --------------------------------------------------------------------------
 
-def run_checks(paths):
-    """Run all four checks over the test files resolved from `paths`
-    (file and/or directory arguments). Returns the full finding list
-    sorted by `(file, line, check)`, each entry a dict with `file`, `line`,
-    `test`, `check`, `severity`, and `detail` (may be `None`)."""
+def run_checks(paths, roulette_threshold=DEFAULT_ROULETTE_THRESHOLD):
+    """Run all five checks over the test files resolved from `paths`
+    (file and/or directory arguments). `roulette_threshold` sets the
+    minimum unmessaged, non-subTest assertion count that fires
+    assertion-roulette. Returns the full finding list sorted by
+    `(file, line, check)`, each entry a dict with `file`, `line`, `test`,
+    `check`, `severity`, and `detail` (may be `None`)."""
     parsed, findings = discover(paths)
     for path, tree in parsed:
         imported_modules = _imported_module_names(tree)
@@ -415,6 +502,7 @@ def run_checks(paths):
                 (_check_duplicate_assert, ()),
                 (_check_literal_only, (imported_modules,)),
                 (_check_assertion_free, (module_functions,)),
+                (_check_assertion_roulette, (roulette_threshold,)),
             ):
                 for entry in check_fn(class_name, func_name, node, *extra):
                     entry["file"] = str(path)

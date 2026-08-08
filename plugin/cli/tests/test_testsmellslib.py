@@ -1,4 +1,4 @@
-"""Tests for `testsmellslib` (the four checks) and `commands.test_smells`
+"""Tests for `testsmellslib` (the five checks) and `commands.test_smells`
 (the CLI wrapper).
 
 Every fixture module here is a string of Python source written to a
@@ -220,6 +220,61 @@ class DecoratorTests(unittest.TestCase):
         self.assertEqual(modelslib.TIER_EFFORT["strong"], "high")
 '''
 
+ASSERTION_ROULETTE_SRC = '''\
+import unittest
+
+
+def _value(x):
+    return x
+
+
+class RouletteTests(unittest.TestCase):
+    def test_two_unmessaged_assertions_is_below_threshold(self):
+        """Adversarial where: one assertion short of the configured
+        threshold must not fire - the boundary is exact, not a rough
+        cutoff."""
+        self.assertEqual(_value(1), 1)
+        self.assertEqual(_value(2), 2)
+
+    def test_three_unmessaged_assertions_hits_threshold(self):
+        """Adversarial where: reaching the configured threshold exactly
+        must fire, not require one more past it."""
+        self.assertEqual(_value(1), 1)
+        self.assertEqual(_value(2), 2)
+        self.assertEqual(_value(3), 3)
+
+    def test_messaged_assertions_are_never_counted(self):
+        """Adversarial where: a message on every assertion removes the
+        ambiguity Assertion Roulette targets and must suppress the finding
+        even with enough assertions to reach the threshold."""
+        self.assertEqual(_value(1), 1, msg="one is one")
+        self.assertEqual(_value(2), 2, msg="two is two")
+        self.assertEqual(_value(3), 3, msg="three is three")
+
+    def test_subtest_assertions_do_not_count_toward_the_total(self):
+        """Adversarial where: an assertion issued once per case inside
+        self.subTest must not be penalized the way a flat run of
+        undifferentiated assertions is - subTest already names which case
+        failed."""
+        for value in (1, 2, 3):
+            with self.subTest(value=value):
+                self.assertEqual(_value(value), value)
+        self.assertEqual(_value(9), 9)
+
+    def test_positional_fail_argument_counts_as_a_message(self):
+        """Adversarial where: self.fail's only parameter is msg, so a
+        positional argument to it is unambiguously a message, unlike the
+        other assert methods whose arity varies - counting a positional
+        self.fail argument as unmessaged would misclassify every
+        fail-based assertion."""
+        if _value(1) != 1:
+            self.fail("one is one")
+        if _value(2) != 2:
+            self.fail("two is two")
+        if _value(3) != 3:
+            self.fail("three is three")
+'''
+
 
 # --------------------------------------------------------------------------
 # empty-test
@@ -327,6 +382,73 @@ class AssertionFreeCheckTests(unittest.TestCase):
         for f in findings:
             if f["check"] == "assertion-free":
                 self.assertEqual(f["severity"], testsmellslib.ADVISORY)
+
+
+# --------------------------------------------------------------------------
+# assertion-roulette
+# --------------------------------------------------------------------------
+
+class AssertionRouletteCheckTests(unittest.TestCase):
+    def test_fires_at_threshold_and_not_one_below(self):
+        tmp = make_tmp(self)
+        path = write_module(tmp, "test_roulette.py", ASSERTION_ROULETTE_SRC)
+        findings = testsmellslib.run_checks([str(path)], roulette_threshold=3)
+        roulette_tests = {f["test"] for f in findings if f["check"] == "assertion-roulette"}
+        self.assertIn("RouletteTests.test_three_unmessaged_assertions_hits_threshold", roulette_tests)
+        self.assertNotIn(
+            "RouletteTests.test_two_unmessaged_assertions_is_below_threshold", roulette_tests
+        )
+        for f in findings:
+            if f["check"] == "assertion-roulette":
+                self.assertEqual(f["severity"], testsmellslib.ADVISORY)
+
+    def test_message_on_every_assertion_suppresses_it(self):
+        tmp = make_tmp(self)
+        path = write_module(tmp, "test_roulette.py", ASSERTION_ROULETTE_SRC)
+        findings = testsmellslib.run_checks([str(path)], roulette_threshold=3)
+        roulette_tests = {f["test"] for f in findings if f["check"] == "assertion-roulette"}
+        self.assertNotIn("RouletteTests.test_messaged_assertions_are_never_counted", roulette_tests)
+
+    def test_subtest_assertions_are_excluded_from_the_count(self):
+        tmp = make_tmp(self)
+        path = write_module(tmp, "test_roulette.py", ASSERTION_ROULETTE_SRC)
+        findings = testsmellslib.run_checks([str(path)], roulette_threshold=3)
+        roulette_tests = {f["test"] for f in findings if f["check"] == "assertion-roulette"}
+        self.assertNotIn(
+            "RouletteTests.test_subtest_assertions_do_not_count_toward_the_total", roulette_tests
+        )
+
+    def test_positional_fail_argument_counts_as_a_message(self):
+        tmp = make_tmp(self)
+        path = write_module(tmp, "test_roulette.py", ASSERTION_ROULETTE_SRC)
+        findings = testsmellslib.run_checks([str(path)], roulette_threshold=3)
+        roulette_tests = {f["test"] for f in findings if f["check"] == "assertion-roulette"}
+        self.assertNotIn(
+            "RouletteTests.test_positional_fail_argument_counts_as_a_message", roulette_tests
+        )
+
+    def test_threshold_is_configurable(self):
+        tmp = make_tmp(self)
+        path = write_module(tmp, "test_roulette.py", ASSERTION_ROULETTE_SRC)
+        findings_default = testsmellslib.run_checks([str(path)])
+        roulette_default = {f["test"] for f in findings_default if f["check"] == "assertion-roulette"}
+        self.assertEqual(roulette_default, set())
+        findings_low = testsmellslib.run_checks([str(path)], roulette_threshold=2)
+        roulette_low = {f["test"] for f in findings_low if f["check"] == "assertion-roulette"}
+        self.assertIn("RouletteTests.test_two_unmessaged_assertions_is_below_threshold", roulette_low)
+
+    def test_advisory_never_flips_the_exit_code(self):
+        """Adversarial where: assertion-roulette is advisory permanently -
+        a low threshold that fires on every test in the fixture must
+        still exit 0."""
+        tmp = make_tmp(self)
+        path = write_module(tmp, "test_roulette.py", ASSERTION_ROULETTE_SRC)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = test_smells.run([str(path), "--roulette-threshold", "1"])
+        self.assertEqual(code, 0)
+        self.assertIn("PASS", out.getvalue())
+        self.assertIn("assertion-roulette", out.getvalue())
 
 
 # --------------------------------------------------------------------------
@@ -504,6 +626,36 @@ class CliTests(unittest.TestCase):
         with redirect_stdout(out):
             code = test_smells.run([str(path)])
         self.assertEqual(code, 1)
+
+    def test_roulette_threshold_flag_is_applied(self):
+        tmp = make_tmp(self)
+        path = write_module(tmp, "test_roulette.py", ASSERTION_ROULETTE_SRC)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = test_smells.run([str(path), "--roulette-threshold", "3"])
+        self.assertEqual(code, 0)
+        self.assertIn("assertion-roulette", out.getvalue())
+
+    def test_roulette_threshold_missing_value_is_exit_1(self):
+        err = io.StringIO()
+        with redirect_stderr(err):
+            code = test_smells.run(["some/path", "--roulette-threshold"])
+        self.assertEqual(code, 1)
+        self.assertIn("--roulette-threshold", err.getvalue())
+
+    def test_roulette_threshold_non_integer_is_exit_1(self):
+        err = io.StringIO()
+        with redirect_stderr(err):
+            code = test_smells.run(["some/path", "--roulette-threshold", "abc"])
+        self.assertEqual(code, 1)
+        self.assertIn("integer", err.getvalue())
+
+    def test_roulette_threshold_below_one_is_exit_1(self):
+        err = io.StringIO()
+        with redirect_stderr(err):
+            code = test_smells.run(["some/path", "--roulette-threshold", "0"])
+        self.assertEqual(code, 1)
+        self.assertIn("--roulette-threshold", err.getvalue())
 
 
 if __name__ == "__main__":
