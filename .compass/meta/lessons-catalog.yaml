@@ -153,3 +153,17 @@ lessons:
     tags: [subagents, briefs, code-review, agent-protocol, orchestration]
     score: 5
     summary: "A blanket no-sub-agents ban in a spawn brief strips the builder's review station; twice violated, both violations caught real bugs"
+  - file: "LESSON-blind-the-author-in-self-validation.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [experiments, blinding, validation, measurement, empirical]
+    score: 5
+    summary: "One agent that both replays the seeded defects and authors the arm under test measures itself, not the mechanism"
+  - file: "LESSON-suite-size-is-not-coverage.md"
+    status: active
+    category: process
+    area: testing
+    tags: [testing, test-review, coverage, suite-size, empirical]
+    score: 5
+    summary: "44 tests for two behaviors carried mass redundancy and two critical holes at once; a delete list is half a review"

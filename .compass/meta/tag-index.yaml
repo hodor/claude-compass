@@ -56,6 +56,8 @@ tags:
   benchmarks:
   - lessons/LESSON-test-driven-tasks-dont-discriminate.md
   - research/RESEARCH-evaluation-benchmarks.md
+  blinding:
+  - lessons/LESSON-blind-the-author-in-self-validation.md
   bloat:
   - specs/SPEC-013-test-quality.md
   bm25:
@@ -148,6 +150,8 @@ tags:
   - specs/SPEC-008-central-model-resolution-table.md
   counters:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
+  coverage:
+  - lessons/LESSON-suite-size-is-not-coverage.md
   craft:
   - research/RESEARCH-test-quality-craft-and-practice.md
   crlf:
@@ -193,6 +197,8 @@ tags:
   embeddings:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   empirical:
+  - lessons/LESSON-blind-the-author-in-self-validation.md
+  - lessons/LESSON-suite-size-is-not-coverage.md
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   - research/RESEARCH-test-quality-bar-validation.md
   - research/RESEARCH-test-quality-empirical.md
@@ -206,6 +212,8 @@ tags:
   - lessons/LESSON-pin-the-motivating-datum.md
   experiment:
   - research/RESEARCH-grep-vs-graph-experiment.md
+  experiments:
+  - lessons/LESSON-blind-the-author-in-self-validation.md
   extension-surface:
   - research/RESEARCH-hermes-agent-capabilities.md
   facets:
@@ -406,6 +414,7 @@ tags:
   measurement:
   - compass-cli/research/RESEARCH-cli-token-reduction-measurement.md
   - lessons/LESSON-adversarial-plan-review-before-build.md
+  - lessons/LESSON-blind-the-author-in-self-validation.md
   memgpt:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
@@ -608,6 +617,8 @@ tags:
   - lessons/LESSON-long-agents-stall-resume-them.md
   - lessons/LESSON-subagent-reports-need-sendmessage.md
   - lessons/LESSON-subagent-worktrees-fork-stale.md
+  suite-size:
+  - lessons/LESSON-suite-size-is-not-coverage.md
   summaries:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   sync:
@@ -641,12 +652,15 @@ tags:
   - research/RESEARCH-test-quality-synthesis.md
   - research/RESEARCH-test-quality-tooling.md
   - specs/SPEC-013-test-quality.md
+  test-review:
+  - lessons/LESSON-suite-size-is-not-coverage.md
   test-smells:
   - research/RESEARCH-test-quality-literature.md
   tester-agent:
   - plans/PLAN-007-test-quality.md
   - specs/SPEC-013-test-quality.md
   testing:
+  - lessons/LESSON-suite-size-is-not-coverage.md
   - plans/PLAN-007-test-quality.md
   - research/RESEARCH-fleet-test-census.md
   - research/RESEARCH-test-quality-bar-validation.md
@@ -707,6 +721,7 @@ tags:
   - compass-cli/plans/PLAN-002-compass-cli-implementation.md
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
+  - lessons/LESSON-blind-the-author-in-self-validation.md
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   - lessons/LESSON-wikilink-validator-skip-code.md
   - research/RESEARCH-decision-coverage-impl.md
