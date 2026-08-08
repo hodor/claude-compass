@@ -109,6 +109,7 @@ tags:
   - research/RESEARCH-decision-coverage-impl.md
   - research/RESEARCH-hybrid-hierarchy-impl.md
   - research/RESEARCH-model-resolution-impl.md
+  - research/RESEARCH-test-quality-bar-validation.md
   - research/RESEARCH-test-quality-empirical.md
   co-location:
   - specs/SPEC-010-universal-hybrid-hierarchy.md
@@ -193,6 +194,7 @@ tags:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   empirical:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
+  - research/RESEARCH-test-quality-bar-validation.md
   - research/RESEARCH-test-quality-empirical.md
   env-var:
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
@@ -465,6 +467,8 @@ tags:
   - specs/SPEC-011-vault-graph-queries.md
   overfit:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
+  paired-experiment:
+  - research/RESEARCH-test-quality-bar-validation.md
   parallel-builders:
   - lessons/LESSON-subagent-worktrees-fork-stale.md
   parser:
@@ -555,6 +559,7 @@ tags:
   scientific-method:
   - research/RESEARCH-scientific-method-in-compass.md
   seeded-defects:
+  - research/RESEARCH-test-quality-bar-validation.md
   - research/RESEARCH-test-quality-empirical.md
   sendmessage:
   - lessons/LESSON-subagent-reports-need-sendmessage.md
@@ -629,6 +634,7 @@ tags:
   test-quality:
   - plans/PLAN-007-test-quality.md
   - research/RESEARCH-fleet-test-census.md
+  - research/RESEARCH-test-quality-bar-validation.md
   - research/RESEARCH-test-quality-craft-and-practice.md
   - research/RESEARCH-test-quality-empirical.md
   - research/RESEARCH-test-quality-literature.md
@@ -643,6 +649,7 @@ tags:
   testing:
   - plans/PLAN-007-test-quality.md
   - research/RESEARCH-fleet-test-census.md
+  - research/RESEARCH-test-quality-bar-validation.md
   - research/RESEARCH-test-quality-craft-and-practice.md
   - research/RESEARCH-test-quality-empirical.md
   - research/RESEARCH-test-quality-literature.md
