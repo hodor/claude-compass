@@ -27,6 +27,7 @@ hook path: a write failure never raises out of the function that logs it.
 
 import datetime
 import json
+import os
 from pathlib import Path
 
 import vaultlib
@@ -35,7 +36,10 @@ DEFAULT_CONFIG = {
     "enabled": True,
     "interval": 12,
     "max_reemits": 3,
+    "abandon_after_seconds": 900,
 }
+
+RUN_LOCK_STALE_SECONDS = 60
 
 DEFAULT_STATE = {
     "turns_since_capture": 0,
@@ -78,6 +82,57 @@ def _now():
 
 def _iso(dt):
     return dt.isoformat().replace("+00:00", "Z")
+
+
+def parse_iso(text):
+    """The datetime for an `_iso`-formatted string, or `None` when it does
+    not parse. Timezone-aware, UTC."""
+    try:
+        return datetime.datetime.fromisoformat(str(text).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _run_lock_path(vault_root):
+    return Path(vault_root) / "tmp" / "capture-check.lock"
+
+
+def acquire_run_lock(vault_root):
+    """Take the capture-check run lock, or return False when another
+    capture-check holds it. Concurrent Stop hooks race the read-decide-write
+    window over `capture-state.json`; without this, both read a
+    no-open-opportunity state and both open one. O_CREAT|O_EXCL is the
+    atomic guard; a lock older than `RUN_LOCK_STALE_SECONDS` is a crashed
+    holder and is broken and retaken once."""
+    path = _run_lock_path(vault_root)
+    for attempt in (1, 2):
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            fd = os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(fd, _iso(_now()).encode("utf-8"))
+            os.close(fd)
+            return True
+        except FileExistsError:
+            try:
+                age = _now().timestamp() - path.stat().st_mtime
+            except OSError:
+                return False
+            if age <= RUN_LOCK_STALE_SECONDS or attempt == 2:
+                return False
+            try:
+                path.unlink()
+            except OSError:
+                return False
+        except OSError:
+            return False
+    return False
+
+
+def release_run_lock(vault_root):
+    try:
+        _run_lock_path(vault_root).unlink()
+    except OSError:
+        pass
 
 
 def _write_json(path, data):

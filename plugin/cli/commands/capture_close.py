@@ -101,10 +101,19 @@ def run(args):
         record = json.loads(opp_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         record = {}
-    if isinstance(record, dict) and record.get("outcome") is not None:
+    prior = record.get("outcome") if isinstance(record, dict) else None
+    if prior is not None and not (prior == "abandoned" and outcome != "abandoned"):
         sys.stderr.write(f"compass capture-close: {opp_id} is already closed\n")
         return 1
 
     capturelib.close_opportunity(vault_root, opp_id, outcome, **counts)
-    sys.stdout.write(f"compass capture-close: {opp_id} closed as {outcome}\n")
+    if prior == "abandoned":
+        # An extraction pass outran the automatic abandon; its real outcome
+        # supersedes so the trace never undercounts a pass that finished.
+        sys.stdout.write(
+            f"compass capture-close: {opp_id} closed as {outcome} "
+            "(superseding auto-abandon)\n"
+        )
+    else:
+        sys.stdout.write(f"compass capture-close: {opp_id} closed as {outcome}\n")
     return 0

@@ -104,10 +104,15 @@ def _window_evidence(signals):
 
 def _handle_open_opportunity(vault_root, state, config):
     """An opportunity is already open. Re-emit the block JSON while under
-    `max_reemits`; past that, close it `abandoned` and go silent."""
+    `max_reemits`; past that, go silent, and close it `abandoned` only once
+    it is also older than `abandon_after_seconds`. The age requirement is
+    what keeps a burst of quick turns from abandoning an opportunity whose
+    extraction pass is still running - a re-emit budget alone measures turn
+    count, not elapsed time, and an in-flight pass needs time."""
     opp_id = state.get("open_opportunity")
     directory = _opportunity_dir(vault_root, opp_id)
-    if not (directory / "opportunity.json").is_file():
+    opp_path = directory / "opportunity.json"
+    if not opp_path.is_file():
         # The mutex points at an opportunity no longer on disk: stale, not held.
         state["open_opportunity"] = None
         state["reemits"] = 0
@@ -122,17 +127,37 @@ def _handle_open_opportunity(vault_root, state, config):
         state["reemits"] = reemits + 1
         capturelib.save_state(vault_root, state)
         _emit(_reason(directory, vault_root, reemit=True))
-    else:
-        capturelib.close_opportunity(vault_root, opp_id, "abandoned")
+        return
+
+    grace = config.get(
+        "abandon_after_seconds", capturelib.DEFAULT_CONFIG["abandon_after_seconds"]
+    )
+    opened_at = None
+    try:
+        opened_at = capturelib.parse_iso(
+            json.loads(opp_path.read_text(encoding="utf-8")).get("opened_at")
+        )
+    except (OSError, ValueError):
+        pass
+    if opened_at is not None:
+        age = (capturelib._now() - opened_at).total_seconds()
+        if age < grace:
+            return  # budget spent but still young: an extraction may be in flight
+    capturelib.close_opportunity(vault_root, opp_id, "abandoned")
 
 
 def run(args):
     if "--hook" not in args:
         return 0
+    locked = False
+    vault_root = None
     try:
         sys.stdin.read()  # drain the Stop event JSON; content is unused
 
         vault_root = vaultlib.find_vault_root()
+        if not capturelib.acquire_run_lock(vault_root):
+            return 0  # a concurrent capture-check holds the window
+        locked = True
         state = capturelib.bump_turn(vault_root)
         config = capturelib.load_config(vault_root)
         if not config.get("enabled", True):
@@ -159,4 +184,7 @@ def run(args):
             _emit(_reason(directory, vault_root))
     except Exception:
         pass  # best-effort: capture bookkeeping must never fail the turn
+    finally:
+        if locked:
+            capturelib.release_run_lock(vault_root)
     return 0

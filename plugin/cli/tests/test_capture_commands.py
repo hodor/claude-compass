@@ -74,6 +74,16 @@ def capture_log_path(vault_root):
     return vault_root / "tmp" / "capture-log.jsonl"
 
 
+def _backdate_opportunity(root, opp_id, seconds):
+    """Rewrite an opportunity's `opened_at` to `seconds` ago, so age-gated
+    behavior is testable without sleeping."""
+    path = opportunities_dir(root) / opp_id / "opportunity.json"
+    record = json.loads(path.read_text(encoding="utf-8"))
+    past = capturelib._now() - datetime.timedelta(seconds=seconds)
+    record["opened_at"] = capturelib._iso(past)
+    path.write_text(json.dumps(record), encoding="utf-8", newline="\n")
+
+
 def read_log_rows(vault_root):
     path = capture_log_path(vault_root)
     if not path.is_file():
@@ -406,7 +416,15 @@ class CaptureCheckTests(unittest.TestCase):
         self.assertEqual(capturelib.load_state(root)["reemits"], 1)
 
         feed_stdin(self, {"hook_event_name": "Stop"})
-        code, out = self._run()  # budget exhausted: abandon, go silent
+        code, out = self._run()  # budget exhausted but young: silent, still open
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "")
+        state = capturelib.load_state(root)
+        self.assertEqual(state["open_opportunity"], opp_id)
+
+        _backdate_opportunity(root, opp_id, seconds=901)
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        code, out = self._run()  # budget exhausted and past grace: abandon
         self.assertEqual(code, 0)
         self.assertEqual(out, "")
         state = capturelib.load_state(root)
@@ -416,6 +434,38 @@ class CaptureCheckTests(unittest.TestCase):
         )
         self.assertEqual(record["outcome"], "abandoned")
         self.assertIsNotNone(record["closed_at"])
+
+    def test_concurrent_check_blocked_by_run_lock(self):
+        """Adversarial where: two Stop hooks racing the read-decide-write
+        window would each open an identical opportunity; the holder of the
+        run lock must be the only one that can."""
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, interval=1)
+        capturelib.record_signal(root, "vault-write", "specs/SPEC-001.md")
+        self.assertTrue(capturelib.acquire_run_lock(root))
+        self.addCleanup(capturelib.release_run_lock, root)
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "")
+        self.assertFalse(opportunities_dir(root).exists())
+        capturelib.release_run_lock(root)
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        code, out = self._run()
+        self.assertIn("decision", out)
+
+    def test_stale_run_lock_is_broken_and_retaken(self):
+        """Adversarial where: a crashed capture-check would leave its lock
+        behind forever, silencing capture in the vault permanently."""
+        root = make_vault(self)
+        path = capturelib._run_lock_path(root)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("stale", encoding="utf-8")
+        old = capturelib._now().timestamp() - capturelib.RUN_LOCK_STALE_SECONDS - 5
+        os.utime(path, (old, old))
+        self.assertTrue(capturelib.acquire_run_lock(root))
+        capturelib.release_run_lock(root)
 
     def test_unprocessed_phase_summary_opens_phase_opportunity(self):
         root = make_vault(self)
@@ -809,6 +859,39 @@ class CaptureCloseTests(unittest.TestCase):
         capturelib.close_opportunity(root, opp_id, "fired", written=1)
 
         code, _ = self._run([opp_id, "--outcome", "fired", "--written", "1"])
+        self.assertEqual(code, 1)
+
+    def test_real_outcome_supersedes_auto_abandon(self):
+        """Adversarial where: an extraction pass that outran the automatic
+        abandon would have its close refused, leaving the trace undercounting
+        a pass that finished and wrote lessons."""
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        directory = capturelib.open_opportunity(root, "interval", [], [])
+        opp_id = directory.name
+        capturelib.close_opportunity(root, opp_id, "abandoned")
+
+        code, out = self._run([opp_id, "--outcome", "fired", "--written", "2"])
+        self.assertEqual(code, 0)
+        self.assertIn("superseding auto-abandon", out)
+        record = json.loads(
+            (directory / "opportunity.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(record["outcome"], "fired")
+
+        code, _ = self._run([opp_id, "--outcome", "fired"])
+        self.assertEqual(code, 1)  # a superseded close is final
+
+    def test_abandoned_never_supersedes_a_real_outcome(self):
+        """Adversarial where: a late auto-abandon overriding a real fired
+        outcome would erase the pass's counts from the record."""
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        directory = capturelib.open_opportunity(root, "interval", [], [])
+        opp_id = directory.name
+        capturelib.close_opportunity(root, opp_id, "fired", written=1)
+
+        code, _ = self._run([opp_id, "--outcome", "abandoned"])
         self.assertEqual(code, 1)
 
     def test_missing_outcome_flag_exits_1_not_2(self):
