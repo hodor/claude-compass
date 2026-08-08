@@ -1,7 +1,8 @@
 ---
 title: "Test Quality Instruments (Authoring Bar, Test-First Station, Admission Filter, Diagnostic Mutation)"
 type: plan
-status: draft
+status: approved
+approved: 2026-08-08
 confidence: medium
 area: testing
 tags: [testing, test-quality, tester-agent, admission-bar, mutation, ast, cli, test-first]
@@ -21,7 +22,7 @@ Grounded in [[RESEARCH-test-quality-synthesis]] (the station model, the build or
 
 ## Rulings requested
 
-Five decisions belong to the human and are wanted once, at approval. Each is marked again inline where it bites, with the same recommendation.
+All five ruled as recommended (Roger, 2026-08-08, "approve as recommended"): R1 build order adopted; R2 checkpoint commit kept with the mechanical green definition; R3 Assertion Roulette advisory permanently; R4 trace layer in scope; R5 assertion-free advisory pending the idiom. Each inline ruling marker below is resolved accordingly.
 
 | # | Decision | Recommendation |
 |---|---|---|
