@@ -17,6 +17,15 @@ Compass documents should be a pleasure to read. Easy to read, short, sweet. Long
 
 Research is the exception: it captures evidence and can be as long as required.
 
+## No Verbiage
+
+Conversation output is never the record - logs, reports, and vault files are. On every surface (agent reports, skill output, hook-triggered passes, relays to the human):
+
+- Lead with the outcome. One line per fact.
+- Relay a subagent's result as its one-line summary, never its narration.
+- Never restate in conversation what a log or file already holds.
+- No process narration, no ceremony, no restating the obvious.
+
 ## Vision
 
 - New projects start with `/compass:vision`. The vision document captures the project goal and the spec roadmap. One vision per project.
