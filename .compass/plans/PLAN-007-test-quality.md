@@ -1,8 +1,9 @@
 ---
 title: "Test Quality Instruments (Authoring Bar, Test-First Station, Admission Filter, Diagnostic Mutation)"
 type: plan
-status: approved
+status: done
 approved: 2026-08-08
+completed: 2026-08-08
 confidence: medium
 area: testing
 tags: [testing, test-quality, tester-agent, admission-bar, mutation, ast, cli, test-first]
@@ -218,7 +219,7 @@ The task text below is retained, amended and costed, so that unparking is a sche
   - Automated verification: grep `validator.md` for `test-smells`, `test-checkpoint verify`, `open-ids`, the evidence block, the three classifications, and the new report section; confirm the mutation part is explicitly conditional; confirm the word "block" or "fail" appears nowhere in the new step's verdict language.
   - Manual verification: read the amended protocol and confirm the audit is phrased as a report, not a gate, and that a validator following it produces something a human can act on in one pass.
 
-- [ ] TASK-063: Paired seeded-defect validation of the bar itself - complexity: L, depends_on: TASK-057, files: [.compass/research/RESEARCH-test-quality-bar-validation.md], decisions: [SPEC-013-test-quality/D-03, SPEC-013-test-quality/D-05]
+- [x] TASK-063: Paired seeded-defect validation of the bar itself - complexity: L, depends_on: TASK-057 - Arm B 15/15 vs Arm A 13/15, both predicted movers flipped, 77 tests vs 109; hypothesis survives (caveats: non-blinded author, signature-read scope creep; blinded rerun recommended), files: [.compass/research/RESEARCH-test-quality-bar-validation.md], decisions: [SPEC-013-test-quality/D-03, SPEC-013-test-quality/D-05]
   - D-03's fourth station, and the only task that answers SPEC-013's own falsifiable hypothesis rather than implementing a mechanism. The original design compared the pre-bar baseline against a suite for *different modules*, which measures module difficulty at least as much as it measures the bar. This is a **paired experiment on identical ground** instead.
     - **Arm A (already run):** the 13/15 result [[RESEARCH-test-quality-empirical]] measured on the existing tests for `capturelib.py`, `lessonslib.py` and `sync.py`.
     - **Arm B (new):** re-author the tests for those *same three modules* under the new bar, on a scratch copy, **discard-and-replace rather than additive** - an additive arm cannot lose a defect and so cannot falsify anything. Replay the identical 15 defects with the identical method: full suite per defect, reverted between runs from a pristine snapshot.
@@ -230,7 +231,7 @@ The task text below is retained, amended and costed, so that unparking is a sche
   - Automated verification: 30 recorded runs (15 defects x 2 arms) with a caught/survived verdict each and the full-suite output for every survivor; the per-defect movement table. Kill rates reported as fractions, never as pass marks.
   - Manual verification: the human reads the paired comparison and rules on SPEC-013's hypothesis. An Arm B kill rate below Arm A is the spec's first falsification criterion firing and must be reported as such, not explained away. This is the one task in the plan whose honest failure would invalidate the rest.
 
-- [ ] TASK-064: Install refresh and acceptance - complexity: M, depends_on: TASK-056, TASK-059, TASK-062, files: [.claude/], decisions: [SPEC-013-test-quality/D-01, SPEC-013-test-quality/D-04, SPEC-013-test-quality/D-06]
+- [x] TASK-064: Install refresh and acceptance - complexity: M, depends_on: TASK-056, TASK-059, TASK-062 - battery PASS 2026-08-08: suite 478 OK, doctor clean (28 commands), zero gate findings on this plan's test files, full-tree scan recorded (7 gate D-05 observations), both coverage gates PASS, files: [.claude/], decisions: [SPEC-013-test-quality/D-01, SPEC-013-test-quality/D-04, SPEC-013-test-quality/D-06]
   - Copy `plugin/cli`, `plugin/skills/*`, and `plugin/templates/agents/*` into `.claude/` (or run `/compass:update`), then run acceptance from the installed copy rather than from `plugin/`, which is the only way the refresh is actually proven.
   - Automated verification: full suite `python -m unittest discover -s plugin/cli/tests` green with the new modules' tests included, green meaning no failures outside `compass test-checkpoint open-ids`; `python .claude/cli/compass doctor` exits 0 and reports the new commands present; **`python .claude/cli/compass test-smells <this plan's new test files>` reports zero gate findings** - the assertion is on this plan's own output only, per D-05; a full-tree `test-smells` run is also recorded, with its **exit code reported and not asserted**, as calibration evidence; `python plugin/cli/compass coverage PLAN-007-test-quality --against SPEC-013-test-quality` exits 0; `python plugin/cli/compass lesson-coverage PLAN-007-test-quality` exits 0.
   - Findings against `RosterTests` or any other pre-existing test in the full-tree run are D-05 observations. They are recorded, and no cleanup task is opened against them.
