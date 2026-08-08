@@ -43,6 +43,7 @@ COMMAND_SPECS = [
     ("lessons", "Ranked catalog rows for an area, tag set, free text, or a document. Exit 1 on a malformed catalog row or missing catalog."),
     ("lesson-coverage", "Report cited, surfaced-but-uncited, and unresolvable lesson citations for a plan's `lessons:` fields. Advisory: exit 1 only on an unresolvable citation."),
     ("test-checkpoint", "record | verify | open-ids for pre-build failing-test checkpoints, tamper-evident against git. Never exits 2."),
+    ("test-smells", "AST-based test-smell checks over test files: empty test, duplicate assert, literal-only assertion (gate), assertion-free (advisory). Exit 1 on any gate finding, never 2."),
 ]
 
 
