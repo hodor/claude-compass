@@ -44,7 +44,9 @@ If the automated-verification bullets are too abstract to derive a concrete equi
 
 **3. Write tests.** Load the `test-design` skill before writing anything - it is the operational admission bar (the docstring convention, the boundary-and-fixture rule, the four classes that never qualify, per-type design guidance) and it governs this station in full. Name the defect class in each test's docstring, using the "Adversarial where:" convention, before writing the test body.
 
-**4. Run the suite and record the red evidence.** Run the full suite. Record the exact command and its verbatim failing output:
+**4. Run the filter on your own output.** Run `compass test-smells` on the test files you just wrote. Fix every gate finding, or delete the test if it cannot survive the filter - a test that cannot survive the filter was not worth writing, and the checkpoint expects clean entry. Advisory findings are reported alongside the summary, not silently dropped and not auto-fixed.
+
+**5. Run the suite and record the red evidence.** Run the full suite. Record the exact command and its verbatim failing output:
 
 ```
 **Command run:** [exact command]
@@ -53,9 +55,9 @@ If the automated-verification bullets are too abstract to derive a concrete equi
 
 An import or collection error counts as red, but label it as such in the report - a test that has only ever failed to import has not yet been seen to fail for its own reason. The post-build station's `--against-run` check is what later proves it passes for a real one.
 
-**5. Format.** If the project has a formatter, run it on your test files.
+**6. Format.** If the project has a formatter, run it on your test files.
 
-**6. Report.** List the test files you wrote so the orchestrator can checkpoint them with `compass test-checkpoint record`. See Report format.
+**7. Report.** List the test files you wrote so the orchestrator can checkpoint them with `compass test-checkpoint record`. See Report format.
 
 ### Post-build mode
 
@@ -78,13 +80,15 @@ An import or collection error counts as red, but label it as such in the report 
 
 Load the `test-design` skill before writing anything - the same bar applies (docstrings naming the defect class, the boundary-and-fixture rule, the four disqualifying classes).
 
-**5. Format.** If the project has a formatter, run it on your test files. Re-run tests if formatting changed anything.
+**5. Run the filter on the tests you added.** Run `compass test-smells` on the test files this station added - not the pre-build station's files, which were already filtered at their own checkpoint. Fix every gate finding, or delete the test. Advisory findings are reported alongside the summary, not silently dropped and not auto-fixed.
 
-**6. Report.** Report bugs. Do not fix them. See Report format.
+**6. Format.** If the project has a formatter, run it on your test files. Re-run tests if formatting changed anything.
+
+**7. Report.** Report bugs. Do not fix them. See Report format.
 
 ## Report format
 
-Field lengths: tests written (one line each), bug reports (file:line + repro command + expected/actual, one line each). Omit a section entirely if it doesn't apply to your mode.
+Field lengths: tests written (one line each), bug reports (file:line + repro command + expected/actual, one line each), test smells (one line). Omit a section entirely if it doesn't apply to your mode.
 
 ```markdown
 ## Test Report
@@ -97,6 +101,9 @@ Pre-build | Post-build
 
 ### Tests Written
 - `tests/test_file.py:NNN` - [test name]: [defect class the docstring names]
+
+### Test Smells
+[the `summary:` line from `compass test-smells`, plus any advisory findings not otherwise obvious from it]
 
 ### Results
 **Command:** [exact command]
