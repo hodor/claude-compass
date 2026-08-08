@@ -79,18 +79,18 @@ Live in `.compass/decisions/`, named `ADR-NNN-descriptive-name.md`.
 
 ## Testing mandate
 
-Non-negotiable. Every agent that writes code:
+Non-negotiable. Every code change gets tests, authored at two stations around the builder rather than left to the builder's own judgment:
 
-1. Picks the test type (property-based, unit, integration - agent's call).
-2. Tests live outside `.compass/`, in the project's normal test directory.
-3. Covers the code being written or modified.
-4. Runs the full suite to ensure nothing is broken.
+1. **Authoring is governed by the admission bar.** The D-01 bar plus the boundary-and-fixture criterion (see the `test-design` skill) decide whether a test earns its place: it must name the defect class it catches, and it must exercise the exact boundary, never a fixture value that aliases a default, and asymmetrically malformed input alongside the well-formed and fully-malformed cases. This is what "picks the test type" resolves to - it is not left to instinct.
+2. **A mechanical filter gates admission.** `compass test-smells` walks the tests just written before they are reported: empty tests, duplicate asserts, and literal-only assertions fail the gate and get fixed or deleted; assertion-free tests and Assertion Roulette are reported advisory.
+3. **Mutation is an on-demand diagnostic, never a blocker.** `compass mutate` surfaces candidate gaps for a human to triage when a finding needs settling. It gates nothing and no task waits on it.
+4. **Seeded defects validate the bar itself.** A paired seeded-defect probe measures whether tests written under the bar catch more real defects than tests written without it, which is what confirms the bar is doing its job rather than adding ceremony.
 
-Tests are the safety net that lets humans trust AI-written code.
+Tests live outside `.compass/`, in the project's normal test directory, and cover the code being written or modified. The full suite runs to ensure nothing is broken. None of this weakens the mandate: every code change still gets tests, and the station model exists to raise what a test must demonstrate to exist, never to give an agent a reason to write fewer of them. Tests are the safety net that lets humans trust AI-written code.
 
 ## Task execution
 
-When `active.md` has approved tasks, execute via **builder agents**, not inline in the main conversation. Builders run in isolated worktrees (reviewable before merge), follow the full protocol (scope check, code review, vault update), and never run tests themselves. The `tester` is auto-spawned via the `SubagentStop` hook after the builder finishes and handles all test execution.
+When `active.md` has approved tasks, execute via **builder agents**, not inline in the main conversation. Builders run in isolated worktrees (reviewable before merge), follow the full protocol (scope check, code review, vault update), and never run tests themselves. The orchestrator spawns the `tester` at two stations around each code task - pre-build, to author failing tests from the task's spec, and post-build, after the builder finishes - and it handles all test execution.
 
 The main conversation's job during execution: orchestration - spawn builders, review output, handle failures, update vault state.
 
