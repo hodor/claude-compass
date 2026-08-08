@@ -104,6 +104,65 @@ class ScanArtifactsTests(unittest.TestCase):
         self.assertEqual(len(records), 1)
 
 
+class LooseNestedDocTests(unittest.TestCase):
+    """A child record whose immediate parent folder has no `index.md` of
+    its own (a plain grouping subfolder, not a folder-spec) is "loose": its
+    `name` is the full vault-relative form so it stays unique against a
+    same-named file in a sibling subfolder (issue #1)."""
+
+    def setUp(self):
+        self.tmp = make_tempdir(self)
+
+    def _write(self, rel, body="---\ntype: research\n---\n"):
+        path = self.tmp / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body, encoding="utf-8")
+        return path
+
+    def test_is_loose_nested_true_without_sibling_index(self):
+        path = self._write("research/sub/note.md")
+        self.assertTrue(vaultlib.is_loose_nested(path, "child"))
+
+    def test_is_loose_nested_false_with_sibling_index(self):
+        self._write("specs/SPEC-002-tile/index.md")
+        path = self._write("specs/SPEC-002-tile/SPEC-001-master.md")
+        self.assertFalse(vaultlib.is_loose_nested(path, "child"))
+
+    def test_is_loose_nested_false_for_non_child_kinds(self):
+        path = self._write("research/flat.md")
+        self.assertFalse(vaultlib.is_loose_nested(path, "flat"))
+        self.assertFalse(vaultlib.is_loose_nested(path, "folder-index"))
+
+    def test_loose_child_name_includes_the_type_dir(self):
+        self._write("research/sub/note.md")
+        records = vaultlib.scan_artifacts(self.tmp)
+        self.assertEqual(records[0]["name"], "research/sub/note")
+        self.assertEqual(records[0]["kind"], "child")
+
+    def test_folder_spec_child_name_omits_the_type_dir(self):
+        self._write("specs/SPEC-002-tile/index.md")
+        self._write("specs/SPEC-002-tile/SPEC-001-master.md")
+        by_name = {r["rel"]: r for r in vaultlib.scan_artifacts(self.tmp)}
+        child = by_name["SPEC-002-tile/SPEC-001-master.md"]
+        self.assertEqual(child["name"], "SPEC-002-tile/SPEC-001-master")
+
+    def test_two_loose_children_sharing_a_stem_get_distinct_names(self):
+        self._write("research/sub-a/note.md")
+        self._write("research/sub-b/note.md")
+        names = {r["name"] for r in vaultlib.scan_artifacts(self.tmp)}
+        self.assertEqual(names, {"research/sub-a/note", "research/sub-b/note"})
+
+    def test_loose_child_inside_a_unit_is_unaffected(self):
+        # A unit-owned child was already vault-relative (unit/type_dir/...)
+        # before this fix; the loose-nested branch must not double the
+        # type dir prefix for it.
+        self._write("unitx/index.md", "---\ntitle: X\ntype: unit\nstatus: active\n---\n")
+        self._write("unitx/research/sub/note.md")
+        by_name = {r["name"]: r for r in vaultlib.scan_artifacts(self.tmp)}
+        self.assertIn("unitx/research/sub/note", by_name)
+        self.assertNotIn("unitx/research/research/sub/note", by_name)
+
+
 class DiscoverTypeDirsTests(unittest.TestCase):
     def setUp(self):
         self.tmp = make_tempdir(self)

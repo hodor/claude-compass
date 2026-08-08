@@ -55,6 +55,27 @@ WIKILINK = re.compile(r"\[\[([^\]]+)\]\]")
 INDEX_WARNING = "<!-- WARNING: index.md exceeded hot-path cap. Run /compass:consolidate before next session. -->"
 CATALOG_WARNING = "# WARNING: catalog exceeded cap. Run /compass:consolidate before next session."
 
+# The minimal index.md /compass:setup writes for a new vault, reused here so
+# a vault synced before index.md exists gets the same shape rather than an
+# empty file.
+INDEX_SKELETON = (
+    '---\n'
+    'title: "Project Index"\n'
+    'type: index\n'
+    'created: {date}\n'
+    'updated: {date}\n'
+    '---\n'
+    '\n'
+    '# Project Index\n'
+)
+
+# `lessons: []` is the empty-catalog marker `/compass:setup` writes. It is
+# valid only while the catalog holds zero rows; a block-sequence row nested
+# under it (`  - file: ...`) is not valid YAML once real content is added.
+# `[ \t]*$` (not `\s*$`) keeps the match on this one line so a blank line
+# following the marker is never swallowed by the substitution.
+LESSONS_EMPTY_MARKER = re.compile(r"^lessons:[ \t]*\[\][ \t]*$", re.MULTILINE)
+
 
 def _load_data(records):
     """Attach parsed frontmatter to each record once, reused by all steps."""
@@ -76,11 +97,15 @@ def _link_name(record):
     shortest resolvable form. Unit artifacts get path-qualified links
     (vault-relative, no extension) so they stay unambiguous across units; a
     folder spec inside a unit links by its folder's vault-relative path,
-    mirroring the folder-name convention root folder specs use.
+    mirroring the folder-name convention root folder specs use. A root loose
+    nested doc (`vaultlib.is_loose_nested`) also gets the vault-relative
+    form, since nothing scopes its subfolder to keep the bare stem unique.
     """
     if record["unit"] is None:
         if record["kind"] == "folder-index":
             return record["path"].parent.name
+        if vaultlib.is_loose_nested(record["path"], record["kind"]):
+            return record["name"]
         return record["path"].stem
     return record["name"]
 
@@ -114,15 +139,26 @@ def _child_count(folder_record, records):
 
 def _sync_index(vault_root, records):
     """Append missing entries: one section per root type dir, one section per
-    unit titled from the unit's `index.md`. Append-only: existing lines,
-    including human-authored descriptions, are never rewritten or removed.
-    An artifact counts as already indexed when any existing wikilink in its
-    section resolves to the artifact's file, so sync never re-appends an
-    entry `validate` already resolves regardless of the link form used."""
+    unit titled from the unit's `index.md`. Entry lines are append-only:
+    existing lines, including human-authored descriptions, are never
+    removed. An artifact counts as already indexed when any existing
+    wikilink in its section resolves to the artifact's file. A line linking
+    a loose nested doc by its type-dir-omitted name is recognized as the
+    same artifact and rewritten in place to the current vault-relative form
+    (see the per-section loop below), so it resolves on this and every
+    later run. A vault with no `index.md` yet gets the same minimal
+    skeleton `/compass:setup` writes."""
     index_path = vault_root / "index.md"
-    lines = index_path.read_text(encoding="utf-8").split("\n")
+    if index_path.is_file():
+        lines = index_path.read_text(encoding="utf-8").split("\n")
+        existed = True
+    else:
+        today = datetime.date.today().isoformat()
+        lines = INDEX_SKELETON.format(date=today).split("\n")
+        existed = False
     resolve = vaultlib.resolvable_names_map(vault_root)
     added = {}
+    rewrites = 0
 
     root_by_dir = {}
     unit_recs = {}
@@ -161,11 +197,38 @@ def _sync_index(vault_root, records):
                 (i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")),
                 len(lines),
             )
+        # A loose nested doc's link target may name this record by its
+        # type-dir-omitted form; recognize that form as the same artifact
+        # and rewrite the line to the current name so it resolves.
+        legacy = {
+            r["name"][len(r["type_dir"]) + 1:]: r
+            for r in recs
+            if r["unit"] is None and vaultlib.is_loose_nested(r["path"], r["kind"])
+        }
+
         indexed_paths = set()
+        section_lines = []
         for line in lines[start + 1:end]:
+            updated = line
             for raw in WIKILINK.findall(line):
-                target = raw.split("#")[0].split("|")[0].strip()
-                indexed_paths.update(resolve.get(target, []))
+                split_at = next((i for i, c in enumerate(raw) if c in "#|"), len(raw))
+                target = raw[:split_at].strip()
+                resolved = resolve.get(target)
+                if resolved:
+                    indexed_paths.update(resolved)
+                    continue
+                legacy_record = legacy.get(target)
+                if legacy_record is not None:
+                    # Keep any `#heading`/`|alias` suffix intact - only the
+                    # identity portion of the link changes.
+                    suffix = raw[split_at:]
+                    updated = updated.replace(
+                        f"[[{raw}]]", f"[[{legacy_record['name']}{suffix}]]"
+                    )
+                    indexed_paths.add(_rel_path(vault_root, legacy_record))
+                    rewrites += 1
+            section_lines.append(updated)
+        lines[start + 1:end] = section_lines
 
         missing = [r for r in recs if _rel_path(vault_root, r) not in indexed_paths]
         if not missing:
@@ -178,7 +241,7 @@ def _sync_index(vault_root, records):
         lines[insert_at:insert_at] = new_lines
         added[key] = len(new_lines)
 
-    if added:
+    if added or rewrites or not existed:
         vaultlib.write_text_lf(index_path, "\n".join(lines))
     return added
 
@@ -206,7 +269,11 @@ def _sync_catalog(vault_root, records):
     """Append missing lesson rows to the root catalog, aggregating lessons
     from unit `lessons/` dirs so nested lessons stay on the hot path. The
     filename is the row key; two lesson files sharing a filename are a
-    collision - reported, and only the first (by vault path) gets a row."""
+    collision - reported, and only the first (by vault path) gets a row.
+    The empty-list marker `lessons: []` is replaced with the block-sequence
+    header `lessons:` the moment any row sits under it, whether newly
+    appended in this run or already present, so the file is always valid
+    YAML."""
     catalog_path = vault_root / "meta" / "lessons-catalog.yaml"
     if not catalog_path.is_file():
         return 0, []
@@ -228,8 +295,13 @@ def _sync_catalog(vault_root, records):
         row = _catalog_row(filename, recs[0]["_data"])
         if row:
             rows.append(row)
-    if rows:
-        vaultlib.write_text_lf(catalog_path, text.rstrip("\n") + "\n" + "\n".join(rows) + "\n")
+
+    corrupted = bool(existing) and bool(LESSONS_EMPTY_MARKER.search(text))
+    if rows or corrupted:
+        text = LESSONS_EMPTY_MARKER.sub("lessons:", text, count=1)
+        if rows:
+            text = text.rstrip("\n") + "\n" + "\n".join(rows) + "\n"
+        vaultlib.write_text_lf(catalog_path, text)
     return len(rows), collisions
 
 
@@ -255,11 +327,12 @@ def _sync_tag_index(vault_root, records):
 def _check_caps(vault_root, records):
     warnings = []
     index_path = vault_root / "index.md"
-    text = index_path.read_text(encoding="utf-8")
-    over = vaultlib.count_tokens(text) > INDEX_TOKEN_CAP or len(text.splitlines()) > INDEX_LINE_CAP
-    if over and INDEX_WARNING not in text:
-        vaultlib.write_text_lf(index_path, INDEX_WARNING + "\n" + text)
-        warnings.append("index.md")
+    if index_path.is_file():
+        text = index_path.read_text(encoding="utf-8")
+        over = vaultlib.count_tokens(text) > INDEX_TOKEN_CAP or len(text.splitlines()) > INDEX_LINE_CAP
+        if over and INDEX_WARNING not in text:
+            vaultlib.write_text_lf(index_path, INDEX_WARNING + "\n" + text)
+            warnings.append("index.md")
 
     catalog_path = vault_root / "meta" / "lessons-catalog.yaml"
     if catalog_path.is_file():

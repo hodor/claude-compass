@@ -14,6 +14,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import capturelib  # noqa: E402
+import lessonslib  # noqa: E402
 from commands import sync as sync_cmd  # noqa: E402
 from commands import validate as validate_cmd  # noqa: E402
 
@@ -57,6 +58,13 @@ def lesson(name, tags="[c]"):
         f"---\ntitle: {name}\ntype: lesson\nstatus: active\ncategory: process\n"
         f"area: workflow\ntags: {tags}\ncreated: 2026-06-14\nupdated: 2026-06-14\n"
         f"score: 5\nsummary: \"summary of {name}\"\n---\n\nbody\n"
+    )
+
+
+def research_doc(name, tags="[x]"):
+    return (
+        f"---\ntitle: {name}\ntype: research\nstatus: active\narea: w\n"
+        f"tags: {tags}\ncreated: 2026-06-14\nupdated: 2026-06-14\n---\n\nbody\n"
     )
 
 
@@ -135,6 +143,81 @@ class CatalogSyncTests(SyncFixture):
         self.assertEqual(added, 0)
 
 
+class CatalogEmptyMarkerTests(SyncFixture):
+    """`meta/lessons-catalog.yaml` starts life as `lessons: []` (the
+    /compass:setup skeleton). The marker is valid YAML only while the
+    catalog holds zero rows; appending a row under it without first
+    replacing it produces an unparseable file (issue #5)."""
+
+    def setUp(self):
+        super().setUp()
+        (self.root / "meta" / "lessons-catalog.yaml").write_text("lessons: []\n", encoding="utf-8")
+
+    def _catalog_text(self):
+        return (self.root / "meta" / "lessons-catalog.yaml").read_text(encoding="utf-8")
+
+    def test_first_row_replaces_the_empty_marker(self):
+        self.write("lessons/LESSON-fresh.md", lesson("Fresh"))
+        added = sync_cmd.sync(self.root)["catalog_added"]
+        self.assertEqual(added, 1)
+        text = self._catalog_text()
+        self.assertNotIn("lessons: []", text)
+        self.assertTrue(text.startswith("lessons:\n"))
+        self.assertIn('file: "LESSON-fresh.md"', text)
+
+    def test_first_row_catalog_parses_cleanly(self):
+        self.write("lessons/LESSON-fresh.md", lesson("Fresh"))
+        sync_cmd.sync(self.root)
+        text = self._catalog_text()
+        # lessonslib's row scanner never inspects the header line, so it
+        # would tolerate a row wrongly left under `lessons: []`; assert the
+        # header itself is the plain block-sequence form.
+        self.assertEqual(text.splitlines()[0], "lessons:")
+        rows = lessonslib.parse_catalog(text)
+        self.assertEqual([r["file"] for r in rows], ["LESSON-fresh.md"])
+
+    def test_sync_with_no_lessons_leaves_the_empty_marker_untouched(self):
+        sync_cmd.sync(self.root)
+        self.assertEqual(self._catalog_text(), "lessons: []\n")
+
+
+class CatalogCorruptedHealTests(SyncFixture):
+    """A catalog already in the corrupted shape - a row nested under the
+    `lessons: []` marker, from a version of the writer carrying issue #5 -
+    heals to valid YAML on the next sync, even when no new row is being
+    appended in that run."""
+
+    CORRUPTED = (
+        'lessons: []\n'
+        '  - file: "LESSON-known.md"\n'
+        '    status: active\n'
+        '    category: process\n'
+        '    area: workflow\n'
+        '    tags: [a, b]\n'
+        '    score: 5\n'
+        '    summary: "known lesson"\n'
+    )
+
+    def setUp(self):
+        super().setUp()
+        (self.root / "meta" / "lessons-catalog.yaml").write_text(self.CORRUPTED, encoding="utf-8")
+
+    def test_marker_is_replaced_with_no_new_rows_pending(self):
+        added = sync_cmd.sync(self.root)["catalog_added"]
+        self.assertEqual(added, 0)
+        text = (self.root / "meta" / "lessons-catalog.yaml").read_text(encoding="utf-8")
+        self.assertNotIn("lessons: []", text)
+        self.assertTrue(text.startswith("lessons:\n"))
+        self.assertEqual(text.count('file: "LESSON-known.md"'), 1)
+
+    def test_lessonslib_already_tolerates_the_corrupted_shape(self):
+        # The row scanner matches on the row lines only and never inspects
+        # the header, so the corrupted shape was already readable before the
+        # writer-side heal - confirms no parser change is needed here.
+        rows = lessonslib.parse_catalog(self.CORRUPTED)
+        self.assertEqual(rows[0]["file"], "LESSON-known.md")
+
+
 class TagIndexTests(SyncFixture):
     def test_tag_index_format_and_content(self):
         self.write("specs/SPEC-002-new.md", spec("New", tags="[rendering, tile-editor]"))
@@ -168,6 +251,70 @@ class CapTests(SyncFixture):
         warnings = sync_cmd.sync(self.root)["caps"]
         self.assertIn("index.md", warnings)
         self.assertIn(sync_cmd.INDEX_WARNING, self.index_text())
+
+
+class MissingIndexFileTests(SyncFixture):
+    """A vault whose `index.md` does not exist (issue #4, the hook's
+    never-crash contract): sync creates the same minimal skeleton
+    /compass:setup writes instead of raising FileNotFoundError."""
+
+    def setUp(self):
+        super().setUp()
+        (self.root / "index.md").unlink()
+
+    def test_sync_creates_index_instead_of_crashing(self):
+        report = sync_cmd.sync(self.root)  # must not raise
+        self.assertIn("[[SPEC-001-existing]]", self.index_text())
+        self.assertEqual(report["index_added"], {"specs": 1})
+
+    def test_created_index_carries_title_frontmatter(self):
+        sync_cmd.sync(self.root)
+        text = self.index_text()
+        self.assertTrue(text.startswith("---\n"))
+        self.assertIn("type: index", text)
+
+    def test_empty_vault_missing_index_still_gets_created(self):
+        # No artifacts at all: the per-section loop adds nothing to `added`,
+        # but the file must still be written so later steps (and validate)
+        # don't hit the same missing-file hole this run.
+        (self.root / "specs" / "SPEC-001-existing.md").unlink()
+        sync_cmd.sync(self.root)
+        self.assertTrue((self.root / "index.md").is_file())
+
+    def test_hook_mode_does_not_crash_and_still_suppresses_output(self):
+        old = os.environ.get("CLAUDE_PROJECT_DIR")
+        os.environ["CLAUDE_PROJECT_DIR"] = str(self.root.parent)
+        self.addCleanup(
+            lambda: os.environ.__setitem__("CLAUDE_PROJECT_DIR", old) if old
+            else os.environ.pop("CLAUDE_PROJECT_DIR", None)
+        )
+        self.write("specs/SPEC-002-new.md", spec("New"))
+        self.addCleanup(setattr, sys, "stdin", sys.stdin)
+        sys.stdin = io.StringIO(json.dumps({
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": str(self.root / "specs" / "SPEC-002-new.md")},
+        }))
+        out = io.StringIO()
+        from contextlib import redirect_stdout
+        with redirect_stdout(out):
+            code = sync_cmd.run(["--hook"])
+        self.assertEqual(code, 0)
+        self.assertEqual(out.getvalue(), json.dumps({"suppressOutput": True}))
+        self.assertTrue((self.root / "index.md").is_file())
+
+
+class CheckCapsMissingIndexTests(unittest.TestCase):
+    """`_check_caps` re-reads index.md independently of `_sync_index`; it
+    must not crash either when called on a vault with no index.md yet."""
+
+    def test_check_caps_does_not_crash_when_index_missing(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        root = tmp / ".compass"
+        (root / "meta").mkdir(parents=True)
+        warnings = sync_cmd._check_caps(root, [])
+        self.assertEqual(warnings, [])
 
 
 class LogCleanupTests(SyncFixture):
@@ -277,6 +424,100 @@ class ResolutionMatchingTests(SyncFixture):
         self.assertIn("  - [[SPEC-001-inner]] - Inner", text)
         self.assertIn("- [[SPEC-004-pack]] (folder, 1 children) - the pack folder", text)
         self.assertNotIn("[[SPEC-004-pack/SPEC-001-inner]]", text)
+
+
+class NestedDocWikilinkTests(SyncFixture):
+    """A root-level doc nested under a subfolder with no folder-spec
+    `index.md` sibling (issue #1): sync and validate must resolve the same
+    link form, and re-running sync must not duplicate the entry."""
+
+    def setUp(self):
+        super().setUp()
+        (self.root / "research").mkdir()
+
+    def test_loose_nested_doc_gets_full_vault_relative_link(self):
+        self.write("research/sub/note.md", research_doc("Note"))
+        sync_cmd.sync(self.root)
+        text = self.index_text()
+        self.assertIn("[[research/sub/note]]", text)
+        self.assertNotIn("[[sub/note]]", text)
+        self.assertNotIn("[[note]] -", text)
+
+    def test_loose_nested_doc_link_resolves_clean_in_validate(self):
+        self.write("research/sub/note.md", research_doc("Note"))
+        sync_cmd.sync(self.root)
+        _, warnings = validate_cmd.check_vault(self.root)
+        broken = [w for w in warnings if w.startswith("broken_wikilink")]
+        self.assertEqual(broken, [])
+
+    def test_second_sync_does_not_duplicate_the_entry(self):
+        self.write("research/sub/note.md", research_doc("Note"))
+        sync_cmd.sync(self.root)
+        sync_cmd.sync(self.root)
+        self.assertEqual(self.index_text().count("[[research/sub/note]]"), 1)
+
+    def test_two_loose_nested_docs_sharing_a_stem_both_link_uniquely(self):
+        # Two different subfolders under the same type dir, neither a
+        # folder-spec, can reuse a filename without conflicting on disk -
+        # the exact collision the type-dir-omitted bare stem could not tell
+        # apart.
+        self.write("research/sub-a/note.md", research_doc("Note A"))
+        self.write("research/sub-b/note.md", research_doc("Note B"))
+        sync_cmd.sync(self.root)
+        text = self.index_text()
+        self.assertIn("[[research/sub-a/note]]", text)
+        self.assertIn("[[research/sub-b/note]]", text)
+        _, warnings = validate_cmd.check_vault(self.root)
+        self.assertEqual([w for w in warnings if "ambiguous" in w or "broken" in w], [])
+
+    def test_existing_type_dir_omitted_link_is_rewritten_not_duplicated(self):
+        self.write("research/sub/note.md", research_doc("Note"))
+        seeded = self.index_text().replace(
+            "## Research", "## Research\n\n- [[sub/note]] - hand written description, do not touch"
+        )
+        (self.root / "index.md").write_text(seeded, encoding="utf-8")
+        sync_cmd.sync(self.root)
+        text = self.index_text()
+        self.assertEqual(text.count("[[research/sub/note]]"), 1)
+        self.assertNotIn("[[sub/note]]", text)
+        self.assertIn("hand written description, do not touch", text)
+
+    def test_existing_link_with_alias_suffix_is_rewritten_preserving_the_alias(self):
+        self.write("research/sub/note.md", research_doc("Note"))
+        seeded = self.index_text().replace(
+            "## Research", "## Research\n\n- [[sub/note|My Note]] - hand written"
+        )
+        (self.root / "index.md").write_text(seeded, encoding="utf-8")
+        sync_cmd.sync(self.root)
+        text = self.index_text()
+        self.assertIn("[[research/sub/note|My Note]]", text)
+        self.assertNotIn("[[sub/note", text)
+        _, warnings = validate_cmd.check_vault(self.root)
+        self.assertEqual([w for w in warnings if w.startswith("broken_wikilink")], [])
+
+    def test_existing_link_with_heading_suffix_is_rewritten_preserving_the_heading(self):
+        self.write("research/sub/note.md", research_doc("Note"))
+        seeded = self.index_text().replace(
+            "## Research", "## Research\n\n- [[sub/note#Details]] - hand written"
+        )
+        (self.root / "index.md").write_text(seeded, encoding="utf-8")
+        sync_cmd.sync(self.root)
+        text = self.index_text()
+        self.assertIn("[[research/sub/note#Details]]", text)
+        self.assertNotIn("[[sub/note", text)
+        _, warnings = validate_cmd.check_vault(self.root)
+        self.assertEqual([w for w in warnings if w.startswith("broken_wikilink")], [])
+
+    def test_folder_spec_child_still_gets_bare_stem_link(self):
+        # A subfolder that IS a folder-spec (carries its own index.md) keeps
+        # the existing bare-stem convention for its children, unaffected by
+        # the loose-nested-doc fix.
+        self.write("research/pack/index.md", folder_spec("Pack", "the pack folder"))
+        self.write("research/pack/RESEARCH-inner.md", research_doc("Inner"))
+        sync_cmd.sync(self.root)
+        text = self.index_text()
+        self.assertIn("[[RESEARCH-inner]]", text)
+        self.assertNotIn("[[research/pack/RESEARCH-inner]]", text)
 
 
 class UnitSyncTests(SyncFixture):
