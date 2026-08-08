@@ -25,21 +25,31 @@ Spawn builder agents to execute tasks. The main conversation orchestrates; it do
 
 2. **Select** tasks per the argument. Prerequisites: parent plan must be `approved` or `active`; `depends_on` tasks must be `[x]`. If blocked, report and stop.
 
-3. **Execute:**
-   - Parallel-safe tasks (non-overlapping `files:`): spawn one builder per task in parallel. Each builder runs in an isolated worktree (`isolation: worktree` in `builder.md`); the Agent SDK returns the worktree path and branch when the agent finishes. Record the (task, branch, worktree) tuple for each. The `tester` auto-spawns after each builder via the `SubagentStop` hook.
-   - Serial tasks: spawn one at a time in dependency order, wait for builder + auto-spawned tester before the next.
+3. **Test-first station.** For each selected task whose `files:` include executable source:
+   - Spawn the `tester` in pre-build mode, handing it exactly the task body, the plan's acceptance criteria, and the task's automated-verification bullets. No diff exists yet and none is given.
+   - Commit the test files it wrote on the working branch: `git commit -m "test(TASK-NNN): failing tests before implementation"`.
+   - Run `compass test-checkpoint record TASK-NNN <files> --commit <sha> --red-evidence <path>`, pointing `--red-evidence` at the tester's recorded red-run output.
+   - Only then spawn the builder for that task. The checkpoint commit must exist on the working branch before the builder's worktree forks from it, or the fork will not contain it ([[LESSON-subagent-worktrees-fork-stale]]).
 
-4. **Fix loop.** If testers report bugs, ask: "Tester found N issues in TASK-NNN. Fix? (yes / skip / abort)". On yes, spawn a targeted fix builder against the same branch with the bug diagnosis (not the full task). The tester re-runs automatically. Max 3 cycles per task, then escalate.
+   A task whose `files:` carry no executable source runs `compass test-checkpoint record TASK-NNN --not-required` instead of skipping the command outright, so "the station correctly did not apply" and "the station never ran" stay distinguishable later.
 
-5. **Merge branches back.** Once all builders + testers for a phase pass, merge each task branch into the orchestrator's branch in `depends_on` order:
+   In a parallel phase, every selected task's pre-build pass and checkpoint completes before any builder in that phase spawns. The station is a wave of its own, not interleaved with the build wave it gates.
+
+4. **Execute:**
+   - Parallel-safe tasks (non-overlapping `files:`): spawn one builder per task in parallel. Each builder runs in an isolated worktree (`isolation: worktree` in `builder.md`); the Agent SDK returns the worktree path and branch when the agent finishes. Record the (task, branch, worktree) tuple for each. The builder's first action, before writing any code, is to fast-forward its worktree branch to the working branch and confirm the checkpointed test files from step 3 exist; it halts loudly and reports if they do not. Once a builder finishes, spawn the `tester` in post-build mode against its diff.
+   - Serial tasks: spawn one at a time in dependency order, wait for the builder and its post-build tester before the next.
+
+5. **Fix loop.** If testers report bugs, ask: "Tester found N issues in TASK-NNN. Fix? (yes / skip / abort)". On yes, spawn a targeted fix builder against the same branch with the bug diagnosis (not the full task). Then run `compass test-checkpoint verify TASK-NNN --tree <worktree path> --expect-checkpoint` against that builder's worktree - without `--tree` the check reads the orchestrator's own checkout, where nothing in the fix loop is changing, and stays silent through the entire cycle. A `modified` result is surfaced to the human before the cycle continues, naming the changed assertion, rather than folded silently into the next one. Spawn the tester in post-build mode again to confirm the fix. Green at fix-loop entry and at every cycle after means **no failures outside `compass test-checkpoint open-ids`** - the checkpointed tests of tasks not yet landed are expected reds, not new bugs. Max 3 cycles per task, then escalate.
+
+6. **Merge branches back.** Once all builders + testers for a phase pass - pass meaning green as defined above, no failures outside `compass test-checkpoint open-ids` - merge each task branch into the orchestrator's branch in `depends_on` order:
    ```bash
    git merge --no-ff <task-branch> -m "Merge TASK-NNN: <description>"
    ```
-   After each merge, spawn the `tester` agent on the merged state to catch cross-task integration issues. Do not run tests yourself; the tester handles all test execution. If a merge conflicts, halt and present the list of remaining branches to the human - planner enforces file exclusivity so conflicts mean either a planner bug or a builder that wrote outside its `files:`.
+   After each merge, spawn the `tester` agent on the merged state to catch cross-task integration issues, then run the mandatory post-merge `compass test-checkpoint verify TASK-NNN` against the merged branch for that task - the only check that sees what actually landed rather than what a worktree contained mid-build. Do not run tests yourself; the tester handles all test execution. If a merge conflicts, halt and present the list of remaining branches to the human - planner enforces file exclusivity so conflicts mean either a planner bug or a builder that wrote outside its `files:`.
 
-6. **Phase pause.** When all tasks in a phase are done and the post-merge tester reports passing:
+7. **Phase pause.** When all tasks in a phase are done and the post-merge tester and post-merge verify both report passing:
 
-   **6a. Assemble phase reports from SubagentStop captures.** The SubagentStop hook has already captured each subagent's final message to `.compass/tmp/subagent-captures/<timestamp>_<agent_type>.md`. For this phase:
+   **7a. Assemble phase reports from SubagentStop captures.** The SubagentStop hook has already captured each subagent's final message to `.compass/tmp/subagent-captures/<timestamp>_<agent_type>.md`. For this phase:
 
    1. List captures created since this phase started (orchestrator knows the phase start time from when it began Phase N).
    2. For each capture, match the agent_type and the spawn history to a task. Rename and move into `.compass/tmp/phase-reports/<phase-id>/`:
@@ -51,26 +61,26 @@ Spawn builder agents to execute tasks. The main conversation orchestrates; it do
 
    Only `phase-summary.yaml` is original content the orchestrator writes; the per-task reports are just renames of hook-captured files. This is the [[LESSON-no-agent-bookkeeping]] principle applied to subagent reports.
 
-   **6b. Invoke extract-lessons.** Run `compass capture-check --hook` so it detects the phase-summary.yaml just written and opens a `.compass/tmp/capture-opportunities/OPP-<UTC>/` directory for it - the same detection the Stop hook itself runs on every turn. Then run the `extract-lessons` skill against that opportunity directory. It checks binary triggers, applies the anti-list, hands survivors to `lesson-write`, and closes the opportunity via `compass capture-close`. Surface its summary line to the human as part of the pause.
+   **7b. Invoke extract-lessons.** Run `compass capture-check --hook` so it detects the phase-summary.yaml just written and opens a `.compass/tmp/capture-opportunities/OPP-<UTC>/` directory for it - the same detection the Stop hook itself runs on every turn. Then run the `extract-lessons` skill against that opportunity directory. It checks binary triggers, applies the anti-list, hands survivors to `lesson-write`, and closes the opportunity via `compass capture-close`. Surface its summary line to the human as part of the pause.
 
-   **6c. Pause for human.** Present manual verification items from the plan, plus the extract-lessons summary. Wait for human confirmation before proceeding to next phase.
+   **7c. Pause for human.** Present manual verification items from the plan, plus the extract-lessons summary. Wait for human confirmation before proceeding to next phase.
 
-   Skip the pause (but NOT 6a and 6b) in `all-phases` mode; pause only after the last phase. Reports and extraction still run between phases so lessons are captured incrementally.
+   Skip the pause (but NOT 7a and 7b) in `all-phases` mode; pause only after the last phase. Reports and extraction still run between phases so lessons are captured incrementally.
 
-7. **Validate (optional).** Offer to spawn the validator with the plan file.
+8. **Validate (optional).** Offer to spawn the validator with the plan file.
 
-8. **Vault.** Verify builders updated `active.md` and `index.md`. If any skipped, do it now. The SDK auto-cleans worktrees once their branches are merged.
+9. **Vault.** Verify builders updated `active.md` and `index.md`. If any skipped, do it now. The SDK auto-cleans worktrees once their branches are merged.
 
 ## Report
 
 ```markdown
 ## Build Report
 
-| Task | Builder | Tester | Status |
-|------|---------|--------|--------|
-| TASK-NNN: [desc] | complete | 5 tests pass | DONE |
-| TASK-NNN: [desc] | complete | 3 tests, 1 fail → fixed (cycle 1) | DONE |
-| TASK-NNN: [desc] | blocked | - | BLOCKED by TASK-NNN |
+| Task | Red Evidence | Builder | Tester | Status |
+|------|--------------|---------|--------|--------|
+| TASK-NNN: [desc] | recorded | complete | 5 tests pass | DONE |
+| TASK-NNN: [desc] | not-required | complete | 3 tests, 1 fail → fixed (cycle 1) | DONE |
+| TASK-NNN: [desc] | - | blocked | - | BLOCKED by TASK-NNN |
 
 Next: run validator? Manual verification items from the plan?
 ```
