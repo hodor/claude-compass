@@ -83,6 +83,19 @@ Both are findings, listed alongside the checkbox audit - not blocks.
 
 An unresolvable citation (a typo naming no catalog row) is a defect for the builder to fix, reported as a finding here, never as a block on this validation's own verdict. All three are listed alongside the checkbox and decision coverage audits.
 
+**4f.** Test-quality audit. Report-only, exactly like the decision and lesson coverage audits - it gates on nothing. Three parts, each with the full `Check / Command run / Output observed / Result` evidence block:
+
+- Run `compass test-smells <test files in the diff>` and record it verbatim.
+- Run `compass test-checkpoint verify <task>` for every task in the plan and record each. A checkpoint reported `modified` is a finding, naming the changed assertion from the command's own output.
+- If Phase C has been unparked and the human asks for it, run `compass mutate` and record the survivor list as a diagnostic with its scope stated. Otherwise this part is skipped; the step is complete without it.
+
+Where this audit reports on suite state, green is stated as "no failures outside `compass test-checkpoint open-ids`" - a checkpoint still open mid-phase is not a failure, it is the plan's own recorded red.
+
+Per task, classify against three findings, mirroring the checkbox and coverage audits:
+- Tests present but no defect class named in any docstring.
+- Checkpoint modified rather than added to.
+- Test-first station skipped: flag it, then check whether a `not-required` record justifies the skip. It does. An absent record does not.
+
 ### 5. Verify the tester
 
 The tester ran between the builder and you. Read its test files in the diff. Re-run the test suite yourself with the full `Command / Output / Result` block. If the tester reported bugs, check whether the builder fixed them. Unfixed bugs are FAIL items in your report.
@@ -162,6 +175,14 @@ Details: [1-2 sentences for deviations or failures only]
 - Cited-but-no-evidence-in-the-diff: [task list]
 - Surfaced-but-uncited: [lesson list]
 - Unresolvable: [citation list]
+
+### Test Quality
+- Command run: `compass test-smells <files>` → [verbatim ≤125 char summary line]
+- Command run: `compass test-checkpoint verify <task>` → [verbatim ≤125 char summary line, one per task]
+- Mutation: [diagnostic result if run this session, otherwise omit the line]
+- No defect class docstring: [task list]
+- Checkpoint modified: [task list, with the changed assertion named]
+- Test-first station skipped, no `not-required` record: [task list]
 
 ### Tester
 - Re-run: `<cmd>` → [verbatim ≤125 char excerpt]
