@@ -117,6 +117,8 @@ See [[backlog]].
 - [[LESSON-adversarial-plan-review-before-build]] - Review specs/plans with 3 adversarial lenses before approval, and have reviewers measure against the real corpus, not opine
 - [[LESSON-pin-the-motivating-datum]] - When a spec cites a triggering observation, record its source (project, session, machine) at spec time; unpinned data become unfindable
 - [[LESSON-dont-strip-agent-quality-stations]] - A blanket no-sub-agents ban in a spawn brief strips the builder's review station; twice violated, both violations caught real bugs
+- [[LESSON-blind-the-author-in-self-validation]] - One agent that both replays the seeded defects and authors the arm under test measures itself, not the mechanism
+- [[LESSON-suite-size-is-not-coverage]] - 44 tests for two behaviors carried mass redundancy and two critical holes at once; a delete list is half a review
 
 ## compass-cli
 - [[compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work]] - A Python `compass` CLI Owns All Mechanical Vault Work; the Hook Calls It as a Command
