@@ -53,7 +53,9 @@ def _reason(directory, vault_root, reemit=False):
     state_word = "still open" if reemit else "ready"
     return (
         f"Capture opportunity {state_word} at {rel} - "
-        "run the extract-lessons skill against it."
+        "spawn a subagent to run the extract-lessons skill against it "
+        "(never run the pass in the main context), then relay only its "
+        "one-line extracted: summary."
     )
 
 

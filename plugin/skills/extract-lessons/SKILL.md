@@ -10,6 +10,8 @@ when_to_use: "Invoked against a capture opportunity directory - most often the o
 
 Retrospective lesson capture at a capture opportunity. No introspection prompts. The triggers are binary; the anti-list is the filter; `lesson-write` is the writer.
 
+The pass runs in a SPAWNED SUBAGENT, never in the main conversation's context: the evidence reading and candidate judgment cost thousands of tokens that belong in a disposable context, and the durable record is the extraction log plus the capture-log row, not conversation text. The subagent's entire report back is step 9's one `extracted:` line; the orchestrator relays that line and nothing else. Narrating candidates, verdicts, or rationale into the conversation is context pollution - the logs hold all of it.
+
 ## Inputs
 
 This skill takes one argument: the path to a capture opportunity directory, e.g. `.compass/tmp/capture-opportunities/OPP-20260805T142200123456Z`. If no argument is given, it reads the most recently modified `.compass/tmp/capture-opportunities/*/opportunity.json` whose `outcome` field is still `null`.
