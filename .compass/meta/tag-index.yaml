@@ -67,6 +67,8 @@ tags:
   briefs:
   - lessons/LESSON-dont-strip-agent-quality-stations.md
   - lessons/LESSON-subagent-reports-need-sendmessage.md
+  bug-reports:
+  - lessons/LESSON-revert-to-prove-a-regression-test.md
   build-skill:
   - research/RESEARCH-lesson-capture-failure.md
   busywork:
@@ -198,6 +200,7 @@ tags:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   empirical:
   - lessons/LESSON-blind-the-author-in-self-validation.md
+  - lessons/LESSON-revert-to-prove-a-regression-test.md
   - lessons/LESSON-suite-size-is-not-coverage.md
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   - research/RESEARCH-test-quality-bar-validation.md
@@ -537,6 +540,8 @@ tags:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   registration:
   - lessons/LESSON-hooks-load-only-from-settings.md
+  regression-tests:
+  - lessons/LESSON-revert-to-prove-a-regression-test.md
   reinertsen:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   replication:
@@ -558,6 +563,8 @@ tags:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   - research/RESEARCH-lessons-and-index-architecture.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
+  revert-check:
+  - lessons/LESSON-revert-to-prove-a-regression-test.md
   review:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
   - handoffs/2026-03-12_review-all-plugin-files.md
@@ -660,6 +667,7 @@ tags:
   - plans/PLAN-007-test-quality.md
   - specs/SPEC-013-test-quality.md
   testing:
+  - lessons/LESSON-revert-to-prove-a-regression-test.md
   - lessons/LESSON-suite-size-is-not-coverage.md
   - plans/PLAN-007-test-quality.md
   - research/RESEARCH-fleet-test-census.md
