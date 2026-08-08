@@ -19,26 +19,26 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 
 - [[SPEC-001-compass-vision-and-architecture]] — Core vision, principles, architecture, and resolved design decisions
 - [[SPEC-002-lessons-and-index-subsystem]] - Lessons capture, dedup, anti-list, and index freshness mechanism (approved)
-- [[SPEC-003-hierarchical-vault-organization]] - Hierarchical folders + faceted tags + MemGPT 3-tier model, with falsifiable 30% read-reduction hypothesis (approved)
+- [[SPEC-003-hierarchical-vault-organization]] - hierarchical folders + faceted tags + 3-tier memory (approved)
 - [[SPEC-005-index-auto-maintained-and-mirrored-per-folder]] - Index Auto-Maintained on Add and Remove, Mirrored Per Folder
 - [[SPEC-006-multi-host-agent-cli-support]] - Compass runs on agent CLIs beyond Claude Code (Kimi Code, Codex); problem/need (approved 2026-07-22)
 - [[SPEC-007-decision-coverage-tracing]] - decisions made in specs/ADRs must survive into plans and validation, not silently vanish between stages (approved 2026-07-23)
 - [[SPEC-008-central-model-resolution-table]] - model + effort assignment is one harness-resolved policy table with per-project override, not per-agent prose (approved 2026-07-23)
 - [[SPEC-009-configurable-pipeline-workflows]] - the pipeline is a configurable workflow (shipped default + reorder/subset/extend), not one hardcoded sequence (draft, DEFERRED)
-- [[SPEC-010-universal-hybrid-hierarchy]] - any artifact and any unit of work can nest; type-first root for small work, a root-level folder per large unit co-locating its own types (approved 2026-07-23)
-- [[SPEC-011-vault-graph-queries]] - The Vault's Graph Is Queryable by the Harness (approved 2026-08-05 after 3-lens review: orphans + hub ranking + impact traversal with planner consumer)
-- [[SPEC-012-learning-loop]] - Compass learns: capture fires on events that occur, lessons surface at the work, application audited (approved 2026-08-05)
-- [[SPEC-013-test-quality]] - every agent-written test clears a per-test admission bar (really good and meaningful, or not written); suite size is an outcome, never a target (approved 2026-08-07)
+- [[SPEC-010-universal-hybrid-hierarchy]] - any artifact and unit of work can nest; unit folders (approved 2026-07-23)
+- [[SPEC-011-vault-graph-queries]] - orphans + hub ranking + impact traversal with planner consumer (approved 2026-08-05)
+- [[SPEC-012-learning-loop]] - capture on real events, retrieval at the work, application audited (approved, SHIPPED v0.5.0)
+- [[SPEC-013-test-quality]] - per-test admission bar; suite size an outcome, never a target (approved 2026-08-07)
 
 ## Research
 
 - [[RESEARCH-lessons-and-index-architecture]] - literature review across 5 reference codebases on capture timing, index freshness, dedup, and lesson shape
 - [[RESEARCH-evaluation-benchmarks]] - benchmarks for evaluating Compass methodology layer; A/B pitfalls; field-gap analysis
 - [[RESEARCH-scientific-method-in-compass]] - does Compass actually embody the scientific method, or only borrow the vocabulary; 8 specific gaps with file:line evidence
-- [[RESEARCH-hierarchical-knowledge-base-design]] - MemGPT + RAPTOR + Ranganathan + Denning synthesis with 11 verified findings and 4 open questions, informs hierarchical specs design
-- [[RESEARCH-okf-improvements-for-compass]] - what to borrow from Google's Open Knowledge Format: adopt `resource:` field + reader-tolerance posture; skip format alignment (v0.1 draft, convergent design)
-- [[RESEARCH-rag-fit-for-large-vaults]] - RAG/vector search net-negative at current scale; skip until a vault exceeds ~300-500 docs AND queries fail on vocabulary mismatch; lexical rung before vectors
-- [[RESEARCH-gsd-core-improvements-for-compass]] - competitive read of GSD (Git.Ship.Done.): adopt decision-coverage tracing, per-agent model policy, seed triggers, atomic state locking; GSD's runtime split is prior art for SPEC-006
+- [[RESEARCH-hierarchical-knowledge-base-design]] - MemGPT/RAPTOR/faceted-classification synthesis, 11 findings
+- [[RESEARCH-okf-improvements-for-compass]] - OKF: adopt resource field + reader tolerance, skip format alignment
+- [[RESEARCH-rag-fit-for-large-vaults]] - RAG net-negative below ~300-500 docs; lexical rung first
+- [[RESEARCH-gsd-core-improvements-for-compass]] - GSD competitive read: decision coverage, model policy, prior art for SPEC-006
 - [[RESEARCH-decision-coverage-impl]] - Decision Coverage Implementation: Format, Parser, Matcher, Gate, Migration
 - [[RESEARCH-hybrid-hierarchy-impl]] - Hybrid Hierarchy Implementation Impact: CLI, Skills, Wikilinks, Migration
 - [[RESEARCH-model-resolution-impl]] - Model Resolution Table: Current State, Mechanism, and Implementation Options
@@ -47,11 +47,11 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-graph-engineering-for-compass]] - Graph Engineering for Compass - Landscape, Prior Art, and Gap Analysis
 - [[RESEARCH-lesson-capture-failure]] - Why Lesson Capture Almost Never Happens (40-Vault Fleet Diagnosis)
 - [[RESEARCH-hermes-memory-mechanics]] - hermes-agent: Memory Update and Retrieval Mechanics, Deep-Dive
-- [[RESEARCH-grep-vs-graph-experiment]] - SPEC-011 D-02 experiment: 2 classes grep/CLI-solved, 2 marginal, health analytics grep-insufficient; lesson retrieval needs no graph
+- [[RESEARCH-grep-vs-graph-experiment]] - SPEC-011 gate: 2 classes solved, 2 marginal, health analytics grep-insufficient
 - [[RESEARCH-test-quality-literature]] - Test-Suite Quality Measurement and LLM Test-Generation Literature
 - [[RESEARCH-test-quality-empirical]] - Empirical Grade of Compass's Own CLI Test Suite Against the D-01 Admission Bar
 - [[RESEARCH-test-quality-tooling]] - Test Quality Tooling - Mutation Testing, Cheaper Signals, and Windows/Stdlib Fit
-- [[RESEARCH-test-quality-synthesis]] - Three Instruments, Three Answers: Reconciling the Test-Quality Research
+- [[RESEARCH-test-quality-synthesis]] - three instruments reconciled; station model recommendation
 - [[RESEARCH-test-quality-craft-and-practice]] - Test Craft and AI Testing Practice: The Missing Axis
 - [[RESEARCH-fleet-test-census]] - Fleet Test Census - Locating and Grading the 841-Test Project
 
@@ -89,7 +89,7 @@ See [[backlog]].
 - [[2026-03-12_session-2-obsidian-approved]] - Handoff: Obsidian skill fully reviewed, HumanLayer insights adopted
 - [[2026-06-10_23-00-00_python-cli-next-up]] - Handoff: Python busywork CLI is next; everything through ADR-004 shipped
 - [[2026-06-19_10-33-39_cli-shipped-spec005-on-hold]] - Handoff: compass CLI shipped (v0.3.7); SPEC-005 (auto per-folder index + LLM summaries) drafted, ON HOLD
-- [[2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next]] - Handoff: lesson-capture root-caused fleet-wide; SPEC-012 (learning loop) is next; SPEC-011 needs a grep-vs-graph experiment
+- [[2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next]] - lesson capture root-caused; SPEC-012 queued
   - [[2026-08-06_06-02-00_phase2-live-hooks-first-firing]] - Handoff: PLAN-006 Phase 2 live; hooks fire from settings.json for the first time ever
 
 ## Lessons
