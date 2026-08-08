@@ -13,6 +13,8 @@ tags:
   adversarial:
   - lessons/LESSON-adversarial-plan-review-before-build.md
   - specs/SPEC-013-test-quality.md
+  agent-protocol:
+  - lessons/LESSON-dont-strip-agent-quality-stations.md
   agentic-testing:
   - research/RESEARCH-test-quality-craft-and-practice.md
   anti-list:
@@ -61,6 +63,7 @@ tags:
   bookkeeping:
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   briefs:
+  - lessons/LESSON-dont-strip-agent-quality-stations.md
   - lessons/LESSON-subagent-reports-need-sendmessage.md
   build-skill:
   - research/RESEARCH-lesson-capture-failure.md
@@ -109,6 +112,8 @@ tags:
   - research/RESEARCH-test-quality-empirical.md
   co-location:
   - specs/SPEC-010-universal-hybrid-hierarchy.md
+  code-review:
+  - lessons/LESSON-dont-strip-agent-quality-stations.md
   codex:
   - specs/SPEC-006-multi-host-agent-cli-support.md
   command-hook:
@@ -451,6 +456,7 @@ tags:
   on-hold:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   orchestration:
+  - lessons/LESSON-dont-strip-agent-quality-stations.md
   - lessons/LESSON-long-agents-stall-resume-them.md
   - lessons/LESSON-subagent-reports-need-sendmessage.md
   - lessons/LESSON-subagent-worktrees-fork-stale.md
@@ -593,6 +599,7 @@ tags:
   strategy:
   - research/RESEARCH-hermes-vs-compass-fit.md
   subagents:
+  - lessons/LESSON-dont-strip-agent-quality-stations.md
   - lessons/LESSON-long-agents-stall-resume-them.md
   - lessons/LESSON-subagent-reports-need-sendmessage.md
   - lessons/LESSON-subagent-worktrees-fork-stale.md
