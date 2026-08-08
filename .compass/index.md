@@ -61,6 +61,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-004-decision-coverage]] - Decision Coverage Implementation (D-NN Parser, Coverage Gate, Audit)
 - [[PLAN-005-model-table]] - Model Resolution Table Implementation (Tiers, apply-models, Overrides)
 - [[PLAN-006-learning-loop]] - Learning Loop Implementation: harness-owned capture, catalog retrieval, lesson coverage (approved 2026-08-05)
+- [[PLAN-007-test-quality]] - Test Quality Instruments (Authoring Bar, Test-First Station, Admission Filter, Diagnostic Mutation)
 
 ## Decisions
 

@@ -6,6 +6,7 @@ tags:
   accuracy:
   - specs/SPEC-007-decision-coverage-tracing.md
   admission-bar:
+  - plans/PLAN-007-test-quality.md
   - research/RESEARCH-test-quality-synthesis.md
   admission-control:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
@@ -31,6 +32,8 @@ tags:
   argparse:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
+  ast:
+  - plans/PLAN-007-test-quality.md
   auto-maintenance:
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   autocrlf:
@@ -95,6 +98,7 @@ tags:
   - plans/PLAN-004-decision-coverage.md
   - plans/PLAN-005-model-table.md
   - plans/PLAN-006-learning-loop.md
+  - plans/PLAN-007-test-quality.md
   - research/RESEARCH-decision-coverage-impl.md
   - research/RESEARCH-hybrid-hierarchy-impl.md
   - research/RESEARCH-model-resolution-impl.md
@@ -411,6 +415,8 @@ tags:
   - specs/SPEC-006-multi-host-agent-cli-support.md
   multi-runtime:
   - research/RESEARCH-gsd-core-improvements-for-compass.md
+  mutation:
+  - plans/PLAN-007-test-quality.md
   mutation-testing:
   - research/RESEARCH-test-quality-literature.md
   - research/RESEARCH-test-quality-synthesis.md
@@ -584,7 +590,10 @@ tags:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   test-design:
   - research/RESEARCH-test-quality-craft-and-practice.md
+  test-first:
+  - plans/PLAN-007-test-quality.md
   test-quality:
+  - plans/PLAN-007-test-quality.md
   - research/RESEARCH-test-quality-craft-and-practice.md
   - research/RESEARCH-test-quality-empirical.md
   - research/RESEARCH-test-quality-literature.md
@@ -594,8 +603,10 @@ tags:
   test-smells:
   - research/RESEARCH-test-quality-literature.md
   tester-agent:
+  - plans/PLAN-007-test-quality.md
   - specs/SPEC-013-test-quality.md
   testing:
+  - plans/PLAN-007-test-quality.md
   - research/RESEARCH-test-quality-craft-and-practice.md
   - research/RESEARCH-test-quality-empirical.md
   - research/RESEARCH-test-quality-literature.md
