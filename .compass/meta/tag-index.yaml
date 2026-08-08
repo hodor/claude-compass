@@ -78,6 +78,7 @@ tags:
   catalog:
   - lessons/LESSON-append-only-index-misses-mutations.md
   census:
+  - lessons/LESSON-pin-the-motivating-datum.md
   - research/RESEARCH-fleet-test-census.md
   churn:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
@@ -195,6 +196,7 @@ tags:
   - research/RESEARCH-evaluation-benchmarks.md
   evidence:
   - lessons/LESSON-hook-payloads-observe-before-coding.md
+  - lessons/LESSON-pin-the-motivating-datum.md
   experiment:
   - research/RESEARCH-grep-vs-graph-experiment.md
   extension-surface:
@@ -496,6 +498,8 @@ tags:
   - research/RESEARCH-okf-improvements-for-compass.md
   probes:
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
+  provenance:
+  - lessons/LESSON-pin-the-motivating-datum.md
   python:
   - compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work.md
   - compass-cli/plans/PLAN-002-compass-cli-implementation.md
@@ -573,6 +577,7 @@ tags:
   - handoffs/2026-03-12_review-all-plugin-files.md
   specs:
   - lessons/LESSON-adversarial-plan-review-before-build.md
+  - lessons/LESSON-pin-the-motivating-datum.md
   stale-base:
   - lessons/LESSON-subagent-worktrees-fork-stale.md
   staleness:
@@ -657,6 +662,7 @@ tags:
   tooling:
   - research/RESEARCH-test-quality-tooling.md
   traceability:
+  - lessons/LESSON-pin-the-motivating-datum.md
   - plans/PLAN-004-decision-coverage.md
   - research/RESEARCH-decision-coverage-impl.md
   - specs/SPEC-007-decision-coverage-tracing.md

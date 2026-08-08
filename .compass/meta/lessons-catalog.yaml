@@ -139,3 +139,10 @@ lessons:
     tags: [review, plans, specs, adversarial, multi-lens, measurement]
     score: 5
     summary: "Review specs/plans with 3 adversarial lenses before approval, and have reviewers measure against the real corpus, not opine"
+  - file: "LESSON-pin-the-motivating-datum.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [specs, evidence, provenance, census, traceability]
+    score: 5
+    summary: "When a spec cites a triggering observation, record its source (project, session, machine) at spec time; unpinned data become unfindable"
