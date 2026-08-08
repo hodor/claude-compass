@@ -214,13 +214,27 @@ def parse_frontmatter(path):
     return parse_frontmatter_text(text)
 
 
+def is_loose_nested(path, kind):
+    """True for a `"child"` record whose immediate parent folder carries no
+    `index.md` of its own - a plain grouping subfolder rather than a
+    folder-spec. A folder-spec's own children stay scoped to that folder's
+    name (unique within it by filesystem constraint); a loose nested doc has
+    nothing scoping its subfolder, so two of them in different subfolders
+    can share a filename, and only the full vault-relative name tells them
+    apart. Always False for `"flat"` and `"folder-index"` records.
+    """
+    return kind == "child" and not (path.parent / "index.md").is_file()
+
+
 def _scan_type_dir(base, type_dir, unit):
     """Classify every artifact markdown file under one type directory.
 
     `base` is the directory on disk; `unit` is the owning unit folder name,
     or None when the type dir sits at the vault root. A unit artifact's
     `name` is its vault-relative path without extension, so links to it are
-    path-qualified and unambiguous across units.
+    path-qualified and unambiguous across units. A loose nested root
+    artifact (see `is_loose_nested`) gets the same vault-relative form even
+    though it has no unit, for the same uniqueness reason.
     """
     records = []
     for path in sorted(base.rglob("*.md")):
@@ -241,10 +255,17 @@ def _scan_type_dir(base, type_dir, unit):
             depth = 0
         else:
             kind = "child"
-            name = "/".join(list(parts[:-1]) + [path.stem])
+            loose = is_loose_nested(path, kind)
+            if loose:
+                name = "/".join([type_dir] + list(parts[:-1]) + [path.stem])
+            else:
+                name = "/".join(list(parts[:-1]) + [path.stem])
             depth = len(parts) - 1
         if unit is not None:
-            name = f"{unit}/{type_dir}/{name}"
+            if kind == "child" and loose:
+                name = f"{unit}/{name}"
+            else:
+                name = f"{unit}/{type_dir}/{name}"
         records.append({
             "path": path,
             "type_dir": type_dir,

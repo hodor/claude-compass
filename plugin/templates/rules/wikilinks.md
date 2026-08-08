@@ -19,7 +19,7 @@ Example: `[[SPEC-001]]` -> `Glob: .compass/**/SPEC-001*.md` -> `.compass/specs/S
 Artifacts inside a unit folder (a root folder whose `index.md` declares `type: unit`) are linked path-qualified: the vault-relative path without extension, e.g. `[[compass-cli/specs/SPEC-001-name]]`. Numbering is local per unit, so the same bare stem can exist at the root and inside any unit.
 
 - Resolving: a path-qualified link maps straight to one file - `.compass/<link>.md` (a folder spec resolves to `.compass/<link>/index.md`). No search needed.
-- Authoring: always write the path-qualified form for unit artifacts. Bare stems are for root artifacts only.
+- Authoring: always write the path-qualified form for unit artifacts. Bare stems are for root artifacts only. A root doc nested in a plain grouping subfolder (its parent has no index.md) is also linked by its full vault-relative path, e.g. `[[research/sub/note]]`.
 - Ambiguity: if a bare-stem glob returns more than one match, prefer the path-qualified form - resolve using the linking document's own location (step 3), and write any link you author with the full vault-relative path.
 
 This is the convention for the entire vault. No special tool needed.
