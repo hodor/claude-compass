@@ -167,3 +167,10 @@ lessons:
     tags: [testing, test-review, coverage, suite-size, empirical]
     score: 5
     summary: "44 tests for two behaviors carried mass redundancy and two critical holes at once; a delete list is half a review"
+  - file: "LESSON-revert-to-prove-a-regression-test.md"
+    status: active
+    category: process
+    area: testing
+    tags: [testing, regression-tests, revert-check, bug-reports, empirical]
+    score: 5
+    summary: "A regression test that still passes on the reverted fix is vacuous; revert and re-run every new test before shipping"
