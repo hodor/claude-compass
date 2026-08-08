@@ -11,6 +11,7 @@ tags:
   admission-control:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   adversarial:
+  - lessons/LESSON-adversarial-plan-review-before-build.md
   - specs/SPEC-013-test-quality.md
   agentic-testing:
   - research/RESEARCH-test-quality-craft-and-practice.md
@@ -190,6 +191,8 @@ tags:
   evaluation:
   - lessons/LESSON-test-driven-tasks-dont-discriminate.md
   - research/RESEARCH-evaluation-benchmarks.md
+  evidence:
+  - lessons/LESSON-hook-payloads-observe-before-coding.md
   experiment:
   - research/RESEARCH-grep-vs-graph-experiment.md
   extension-surface:
@@ -285,6 +288,7 @@ tags:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   - lessons/LESSON-hook-if-clause-no-or.md
+  - lessons/LESSON-hook-payloads-observe-before-coding.md
   - lessons/LESSON-hook-type-prompt-no-skills.md
   - lessons/LESSON-hooks-load-only-from-settings.md
   - lessons/LESSON-no-agent-bookkeeping.md
@@ -333,6 +337,10 @@ tags:
   - plans/PLAN-006-learning-loop.md
   - research/RESEARCH-lesson-capture-failure.md
   - specs/SPEC-012-learning-loop.md
+  instrumentation:
+  - lessons/LESSON-hook-payloads-observe-before-coding.md
+  integration:
+  - lessons/LESSON-hook-payloads-observe-before-coding.md
   interoperability:
   - research/RESEARCH-okf-improvements-for-compass.md
   isolation:
@@ -384,6 +392,7 @@ tags:
   - compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work.md
   measurement:
   - compass-cli/research/RESEARCH-cli-token-reduction-measurement.md
+  - lessons/LESSON-adversarial-plan-review-before-build.md
   memgpt:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
@@ -413,6 +422,8 @@ tags:
   multi-host:
   - research/RESEARCH-model-resolution-impl.md
   - specs/SPEC-006-multi-host-agent-cli-support.md
+  multi-lens:
+  - lessons/LESSON-adversarial-plan-review-before-build.md
   multi-runtime:
   - research/RESEARCH-gsd-core-improvements-for-compass.md
   mutation:
@@ -448,6 +459,8 @@ tags:
   - decisions/ADR-007-decision-coverage-mechanism.md
   - plans/PLAN-004-decision-coverage.md
   - research/RESEARCH-decision-coverage-impl.md
+  payloads:
+  - lessons/LESSON-hook-payloads-observe-before-coding.md
   per-agent:
   - specs/SPEC-008-central-model-resolution-table.md
   permission-rules:
@@ -461,6 +474,8 @@ tags:
   - plans/PLAN-004-decision-coverage.md
   planning:
   - specs/SPEC-007-decision-coverage-tracing.md
+  plans:
+  - lessons/LESSON-adversarial-plan-review-before-build.md
   plugin-config:
   - lessons/LESSON-hook-if-clause-no-or.md
   - lessons/LESSON-hook-type-prompt-no-skills.md
@@ -520,6 +535,7 @@ tags:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
+  - lessons/LESSON-adversarial-plan-review-before-build.md
   scaling:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   scientific-method:
@@ -551,6 +567,8 @@ tags:
   - research/RESEARCH-gsd-core-improvements-for-compass.md
   spec-redesign:
   - handoffs/2026-03-12_review-all-plugin-files.md
+  specs:
+  - lessons/LESSON-adversarial-plan-review-before-build.md
   stale-base:
   - lessons/LESSON-subagent-worktrees-fork-stale.md
   staleness:
