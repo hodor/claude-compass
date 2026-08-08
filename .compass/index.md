@@ -115,6 +115,7 @@ See [[backlog]].
 - [[LESSON-hook-payloads-observe-before-coding]] - Capture one real event payload (tee to a file) before keying logic on its fields; assumed shapes ship dead code
 - [[LESSON-adversarial-plan-review-before-build]] - Review specs/plans with 3 adversarial lenses before approval, and have reviewers measure against the real corpus, not opine
 - [[LESSON-pin-the-motivating-datum]] - When a spec cites a triggering observation, record its source (project, session, machine) at spec time; unpinned data become unfindable
+- [[LESSON-dont-strip-agent-quality-stations]] - A blanket no-sub-agents ban in a spawn brief strips the builder's review station; twice violated, both violations caught real bugs
 
 ## compass-cli
 - [[compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work]] - A Python `compass` CLI Owns All Mechanical Vault Work; the Hook Calls It as a Command

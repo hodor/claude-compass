@@ -146,3 +146,10 @@ lessons:
     tags: [specs, evidence, provenance, census, traceability]
     score: 5
     summary: "When a spec cites a triggering observation, record its source (project, session, machine) at spec time; unpinned data become unfindable"
+  - file: "LESSON-dont-strip-agent-quality-stations.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [subagents, briefs, code-review, agent-protocol, orchestration]
+    score: 5
+    summary: "A blanket no-sub-agents ban in a spawn brief strips the builder's review station; twice violated, both violations caught real bugs"
