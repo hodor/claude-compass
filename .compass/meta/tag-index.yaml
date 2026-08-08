@@ -77,6 +77,8 @@ tags:
   - specs/SPEC-012-learning-loop.md
   catalog:
   - lessons/LESSON-append-only-index-misses-mutations.md
+  census:
+  - research/RESEARCH-fleet-test-census.md
   churn:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   classification:
@@ -212,6 +214,8 @@ tags:
   - research/RESEARCH-scientific-method-in-compass.md
   fault-based-testing:
   - research/RESEARCH-test-quality-literature.md
+  fleet:
+  - research/RESEARCH-fleet-test-census.md
   fleet-audit:
   - research/RESEARCH-lesson-capture-failure.md
   foundational:
@@ -612,6 +616,7 @@ tags:
   - plans/PLAN-007-test-quality.md
   test-quality:
   - plans/PLAN-007-test-quality.md
+  - research/RESEARCH-fleet-test-census.md
   - research/RESEARCH-test-quality-craft-and-practice.md
   - research/RESEARCH-test-quality-empirical.md
   - research/RESEARCH-test-quality-literature.md
@@ -625,6 +630,7 @@ tags:
   - specs/SPEC-013-test-quality.md
   testing:
   - plans/PLAN-007-test-quality.md
+  - research/RESEARCH-fleet-test-census.md
   - research/RESEARCH-test-quality-craft-and-practice.md
   - research/RESEARCH-test-quality-empirical.md
   - research/RESEARCH-test-quality-literature.md
