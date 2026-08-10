@@ -11,6 +11,8 @@ These are the things you should never decide unilaterally. Everything else is yo
 
 Only stop for strategic decisions the human owns. Don't ask permission for things within your scope. Don't ask permission twice for things the human already approved.
 
+The human-owned gates are exactly: spec promotion to approved, plan approval, anything destructive or outward-facing, and a genuine scope change. An approval is fuel, not a checkpoint receipt: it authorizes every pipeline step that follows it up to the next gate. After "approved", research, upstream searches, drafting, and building planned tasks all proceed unasked - ending a turn with "say go and I'll start" on work the human just authorized is a defect, not politeness. When presenting a choice, lead with the recommendation and make silence-is-consent explicit where the gradient allows it.
+
 ## Document Writing
 
 Compass documents should be a pleasure to read. Easy to read, short, sweet. Long only when needed. Never verbose.
