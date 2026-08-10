@@ -140,6 +140,8 @@ tags:
   - specs/SPEC-008-central-model-resolution-table.md
   content-aware:
   - lessons/LESSON-wikilink-validator-skip-code.md
+  context-size:
+  - lessons/LESSON-remove-context-before-adding.md
   convergence:
   - research/RESEARCH-test-quality-synthesis.md
   core:
@@ -278,6 +280,7 @@ tags:
   hang:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   harness:
+  - lessons/LESSON-remove-context-before-adding.md
   - research/RESEARCH-model-resolution-impl.md
   - specs/SPEC-001-compass-vision-and-architecture.md
   - specs/SPEC-008-central-model-resolution-table.md
@@ -528,6 +531,8 @@ tags:
   - research/RESEARCH-okf-improvements-for-compass.md
   probes:
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
+  prose:
+  - lessons/LESSON-remove-context-before-adding.md
   provenance:
   - lessons/LESSON-pin-the-motivating-datum.md
   python:
@@ -578,6 +583,8 @@ tags:
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   - lessons/LESSON-adversarial-plan-review-before-build.md
+  rules:
+  - lessons/LESSON-remove-context-before-adding.md
   scaling:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   scientific-method:
@@ -696,6 +703,7 @@ tags:
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/ADR-003-drop-counter-file-jit-compute.md
   - lessons/LESSON-no-agent-bookkeeping.md
+  - lessons/LESSON-remove-context-before-adding.md
   tokens:
   - decisions/ADR-008-model-resolution-table.md
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md

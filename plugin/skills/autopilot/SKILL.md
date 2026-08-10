@@ -29,25 +29,15 @@ Read `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.y
 
 ### 2. Research
 
-Spawn the `researcher` agent. Wait for completion.
-
-**Checkpoint 1:**
-```
-Research complete for: [task description]
-[Summary of findings with confidence levels]
-Approach based on research: [proposed implementation approach]
-
-Proceed with planning? (approve / redirect / abort)
-```
-
-If research is thin, spawn another researcher instead of moving on.
+Spawn the `researcher` agent. If research is thin, spawn another researcher instead of moving on.
 
 ### 3. Plan
 
 Spawn the `planner` agent with the spec and research. Wait for completion.
 
-**Checkpoint 2:**
+**Checkpoint (plan approval, the human-owned gate):**
 ```
+Research: [one-line summary with confidence]
 Plan ready for: [task description]
 [Summary of phases, tasks, complexity, verification]
 
