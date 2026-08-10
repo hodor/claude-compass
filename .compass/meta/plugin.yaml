@@ -3,7 +3,7 @@ plugin:
   version: 0.5.0
   source: F:/claude/plugins/compass/plugin
   repository: https://github.com/hodor/claude-compass
-  installed_at: 2026-08-08
+  installed_at: 2026-08-09
   installed_mode: update
   notes: |
     This vault IS the Compass plugin's own development vault. The plugin source
