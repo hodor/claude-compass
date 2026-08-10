@@ -29,6 +29,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[SPEC-011-vault-graph-queries]] - orphans + hub ranking + impact traversal with planner consumer (approved 2026-08-05)
 - [[SPEC-012-learning-loop]] - capture on real events, retrieval at the work, application audited (approved, SHIPPED v0.5.0)
 - [[SPEC-013-test-quality]] - per-test admission bar; suite size an outcome, never a target (approved 2026-08-07)
+- [[SPEC-014-update-safe-customizations]] - Project-Local Workflow Customizations Survive Update
 
 ## Research
 

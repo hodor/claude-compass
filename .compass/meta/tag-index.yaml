@@ -162,6 +162,7 @@ tags:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   customization:
   - specs/SPEC-009-configurable-pipeline-workflows.md
+  - specs/SPEC-014-update-safe-customizations.md
   data-loss:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
   decision-coverage:
@@ -196,6 +197,8 @@ tags:
   - specs/SPEC-006-multi-host-agent-cli-support.md
   docker:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
+  drift:
+  - specs/SPEC-014-update-safe-customizations.md
   embeddings:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   empirical:
@@ -356,6 +359,7 @@ tags:
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   install:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
+  - specs/SPEC-014-update-safe-customizations.md
   install-drift:
   - lessons/LESSON-hooks-load-only-from-settings.md
   - plans/PLAN-006-learning-loop.md
@@ -408,6 +412,8 @@ tags:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   llm-test-generation:
   - research/RESEARCH-test-quality-literature.md
+  local:
+  - specs/SPEC-014-update-safe-customizations.md
   lost-in-the-middle:
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   mcp:
@@ -479,6 +485,8 @@ tags:
   - specs/SPEC-011-vault-graph-queries.md
   overfit:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
+  overlays:
+  - specs/SPEC-014-update-safe-customizations.md
   paired-experiment:
   - research/RESEARCH-test-quality-bar-validation.md
   parallel-builders:
@@ -720,6 +728,7 @@ tags:
   - decisions/ADR-008-model-resolution-table.md
   - lessons/LESSON-installer-removes-only-what-it-installed.md
   - plans/PLAN-005-model-table.md
+  - specs/SPEC-014-update-safe-customizations.md
   user-files:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
   validate:
