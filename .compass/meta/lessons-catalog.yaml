@@ -174,3 +174,10 @@ lessons:
     tags: [testing, regression-tests, revert-check, bug-reports, empirical]
     score: 5
     summary: "A regression test that still passes on the reverted fix is vacuous; revert and re-run every new test before shipping"
+  - file: "LESSON-remove-context-before-adding.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [context-size, rules, prose, harness, token-efficiency]
+    score: 5
+    summary: "Fix a behavior bug by removing the prose that trains it or adding a harness gate; added prose is the last resort and must be net-negative"
