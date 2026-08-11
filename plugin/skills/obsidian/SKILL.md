@@ -481,6 +481,14 @@ What must be true before starting.
 
 ### Phase 2: ...
 
+## Later (intent only)
+Work named but not yet detailed - one head-grammar line each (the task line only, no indented verification bullets):
+
+- [ ] TASK-NNN: Description - files: [path/to/file], decisions: [<doc-stem>/D-NN, ...]
+- [ ] TASK-NNN: Description - files: [path/to/file], decisions: [<doc-stem>/D-NN, ...], commit-upfront: cost, risk, or dependency that makes this one worth detailing now
+
+`## Wave N elaborated` sections are appended by the elaboration step as intent lines are promoted - never authored upfront.
+
 ## Testing Strategy
 Overall testing approach - new fixtures, integration test needs, performance benchmarks. Per-task verification covers details.
 
@@ -491,6 +499,10 @@ Overall testing approach - new fixtures, integration test needs, performance ben
 ```
 
 `decisions:` is optional and mirrors `files:` - source-qualified citations (`<doc-stem>/D-NN`, see "Decision bullets" above) of the decisions a task implements. `compass coverage <plan>` checks these against the plan's `depends_on` sources.
+
+`lessons:` is optional and sits in the same position, after `files:` - catalog filenames (`LESSON-name` or `LESSON-name.md`) of the lessons a task applies. `compass lesson-coverage <plan>` resolves these against `.compass/meta/lessons-catalog.yaml`.
+
+`decisions:` and `lessons:` are the citation home - the field where a task line stakes its own claim. For `lessons:` this is the only citation surface `compass lesson-coverage` reads. A decision can also be claimed by a source-qualified citation in prose when no task line claims it (see "Decision bullets" above); either way, naming a decision bare (`D-04`) or in backticks claims nothing.
 
 ### Lesson
 
