@@ -127,7 +127,7 @@ See [[backlog]].
 - [[LESSON-dont-strip-agent-quality-stations]] - A blanket no-sub-agents ban in a spawn brief strips the builder's review station; twice violated, both violations caught real bugs
 - [[LESSON-blind-the-author-in-self-validation]] - One agent that both replays the seeded defects and authors the arm under test measures itself, not the mechanism
 - [[LESSON-suite-size-is-not-coverage]] - 44 tests for two behaviors carried mass redundancy and two critical holes at once; a delete list is half a review
-- [[LESSON-revert-to-prove-a-regression-test]] - A regression test that still passes on the reverted fix is vacuous; revert and re-run every new test before shipping
+- [[LESSON-revert-to-prove-a-regression-test]] - A test that passes without the change under test is unwritten; prove it per test, by revert after the fix or by the red run before it
 - [[LESSON-remove-context-before-adding]] - Fix a behavior bug by removing the prose that trains it or adding a harness gate; added prose is the last resort and must be net-negative
 - [[LESSON-walkthroughs-in-the-humans-words]] - A walkthrough carrying the work's own vocabulary stalls the ruling it exists to get; write it in plain words
 - [[LESSON-human-practice-rationing-assumes-human-scarcity]] - Caps, budgets and appetites from human practice ration human throughput; name the scarce resource before importing one
