@@ -291,5 +291,78 @@ class LineEndingTests(unittest.TestCase):
         self.assertEqual(decisions[0]["text"], "Windows text.")
 
 
+class QualifiedCrossReferenceTests(unittest.TestCase):
+    def test_space_separated_document_stem_reference_is_not_evidence(self):
+        """Adversarial where: a D-NN token immediately preceded by a
+        document stem (SPEC-015 D-02) cites another document's decision.
+        Treating it as unparsed local evidence would poison the
+        zero-extraction check on every cross-document reference."""
+        text = (
+            "## Decision\n"
+            "\n"
+            "We are adopting rolling-wave planning per SPEC-015 D-02 "
+            "and SPEC-015 D-03.\n"
+        )
+        self.assertEqual(extract(text), ([], "none-present"))
+
+    def test_wikilink_reference_is_not_evidence(self):
+        """Adversarial where: a D-NN token fully inside a [[wikilink]] is
+        a cross-document citation. Stripping only space/slash-qualified
+        forms and missing the wikilink form would still poison this."""
+        text = (
+            "## Decision\n"
+            "\n"
+            "See [[ADR-009-rolling-wave-mechanism/D-03]] for the original "
+            "call.\n"
+        )
+        self.assertEqual(extract(text), ([], "none-present"))
+
+    def test_bare_token_still_poisons_alongside_qualified_references(self):
+        """Adversarial where: qualified-reference stripping must target
+        only qualified tokens. A genuinely bare D-01 sitting in the same
+        text as two qualified citations must still poison the outcome,
+        not get swept away with them."""
+        text = (
+            "## Decision\n"
+            "\n"
+            "We are adopting rolling-wave planning per SPEC-015 D-02 "
+            "and SPEC-015 D-03. See D-01 for the original decision.\n"
+        )
+        self.assertEqual(extract(text), ([], "could-not-parse"))
+
+    def test_malformed_bullet_poisons_alongside_qualified_reference(self):
+        """Adversarial where: qualified-reference stripping runs over the
+        same text as malformed-bullet detection. It must not swallow the
+        malformed bullet or the good bullets around it, so decisions-so-far
+        and the could-not-parse outcome stay intact."""
+        text = (
+            "## Decisions\n"
+            "\n"
+            "- **D-01:** Good.\n"
+            "- **D-02:* Broken bold close.\n"
+            "\n"
+            "See SPEC-015 D-03 for background.\n"
+        )
+        decisions, outcome = extract(text)
+        self.assertEqual(outcome, "could-not-parse")
+        self.assertEqual([d["id"] for d in decisions], ["D-01"])
+
+    def test_slash_separated_document_stem_reference_is_not_evidence(self):
+        """Adversarial where: the qualifying separator can be a slash,
+        not only a space. A stripper that only recognizes the space form
+        would still poison SPEC-007-.../D-03 style citations."""
+        text = "## Decision\n\nTracked by SPEC-007-decision-coverage-tracing/D-03.\n"
+        self.assertEqual(extract(text), ([], "none-present"))
+
+    def test_non_stem_prefix_does_not_qualify(self):
+        """Adversarial where: a token that merely contains "SPEC-" as a
+        substring without starting with it (XSPEC-015) is not a document
+        stem. A stripper that matches the substring anywhere, rather than
+        requiring the stem prefix to start the preceding token, would
+        wrongly qualify this and swallow a bare D-02."""
+        text = "## Decisions\n\nSee XSPEC-015 D-02 in the other document.\n"
+        self.assertEqual(extract(text), ([], "could-not-parse"))
+
+
 if __name__ == "__main__":
     unittest.main()
