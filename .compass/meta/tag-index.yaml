@@ -397,10 +397,6 @@ tags:
   - plans/PLAN-006-learning-loop.md
   - research/RESEARCH-lesson-capture-failure.md
   - specs/SPEC-012-learning-loop.md
-  instrumentation:
-  - lessons/LESSON-hook-payloads-observe-before-coding.md
-  integration:
-  - lessons/LESSON-hook-payloads-observe-before-coding.md
   interoperability:
   - research/RESEARCH-okf-improvements-for-compass.md
   isolation:
@@ -536,6 +532,7 @@ tags:
   - plans/PLAN-004-decision-coverage.md
   - research/RESEARCH-decision-coverage-impl.md
   parsing:
+  - lessons/LESSON-hook-payloads-observe-before-coding.md
   - lessons/LESSON-wikilink-validator-skip-code.md
   payloads:
   - lessons/LESSON-hook-payloads-observe-before-coding.md
@@ -792,6 +789,8 @@ tags:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   - research/RESEARCH-model-resolution-impl.md
   - specs/SPEC-008-central-model-resolution-table.md
+  tool-output:
+  - lessons/LESSON-hook-payloads-observe-before-coding.md
   tool-quirks:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
   tooling:
