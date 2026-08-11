@@ -1,7 +1,8 @@
 ---
 title: "Rolling-Wave Plans (Detail Regions, Three-State Coverage, the Elaboration Loop)"
 type: plan
-status: draft
+status: approved
+approved: 2026-08-11
 confidence: medium
 area: methodology
 tags: [planning, rolling-wave, elaboration, coverage, plan-format, cli]

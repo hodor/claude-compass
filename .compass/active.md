@@ -25,6 +25,12 @@ _None._
 
 - [ ] NEXT: SPEC-011 pipeline (research/ADR on substrate, planner), then SPEC-006 hosts (hermes first). Watch capture-stats across the fleet - SPEC-012's falsification test is running everywhere.
 
+## Rolling-wave initiative (Roger, 2026-08-11): SPEC-015 -> ADR-009 -> PLAN-008
+
+- [x] [[SPEC-015-rolling-wave-planning]] approved with D-02..D-04; 4 research docs; [[ADR-009-rolling-wave-mechanism]] D-01..D-07; [[PLAN-008-rolling-wave]] drafted in its own format, 3-lens reviewed (21 findings applied), APPROVED 2026-08-11.
+- [ ] BUILD wave 1 (in progress): TASK-066 planlib classifier (M) + TASK-067 decisionslib qualified-ref fix (S, hitchhiker) parallel; then TASK-068 coverage three-state + --strict (M) + TASK-069 lesson-coverage three-state (S) parallel; then TASK-070 prototype (XS). Test-first stations per build flow.
+- Later (intent): wave 2 authoring (071 planner brief, 072 plan skill, 077 obsidian template), wave 3 consuming (073 build 7d, 074 validator, 075 methodology) + 076 acceptance.
+
 ## Test-quality initiative (Roger, 2026-08-07): "only really good and meaningful tests"
 
 - [x] [[SPEC-013-test-quality]] APPROVED (2026-08-07) with D-01..D-06; 5 research docs complete 2026-08-07/08 (literature, tooling, empirical, synthesis, craft-and-practice) - see index; the synthesis's station model and the craft doc's adopted procedures bind the plan.
