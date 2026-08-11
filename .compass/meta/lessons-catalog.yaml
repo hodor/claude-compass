@@ -31,9 +31,9 @@ lessons:
     status: active
     category: process
     area: workflow
-    tags: [validation, wikilinks, false-positives, content-aware]
+    tags: [validation, false-positives, content-aware, parsing, self-reference]
     score: 5
-    summary: "Wikilink validators must skip fenced code blocks AND inline code spans; example refs in docs are noise"
+    summary: "Match use, not mention: strip code spans and anchor to grammar position; a doc describing a mechanism trips its trigger"
   - file: "LESSON-test-driven-tasks-dont-discriminate.md"
     status: active
     category: process
