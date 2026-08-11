@@ -29,7 +29,7 @@ _None._
 
 - [x] [[SPEC-015-rolling-wave-planning]] approved with D-02..D-04; 4 research docs; [[ADR-009-rolling-wave-mechanism]] D-01..D-07; [[PLAN-008-rolling-wave]] drafted in its own format, 3-lens reviewed (21 findings applied), APPROVED 2026-08-11.
 - [x] Wave 1 COMPLETE + ELABORATED (2026-08-11): TASK-066..070 landed through the full station flow (checkpoints, --against-run verifies); gate after-image exact (6c/4s/0u pre-elaboration); prototype answered (prose cannot upgrade, but can manufacture - constraint recorded); three unittest -v formats pinned in the verifier en route. Elaboration 7d promoted wave 2 (071 planner brief, 072 plan skill, 077 template) with TASK-070s answer folded in; post-elaboration gate 9c/1s/0u.
-- [ ] BUILD wave 2 (next): TASK-071/072/077, prose tasks, parallel (file-disjoint).
+- [x] PLAN-008 COMPLETE (2026-08-11): all 12 tasks across 3 waves + 2 live elaborations. Acceptance from the installed copy: suite green, doctor clean, coverage --strict 10c/0s/0u PASS, lesson-coverage PASS, all four regression pins PASS. Two elaboration laps ran with per-line changed-or-held records; knowledge demonstrably flowed (prototype answer -> planner brief; wave-2 review findings -> build-skill discipline). Human touchpoints: one approval + two read-only deltas, zero mid-build amendments.
 - Later (intent): wave 2 authoring (071 planner brief, 072 plan skill, 077 obsidian template), wave 3 consuming (073 build 7d, 074 validator, 075 methodology) + 076 acceptance.
 
 ## Test-quality initiative (Roger, 2026-08-07): "only really good and meaningful tests"
