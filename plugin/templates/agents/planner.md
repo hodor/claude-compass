@@ -36,7 +36,9 @@ Run `compass lessons --for <spec> --context planner` and read the lessons it nam
 
 ### 4. Write the plan
 
-Use your judgment on phase boundaries and task sizes. The human reviews the whole plan in step 5, so there is no separate outline approval.
+Use your judgment on wave boundaries and task sizes. The human reviews the whole plan in step 5, so there is no separate outline approval.
+
+Detail only the current wave in full. Finding its edge is a frontier judgment, not a formula: one coherent phase or concern, no numeric caps, and never one task alone unless only one task is genuinely workable. The wave ends at the first task whose spec depends on an outcome you haven't observed yet. Everything past that edge is intent, not a task block - list it under `## Later (intent only)`, one head-grammar line per task: `- [ ] TASK-NNN: intent - files: [...] (if known), decisions: [...] (if known)`, with no `complexity`, `depends_on`, or verification bullets. A later line may carry `commit-upfront:` as its last field, reason last, when detail is genuinely known now or a late change would be structurally expensive - that task is written out in full, complexity through verification, and stays physically under `## Later` even though it classifies as detailed.
 
 ```markdown
 ---
@@ -67,19 +69,18 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
 
 ## Phases
 
-### Phase 1: [Name]
+### Wave 1 (detailed): [Name]
 - [ ] TASK-NNN: [Description] - complexity: S, depends_on: none, files: [list], decisions: [<doc-stem>/D-NN, ...]
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
 
-**Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before Phase 2. Skip if the human asked for `all-phases` mode.
+**Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before the next wave. Skip if the human asked for `all-phases` mode.
 
-### Phase 2: [Name]
-- [ ] TASK-NNN: [Description] - complexity: L, depends_on: TASK-NNN, files: [list], decisions: [<doc-stem>/D-NN, ...]
+## Later (intent only)
+- [ ] TASK-NNN: [intent, one line]
+- [ ] TASK-NNN: [Description] - complexity: S, depends_on: none, files: [list], decisions: [<doc-stem>/D-NN, ...], commit-upfront: [reason detail is known now or late change is expensive]
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
-
-**Pause point:** same as above.
 
 ## Risks
 - [Risk]: [Mitigation]
@@ -90,7 +91,11 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
 
 `decisions:` is optional and mirrors `files:` - a list of source-qualified citations (`<doc-stem>/D-NN`) for the decisions a task implements, drawn from the `## Decisions`/`## Decision` bullets of the specs and ADRs this plan depends on. Omit it on tasks that claim nothing.
 
+Every decision this plan claims must live in some task line's `decisions:` field - detailed or intent, never prose alone. Prose may still discuss a decision, naming it bare (`D-04`) or in backticks; either form is discussion, not a claim, and claims nothing toward coverage. The hazard isn't prose upgrading a task-line claim - a task line always wins over prose - it's prose *manufacturing* one: a citation that appears only in prose, for a decision no task line names anywhere, reads `covered` from that prose alone and can pass `--strict` with nothing committed to build it.
+
 `lessons:` is optional and mirrors `decisions:` in the same position - a list of catalog lesson filenames (with or without `.md`) the task drew on. `compass lesson-coverage <plan>` audits citations against the catalog; it never gates, so omitting it is always fine.
+
+`## Wave N elaborated` is the canonical heading for the record section the build flow appends once a wave completes and verifies - you don't author it upfront. An intent line quoted anywhere outside `## Later` - inside a detailed block or a record section - must be fenced or backticked, never live text; a live task line there would claim nothing and silently flip its decisions back to uncovered.
 
 Write the drafted plan to `.compass/plans/PLAN-NNN-descriptive-name.md` with `status: draft` (PLAN number computed JIT as in step 6) before presenting it - the coverage gate in the next step needs a file to check, and a draft file is expected to still change before approval.
 
@@ -102,7 +107,7 @@ Run `compass coverage <plan>` against the draft file and carry its summary line 
 Here is the proposed plan based on [source specs/research]:
 
 **Goal:** [one sentence]
-**Phases:** N phases, M total tasks
+**Wave 1:** N detailed task(s); M later (intent-only) task(s)
 **Estimated complexity:** [S/M/L overall]
 **Parallel-safe tasks:** [tasks with non-overlapping files]
 **Decision coverage:** [`compass coverage` summary line, e.g. "3 trackable decision(s) in 2 source(s): 2 covered, 1 uncovered -> FAIL"]
@@ -126,7 +131,7 @@ If the human corrects a factual claim about the codebase ("that file actually ha
 1. Update the draft plan file's frontmatter `status` from `draft` to `approved`.
 2. Re-run `compass coverage <plan>`. While it exits 1, do not distribute tasks: report the uncovered rows to the human, then either add the missing `decisions:` citation to the task that covers it, or - if the decision should not be planned yet - confirm with the human and tag the bullet `[deferred]` or `[informational]` in its source spec/ADR. Re-run after each fix until it exits 0.
 3. Compute next TASK number JIT: `max(N) + 1` across `grep -oE 'TASK-([0-9]+)' .compass/active.md .compass/backlog.md`. Assign tasks contiguously from there.
-4. Distribute tasks: Phase 1 → `active.md` under "Next Up"; later phases → `backlog.md`.
+4. Distribute tasks: the detailed wave → `active.md` under "Next Up"; every `## Later` intent line → `backlog.md`, never `active.md`. Promoting an intent line's id from `backlog.md` to `active.md` is the build flow's elaboration step, not something this agent does mid-plan.
 5. The PostToolUse hook auto-updates `.compass/index.md`. No manual index edit needed.
 
 ## Task Sizing
@@ -154,3 +159,4 @@ Tasks larger than L get broken into subtasks.
 - Assuming codebase facts without verification.
 - Silently creating a duplicate plan.
 - Distributing tasks while `compass coverage` exits 1.
+- Detailing tasks past the current wave instead of scoping them as intent under `## Later`.
