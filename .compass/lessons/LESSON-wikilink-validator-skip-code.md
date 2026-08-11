@@ -1,19 +1,18 @@
 ---
-title: Wikilink validators must skip fenced and inline code blocks
+title: Matchers must match use, not mention
 type: lesson
 status: active
 category: process
 area: workflow
-tags: [validation, wikilinks, false-positives, content-aware]
+tags: [validation, false-positives, content-aware, parsing, self-reference]
 created: 2026-05-27
-updated: 2026-05-27
+updated: 2026-08-11
 score: 5
-summary: "Wikilink validators must skip fenced code blocks AND inline code spans; example refs in docs are noise"
+summary: "Match use, not mention: strip code spans and anchor to grammar position; a doc describing a mechanism trips its trigger"
 seen: []
 ---
 
-Markdown writers commonly use `[[NAME]]`, `[[link]]`, `[[wikilinks]]` as examples inside backticks.
-A naive wikilink resolver flags all of them as broken; ratio in this vault was 7 false positives to 1 real bug.
-Strip fenced code blocks (between triple-backtick markers) AND inline code spans (between single backticks) before resolving.
-Compass's index-sync skill added this filter after the regression test surfaced the noise.
-Same principle: content-aware validators must respect code-block scope, escape sequences, and literal-quoted regions.
+Markdown writers use `[[NAME]]` inside backticks as examples; a naive resolver flagged 7 false positives to 1 real bug, so validators strip fenced blocks and inline code spans before resolving.
+Stripping code is not enough. A document that describes a mechanism carries that mechanism's trigger tokens as plain prose: PLAN-008's `commit-upfront` rule matched the bare word anywhere in a task line, and two of its own intent lines mention the flag while describing it, which classifies them detailed and makes the plan's own acceptance test unpassable.
+Match use, not mention: anchor to the token's position in the grammar (a `field:` in the fields segment), never to the word appearing anywhere in a line that also carries free prose.
+Content-aware matchers must respect code-block scope, quoted regions, and self-reference.
