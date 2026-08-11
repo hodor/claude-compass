@@ -535,6 +535,8 @@ tags:
   - decisions/ADR-007-decision-coverage-mechanism.md
   - plans/PLAN-004-decision-coverage.md
   - research/RESEARCH-decision-coverage-impl.md
+  parsing:
+  - lessons/LESSON-wikilink-validator-skip-code.md
   payloads:
   - lessons/LESSON-hook-payloads-observe-before-coding.md
   per-agent:
@@ -668,6 +670,8 @@ tags:
   seeded-defects:
   - research/RESEARCH-test-quality-bar-validation.md
   - research/RESEARCH-test-quality-empirical.md
+  self-reference:
+  - lessons/LESSON-wikilink-validator-skip-code.md
   sendmessage:
   - lessons/LESSON-subagent-reports-need-sendmessage.md
   settings:
@@ -857,7 +861,6 @@ tags:
   - research/RESEARCH-rolling-wave-synthesis.md
   wikilinks:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
-  - lessons/LESSON-wikilink-validator-skip-code.md
   - plans/PLAN-003-hybrid-hierarchy.md
   - research/RESEARCH-graph-engineering-for-compass.md
   - research/RESEARCH-hybrid-hierarchy-impl.md
