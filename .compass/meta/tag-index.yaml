@@ -165,6 +165,7 @@ tags:
   counters:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
   coverage:
+  - decisions/ADR-009-rolling-wave-mechanism.md
   - lessons/LESSON-suite-size-is-not-coverage.md
   coverage-gate:
   - research/RESEARCH-rolling-wave-synthesis.md
@@ -213,6 +214,8 @@ tags:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   drift:
   - specs/SPEC-014-update-safe-customizations.md
+  elaboration:
+  - decisions/ADR-009-rolling-wave-mechanism.md
   embeddings:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   empirical:
@@ -532,10 +535,13 @@ tags:
   - research/RESEARCH-rolling-wave-software-practice.md
   - research/RESEARCH-rolling-wave-synthesis.md
   - specs/SPEC-015-rolling-wave-planning.md
+  plan-format:
+  - decisions/ADR-009-rolling-wave-mechanism.md
   planner:
   - decisions/ADR-007-decision-coverage-mechanism.md
   - plans/PLAN-004-decision-coverage.md
   planning:
+  - decisions/ADR-009-rolling-wave-mechanism.md
   - research/RESEARCH-rolling-wave-agent-planning.md
   - research/RESEARCH-rolling-wave-flow-theory.md
   - research/RESEARCH-rolling-wave-software-practice.md
@@ -622,6 +628,7 @@ tags:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   - lessons/LESSON-adversarial-plan-review-before-build.md
   rolling-wave:
+  - decisions/ADR-009-rolling-wave-mechanism.md
   - research/RESEARCH-rolling-wave-agent-planning.md
   - research/RESEARCH-rolling-wave-flow-theory.md
   - research/RESEARCH-rolling-wave-software-practice.md
