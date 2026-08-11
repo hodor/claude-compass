@@ -395,6 +395,41 @@ class ClassificationTests(unittest.TestCase):
         record = json.loads(checkpoint_path(repo_root, "TASK-106").read_text(encoding="utf-8"))
         self.assertTrue(record["landed"])
 
+    def test_verify_against_run_accepts_modern_unittest_path_format(self):
+        """Adversarial where: newer unittest -v repeats the test name inside
+        the parenthesized path (`test_a (tests.test_foo.FooTests.test_a)`);
+        a parser taking the path's last segment as the class would match
+        nothing, and every genuinely passing test would read not-passed."""
+        repo_root, _ = build_checkpoint(self, "TASK-107")
+        evidence = repo_root / "evidence.txt"
+        evidence.write_text(
+            "test_a (tests.test_foo.FooTests.test_a) ... ok\n"
+            "test_b (tests.test_foo.FooTests.test_b) ... ok\n",
+            encoding="utf-8",
+        )
+        code, out, err = self._verify(task="TASK-107", extra=["--against-run", str(evidence)])
+        self.assertEqual(code, 0, out + err)
+        self.assertNotIn("not-passed", out)
+
+    def test_verify_against_run_accepts_two_line_docstring_format(self):
+        """Adversarial where: a test WITH a docstring prints across two -v
+        lines (header `name (path)` alone, then the docstring first line
+        carrying `... ok`); a single-line parser reads none of them, so
+        precisely the docstring-bearing tests the test-design bar requires
+        would all report not-passed."""
+        repo_root, _ = build_checkpoint(self, "TASK-108")
+        evidence = repo_root / "evidence.txt"
+        evidence.write_text(
+            "test_a (tests.test_foo.FooTests.test_a)\n"
+            "Adversarial where: something breaks. ... ok\n"
+            "test_b (tests.test_foo.FooTests)\n"
+            "Another docstring line ... ok\n",
+            encoding="utf-8",
+        )
+        code, out, err = self._verify(task="TASK-108", extra=["--against-run", str(evidence)])
+        self.assertEqual(code, 0, out + err)
+        self.assertNotIn("not-passed", out)
+
     def test_verify_supersede_retains_prior_and_names_it(self):
         """Adversarial where a legitimately-corrected pre-build test
         silently replaces the original checkpoint with no trace, so a human
