@@ -8,6 +8,7 @@ import io
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -18,6 +19,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import maincli  # noqa: E402
 from commands import lesson_coverage  # noqa: E402
+
+# tests/ -> cli/ -> plugin/ -> repo root, the directory holding .compass.
+REPO_ROOT = Path(__file__).resolve().parents[3]
+CLI_DIR = REPO_ROOT / "plugin" / "cli"
 
 
 def make_vault(test_case):
@@ -260,6 +265,269 @@ class LessonCoverageTests(unittest.TestCase):
         with redirect_stdout(out), redirect_stderr(err):
             code = maincli.main(["lesson-coverage", "PLAN-001-p"])
         self.assertEqual(code, 0)
+
+    # -- TASK-069: three-state region read (scoped joins cited) --------
+
+    def test_scoped_lesson_cited_only_from_later_region_reports_scoped(self):
+        """Adversarial where: a lesson cited only from a `## Later`
+        intent line must not silently read as `cited` (already built)
+        or fall to `surfaced-but-uncited` (never named) - it needs its
+        own status naming work that is promised but not yet elaborated,
+        and the summary line must count it."""
+        write_catalog(self.root, [row("LESSON-hooks.md", tags=["hooks"])])
+        write(self.root, "plans/PLAN-001-p.md", plan([
+            "- [ ] TASK-001: a - complexity: S, depends_on: none, files: [x]",
+            "",
+            "## Later (intent only)",
+            "",
+            "- [ ] TASK-002: b - files: [y], lessons: [LESSON-hooks]",
+        ]))
+        code, out, _ = self.run_command(["PLAN-001-p"])
+        self.assertEqual(code, 0)
+        line = next(l for l in out.splitlines() if "LESSON-hooks.md" in l)
+        self.assertIn("scoped", line)
+        self.assertNotIn("cited", line)
+        self.assertIn("TASK-002", line)
+        self.assertIn("1 scoped", out)
+        self.assertIn("PASS", out)
+
+    def test_lesson_cited_from_detailed_task_before_later_reports_cited(self):
+        """Adversarial where: wiring in region-awareness must not
+        misclassify a citation on a detailed task line as scoped merely
+        because a `## Later` region exists later in the same document -
+        position of the *region*, not position in the file, decides."""
+        write_catalog(self.root, [row("LESSON-hooks.md", tags=["hooks"])])
+        write(self.root, "plans/PLAN-001-p.md", plan([
+            "- [ ] TASK-001: a - complexity: S, depends_on: none, files: [x], "
+            "lessons: [LESSON-hooks]",
+            "",
+            "## Later (intent only)",
+            "",
+            "- [ ] TASK-002: b - files: [y]",
+        ]))
+        code, out, _ = self.run_command(["PLAN-001-p"])
+        self.assertEqual(code, 0)
+        line = next(l for l in out.splitlines() if "LESSON-hooks.md" in l)
+        self.assertIn("cited", line)
+        self.assertNotIn("scoped", line)
+        self.assertIn("TASK-001", line)
+
+    def test_lesson_cited_from_both_regions_counted_once_as_cited(self):
+        """Adversarial where: a lesson claimed by both a detailed task
+        and a Later intent line must collapse to one `cited` row, not
+        two rows and not a `scoped` row that loses the detailed claim."""
+        write_catalog(self.root, [row("LESSON-hooks.md", tags=["hooks"])])
+        write(self.root, "plans/PLAN-001-p.md", plan([
+            "- [ ] TASK-001: a - complexity: S, depends_on: none, files: [x], "
+            "lessons: [LESSON-hooks]",
+            "",
+            "## Later (intent only)",
+            "",
+            "- [ ] TASK-002: b - files: [y], lessons: [LESSON-hooks]",
+        ]))
+        code, out, _ = self.run_command(["PLAN-001-p"])
+        self.assertEqual(code, 0)
+        rows = [l for l in out.splitlines() if l.startswith("LESSON-hooks.md")]
+        self.assertEqual(len(rows), 1)
+        self.assertIn("cited", rows[0])
+        self.assertIn("TASK-001", rows[0])
+
+    def test_unresolvable_citation_from_later_region_still_exits_1(self):
+        """Adversarial where: an unresolvable citation sitting on a
+        Later intent line, alongside one perfectly valid citation
+        elsewhere in the plan, must still fail loud - the advisory
+        treatment of `scoped` must not be read as advisory for typos,
+        because a typo is a typo in either region."""
+        write_catalog(self.root, [row("LESSON-hooks.md", tags=["hooks"])])
+        write(self.root, "plans/PLAN-001-p.md", plan([
+            "- [ ] TASK-001: a - complexity: S, depends_on: none, files: [x], "
+            "lessons: [LESSON-hooks]",
+            "",
+            "## Later (intent only)",
+            "",
+            "- [ ] TASK-002: b - files: [y], lessons: [LESSON-typo]",
+        ]))
+        code, out, _ = self.run_command(["PLAN-001-p"])
+        self.assertEqual(code, 1)
+        line = next(l for l in out.splitlines() if "LESSON-typo" in l)
+        self.assertIn("unresolvable", line)
+        self.assertIn("TASK-002", line)
+        self.assertIn("FAIL", out)
+
+    def test_json_scoped_entry_carries_citing_tasks(self):
+        """Adversarial where: the `--json` payload must expose the
+        scoped status as its own list beside `cited`, not fold a
+        Later-only citation into `cited` and not drop it from the
+        payload entirely."""
+        write_catalog(self.root, [row("LESSON-hooks.md", tags=["hooks"])])
+        write(self.root, "plans/PLAN-001-p.md", plan([
+            "- [ ] TASK-001: a - complexity: S, depends_on: none, files: [x]",
+            "",
+            "## Later (intent only)",
+            "",
+            "- [ ] TASK-002: b - files: [y], lessons: [LESSON-hooks]",
+        ]))
+        code, out, _ = self.run_command(["PLAN-001-p", "--json"])
+        self.assertEqual(code, 0)
+        payload = json.loads(out)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["cited"], [])
+        self.assertEqual(payload["scoped"][0]["lesson"], "LESSON-hooks.md")
+        self.assertIn("TASK-002", payload["scoped"][0]["cited_by"])
+
+    def test_surfaced_but_uncited_untouched_when_plan_has_later_region(self):
+        """Adversarial where: introducing the scoped status must not
+        reclassify a lesson nobody cites at all - `surfaced-but-uncited`
+        has to survive the three-state change unchanged even once the
+        plan being read carries a `## Later` region."""
+        write_catalog(self.root, [
+            row("LESSON-hooks.md", tags=["hooks"]),
+            row("LESSON-other.md", tags=["hooks"]),
+        ])
+        write(self.root, "plans/PLAN-001-p.md", plan([
+            "- [ ] TASK-001: a - complexity: S, depends_on: none, files: [x], "
+            "lessons: [LESSON-hooks]",
+            "",
+            "## Later (intent only)",
+            "",
+            "- [ ] TASK-002: b - files: [y]",
+        ]))
+        code, out, _ = self.run_command(["PLAN-001-p"])
+        self.assertEqual(code, 0)
+        line = next(l for l in out.splitlines() if "LESSON-other.md" in l)
+        self.assertIn("surfaced-but-uncited", line)
+
+    def test_unterminated_fence_prints_note_and_exits_0(self):
+        """Adversarial where: a fence that never closes blanks the rest
+        of the document, including the `## Later` heading and its
+        citation - the command must not pass silently as if that
+        citation never existed. It has to print the same unreadable-
+        regions note TASK-068 defines and must never crash to exit 2."""
+        write_catalog(self.root, [row("LESSON-hooks.md", tags=["hooks"])])
+        write(self.root, "plans/PLAN-001-p.md", plan([
+            "```",
+            "unterminated fence, never closes",
+            "",
+            "## Later (intent only)",
+            "",
+            "- [ ] TASK-002: b - files: [y], lessons: [LESSON-hooks]",
+        ]))
+        code, out, err = self.run_command(["PLAN-001-p"])
+        self.assertEqual(code, 0)
+        self.assertIn("note", (out + err).lower())
+
+    def test_no_later_section_summary_stays_byte_identical(self):
+        """Adversarial where: a plan with no `## Later` heading anywhere
+        must produce the exact previous summary wording, with no
+        `scoped` count appended, not merely the same verdict - TASK-069
+        promises "the previous output," not "the same PASS/FAIL"."""
+        write_catalog(self.root, [row("LESSON-hooks.md", tags=["hooks"])])
+        write(self.root, "plans/PLAN-001-p.md", plan([
+            "- [ ] TASK-001: a - complexity: S, depends_on: none, files: [x], "
+            "lessons: [LESSON-hooks]",
+        ]))
+        code, out, _ = self.run_command(["PLAN-001-p"])
+        self.assertEqual(code, 0)
+        self.assertIn("1 cited, 0 unresolvable", out)
+        self.assertNotIn("scoped", out)
+
+
+class LessonCoverageCorpusPinTests(unittest.TestCase):
+    """Real-vault regression pins for TASK-069: PLAN-006 and PLAN-007 carry
+    no `## Later` section, so wiring in the three-state region read must
+    leave their row sets exactly as they were. Runs the installed `compass`
+    CLI as a subprocess against this repo's own `.compass` vault, with
+    `CLAUDE_PROJECT_DIR` pinned explicitly so no fixture vault used by the
+    other tests in this module can leak in through inherited environment."""
+
+    def run_real(self, plan_id):
+        env = dict(os.environ)
+        env["CLAUDE_PROJECT_DIR"] = str(REPO_ROOT)
+        result = subprocess.run(
+            [sys.executable, "compass", "lesson-coverage", plan_id],
+            cwd=str(CLI_DIR), env=env, capture_output=True, text=True,
+        )
+        return result.returncode, result.stdout, result.stderr
+
+    def test_corpus_pin_plan_006_row_set_unchanged(self):
+        code, out, _ = self.run_real("PLAN-006-learning-loop")
+        self.assertEqual(code, 0)
+        lines = out.splitlines()
+
+        def status_of(lesson):
+            return next(l for l in lines if l.startswith(lesson))
+
+        self.assertIn("cited", status_of("LESSON-hook-cli-gate-stdin-on-flag.md"))
+        self.assertIn("TASK-037", status_of("LESSON-hook-cli-gate-stdin-on-flag.md"))
+        self.assertIn("cited", status_of("LESSON-no-agent-bookkeeping.md"))
+        self.assertIn("TASK-036", status_of("LESSON-no-agent-bookkeeping.md"))
+        self.assertIn(
+            "surfaced-but-uncited",
+            status_of("LESSON-hooks-load-only-from-settings.md"),
+        )
+        self.assertIn(
+            "surfaced-but-uncited",
+            status_of("LESSON-scratch-vaults-need-compass-dir.md"),
+        )
+        self.assertIn(
+            "surfaced-but-uncited",
+            status_of("LESSON-tag-index-trades-cost-for-directed-retrieval.md"),
+        )
+        self.assertIn(
+            "summary: 2 cited, 0 unresolvable, 3 surfaced-but-uncited "
+            "(advisory) -> PASS",
+            out,
+        )
+
+    def test_corpus_pin_plan_007_row_set_unchanged(self):
+        code, out, _ = self.run_real("PLAN-007-test-quality")
+        self.assertEqual(code, 0)
+        lines = out.splitlines()
+
+        def status_of(lesson):
+            return next(l for l in lines if l.startswith(lesson))
+
+        self.assertIn("cited", status_of("LESSON-no-agent-bookkeeping.md"))
+        self.assertIn("TASK-052", status_of("LESSON-no-agent-bookkeeping.md"))
+        self.assertIn("TASK-057", status_of("LESSON-no-agent-bookkeeping.md"))
+        self.assertIn("cited", status_of("LESSON-scratch-vaults-need-compass-dir.md"))
+        self.assertIn(
+            "TASK-052", status_of("LESSON-scratch-vaults-need-compass-dir.md")
+        )
+        self.assertIn("cited", status_of("LESSON-subagent-worktrees-fork-stale.md"))
+        self.assertIn(
+            "TASK-055", status_of("LESSON-subagent-worktrees-fork-stale.md")
+        )
+        self.assertIn(
+            "cited", status_of("LESSON-test-driven-tasks-dont-discriminate.md")
+        )
+        self.assertIn(
+            "TASK-055", status_of("LESSON-test-driven-tasks-dont-discriminate.md")
+        )
+        self.assertIn(
+            "cited",
+            status_of("LESSON-type-dir-discovery-needs-content-signal.md"),
+        )
+        self.assertIn(
+            "TASK-057",
+            status_of("LESSON-type-dir-discovery-needs-content-signal.md"),
+        )
+        self.assertIn(
+            "surfaced-but-uncited",
+            status_of("LESSON-revert-to-prove-a-regression-test.md"),
+        )
+        self.assertIn(
+            "surfaced-but-uncited", status_of("LESSON-suite-size-is-not-coverage.md")
+        )
+        self.assertIn(
+            "surfaced-but-uncited",
+            status_of("LESSON-hook-cli-gate-stdin-on-flag.md"),
+        )
+        self.assertIn(
+            "summary: 5 cited, 0 unresolvable, 3 surfaced-but-uncited "
+            "(advisory) -> PASS",
+            out,
+        )
 
 
 if __name__ == "__main__":
