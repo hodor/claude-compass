@@ -30,6 +30,8 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[SPEC-012-learning-loop]] - capture on real events, retrieval at the work, application audited (approved, SHIPPED v0.5.0)
 - [[SPEC-013-test-quality]] - per-test admission bar; suite size an outcome, never a target (approved 2026-08-07)
 - [[SPEC-014-update-safe-customizations]] - Project-Local Workflow Customizations Survive Update
+- [[SPEC-015-rolling-wave-planning]] - plan detail tracks proximity; waves elaborate from completed-task knowledge (draft)
+- [[SPEC-015-rolling-wave-planning]] - Plans Elaborate Progressively - Detail Tracks Proximity, Not the Whole Plan Upfront
 
 ## Research
 

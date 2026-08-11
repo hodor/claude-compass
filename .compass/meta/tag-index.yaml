@@ -239,6 +239,8 @@ tags:
   - research/RESEARCH-scientific-method-in-compass.md
   fault-based-testing:
   - research/RESEARCH-test-quality-literature.md
+  feedback-loop:
+  - specs/SPEC-015-rolling-wave-planning.md
   fleet:
   - research/RESEARCH-fleet-test-census.md
   fleet-audit:
@@ -508,11 +510,14 @@ tags:
   - specs/SPEC-009-configurable-pipeline-workflows.md
   pipeline:
   - specs/SPEC-009-configurable-pipeline-workflows.md
+  plan-approval:
+  - specs/SPEC-015-rolling-wave-planning.md
   planner:
   - decisions/ADR-007-decision-coverage-mechanism.md
   - plans/PLAN-004-decision-coverage.md
   planning:
   - specs/SPEC-007-decision-coverage-tracing.md
+  - specs/SPEC-015-rolling-wave-planning.md
   plans:
   - lessons/LESSON-adversarial-plan-review-before-build.md
   plugin-config:
@@ -531,6 +536,8 @@ tags:
   - research/RESEARCH-okf-improvements-for-compass.md
   probes:
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
+  progressive-elaboration:
+  - specs/SPEC-015-rolling-wave-planning.md
   prose:
   - lessons/LESSON-remove-context-before-adding.md
   provenance:
@@ -583,6 +590,8 @@ tags:
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   - lessons/LESSON-adversarial-plan-review-before-build.md
+  rolling-wave:
+  - specs/SPEC-015-rolling-wave-planning.md
   rules:
   - lessons/LESSON-remove-context-before-adding.md
   scaling:
