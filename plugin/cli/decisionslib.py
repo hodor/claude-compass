@@ -14,9 +14,13 @@ never pass as a clean "nothing to check":
 - `could-not-parse`: decision-shaped content the grammars could not read.
   One malformed `- **D-` bullet poisons the whole extraction even when other
   bullets parsed, because silently dropping one decision is the exact failure
-  this module exists to prevent. With zero extractions, a bare `D-` token, an
-  ID-shaped bold-lead-in bullet, or an unterminated code fence is evidence of
-  real entries the parser could not read.
+  this module exists to prevent. With a decisions section found but zero
+  bullets extracted, a bare `D-` token, an ID-shaped bold-lead-in bullet, or
+  an unterminated code fence is evidence of real entries the parser could
+  not read. A `D-NN` token qualified by a preceding document stem (`SPEC-`,
+  `ADR-`, `PLAN-`, `RESEARCH-`, joined by a space or a slash) or sitting
+  inside a `[[wikilink]]` cites another document's decision and is not
+  evidence there.
 
 Opt-outs: an `[informational]` or `[deferred]` bracket tag on the bullet, or
 placement under a discretion subheading, marks the decision non-trackable.
@@ -71,6 +75,18 @@ _D_TOKEN = re.compile(r"\bD-[A-Za-z0-9]")
 # the coverage gate on a legitimate prose section.
 _BOLD_ID_BULLET = re.compile(r"^\s*-\s+\*\*[A-Z]+[0-9]*-[A-Za-z0-9]", re.MULTILINE)
 
+# A cross-document decision citation: a D-NN token immediately preceded, at
+# a token boundary, by a document stem (SPEC-, ADR-, PLAN-, or RESEARCH-)
+# and joined by a space or a slash. Matches `SPEC-015 D-02` and
+# `SPEC-007-decision-coverage-tracing/D-03`, not `XSPEC-015 D-02` since the
+# stem must start the preceding token.
+_QUALIFIED_STEM_REF = re.compile(
+    r"\b(?:SPEC|ADR|PLAN|RESEARCH)-[A-Za-z0-9_-]*[ /]D-[A-Za-z0-9_-]*"
+)
+# A [[wikilink]] span. A D-NN token inside one names another document's
+# decision by its link target, never a local bullet.
+_WIKILINK = re.compile(r"\[\[[^\]]*\]\]")
+
 # Subheadings inside a decisions section switch the discretion state.
 _SUBHEADING = re.compile(r"^#{3,6}\s+(.+?)\s*$")
 
@@ -87,6 +103,20 @@ def _is_discretion_heading(heading_text):
     (`### Claude's Discretion`, `### Builder discretion`, ...)."""
     normalized = _QUOTE_CHARS.sub("", heading_text).strip().lower()
     return normalized.endswith("discretion")
+
+
+def _strip_qualified_references(text):
+    """Remove cross-document D-NN citations from evidence text.
+
+    A D-NN token qualified by a preceding document stem (space- or
+    slash-joined) or sitting inside a [[wikilink]] names another
+    document's decision. A bare D-NN with no qualifying name is left in
+    place, since that is the shape of a real local decision the parser
+    could not read.
+    """
+    text = _WIKILINK.sub(" ", text)
+    text = _QUALIFIED_STEM_REF.sub(" ", text)
+    return text
 
 
 def _decision_sections(stripped_text):
@@ -221,7 +251,7 @@ def extract_decisions(text):
             return decisions, "parsed"
         evidence = vaultlib.strip_inline_code("\n".join(bodies))
         if (
-            _D_TOKEN.search(evidence)
+            _D_TOKEN.search(_strip_qualified_references(evidence))
             or _BOLD_ID_BULLET.search(evidence)
             or unterminated
         ):
