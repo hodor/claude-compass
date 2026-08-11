@@ -81,6 +81,8 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[ADR-006-hybrid-hierarchy-implementation]] - Unit Folders at the Vault Root, Classified by Reserved Names Plus a Marker
 - [[ADR-007-decision-coverage-mechanism]] - Decision Coverage via D-NN Bullets, a Three-Outcome Parser, and an Exit-Code Gate the Planner Honors
 - [[ADR-008-model-resolution-table]] - Abstract Model Tiers Resolved at Install Time by compass apply-models
+- [[ADR-009-rolling-wave-mechanism]] - frontier waves, grounded elaboration at the merge gate, three-state coverage (detailed/scoped/uncovered)
+- [[ADR-009-rolling-wave-mechanism]] - Rolling-Wave Plans - Frontier Waves, Grounded Elaboration, Three-State Coverage
 
 ## Active Work
 
