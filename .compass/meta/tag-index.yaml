@@ -119,6 +119,7 @@ tags:
   - plans/PLAN-005-model-table.md
   - plans/PLAN-006-learning-loop.md
   - plans/PLAN-007-test-quality.md
+  - plans/PLAN-008-rolling-wave.md
   - research/RESEARCH-decision-coverage-impl.md
   - research/RESEARCH-hybrid-hierarchy-impl.md
   - research/RESEARCH-model-resolution-impl.md
@@ -170,6 +171,7 @@ tags:
   coverage:
   - decisions/ADR-009-rolling-wave-mechanism.md
   - lessons/LESSON-suite-size-is-not-coverage.md
+  - plans/PLAN-008-rolling-wave.md
   coverage-gate:
   - research/RESEARCH-rolling-wave-synthesis.md
   craft:
@@ -219,6 +221,7 @@ tags:
   - specs/SPEC-014-update-safe-customizations.md
   elaboration:
   - decisions/ADR-009-rolling-wave-mechanism.md
+  - plans/PLAN-008-rolling-wave.md
   embeddings:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   empirical:
@@ -550,11 +553,13 @@ tags:
   - specs/SPEC-015-rolling-wave-planning.md
   plan-format:
   - decisions/ADR-009-rolling-wave-mechanism.md
+  - plans/PLAN-008-rolling-wave.md
   planner:
   - decisions/ADR-007-decision-coverage-mechanism.md
   - plans/PLAN-004-decision-coverage.md
   planning:
   - decisions/ADR-009-rolling-wave-mechanism.md
+  - plans/PLAN-008-rolling-wave.md
   - research/RESEARCH-rolling-wave-agent-planning.md
   - research/RESEARCH-rolling-wave-flow-theory.md
   - research/RESEARCH-rolling-wave-software-practice.md
@@ -646,6 +651,7 @@ tags:
   - lessons/LESSON-adversarial-plan-review-before-build.md
   rolling-wave:
   - decisions/ADR-009-rolling-wave-mechanism.md
+  - plans/PLAN-008-rolling-wave.md
   - research/RESEARCH-rolling-wave-agent-planning.md
   - research/RESEARCH-rolling-wave-flow-theory.md
   - research/RESEARCH-rolling-wave-software-practice.md
