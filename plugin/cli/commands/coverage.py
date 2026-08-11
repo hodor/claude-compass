@@ -1,4 +1,5 @@
-"""`compass coverage <plan> [--against <doc>...]` - the decision coverage gate.
+"""`compass coverage <plan> [--against <doc>...] [--strict]` - the decision
+coverage gate.
 
 Checks that a plan claims every trackable decision of its sources. Sources
 default to the plan's `depends_on` documents whose frontmatter type is a
@@ -11,17 +12,37 @@ use - to the source document. Bare `D-NN` tokens never claim (local IDs
 collide across documents by design); fenced code blocks and inline code
 spans are quoted documentation and never claim.
 
+A plan carries three detail regions, read via `planlib.classify_lines`. A
+decision claimed by a task line outside `## Later` is `covered`; claimed
+only by a task line under `## Later` is `scoped`, and a scoped decision
+never fails the default gate. A task line always decides over a citation
+sitting in ordinary prose for the same decision - prose only counts, at its
+own region's state, when no task line anywhere in the plan claims that
+decision. Among competing task-line claims a detailed one always beats a
+scoped one, whichever line the file puts first. A citation inside a
+`## Wave N elaborated` record section is discarded outright and decides
+nothing, so a quoted intent line there can never resurrect a promise the
+plan no longer makes. A decision claimed by nothing is `NOT COVERED` and
+fails exactly as today.
+
 Output is an aligned `source | decision | trackable | status` table plus a
-count summary. Exit 1 when any trackable decision is uncovered or any source
-could not be parsed - an unparseable source surfaces in the report and fails
-the gate even when every other source is fully covered. Exit 0 otherwise.
-Never exits 2.
+count summary. Exit 1 when any trackable decision is uncovered or any
+source could not be parsed - an unparseable source surfaces in the report
+and fails the gate even when every other source is fully covered.
+`--strict` counts a scoped decision as uncovered for the exit code too, and
+the summary verdict gains a `(strict)` suffix on `FAIL` whenever a scoped
+decision counts toward it; a plan with nothing scoped produces
+byte-identical output with or without the flag. When the plan's code fences
+do not close,
+the regions cannot be read: the command notes it and treats every line as
+detailed rather than guess at the boundary. Never exits 2.
 """
 
 import re
 import sys
 
 import decisionslib
+import planlib
 import vaultlib
 from commands.decisions import resolve_doc
 
@@ -89,32 +110,74 @@ def _default_sources(vault_root, plan_data, resolve, notes):
 
 
 def _claims(plan_text, resolve):
-    """Scan the plan body for citations.
+    """Scan the plan body for citations, resolved against its detail
+    regions.
 
-    Returns `(claims, bare_count)`: `claims` maps `(source_rel_path,
-    decision_id)` to the 1-based line of the first claiming citation, and
+    Returns `(claims, bare_count, unterminated_fence)`. `claims` maps
+    `(source_rel_path, decision_id)` to `(line, region)` for the citation
+    that decides that decision: `region` is `None` for a detailed claim or
+    `"scoped"` for one made only under `## Later`.
+
+    Every claim site is collected first, then resolved by precedence: a
+    task-line claim always beats a prose citation for the same decision,
+    and among task-line claims a detailed one always beats a scoped one,
+    whichever line the file orders first; ties within one state keep the
+    earliest line. A citation sitting in a `## Wave N elaborated` record
+    region is dropped before precedence is applied, so it never decides
+    anything.
+
     `bare_count` is the number of unqualified D-NN tokens found. Fenced
     blocks and inline code are stripped first (line count preserved), so
-    quoted examples never claim.
+    quoted examples never claim. When the plan's fences do not close,
+    `unterminated_fence` is True and every line is treated as detailed -
+    the caller reports that the regions were unreadable.
     """
-    stripped, _ = vaultlib.strip_fenced_code(plan_text)
+    text = plan_text.replace("\r\n", "\n").replace("\r", "\n")
+    regions, unterminated_fence = planlib.classify_lines(text)
+    if unterminated_fence:
+        regions = {}
+
+    stripped, _ = vaultlib.strip_fenced_code(text)
     stripped = vaultlib.strip_inline_code(stripped)
-    claims = {}
+
+    sites = {}
     bare = 0
     for number, line in enumerate(stripped.split("\n"), start=1):
         for match in CITATION.finditer(line):
             paths = resolve.get(match.group(1), [])
             if len(paths) == 1:
-                claims.setdefault((paths[0], match.group(2)), number)
+                region = regions.get(number)
+                if region == "record":
+                    continue
+                key = (paths[0], match.group(2))
+                is_task_line = bool(planlib.TASK_LINE.match(line))
+                sites.setdefault(key, []).append((number, region, is_task_line))
         bare += len(BARE_ID.findall(line))
-    return claims, bare
+
+    claims = {}
+    for key, entries in sites.items():
+        task_entries = [entry for entry in entries if entry[2]]
+        pool = task_entries if task_entries else entries
+        if task_entries:
+            detailed = [entry for entry in task_entries if entry[1] is None]
+            if detailed:
+                pool = detailed
+        chosen = min(pool, key=lambda entry: entry[0])
+        claims[key] = (chosen[0], chosen[1])
+
+    return claims, bare, unterminated_fence
 
 
 def run(args):
-    positional, against, in_against = [], [], False
+    positional, against, in_against, strict = [], [], False, False
+    against_seen = False
     for arg in args:
         if arg == "--against":
             in_against = True
+            against_seen = True
+        elif arg == "--strict":
+            strict = True
+            in_against = False
         elif arg.startswith("--"):
             sys.stderr.write(f"compass coverage: unknown flag {arg}\n")
             return 1
@@ -122,7 +185,7 @@ def run(args):
             against.append(arg)
         else:
             positional.append(arg)
-    if len(positional) != 1 or (in_against and not against):
+    if len(positional) != 1 or (against_seen and not against):
         sys.stderr.write("usage: compass coverage <plan> [--against <doc>...]\n")
         return 1
 
@@ -157,7 +220,12 @@ def run(args):
     # A source named twice would double its rows and counts; keep first mention.
     sources = list(dict.fromkeys(sources))
 
-    claims, bare = _claims(plan_text, resolve)
+    claims, bare, unterminated_fence = _claims(plan_text, resolve)
+    if unterminated_fence:
+        notes.append(
+            f"unterminated code fence in {plan_rel}; detail regions could "
+            "not be read - every line treated as detailed"
+        )
     if bare:
         notes.append(
             f"{bare} bare D-NN token(s) in {plan_rel} claim nothing; a "
@@ -165,7 +233,7 @@ def run(args):
         )
 
     rows = [("source", "decision", "trackable", "status")]
-    trackable_total = covered = uncovered = unparseable = 0
+    trackable_total = covered = scoped = uncovered = unparseable = 0
     for source in sources:
         source_rel = source.relative_to(vault_root).as_posix()
         decisions, outcome = decisionslib.extract_decisions(
@@ -176,14 +244,21 @@ def run(args):
             rows.append((source.stem, "-", "-", "COULD NOT PARSE"))
             continue
         for decision in decisions:
-            line = claims.get((source_rel, decision["id"]))
+            site = claims.get((source_rel, decision["id"]))
+            if site is None:
+                status = "NOT COVERED"
+            elif site[1] == "scoped":
+                status = f"scoped (line {site[0]})"
+            else:
+                status = f"covered (line {site[0]})"
             if decision["trackable"]:
                 trackable_total += 1
-                if line is not None:
-                    covered += 1
-                else:
+                if site is None:
                     uncovered += 1
-            status = f"covered (line {line})" if line is not None else "NOT COVERED"
+                elif site[1] == "scoped":
+                    scoped += 1
+                else:
+                    covered += 1
             rows.append((
                 source.stem,
                 decision["id"],
@@ -205,12 +280,18 @@ def run(args):
     else:
         summary = (
             f"{trackable_total} trackable decision(s) in {len(sources)} "
-            f"source(s): {covered} covered, {uncovered} uncovered"
+            f"source(s): {covered} covered, {scoped} scoped, "
+            f"{uncovered} uncovered"
         )
         if unparseable:
             summary += f", {unparseable} source(s) could not be parsed"
-    ok = uncovered == 0 and unparseable == 0
-    sys.stdout.write(f"summary: {summary} -> {'PASS' if ok else 'FAIL'}\n")
+
+    effective_uncovered = uncovered + (scoped if strict else 0)
+    ok = effective_uncovered == 0 and unparseable == 0
+    verdict = "PASS" if ok else "FAIL"
+    if strict and scoped:
+        verdict += " (strict)"
+    sys.stdout.write(f"summary: {summary} -> {verdict}\n")
     for note in notes:
         sys.stderr.write(f"compass coverage: note: {note}\n")
     return 0 if ok else 1

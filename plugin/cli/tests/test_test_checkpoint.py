@@ -430,6 +430,25 @@ class ClassificationTests(unittest.TestCase):
         self.assertEqual(code, 0, out + err)
         self.assertNotIn("not-passed", out)
 
+    def test_verify_against_run_accepts_interleaved_stderr_output(self):
+        """Adversarial where: a test that writes to stderr during its run
+        interleaves that output after `... ` and its bare status token lands
+        alone on a later line; a parser requiring status on the header line
+        reads such tests as absent, so precisely the tests exercising error
+        paths (which print) become unverifiable."""
+        repo_root, _ = build_checkpoint(self, "TASK-109")
+        evidence = repo_root / "evidence.txt"
+        evidence.write_text(
+            "test_a (tests.test_foo.FooTests.test_a) ... compass next-num: scope rejected\n"
+            "another interleaved line\n"
+            "ok\n"
+            "test_b (tests.test_foo.FooTests) ... ok\n",
+            encoding="utf-8",
+        )
+        code, out, err = self._verify(task="TASK-109", extra=["--against-run", str(evidence)])
+        self.assertEqual(code, 0, out + err)
+        self.assertNotIn("not-passed", out)
+
     def test_verify_supersede_retains_prior_and_names_it(self):
         """Adversarial where a legitimately-corrected pre-build test
         silently replaces the original checkpoint with no trace, so a human
