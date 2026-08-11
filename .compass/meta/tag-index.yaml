@@ -219,6 +219,8 @@ tags:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   drift:
   - specs/SPEC-014-update-safe-customizations.md
+  edit-anchors:
+  - lessons/LESSON-wikilink-validator-skip-code.md
   elaboration:
   - decisions/ADR-009-rolling-wave-mechanism.md
   - plans/PLAN-008-rolling-wave.md
@@ -255,7 +257,6 @@ tags:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   false-positives:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
-  - lessons/LESSON-wikilink-validator-skip-code.md
   falsifiability:
   - research/RESEARCH-scientific-method-in-compass.md
   fault-based-testing:
