@@ -31,7 +31,6 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[SPEC-013-test-quality]] - per-test admission bar; suite size an outcome, never a target (approved 2026-08-07)
 - [[SPEC-014-update-safe-customizations]] - Project-Local Workflow Customizations Survive Update
 - [[SPEC-015-rolling-wave-planning]] - plan detail tracks proximity; waves elaborate from completed-task knowledge (draft)
-- [[SPEC-015-rolling-wave-planning]] - Plans Elaborate Progressively - Detail Tracks Proximity, Not the Whole Plan Upfront
 
 ## Research
 
@@ -71,6 +70,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-005-model-table]] - Model Resolution Table Implementation (Tiers, apply-models, Overrides)
 - [[PLAN-006-learning-loop]] - Learning Loop Implementation: harness-owned capture, catalog retrieval, lesson coverage (approved 2026-08-05)
 - [[PLAN-007-test-quality]] - Test Quality Instruments (Authoring Bar, Test-First Station, Admission Filter, Diagnostic Mutation)
+- [[PLAN-008-rolling-wave]] - Rolling-Wave Plans (Detail Regions, Three-State Coverage, the Elaboration Loop)
 
 ## Decisions
 
@@ -82,7 +82,6 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[ADR-007-decision-coverage-mechanism]] - Decision Coverage via D-NN Bullets, a Three-Outcome Parser, and an Exit-Code Gate the Planner Honors
 - [[ADR-008-model-resolution-table]] - Abstract Model Tiers Resolved at Install Time by compass apply-models
 - [[ADR-009-rolling-wave-mechanism]] - frontier waves, grounded elaboration at the merge gate, three-state coverage (detailed/scoped/uncovered)
-- [[ADR-009-rolling-wave-mechanism]] - Rolling-Wave Plans - Frontier Waves, Grounded Elaboration, Three-State Coverage
 
 ## Active Work
 
