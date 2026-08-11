@@ -713,6 +713,13 @@ class DecisionsCommandTests(DecisionCommandBase):
 
 
 class CoverageCommandTests(DecisionCommandBase):
+    @staticmethod
+    def _line_no(body_lines, text):
+        """Absolute 1-based line number of `text` inside a `plan()`
+        fixture's body: nine frontmatter/heading lines (`---` block,
+        blank, `## Phases`, blank) precede `body_lines[0]`."""
+        return 10 + body_lines.index(text)
+
     def test_uncovered_trackable_decision_fails(self):
         write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
         write(self.root, "plans/PLAN-001-p.md", self.plan([
@@ -722,7 +729,7 @@ class CoverageCommandTests(DecisionCommandBase):
         self.assertEqual(code, 1)
         d2 = next(line for line in out.splitlines() if "D-02" in line)
         self.assertIn("NOT COVERED", d2)
-        self.assertIn("1 covered, 1 uncovered", out)
+        self.assertIn("1 covered, 0 scoped, 1 uncovered", out)
         self.assertIn("FAIL", out)
 
     def test_all_trackable_covered_passes(self):
@@ -732,7 +739,7 @@ class CoverageCommandTests(DecisionCommandBase):
         ]))
         code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
         self.assertEqual(code, 0)
-        self.assertIn("2 covered, 0 uncovered", out)
+        self.assertIn("2 covered, 0 scoped, 0 uncovered", out)
         self.assertIn("PASS", out)
 
     def test_deferred_decision_uncovered_is_not_counted(self):
@@ -786,7 +793,7 @@ class CoverageCommandTests(DecisionCommandBase):
         ]))
         code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
         self.assertEqual(code, 1)
-        self.assertIn("0 covered, 2 uncovered", out)
+        self.assertIn("0 covered, 0 scoped, 2 uncovered", out)
 
     def test_research_dependency_is_not_a_source(self):
         write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
@@ -814,7 +821,7 @@ class CoverageCommandTests(DecisionCommandBase):
         )
         self.assertEqual(code, 0)
         self.assertNotIn("SPEC-001-src", out.split("\n", 1)[1])
-        self.assertIn("2 covered, 0 uncovered", out)
+        self.assertIn("2 covered, 0 scoped, 0 uncovered", out)
 
     def test_sources_without_decisions_report_none_and_pass(self):
         write(self.root, "specs/SPEC-001-src.md",
@@ -839,6 +846,344 @@ class CoverageCommandTests(DecisionCommandBase):
         code, _, err = self.run_command(coverage, [])
         self.assertEqual(code, 1)
         self.assertIn("usage", err)
+
+    def test_later_only_citation_is_scoped_counted_and_exits_zero(self):
+        """Adversarial where: a decision claimed only by an intent line
+        under `## Later` must land in its own scoped bucket - not merge
+        into covered (which would hide unbuilt work) or into uncovered
+        (which would fail a gate a plan is meant to pass at approval
+        time)."""
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        body = [
+            "- [ ] TASK-001: a - decisions: [SPEC-001-src/D-02]",
+            "",
+            "## Later",
+            "",
+            "- [ ] TASK-002: b - decisions: [SPEC-001-src/D-01]",
+        ]
+        write(self.root, "plans/PLAN-001-p.md", self.plan(body))
+        code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 0)
+        d1 = next(line for line in out.splitlines() if "D-01" in line)
+        self.assertIn(f"scoped (line {self._line_no(body, body[4])})", d1)
+        self.assertIn("1 covered, 1 scoped, 0 uncovered", out)
+        self.assertIn("PASS", out)
+
+    def test_detailed_claim_beats_scoped_claim_regardless_of_file_order(self):
+        """Adversarial where: precedence must be state-based (a detailed
+        claim always wins) rather than order-based (the first claim seen
+        wins) - `_claims` has to keep every site and let a detailed one
+        beat a scoped one no matter which line the file puts first."""
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+
+        detailed_first = [
+            "- [ ] TASK-001: a - decisions: "
+            "[SPEC-001-src/D-01, SPEC-001-src/D-02]",
+            "",
+            "## Later",
+            "",
+            "- [ ] TASK-002: b - decisions: [SPEC-001-src/D-01]",
+        ]
+        write(self.root, "plans/PLAN-001-p.md", self.plan(detailed_first))
+        with self.subTest(order="detailed_before_scoped"):
+            code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+            self.assertEqual(code, 0)
+            d1 = next(line for line in out.splitlines() if "D-01" in line)
+            self.assertIn(
+                "covered (line "
+                f"{self._line_no(detailed_first, detailed_first[0])})",
+                d1,
+            )
+
+        scoped_first = [
+            "## Later",
+            "",
+            "- [ ] TASK-001: a - decisions: [SPEC-001-src/D-01]",
+            "",
+            "## Risks",
+            "",
+            "- [ ] TASK-002: b - decisions: "
+            "[SPEC-001-src/D-01, SPEC-001-src/D-02]",
+        ]
+        write(self.root, "plans/PLAN-002-p.md", self.plan(scoped_first))
+        with self.subTest(order="scoped_before_detailed"):
+            code, out, _ = self.run_command(coverage, ["PLAN-002-p"])
+            self.assertEqual(code, 0)
+            d1 = next(line for line in out.splitlines() if "D-01" in line)
+            self.assertIn(
+                "covered (line "
+                f"{self._line_no(scoped_first, scoped_first[6])})",
+                d1,
+            )
+
+    def test_post_later_prose_citation_does_not_upgrade_scoped_decision(self):
+        """Adversarial where: a prose citation only counts when no task
+        line claims the decision at all - a decision an intent line
+        already claims must stay scoped even when a qualified citation
+        for it later shows up in ordinary prose (e.g. `## Risks`, which
+        sits after `## Later` closes and is therefore detailed); letting
+        that prose citation win would quietly upgrade a promise no task
+        line has elaborated yet."""
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        body = [
+            "- [ ] TASK-000: setup - decisions: [SPEC-001-src/D-02]",
+            "",
+            "## Later",
+            "",
+            "- [ ] TASK-001: a - decisions: [SPEC-001-src/D-01]",
+            "",
+            "## Risks",
+            "",
+            "See SPEC-001-src/D-01 for the reasoning, written after "
+            "Later closes.",
+        ]
+        write(self.root, "plans/PLAN-001-p.md", self.plan(body))
+        code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 0)
+        d1 = next(line for line in out.splitlines() if "D-01" in line)
+        self.assertIn(f"scoped (line {self._line_no(body, body[4])})", d1)
+        d2 = next(line for line in out.splitlines() if "D-02" in line)
+        self.assertIn(f"covered (line {self._line_no(body, body[0])})", d2)
+        self.assertIn("1 covered, 1 scoped, 0 uncovered", out)
+        self.assertIn("PASS", out)
+
+    def test_prose_only_citation_with_no_task_line_claim_is_covered(self):
+        """Adversarial where: the precedence rule is "a task line
+        claiming the decision beats prose," not "prose never counts" - a
+        decision no task line ever names, but that ordinary detailed
+        prose cites, must still report covered rather than uncovered."""
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        body = [
+            "Prose only: SPEC-001-src/D-01 is settled here, no task "
+            "claims it.",
+            "",
+            "- [ ] TASK-001: a - decisions: [SPEC-001-src/D-02]",
+        ]
+        write(self.root, "plans/PLAN-001-p.md", self.plan(body))
+        code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 0)
+        d1 = next(line for line in out.splitlines() if "D-01" in line)
+        self.assertIn(f"covered (line {self._line_no(body, body[0])})", d1)
+        self.assertIn("2 covered, 0 scoped, 0 uncovered", out)
+        self.assertIn("PASS", out)
+
+    def test_uncovered_and_scoped_are_counted_in_separate_columns(self):
+        """Adversarial where: a decision cited nowhere at all must still
+        fail the gate even though a sibling decision in the same plan is
+        merely scoped - the new scoped bucket must not become a place an
+        actually-uncovered decision can hide behind."""
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        body = [
+            "## Later",
+            "",
+            "- [ ] TASK-001: a - decisions: [SPEC-001-src/D-01]",
+        ]
+        write(self.root, "plans/PLAN-001-p.md", self.plan(body))
+        code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 1)
+        d1 = next(line for line in out.splitlines() if "D-01" in line)
+        self.assertIn(f"scoped (line {self._line_no(body, body[2])})", d1)
+        d2 = next(line for line in out.splitlines() if "D-02" in line)
+        self.assertIn("NOT COVERED", d2)
+        self.assertIn("0 covered, 1 scoped, 1 uncovered", out)
+        self.assertIn("FAIL", out)
+
+    def test_commit_upfront_task_inside_later_is_covered_not_scoped(self):
+        """Adversarial where: a `commit-upfront:` field on a task line
+        inside `## Later` overrides that single line back to detailed - a
+        coverage command that reads only the region a line's enclosing
+        heading opened, ignoring the per-line override, would misreport
+        it as scoped instead of covered."""
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        body = [
+            "- [ ] TASK-000: setup - decisions: [SPEC-001-src/D-02]",
+            "",
+            "## Later",
+            "",
+            "- [ ] TASK-001: b - decisions: [SPEC-001-src/D-01], "
+            "commit-upfront: pinned early",
+        ]
+        write(self.root, "plans/PLAN-001-p.md", self.plan(body))
+        code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 0)
+        d1 = next(line for line in out.splitlines() if "D-01" in line)
+        self.assertIn(f"covered (line {self._line_no(body, body[4])})", d1)
+        self.assertIn("2 covered, 0 scoped, 0 uncovered", out)
+        self.assertIn("PASS", out)
+
+    def test_record_region_citation_is_discarded_and_reports_uncovered(self):
+        """Adversarial where: a `## Wave N elaborated` section quotes past
+        intent and must claim nothing - even a citation shaped exactly
+        like a task line's `decisions:` field, sitting inside that
+        section, must not count, or a promoted-then-reverted line could
+        resurrect a claim the plan no longer makes."""
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        body = [
+            "- [ ] TASK-001: a - decisions: [SPEC-001-src/D-02]",
+            "",
+            "## Wave 1 elaborated",
+            "",
+            "- [ ] TASK-002: b - decisions: [SPEC-001-src/D-01]",
+        ]
+        write(self.root, "plans/PLAN-001-p.md", self.plan(body))
+        code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 1)
+        d1 = next(line for line in out.splitlines() if "D-01" in line)
+        self.assertIn("NOT COVERED", d1)
+        d2 = next(line for line in out.splitlines() if "D-02" in line)
+        self.assertIn(f"covered (line {self._line_no(body, body[0])})", d2)
+        self.assertIn("1 covered, 0 scoped, 1 uncovered", out)
+        self.assertIn("FAIL", out)
+
+    def test_strict_flag_promotes_scoped_to_uncovered_for_exit_code(self):
+        """Adversarial where: `--strict` exists to fail the gate on a
+        scoped-only plan (nothing is actually uncovered) by counting
+        scoped as uncovered for the exit code - a flag that only changes
+        the summary wording and not the exit code would let plan
+        completion pass with named-but-unbuilt decisions still open. On a
+        plan with nothing scoped, `--strict` must change nothing at all,
+        not even incidentally reformat the passing output."""
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+
+        scoped_body = [
+            "- [ ] TASK-001: a - decisions: [SPEC-001-src/D-02]",
+            "",
+            "## Later",
+            "",
+            "- [ ] TASK-002: b - decisions: [SPEC-001-src/D-01]",
+        ]
+        write(self.root, "plans/PLAN-001-p.md", self.plan(scoped_body))
+        with self.subTest(case="scoped_only_plan"):
+            code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+            self.assertEqual(code, 0)
+            self.assertIn("PASS", out)
+            code, out, _ = self.run_command(
+                coverage, ["PLAN-001-p", "--strict"]
+            )
+            self.assertEqual(code, 1)
+            self.assertIn("FAIL (strict)", out)
+
+        nothing_scoped_body = [
+            "- [ ] TASK-001: a - decisions: "
+            "[SPEC-001-src/D-01, SPEC-001-src/D-02]",
+        ]
+        write(self.root, "plans/PLAN-002-p.md", self.plan(nothing_scoped_body))
+        with self.subTest(case="nothing_scoped"):
+            code_default, out_default, _ = self.run_command(
+                coverage, ["PLAN-002-p"]
+            )
+            code_strict, out_strict, _ = self.run_command(
+                coverage, ["PLAN-002-p", "--strict"]
+            )
+            self.assertEqual(code_default, 0)
+            self.assertEqual(code_default, code_strict)
+            self.assertEqual(out_default, out_strict)
+
+    def test_malformed_source_and_scoped_decision_still_exits_one_not_two(
+        self,
+    ):
+        """Adversarial where: two independent failure reasons landing in
+        the same run - an unparseable source and an uncovered decision -
+        could tempt a naive implementation to sum failure counts into the
+        exit code instead of clamping to the binary 0/1 gate contract; a
+        scoped row rides along too, unrelated to either failure. The exit
+        code must still land on exactly 1, never 2."""
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        write(self.root, "decisions/ADR-001-broken.md", self.MALFORMED)
+        body = [
+            "## Later",
+            "",
+            "- [ ] TASK-001: a - decisions: [SPEC-001-src/D-01]",
+        ]
+        write(self.root, "plans/PLAN-001-p.md", self.plan(
+            body, deps=("SPEC-001-src", "ADR-001-broken"),
+        ))
+        code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 1)
+        self.assertIn("COULD NOT PARSE", out)
+        d1 = next(
+            line for line in out.splitlines()
+            if line.startswith("SPEC-001-src") and "D-01" in line
+        )
+        self.assertIn("scoped", d1)
+        d2 = next(
+            line for line in out.splitlines()
+            if line.startswith("SPEC-001-src") and "D-02" in line
+        )
+        self.assertIn("NOT COVERED", d2)
+
+    def test_unterminated_fence_notes_and_treats_everything_detailed(self):
+        """Adversarial where: `classify_lines` returns an empty region map
+        for an unterminated fence precisely so a caller cannot mistake
+        that emptiness for "nothing scoped" - the coverage command must
+        surface a note about it rather than silently proceeding, and
+        every line, including one that visually sits under `## Later`,
+        must classify as detailed once the region map is empty."""
+        write(self.root, "specs/SPEC-001-src.md", self.SPEC_WITH_DECISIONS)
+        body = [
+            "## Later",
+            "",
+            "- [ ] TASK-001: a - decisions: "
+            "[SPEC-001-src/D-01, SPEC-001-src/D-02]",
+            "",
+            "```",
+            "deliberately unclosed",
+        ]
+        write(self.root, "plans/PLAN-001-p.md", self.plan(body))
+        code, out, err = self.run_command(coverage, ["PLAN-001-p"])
+        combined = (out + err).lower()
+        self.assertIn("unterminated", combined)
+        self.assertIn("fence", combined)
+        self.assertEqual(code, 0)
+        d1 = next(line for line in out.splitlines() if "D-01" in line)
+        self.assertIn("covered", d1)
+        self.assertNotIn("scoped", d1)
+        self.assertIn("0 scoped", out)
+
+
+class CoverageCorpusPinTests(unittest.TestCase):
+    """Regression pins: `compass coverage` against this repo's own real
+    plans must keep exiting 0 once the summary gains the three-state
+    columns, exactly as PLAN-008-rolling-wave's own verification section
+    records for PLAN-006 and PLAN-007."""
+
+    REPO_ROOT = Path(__file__).resolve().parents[3]
+
+    def setUp(self):
+        old = os.environ.get("CLAUDE_PROJECT_DIR")
+        os.environ["CLAUDE_PROJECT_DIR"] = str(self.REPO_ROOT)
+
+        def restore():
+            if old is None:
+                os.environ.pop("CLAUDE_PROJECT_DIR", None)
+            else:
+                os.environ["CLAUDE_PROJECT_DIR"] = old
+
+        self.addCleanup(restore)
+
+    def run_command(self, module, args):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = module.run(args)
+        return code, out.getvalue(), err.getvalue()
+
+    def test_plan_006_learning_loop_still_passes(self):
+        """Adversarial where: the three-state summary rewrite regresses a
+        real plan that predates the Later region and carries no scoped
+        rows - it must still exit 0, not drop into FAIL because the
+        summary format changed under it."""
+        code, out, err = self.run_command(
+            coverage, ["PLAN-006-learning-loop"]
+        )
+        self.assertEqual(code, 0, err or out)
+
+    def test_plan_007_test_quality_still_passes(self):
+        """Adversarial where: same regression risk as PLAN-006, on the
+        other real plan the task contract names as a corpus pin."""
+        code, out, err = self.run_command(
+            coverage, ["PLAN-007-test-quality"]
+        )
+        self.assertEqual(code, 0, err or out)
 
 
 if __name__ == "__main__":
