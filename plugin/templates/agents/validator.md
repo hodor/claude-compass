@@ -96,6 +96,17 @@ Per task, classify against three findings, mirroring the checkbox and coverage a
 - Checkpoint modified rather than added to.
 - Test-first station skipped: flag it, then check whether a `not-required` record justifies the skip. It does. An absent record does not.
 
+**4g.** Wave-record audit. Report-only, exactly like the decision, lesson and test-quality audits - it gates on nothing. It applies to a plan written in the rolling-wave format (a `## Later` region present); a plan with no `## Later` section gets from `--strict` the identical verdict already captured in 4d, so this audit is skipped for it.
+
+Run `compass coverage <plan> --strict` and record it with the full `Check / Command run / Output observed / Result` block - the completion gate, where a `scoped` row is a decision named and never built. On a plan still mid-build with waves open, a `scoped` row is a promise the plan has not yet kept, not a defect; report it that way, never as a finding to fix.
+
+Then, for every `## Wave N elaborated` section the plan carries, cross its record against the promoted task blocks and the current `## Later` region for four classifications:
+
+- Promoted, no wave-section entry: a `### Wave N (detailed)` task block with no matching bullet in the corresponding `## Wave N elaborated` section's "Promoted lines" list.
+- Entry missing changed-because or held: a promoted-lines bullet stating neither what changed and which verified outcome changed it, nor literally "unchanged - intent held".
+- Intent edited in place: an intent line under `## Later` sharing a task id with a fenced quote recorded in an earlier wave section, whose live text differs from that quote - superseding deletes the line rather than editing it, so a surviving, altered line of the same id is the in-place edit ADR-009 forbids.
+- Elaborated-but-uncited: a promoted task block whose `decisions:` citation reports `NOT COVERED` in the `--strict` run above - ordinary uncovered, listed here because the detail was elaborated and the citation still never bound.
+
 ### 5. Verify the tester
 
 The tester ran between the builder and you. Read its test files in the diff. Re-run the test suite yourself with the full `Command / Output / Result` block. If the tester reported bugs, check whether the builder fixed them. Unfixed bugs are FAIL items in your report.
@@ -145,7 +156,7 @@ If you found something about a specific vault file (a stale spec section, an ina
 
 ## Report format
 
-Field lengths: details (1-2 sentences), `Output observed` (≤125 chars per line, truncate with `...`). Omit any section that has no content - Checkbox Audit, Decision Coverage (if the plan cites no source decisions), Lesson Coverage (if the plan cites no `lessons:` fields), Unfixed Bugs, Manual Verification Checklist, Adversarial Probes, Tester (if no new tests this run), Phase Results (if only one phase). Don't stub category headers.
+Field lengths: details (1-2 sentences), `Output observed` (≤125 chars per line, truncate with `...`). Omit any section that has no content - Checkbox Audit, Decision Coverage (if the plan cites no source decisions), Lesson Coverage (if the plan cites no `lessons:` fields), Wave Record (if the plan carries no `## Later` region), Unfixed Bugs, Manual Verification Checklist, Adversarial Probes, Tester (if no new tests this run), Phase Results (if only one phase). Don't stub category headers.
 
 ```markdown
 ## Validation Report: [[PLAN-NNN-name]]
@@ -183,6 +194,13 @@ Details: [1-2 sentences for deviations or failures only]
 - No defect class docstring: [task list]
 - Checkpoint modified: [task list, with the changed assertion named]
 - Test-first station skipped, no `not-required` record: [task list]
+
+### Wave Record
+- Command run: `compass coverage <plan> --strict` → [verbatim ≤125 char summary line]
+- Promoted, no wave-section entry: [task list]
+- Entry missing changed-because or held: [task list]
+- Intent edited in place: [task list, with the differing text noted]
+- Elaborated-but-uncited: [decision list]
 
 ### Tester
 - Re-run: `<cmd>` → [verbatim ≤125 char excerpt]
