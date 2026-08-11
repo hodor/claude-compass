@@ -151,17 +151,34 @@ Promoted by the wave-1 elaboration from the Later list's authoring group. Each b
   - Automated verification: grep the template for the section, both example lines, the appended-not-authored note, and the citation-home sentence; `python plugin/cli/compass validate` clean.
   - Manual verification: copy the template into a scratch plan, run `compass coverage` against it, and confirm the example intent line classifies scoped and nothing errors - a template that starts plans broken is worse than no template.
 
+### Wave 3 (detailed): the consuming side
+
+Promoted by the wave-2 elaboration. Each block is written against what wave 2 actually landed: the planner brief's wording, the plan skill's region rules including the reopening subtlety and the wave-placement trap its review surfaced, and the live elaboration incident wave 1's own execution recorded.
+
+- [ ] TASK-073: `build` skill gains the elaboration step 7d - complexity: M, depends_on: none, files: [plugin/skills/build/SKILL.md], decisions: [SPEC-015-rolling-wave-planning/D-02, ADR-009-rolling-wave-mechanism/D-04, ADR-009-rolling-wave-mechanism/D-05]
+  - Step 7d sits after 7a (phase reports - its input) and 7b (lessons), before 7c (pause); `all-phases` skips 7c only; 7d completes before the next phase's step 3 so no tester is handed a task without verification bullets.
+  - The step: read the wave's verified outcomes (phase reports, gate output, prototype answers), promote the next coherent set of intent lines into full task blocks placed as a `### Wave N (detailed)` heading under `## Phases` above `## Later` - a level-3 heading does not close a Later region, so placement above the boundary is what keeps promoted blocks detailed (the trap wave 2's review named); delete consumed intent lines; move promoted ids from `backlog.md` to `active.md`; append the canonical `## Wave N elaborated` section recording, per promoted line, what changed and which verified outcome changed it, or literally "unchanged - intent held"; quote superseded intent lines only inside fences.
+  - Editing discipline, from wave 1's recorded incident: structural edits anchor on whole heading lines, never substring matches - a backticked mention of the boundary heading in prose is not the boundary, and a substring replace spliced this plan's own Goal paragraph before the gates caught it.
+  - Prototype outcomes: a `kind: prototype` task's recorded answer is elaboration input (SPEC-015 D-02); its phase report is where the answer lives.
+  - Automated verification: grep for 7d's position (after 7b, before 7c), the all-phases rule, the before-next-step-3 requirement, the placement instruction with the level-3 trap, the backlog-to-active move, the canonical heading, the per-line changed-or-held record rule, the fence rule, and the line-anchored editing discipline; `python plugin/cli/compass validate` clean.
+  - Manual verification: walk one imagined wave boundary through the amended step on paper and confirm every write it instructs has an unambiguous anchor.
+
+- [ ] TASK-074: validator audits the wave record - complexity: S, depends_on: none, files: [plugin/templates/agents/validator.md], decisions: [ADR-009-rolling-wave-mechanism/D-07]
+  - A report-only sibling of the existing coverage audits, same evidence-block form: run `compass coverage <plan> --strict` (the completion gate - scoped rows are decisions named and never built) and, for plans carrying wave sections, classify: promoted lines with no wave-section entry; entries with neither a changed-because nor an "unchanged - intent held"; intent lines edited in place rather than superseded (detectable: an intent line whose text differs from its fenced quote in the record); elaborated detail whose citations never bound (ordinary uncovered at that point). Gates on nothing.
+  - Automated verification: grep for `--strict`, the evidence block, the four classifications, report-only phrasing with no block/fail verdict language; `python plugin/cli/compass validate` clean.
+  - Manual verification: read the step and confirm a validator running mid-plan (waves still open) reports scoped rows as promises, not defects.
+
+- [ ] TASK-075: methodology describes the build-learn-elaborate loop - complexity: S, depends_on: none, files: [plugin/skills/methodology/SKILL.md], decisions: [SPEC-015-rolling-wave-planning/D-04]
+  - One proportionate subsection beside the pipeline and the learning loop: plans hold a detailed wave and an intent list; waves are judged frontiers, never counts; elaboration fires at the merge gate on verified outcomes and presents a delta; approval attaches once to near detail plus far shape; `--strict` closes the loop at plan completion. Points at the plan skill for the format's letter.
+  - Automated verification: grep for the loop's five elements and the plan-skill pointer; `python plugin/cli/compass validate` clean.
+  - Manual verification: the section reads as a description of how planning works, not as an announcement of a change.
+
 ## Later (intent only)
 
-The prose surfaces that teach agents to write and consume the format. Every one of them describes output that wave 1 produces, which is why they are named here and specified after.
-
-The remaining group, re-judged at the wave-1 elaboration and held: **wave 3 is the consuming side** - TASK-073, TASK-074 and TASK-075, which describe how the loop runs and what it audits, plus TASK-076's install refresh and acceptance. Wave 3's detail genuinely depends on wave 2's output rather than merely following it: what the build skill fires and what the validator audits have to be written against the brief the planner actually got, and that brief is not written yet. Two waves after this one is also what SPEC-015's first success criterion asks this plan to demonstrate. The grouping is a declaration, not a commitment - the elaboration step judges the frontier from verified outcomes and may move a line across it.
+The one remaining line, held to the end under its own rule.
 
 TASK-076 is written in full despite its distance, under the `commit-upfront:` rule.
 
-- [ ] TASK-073: `build` skill gains the elaboration step as step 7d - after 7a's phase reports and 7b's lessons, before 7c's pause, and completed before the next phase's step 3 - promoting elaborated lines upward into a new detailed wave section and moving their ids from `backlog.md` to `active.md`; stations, checkpoints, fix loop and the `open-ids` green definition untouched - files: [plugin/skills/build/SKILL.md], decisions: [SPEC-015-rolling-wave-planning/D-02, ADR-009-rolling-wave-mechanism/D-04, ADR-009-rolling-wave-mechanism/D-05]
-- [ ] TASK-074: validator audits the wave sections - elaborated detail that never got cited, promoted lines with no wave-section entry, intent lines edited in place rather than superseded, and decisions still scoped at plan close via `compass coverage <plan> --strict` - files: [plugin/templates/agents/validator.md], decisions: [ADR-009-rolling-wave-mechanism/D-07]
-- [ ] TASK-075: methodology skill describes the build-learn-elaborate loop alongside the pipeline it sits inside - files: [plugin/skills/methodology/SKILL.md]
 - [ ] TASK-076: install refresh and acceptance - complexity: M, depends_on: TASK-071, TASK-072, TASK-073, TASK-074, TASK-075, TASK-077, files: [.claude/], decisions: [SPEC-015-rolling-wave-planning/D-04, ADR-009-rolling-wave-mechanism/D-01], commit-upfront: the acceptance battery is the same shape every Compass plan runs and its detail does not depend on anything wave 1 or wave 2 produces
   - Copy `plugin/cli`, `plugin/skills/*` and `plugin/templates/agents/*` into `.claude/` (or run `/compass:update`), then run acceptance from the installed copy, which is the only way the refresh is proven.
   - Automated verification: `python -m unittest discover -s plugin/cli/tests` green with the new tests included (507 at plan start, higher here), green meaning no failures outside `compass test-checkpoint open-ids`; `python .claude/cli/compass doctor` exits 0; `python .claude/cli/compass coverage PLAN-008-rolling-wave --strict` exits 0 - under `--strict` that is the same statement as zero scoped rows, and every decision this plan named must be built by the time it closes; `python .claude/cli/compass lesson-coverage PLAN-008-rolling-wave` exits 0; `compass coverage` and `compass lesson-coverage` still exit 0 on PLAN-006 and PLAN-007.
@@ -260,4 +277,21 @@ Superseded intent lines, quoted for the record:
 - [ ] TASK-071: planner brief flips from "specify all tasks" to "specify the current wave fully - the frontier judgment, no caps, never one task alone - list the rest as intent, flag commit-upfront: exceptions"; it also states that intent lines distribute to backlog.md and never to active.md, pins the canonical Wave-N-elaborated heading, and requires an intent line quoted inside a detailed block to be fenced or backticked
 - [ ] TASK-072: plan skill carries the format - the Later boundary, intent-line grammar, the commit-upfront: field, the canonical Wave-N-elaborated heading, the fence-or-backtick rule for quoted intent lines - and draws the line between iterate and elaborate
 - [ ] TASK-077: the plan template in the obsidian skill gains the Later (intent only) section, the intent-line grammar and the commit-upfront: field
+```
+
+## Wave 2 elaborated
+
+Wave 2 outcomes consumed: TASK-071/072/077 landed with review-verified accuracy against the wave-1 code - the plan-skill review alone corrected six factual claims, surfacing the region-reopening rule (a level-1/2 heading past Later is detailed again) and the wave-placement trap (a level-3 heading does not close a Later region); the template's example intent line verified scoped in a live scratch run; wave 1's own elaboration recorded a real substring-anchor splice the gates caught.
+
+Promoted lines:
+- TASK-073 - changed: gains the placement instruction with the level-3 trap and the line-anchored editing discipline, both from wave-2 review findings and the wave-1 incident; neither was in the intent line.
+- TASK-074 - changed: the in-place-edit classification gains its detection method (intent text differing from its fenced record quote), derivable only now that a real record section exists to compare against.
+- TASK-075 - unchanged - intent held.
+
+Superseded intent lines, quoted for the record:
+
+```
+- [ ] TASK-073: build skill gains the elaboration step as step 7d - after 7a's phase reports and 7b's lessons, before 7c's pause, and completed before the next phase's step 3 - promoting elaborated lines upward into a new detailed wave section and moving their ids from backlog.md to active.md; stations, checkpoints, fix loop and the open-ids green definition untouched
+- [ ] TASK-074: validator audits the wave sections - elaborated detail that never got cited, promoted lines with no wave-section entry, intent lines edited in place rather than superseded, and decisions still scoped at plan close via compass coverage --strict
+- [ ] TASK-075: methodology skill describes the build-learn-elaborate loop alongside the pipeline it sits inside
 ```
