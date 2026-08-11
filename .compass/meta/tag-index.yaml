@@ -13,6 +13,8 @@ tags:
   adversarial:
   - lessons/LESSON-adversarial-plan-review-before-build.md
   - specs/SPEC-013-test-quality.md
+  agent-methodology:
+  - lessons/LESSON-human-practice-rationing-assumes-human-scarcity.md
   agent-protocol:
   - lessons/LESSON-dont-strip-agent-quality-stations.md
   agentic-testing:
@@ -34,6 +36,7 @@ tags:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
+  - lessons/LESSON-walkthroughs-in-the-humans-words.md
   architecture:
   - specs/SPEC-001-compass-vision-and-architecture.md
   argparse:
@@ -357,6 +360,10 @@ tags:
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   hub-ranking:
   - specs/SPEC-011-vault-graph-queries.md
+  human-decision:
+  - lessons/LESSON-walkthroughs-in-the-humans-words.md
+  human-practice:
+  - lessons/LESSON-human-practice-rationing-assumes-human-scarcity.md
   humanlayer:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   hybrid:
@@ -395,6 +402,8 @@ tags:
   - research/RESEARCH-okf-improvements-for-compass.md
   isolation:
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
+  jargon:
+  - lessons/LESSON-walkthroughs-in-the-humans-words.md
   jit:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
   - lessons/LESSON-no-agent-bookkeeping.md
@@ -436,6 +445,8 @@ tags:
   line-endings:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
+  literature-import:
+  - lessons/LESSON-human-practice-rationing-assumes-human-scarcity.md
   llm-test-generation:
   - research/RESEARCH-test-quality-literature.md
   local:
@@ -531,6 +542,8 @@ tags:
   - specs/SPEC-009-configurable-pipeline-workflows.md
   pipeline:
   - specs/SPEC-009-configurable-pipeline-workflows.md
+  plain-language:
+  - lessons/LESSON-walkthroughs-in-the-humans-words.md
   plan-approval:
   - research/RESEARCH-rolling-wave-software-practice.md
   - research/RESEARCH-rolling-wave-synthesis.md
@@ -590,6 +603,8 @@ tags:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - specs/SPEC-003-hierarchical-vault-organization.md
+  rationing:
+  - lessons/LESSON-human-practice-rationing-assumes-human-scarcity.md
   reference:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   registration:
@@ -607,6 +622,8 @@ tags:
   - lessons/LESSON-subagent-reports-need-sendmessage.md
   research-redesign:
   - handoffs/2026-03-12_review-all-plugin-files.md
+  research-synthesis:
+  - lessons/LESSON-human-practice-rationing-assumes-human-scarcity.md
   resume:
   - lessons/LESSON-long-agents-stall-resume-them.md
   retrieval:
@@ -828,6 +845,8 @@ tags:
   - specs/SPEC-013-test-quality.md
   vision:
   - specs/SPEC-001-compass-vision-and-architecture.md
+  walkthroughs:
+  - lessons/LESSON-walkthroughs-in-the-humans-words.md
   wave-sizing:
   - research/RESEARCH-rolling-wave-synthesis.md
   wikilinks:
