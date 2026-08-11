@@ -58,6 +58,10 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-test-quality-craft-and-practice]] - Test Craft and AI Testing Practice: The Missing Axis
 - [[RESEARCH-fleet-test-census]] - Fleet Test Census - Locating and Grading the 841-Test Project
 - [[RESEARCH-test-quality-bar-validation]] - Paired Seeded-Defect Validation of the Test-Design Admission Bar
+- [[RESEARCH-rolling-wave-agent-planning]] - Progressive/Receding-Horizon Planning for AI Agents: What Is Different When Planner and Executor Are LLMs
+- [[RESEARCH-rolling-wave-software-practice]] - Rolling-Wave Planning: How Software Methodologies Operationalize the Detail Gradient
+- [[RESEARCH-rolling-wave-flow-theory]] - Flow and Lean Product-Development Theory Behind Rolling-Wave Planning
+- [[RESEARCH-rolling-wave-synthesis]] - Rolling-Wave Planning: Cross-Axis Synthesis and Recommended Mechanism
 
 ## Plans
 
