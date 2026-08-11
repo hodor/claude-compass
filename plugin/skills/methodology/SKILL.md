@@ -17,6 +17,10 @@ Vision → Spec → Research → Plan → Tasks → Build → Validate
 
 Each stage produces artifacts that feed the next. Stages can be revisited, but never skipped.
 
+## Rolling-wave plans
+
+A plan need not detail every task upfront. It holds a detailed wave - the tasks ready to build now, in full - alongside an intent list of the tasks still ahead, named but not yet detailed. Waves are judged frontiers, never counts: nothing fixes them at a fixed task number, the proposer judges where detail earns its keep and where it would be improvising ahead of what's known. Elaboration fires at the merge gate, once a wave's outcomes are verified - it promotes the next wave's intent lines into detail and presents a delta of what was learned, not a fresh document to re-review. Approval attaches once, at plan creation, to the near wave's full detail plus the far list's shape, never once per wave. `--strict` on `compass coverage` closes the loop at plan completion, failing anything the plan still leaves scoped. See the `plan` skill's Rolling-wave format section for the detail-region grammar itself.
+
 ## Document writing
 
 Compass documents are a pleasure to read. Short, sweet, long only when needed, never verbose. Research is the exception: it captures evidence and can be as long as required.
