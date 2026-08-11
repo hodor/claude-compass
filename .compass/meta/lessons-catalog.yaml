@@ -173,7 +173,7 @@ lessons:
     area: testing
     tags: [testing, regression-tests, revert-check, bug-reports, empirical]
     score: 5
-    summary: "A regression test that still passes on the reverted fix is vacuous; revert and re-run every new test before shipping"
+    summary: "A test that passes without the change under test is unwritten; prove it per test, by revert after the fix or by the red run before it"
   - file: "LESSON-remove-context-before-adding.md"
     status: active
     category: process
