@@ -47,7 +47,7 @@ Spawn builder agents to execute tasks. The main conversation orchestrates; it do
    ```
    After each merge, spawn the `tester` agent on the merged state to catch cross-task integration issues, then run the mandatory post-merge `compass test-checkpoint verify TASK-NNN` against the merged branch for that task - the only check that sees what actually landed rather than what a worktree contained mid-build. Do not run tests yourself; the tester handles all test execution. If a merge conflicts, halt and present the list of remaining branches to the human - planner enforces file exclusivity so conflicts mean either a planner bug or a builder that wrote outside its `files:`.
 
-7. **Phase pause.** When all tasks in a phase are done and the post-merge tester and post-merge verify both report passing:
+7. **Phase pause.** When all tasks in a phase are done and the post-merge tester and post-merge verify both report passing, run 7a, then 7b, then 7d, then 7c in that order:
 
    **7a. Assemble phase reports from SubagentStop captures.** The SubagentStop hook has already captured each subagent's final message to `.compass/tmp/subagent-captures/<timestamp>_<agent_type>.md`. For this phase:
 
@@ -63,9 +63,21 @@ Spawn builder agents to execute tasks. The main conversation orchestrates; it do
 
    **7b. Invoke extract-lessons.** Run `compass capture-check --hook` so it detects the phase-summary.yaml just written and opens a `.compass/tmp/capture-opportunities/OPP-<UTC>/` directory for it - the same detection the Stop hook itself runs on every turn. Then run the `extract-lessons` skill against that opportunity directory. It checks binary triggers, applies the anti-list, hands survivors to `lesson-write`, and closes the opportunity via `compass capture-close`. Surface its summary line to the human as part of the pause.
 
-   **7c. Pause for human.** Present manual verification items from the plan, plus the extract-lessons summary. Wait for human confirmation before proceeding to next phase.
+   **7d. Elaborate the next wave.** For a plan written in the rolling-wave format (a plan carrying a `## Later (intent only)` section), this step runs after 7a's phase reports and 7b's lessons, and before 7c's pause. In `all-phases` mode it still runs when 7c's pause is skipped - it is the wave-promotion step itself, not the human checkpoint - and it completes before the next phase's step 3, so no tester is ever handed a task with no verification bullets to write against. For a plan with no `## Later` section, 7d is a no-op.
 
-   Skip the pause (but NOT 7a and 7b) in `all-phases` mode; pause only after the last phase. Reports and extraction still run between phases so lessons are captured incrementally.
+   Read the wave's verified outcomes: the phase reports 7a just assembled, `compass coverage` and `compass lesson-coverage`'s live output, and the recorded answer of any `kind: prototype` task in the phase - a prototype's deliverable is an answer rather than shipped code, and that answer lives in its own phase report (SPEC-015 D-02), not in the plan until this step transcribes it.
+
+   Promote the next coherent set of intent lines into full task blocks. Land them under a new `### Wave N (detailed)` heading placed under `## Phases`, above the `## Later` heading - a level-3 heading does not close a Later region, so it is placement relative to the `## Later` boundary, not heading level, that keeps a promoted block detailed. Delete each consumed intent line from the Later region rather than editing it where it sits, and move its task id from `backlog.md` to `active.md` so the build flow's task selection can see it.
+
+   Append a `## Wave N elaborated` section recording, for every promoted line, either what changed and which verified outcome changed it, or literally "unchanged - intent held". A promoted line with no entry is a defect, not a shortcut. Quote superseded intent lines only inside a fence or backtick span - unfenced it still claims nothing, but it reads as a live, unclaimed task to a human, and to any tool that scans for the task-line grammar.
+
+   Present the delta (what was learned, what the next wave is) to the human as part of 7c's pause; do not re-approve the plan.
+
+   **Editing discipline**, from a recorded incident of this kind: anchor structural edits (heading insertions, section moves, deletions) on whole heading lines, never on substring matches - a backticked mention of a heading in prose is not the heading, and a substring replace once spliced a plan's own Goal paragraph before its gates caught it.
+
+   **7c. Pause for human.** Present manual verification items from the plan, plus the extract-lessons summary and 7d's elaboration delta if it ran. Wait for human confirmation before proceeding to next phase.
+
+   Skip the pause (but NOT 7a, 7b or 7d) in `all-phases` mode; pause only after the last phase. Reports, extraction and elaboration still run between phases so lessons and wave promotion happen incrementally.
 
 8. **Validate (optional).** Offer to spawn the validator with the plan file.
 
