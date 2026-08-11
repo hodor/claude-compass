@@ -73,11 +73,16 @@ _RUN_LINE_RE = re.compile(
     r"^(?P<name>\w+)\s+\((?P<path>[\w.]+)\)\s+\.\.\.\s+(?P<status>ok|FAIL|ERROR|skipped.*)\s*$"
 )
 
-# A test with a docstring prints across two lines: `name (path)` alone, then
-# the docstring's first line with the trailing `... status`. The header and
-# the trailer are matched separately and joined by the parser.
-_RUN_HEADER_RE = re.compile(r"^(?P<name>\w+)\s+\((?P<path>[\w.]+)\)\s*$")
+# A test's status is not always on its own line. A docstring prints the
+# header `name (path)` alone with the status trailing the docstring's first
+# line; a test that writes to stderr interleaves that output after `... `
+# and the bare status token lands alone on a later line. Headers, trailers,
+# and bare status lines are matched separately and joined by the parser.
+_RUN_HEADER_RE = re.compile(
+    r"^(?P<name>\w+)\s+\((?P<path>[\w.]+)\)(?:\s+\.\.\..*)?$"
+)
 _RUN_TRAILER_RE = re.compile(r"\.\.\.\s+(?P<status>ok|FAIL|ERROR|skipped.*)\s*$")
+_RUN_BARE_STATUS_RE = re.compile(r"^(?P<status>ok|FAIL|ERROR|skipped.*)\s*$")
 
 
 # --------------------------------------------------------------------------
@@ -577,13 +582,11 @@ def _parse_run_evidence(text):
                 pending = (header.group("name"), header.group("path"))
                 continue
             if pending is not None:
-                trailer = _RUN_TRAILER_RE.search(stripped)
+                trailer = _RUN_TRAILER_RE.search(stripped) or _RUN_BARE_STATUS_RE.match(stripped)
                 if trailer:
-                    match = None
                     name, path = pending
-                    raw_status = trailer.group("status")
                     pending = None
-                    _record_run_status(statuses, name, path, raw_status)
+                    _record_run_status(statuses, name, path, trailer.group("status"))
             continue
         pending = None
         _record_run_status(
