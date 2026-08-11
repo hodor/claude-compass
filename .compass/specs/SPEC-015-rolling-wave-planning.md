@@ -1,7 +1,8 @@
 ---
 title: Plans Elaborate Progressively - Detail Tracks Proximity, Not the Whole Plan Upfront
 type: spec
-status: draft
+status: approved
+approved: 2026-08-11
 confidence: high
 area: methodology
 tags: [planning, rolling-wave, progressive-elaboration, plan-approval, feedback-loop]
@@ -23,6 +24,12 @@ Compass plans specify every task at full detail before any task runs, and the hu
 - Builders, who execute stale far-task specifications or stop on mismatches.
 - The plan document, which drifts from reality unless ceremonially re-approved.
 
+## Decisions (made by the human)
+
+- **D-02:** The near, detailed work includes prototype tasks when a question blocks later detail: a prototype exists to answer a named question, and its answer is elaboration input like any other completed-work knowledge. (Roger, 2026-08-11.)
+- **D-03:** A wave is what can be worked on right now within one coherent phase or concern. No numeric cap and no size budget - agents judge the boundary themselves. Size-rationing is a human-era planning concept; AI build speed makes it noise. (Roger, 2026-08-11.)
+- **D-04:** Two detail tiers only: fully detailed now, one-line intent later. No formal middle band - the loop elaborates a one-liner the lap before it is built. (Roger, 2026-08-11, accepting the synthesis recommendation.)
+
 ## Desired Outcome
 
 A plan commits detail in proportion to proximity: the next task or wave is fully specified (files, verification, sizes); later work is scoped at decreasing precision down to named intent. As tasks complete, the knowledge they produce elaborates the next wave, and the human's approval attaches to the near detail plus the far shape - never to speculative fine print. Re-elaboration is a normal, cheap pipeline step, not a plan-amendment ceremony.
@@ -30,6 +37,7 @@ A plan commits detail in proportion to proximity: the next task or wave is fully
 ## Needs
 
 - A plan format expressing graduated detail: full specification near, scope-and-intent far, with the boundary explicit.
+- Prototype tasks are first-class near work: named question in, answer out, the answer feeding the next elaboration.
 - An elaboration step at wave completion that turns new knowledge into the next wave's full detail, traceable to what was learned.
 - Approval semantics matching the gradient: approving a plan approves the near detail and the far shape; each elaborated wave is presented at its turn without re-approving the whole.
 - Decision and lesson coverage still hold: D-NN and lessons: citations bind at the detail level when a wave elaborates, so tracing never weakens.
@@ -60,7 +68,7 @@ If detail tracks proximity and waves elaborate from completed-task knowledge, th
 
 ## Open questions (for research, after approval)
 
-- Wave sizing: fixed horizon (next N tasks) vs dependency-frontier vs planner judgment.
+- Wave boundary in practice: how the planner states "one coherent phase or thing" so builders and the coverage gate agree where the wave ends (D-03 rules out numeric caps).
 - Where the elaboration record lives (plan appendix vs per-wave section) and what the build skill's wave boundary triggers.
 - How the coverage gate treats far tasks whose citations are not yet elaborated (deferred-but-tracked vs uncovered).
 - What the planner's brief changes from "specify all tasks" to "specify the frontier, scope the rest".
