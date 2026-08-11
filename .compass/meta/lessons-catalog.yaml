@@ -31,9 +31,9 @@ lessons:
     status: active
     category: process
     area: workflow
-    tags: [validation, false-positives, content-aware, parsing, self-reference]
+    tags: [validation, content-aware, parsing, self-reference, edit-anchors]
     score: 5
-    summary: "Match use, not mention: strip code spans and anchor to grammar position; a doc describing a mechanism trips its trigger"
+    summary: "Match use, not mention - matchers and edit anchors alike: bind to grammar position, never a substring prose repeats"
   - file: "LESSON-test-driven-tasks-dont-discriminate.md"
     status: active
     category: process
