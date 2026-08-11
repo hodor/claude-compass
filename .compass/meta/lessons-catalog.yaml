@@ -181,3 +181,17 @@ lessons:
     tags: [context-size, rules, prose, harness, token-efficiency]
     score: 5
     summary: "Fix a behavior bug by removing the prose that trains it or adding a harness gate; added prose is the last resort and must be net-negative"
+  - file: "LESSON-walkthroughs-in-the-humans-words.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [walkthroughs, human-decision, plain-language, jargon, approval]
+    score: 5
+    summary: "A walkthrough carrying the work's own vocabulary stalls the ruling it exists to get; write it in plain words"
+  - file: "LESSON-human-practice-rationing-assumes-human-scarcity.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [research-synthesis, human-practice, agent-methodology, rationing, literature-import]
+    score: 5
+    summary: "Caps, budgets and appetites from human practice ration human throughput; name the scarce resource before importing one"

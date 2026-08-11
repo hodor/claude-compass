@@ -130,6 +130,8 @@ See [[backlog]].
 - [[LESSON-suite-size-is-not-coverage]] - 44 tests for two behaviors carried mass redundancy and two critical holes at once; a delete list is half a review
 - [[LESSON-revert-to-prove-a-regression-test]] - A regression test that still passes on the reverted fix is vacuous; revert and re-run every new test before shipping
 - [[LESSON-remove-context-before-adding]] - Fix a behavior bug by removing the prose that trains it or adding a harness gate; added prose is the last resort and must be net-negative
+- [[LESSON-walkthroughs-in-the-humans-words]] - A walkthrough carrying the work's own vocabulary stalls the ruling it exists to get; write it in plain words
+- [[LESSON-human-practice-rationing-assumes-human-scarcity]] - Caps, budgets and appetites from human practice ration human throughput; name the scarce resource before importing one
 
 ## compass-cli
 - [[compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work]] - A Python `compass` CLI Owns All Mechanical Vault Work; the Hook Calls It as a Command
