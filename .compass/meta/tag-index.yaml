@@ -83,6 +83,7 @@ tags:
   busywork:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   cache:
+  - decisions/ADR-010-identity-resident-fetch-mandatory.md
   - research/RESEARCH-cache-theory-for-context-tiers.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - research/RESEARCH-rag-fit-for-large-vaults.md
@@ -371,6 +372,7 @@ tags:
   hot-path:
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/ADR-004-hierarchical-specs-with-facets.md
+  - decisions/ADR-010-identity-resident-fetch-mandatory.md
   - research/RESEARCH-cache-theory-for-context-tiers.md
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   hub-ranking:
@@ -448,6 +450,7 @@ tags:
   lessons:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
+  - decisions/ADR-010-identity-resident-fetch-mandatory.md
   - plans/PLAN-001-lessons-and-index-implementation.md
   - plans/PLAN-003-hybrid-hierarchy.md
   - plans/PLAN-006-learning-loop.md
@@ -519,6 +522,8 @@ tags:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   nudges:
   - research/RESEARCH-hermes-memory-mechanics.md
+  observability:
+  - decisions/ADR-010-identity-resident-fetch-mandatory.md
   obsidian:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   okf:
@@ -598,6 +603,7 @@ tags:
   probes:
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
   progressive-disclosure:
+  - decisions/ADR-010-identity-resident-fetch-mandatory.md
   - research/RESEARCH-cache-theory-for-context-tiers.md
   - specs/SPEC-017-capabilities-are-reachable-and-measured.md
   progressive-elaboration:
@@ -648,6 +654,7 @@ tags:
   resume:
   - lessons/LESSON-long-agents-stall-resume-them.md
   retrieval:
+  - decisions/ADR-010-identity-resident-fetch-mandatory.md
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   - plans/PLAN-006-learning-loop.md
   - research/RESEARCH-cache-theory-for-context-tiers.md

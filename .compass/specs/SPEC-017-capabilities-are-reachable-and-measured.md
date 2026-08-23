@@ -38,6 +38,7 @@ The cost compounds: work is spent building and testing capability that cannot be
 
 - **D-01:** Adopt both hermes mechanisms, not one. Surfacing by progressive disclosure (an index of names and one-line descriptions available at decision time, full detail paged in only when judged relevant) and usage measurement (a per-capability record, with a background pass over what goes unused). (Roger, 2026-08-23, on [[RESEARCH-hermes-agent-capabilities]] findings 15 and 16: "pretty cool stuff from hermes that we should implement both.")
 - **D-02:** Compass never asks the human how Compass should run. A capability surfaces and runs on Compass's own judgment. "It never asks me how hermes should be running, it just runs." (Roger, 2026-08-23.)
+- **D-03:** A miss must be observable, and a healthy system shows misses. A measured miss rate of zero means either nothing was actually tiered or every miss is silent, and a silent miss is the defect this spec exists to end. Observability of the miss is therefore part of the deliverable, not a diagnostic added later. (Roger, 2026-08-23: "I would love for us to also have 'cache miss' when trying to access our data, then it would likely mean we're doing the caching correctly.")
 
 ## Desired Outcome
 
