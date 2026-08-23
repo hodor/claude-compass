@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 6769 / 5000 tokens (index.md 3529, active.md 871, meta/lessons-catalog.yaml 2369). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 6842 / 5000 tokens (index.md 3605, active.md 871, meta/lessons-catalog.yaml 2366). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -65,7 +65,9 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-rolling-wave-flow-theory]] - flow and lean product-development theory behind it
 - [[RESEARCH-rolling-wave-synthesis]] - cross-axis synthesis and recommended mechanism
 - [[RESEARCH-cache-theory-for-context-tiers]] - tag/data split, inclusion cost, and why a hardware miss cannot cost correctness
+- [[RESEARCH-decomposition-criteria-for-sizing]] - no sizing metric exists; cheap reversal licenses acting early; the surviving risk is lock-in
 - [[RESEARCH-cache-theory-for-context-tiers]] - Cache Theory for Compass's Context Tiers: Tag/Data Split, Inclusion, and the Correctness of a Miss
+- [[RESEARCH-decomposition-criteria-for-sizing]] - Decomposition Criteria for Sizing: No Metric Exists, Cheap Reversal Licenses Acting, and the Surviving Risk Is Social
 
 ## Plans
 
@@ -137,7 +139,7 @@ See [[backlog]].
 - [[LESSON-revert-to-prove-a-regression-test]] - A test that passes without the change under test is unwritten; prove it per test, by revert after the fix or by the red run before it
 - [[LESSON-remove-context-before-adding]] - Fix a behavior bug by removing the prose that trains it or adding a harness gate; added prose is the last resort and must be net-negative
 - [[LESSON-walkthroughs-in-the-humans-words]] - A walkthrough carrying the work's own vocabulary stalls the ruling it exists to get; write it in plain words
-- [[LESSON-human-practice-rationing-assumes-human-scarcity]] - Caps, budgets and appetites from human practice ration human throughput; name the scarce resource before importing one
+- [[LESSON-human-practice-rationing-assumes-human-scarcity]] - Name the precondition a borrowed mechanism needs before importing it; mark every finding maps or metaphor
 
 ## compass-cli
 - [[compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work]] - A Python `compass` CLI Owns All Mechanical Vault Work; the Hook Calls It as a Command

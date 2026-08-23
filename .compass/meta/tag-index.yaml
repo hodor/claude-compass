@@ -134,6 +134,8 @@ tags:
   - lessons/LESSON-dont-strip-agent-quality-stations.md
   codex:
   - specs/SPEC-006-multi-host-agent-cli-support.md
+  cohesion:
+  - research/RESEARCH-decomposition-criteria-for-sizing.md
   command-hook:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   compass-cli:
@@ -198,6 +200,8 @@ tags:
   - specs/SPEC-007-decision-coverage-tracing.md
   decision-lineage:
   - research/RESEARCH-grep-vs-graph-experiment.md
+  decomposition:
+  - research/RESEARCH-decomposition-criteria-for-sizing.md
   dedup:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   - plans/PLAN-001-lessons-and-index-implementation.md
@@ -546,6 +550,8 @@ tags:
   - research/RESEARCH-test-quality-bar-validation.md
   parallel-builders:
   - lessons/LESSON-subagent-worktrees-fork-stale.md
+  parnas:
+  - research/RESEARCH-decomposition-criteria-for-sizing.md
   parser:
   - decisions/ADR-007-decision-coverage-mechanism.md
   - plans/PLAN-004-decision-coverage.md
@@ -632,6 +638,8 @@ tags:
   - specs/SPEC-003-hierarchical-vault-organization.md
   rationing:
   - lessons/LESSON-human-practice-rationing-assumes-human-scarcity.md
+  real-options:
+  - research/RESEARCH-decomposition-criteria-for-sizing.md
   reference:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   registration:
@@ -666,6 +674,8 @@ tags:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   - research/RESEARCH-lessons-and-index-architecture.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
+  reversibility:
+  - research/RESEARCH-decomposition-criteria-for-sizing.md
   revert-check:
   - lessons/LESSON-revert-to-prove-a-regression-test.md
   review:
@@ -704,6 +714,7 @@ tags:
   shape-up:
   - research/RESEARCH-rolling-wave-software-practice.md
   sizing:
+  - research/RESEARCH-decomposition-criteria-for-sizing.md
   - specs/SPEC-016-sizing-work-beyond-one-spec.md
   skill:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
@@ -840,6 +851,7 @@ tags:
   units:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
   - plans/PLAN-003-hybrid-hierarchy.md
+  - research/RESEARCH-decomposition-criteria-for-sizing.md
   - specs/SPEC-016-sizing-work-beyond-one-spec.md
   units-of-work:
   - research/RESEARCH-hybrid-hierarchy-impl.md
