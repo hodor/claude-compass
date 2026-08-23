@@ -67,7 +67,9 @@ Also flagged as **metaphor only**: Parnas's efficiency trade-off (1972, p.1057) 
 
 **Boehm's cost-of-change curve is itself contested.** The canonical 100x figure was closer to 5:1 for small non-critical projects even in the original 1981 data, and iterative development with automated testing has flattened it further. It should not be imported as a timeless constant. (MEDIUM)
 
-**Compass's reversal path was inspected rather than assumed.** `compass make-unit` git-moves the artifacts into a new unit folder, leaves filenames, numbers and frontmatter untouched so bare-stem wikilinks keep resolving, regenerates derived state in-process, and validates, in one apply step (`plugin/cli/commands/make_unit.py`). There is no caller whose behavior could regress. (HIGH, direct code inspection)
+**Compass's forward path was inspected rather than assumed; the reverse path does not exist.** `compass make-unit` git-moves the artifacts into a new unit folder, leaves filenames, numbers and frontmatter untouched so bare-stem wikilinks keep resolving, regenerates derived state in-process, and validates, in one apply step (`plugin/cli/commands/make_unit.py`). There is no caller whose behavior could regress. (HIGH, direct code inspection)
+
+**Correction, 2026-08-23, from adversarial review of [[PLAN-009-sizing-mechanism]]:** that inspection covered only the forward direction. `plugin/cli/commands/` holds `make-unit` and `promote` and no inverse of either - no `demote`, no `unmake-unit`, no undo. Reverting a shape today means a hand `git mv` plus manual index repair. So "reversal is cheap", the premise the whole early-commitment argument rests on, is verified for creating a shape and unverified for undoing one. The premise becomes true only once the inverse ships; until then it is a claim about an unimplemented operation. (HIGH, direct code inspection)
 
 ### The surviving risk is social, not mechanical
 

@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 6906 / 5000 tokens (index.md 3669, active.md 871, meta/lessons-catalog.yaml 2366). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 6968 / 5000 tokens (index.md 3731, active.md 871, meta/lessons-catalog.yaml 2366). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -78,6 +78,8 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-006-learning-loop]] - Learning Loop Implementation: harness-owned capture, catalog retrieval, lesson coverage (approved 2026-08-05)
 - [[PLAN-007-test-quality]] - Test Quality Instruments (Authoring Bar, Test-First Station, Admission Filter, Diagnostic Mutation)
 - [[PLAN-008-rolling-wave]] - Rolling-Wave Plans (Detail Regions, Three-State Coverage, the Elaboration Loop)
+- [[PLAN-009-sizing-mechanism]] - zero-artifact units, the sizing record, and the changeability walk (draft, awaiting approval)
+- [[PLAN-009-sizing-mechanism]] - Sizing Mechanism (Zero-Artifact Units, the Sizing Record, and the Changeability Walk)
 
 ## Decisions
 

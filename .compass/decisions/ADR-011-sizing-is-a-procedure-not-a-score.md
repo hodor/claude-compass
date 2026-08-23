@@ -7,6 +7,7 @@ area: methodology
 tags: [sizing, decomposition, units, vision, harness, observability]
 created: 2026-08-23
 updated: 2026-08-23
+author: "orchestrator"
 depends_on: ["[[SPEC-016-sizing-work-beyond-one-spec]]", "[[RESEARCH-decomposition-criteria-for-sizing]]", "[[ADR-004-hierarchical-specs-with-facets]]", "[[ADR-006-hybrid-hierarchy-implementation]]"]
 ---
 
@@ -30,6 +31,7 @@ The constraint that shapes everything below: there is no validated mechanical si
 - **D-08:** Every sizing decision and every later correction is recorded. A correction that is never observed is indistinguishable from a correction that was never needed.
 - **D-09:** The notice says the shape is provisional and how to change it. A structure Compass chose must be as easy to question as one the human chose.
 - **D-10:** `compass unit-check` keeps its reactive role as a backstop for shapes that grow into needing promotion after the fact, and it gets an actual caller. Proactive sizing at vision time and reactive detection later are complements.
+- **D-11:** The inverse of each shape change ships alongside it. A shape that can be created without asking must be reversible by one command, because cheap reversal is the premise that licenses acting without asking. Until the inverse exists, the premise is asserted rather than demonstrated.
 
 ## Rationale
 
@@ -38,6 +40,8 @@ D-01 is forced by evidence rather than taste. Woodward found 163 trained raters 
 D-02 and D-06 are the constructive half. Parnas 1972 gives an operational test that is judgment against explicit criteria rather than a scan of surface text, and Parnas 1976 gives the decision-graph that says what belongs in a parent versus a child.
 
 D-04 and D-09 rest on the reversal cost. Real options says the value of waiting collapses when late exercise costs about what early exercise costs, and `compass make-unit` is a `git mv` with derived state regenerated and no caller whose behavior could regress. That is the precondition every framework that would otherwise counsel deferral attaches to acting on judgment.
+
+That precondition is currently half-verified, and D-11 exists to close it. The inspection behind it covered creating a shape, not undoing one: no inverse of `make-unit` or `promote` exists today, so reverting means a hand `git mv` and manual index repair. Acting without asking is licensed by cheap reversal, so the reverse path is not a convenience - it is what makes D-02's whole posture defensible.
 
 D-08 and D-09 exist because cheap reversal answers the mechanical objection and not the social one. Metz's mechanism is that an early-imposed shape acquires normative weight and gets bent rather than reverted; the undo being trivial does not help if nobody calls it. The failure to watch for is anyone saying, in effect, that it is already a unit so we may as well live with it.
 
