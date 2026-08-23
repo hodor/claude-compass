@@ -3,6 +3,8 @@
 tags:
   ablation:
   - research/RESEARCH-evaluation-benchmarks.md
+  acceptance-criteria:
+  - lessons/LESSON-untestable-criterion-is-a-spec-defect.md
   accuracy:
   - specs/SPEC-007-decision-coverage-tracing.md
   admission-bar:
@@ -548,6 +550,8 @@ tags:
   - research/RESEARCH-okf-improvements-for-compass.md
   on-hold:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
+  oracle:
+  - lessons/LESSON-untestable-criterion-is-a-spec-defect.md
   orchestration:
   - lessons/LESSON-dont-strip-agent-quality-stations.md
   - lessons/LESSON-long-agents-stall-resume-them.md
@@ -613,6 +617,8 @@ tags:
   - research/RESEARCH-scientific-method-in-compass.md
   portability:
   - specs/SPEC-006-multi-host-agent-cli-support.md
+  pre-build-station:
+  - lessons/LESSON-untestable-criterion-is-a-spec-defect.md
   pre-registration:
   - lessons/LESSON-score-the-do-nothing-baseline-before-running.md
   - research/RESEARCH-scientific-method-in-compass.md
@@ -752,6 +758,8 @@ tags:
   - research/RESEARCH-grep-vs-graph-experiment.md
   spec-012:
   - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
+  spec-defect:
+  - lessons/LESSON-untestable-criterion-is-a-spec-defect.md
   spec-driven-development:
   - research/RESEARCH-gsd-core-improvements-for-compass.md
   spec-redesign:
@@ -826,6 +834,7 @@ tags:
   testing:
   - lessons/LESSON-revert-to-prove-a-regression-test.md
   - lessons/LESSON-suite-size-is-not-coverage.md
+  - lessons/LESSON-untestable-criterion-is-a-spec-defect.md
   - plans/PLAN-007-test-quality.md
   - research/RESEARCH-fleet-test-census.md
   - research/RESEARCH-test-quality-bar-validation.md

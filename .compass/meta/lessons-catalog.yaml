@@ -210,3 +210,10 @@ lessons:
     tags: [falsification, pre-registration, baseline, control-arm, prototypes]
     score: 5
     summary: "Score the constant-answer baseline, fix the threshold, and check the stop verdict can fire and end the plan"
+  - file: "LESSON-untestable-criterion-is-a-spec-defect.md"
+    status: active
+    category: process
+    area: testing
+    tags: [testing, pre-build-station, acceptance-criteria, spec-defect, oracle]
+    score: 5
+    summary: "A criterion that defines no input class cannot be tested; report the spec defect, never invent the equivalence class"
