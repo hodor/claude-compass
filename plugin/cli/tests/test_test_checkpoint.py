@@ -77,9 +77,10 @@ def make_repo_vault(test_case):
     must never accidentally include the checkpoint index it is about to be
     checkpointed under. The `.gitignore` lands in its own commit so every
     later checkpoint commit stays dedicated to just the test files being
-    checkpointed - `verify` derives checkpointed membership from the whole
-    commit's diff, so a commit mixed with unrelated files would otherwise
-    surface them as spurious checkpointed entries."""
+    checkpointed - `verify` derives `.py` membership from the whole commit's
+    diff regardless of what the index's `files` list says, so a commit
+    mixed with unrelated `.py` files would otherwise surface them as
+    spurious checkpointed entries."""
     tmp = Path(tempfile.mkdtemp())
     test_case.addCleanup(shutil.rmtree, tmp, True)
     (tmp / ".compass").mkdir()
@@ -307,6 +308,30 @@ class ClassificationTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("modified", out)
         self.assertIn("__init__.py", out)
+
+    def test_verify_unrelated_non_python_file_in_commit_reports_clean_exits_0(self):
+        """Adversarial where a checkpoint commit also carries a bundled
+        markdown file - a plan updated in the same commit as the tests it
+        plans - whose prose happens to be invalid Python; a classifier that
+        AST-parses every file the commit touched would report that file
+        `modified` on a tokenizer error and fail a checkpoint nothing
+        actually tampered with."""
+        repo_root = make_repo_vault(self)
+        write_file(repo_root, "tests/__init__.py", INIT_SRC)
+        write_file(repo_root, "tests/test_foo.py", BASELINE_SRC)
+        write_file(
+            repo_root, "notes/plan.md",
+            "# Plan\n\nWave 1 shipped TASK-078 and TASK-083.\n",
+        )
+        sha = git_commit_all(repo_root, "test(TASK-110): checkpoint plus unrelated markdown")
+        with_vault_env(self, repo_root)
+        code, out, err = run_cli(["record", "TASK-110", "tests/test_foo.py", "--commit", sha])
+        self.assertEqual(code, 0, out + err)
+
+        code, out, err = self._verify(task="TASK-110")
+        self.assertEqual(code, 0, out + err)
+        self.assertNotIn("plan.md", out)
+        self.assertIn("unchanged", out)
 
     def test_verify_json_file_list_edit_does_not_change_verdict(self):
         """Adversarial where a builder edits the untracked JSON index to
