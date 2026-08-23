@@ -63,7 +63,7 @@ def _plugin_yaml_check(vault_root):
     fix = "run /compass:setup to install a versioned plugin.yaml"
     if not path.is_file():
         return Check("plugin.yaml", FAIL, f"{path} is missing", fix)
-    text = path.read_text(encoding="utf-8")
+    text = vaultlib.read_vault_text(path)
     match = re.search(r"^\s*version:\s*(\S.*)$", text, re.MULTILINE)
     if not match or not match.group(1).strip():
         return Check("plugin.yaml", FAIL, f"{path} has no version field", fix)
