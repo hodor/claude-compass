@@ -4,6 +4,7 @@ import datetime
 import io
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -15,6 +16,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import capturelib  # noqa: E402
 import lessonslib  # noqa: E402
+import vaultlib  # noqa: E402
+from commands import hot_path as hot_path_cmd  # noqa: E402
 from commands import sync as sync_cmd  # noqa: E402
 from commands import validate as validate_cmd  # noqa: E402
 
@@ -849,3 +852,132 @@ class CatalogRowEscalatedTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HotPathCapTests(SyncFixture):
+    """The aggregate hot-path cap: index.md, active.md and the lessons catalog
+    together against `hot_path.HOT_PATH_CAP`, independent of the per-file caps."""
+
+    def _fill_over_cap(self, rel):
+        """Write `rel` with enough filler to carry the hot path over the cap
+        on its own. `active.md` has no component cap, so filling it isolates
+        the aggregate breach from every per-file check."""
+        words = []
+        while True:
+            words.extend(f"filler{i}" for i in range(len(words), len(words) + 400))
+            text = " ".join(words)
+            if vaultlib.count_tokens(text) > hot_path_cmd.HOT_PATH_CAP:
+                self.write(rel, text)
+                return
+
+    def marker_line(self):
+        for line in self.index_text().split("\n"):
+            if line.startswith(sync_cmd.HOT_PATH_WARNING_PREFIX):
+                return line
+        return None
+
+    def test_marker_written_when_only_the_aggregate_is_over(self):
+        """Adversarial where: every component cap passes and the total does
+        not. The defect this catches is the aggregate breach going unmarked
+        because only per-file caps were checked, which leaves the one cap
+        actually violated with nothing attached to it."""
+        self._fill_over_cap("active.md")
+        report = sync_cmd.sync(self.root)
+        index_text = self.index_text()
+        # The per-file caps that would otherwise have fired: all clear.
+        self.assertLessEqual(len(index_text.splitlines()), sync_cmd.INDEX_LINE_CAP)
+        self.assertNotIn(sync_cmd.INDEX_WARNING, index_text)
+        self.assertNotIn(sync_cmd.CATALOG_WARNING,
+                         (self.root / "meta" / "lessons-catalog.yaml").read_text(encoding="utf-8"))
+        self.assertIn("hot path", report["caps"])
+        self.assertIsNotNone(self.marker_line())
+
+    def test_marker_names_every_hot_path_file_and_the_cap(self):
+        self._fill_over_cap("active.md")
+        sync_cmd.sync(self.root)
+        line = self.marker_line()
+        for rel in hot_path_cmd.HOT_PATH_FILES:
+            self.assertIn(rel, line)
+        self.assertIn(f"/ {hot_path_cmd.HOT_PATH_CAP} tokens", line)
+
+    def test_marker_total_excludes_the_marker_itself(self):
+        """Adversarial where: the marker is prepended to the very file it
+        measures. Counting it would inflate the total by its own length and,
+        for a vault near the boundary, keep the marker alive forever. The
+        reported total must equal the count of the three files with no
+        marker present."""
+        self._fill_over_cap("active.md")
+        sync_cmd.sync(self.root)
+        reported = int(self.marker_line().split(sync_cmd.HOT_PATH_WARNING_PREFIX)[1].split(" /")[0])
+        stripped = "\n".join(
+            line for line in self.index_text().split("\n")
+            if not line.startswith(sync_cmd.HOT_PATH_WARNING_PREFIX)
+        )
+        expected = vaultlib.count_tokens(stripped)
+        for rel in ("active.md", "meta/lessons-catalog.yaml"):
+            expected += vaultlib.count_tokens((self.root / rel).read_text(encoding="utf-8"))
+        self.assertEqual(reported, expected)
+
+    def test_no_marker_and_no_warning_when_under_cap(self):
+        report = sync_cmd.sync(self.root)
+        self.assertNotIn("hot path", report["caps"])
+        self.assertIsNone(self.marker_line())
+
+    def test_marker_cleared_once_the_total_drops_back_under(self):
+        """Adversarial where: the breach is fixed. A marker that is written
+        but never withdrawn tells every later session to consolidate a vault
+        that is already inside its budget."""
+        self._fill_over_cap("active.md")
+        sync_cmd.sync(self.root)
+        self.assertIsNotNone(self.marker_line())
+        self.write("active.md", "trimmed")
+        self.write("meta/lessons-catalog.yaml", CATALOG_TEMPLATE)
+        report = sync_cmd.sync(self.root)
+        self.assertNotIn("hot path", report["caps"])
+        self.assertIsNone(self.marker_line())
+
+    def test_repeat_sync_over_cap_leaves_exactly_one_marker(self):
+        """Adversarial where: sync runs on every vault write. A marker
+        prepended per run stacks duplicates into the hot path it is
+        complaining about."""
+        self._fill_over_cap("active.md")
+        sync_cmd.sync(self.root)
+        first = self.index_text()
+        sync_cmd.sync(self.root)
+        second = self.index_text()
+        markers = [line for line in second.split("\n")
+                   if line.startswith(sync_cmd.HOT_PATH_WARNING_PREFIX)]
+        self.assertEqual(len(markers), 1)
+        self.assertEqual(first, second)
+
+    def test_missing_index_does_not_crash_the_hot_path_check(self):
+        (self.root / "index.md").unlink()
+        sync_cmd._check_hot_path_cap(self.root, self.root / "index.md")  # must not raise
+
+
+class ConsolidateTriggerLiteralTests(unittest.TestCase):
+    """Every marker the consolidate skill waits for must be one sync can
+    actually write. A literal that drifted on either side gates the only
+    cleanup instrument shut with no error anywhere."""
+
+    def skill_markers(self):
+        path = Path(__file__).resolve().parents[2] / "skills" / "consolidate" / "SKILL.md"
+        text = path.read_text(encoding="utf-8")
+        pre_check = text.split("## Pre-check", 1)[1].split("If none present", 1)[0]
+        return re.findall(r"^- `([^`]+)`", pre_check, re.MULTILINE)
+
+    def test_pre_check_lists_markers(self):
+        self.assertTrue(self.skill_markers())
+
+    def test_every_skill_marker_is_one_sync_writes(self):
+        writable = [
+            sync_cmd.INDEX_WARNING,
+            sync_cmd.CATALOG_WARNING,
+            sync_cmd._hot_path_marker([("index.md", 1)], 1),
+        ]
+        for marker in self.skill_markers():
+            with self.subTest(marker=marker):
+                self.assertTrue(
+                    any(w.startswith(marker) for w in writable),
+                    f"consolidate waits for {marker!r}, which no sync marker starts with",
+                )

@@ -25,6 +25,7 @@ from pathlib import Path
 
 import capturelib
 import vaultlib
+from commands import hot_path
 
 # A type directory's index section is its name title-cased, with overrides for
 # names that do not title-case cleanly. Unknown dirs (e.g. retro -> ## Retro)
@@ -54,6 +55,7 @@ CAPTURE_LOG_MAX_AGE_DAYS = 365
 WIKILINK = re.compile(r"\[\[([^\]]+)\]\]")
 INDEX_WARNING = "<!-- WARNING: index.md exceeded hot-path cap. Run /compass:consolidate before next session. -->"
 CATALOG_WARNING = "# WARNING: catalog exceeded cap. Run /compass:consolidate before next session."
+HOT_PATH_WARNING_PREFIX = "<!-- WARNING: hot path "
 
 # The minimal index.md /compass:setup writes for a new vault, reused here so
 # a vault synced before index.md exists gets the same shape rather than an
@@ -324,6 +326,53 @@ def _sync_tag_index(vault_root, records):
     return len(tag_map)
 
 
+def _hot_path_marker(breakdown, total):
+    parts = ", ".join(f"{rel} {count}" for rel, count in breakdown)
+    return (
+        f"{HOT_PATH_WARNING_PREFIX}{total} / {hot_path.HOT_PATH_CAP} tokens "
+        f"({parts}). Run /compass:consolidate before next session. -->"
+    )
+
+
+def _hot_path_breakdown(vault_root, index_text):
+    """Per-file token counts for the hot path. index.md's text comes from the
+    caller so the count excludes any marker already prepended to it; counting
+    a marker would let it hold itself above the cap."""
+    breakdown = []
+    for rel in hot_path.HOT_PATH_FILES:
+        if rel == "index.md":
+            breakdown.append((rel, vaultlib.count_tokens(index_text)))
+            continue
+        path = vault_root / rel
+        if path.is_file():
+            breakdown.append((rel, vaultlib.count_tokens(path.read_text(encoding="utf-8"))))
+    return breakdown
+
+
+def _check_hot_path_cap(vault_root, index_path):
+    """Write, refresh, or clear index.md's aggregate hot-path marker.
+
+    Every component cap can pass while the three hot-path files together
+    breach the budget each turn pays for. This measures the total and records
+    the per-file breakdown that names which file to cut. The marker is
+    regenerated from current numbers and removed once the total is back under
+    the cap; index.md is rewritten only when its text actually changes."""
+    if not index_path.is_file():
+        return False
+    text = index_path.read_text(encoding="utf-8")
+    stripped = "\n".join(
+        line for line in text.split("\n")
+        if not line.startswith(HOT_PATH_WARNING_PREFIX)
+    )
+    breakdown = _hot_path_breakdown(vault_root, stripped)
+    total = sum(count for _, count in breakdown)
+    over = total > hot_path.HOT_PATH_CAP
+    desired = _hot_path_marker(breakdown, total) + "\n" + stripped if over else stripped
+    if desired != text:
+        vaultlib.write_text_lf(index_path, desired)
+    return over
+
+
 def _check_caps(vault_root, records):
     warnings = []
     index_path = vault_root / "index.md"
@@ -349,6 +398,9 @@ def _check_caps(vault_root, records):
         if over_cat and CATALOG_WARNING not in ctext:
             vaultlib.write_text_lf(catalog_path, CATALOG_WARNING + "\n" + ctext)
             warnings.append("lessons-catalog.yaml")
+
+    if _check_hot_path_cap(vault_root, index_path):
+        warnings.append("hot path")
     return warnings
 
 
