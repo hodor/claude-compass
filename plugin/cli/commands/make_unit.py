@@ -14,8 +14,9 @@ The moved artifacts' entries are removed from the root `index.md` - sync is
 append-only and cannot heal them - then an in-process `sync` regenerates
 derived state (the unit's index section, tag index, lessons catalog) and an
 in-process `validate` reports the vault's health. A zero-artifact unit skips
-both: there is nothing for sync to fold into a section, and the root index is
-left untouched.
+sync: there is nothing for it to fold into a section, and the root index is
+left untouched. Validate still runs, since the vault's health is independent
+of whether this particular unit moved any artifacts.
 
 Dry-run by default; `--apply` executes. The operation refuses outright - exit
 1, zero changes - when the unit target already exists, is a reserved name, or
@@ -216,6 +217,17 @@ def run(args):
             f"compass make-unit: created unit '{name}' at {name}/index.md "
             "with no artifacts\n"
         )
+        errors, warnings = validate_command.check_vault(vault_root)
+        if not errors and not warnings:
+            sys.stdout.write("  validate: clean\n")
+        else:
+            sys.stdout.write(
+                f"  validate: {len(errors)} error(s), {len(warnings)} warning(s)\n"
+            )
+            for finding in errors:
+                sys.stdout.write(f"    ERROR   {finding}\n")
+            for finding in warnings:
+                sys.stdout.write(f"    warning {finding}\n")
         return 0
 
     moved_files = [f for move in moves for f in move["files"]]
