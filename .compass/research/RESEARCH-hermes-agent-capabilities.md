@@ -11,6 +11,7 @@ git_branch: "master"
 git_commit: "42c9e59"
 author: "researcher (Claude)"
 depends_on: ["[[SPEC-006-multi-host-agent-cli-support]]"]
+summary: "hermes capabilities and extension surface, source-verified"
 ---
 
 # hermes-agent (NousResearch): Capabilities and Extension Surface, Source-Verified

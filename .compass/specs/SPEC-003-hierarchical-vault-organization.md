@@ -8,6 +8,7 @@ tags: [hierarchy, taxonomy, cache, memgpt, raptor, facets, working-set]
 created: 2026-06-10
 updated: 2026-06-10
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]", "[[RESEARCH-hierarchical-knowledge-base-design]]"]
+summary: "hierarchical folders + faceted tags + 3-tier memory (approved)"
 ---
 
 # Hierarchical Vault Organization with Faceted Tags

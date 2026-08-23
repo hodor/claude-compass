@@ -11,6 +11,7 @@ git_branch: "master"
 git_commit: "fbc32c5"
 author: "researcher agent"
 depends_on: ["[[SPEC-007-decision-coverage-tracing]]", "[[RESEARCH-gsd-core-improvements-for-compass]]", "[[ADR-005-compass-cli-for-mechanical-work]]"]
+summary: "format, parser, matcher, gate, migration"
 ---
 
 # Decision Coverage Implementation: Format, Parser, Matcher, Gate, Migration

@@ -12,6 +12,7 @@ git_branch: "master"
 git_commit: "7b5b5a8"
 author: "planner agent"
 depends_on: ["[[SPEC-007-decision-coverage-tracing]]", "[[ADR-007-decision-coverage-mechanism]]", "[[RESEARCH-decision-coverage-impl]]"]
+summary: "Decision Coverage Implementation (D-NN Parser, Coverage Gate, Audit)"
 ---
 
 # Decision Coverage Implementation (D-NN Parser, Coverage Gate, Audit)

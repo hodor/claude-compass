@@ -8,6 +8,7 @@ tags: [hierarchy, taxonomy, cache, memgpt, raptor, facets, working-set, lost-in-
 created: 2026-06-10
 updated: 2026-06-10
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]"]
+summary: "MemGPT/RAPTOR/faceted-classification synthesis, 11 findings"
 ---
 
 ## Question

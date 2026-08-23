@@ -8,6 +8,7 @@ tags: [planning, rolling-wave, progressive-elaboration, agents, context-engineer
 created: 2026-08-11
 updated: 2026-08-11
 depends_on: ["[[SPEC-015-rolling-wave-planning]]"]
+summary: "receding-horizon planning when planner and executor are LLMs"
 ---
 
 # Progressive/Receding-Horizon Planning for AI Agents

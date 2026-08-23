@@ -9,6 +9,7 @@ tags: [planning, rolling-wave, progressive-elaboration, plan-approval, feedback-
 created: 2026-08-11
 updated: 2026-08-11
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]"]
+summary: "plan detail tracks proximity; waves elaborate from completed-task knowledge (draft)"
 ---
 
 # Plans Elaborate Progressively - Detail Tracks Proximity, Not the Whole Plan Upfront

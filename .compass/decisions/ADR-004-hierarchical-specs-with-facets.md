@@ -11,6 +11,7 @@ git_branch: "master"
 git_commit: "pending"
 author: "roger + claude"
 depends_on: ["[[SPEC-003-hierarchical-vault-organization]]", "[[RESEARCH-hierarchical-knowledge-base-design]]"]
+summary: "3-tier MemGPT memory + folder hierarchy + faceted tags + admission control; hot path at prompt start"
 ---
 
 ## Status

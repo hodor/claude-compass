@@ -153,7 +153,8 @@ class HotPathTests(unittest.TestCase):
 class ValidateTests(unittest.TestCase):
     SPEC_OK = (
         "---\ntitle: T\ntype: spec\nstatus: approved\narea: x\n"
-        "tags: [a]\ncreated: 2026-06-14\nupdated: 2026-06-14\n---\n\n"
+        "tags: [a]\ncreated: 2026-06-14\nupdated: 2026-06-14\n"
+        'summary: "a target spec"\n---\n\n'
         "Refers to [[SPEC-001-target]].\n"
     )
 

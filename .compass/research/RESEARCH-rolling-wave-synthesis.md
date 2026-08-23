@@ -15,6 +15,7 @@ depends_on:
   - "[[RESEARCH-rolling-wave-flow-theory]]"
   - "[[RESEARCH-rolling-wave-software-practice]]"
   - "[[RESEARCH-rolling-wave-agent-planning]]"
+summary: "cross-axis synthesis and recommended mechanism"
 ---
 
 # Rolling-Wave Planning: Cross-Axis Synthesis and Recommended Mechanism

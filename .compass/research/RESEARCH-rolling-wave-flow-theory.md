@@ -11,6 +11,7 @@ git_branch: "master"
 git_commit: "268aebc"
 author: "researcher (Claude)"
 depends_on: ["[[SPEC-015-rolling-wave-planning]]"]
+summary: "flow and lean product-development theory behind it"
 ---
 
 # Flow and Lean Product-Development Theory Behind Rolling-Wave Planning

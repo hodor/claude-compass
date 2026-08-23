@@ -8,6 +8,7 @@ tags: [lessons, learning-loop, capture, retrieval, application-audit, triggers, 
 created: 2026-08-05
 updated: 2026-08-05
 depends_on: ["[[SPEC-002-lessons-and-index-subsystem]]", "[[RESEARCH-lesson-capture-failure]]", "[[RESEARCH-hermes-memory-mechanics]]"]
+summary: "capture on real events, retrieval at the work, application audited (approved, SHIPPED v0.5.0)"
 ---
 
 # Compass Learns - the Loop from Capture to Retrieval to Application Closes

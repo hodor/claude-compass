@@ -9,6 +9,7 @@ created: 2026-08-23
 updated: 2026-08-23
 author: paper-research
 depends_on: ["[[SPEC-016-sizing-work-beyond-one-spec]]", "[[RESEARCH-hierarchical-knowledge-base-design]]", "[[RESEARCH-cache-theory-for-context-tiers]]"]
+summary: "no sizing metric exists; cheap reversal licenses acting early; the surviving risk is lock-in"
 ---
 
 # Decomposition Criteria for Sizing

@@ -9,6 +9,7 @@ tags: [testing, test-quality, tester-agent, bloat, adversarial, verification]
 created: 2026-08-07
 updated: 2026-08-07
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]", "[[SPEC-012-learning-loop]]"]
+summary: "per-test admission bar; suite size an outcome, never a target (approved 2026-08-07)"
 ---
 
 # Agent-Written Tests Are Measurably Good, Not Merely Numerous

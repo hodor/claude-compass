@@ -9,6 +9,7 @@ tags: [sizing, units, hierarchy, discoverability, vision, defaults]
 created: 2026-08-23
 updated: 2026-08-23
 depends_on: ["[[SPEC-010-universal-hybrid-hierarchy]]", "[[SPEC-003-hierarchical-vault-organization]]"]
+summary: "work too big for one spec gets the bigger shape without the human knowing the machinery (approved 2026-08-23)"
 ---
 
 # Work Too Big for One Spec Gets the Bigger Shape Without the Human Knowing the Machinery

@@ -8,6 +8,7 @@ tags: [update, customization, overlays, install, drift, local]
 created: 2026-08-09
 updated: 2026-08-09
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]"]
+summary: "Project-Local Workflow Customizations Survive Update"
 ---
 
 # Project-Local Workflow Customizations Survive Update

@@ -8,6 +8,7 @@ tags: [scientific-method, falsifiability, hypothesis, pre-registration, popper, 
 created: 2026-06-10
 updated: 2026-06-10
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]", "[[ADR-001-methodology-as-skill-with-vault]]", "[[ADR-002-retrospective-lessons-subsystem]]"]
+summary: "does Compass embody the scientific method or borrow its vocabulary; 8 gaps"
 ---
 
 ## Question

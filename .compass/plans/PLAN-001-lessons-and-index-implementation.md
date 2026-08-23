@@ -9,6 +9,7 @@ created: 2026-05-24
 updated: 2026-05-24
 completed: 2026-05-24
 depends_on: ["[[SPEC-002-lessons-and-index-subsystem]]", "[[RESEARCH-lessons-and-index-architecture]]"]
+summary: "12 tasks across 6 phases implementing SPEC-002 (done 2026-05-24)"
 ---
 
 # Lessons & Index Implementation

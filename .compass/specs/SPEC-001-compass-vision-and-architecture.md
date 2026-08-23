@@ -7,6 +7,7 @@ area: architecture
 tags: [core, vision, architecture, workflow, harness, hierarchy, configurable-pipeline]
 created: 2026-03-12
 updated: 2026-07-22
+summary: "Core vision, principles, architecture, and resolved design decisions"
 ---
 
 # Compass Plugin - Vision & Architecture

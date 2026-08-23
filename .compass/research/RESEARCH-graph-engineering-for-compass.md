@@ -11,6 +11,7 @@ git_branch: "master"
 git_commit: "d3abd84"
 author: "researcher (Claude)"
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]", "[[RESEARCH-rag-fit-for-large-vaults]]"]
+summary: "landscape, prior art, gap analysis"
 ---
 
 # Graph Engineering for Compass - Landscape, Prior Art, and Gap Analysis

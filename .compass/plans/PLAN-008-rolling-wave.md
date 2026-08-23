@@ -11,6 +11,7 @@ created: 2026-08-11
 updated: 2026-08-11
 author: "planner agent"
 depends_on: ["[[SPEC-015-rolling-wave-planning]]", "[[ADR-009-rolling-wave-mechanism]]", "[[RESEARCH-rolling-wave-synthesis]]"]
+summary: "Rolling-Wave Plans (Detail Regions, Three-State Coverage, the Elaboration Loop)"
 ---
 
 # Rolling-Wave Plans (Detail Regions, Three-State Coverage, the Elaboration Loop)

@@ -9,6 +9,7 @@ created: 2026-07-24
 updated: 2026-07-24
 author: "roger + claude"
 depends_on: ["[[SPEC-008-central-model-resolution-table]]", "[[RESEARCH-model-resolution-impl]]", "[[SPEC-006-multi-host-agent-cli-support]]", "[[ADR-005-compass-cli-for-mechanical-work]]"]
+summary: "Abstract Model Tiers Resolved at Install Time by compass apply-models"
 ---
 
 ## Status

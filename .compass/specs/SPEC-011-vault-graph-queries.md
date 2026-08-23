@@ -9,6 +9,7 @@ tags: [graph, queries, orphans, hub-ranking, impact-traversal, harness]
 created: 2026-07-26
 updated: 2026-08-05
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]", "[[RESEARCH-graph-engineering-for-compass]]", "[[RESEARCH-grep-vs-graph-experiment]]"]
+summary: "orphans + hub ranking + impact traversal with planner consumer (approved 2026-08-05)"
 ---
 
 # The Vault's Graph Is Queryable by the Harness

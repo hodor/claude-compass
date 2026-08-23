@@ -9,6 +9,7 @@ updated: 2026-06-19
 git_branch: "master"
 git_commit: "fbc32c5"
 author: "claude"
+summary: "Handoff: compass CLI shipped (v0.3.7); SPEC-005 (auto per-folder index + LLM summaries) drafted, ON HOLD"
 ---
 
 # Handoff: CLI shipped; SPEC-005 drafted and on hold

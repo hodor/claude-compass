@@ -12,6 +12,7 @@ git_commit: "pending"
 author: "roger + claude"
 supersedes: ""
 depends_on: ["[[ADR-001-methodology-as-skill-with-vault]]"]
+summary: "Drop `meta/config.yaml` counter file; compute next artifact number JIT from filesystem"
 ---
 
 ## Status

@@ -8,6 +8,7 @@ tags: [graph, queries, backlinks, orphans, impact-traversal, decision-lineage, g
 created: 2026-08-05
 updated: 2026-08-05
 depends_on: ["[[SPEC-011-vault-graph-queries]]"]
+summary: "SPEC-011 gate: 2 classes solved, 2 marginal, health analytics grep-insufficient"
 ---
 
 ## Question

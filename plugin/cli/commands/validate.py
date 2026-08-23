@@ -24,13 +24,17 @@ CORE_REQUIRED = ["title", "type", "status"]
 
 # Full expected frontmatter per known type. Anything here beyond CORE_REQUIRED
 # is recommended: missing it is a warning, not an error.
+# `summary` is expected on every type: the root index renders it as the
+# artifact's one-line description, so an artifact without one leaves that line
+# as the only copy of its description and the index can never be shortened
+# without losing it.
 EXPECTED_FIELDS = {
-    "spec": ["title", "type", "status", "area", "tags", "created", "updated"],
-    "plan": ["title", "type", "status", "area", "tags", "created", "updated", "depends_on"],
-    "research": ["title", "type", "status", "area", "tags", "created", "updated"],
-    "decision": ["title", "type", "status", "confidence", "area", "tags", "created", "updated"],
+    "spec": ["title", "type", "status", "area", "tags", "created", "updated", "summary"],
+    "plan": ["title", "type", "status", "area", "tags", "created", "updated", "depends_on", "summary"],
+    "research": ["title", "type", "status", "area", "tags", "created", "updated", "summary"],
+    "decision": ["title", "type", "status", "confidence", "area", "tags", "created", "updated", "summary"],
     "lesson": ["title", "type", "status", "category", "area", "tags", "created", "updated", "score", "summary"],
-    "handoff": ["title", "type", "status", "area", "tags", "created", "updated"],
+    "handoff": ["title", "type", "status", "area", "tags", "created", "updated", "summary"],
 }
 
 SPECIAL_TARGETS = {"active", "backlog", "index", "vision"}

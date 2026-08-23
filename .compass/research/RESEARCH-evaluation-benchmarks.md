@@ -8,6 +8,7 @@ tags: [evaluation, benchmarks, ablation, methodology-layer]
 created: 2026-06-10
 updated: 2026-06-10
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]"]
+summary: "benchmarks for the methodology layer; A/B pitfalls; field gaps"
 ---
 
 ## Question

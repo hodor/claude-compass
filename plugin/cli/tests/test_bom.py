@@ -1,4 +1,5 @@
-"""Tests for byte-order-mark tolerance on vault reads (issue #8).
+"""Tests for vault frontmatter integrity: BOM tolerance on reads, and the
+`summary` field every type is expected to carry.
 
 A `utf-8` read keeps a leading BOM as `﻿`. It is not whitespace, so it
 survives `.strip()` and sits in front of the first character of the file,
@@ -106,6 +107,40 @@ class BomCatalogTests(unittest.TestCase):
         sync_cmd.sync(self.root)
         self.assertNotIn("lessons: []", self.catalog())
         self.assertTrue(lessonslib.load_catalog(self.root))
+
+
+class SummaryExpectedOnEveryTypeTests(unittest.TestCase):
+    """The root index renders `summary` as an artifact's one-line description.
+    A type that does not expect the field produces artifacts whose index line
+    is the only copy of that description, so the index can never be shortened
+    without losing it. Lessons had the field expected and were the only type at
+    full coverage; every other type was at zero."""
+
+    def test_every_known_type_expects_summary(self):
+        from commands import validate
+        for artifact_type, fields in validate.EXPECTED_FIELDS.items():
+            with self.subTest(type=artifact_type):
+                self.assertIn("summary", fields)
+
+    def test_missing_summary_is_a_warning_not_an_error(self):
+        """Adversarial where: existing vaults predate the field. Making it an
+        error would fail every vault in the fleet on upgrade; making it silent
+        would leave the gap invisible, which is the defect itself."""
+        from commands import validate
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        root = tmp / ".compass"
+        (root / "specs").mkdir(parents=True)
+        (root / "specs" / "SPEC-001-x.md").write_text(
+            "---\ntitle: X\ntype: spec\nstatus: approved\narea: w\ntags: [t]\n"
+            "created: 2026-06-14\nupdated: 2026-06-14\n---\n\nbody\n",
+            encoding="utf-8",
+        )
+        errors, warnings = validate.check_vault(root)
+        joined_errors = " ".join(errors)
+        joined_warnings = " ".join(warnings)
+        self.assertNotIn("summary", joined_errors)
+        self.assertIn("summary", joined_warnings)
 
 
 if __name__ == "__main__":

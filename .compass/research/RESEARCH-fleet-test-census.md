@@ -7,6 +7,7 @@ tags: [testing, test-quality, fleet, census]
 created: 2026-08-07
 updated: 2026-08-07
 depends_on: ["[[SPEC-013-test-quality]]", "[[RESEARCH-test-quality-empirical]]"]
+summary: "locating and grading the 841-test project"
 ---
 
 # Fleet Test Census - Locating and Grading the 841-Test Project

@@ -11,6 +11,7 @@ git_branch: "master"
 git_commit: "fbc32c5"
 author: "researcher agent"
 depends_on: ["[[SPEC-008-central-model-resolution-table]]"]
+summary: "current state, mechanism, implementation options"
 ---
 
 # Model Resolution Table: Current State, Mechanism, and Implementation Options

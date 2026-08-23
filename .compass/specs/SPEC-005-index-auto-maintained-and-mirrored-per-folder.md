@@ -8,6 +8,7 @@ tags: [index, hierarchy, sync, hot-path, auto-maintenance, delete]
 created: 2026-06-19
 updated: 2026-06-19
 depends_on: ["[[SPEC-003-hierarchical-vault-organization]]", "[[ADR-004-hierarchical-specs-with-facets]]", "[[ADR-005-compass-cli-for-mechanical-work]]"]
+summary: "Index Auto-Maintained on Add and Remove, Mirrored Per Folder"
 ---
 
 # Index Auto-Maintained on Add and Remove, Mirrored Per Folder

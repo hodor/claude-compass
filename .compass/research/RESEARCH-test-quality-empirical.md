@@ -7,6 +7,7 @@ tags: [testing, test-quality, empirical, seeded-defects, cli]
 created: 2026-08-07
 updated: 2026-08-07
 depends_on: ["[[SPEC-013-test-quality]]"]
+summary: "the CLI's own suite graded against the D-01 bar"
 ---
 
 # Empirical Grade of Compass's Own CLI Test Suite Against the D-01 Admission Bar

@@ -9,6 +9,7 @@ created: 2026-07-22
 updated: 2026-07-23
 approved: 2026-07-23
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]", "[[SPEC-003-hierarchical-vault-organization]]", "[[ADR-004-hierarchical-specs-with-facets]]"]
+summary: "any artifact and unit of work can nest; unit folders (approved 2026-07-23)"
 ---
 
 # Any Artifact and Any Unit of Work Can Nest (Hybrid Hierarchy)

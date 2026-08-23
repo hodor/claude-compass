@@ -9,6 +9,7 @@ created: 2026-07-24
 updated: 2026-07-24
 author: "roger + claude"
 depends_on: ["[[SPEC-007-decision-coverage-tracing]]", "[[RESEARCH-decision-coverage-impl]]", "[[ADR-005-compass-cli-for-mechanical-work]]"]
+summary: "Decision Coverage via D-NN Bullets, a Three-Outcome Parser, and an Exit-Code Gate the Planner Honors"
 ---
 
 ## Status

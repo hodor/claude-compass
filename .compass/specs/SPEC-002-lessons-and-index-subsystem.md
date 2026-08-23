@@ -8,6 +8,7 @@ tags: [lessons, index, memory, hooks, dedup, retrospective]
 created: 2026-05-24
 updated: 2026-05-24
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]", "[[RESEARCH-lessons-and-index-architecture]]"]
+summary: "Lessons capture, dedup, anti-list, and index freshness mechanism (approved)"
 ---
 
 # Lessons & Index Subsystem

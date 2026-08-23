@@ -8,6 +8,7 @@ tags: [lessons, index, memory, hooks, dedup, retrospective]
 created: 2026-05-24
 updated: 2026-05-24
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]"]
+summary: "capture timing, index freshness, dedup, lesson shape across 5 codebases"
 ---
 
 # Lessons & Index Architecture - Literature Review

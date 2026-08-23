@@ -8,6 +8,7 @@ tags: [okf, knowledge-format, frontmatter, interoperability, vault-design, prior
 created: 2026-07-22
 updated: 2026-07-22
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]", "[[ADR-004-hierarchical-specs-with-facets]]"]
+summary: "adopt resource field + reader tolerance, skip format alignment"
 ---
 
 ## Question

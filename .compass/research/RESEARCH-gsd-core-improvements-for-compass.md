@@ -8,6 +8,7 @@ tags: [gsd, prior-art, spec-driven-development, multi-runtime, decision-coverage
 created: 2026-07-22
 updated: 2026-07-22
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]", "[[SPEC-006-multi-host-agent-cli-support]]", "[[ADR-005-compass-cli-for-mechanical-work]]"]
+summary: "decision coverage, model policy, prior art for SPEC-006"
 ---
 
 ## Question

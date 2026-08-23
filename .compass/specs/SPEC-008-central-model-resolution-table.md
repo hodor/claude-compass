@@ -9,6 +9,7 @@ created: 2026-07-22
 updated: 2026-07-23
 approved: 2026-07-23
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]", "[[ADR-005-compass-cli-for-mechanical-work]]", "[[RESEARCH-gsd-core-improvements-for-compass]]"]
+summary: "model + effort assignment is one harness-resolved policy table with per-project override, not per-agent prose (approved 2026-07-23)"
 ---
 
 # Model and Effort Assignment Is Harness-Resolved Policy, Not Per-Agent Prose

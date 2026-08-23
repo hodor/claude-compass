@@ -9,6 +9,7 @@ created: 2026-08-23
 updated: 2026-08-23
 author: "orchestrator"
 depends_on: ["[[SPEC-016-sizing-work-beyond-one-spec]]", "[[ADR-011-sizing-is-a-procedure-not-a-score]]", "[[RESEARCH-decomposition-criteria-for-sizing]]"]
+summary: "zero-artifact units, the sizing record, and the changeability walk (draft, awaiting approval)"
 ---
 
 # Sizing Mechanism (Both Directions, a Self-Firing Record, and a Paired Prototype)

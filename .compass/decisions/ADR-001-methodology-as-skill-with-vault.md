@@ -10,6 +10,7 @@ updated: 2026-05-24
 git_branch: "master"
 git_commit: "pending"
 author: "roger + claude"
+summary: "Methodology lives in a skill; project state in per-project `.compass/` Obsidian-compatible vault"
 ---
 
 ## Status

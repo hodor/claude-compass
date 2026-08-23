@@ -7,6 +7,7 @@ tags: [testing, test-quality, empirical, seeded-defects, cli, paired-experiment]
 created: 2026-08-07
 updated: 2026-08-07
 depends_on: ["[[SPEC-013-test-quality]]", "[[RESEARCH-test-quality-empirical]]", "[[PLAN-007-test-quality]]"]
+summary: "paired seeded-defect validation of the admission bar"
 ---
 
 # Paired Seeded-Defect Validation of the Test-Design Admission Bar

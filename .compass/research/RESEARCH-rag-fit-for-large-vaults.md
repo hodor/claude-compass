@@ -8,6 +8,7 @@ tags: [rag, vector-search, retrieval, bm25, embeddings, large-vault, scaling, ca
 created: 2026-07-22
 updated: 2026-07-22
 depends_on: ["[[SPEC-003-hierarchical-vault-organization]]", "[[ADR-005-compass-cli-for-mechanical-work]]", "[[LESSON-tag-index-trades-cost-for-directed-retrieval]]"]
+summary: "RAG net-negative below ~300-500 docs; lexical rung first"
 ---
 
 ## Question
