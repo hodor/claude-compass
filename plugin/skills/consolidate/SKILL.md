@@ -15,9 +15,8 @@ Long-horizon cleanup. Runs only when needed. Never archives lessons silently.
 
 Read `.compass/index.md` and `.compass/meta/lessons-catalog.yaml`. Look for any of these warning markers:
 
-- `<!-- WARNING: index.md exceeded cap.`
+- `<!-- WARNING: index.md exceeded hot-path cap.`
 - `# WARNING: catalog exceeded cap.`
-- `# WARNING: lesson count exceeded 50.`
 
 If none present, exit: `no consolidation needed (no cap warning)`. The bloat trigger is the contract; do not run unprompted.
 
