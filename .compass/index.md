@@ -95,6 +95,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[ADR-011-sizing-is-a-procedure-not-a-score]] - the changeability walk, harness-triggered and recorded; no sizing metric ships
 - [[ADR-010-identity-resident-fetch-mandatory]] - Identity Stays Resident, the Fetch Stops Being Optional, and Every Miss Is Counted
 - [[ADR-011-sizing-is-a-procedure-not-a-score]] - Sizing Is a Judgment Procedure the Harness Triggers and Records, Never a Score
+- [[ADR-012-test-checkpoint-py-membership-git-authoritative]] - `.py` membership in `test-checkpoint verify` stays git-authoritative; a bundled non-`.py` file is classified only when recorded
 
 ## Active Work
 
