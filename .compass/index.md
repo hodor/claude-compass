@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 6702 / 5000 tokens (index.md 3462, active.md 871, meta/lessons-catalog.yaml 2369). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 6769 / 5000 tokens (index.md 3529, active.md 871, meta/lessons-catalog.yaml 2369). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -87,6 +87,8 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[ADR-007-decision-coverage-mechanism]] - Decision Coverage via D-NN Bullets, a Three-Outcome Parser, and an Exit-Code Gate the Planner Honors
 - [[ADR-008-model-resolution-table]] - Abstract Model Tiers Resolved at Install Time by compass apply-models
 - [[ADR-009-rolling-wave-mechanism]] - frontier waves, grounded elaboration at the merge gate, three-state coverage (detailed/scoped/uncovered)
+- [[ADR-010-identity-resident-fetch-mandatory]] - identity stays resident, the lessons fetch stops being optional, every miss is counted
+- [[ADR-010-identity-resident-fetch-mandatory]] - Identity Stays Resident, the Fetch Stops Being Optional, and Every Miss Is Counted
 
 ## Active Work
 
