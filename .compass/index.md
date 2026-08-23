@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 7489 / 5000 tokens (index.md 3817, active.md 1111, meta/lessons-catalog.yaml 2561). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 7617 / 5000 tokens (index.md 3859, active.md 1111, meta/lessons-catalog.yaml 2647). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -146,6 +146,7 @@ See [[backlog]].
 - [[LESSON-human-practice-rationing-assumes-human-scarcity]] - Name the precondition a borrowed mechanism needs before importing it; mark every finding maps or metaphor
 - [[LESSON-verify-the-inverse-not-the-forward-path]] - Cheap reversal licenses acting without asking; verify it on the inverse command, never by reading the forward one
 - [[LESSON-score-the-do-nothing-baseline-before-running]] - Score the constant-answer baseline, fix the threshold, and check the stop verdict can fire and end the plan
+- [[LESSON-untestable-criterion-is-a-spec-defect]] - A criterion that defines no input class cannot be tested; report the spec defect, never invent the equivalence class
 
 ## compass-cli
 - [[compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work]] - A Python `compass` CLI Owns All Mechanical Vault Work; the Hook Calls It as a Command
