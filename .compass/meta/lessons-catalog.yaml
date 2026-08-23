@@ -131,7 +131,7 @@ lessons:
     area: workflow
     tags: [hooks, payloads, parsing, tool-output, evidence]
     score: 5
-    summary: "Capture one real emission before parsing it; assumed payload or output shapes ship dead code under a green suite"
+    summary: "Observe the real emission or code path first; assumed shapes and reported causes ship dead work under a green suite"
   - file: "LESSON-adversarial-plan-review-before-build.md"
     status: active
     category: process
