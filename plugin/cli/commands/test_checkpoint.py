@@ -6,11 +6,17 @@ and failed before the implementation they test was written. `record` stores
 an index at `.compass/tmp/test-checkpoints/TASK-NNN.json`, but git is the
 authority: the index carries only a commit SHA, per-file SHA-256 hashes, and
 the `(class, test_name)` ids extracted from the file at that commit.
-`verify` never trusts the index for content or membership - it re-derives
-the checkpointed file list from `git diff-tree` on the recorded commit and
-re-reads every file's baseline text with `git show <sha>:<path>`, so editing
-or deleting the index cannot launder a modification (SPEC-013-test-quality
-D-04, D-06).
+`verify` never trusts the index for content - it re-reads every checkpointed
+file's baseline text with `git show <sha>:<path>`, so editing the index
+cannot launder a modification (SPEC-013-test-quality D-04, D-06). Membership
+of `.py` files is likewise git-authoritative: every `.py` path touched by
+the checkpointed commit is classified regardless of what the index's `files`
+list says, so deleting an entry from the index cannot hide that file from
+verification either. A commit routinely carries files with no bearing on
+the checkpoint at all - a plan or spec edited in the same commit as the
+tests it plans - and a non-`.py` path is classified only when it was itself
+passed to `record`; otherwise it produces no finding, since AST-classifying
+prose was never what the checkpoint was protecting.
 
 Classification of a changed file is AST-based, not line-based: a
 checkpointed function must still exist exactly once and be byte-identical
@@ -661,10 +667,19 @@ def _run_verify(args):
 
     tree_root = Path(options["tree"]) if options["tree"] else repo_root
     commit_files = _git_commit_files(repo_root, sha)
+    recorded_files = record.get("files")
+    if not isinstance(recorded_files, list):
+        recorded_files = []
+    recorded_paths = {
+        entry["path"] for entry in recorded_files
+        if isinstance(entry, dict) and isinstance(entry.get("path"), str)
+    }
 
     findings = []
     ok = True
     for rel in commit_files:
+        if not rel.endswith(".py") and rel not in recorded_paths:
+            continue
         baseline = _git_show(repo_root, sha, rel)
         if baseline is None:
             continue
