@@ -9,6 +9,7 @@ created: 2026-08-23
 updated: 2026-08-23
 author: "orchestrator"
 depends_on: ["[[SPEC-016-sizing-work-beyond-one-spec]]", "[[RESEARCH-decomposition-criteria-for-sizing]]", "[[ADR-004-hierarchical-specs-with-facets]]", "[[ADR-006-hybrid-hierarchy-implementation]]"]
+summary: "the changeability walk, harness-triggered and recorded; no sizing metric ships"
 ---
 
 # Sizing Is a Judgment Procedure the Harness Triggers and Records, Never a Score

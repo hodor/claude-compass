@@ -11,6 +11,7 @@ author: "researcher (Claude)"
 depends_on:
   - "[[SPEC-013-test-quality]]"
   - "[[RESEARCH-test-quality-synthesis]]"
+summary: "test craft and AI testing practice, the missing axis"
 ---
 
 # Test Craft and AI Testing Practice: The Missing Axis

@@ -12,6 +12,7 @@ git_branch: "master"
 git_commit: "7b5b5a8"
 author: "planner agent"
 depends_on: ["[[SPEC-008-central-model-resolution-table]]", "[[ADR-008-model-resolution-table]]", "[[RESEARCH-model-resolution-impl]]"]
+summary: "Model Resolution Table Implementation (Tiers, apply-models, Overrides)"
 ---
 
 # Model Resolution Table Implementation (Tiers, apply-models, Overrides)

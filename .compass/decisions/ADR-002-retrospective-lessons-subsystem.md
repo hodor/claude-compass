@@ -11,6 +11,7 @@ git_branch: "master"
 git_commit: "pending"
 author: "roger + claude"
 depends_on: ["[[ADR-001-methodology-as-skill-with-vault]]", "[[SPEC-002-lessons-and-index-subsystem]]", "[[RESEARCH-lessons-and-index-architecture]]"]
+summary: "Retrospective lesson capture at phase boundary with binary triggers, anti-list, and single writer"
 ---
 
 ## Status

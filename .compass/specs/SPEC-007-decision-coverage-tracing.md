@@ -9,6 +9,7 @@ created: 2026-07-22
 updated: 2026-07-23
 approved: 2026-07-23
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]", "[[RESEARCH-gsd-core-improvements-for-compass]]"]
+summary: "decisions made in specs/ADRs must survive into plans and validation, not silently vanish between stages (approved 2026-07-23)"
 ---
 
 # Decisions Made in Specs and Discussion Must Survive Into Plans and Validation

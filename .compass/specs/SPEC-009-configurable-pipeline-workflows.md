@@ -8,6 +8,7 @@ tags: [pipeline, workflow, configurable, phases, customization, harness]
 created: 2026-07-22
 updated: 2026-07-22
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]"]
+summary: "the pipeline is a configurable workflow (shipped default + reorder/subset/extend), not one hardcoded sequence (draft, DEFERRED)"
 ---
 
 # The Pipeline Is a Configurable Workflow, Not One Hardcoded Sequence

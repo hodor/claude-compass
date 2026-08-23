@@ -12,6 +12,7 @@ git_branch: "master"
 git_commit: "7b5b5a8"
 author: "planner agent"
 depends_on: ["[[SPEC-010-universal-hybrid-hierarchy]]", "[[ADR-006-hybrid-hierarchy-implementation]]", "[[RESEARCH-hybrid-hierarchy-impl]]"]
+summary: "Hybrid Hierarchy Implementation (Unit Folders)"
 ---
 
 # Hybrid Hierarchy Implementation (Unit Folders)

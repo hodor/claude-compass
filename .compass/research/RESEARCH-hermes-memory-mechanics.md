@@ -11,6 +11,7 @@ git_branch: "master"
 git_commit: "9e36bc8"
 author: "researcher (Claude)"
 depends_on: ["[[RESEARCH-hermes-agent-capabilities]]", "[[RESEARCH-lesson-capture-failure]]"]
+summary: "memory update and retrieval mechanics, deep-dive"
 ---
 
 # hermes-agent: Memory Update and Retrieval Mechanics, Deep-Dive

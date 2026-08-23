@@ -9,6 +9,7 @@ tags: [discoverability, progressive-disclosure, usage-measurement, cli, dead-cod
 created: 2026-08-23
 updated: 2026-08-23
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]", "[[SPEC-016-sizing-work-beyond-one-spec]]"]
+summary: "a capability no skill names is unreachable, and nothing counts usage so dead ones go unnoticed (approved 2026-08-23)"
 ---
 
 # A Capability No Skill Happens to Name Is Never Used, and Compass Cannot Tell Which Ones Those Are

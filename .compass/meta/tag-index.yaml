@@ -56,6 +56,8 @@ tags:
   - lessons/LESSON-no-agent-bookkeeping.md
   backlinks:
   - research/RESEARCH-grep-vs-graph-experiment.md
+  baseline:
+  - lessons/LESSON-score-the-do-nothing-baseline-before-running.md
   batch-size:
   - research/RESEARCH-rolling-wave-flow-theory.md
   bayesian:
@@ -159,6 +161,8 @@ tags:
   - research/RESEARCH-rolling-wave-agent-planning.md
   context-size:
   - lessons/LESSON-remove-context-before-adding.md
+  control-arm:
+  - lessons/LESSON-score-the-do-nothing-baseline-before-running.md
   convergence:
   - research/RESEARCH-test-quality-synthesis.md
   core:
@@ -200,6 +204,8 @@ tags:
   - specs/SPEC-007-decision-coverage-tracing.md
   decision-lineage:
   - research/RESEARCH-grep-vs-graph-experiment.md
+  decision-rationale:
+  - lessons/LESSON-verify-the-inverse-not-the-forward-path.md
   decomposition:
   - decisions/ADR-011-sizing-is-a-procedure-not-a-score.md
   - plans/PLAN-009-sizing-mechanism.md
@@ -275,6 +281,8 @@ tags:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   falsifiability:
   - research/RESEARCH-scientific-method-in-compass.md
+  falsification:
+  - lessons/LESSON-score-the-do-nothing-baseline-before-running.md
   fault-based-testing:
   - research/RESEARCH-test-quality-literature.md
   feedback-loop:
@@ -606,7 +614,10 @@ tags:
   portability:
   - specs/SPEC-006-multi-host-agent-cli-support.md
   pre-registration:
+  - lessons/LESSON-score-the-do-nothing-baseline-before-running.md
   - research/RESEARCH-scientific-method-in-compass.md
+  premises:
+  - lessons/LESSON-verify-the-inverse-not-the-forward-path.md
   prior-art:
   - research/RESEARCH-decision-coverage-impl.md
   - research/RESEARCH-graph-engineering-for-compass.md
@@ -626,6 +637,8 @@ tags:
   - specs/SPEC-015-rolling-wave-planning.md
   prose:
   - lessons/LESSON-remove-context-before-adding.md
+  prototypes:
+  - lessons/LESSON-score-the-do-nothing-baseline-before-running.md
   provenance:
   - lessons/LESSON-pin-the-motivating-datum.md
   python:
@@ -681,6 +694,7 @@ tags:
   - research/RESEARCH-lessons-and-index-architecture.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
   reversibility:
+  - lessons/LESSON-verify-the-inverse-not-the-forward-path.md
   - research/RESEARCH-decomposition-criteria-for-sizing.md
   revert-check:
   - lessons/LESSON-revert-to-prove-a-regression-test.md
@@ -854,6 +868,8 @@ tags:
   - specs/SPEC-012-learning-loop.md
   turn-limits:
   - lessons/LESSON-long-agents-stall-resume-them.md
+  two-way-door:
+  - lessons/LESSON-verify-the-inverse-not-the-forward-path.md
   typed-edges:
   - research/RESEARCH-graph-engineering-for-compass.md
   units:
@@ -905,6 +921,7 @@ tags:
   vector-search:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   verification:
+  - lessons/LESSON-verify-the-inverse-not-the-forward-path.md
   - specs/SPEC-013-test-quality.md
   vision:
   - decisions/ADR-011-sizing-is-a-procedure-not-a-score.md

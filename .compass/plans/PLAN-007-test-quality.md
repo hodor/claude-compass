@@ -11,6 +11,7 @@ created: 2026-08-07
 updated: 2026-08-07
 author: "planner agent"
 depends_on: ["[[SPEC-013-test-quality]]", "[[RESEARCH-test-quality-synthesis]]", "[[RESEARCH-test-quality-craft-and-practice]]", "[[RESEARCH-test-quality-literature]]", "[[RESEARCH-test-quality-tooling]]", "[[RESEARCH-test-quality-empirical]]"]
+summary: "Test Quality Instruments (Authoring Bar, Test-First Station, Admission Filter, Diagnostic Mutation)"
 ---
 
 # Test Quality Instruments (Authoring Bar, Test-First Station, Admission Filter, Diagnostic Mutation)

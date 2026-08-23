@@ -7,6 +7,7 @@ tags: [planning, rolling-wave, elaboration, coverage, plan-format]
 created: 2026-08-11
 updated: 2026-08-11
 depends_on: ["[[SPEC-015-rolling-wave-planning]]", "[[RESEARCH-rolling-wave-synthesis]]"]
+summary: "frontier waves, grounded elaboration at the merge gate, three-state coverage (detailed/scoped/uncovered)"
 ---
 
 # Rolling-Wave Plans: Frontier Waves, Grounded Elaboration, Three-State Coverage

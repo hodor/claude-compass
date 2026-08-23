@@ -8,6 +8,7 @@ tags: [lessons, capture, diagnosis, fleet-audit, build-skill, triggers, install-
 created: 2026-07-26
 updated: 2026-07-26
 depends_on: ["[[SPEC-002-lessons-and-index-subsystem]]", "[[ADR-002-retrospective-lessons-subsystem]]"]
+summary: "why capture almost never happens (40-vault diagnosis)"
 ---
 
 ## Question

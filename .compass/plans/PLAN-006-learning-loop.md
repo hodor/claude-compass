@@ -11,6 +11,7 @@ created: 2026-08-05
 updated: 2026-08-05
 author: "planner agent"
 depends_on: ["[[SPEC-012-learning-loop]]", "[[RESEARCH-lesson-capture-failure]]", "[[RESEARCH-hermes-memory-mechanics]]", "[[RESEARCH-grep-vs-graph-experiment]]"]
+summary: "Learning Loop Implementation: harness-owned capture, catalog retrieval, lesson coverage (approved 2026-08-05)"
 ---
 
 # Learning Loop Implementation (Harness-Owned Capture, Catalog Retrieval, Lesson Coverage)

@@ -6,6 +6,7 @@ area: testing
 tags: [testing, test-quality, mutation-testing, tooling, windows, stdlib]
 depends_on: ["[[SPEC-013-test-quality]]"]
 created: 2026-08-07
+summary: "mutation testing, cheaper signals, Windows/stdlib fit"
 ---
 
 # Research: Test Quality Tooling

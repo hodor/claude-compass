@@ -8,6 +8,7 @@ tags: [token-efficiency, automation, hooks, bookkeeping, hot-path, validation]
 created: 2026-06-13
 updated: 2026-06-13
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]", "[[LESSON-no-agent-bookkeeping]]"]
+summary: "Mechanical Vault Work Must Not Cost Agent Tokens"
 ---
 
 # Mechanical Vault Work Must Not Cost Agent Tokens

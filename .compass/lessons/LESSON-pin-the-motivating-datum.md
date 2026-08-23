@@ -6,10 +6,10 @@ category: process
 area: methodology
 tags: [specs, evidence, provenance, census, traceability]
 created: 2026-08-08
-updated: 2026-08-08
-score: 5
+updated: 2026-08-23
+score: 6
 summary: "When a spec cites a triggering observation, record its source (project, session, machine) at spec time; unpinned data become unfindable"
-seen: []
+seen: [2026-08-23]
 ---
 
 A spec that cites a triggering observation without naming its source turns unverifiable within days: the 841-test suite that motivated a whole initiative could not be located by searching 39 vaults two days later.

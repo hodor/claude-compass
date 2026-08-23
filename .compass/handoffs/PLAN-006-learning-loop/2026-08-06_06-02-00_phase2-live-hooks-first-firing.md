@@ -7,6 +7,7 @@ updated: 2026-08-06
 git_branch: master
 git_commit: fc02b9c
 plan: [[PLAN-006-learning-loop]]
+summary: "Handoff: PLAN-006 Phase 2 live; hooks fire from settings.json for the first time ever"
 ---
 
 # Handoff: Phase 2 live, hooks finally fire, Phase 3 next

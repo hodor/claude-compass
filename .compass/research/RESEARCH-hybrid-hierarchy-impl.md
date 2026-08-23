@@ -11,6 +11,7 @@ git_branch: "master"
 git_commit: "fbc32c5"
 author: "researcher agent"
 depends_on: ["[[SPEC-010-universal-hybrid-hierarchy]]"]
+summary: "CLI, skills, wikilinks, migration impact"
 ---
 
 # Hybrid Hierarchy Implementation Impact

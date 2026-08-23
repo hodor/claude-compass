@@ -8,6 +8,7 @@ tags: [token-efficiency, measurement, hooks, cli, hypothesis-confirmed]
 created: 2026-06-14
 updated: 2026-06-14
 depends_on: ["[[SPEC-004-mechanical-work-off-the-agent-budget]]", "[[ADR-005-compass-cli-for-mechanical-work]]"]
+summary: "Measuring SPEC-004's 80% Bookkeeping-Token Reduction"
 ---
 
 # Measuring SPEC-004's 80% Bookkeeping-Token Reduction

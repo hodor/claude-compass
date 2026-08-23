@@ -11,6 +11,7 @@ git_branch: "master"
 git_commit: "pending"
 author: "roger + claude"
 depends_on: ["[[SPEC-004-mechanical-work-off-the-agent-budget]]", "[[RESEARCH-cli-and-hook-command-contract]]", "[[LESSON-no-agent-bookkeeping]]", "[[ADR-003-drop-counter-file-jit-compute]]", "[[ADR-004-hierarchical-specs-with-facets]]"]
+summary: "A Python `compass` CLI Owns All Mechanical Vault Work; the Hook Calls It as a Command"
 ---
 
 ## Status

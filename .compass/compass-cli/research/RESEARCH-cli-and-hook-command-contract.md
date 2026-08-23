@@ -9,6 +9,7 @@ created: 2026-06-13
 updated: 2026-06-13
 depends_on: ["[[SPEC-004-mechanical-work-off-the-agent-budget]]", "[[ADR-005-compass-cli-for-mechanical-work]]"]
 source: "F:\\AI\\coding\\claude-code (TypeScript Claude Code source)"
+summary: "How Claude Code Structures CLIs and the Command-Hook Contract"
 ---
 
 # How Claude Code Structures CLIs and the Command-Hook Contract

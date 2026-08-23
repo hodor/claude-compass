@@ -9,6 +9,7 @@ created: 2026-07-24
 updated: 2026-07-24
 author: "roger + claude"
 depends_on: ["[[SPEC-010-universal-hybrid-hierarchy]]", "[[RESEARCH-hybrid-hierarchy-impl]]", "[[ADR-004-hierarchical-specs-with-facets]]", "[[LESSON-type-dir-discovery-needs-content-signal]]"]
+summary: "Unit Folders at the Vault Root, Classified by Reserved Names Plus a Marker"
 ---
 
 ## Status

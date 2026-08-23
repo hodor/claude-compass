@@ -8,6 +8,7 @@ tags: [cache, hot-path, retrieval, lessons, progressive-disclosure, observabilit
 created: 2026-08-23
 updated: 2026-08-23
 depends_on: ["[[SPEC-017-capabilities-are-reachable-and-measured]]", "[[RESEARCH-cache-theory-for-context-tiers]]", "[[ADR-004-hierarchical-specs-with-facets]]"]
+summary: "identity stays resident, the lessons fetch stops being optional, every miss is counted"
 ---
 
 # Identity Stays Resident, the Fetch Stops Being Optional, and Every Miss Is Counted
@@ -30,6 +31,7 @@ The state that forced the question: the hot path measures 6,633 tokens against a
 - **D-06:** Every miss is counted and reported. `compass lessons` records what was asked for, what surfaced, and what did not, and the count is readable. A reported miss rate of zero is treated as a defect signal to investigate, never as success.
 - **D-07:** The gate is checked by the harness, not honored by convention. An exit code respected because an agent chooses to respect it is a documented obligation, not a mechanism.
 - **D-08:** `admit-check` and `touched` get wired to a caller or retired outright. They implement Denning's admission control from [[ADR-004-hierarchical-specs-with-facets]] and have never run in any vault. Leaving them is the exact condition this spec exists to end.
+- **D-09:** Nothing leaves the resident tier until the backing store already holds it. A hardware miss is safe because the backing store is a strict superset of the cache; where that does not hold, removal is not eviction, it is deletion. Measured 2026-08-23: 71 of 103 artifacts in this vault carry no `summary:` frontmatter, so for every spec, research doc, ADR and handoff the index line is the only copy of its description. Lessons are the sole exception, at 28 of 28, because `lesson-write` requires the field. So D-02's duplication finding is sound for lessons and does not generalize: the other sections must be backfilled first, and the index is the source the backfill reads from.
 
 ## Rationale
 
@@ -43,7 +45,7 @@ D-01 follows from what a tag is for: the identity that disambiguates a slot from
 
 ## Consequences
 
-The hot path drops to roughly 3,600 tokens, back inside the cap with room, and the cap stays where [[ADR-004-hierarchical-specs-with-facets]] set it.
+The hot path drops to roughly 3,600 tokens, back inside the cap with room, and the cap stays where [[ADR-004-hierarchical-specs-with-facets]] set it. D-09 orders the work: backfill, then shrink. Shrinking first would book a token saving by destroying the only copy of 71 descriptions, which is the failure this decision exists to prevent.
 
 Retrieval becomes harness work rather than agent work, which serves north-star goal 4 and costs no agent tokens. It also removes a decision the agent currently gets wrong silently.
 

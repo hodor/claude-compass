@@ -9,6 +9,7 @@ created: 2026-07-22
 updated: 2026-07-22
 approved: 2026-07-22
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]", "[[ADR-005-compass-cli-for-mechanical-work]]"]
+summary: "Compass runs on agent CLIs beyond Claude Code (Kimi Code, Codex); problem/need (approved 2026-07-22)"
 ---
 
 # Compass Runs on Agent CLIs Beyond Claude Code

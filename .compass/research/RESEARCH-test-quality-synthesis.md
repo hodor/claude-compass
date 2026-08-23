@@ -13,6 +13,7 @@ depends_on:
   - "[[RESEARCH-test-quality-literature]]"
   - "[[RESEARCH-test-quality-tooling]]"
   - "[[RESEARCH-test-quality-empirical]]"
+summary: "three instruments reconciled; station model recommendation"
 ---
 
 # Three Instruments, Three Answers: Reconciling the Test-Quality Research

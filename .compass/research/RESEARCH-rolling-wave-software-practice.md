@@ -11,6 +11,7 @@ git_branch: "master"
 git_commit: "268aebc"
 author: "researcher (Claude)"
 depends_on: ["[[SPEC-015-rolling-wave-planning]]"]
+summary: "how methodologies operationalize the detail gradient"
 ---
 
 # Rolling-Wave Planning: How Software Methodologies Operationalize the Detail Gradient

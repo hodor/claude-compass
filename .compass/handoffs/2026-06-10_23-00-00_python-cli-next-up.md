@@ -9,6 +9,7 @@ updated: 2026-06-10
 git_branch: "master"
 git_commit: "3d562c1"
 author: "claude"
+summary: "Handoff: Python busywork CLI is next; everything through ADR-004 shipped"
 ---
 
 # Handoff: Python busywork CLI is next; everything through ADR-004 shipped

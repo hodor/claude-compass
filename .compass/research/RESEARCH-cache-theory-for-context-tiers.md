@@ -9,6 +9,7 @@ created: 2026-08-23
 updated: 2026-08-23
 author: paper-research
 depends_on: ["[[SPEC-017-capabilities-are-reachable-and-measured]]"]
+summary: "tag/data split, inclusion cost, and why a hardware miss cannot cost correctness"
 ---
 
 # Cache Theory for Compass's Context Tiers

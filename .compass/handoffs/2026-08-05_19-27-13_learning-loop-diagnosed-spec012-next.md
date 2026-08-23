@@ -9,6 +9,7 @@ updated: 2026-08-05
 git_branch: "master"
 git_commit: "2d4911e"
 author: "claude"
+summary: "lesson capture root-caused; SPEC-012 queued"
 ---
 
 # Handoff: learning-loop diagnosed, SPEC-012 next

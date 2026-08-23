@@ -11,6 +11,7 @@ git_branch: "master"
 git_commit: "cdda7e1"
 author: "researcher (Claude)"
 depends_on: ["[[SPEC-013-test-quality]]"]
+summary: "suite-quality measurement and LLM test-generation literature"
 ---
 
 # Test-Suite Quality Measurement and LLM Test-Generation Literature
