@@ -83,6 +83,7 @@ tags:
   busywork:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   cache:
+  - research/RESEARCH-cache-theory-for-context-tiers.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - research/RESEARCH-rag-fit-for-large-vaults.md
   - specs/SPEC-003-hierarchical-vault-organization.md
@@ -370,6 +371,7 @@ tags:
   hot-path:
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/ADR-004-hierarchical-specs-with-facets.md
+  - research/RESEARCH-cache-theory-for-context-tiers.md
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   hub-ranking:
   - specs/SPEC-011-vault-graph-queries.md
@@ -393,6 +395,8 @@ tags:
   impact-traversal:
   - research/RESEARCH-grep-vs-graph-experiment.md
   - specs/SPEC-011-vault-graph-queries.md
+  inclusion:
+  - research/RESEARCH-cache-theory-for-context-tiers.md
   index:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   - plans/PLAN-001-lessons-and-index-implementation.md
@@ -594,6 +598,7 @@ tags:
   probes:
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
   progressive-disclosure:
+  - research/RESEARCH-cache-theory-for-context-tiers.md
   - specs/SPEC-017-capabilities-are-reachable-and-measured.md
   progressive-elaboration:
   - research/RESEARCH-rolling-wave-agent-planning.md
@@ -645,6 +650,7 @@ tags:
   retrieval:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   - plans/PLAN-006-learning-loop.md
+  - research/RESEARCH-cache-theory-for-context-tiers.md
   - research/RESEARCH-graph-engineering-for-compass.md
   - research/RESEARCH-hermes-memory-mechanics.md
   - research/RESEARCH-rag-fit-for-large-vaults.md
@@ -713,6 +719,8 @@ tags:
   specs:
   - lessons/LESSON-adversarial-plan-review-before-build.md
   - lessons/LESSON-pin-the-motivating-datum.md
+  speculation:
+  - research/RESEARCH-cache-theory-for-context-tiers.md
   stale-base:
   - lessons/LESSON-subagent-worktrees-fork-stale.md
   staleness:
@@ -888,6 +896,7 @@ tags:
   - specs/SPEC-001-compass-vision-and-architecture.md
   - specs/SPEC-009-configurable-pipeline-workflows.md
   working-set:
+  - research/RESEARCH-cache-theory-for-context-tiers.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - specs/SPEC-003-hierarchical-vault-organization.md
   worktree:

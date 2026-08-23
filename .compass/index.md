@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 6633 / 5000 tokens (index.md 3393, active.md 871, meta/lessons-catalog.yaml 2369). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 6702 / 5000 tokens (index.md 3462, active.md 871, meta/lessons-catalog.yaml 2369). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -64,6 +64,8 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-rolling-wave-software-practice]] - how methodologies operationalize the detail gradient
 - [[RESEARCH-rolling-wave-flow-theory]] - flow and lean product-development theory behind it
 - [[RESEARCH-rolling-wave-synthesis]] - cross-axis synthesis and recommended mechanism
+- [[RESEARCH-cache-theory-for-context-tiers]] - tag/data split, inclusion cost, and why a hardware miss cannot cost correctness
+- [[RESEARCH-cache-theory-for-context-tiers]] - Cache Theory for Compass's Context Tiers: Tag/Data Split, Inclusion, and the Correctness of a Miss
 
 ## Plans
 
