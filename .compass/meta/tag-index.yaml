@@ -201,6 +201,7 @@ tags:
   decision-lineage:
   - research/RESEARCH-grep-vs-graph-experiment.md
   decomposition:
+  - decisions/ADR-011-sizing-is-a-procedure-not-a-score.md
   - research/RESEARCH-decomposition-criteria-for-sizing.md
   dedup:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
@@ -320,6 +321,7 @@ tags:
   hang:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   harness:
+  - decisions/ADR-011-sizing-is-a-procedure-not-a-score.md
   - lessons/LESSON-remove-context-before-adding.md
   - research/RESEARCH-model-resolution-impl.md
   - specs/SPEC-001-compass-vision-and-architecture.md
@@ -528,6 +530,7 @@ tags:
   - research/RESEARCH-hermes-memory-mechanics.md
   observability:
   - decisions/ADR-010-identity-resident-fetch-mandatory.md
+  - decisions/ADR-011-sizing-is-a-procedure-not-a-score.md
   obsidian:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   okf:
@@ -714,6 +717,7 @@ tags:
   shape-up:
   - research/RESEARCH-rolling-wave-software-practice.md
   sizing:
+  - decisions/ADR-011-sizing-is-a-procedure-not-a-score.md
   - research/RESEARCH-decomposition-criteria-for-sizing.md
   - specs/SPEC-016-sizing-work-beyond-one-spec.md
   skill:
@@ -850,6 +854,7 @@ tags:
   - research/RESEARCH-graph-engineering-for-compass.md
   units:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
+  - decisions/ADR-011-sizing-is-a-procedure-not-a-score.md
   - plans/PLAN-003-hybrid-hierarchy.md
   - research/RESEARCH-decomposition-criteria-for-sizing.md
   - specs/SPEC-016-sizing-work-beyond-one-spec.md
@@ -897,6 +902,7 @@ tags:
   verification:
   - specs/SPEC-013-test-quality.md
   vision:
+  - decisions/ADR-011-sizing-is-a-procedure-not-a-score.md
   - specs/SPEC-001-compass-vision-and-architecture.md
   - specs/SPEC-016-sizing-work-beyond-one-spec.md
   walkthroughs:
