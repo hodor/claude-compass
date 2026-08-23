@@ -473,11 +473,13 @@ class LessonCoverageCorpusPinTests(unittest.TestCase):
             "surfaced-but-uncited",
             status_of("LESSON-tag-index-trades-cost-for-directed-retrieval.md"),
         )
-        self.assertIn(
-            "summary: 2 cited, 0 unresolvable, 3 surfaced-but-uncited "
-            "(advisory) -> PASS",
-            out,
-        )
+        # The cited count and the unresolvable count are what this pin
+        # guards. The surfaced-but-uncited total tracks how many catalog
+        # rows rank against the plan, which grows whenever any lesson is
+        # written, so asserting it would couple this pin to unrelated
+        # vault growth.
+        self.assertIn("summary: 2 cited, 0 unresolvable, ", out)
+        self.assertIn("(advisory) -> PASS", out)
 
     def test_corpus_pin_plan_007_row_set_unchanged(self):
         code, out, _ = self.run_real("PLAN-007-test-quality")
@@ -523,11 +525,8 @@ class LessonCoverageCorpusPinTests(unittest.TestCase):
             "surfaced-but-uncited",
             status_of("LESSON-hook-cli-gate-stdin-on-flag.md"),
         )
-        self.assertIn(
-            "summary: 5 cited, 0 unresolvable, 3 surfaced-but-uncited "
-            "(advisory) -> PASS",
-            out,
-        )
+        self.assertIn("summary: 5 cited, 0 unresolvable, ", out)
+        self.assertIn("(advisory) -> PASS", out)
 
 
 if __name__ == "__main__":

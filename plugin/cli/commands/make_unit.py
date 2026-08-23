@@ -39,6 +39,22 @@ WIKILINK = re.compile(r"\[\[([^\]]+)\]\]")
 RESERVED_NAMES = set(vaultlib.CORE_TYPE_DIRS) | vaultlib.NON_TYPE_DIRS
 
 
+def _report_vault_health(vault_root):
+    """Print the vault's validate findings under a created unit.
+
+    Every path that creates a unit reports through here, so the report a
+    human sees does not depend on which path created it."""
+    errors, warnings = validate_command.check_vault(vault_root)
+    if not errors and not warnings:
+        sys.stdout.write("  validate: clean\n")
+        return
+    sys.stdout.write(f"  validate: {len(errors)} error(s), {len(warnings)} warning(s)\n")
+    for finding in errors:
+        sys.stdout.write(f"    ERROR   {finding}\n")
+    for finding in warnings:
+        sys.stdout.write(f"    warning {finding}\n")
+
+
 def _check_target(vault_root, name, resolve):
     """Problems with the unit-folder name itself: malformed, reserved,
     already present on disk, or already resolving as a wikilink target. The
@@ -217,17 +233,7 @@ def run(args):
             f"compass make-unit: created unit '{name}' at {name}/index.md "
             "with no artifacts\n"
         )
-        errors, warnings = validate_command.check_vault(vault_root)
-        if not errors and not warnings:
-            sys.stdout.write("  validate: clean\n")
-        else:
-            sys.stdout.write(
-                f"  validate: {len(errors)} error(s), {len(warnings)} warning(s)\n"
-            )
-            for finding in errors:
-                sys.stdout.write(f"    ERROR   {finding}\n")
-            for finding in warnings:
-                sys.stdout.write(f"    warning {finding}\n")
+        _report_vault_health(vault_root)
         return 0
 
     moved_files = [f for move in moves for f in move["files"]]
@@ -272,15 +278,5 @@ def run(args):
     for line in move_lines:
         sys.stdout.write(line + "\n")
     sys.stdout.write(f"  index.md: removed {len(removable)} entry line(s)\n")
-    errors, warnings = validate_command.check_vault(vault_root)
-    if not errors and not warnings:
-        sys.stdout.write("  validate: clean\n")
-    else:
-        sys.stdout.write(
-            f"  validate: {len(errors)} error(s), {len(warnings)} warning(s)\n"
-        )
-        for finding in errors:
-            sys.stdout.write(f"    ERROR   {finding}\n")
-        for finding in warnings:
-            sys.stdout.write(f"    warning {finding}\n")
+    _report_vault_health(vault_root)
     return 0
