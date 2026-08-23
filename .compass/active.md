@@ -36,7 +36,7 @@ Triggered by a live failure in another project: a vision session produced seven 
 - [ ] TASK-080: sizing decisions record themselves from the commands that perform them, keyed on a stable `sizing_id` (L, after 078/079)
 - [ ] TASK-081: `validate` reconciles shapes on disk against the log (S, after 080)
 - [ ] TASK-082: `compass doctor` reports unit-promotion candidates (S, after 078)
-- [ ] TASK-083: prototype - paired, blinded, pre-registered: does the walk raise agreement over unaided judgment? (L, parallel from the start)
+- [x] TASK-083: prototype COMPLETE, pre-registered ESCALATION band (2026-08-23): kappa gain +0.084 CI [-0.140,+0.361] includes zero; both arms 40.0% accuracy vs 46.7% constant-majority baseline; raters up-size vs the human shape; D-02 gives a two-way answer for a three-way choice and raters mapped breadth->unit, contradicting ADR-011 D-06. Full record: .compass/tmp/sizing-prototype/RESULTS.md. AWAITING HUMAN RULING on D-02; wave-2 prose tasks (084/085/087) blocked on it, 086/088/089 are not.
 
 Elaboration fires at the merge gate once wave 1's outcomes are verified. Later tasks are in [[backlog]].
 
