@@ -7,6 +7,18 @@ updated: 2026-05-24
 
 > PLAN-001 Phases 3-6 are now tracked in [[active]] under "Next Up" / "In Progress".
 
+## PLAN-009 later tasks (intent only, not yet elaborated)
+
+Held under [[PLAN-009-sizing-mechanism]]'s `## Later` region. Promoted into a detailed wave at the elaboration step, not worked from here.
+
+- [ ] TASK-084: the vision skill runs the walk, acts, records every need it walks, says the shape once in plain words
+- [ ] TASK-085: the spec skill's bloat check gains the depth branch
+- [ ] TASK-086: spec authoring writes into the unit the work belongs to (commit-upfront: does not depend on the prototype)
+- [ ] TASK-087: the parent/child authoring template
+- [ ] TASK-088: the persisted per-project preference and the named invocation path
+- [ ] TASK-089: install refresh and acceptance (commit-upfront)
+- [ ] TASK-090: the blind re-audit that gives the correction rate a denominator
+
 ## Candidate specs (raised, not yet drafted)
 
 - [ ] **Hermes-agent portable techniques (from [[RESEARCH-hermes-vs-compass-fit]], 2026-07-25).** Four host-agnostic mechanisms worth Compass specs of their own: (1) FTS5 session search over past conversations - Compass has NO session-recall equivalent beyond handoffs, and this also serves Roger's fast-contextual-lesson-retrieval wish; (2) the curator's pre-mutation snapshot/rollback gate - a reversibility mechanism /compass:consolidate lacks today; (3) the 50%-of-context compression trigger with head/tail protection; (4) the offline trajectory compressor (bench/ relevance). Also: hermes is a viable SPEC-006 host candidate - its shell-hooks system speaks Claude Code's hook protocol (post_tool_call + matcher = compass sync port, classification (a)); gaps are named subagent roles (adapter) and human approval gates (no equivalent, must be designed).

@@ -26,6 +26,19 @@ Triggered by a live failure in another project: a vision session produced seven 
 - [ ] NEXT: research both specs, then one ADR. Open axes: SPEC-016's mechanism (skill step vs hook vs CLI gate), SPEC-017's index location.
 - [ ] Open: pin the project where the seven-monster-specs session happened ([[LESSON-pin-the-motivating-datum]]).
 
+## PLAN-009 wave 1 (approved 2026-08-23)
+
+[[PLAN-009-sizing-mechanism]] APPROVED. Wave 1 is the shape-change mechanism end to end; the prose waits on TASK-083.
+
+- [ ] TASK-078: `compass make-unit` accepts zero artifacts (M) - creates the dir itself, refuses colliding names, splits the existing usage test
+- [ ] TASK-079: the inverse of every shape change - `compass demote`, `make-unit --undo` (M, after 078)
+- [ ] TASK-080: sizing decisions record themselves from the commands that perform them, keyed on a stable `sizing_id` (L, after 078/079)
+- [ ] TASK-081: `validate` reconciles shapes on disk against the log (S, after 080)
+- [ ] TASK-082: `compass doctor` reports unit-promotion candidates (S, after 078)
+- [ ] TASK-083: prototype - paired, blinded, pre-registered: does the walk raise agreement over unaided judgment? (L, parallel from the start)
+
+Elaboration fires at the merge gate once wave 1's outcomes are verified. Later tasks are in [[backlog]].
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].
