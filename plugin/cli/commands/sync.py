@@ -279,7 +279,7 @@ def _sync_catalog(vault_root, records):
     catalog_path = vault_root / "meta" / "lessons-catalog.yaml"
     if not catalog_path.is_file():
         return 0, []
-    text = catalog_path.read_text(encoding="utf-8")
+    text = vaultlib.read_vault_text(catalog_path)
     existing = set(re.findall(r'file:\s*"?([^"\n]+)"?', text))
     by_filename = {}
     for record in records:
@@ -385,7 +385,7 @@ def _check_caps(vault_root, records):
 
     catalog_path = vault_root / "meta" / "lessons-catalog.yaml"
     if catalog_path.is_file():
-        ctext = catalog_path.read_text(encoding="utf-8")
+        ctext = vaultlib.read_vault_text(catalog_path)
         lesson_count = sum(
             1 for r in records
             if r["type_dir"] == "lessons" and r["_data"].get("status") != "archived"

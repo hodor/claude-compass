@@ -210,7 +210,7 @@ def parse_frontmatter_text(text):
 
 def parse_frontmatter(path):
     """Read `path` and parse its frontmatter. See `parse_frontmatter_text`."""
-    text = Path(path).read_text(encoding="utf-8")
+    text = read_vault_text(path)
     return parse_frontmatter_text(text)
 
 
@@ -396,6 +396,20 @@ def strip_inline_code(text):
     live references; validators and parsers strip them before matching.
     """
     return _INLINE_CODE_SPAN.sub("", text)
+
+
+def read_vault_text(path):
+    """Read `path` as vault text: BOM stripped, line endings normalized.
+
+    `utf-8-sig` drops a leading byte-order mark and is otherwise identical to
+    `utf-8`. A BOM survives a plain `utf-8` read as `\\ufeff`, which is not
+    whitespace, so it defeats every pattern anchored at the start of the text:
+    `^lessons:` stops matching and a `---` frontmatter fence stops being
+    recognized, leaving the file parsed as having no frontmatter at all.
+    Windows tools write BOMs by default, `PowerShell`'s `Out-File` among them.
+    """
+    text = Path(path).read_text(encoding="utf-8-sig")
+    return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
 def write_text_lf(path, text):

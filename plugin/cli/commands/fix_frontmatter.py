@@ -46,7 +46,7 @@ def _title_from(text, stem):
 def _plan_fix(record, today):
     """Return (new_text, [change descriptions]) or (None, []) if nothing to do."""
     path = record["path"]
-    text = path.read_text(encoding="utf-8")
+    text = vaultlib.read_vault_text(path)
     data, error = vaultlib.parse_frontmatter_text(text)
 
     if error:
