@@ -30,7 +30,7 @@ Triggered by a live failure in another project: a vision session produced seven 
 
 [[PLAN-009-sizing-mechanism]] APPROVED. Wave 1 is the shape-change mechanism end to end; the prose waits on TASK-083.
 
-- [ ] TASK-078: `compass make-unit` accepts zero artifacts (M) - creates the dir itself, refuses colliding names, splits the existing usage test
+- [x] TASK-078: `compass make-unit` accepts zero artifacts (M) - creates the dir itself, refuses colliding names, splits the existing usage test
 - [ ] TASK-079: the inverse of every shape change - `compass demote`, `make-unit --undo` (M, after 078)
 - [ ] TASK-080: sizing decisions record themselves from the commands that perform them, keyed on a stable `sizing_id` (L, after 078/079)
 - [ ] TASK-081: `validate` reconciles shapes on disk against the log (S, after 080)
