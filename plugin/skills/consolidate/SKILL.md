@@ -16,9 +16,12 @@ Long-horizon cleanup. Runs only when needed. Never archives lessons silently.
 Read `.compass/index.md` and `.compass/meta/lessons-catalog.yaml`. Look for any of these warning markers:
 
 - `<!-- WARNING: index.md exceeded hot-path cap.`
+- `<!-- WARNING: hot path `
 - `# WARNING: catalog exceeded cap.`
 
 If none present, exit: `no consolidation needed (no cap warning)`. The bloat trigger is the contract; do not run unprompted.
+
+The hot-path marker is the aggregate one: `index.md`, `active.md`, and the lessons catalog together exceed the cap even though each component cap passes. It carries a per-file token breakdown. Read it before starting, because the lessons pass only reaches the catalog and the index's Lessons section. If the breakdown names `active.md` or a non-Lessons index section as the dominant contributor, consolidation alone cannot clear the marker: run it for the lessons share, then report the breakdown and say plainly which file is carrying the weight and what would have to be cut. That is a human decision, not a silent trim.
 
 ## Protocol
 

@@ -1,3 +1,4 @@
+<!-- WARNING: hot path 6633 / 5000 tokens (index.md 3393, active.md 871, meta/lessons-catalog.yaml 2369). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -36,33 +37,33 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 
 ## Research
 
-- [[RESEARCH-lessons-and-index-architecture]] - literature review across 5 reference codebases on capture timing, index freshness, dedup, and lesson shape
-- [[RESEARCH-evaluation-benchmarks]] - benchmarks for evaluating Compass methodology layer; A/B pitfalls; field-gap analysis
-- [[RESEARCH-scientific-method-in-compass]] - does Compass actually embody the scientific method, or only borrow the vocabulary; 8 specific gaps with file:line evidence
+- [[RESEARCH-lessons-and-index-architecture]] - capture timing, index freshness, dedup, lesson shape across 5 codebases
+- [[RESEARCH-evaluation-benchmarks]] - benchmarks for the methodology layer; A/B pitfalls; field gaps
+- [[RESEARCH-scientific-method-in-compass]] - does Compass embody the scientific method or borrow its vocabulary; 8 gaps
 - [[RESEARCH-hierarchical-knowledge-base-design]] - MemGPT/RAPTOR/faceted-classification synthesis, 11 findings
-- [[RESEARCH-okf-improvements-for-compass]] - OKF: adopt resource field + reader tolerance, skip format alignment
+- [[RESEARCH-okf-improvements-for-compass]] - adopt resource field + reader tolerance, skip format alignment
 - [[RESEARCH-rag-fit-for-large-vaults]] - RAG net-negative below ~300-500 docs; lexical rung first
-- [[RESEARCH-gsd-core-improvements-for-compass]] - GSD competitive read: decision coverage, model policy, prior art for SPEC-006
-- [[RESEARCH-decision-coverage-impl]] - Decision Coverage Implementation: Format, Parser, Matcher, Gate, Migration
-- [[RESEARCH-hybrid-hierarchy-impl]] - Hybrid Hierarchy Implementation Impact: CLI, Skills, Wikilinks, Migration
-- [[RESEARCH-model-resolution-impl]] - Model Resolution Table: Current State, Mechanism, and Implementation Options
-- [[RESEARCH-hermes-agent-capabilities]] - hermes-agent (NousResearch): Capabilities and Extension Surface, Source-Verified
-- [[RESEARCH-hermes-vs-compass-fit]] - Hermes Agent vs Compass: Fit, Feasibility, and Strategic Options
-- [[RESEARCH-graph-engineering-for-compass]] - Graph Engineering for Compass - Landscape, Prior Art, and Gap Analysis
-- [[RESEARCH-lesson-capture-failure]] - Why Lesson Capture Almost Never Happens (40-Vault Fleet Diagnosis)
-- [[RESEARCH-hermes-memory-mechanics]] - hermes-agent: Memory Update and Retrieval Mechanics, Deep-Dive
+- [[RESEARCH-gsd-core-improvements-for-compass]] - decision coverage, model policy, prior art for SPEC-006
+- [[RESEARCH-decision-coverage-impl]] - format, parser, matcher, gate, migration
+- [[RESEARCH-hybrid-hierarchy-impl]] - CLI, skills, wikilinks, migration impact
+- [[RESEARCH-model-resolution-impl]] - current state, mechanism, implementation options
+- [[RESEARCH-hermes-agent-capabilities]] - hermes capabilities and extension surface, source-verified
+- [[RESEARCH-hermes-vs-compass-fit]] - fit, feasibility, strategic options
+- [[RESEARCH-graph-engineering-for-compass]] - landscape, prior art, gap analysis
+- [[RESEARCH-lesson-capture-failure]] - why capture almost never happens (40-vault diagnosis)
+- [[RESEARCH-hermes-memory-mechanics]] - memory update and retrieval mechanics, deep-dive
 - [[RESEARCH-grep-vs-graph-experiment]] - SPEC-011 gate: 2 classes solved, 2 marginal, health analytics grep-insufficient
-- [[RESEARCH-test-quality-literature]] - Test-Suite Quality Measurement and LLM Test-Generation Literature
-- [[RESEARCH-test-quality-empirical]] - Empirical Grade of Compass's Own CLI Test Suite Against the D-01 Admission Bar
-- [[RESEARCH-test-quality-tooling]] - Test Quality Tooling - Mutation Testing, Cheaper Signals, and Windows/Stdlib Fit
+- [[RESEARCH-test-quality-literature]] - suite-quality measurement and LLM test-generation literature
+- [[RESEARCH-test-quality-empirical]] - the CLI's own suite graded against the D-01 bar
+- [[RESEARCH-test-quality-tooling]] - mutation testing, cheaper signals, Windows/stdlib fit
 - [[RESEARCH-test-quality-synthesis]] - three instruments reconciled; station model recommendation
-- [[RESEARCH-test-quality-craft-and-practice]] - Test Craft and AI Testing Practice: The Missing Axis
-- [[RESEARCH-fleet-test-census]] - Fleet Test Census - Locating and Grading the 841-Test Project
-- [[RESEARCH-test-quality-bar-validation]] - Paired Seeded-Defect Validation of the Test-Design Admission Bar
-- [[RESEARCH-rolling-wave-agent-planning]] - Progressive/Receding-Horizon Planning for AI Agents: What Is Different When Planner and Executor Are LLMs
-- [[RESEARCH-rolling-wave-software-practice]] - Rolling-Wave Planning: How Software Methodologies Operationalize the Detail Gradient
-- [[RESEARCH-rolling-wave-flow-theory]] - Flow and Lean Product-Development Theory Behind Rolling-Wave Planning
-- [[RESEARCH-rolling-wave-synthesis]] - Rolling-Wave Planning: Cross-Axis Synthesis and Recommended Mechanism
+- [[RESEARCH-test-quality-craft-and-practice]] - test craft and AI testing practice, the missing axis
+- [[RESEARCH-fleet-test-census]] - locating and grading the 841-test project
+- [[RESEARCH-test-quality-bar-validation]] - paired seeded-defect validation of the admission bar
+- [[RESEARCH-rolling-wave-agent-planning]] - receding-horizon planning when planner and executor are LLMs
+- [[RESEARCH-rolling-wave-software-practice]] - how methodologies operationalize the detail gradient
+- [[RESEARCH-rolling-wave-flow-theory]] - flow and lean product-development theory behind it
+- [[RESEARCH-rolling-wave-synthesis]] - cross-axis synthesis and recommended mechanism
 
 ## Plans
 
