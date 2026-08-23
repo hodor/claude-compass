@@ -200,6 +200,8 @@ tags:
   - specs/SPEC-002-lessons-and-index-subsystem.md
   deduplication:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
+  defaults:
+  - specs/SPEC-016-sizing-work-beyond-one-spec.md
   delete:
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   denning:
@@ -210,6 +212,8 @@ tags:
   - specs/SPEC-008-central-model-resolution-table.md
   diagnosis:
   - research/RESEARCH-lesson-capture-failure.md
+  discoverability:
+  - specs/SPEC-016-sizing-work-beyond-one-spec.md
   discovery:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   distribution:
@@ -332,6 +336,7 @@ tags:
   - specs/SPEC-003-hierarchical-vault-organization.md
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   - specs/SPEC-010-universal-hybrid-hierarchy.md
+  - specs/SPEC-016-sizing-work-beyond-one-spec.md
   hook-type:
   - lessons/LESSON-hook-type-prompt-no-skills.md
   hooks:
@@ -679,6 +684,8 @@ tags:
   - plans/PLAN-005-model-table.md
   shape-up:
   - research/RESEARCH-rolling-wave-software-practice.md
+  sizing:
+  - specs/SPEC-016-sizing-work-beyond-one-spec.md
   skill:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   skill-design:
@@ -812,6 +819,7 @@ tags:
   units:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
   - plans/PLAN-003-hybrid-hierarchy.md
+  - specs/SPEC-016-sizing-work-beyond-one-spec.md
   units-of-work:
   - research/RESEARCH-hybrid-hierarchy-impl.md
   - specs/SPEC-010-universal-hybrid-hierarchy.md
@@ -855,6 +863,7 @@ tags:
   - specs/SPEC-013-test-quality.md
   vision:
   - specs/SPEC-001-compass-vision-and-architecture.md
+  - specs/SPEC-016-sizing-work-beyond-one-spec.md
   walkthroughs:
   - lessons/LESSON-walkthroughs-in-the-humans-words.md
   wave-sizing:

@@ -44,6 +44,15 @@ _None._
 - [ ] Fleet-wide SubagentStop typed-signal fix queued in [[backlog]] (payload evidence captured: agent_type empty string).
 - [ ] After PLAN-006: SPEC-011 pipeline (research/ADR on substrate + planner), distribute v0.4.0 across repos (19/40 vaults lack the backstop), then SPEC-006 hosts (hermes first, then Kimi Code/Codex)
 
+## Sizing + discoverability initiative (Roger, 2026-08-23)
+
+Triggered by a live failure in another project: a vision session produced seven epic-sized needs and Compass proposed seven flat specs with no signal anything was wrong. Diagnosis found the sizing shapes unreachable at the moment sizing is decided, and then a wider audit found seven CLI commands with no caller at all.
+
+- [x] [[SPEC-016-sizing-work-beyond-one-spec]] APPROVED 2026-08-23, D-01..D-05. Both creation paths ship; Compass sizes and acts without asking; the notice is said once and silenceable; internal vocabulary never surfaced; configurable and callable.
+- [x] [[SPEC-017-capabilities-are-reachable-and-measured]] APPROVED 2026-08-23, D-01..D-02. Adopt both hermes mechanisms (progressive-disclosure index + usage measurement). Audit evidence: `make-unit`, `unit-check`, `admit-check`, `touched`, `resolve-model` unreachable; `clean-tmp` and `tree` redundant with `sync`. Admission control from [[ADR-004-hierarchical-specs-with-facets]] has never run in any vault.
+- [ ] NEXT: research both specs, then one ADR. SPEC-016's mechanism question (skill step vs hook vs CLI gate) and SPEC-017's index-location question are the open axes.
+- [ ] Open: pin the project where the seven-monster-specs session happened ([[LESSON-pin-the-motivating-datum]]).
+
 ## Next Up
 
 ### Next: integration testing of PLAN-001 output
