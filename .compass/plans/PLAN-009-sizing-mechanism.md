@@ -1,7 +1,8 @@
 ---
 title: "Sizing Mechanism (Both Directions, a Self-Firing Record, and a Paired Prototype)"
 type: plan
-status: draft
+status: approved
+approved: 2026-08-23
 confidence: medium
 area: methodology
 tags: [sizing, units, vision, harness, observability, decomposition]
@@ -58,6 +59,7 @@ Carried from [[RESEARCH-decomposition-criteria-for-sizing]], each killed by evid
 - **Manual verifications run `python plugin/cli/compass ...`, never the installed `.claude/cli/compass`**, which is stale until TASK-089. [[RESEARCH-grep-vs-graph-experiment]] recorded this exact trap already.
 - No task adds skill prose without removing at least as much, per [[LESSON-remove-context-before-adding]]. Wave 1 touches no skill files at all.
 - `compass validate` stays at 0 errors and adds no new warning classes.
+- **Every task moves work into the harness and out of agent tokens.** North-star goal 4. A task that adds an agent step doing what a command could do is rejected at review, and a task that removes an agent step is worth more than one that adds a capability. Where prose is unavoidable (the walk itself, per [[ADR-011-sizing-is-a-procedure-not-a-score]] D-01), it carries only what genuinely requires judgment and nothing the CLI could carry instead.
 
 ## Phases
 
