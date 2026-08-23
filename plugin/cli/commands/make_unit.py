@@ -1,19 +1,27 @@
-"""`compass make-unit <name> <artifact>...` - move artifacts into a unit folder.
+"""`compass make-unit <name> [artifact...]` - create a unit folder, optionally
+moving artifacts into it.
 
 Creates `<name>/` at the vault root with a `type: unit` `index.md` marker (the
 classification signal `classify_root_dirs` looks for) and git-moves each named
 artifact into the unit's matching type directory, derived from the artifact's
 current location (`specs/SPEC-004-x.md` lands in `<name>/specs/`). Filenames,
 numbers, and frontmatter are untouched, so bare-stem links to the moved files
-keep resolving. The moved artifacts' entries are removed from the root
-`index.md` - sync is append-only and cannot heal them - then an in-process
-`sync` regenerates derived state (the unit's index section, tag index, lessons
-catalog) and an in-process `validate` reports the vault's health.
+keep resolving. With no artifacts named, the unit folder holds only its
+`index.md` marker - no empty type subdirectories are created, since git does
+not track them.
+
+The moved artifacts' entries are removed from the root `index.md` - sync is
+append-only and cannot heal them - then an in-process `sync` regenerates
+derived state (the unit's index section, tag index, lessons catalog) and an
+in-process `validate` reports the vault's health. A zero-artifact unit skips
+both: there is nothing for sync to fold into a section, and the root index is
+left untouched.
 
 Dry-run by default; `--apply` executes. The operation refuses outright - exit
-1, zero changes - when the unit target already exists or is a reserved name,
-an artifact name is ambiguous, an artifact cannot be found, an artifact is not
-a root-level type-dir member, or two arguments overlap.
+1, zero changes - when the unit target already exists, is a reserved name, or
+already resolves as a wikilink target; when an artifact name is ambiguous, an
+artifact cannot be found, an artifact is not a root-level type-dir member, or
+two arguments overlap.
 """
 
 import datetime
@@ -30,15 +38,20 @@ WIKILINK = re.compile(r"\[\[([^\]]+)\]\]")
 RESERVED_NAMES = set(vaultlib.CORE_TYPE_DIRS) | vaultlib.NON_TYPE_DIRS
 
 
-def _check_target(vault_root, name):
-    """Problems with the unit-folder name itself: reserved, malformed, or
-    already present on disk."""
+def _check_target(vault_root, name, resolve):
+    """Problems with the unit-folder name itself: malformed, reserved,
+    already present on disk, or already resolving as a wikilink target. The
+    last case matters because the moment this unit's `index.md` exists, a
+    name that already maps to another file would map to two paths, turning
+    every existing `[[name]]` wikilink into an ambiguous_wikilink."""
     if "/" in name or "\\" in name or name.startswith("."):
         return [f"invalid unit name: {name}"]
     if name in RESERVED_NAMES:
         return [f"reserved name: {name}"]
     if (vault_root / name).exists():
         return [f"target exists: {name}"]
+    if name in resolve:
+        return [f"already resolves: {name} -> " + ", ".join(sorted(resolve[name]))]
     return []
 
 
@@ -169,14 +182,14 @@ def _removable_lines(index_text, resolve, moved_files):
 def run(args):
     apply = "--apply" in args
     positional = [a for a in args if not a.startswith("--")]
-    if len(positional) < 2:
-        sys.stderr.write("usage: compass make-unit <name> <artifact>... [--apply]\n")
+    if not positional:
+        sys.stderr.write("usage: compass make-unit <name> [artifact...] [--apply]\n")
         return 1
     name, artifacts = positional[0], positional[1:]
     vault_root = vaultlib.find_vault_root()
     resolve = vaultlib.resolvable_names_map(vault_root)
 
-    problems = _check_target(vault_root, name)
+    problems = _check_target(vault_root, name, resolve)
     moves, move_problems = _plan_moves(vault_root, name, artifacts, resolve)
     problems += move_problems
     if problems:
@@ -184,6 +197,26 @@ def run(args):
         for problem in problems:
             sys.stderr.write(f"  {problem}\n")
         return 1
+
+    if not artifacts:
+        unit_dir = vault_root / name
+        if not apply:
+            sys.stdout.write(
+                f"compass make-unit: would create unit '{name}' at "
+                f"{name}/index.md with no artifacts "
+                "(dry-run; pass --apply to write)\n"
+            )
+            return 0
+        unit_dir.mkdir(parents=True)
+        today = datetime.date.today().isoformat()
+        vaultlib.write_text_lf(
+            unit_dir / "index.md", _unit_index_text(name, [], today)
+        )
+        sys.stdout.write(
+            f"compass make-unit: created unit '{name}' at {name}/index.md "
+            "with no artifacts\n"
+        )
+        return 0
 
     moved_files = [f for move in moves for f in move["files"]]
     index_path = vault_root / "index.md"
