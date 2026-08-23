@@ -605,14 +605,209 @@ class MakeUnitTests(unittest.TestCase):
         self.assertIn("not in a root type directory", err.getvalue())
         self.assertFalse((root / "core").exists())
 
-    def test_usage_error_exits_one_never_two(self):
+    def test_zero_artifacts_apply_creates_only_index_marker(self):
+        """Adversarial where: with zero artifacts the move loop -- which
+        carries the module's only `mkdir` -- never runs, so a naive
+        implementation would let `write_text_lf` hit a missing parent
+        directory and raise `FileNotFoundError` instead of creating
+        `vault_root / name` itself; and git does not track empty
+        directories, so pre-creating empty `specs/`, `plans/`, etc. type
+        subdirectories for a unit with nothing to put in them would vanish
+        on the next clone."""
+        root = self._vault()
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(make_unit.run(["core", "--apply"]), 0)
+        core_dir = root / "core"
+        self.assertTrue(core_dir.is_dir())
+        data, error = vaultlib.parse_frontmatter(core_dir / "index.md")
+        self.assertIsNone(error)
+        self.assertEqual(data["type"], "unit")
+        self.assertEqual(sorted(p.name for p in core_dir.iterdir()), ["index.md"])
+
+    def test_zero_artifacts_apply_does_not_add_root_index_section(self):
+        """Adversarial where: `_sync_index` derives unit sections from
+        scanned artifact records; a unit that contributes none must not
+        gain a "## core" section merely because the folder now exists on
+        disk. The task accepts this gap rather than teaching sync to
+        special-case an empty unit; this pins that the root index is left
+        byte-identical instead of an accidental partial section leaking
+        in."""
+        root = self._vault()
+        index_before = (root / "index.md").read_text(encoding="utf-8")
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(make_unit.run(["core", "--apply"]), 0)
+        self.assertEqual(index_before, (root / "index.md").read_text(encoding="utf-8"))
+
+    def test_zero_artifacts_dry_run_creates_nothing(self):
+        """Adversarial where: `run(["core"])` used to be a usage error
+        requiring at least one artifact; it must now succeed as a dry run
+        that creates nothing, not silently fall through to acting as if
+        --apply were given. The message must also describe what the apply
+        would create rather than reusing the multi-artifact template's "N
+        artifact(s)" wording unchanged at N=0, which would literally print
+        a zero count instead of naming the marker it would create."""
+        root = self._vault()
+        index_before = (root / "index.md").read_text(encoding="utf-8")
+        files_before = sorted(p.relative_to(root).as_posix() for p in root.rglob("*"))
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(make_unit.run(["core"]), 0)
+        text = out.getvalue()
+        self.assertIn("dry-run", text)
+        self.assertIn("core/index.md", text)
+        lowered = text.lower()
+        self.assertNotIn("0 artifact", lowered)
+        self.assertNotIn("0 index-line", lowered)
+        self.assertFalse((root / "core").exists())
+        self.assertEqual(index_before, (root / "index.md").read_text(encoding="utf-8"))
+        files_after = sorted(p.relative_to(root).as_posix() for p in root.rglob("*"))
+        self.assertEqual(files_before, files_after)
+
+    def test_refuses_reserved_name_with_zero_artifacts(self):
+        """Adversarial where: the reserved-name refusal must still fire
+        when the positional-count relaxation permits an empty artifact
+        list -- a relaxation that only re-checks `_check_target` inside
+        the move-loop branch would let a reserved name slip through
+        untouched when there's nothing to move."""
+        root = self._vault()
+        err = io.StringIO()
+        with redirect_stderr(err):
+            self.assertEqual(make_unit.run(["prs", "--apply"]), 1)
+        self.assertIn("reserved name: prs", err.getvalue())
+        self.assertFalse((root / "prs").exists())
+
+    def test_refuses_existing_target_with_zero_artifacts(self):
+        """Adversarial where: with zero artifacts the move-loop's mkdir is
+        skipped, but the existing-target guard must still run before the
+        new "apply path creates the directory itself" fix -- otherwise
+        that fix could write a marker straight into a directory that
+        already exists for unrelated reasons."""
+        root = self._vault()
+        (root / "core").mkdir()
+        err = io.StringIO()
+        with redirect_stderr(err):
+            self.assertEqual(make_unit.run(["core", "--apply"]), 1)
+        self.assertIn("target exists: core", err.getvalue())
+        self.assertFalse((root / "core" / "index.md").exists())
+
+    def test_refuses_name_colliding_with_existing_artifact_stem(self):
+        """Adversarial where: `_check_target` today checks only reserved,
+        malformed and existing-path names; a bare word that happens to
+        equal an existing root artifact's stem was previously accepted,
+        and after creation `resolvable_names_map` would map that name to
+        two paths, turning every existing `[[name]]` wikilink into an
+        `ambiguous_wikilink` warning. This pins that the refusal exists
+        before that ambiguity can ever occur. The call carries a real
+        artifact so today's two-positional usage check is satisfied and
+        cannot be the thing masking a missing collision check."""
+        root = self._vault()
+        write(root, "research/helper.md")
+        err = io.StringIO()
+        with redirect_stderr(err):
+            self.assertEqual(
+                make_unit.run(["helper", "specs/SPEC-001-core.md", "--apply"]), 1
+            )
+        self.assertFalse((root / "helper").exists())
+        self.assertTrue((root / "research" / "helper.md").is_file())
+        self.assertTrue((root / "specs" / "SPEC-001-core.md").is_file())
+
+    def test_refuses_malformed_name_with_zero_artifacts(self):
+        """Adversarial where: `_check_target`'s first branch refuses a
+        name containing "/", containing "\\", or starting with "." before
+        it ever reaches the reserved-name or existing-target checks --
+        with zero artifacts, that branch must still fire for each of the
+        three classes and still create nothing."""
+        root = self._vault()
+        cases = {
+            "forward_slash": "bad/name",
+            "backslash": "bad\\name",
+            "leading_dot": ".hidden",
+        }
+        for label, name in cases.items():
+            with self.subTest(name=label):
+                err = io.StringIO()
+                with redirect_stderr(err):
+                    self.assertEqual(make_unit.run([name, "--apply"]), 1)
+                self.assertIn("invalid unit name:", err.getvalue())
+                self.assertFalse((root / name).exists())
+
+    def test_malformed_and_reserved_name_reports_malformed_first(self):
+        """Adversarial where: a name that unmistakably targets the
+        reserved word "prs" but is also malformed (trailing "/") must
+        report `invalid unit name`, not `reserved name` -- the malformed
+        branch returns first in `_check_target`. A later refactor that
+        reorders the checks (e.g. to run the cheap set-membership test
+        before the string scan) would flip which reason gets reported
+        without changing the exit code, so only the message content pins
+        the ordering."""
+        root = self._vault()
+        err = io.StringIO()
+        with redirect_stderr(err):
+            self.assertEqual(make_unit.run(["prs/", "--apply"]), 1)
+        self.assertIn("invalid unit name:", err.getvalue())
+        self.assertNotIn("reserved name", err.getvalue())
+        self.assertFalse((root / "prs").exists())
+
+    def test_usage_error_with_no_args_exits_one(self):
+        """Adversarial where: relaxing `run()` to accept a bare name with
+        zero artifacts must not also relax the true usage error -- calling
+        with no arguments at all still needs the name positional and must
+        exit 1 with a usage message, not be swallowed by the new
+        zero-artifact success path."""
         root = self._vault()
         err = io.StringIO()
         with redirect_stderr(err):
             self.assertEqual(make_unit.run([]), 1)
-            self.assertEqual(make_unit.run(["core"]), 1)
         self.assertIn("usage", err.getvalue())
         self.assertFalse((root / "core").exists())
+
+
+class EmptyUnitAcceptanceTests(unittest.TestCase):
+    """The rest of the vault must already tolerate a unit whose only
+    content is its `type: unit` marker index -- the shape `make-unit`
+    produces for a zero-artifact `--apply` -- since neither
+    `classify_root_dirs` nor `validate` change as part of this task."""
+
+    UNIT_INDEX = "---\ntitle: Core\ntype: unit\nstatus: active\n---\n\n# Core\n"
+
+    def test_empty_unit_classified_as_unit_never_unclassified(self):
+        """Adversarial where: `classify_root_dirs`'s unit detection could
+        plausibly key off a populated type subdirectory, since every
+        existing fixture unit has one; a unit folder holding nothing but
+        an `index.md` must still land in `units` on the strength of the
+        `type: unit` marker alone, not fall into `unclassified` for
+        lacking children."""
+        root = make_vault(self)
+        write(root, "core/index.md", self.UNIT_INDEX)
+        layout = vaultlib.classify_root_dirs(root)
+        self.assertIn("core", layout["units"])
+        self.assertNotIn("core", layout["unclassified"])
+        self.assertNotIn("core", layout["type_dirs"])
+
+    def test_validate_accepts_empty_unit_without_ambiguous_wikilink(self):
+        """Adversarial where: `validate`'s stem-resolution map is built
+        from scanned artifact records; a unit that contributes none could
+        either be mishandled as a missing/broken artifact, or -- if the
+        marker index itself gets folded into the resolvable-names map --
+        spuriously flagged ambiguous. An empty unit must validate clean: 0
+        errors, and no new `ambiguous_wikilink` or `unclassified_root_folder`
+        finding for it."""
+        root = make_vault(self)
+        (root / "index.md").write_text("# Index\n", encoding="utf-8")
+        write(
+            root, "specs/SPEC-001-target.md",
+            "---\ntitle: T\ntype: spec\nstatus: approved\narea: x\n"
+            "tags: [a]\ncreated: 2026-06-14\nupdated: 2026-06-14\n---\n\nbody\n",
+        )
+        write(root, "core/index.md", self.UNIT_INDEX)
+        errors, warnings = validate.check_vault(root)
+        self.assertEqual(errors, [])
+        self.assertFalse(any(w.startswith("ambiguous_wikilink") for w in warnings))
+        self.assertFalse(
+            any(w.startswith("unclassified_root_folder: core") for w in warnings)
+        )
 
 
 class DecisionCommandBase(unittest.TestCase):
