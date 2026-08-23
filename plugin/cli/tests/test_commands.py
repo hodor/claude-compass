@@ -763,6 +763,61 @@ class MakeUnitTests(unittest.TestCase):
         self.assertIn("usage", err.getvalue())
         self.assertFalse((root / "core").exists())
 
+    def test_zero_artifacts_apply_reports_preexisting_vault_problems(self):
+        """Adversarial where: the multi-artifact path always runs an
+        in-process validate after `--apply` and prints its findings, so a
+        human sees the vault's health at the moment they mutate its shape
+        (pinned by `test_apply_moves_creates_unit_and_rewrites_index`,
+        which asserts "validate:" on stdout). The zero-artifact path skips
+        that tail on the stated grounds that an empty unit "has nothing to
+        fold into" sync's output -- but that reasoning only bears on
+        whether sync would add a root-index *section* for this unit, not
+        on whether an unrelated, pre-existing vault problem should still
+        be surfaced. This pins that a warning that exists before the empty
+        unit is created, and is unrelated to it, is silently dropped: the
+        human creating new structure gets no signal the vault is not
+        clean, at exactly the moment the plan's own task text worried
+        about."""
+        root = self._vault()
+        write(root, "weird_folder/stray.md", "# stray\n")
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(make_unit.run(["core", "--apply"]), 0)
+        self.assertIn("validate:", out.getvalue())
+        self.assertIn("unclassified_root_folder: weird_folder", out.getvalue())
+
+    def test_reserved_name_precedes_stem_collision(self):
+        """Adversarial where: the resolve-collision branch added by this
+        task is checked last in `_check_target`, after reserved and
+        malformed -- an ordering only decided once the `resolve` parameter
+        existed, and never pinned before this task. A name that is both a
+        reserved directory word and a stem an existing artifact resolves
+        to must report the reserved-name reason, not the collision reason,
+        because the reserved branch returns first."""
+        root = self._vault()
+        write(root, "research/meta.md", "---\ntype: spec\n---\n")
+        err = io.StringIO()
+        with redirect_stderr(err):
+            self.assertEqual(make_unit.run(["meta", "--apply"]), 1)
+        self.assertIn("reserved name: meta", err.getvalue())
+        self.assertNotIn("already resolves", err.getvalue())
+        self.assertFalse((root / "meta" / "index.md").exists())
+
+    def test_malformed_name_precedes_stem_collision(self):
+        """Adversarial where: same ordering question as the reserved case,
+        but for the malformed branch, which returns first of all four
+        checks in `_check_target`. A name that is both malformed (trailing
+        slash) and would otherwise collide with an existing artifact's
+        stem must report the malformed reason, not the collision reason."""
+        root = self._vault()
+        write(root, "research/helper.md", "---\ntype: spec\n---\n")
+        err = io.StringIO()
+        with redirect_stderr(err):
+            self.assertEqual(make_unit.run(["helper/", "--apply"]), 1)
+        self.assertIn("invalid unit name: helper/", err.getvalue())
+        self.assertNotIn("already resolves", err.getvalue())
+        self.assertFalse((root / "helper").exists())
+
 
 class EmptyUnitAcceptanceTests(unittest.TestCase):
     """The rest of the vault must already tolerate a unit whose only
