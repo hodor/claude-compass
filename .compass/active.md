@@ -63,7 +63,7 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 
 [[PLAN-010-invisible-capture]] APPROVED. Capture moves off the conversation; ADR-013 D-01..D-11 bind.
 
-- [ ] TASK-091: worker wrapper + ledger vocabulary (L, first - 092/093 read its vocabulary)
+- [x] TASK-091: worker wrapper + ledger vocabulary (L, first - 092/093 read its vocabulary)
 - [ ] TASK-092: capture-check spawns, gates recursion, orders fallbacks (L, after 091)
 - [ ] TASK-093: doctor reconciles the worker ledger (S, after 091, parallel with 092)
 - [ ] TASK-094: live fire, paired and judged blind (L, last)
