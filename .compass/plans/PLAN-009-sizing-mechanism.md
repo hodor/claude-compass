@@ -143,7 +143,7 @@ Elaborated 2026-08-24 from wave 1's verified outcomes. The changeability walk is
   - `promote` stays for legacy flat specs and is not mentioned in the authoring flow.
   - Automated verification: skill text instructs folder creation (grep pins on the index.md path pattern); no "changeability walk" anywhere; net prose not increased; validate 0 errors; suite green.
   - Manual verification: author a scratch spec end to end with the updated skill and confirm the result resolves, numbers, and syncs identically to a flat spec.
-- [ ] TASK-086: spec authoring writes into the unit the work belongs to - complexity: S, depends_on: TASK-085, files: [plugin/skills/spec/SKILL.md, plugin/skills/obsidian/SKILL.md], decisions: [SPEC-016-sizing-work-beyond-one-spec/D-01]
+- [x] TASK-086: spec authoring writes into the unit the work belongs to - complexity: S, depends_on: TASK-085, files: [plugin/skills/spec/SKILL.md, plugin/skills/obsidian/SKILL.md], decisions: [SPEC-016-sizing-work-beyond-one-spec/D-01]
   - The spec skill's destination step resolves the owning unit before defaulting to the root, per the obsidian skill's existing destination-root rule; the two skills state the rule once between them, not twice.
   - Automated verification: exactly one destination-resolution rule across the two files (grep count); validate 0 errors.
   - Manual verification: create a scratch spec while a unit exists whose topic matches; it must land in the unit without the human steering it.
