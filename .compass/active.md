@@ -70,7 +70,7 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 - [x] TASK-093: doctor reconciles the worker ledger (S, after 091, parallel with 092)
 - [x] TASK-094: live fire PASS on path/cost, FAIL on cheap-tier quality (blind judge: reasoning) -> tier bumped to balanced, re-fire pending
 
-- [ ] TASK-099: worker-session double catalog rows - reproduce through a real spawned session, then fix (M)
+- [x] TASK-099: root cause found in the worker's transcript (it hand-inserted rows the hook had appended); sync now collapses duplicate rows and reports it; lesson-write's carve-out closed
 - [ ] TASK-095: balanced-tier re-fire judged blind, then fleet v0.8.0 to 50 vaults (M, after 099)
 
 Later tasks in [[backlog]].

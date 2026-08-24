@@ -92,7 +92,7 @@ An ordinary recurrence (a `seen` date added) touches neither the catalog nor the
 
 Edit the matched lesson file's body in place. The new body must still fit within 5 lines. If the refinement would push past 5 lines, compress: keep the most general statement of the rule and drop the most specific instance. Update `updated` in frontmatter.
 
-If the refinement changes the summary, also update the matching catalog row.
+If the refinement changes the summary, edit the existing catalog row in place. Never insert a row: every row is appended by the sync hook from the lesson file, and a hand-inserted row is a duplicate.
 
 Return `refined: <existing-filename>`.
 
