@@ -340,7 +340,7 @@ class ModelRosterTests(unittest.TestCase):
     in the roster without the exclusion would make `apply-models` try to
     rewrite a `capture-worker.md` that never existed."""
 
-    def test_capture_worker_roster_row_resolves_cheap_excluded_from_agent_files(self):
+    def test_capture_worker_roster_row_resolves_balanced_excluded_from_agent_files(self):
         # Through resolve(), not the raw DEFAULT_ROSTER dict: the same
         # precedent row as index-summary (test_modelslib.py:63), no project
         # override, no env override, default host.
@@ -348,7 +348,7 @@ class ModelRosterTests(unittest.TestCase):
             modelslib.resolve(
                 "capture-worker", config=modelslib.empty_config(), environ={}
             ),
-            ("haiku", "low", "built-in"),
+            ("sonnet", "high", "built-in"),
         )
         # A distinct fact resolve() cannot show: apply-models rewrites every
         # name in AGENT_FILES as an agent-definition file, so a roster row
@@ -613,7 +613,7 @@ class ChildInvocationTests(WorkerHarness):
 
         self.assertIn("--model", argv, "no --model flag in the child argv")
         model = argv[argv.index("--model") + 1]
-        self.assertEqual(model, "haiku", f"resolved model was {model!r}, never inherit")
+        self.assertEqual(model, "sonnet", f"resolved model was {model!r}, never inherit")
 
         self.assertIn("--output-format", argv, "no --output-format flag in the child argv")
         output_format = argv[argv.index("--output-format") + 1]
