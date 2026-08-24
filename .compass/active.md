@@ -65,7 +65,7 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 
 - [x] TASK-091: worker wrapper + ledger vocabulary (L, first - 092/093 read its vocabulary)
 - [ ] TASK-092: capture-check spawns, gates recursion, orders fallbacks (L, after 091)
-- [ ] TASK-093: doctor reconciles the worker ledger (S, after 091, parallel with 092)
+- [x] TASK-093: doctor reconciles the worker ledger (S, after 091, parallel with 092) - new "worker ledger" row wraps `capturelib.read_log`/`load_config`/`load_state` in its own try/except; WARNs on an unfinished spawn past `worker_grace_seconds`, the `no_headless_at` latch, or the last three completed spawns all failing, OK otherwise, never FAIL. One sanctioned collateral edit in test_doctor.py's older `UnitPromotionCandidateTests` (bumped 3 hardcoded row-count literals 7→8, extended `KNOWN_BASELINE_CHECKS` after `PRE_TASK_093_CHECKS` is computed) - see `.compass/.annotations/plugin--cli--tests--test_doctor.py.json`.
 - [ ] TASK-094: live fire, paired and judged blind (L, last)
 
 Later tasks in [[backlog]].

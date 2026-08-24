@@ -437,7 +437,7 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        self.assertEqual(len(payload["checks"]), 7)
+        self.assertEqual(len(payload["checks"]), 8)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         row = new_rows[0]
@@ -466,7 +466,7 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        self.assertEqual(len(payload["checks"]), 7)
+        self.assertEqual(len(payload["checks"]), 8)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         self.assertEqual(new_rows[0]["status"], "OK")
@@ -524,7 +524,7 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        self.assertEqual(len(payload["checks"]), 7)
+        self.assertEqual(len(payload["checks"]), 8)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         self.assertEqual(new_rows[0]["status"], "WARN")
@@ -630,6 +630,17 @@ class UnitPromotionCandidateTests(unittest.TestCase):
 # hardcodes a name the plan does not fix.
 
 PRE_TASK_093_CHECKS = KNOWN_BASELINE_CHECKS | {"unit-promotion candidates"}
+
+# Sanctioned collateral edit for TASK-093: doctor's new "worker ledger" row
+# makes `UnitPromotionCandidateTests.non_baseline_rows()` return two rows
+# instead of one (the unit-promotion row and this one), since that helper
+# still filters on the original 6-name `KNOWN_BASELINE_CHECKS`. This mutation
+# runs after `PRE_TASK_093_CHECKS` above has already captured the constant's
+# prior value in a new set object, so it does not also swallow this row out
+# of `ledger_rows`; `non_baseline_rows` re-reads the module global at call
+# time (test methods run long after import), so it sees the addition and
+# keeps isolating the unit-promotion row as the older class's own row.
+KNOWN_BASELINE_CHECKS.add("worker ledger")
 
 
 def ledger_rows(payload):
