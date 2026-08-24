@@ -4,19 +4,26 @@ Reports two severities. Errors are things that break machine-readability (a
 file with no frontmatter, or missing a core field title/type/status) and make
 the command exit 1. Warnings are advisory (dangling wikilinks, ambiguous
 wikilinks, unclassified root folders, missing recommended fields, hot-path cap
-breaches) and do not fail the command - dangling links are valid stubs in an
-Obsidian vault. Wikilinks resolve through `vaultlib.resolvable_names_map`, the
-same resolution `sync` emits against, covering every markdown file in the
-vault including archive/ and custom type dirs. A link name that maps to more
-than one file is flagged `ambiguous_wikilink`; a root folder that is neither
-reserved, a marked unit, nor a typed artifact dir is flagged
-`unclassified_root_folder` - reported for the human, never guessed at.
+breaches, unreconciled sizing decisions) and do not fail the command -
+dangling links are valid stubs in an Obsidian vault. Wikilinks resolve through
+`vaultlib.resolvable_names_map`, the same resolution `sync` emits against,
+covering every markdown file in the vault including archive/ and custom type
+dirs. A link name that maps to more than one file is flagged
+`ambiguous_wikilink`; a root folder that is neither reserved, a marked unit,
+nor a typed artifact dir is flagged `unclassified_root_folder` - reported for
+the human, never guessed at. Every unit folder and folder spec on disk is
+checked against `.compass/meta/sizing-log.yaml` (ADR-011 D-08): a `sizing_id`
+absent from frontmatter is flagged `sizing_unrecorded`, and a `sizing_id`
+present but naming no row in the log is flagged `sizing_orphaned_id` -
+neither ever changes the exit code, since the vault predates the log and
+every pre-existing shape starts out unrecorded.
 """
 
 import re
 import sys
 
 import vaultlib
+from commands import sizing
 from commands.hot_path import HOT_PATH_CAP, measure
 
 # Missing one of these is an error - the artifact cannot be classified/indexed.
@@ -81,13 +88,61 @@ def _wikilinks_in(text):
                 yield lineno, target
 
 
+def _check_sizing_id(name, path, known_ids, warnings):
+    """Append a `sizing_unrecorded` or `sizing_orphaned_id` warning for one
+    unit folder or folder spec, or nothing when its `sizing_id` resolves in
+    `known_ids`. `name` is the artifact's wikilink identity; `path` is its
+    own `index.md`. A frontmatter parse error is skipped rather than
+    warned on here - a broken artifact is already reported once, as
+    `frontmatter_error`, by `check_vault`'s main loop."""
+    data, error = vaultlib.parse_frontmatter(path)
+    if error:
+        return
+    sizing_id = data.get("sizing_id")
+    if not sizing_id:
+        warnings.append(
+            f"sizing_unrecorded: {name}: predates the sizing log, no "
+            f"sizing_id recorded"
+        )
+    elif sizing_id not in known_ids:
+        warnings.append(
+            f"sizing_orphaned_id: {name}: sizing_id {sizing_id} names "
+            f"no row in the sizing log"
+        )
+
+
+def _reconcile_sizing(vault_root, layout, records, warnings):
+    """Warn about every unit folder and folder spec on disk whose shape
+    change was never reconciled against `.compass/meta/sizing-log.yaml`
+    (ADR-011 D-08): a `sizing_id` absent from frontmatter names a shape that
+    predates the log, and a `sizing_id` present but naming no row in the log
+    names an orphaned id - reported as two distinct warning classes so
+    neither reading is mistaken for the other. A missing log file is not a
+    crash: it parses as zero rows, so every id present is correctly reported
+    orphaned and every id absent is correctly reported unrecorded. A folder
+    spec that a *decision to stay flat* would have avoided is out of reach
+    here - reconciliation only sees artifacts that already exist on disk.
+    """
+    log_path = sizing.log_path(vault_root)
+    log_text = vaultlib.read_vault_text(log_path) if log_path.is_file() else ""
+    rows, _skipped = sizing.parse_log(log_text)
+    known_ids = {row["id"] for row in rows}
+
+    for name in layout["units"]:
+        _check_sizing_id(name, vault_root / name / "index.md", known_ids, warnings)
+    for record in records:
+        if record["kind"] == "folder-index":
+            _check_sizing_id(record["name"], record["path"], known_ids, warnings)
+
+
 def check_vault(vault_root):
     """Return (errors, warnings), each a list of human-readable strings."""
     errors, warnings = [], []
     records = vaultlib.scan_artifacts(vault_root)
     resolve = vaultlib.resolvable_names_map(vault_root)
+    layout = vaultlib.classify_root_dirs(vault_root)
 
-    for name in vaultlib.classify_root_dirs(vault_root)["unclassified"]:
+    for name in layout["unclassified"]:
         warnings.append(
             f"unclassified_root_folder: {name}: holds markdown but is not a "
             f"reserved dir, has no 'type: unit' index.md marker, and has no "
@@ -123,6 +178,8 @@ def check_vault(vault_root):
             warnings.append(f"cap_exceeded: index.md over {INDEX_LINE_CAP} lines")
     if measure(vault_root) > HOT_PATH_CAP:
         warnings.append(f"cap_exceeded: hot path over {HOT_PATH_CAP} tokens")
+
+    _reconcile_sizing(vault_root, layout, records, warnings)
 
     return errors, warnings
 
