@@ -20,8 +20,13 @@ phase opportunity opens and the pending turn/signal window carries into
 whatever opportunity opens next.
 
 While an opportunity is already open (the state's mutex marker is set), the
-block JSON re-emits once per turn up to `max_reemits` times; past that the
-opportunity is closed `abandoned` and nothing more is printed. `enabled:
+hook stays silent for `REEMIT_SPACING_TURNS` turns at a time, re-emitting the
+block JSON only when that many turns have passed since the last announcement,
+up to `max_reemits` times; past that the opportunity is closed `abandoned`
+and nothing more is printed. The spacing exists because every block reason is
+rendered into the human's conversation: the announcement is for the model,
+and an extraction pass usually completes within a few turns, so per-turn
+re-nagging costs the human attention while buying nothing. `enabled:
 false` silences the whole command after the turn bump: no new opportunity
 opens, and one already open stays frozen rather than re-emitting or being
 abandoned while capture is turned off.
@@ -41,6 +46,11 @@ import capturelib
 import vaultlib
 
 OPPORTUNITIES_DIR = ("tmp", "capture-opportunities")
+
+# Turns of silence between re-announcements of an open opportunity.
+# `open_opportunity` zeroes `turns_since_capture`, so while an opportunity is
+# open that counter measures turns since it was announced.
+REEMIT_SPACING_TURNS = 5
 PHASE_REPORTS_DIR = ("tmp", "phase-reports")
 
 
@@ -103,12 +113,14 @@ def _window_evidence(signals):
 
 
 def _handle_open_opportunity(vault_root, state, config):
-    """An opportunity is already open. Re-emit the block JSON while under
-    `max_reemits`; past that, go silent, and close it `abandoned` only once
-    it is also older than `abandon_after_seconds`. The age requirement is
-    what keeps a burst of quick turns from abandoning an opportunity whose
-    extraction pass is still running - a re-emit budget alone measures turn
-    count, not elapsed time, and an in-flight pass needs time."""
+    """An opportunity is already open. Stay silent until
+    `REEMIT_SPACING_TURNS` turns have passed since the last announcement,
+    then re-emit the block JSON, while under `max_reemits`; past that budget,
+    go silent, and close it `abandoned` only once it is also older than
+    `abandon_after_seconds`. The age requirement is what keeps a burst of
+    quick turns from abandoning an opportunity whose extraction pass is
+    still running - a re-emit budget alone measures turn count, not elapsed
+    time, and an in-flight pass needs time."""
     opp_id = state.get("open_opportunity")
     directory = _opportunity_dir(vault_root, opp_id)
     opp_path = directory / "opportunity.json"
@@ -124,6 +136,11 @@ def _handle_open_opportunity(vault_root, state, config):
         reemits = 0
     max_reemits = config.get("max_reemits", capturelib.DEFAULT_CONFIG["max_reemits"])
     if reemits < max_reemits:
+        turns_open = state.get("turns_since_capture", 0)
+        if not isinstance(turns_open, int):
+            turns_open = 0
+        if turns_open < (reemits + 1) * REEMIT_SPACING_TURNS:
+            return
         state["reemits"] = reemits + 1
         capturelib.save_state(vault_root, state)
         _emit(_reason(directory, vault_root, reemit=True))

@@ -377,7 +377,12 @@ class CaptureCheckTests(unittest.TestCase):
         self.assertEqual(record["triggers"], ["handoff-written"])
         self.assertEqual(record["evidence"], ["handoffs/HANDOFF-1.md"])
 
-    def test_second_call_with_open_opportunity_reemits_within_budget(self):
+    def test_open_opportunity_stays_silent_between_spaced_reemits(self):
+        """Adversarial where: every block reason is rendered into the human's
+        conversation, so a hook that re-nags on each turn while the extraction
+        pass runs fills the transcript with scaffolding. The turns immediately
+        after the announcement must be silent; the reminder fires only after
+        REEMIT_SPACING_TURNS turns."""
         root = make_vault(self)
         with_vault_env(self, root.parent)
         write_capture_config(root, interval=1, max_reemits=3)
@@ -386,6 +391,15 @@ class CaptureCheckTests(unittest.TestCase):
         self._run()  # opens the opportunity
         opp_id = capturelib.load_state(root)["open_opportunity"]
         self.assertIsNotNone(opp_id)
+
+        for _ in range(capture_check.REEMIT_SPACING_TURNS - 1):
+            feed_stdin(self, {"hook_event_name": "Stop"})
+            code, out = self._run()
+            self.assertEqual(code, 0)
+            self.assertEqual(out, "")
+        state = capturelib.load_state(root)
+        self.assertEqual(state["open_opportunity"], opp_id)
+        self.assertEqual(state["reemits"], 0)
 
         feed_stdin(self, {"hook_event_name": "Stop"})
         code, out = self._run()
@@ -410,6 +424,9 @@ class CaptureCheckTests(unittest.TestCase):
         self._run()  # opens, reemits=0
         opp_id = capturelib.load_state(root)["open_opportunity"]
 
+        for _ in range(capture_check.REEMIT_SPACING_TURNS - 1):
+            feed_stdin(self, {"hook_event_name": "Stop"})
+            self._run()  # silent turns inside the spacing window
         feed_stdin(self, {"hook_event_name": "Stop"})
         code, out = self._run()  # 1 reemit, within the budget of 1
         self.assertIn("still open", json.loads(out)["reason"])
