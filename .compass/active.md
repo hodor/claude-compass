@@ -37,7 +37,7 @@ Triggered by a live failure in another project: a vision session produced seven 
 
 - [x] TASK-078: `compass make-unit` accepts zero artifacts (M) - creates the dir itself, refuses colliding names, splits the existing usage test
 - [x] Off-plan fix: `test-checkpoint verify` false-positived TASK-078's checkpoint when the checkpoint commit also carried an unrelated markdown file, AST-parsing it and reporting a tokenizer error as `modified`. Fixed by [[ADR-012-test-checkpoint-py-membership-git-authoritative]]: `.py` membership stays git-authoritative (the JSON-tamper regression test still passes), a bundled non-`.py` file is classified only when explicitly recorded.
-- [ ] TASK-079: the inverse of every shape change - `compass demote`, `make-unit --undo` (M, after 078)
+- [x] TASK-079: the inverse of every shape change - `compass demote`, `make-unit --undo` (M, after 078)
 - [ ] TASK-080: sizing decisions record themselves from the commands that perform them, keyed on a stable `sizing_id` (L, after 078/079)
 - [ ] TASK-081: `validate` reconciles shapes on disk against the log (S, after 080)
 - [x] TASK-082: `compass doctor` reports unit-promotion candidates (S, after 078) - advisory row wraps `unit_check.find_candidates` in its own try/except, degrading to WARN on a scan failure so it can never collapse the other rows into one FAIL
