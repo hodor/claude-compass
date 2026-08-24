@@ -34,7 +34,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[SPEC-015-rolling-wave-planning]] - plan detail tracks proximity; waves elaborate from completed-task knowledge (draft)
 - [[SPEC-016-sizing-work-beyond-one-spec]] - work too big for one spec gets the bigger shape without the human knowing the machinery (approved 2026-08-23)
 - [[SPEC-017-capabilities-are-reachable-and-measured]] - a capability no skill names is unreachable, and nothing counts usage so dead ones go unnoticed (approved 2026-08-23)
-- [[SPEC-018-scaffolding-invisible-to-the-human]] - the machinery keeps running but none of it occupies the human's conversation (draft)
+- [[SPEC-018-scaffolding-invisible-to-the-human]] - the machinery keeps running but none of it occupies the human's conversation (approved 2026-08-24)
 - [[SPEC-018-scaffolding-invisible-to-the-human]] - the machinery keeps running - capture passes, checks, agent relays - but none of it occupies the human's conversation
 
 ## Research

@@ -1,7 +1,8 @@
 ---
 title: "Compass's Scaffolding Runs in Full and the Human Never Has to Read It"
 type: spec
-status: draft
+status: approved
+approved: 2026-08-24
 confidence: high
 area: methodology
 tags: [conversation-surface, hooks, capture, noise, autonomy, human-attention]
