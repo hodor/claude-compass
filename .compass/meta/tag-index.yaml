@@ -25,6 +25,8 @@ tags:
   - research/RESEARCH-rolling-wave-agent-planning.md
   agile:
   - research/RESEARCH-rolling-wave-software-practice.md
+  agreement:
+  - lessons/LESSON-measure-the-procedures-intermediates.md
   anti-list:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   append-only:
@@ -56,6 +58,8 @@ tags:
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/ADR-003-drop-counter-file-jit-compute.md
   - lessons/LESSON-no-agent-bookkeeping.md
+  autonomy:
+  - specs/SPEC-018-scaffolding-invisible-to-the-human.md
   backlinks:
   - research/RESEARCH-grep-vs-graph-experiment.md
   baseline:
@@ -97,8 +101,11 @@ tags:
   - research/RESEARCH-hermes-memory-mechanics.md
   - research/RESEARCH-lesson-capture-failure.md
   - specs/SPEC-012-learning-loop.md
+  - specs/SPEC-018-scaffolding-invisible-to-the-human.md
   catalog:
   - lessons/LESSON-append-only-index-misses-mutations.md
+  category-mapping:
+  - lessons/LESSON-outputs-must-span-the-decision-space.md
   census:
   - lessons/LESSON-pin-the-motivating-datum.md
   - research/RESEARCH-fleet-test-census.md
@@ -167,6 +174,8 @@ tags:
   - lessons/LESSON-score-the-do-nothing-baseline-before-running.md
   convergence:
   - research/RESEARCH-test-quality-synthesis.md
+  conversation-surface:
+  - specs/SPEC-018-scaffolding-invisible-to-the-human.md
   core:
   - specs/SPEC-001-compass-vision-and-architecture.md
   cost:
@@ -206,6 +215,8 @@ tags:
   - specs/SPEC-007-decision-coverage-tracing.md
   decision-lineage:
   - research/RESEARCH-grep-vs-graph-experiment.md
+  decision-procedures:
+  - lessons/LESSON-outputs-must-span-the-decision-space.md
   decision-rationale:
   - lessons/LESSON-verify-the-inverse-not-the-forward-path.md
   decomposition:
@@ -252,6 +263,8 @@ tags:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   empirical:
   - lessons/LESSON-blind-the-author-in-self-validation.md
+  - lessons/LESSON-measure-the-procedures-intermediates.md
+  - lessons/LESSON-outputs-must-span-the-decision-space.md
   - lessons/LESSON-revert-to-prove-a-regression-test.md
   - lessons/LESSON-suite-size-is-not-coverage.md
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
@@ -269,6 +282,7 @@ tags:
   - research/RESEARCH-grep-vs-graph-experiment.md
   experiments:
   - lessons/LESSON-blind-the-author-in-self-validation.md
+  - lessons/LESSON-measure-the-procedures-intermediates.md
   extension-surface:
   - research/RESEARCH-hermes-agent-capabilities.md
   facets:
@@ -279,6 +293,8 @@ tags:
   - decisions/ADR-007-decision-coverage-mechanism.md
   fail-safe:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
+  false-positive:
+  - decisions/ADR-012-test-checkpoint-py-membership-git-authoritative.md
   false-positives:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   falsifiability:
@@ -382,6 +398,7 @@ tags:
   - plans/PLAN-006-learning-loop.md
   - research/RESEARCH-lessons-and-index-architecture.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
+  - specs/SPEC-018-scaffolding-invisible-to-the-human.md
   host-adapter:
   - specs/SPEC-006-multi-host-agent-cli-support.md
   host-evaluation:
@@ -395,6 +412,8 @@ tags:
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   hub-ranking:
   - specs/SPEC-011-vault-graph-queries.md
+  human-attention:
+  - specs/SPEC-018-scaffolding-invisible-to-the-human.md
   human-decision:
   - lessons/LESSON-walkthroughs-in-the-humans-words.md
   human-practice:
@@ -495,6 +514,7 @@ tags:
   - compass-cli/research/RESEARCH-cli-token-reduction-measurement.md
   - lessons/LESSON-adversarial-plan-review-before-build.md
   - lessons/LESSON-blind-the-author-in-self-validation.md
+  - lessons/LESSON-measure-the-procedures-intermediates.md
   memgpt:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
@@ -536,6 +556,8 @@ tags:
   - research/RESEARCH-test-quality-tooling.md
   nesting:
   - specs/SPEC-010-universal-hybrid-hierarchy.md
+  noise:
+  - specs/SPEC-018-scaffolding-invisible-to-the-human.md
   non-interactive:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   nudges:
@@ -631,6 +653,8 @@ tags:
   - research/RESEARCH-okf-improvements-for-compass.md
   probes:
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
+  procedure-evaluation:
+  - lessons/LESSON-measure-the-procedures-intermediates.md
   progressive-disclosure:
   - decisions/ADR-010-identity-resident-fetch-mandatory.md
   - research/RESEARCH-cache-theory-for-context-tiers.md
@@ -661,6 +685,8 @@ tags:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - specs/SPEC-003-hierarchical-vault-organization.md
+  rater-bias:
+  - lessons/LESSON-outputs-must-span-the-decision-space.md
   rationing:
   - lessons/LESSON-human-practice-rationing-assumes-human-scarcity.md
   real-options:
@@ -759,6 +785,7 @@ tags:
   spec-012:
   - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
   spec-defect:
+  - lessons/LESSON-outputs-must-span-the-decision-space.md
   - lessons/LESSON-untestable-criterion-is-a-spec-defect.md
   spec-driven-development:
   - research/RESEARCH-gsd-core-improvements-for-compass.md
@@ -802,6 +829,8 @@ tags:
   - research/RESEARCH-test-quality-synthesis.md
   tag-index:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
+  tamper-evidence:
+  - decisions/ADR-012-test-checkpoint-py-membership-git-authoritative.md
   taxonomy:
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - specs/SPEC-003-hierarchical-vault-organization.md
@@ -810,6 +839,8 @@ tags:
   templates:
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
+  test-checkpoint:
+  - decisions/ADR-012-test-checkpoint-py-membership-git-authoritative.md
   test-design:
   - research/RESEARCH-test-quality-craft-and-practice.md
   test-first:
@@ -932,6 +963,8 @@ tags:
   verification:
   - lessons/LESSON-verify-the-inverse-not-the-forward-path.md
   - specs/SPEC-013-test-quality.md
+  verify:
+  - decisions/ADR-012-test-checkpoint-py-membership-git-authoritative.md
   vision:
   - decisions/ADR-011-sizing-is-a-procedure-not-a-score.md
   - plans/PLAN-009-sizing-mechanism.md

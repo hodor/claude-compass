@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 7617 / 5000 tokens (index.md 3859, active.md 1111, meta/lessons-catalog.yaml 2647). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 8158 / 5000 tokens (index.md 4030, active.md 1310, meta/lessons-catalog.yaml 2818). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -34,6 +34,8 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[SPEC-015-rolling-wave-planning]] - plan detail tracks proximity; waves elaborate from completed-task knowledge (draft)
 - [[SPEC-016-sizing-work-beyond-one-spec]] - work too big for one spec gets the bigger shape without the human knowing the machinery (approved 2026-08-23)
 - [[SPEC-017-capabilities-are-reachable-and-measured]] - a capability no skill names is unreachable, and nothing counts usage so dead ones go unnoticed (approved 2026-08-23)
+- [[SPEC-018-scaffolding-invisible-to-the-human]] - the machinery keeps running but none of it occupies the human's conversation (draft)
+- [[SPEC-018-scaffolding-invisible-to-the-human]] - the machinery keeps running - capture passes, checks, agent relays - but none of it occupies the human's conversation
 
 ## Research
 
@@ -148,6 +150,8 @@ See [[backlog]].
 - [[LESSON-verify-the-inverse-not-the-forward-path]] - Cheap reversal licenses acting without asking; verify it on the inverse command, never by reading the forward one
 - [[LESSON-score-the-do-nothing-baseline-before-running]] - Score the constant-answer baseline, fix the threshold, and check the stop verdict can fire and end the plan
 - [[LESSON-untestable-criterion-is-a-spec-defect]] - A criterion that defines no input class cannot be tested; report the spec defect, never invent the equivalence class
+- [[LESSON-measure-the-procedures-intermediates]] - Verdict agreement without intermediate agreement means a shared prior, not the procedure, produces the answer
+- [[LESSON-outputs-must-span-the-decision-space]] - A procedure answering in fewer categories than the decision space makes users invent the mapping, wrongly
 
 ## compass-cli
 - [[compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work]] - A Python `compass` CLI Owns All Mechanical Vault Work; the Hook Calls It as a Command
