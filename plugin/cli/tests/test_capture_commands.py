@@ -311,17 +311,19 @@ class CaptureCheckTests(unittest.TestCase):
         self.assertEqual(self._opportunities(root), [])
 
     def test_due_via_interval_emits_block_json_and_opportunity(self):
+        """TASK-092: due now spawns the detached worker and prints nothing,
+        replacing the rendered block on this common path (ADR-013 D-01)."""
         root = make_vault(self)
         with_vault_env(self, root.parent)
         write_capture_config(root, interval=1)
         capturelib.record_signal(root, "vault-write", "specs/SPEC-001.md")
         feed_stdin(self, {"hook_event_name": "Stop"})
-        code, out = self._run()
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            mock_popen.return_value = mock.Mock(pid=4242)
+            code, out = self._run()
         self.assertEqual(code, 0)
-        payload = json.loads(out)
-        self.assertEqual(payload["decision"], "block")
-        self.assertIn("tmp/capture-opportunities/OPP-", payload["reason"])
-        self.assertIn("extract-lessons", payload["reason"])
+        self.assertEqual(out, "", "the conversation must see nothing on a spawn")
+        self.assertEqual(mock_popen.call_count, 1)
 
         opps = self._opportunities(root)
         self.assertEqual(len(opps), 1)
@@ -337,6 +339,8 @@ class CaptureCheckTests(unittest.TestCase):
         self.assertEqual(state["signals"], [])
 
     def test_real_subagent_capture_evidence_surfaces_in_opportunity(self):
+        """TASK-092: due now spawns the detached worker and prints nothing,
+        replacing the rendered block on this common path (ADR-013 D-01)."""
         root = make_vault(self)
         with_vault_env(self, root.parent)
         feed_stdin(self, {
@@ -347,10 +351,12 @@ class CaptureCheckTests(unittest.TestCase):
         capture_signal.run(["--hook"])  # a real subagent finishing, in the window
 
         feed_stdin(self, {"hook_event_name": "Stop"})
-        code, out = self._run()
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            mock_popen.return_value = mock.Mock(pid=4242)
+            code, out = self._run()
         self.assertEqual(code, 0)
-        payload = json.loads(out)
-        self.assertEqual(payload["decision"], "block")
+        self.assertEqual(out, "", "the conversation must see nothing on a spawn")
+        self.assertEqual(mock_popen.call_count, 1)
 
         opps = self._opportunities(root)
         self.assertEqual(len(opps), 1)
@@ -363,14 +369,18 @@ class CaptureCheckTests(unittest.TestCase):
         self.assertTrue((root / evidence_path).is_file())
 
     def test_strong_signal_fires_below_interval(self):
+        """TASK-092: due now spawns the detached worker and prints nothing,
+        replacing the rendered block on this common path (ADR-013 D-01)."""
         root = make_vault(self)
         with_vault_env(self, root.parent)  # default interval (12), one turn only
         capturelib.record_signal(root, "handoff-written", "handoffs/HANDOFF-1.md")
         feed_stdin(self, {"hook_event_name": "Stop"})
-        code, out = self._run()
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            mock_popen.return_value = mock.Mock(pid=4242)
+            code, out = self._run()
         self.assertEqual(code, 0)
-        payload = json.loads(out)
-        self.assertEqual(payload["decision"], "block")
+        self.assertEqual(out, "", "the conversation must see nothing on a spawn")
+        self.assertEqual(mock_popen.call_count, 1)
         opps = self._opportunities(root)
         record = json.loads((opps[0] / "opportunity.json").read_text(encoding="utf-8"))
         self.assertEqual(record["kind"], "signal")
@@ -382,15 +392,30 @@ class CaptureCheckTests(unittest.TestCase):
         conversation, so a hook that re-nags on each turn while the extraction
         pass runs fills the transcript with scaffolding. The turns immediately
         after the announcement must be silent; the reminder fires only after
-        REEMIT_SPACING_TURNS turns."""
+        REEMIT_SPACING_TURNS turns.
+
+        TASK-092: the block last resort is now entered through the fallback
+        ladder (quiet already fired, then aged past another worker_grace_seconds)
+        rather than opened directly by a due check. Seeded here instead of
+        walked turn-by-turn; the spacing and abandon assertions below are
+        otherwise unchanged from the pre-worker mechanism."""
         root = make_vault(self)
         with_vault_env(self, root.parent)
-        write_capture_config(root, interval=1, max_reemits=3)
-        capturelib.record_signal(root, "vault-write", "specs/SPEC-001.md")
+        write_capture_config(root, max_reemits=3, worker_grace_seconds=600)
+        directory = capturelib.open_opportunity(
+            root, "interval", ["vault-write"], ["specs/SPEC-001.md"]
+        )
+        opp_id = directory.name
+        _set_state_fields(
+            root, worker_attempts=2,
+            worker_quiet_at=capturelib._iso(
+                capturelib._now() - datetime.timedelta(seconds=650)
+            ),
+        )
+        _write_raw_log_row(root, "fallback-fired", at_offset_seconds=650, id=opp_id, channel="quiet")
         feed_stdin(self, {"hook_event_name": "Stop"})
-        self._run()  # opens the opportunity
-        opp_id = capturelib.load_state(root)["open_opportunity"]
-        self.assertIsNotNone(opp_id)
+        self._run()  # transitions quiet -> block, entering the block-last-resort state
+        self.assertEqual(capturelib.load_state(root)["open_opportunity"], opp_id)
 
         for _ in range(capture_check.REEMIT_SPACING_TURNS - 1):
             feed_stdin(self, {"hook_event_name": "Stop"})
@@ -416,13 +441,28 @@ class CaptureCheckTests(unittest.TestCase):
         self.assertEqual(len(self._opportunities(root)), 1)
 
     def test_reemit_cap_honored_then_closed_abandoned(self):
+        """TASK-092: the block last resort is now entered through the
+        fallback ladder (quiet already fired, then aged past another
+        worker_grace_seconds) rather than opened directly by a due check.
+        Seeded here instead of walked turn-by-turn; the spacing and abandon
+        assertions below are otherwise unchanged from the pre-worker
+        mechanism."""
         root = make_vault(self)
         with_vault_env(self, root.parent)
-        write_capture_config(root, interval=1, max_reemits=1)
-        capturelib.record_signal(root, "vault-write", "specs/SPEC-001.md")
+        write_capture_config(root, max_reemits=1, worker_grace_seconds=600)
+        directory = capturelib.open_opportunity(
+            root, "interval", ["vault-write"], ["specs/SPEC-001.md"]
+        )
+        opp_id = directory.name
+        _set_state_fields(
+            root, worker_attempts=2,
+            worker_quiet_at=capturelib._iso(
+                capturelib._now() - datetime.timedelta(seconds=650)
+            ),
+        )
+        _write_raw_log_row(root, "fallback-fired", at_offset_seconds=650, id=opp_id, channel="quiet")
         feed_stdin(self, {"hook_event_name": "Stop"})
-        self._run()  # opens, reemits=0
-        opp_id = capturelib.load_state(root)["open_opportunity"]
+        self._run()  # transitions quiet -> block, entering the block-last-resort state; reemits=0
 
         for _ in range(capture_check.REEMIT_SPACING_TURNS - 1):
             feed_stdin(self, {"hook_event_name": "Stop"})
@@ -469,8 +509,13 @@ class CaptureCheckTests(unittest.TestCase):
         self.assertFalse(opportunities_dir(root).exists())
         capturelib.release_run_lock(root)
         feed_stdin(self, {"hook_event_name": "Stop"})
-        code, out = self._run()
-        self.assertIn("decision", out)
+        with mock.patch.object(capture_check.subprocess, "Popen") as popen:
+            code, out = self._run()
+        self.assertEqual(code, 0)
+        # The unblocked call opens the opportunity and spawns silently.
+        self.assertEqual(out, "")
+        self.assertEqual(popen.call_count, 1)
+        self.assertTrue(opportunities_dir(root).exists())
 
     def test_stale_run_lock_is_broken_and_retaken(self):
         """Adversarial where: a crashed capture-check would leave its lock
@@ -485,16 +530,20 @@ class CaptureCheckTests(unittest.TestCase):
         capturelib.release_run_lock(root)
 
     def test_unprocessed_phase_summary_opens_phase_opportunity(self):
+        """TASK-092: due now spawns the detached worker and prints nothing,
+        replacing the rendered block on this common path (ADR-013 D-01)."""
         root = make_vault(self)
         with_vault_env(self, root.parent)
         phase_dir = root / "tmp" / "phase-reports" / "PHASE-001-plan-001"
         phase_dir.mkdir(parents=True)
         (phase_dir / "phase-summary.yaml").write_text("phase_id: PHASE-001\n", encoding="utf-8")
         feed_stdin(self, {"hook_event_name": "Stop"})
-        code, out = self._run()
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            mock_popen.return_value = mock.Mock(pid=4242)
+            code, out = self._run()
         self.assertEqual(code, 0)
-        payload = json.loads(out)
-        self.assertEqual(payload["decision"], "block")
+        self.assertEqual(out, "", "the conversation must see nothing on a spawn")
+        self.assertEqual(mock_popen.call_count, 1)
         opps = self._opportunities(root)
         self.assertEqual(len(opps), 1)
         record = json.loads((opps[0] / "opportunity.json").read_text(encoding="utf-8"))

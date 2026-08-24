@@ -9,10 +9,17 @@ path never touches stdin, so it cannot block on a shell with nothing piped
 in. A subagent finishing must never fail the turn that triggered it, so every
 step past argument parsing is best-effort - malformed JSON, an absent vault,
 or any internal error records nothing and exits 0.
+
+`COMPASS_WORKER_SESSION` (ADR-013 D-11) gates this module before anything
+else runs: the detached capture worker's own headless session inherits this
+project's hooks, so an ungated SubagentStop firing inside it would record the
+very signal that makes the next opportunity due - manufacturing the evidence
+for a loop it was spawned to close, not to reopen.
 """
 
 import datetime
 import json
+import os
 import sys
 
 import capturelib
@@ -96,6 +103,8 @@ def run(args):
     if "--hook" not in args:
         # Nothing to do outside the hook path, and stdin is never touched,
         # per LESSON-hook-cli-gate-stdin-on-flag.
+        return 0
+    if os.environ.get("COMPASS_WORKER_SESSION"):
         return 0
 
     try:
