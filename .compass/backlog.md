@@ -13,6 +13,13 @@ Held under [[PLAN-009-sizing-mechanism]]'s `## Later` region. Promoted into a de
 
 - [ ] TASK-090: the blind re-audit that gives the correction rate a denominator
 
+## PLAN-010 later tasks (intent only)
+
+- [ ] TASK-095: fleet distribution (v0.8.0)
+- [ ] TASK-096: POSIX detach verification on a non-Windows fleet host
+- [ ] TASK-097: SessionStart pickup for hosts that could never run workers
+- [ ] TASK-098: pipeline posture between gates (SPEC-018 D-02)
+
 ## Candidate specs (raised, not yet drafted)
 
 - [ ] **Hermes-agent portable techniques (from [[RESEARCH-hermes-vs-compass-fit]], 2026-07-25).** Four host-agnostic mechanisms worth Compass specs of their own: (1) FTS5 session search over past conversations - Compass has NO session-recall equivalent beyond handoffs, and this also serves Roger's fast-contextual-lesson-retrieval wish; (2) the curator's pre-mutation snapshot/rollback gate - a reversibility mechanism /compass:consolidate lacks today; (3) the 50%-of-context compression trigger with head/tail protection; (4) the offline trajectory compressor (bench/ relevance). Also: hermes is a viable SPEC-006 host candidate - its shell-hooks system speaks Claude Code's hook protocol (post_tool_call + matcher = compass sync port, classification (a)); gaps are named subagent roles (adapter) and human approval gates (no equivalent, must be designed).

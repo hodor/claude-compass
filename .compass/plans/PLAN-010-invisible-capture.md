@@ -1,7 +1,8 @@
 ---
 title: "Invisible Capture (the Detached Worker, the Quiet Fallback, the Worker Ledger)"
 type: plan
-status: draft
+status: approved
+approved: 2026-08-24
 confidence: medium
 area: architecture
 tags: [capture, hooks, headless, background-worker, observability]
