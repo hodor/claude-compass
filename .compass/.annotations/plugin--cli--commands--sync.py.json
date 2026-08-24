@@ -1,0 +1,11 @@
+{
+  "path": "plugin/cli/commands/sync.py",
+  "notes": [
+    {
+      "text": "sync() unconditionally writes meta/tag-index.yaml (_sync_tag_index) with no mkdir guard, so calling sync() against a vault whose meta/ directory does not yet exist raises FileNotFoundError. demote.py and make_unit.py's --undo mode both mkdir(exist_ok=True) meta/ immediately before calling sync() for this reason - any new caller of sync() on a possibly-fresh vault needs the same guard.",
+      "by": "builder",
+      "date": "2026-08-23",
+      "tags": ["gotcha", "sync", "meta-dir"]
+    }
+  ]
+}
