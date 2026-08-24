@@ -257,6 +257,13 @@ def _is_no_headless(returncode, elapsed, stderr_text):
     )
 
 
+# The tools an extraction pass needs and nothing more: reading the vault,
+# writing lessons and logs, the skills that define the pass, and the compass
+# CLI through the interpreter. A headless session approves only what is
+# listed here; every other tool request is refused without a human.
+WORKER_ALLOWED_TOOLS = "Read,Write,Edit,Glob,Grep,Skill,Bash(python:*),Bash(python3:*)"
+
+
 def _grace_seconds(config):
     return config.get(
         "worker_grace_seconds", capturelib.DEFAULT_CONFIG["worker_grace_seconds"]
@@ -267,7 +274,10 @@ def _run_child(vault_root, opp_id, opp_dir, opp_path, config):
     binary = _resolve_binary(config)
     model, _effort, _source = modelslib.resolve("capture-worker")
     prompt = _worker_prompt(opp_dir)
-    argv = [binary, "-p", prompt, "--model", model, "--output-format", "json"]
+    argv = [
+        binary, "-p", prompt, "--model", model, "--output-format", "json",
+        "--allowedTools", WORKER_ALLOWED_TOOLS,
+    ]
 
     env = dict(os.environ)
     env["COMPASS_WORKER_SESSION"] = "1"
