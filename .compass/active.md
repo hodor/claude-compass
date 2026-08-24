@@ -51,7 +51,7 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 
 - [x] TASK-085: spec skill - every spec born a folder, recursively (M, first: 084/086 depend on it)
 - [ ] TASK-084: vision skill - only the unit question, plain words, once (M, after 085)
-- [ ] TASK-086: spec authoring routes into the owning unit (S, after 085)
+- [x] TASK-086: spec authoring routes into the owning unit (S, after 085)
 - [ ] TASK-087: parent/child authoring template (S, after 086)
 
 ## Next Up
