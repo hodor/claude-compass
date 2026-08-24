@@ -6,10 +6,10 @@ category: process
 area: methodology
 tags: [review, plans, specs, adversarial, multi-lens, measurement]
 created: 2026-08-08
-updated: 2026-08-11
-score: 6
+updated: 2026-08-24
+score: 7
 summary: "Review specs/plans with 3 adversarial lenses before approval, and have reviewers measure against the real corpus, not opine"
-seen: [2026-08-11]
+seen: [2026-08-11, 2026-08-24]
 ---
 
 Before human approval, review a spec or plan with parallel adversarial lenses (evidence-fidelity, mechanism-attack, product/YAGNI); authors cannot see their own scope inversions or mechanism holes.
