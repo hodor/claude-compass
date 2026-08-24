@@ -4,6 +4,7 @@ unregistered hooks.json, a hole in the CLI's command modules, a v0.2.0-shaped
 install with skills but no hooks anywhere) and assert doctor names the
 defect and exits 1, never 2, and never raises."""
 
+import datetime
 import io
 import json
 import os
@@ -16,6 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import capturelib  # noqa: E402
 from commands import doctor  # noqa: E402
 
 
@@ -601,6 +603,446 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         self.assertNotIn("\n", new_rows[0]["detail"])
         self.assertIn("core", new_rows[0]["detail"])
         self.assertIn("widgets", new_rows[0]["detail"])
+
+
+# ---------------------------------------------------------------------------
+# TASK-093: doctor reconciles the worker ledger (PLAN-010, ADR-013 D-10)
+# ---------------------------------------------------------------------------
+#
+# `capturelib.log_event`/`read_log` and the five worker ledger kinds
+# (`worker-started`, `worker-spawn-error`, `worker-finished`, `worker-failed`,
+# `fallback-fired`) are real (TASK-091). The doctor row that reconciles them
+# does not exist yet. Fixtures write the ledger the same way the worker
+# wrapper and the future capture-check spawn point do: through
+# `capturelib.log_event` for "now" rows, and a raw JSONL append (`log_row`)
+# for rows that must be backdated past `worker_grace_seconds` -
+# `capturelib.log_event` always stamps the current time, so a boundary-age
+# fixture has no other way onto the ledger. The `no_headless_at` latch is a
+# state field, not a log row, so its fixture goes through
+# `capturelib.save_state` directly, per the task's own instruction.
+#
+# `PRE_TASK_093_CHECKS` is `KNOWN_BASELINE_CHECKS` (the six install-drift
+# rows) plus `"unit-promotion candidates"` (TASK-082, already shipped): the
+# seven check names a `build_complete_install` fixture produces before this
+# task's row exists. The new row is whichever check name a run adds beyond
+# that set - the same elimination `non_baseline_rows` uses to isolate the
+# unit-promotion row itself, applied one task later so this class never
+# hardcodes a name the plan does not fix.
+
+PRE_TASK_093_CHECKS = KNOWN_BASELINE_CHECKS | {"unit-promotion candidates"}
+
+
+def ledger_rows(payload):
+    return [row for row in payload["checks"] if row["check"] not in PRE_TASK_093_CHECKS]
+
+
+def capture_root(project_root):
+    return project_root / ".compass"
+
+
+def write_capture_config(project_root, **overrides):
+    config = dict(capturelib.DEFAULT_CONFIG)
+    config.update(overrides)
+    path = capture_root(project_root) / "meta" / "capture.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(config), encoding="utf-8")
+    return config
+
+
+def iso_ago(seconds):
+    dt = capturelib._now() - datetime.timedelta(seconds=seconds)
+    return capturelib._iso(dt)
+
+
+def log_row(project_root, event, at=None, **fields):
+    """Append one raw row to `.compass/tmp/capture-log.jsonl`, optionally
+    backdating `at`. `capturelib.log_event` always stamps "now", so a
+    boundary-age fixture (the grace-period tests need a row aged to the
+    exact second) has no way onto the ledger except a direct append
+    matching the row shape `capturelib._log_event` itself writes."""
+    path = capture_root(project_root) / "tmp" / "capture-log.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    row = {"at": at or capturelib._iso(capturelib._now()), "event": event}
+    row.update(fields)
+    with open(path, "a", encoding="utf-8", newline="") as handle:
+        handle.write(json.dumps(row) + "\n")
+
+
+def set_no_headless_latch(project_root, at=None):
+    root = capture_root(project_root)
+    state = capturelib.load_state(root)
+    state["no_headless_at"] = at or capturelib._iso(capturelib._now())
+    capturelib.save_state(root, state)
+
+
+class LedgerCountsTests(unittest.TestCase):
+    def test_counts_report_accurately(self):
+        """Adversarial where: an empty ledger and a populated one are two
+        equivalence classes of the same 'reports counts' behavior. A check
+        exercised only against a populated fixture during development could
+        still misreport the empty case as WARN instead of OK (D-10 requires
+        OK, not just 'no exception'). The populated case uses distinct,
+        non-adjacent counts (4 started, 3 finished, 1 failed) with
+        non-numeric opp-ids so no fixture id text could coincidentally
+        satisfy a numeral assertion meant to check the real count."""
+        project = make_project(self)
+        with_project_env(self, project)
+        build_complete_install(project)
+        code, out = run_doctor(["--json"])
+        payload = json.loads(out)
+        self.assertEqual(code, 0)
+        rows = ledger_rows(payload)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["status"], "OK")
+
+        project2 = make_project(self)
+        with_project_env(self, project2)
+        build_complete_install(project2)
+        root = capture_root(project2)
+        ids = ["alpha", "beta", "gamma", "delta"]
+        for opp_id in ids:
+            capturelib.log_event(root, "worker-started", id=f"OPP-{opp_id}", pid=1)
+        for opp_id in ids[:3]:
+            capturelib.log_event(root, "worker-finished", id=f"OPP-{opp_id}")
+        capturelib.log_event(root, "worker-failed", id="OPP-delta", reason="exit 1")
+        code, out = run_doctor(["--json"])
+        payload = json.loads(out)
+        self.assertEqual(code, 0)
+        rows = ledger_rows(payload)
+        self.assertEqual(len(rows), 1)
+        detail = rows[0]["detail"]
+        self.assertRegex(detail, r"\b4\b")
+        self.assertRegex(detail, r"\b3\b")
+        self.assertRegex(detail, r"\b1\b")
+
+
+class UnfinishedPastGraceTests(unittest.TestCase):
+    def test_started_without_end_past_grace_warns_naming_opp_id_and_age(self):
+        """Adversarial where: three scenarios share the shape 'a started row
+        with no finished row', but only one should WARN. The
+        boundary-and-fixture rule requires the exact grace cutoff, not only
+        values comfortably on either side, plus a distinct case a
+        start-age-only check would get wrong: an old start later matched by
+        a finish must never be flagged, even though its start row alone is
+        far past grace. `worker_grace_seconds` is overridden to 50 (not
+        `DEFAULT_CONFIG`'s 600), so a check that ignores the configured
+        grace and silently falls back to the hardcoded default would pass
+        this test for the wrong reason."""
+        grace = 50
+        cases = [
+            ("one second under grace: not yet unfinished", grace - 1, False, False),
+            ("exactly at grace: unfinished", grace, True, False),
+            ("old start matched by a later finish: never unfinished", grace + 500, False, True),
+        ]
+        for name, age, expect_warn, with_finish in cases:
+            with self.subTest(name=name):
+                project = make_project(self)
+                with_project_env(self, project)
+                build_complete_install(project)
+                write_capture_config(project, worker_grace_seconds=grace)
+                root = capture_root(project)
+                log_row(project, "worker-started", at=iso_ago(age), id="OPP-lonely", pid=999)
+                if with_finish:
+                    capturelib.log_event(root, "worker-finished", id="OPP-lonely")
+                code, out = run_doctor(["--json"])
+                payload = json.loads(out)
+                self.assertEqual(code, 0)
+                rows = ledger_rows(payload)
+                self.assertEqual(len(rows), 1)
+                row = rows[0]
+                if expect_warn:
+                    self.assertEqual(row["status"], "WARN")
+                    self.assertIn("OPP-lonely", row["detail"])
+                else:
+                    self.assertEqual(row["status"], "OK")
+
+
+class NoHeadlessLatchTests(unittest.TestCase):
+    def test_latch_set_warns_with_date(self):
+        project = make_project(self)
+        with_project_env(self, project)
+        build_complete_install(project)
+        latch_at = iso_ago(3600)
+        set_no_headless_latch(project, at=latch_at)
+        code, out = run_doctor(["--json"])
+        payload = json.loads(out)
+        self.assertEqual(code, 0)
+        rows = ledger_rows(payload)
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row["status"], "WARN")
+        # The date portion (YYYY-MM-DD) must be legible in the detail, not
+        # just an opaque "latch set" flag - D-10 exists specifically so the
+        # latch's age is visible at a glance.
+        date_part = latch_at[:10]
+        self.assertIn(date_part, row["detail"])
+
+    def test_malformed_latch_value_does_not_crash(self):
+        """Adversarial where: `no_headless_at` is present (not None) but is
+        not a parseable ISO string - a hand-edited or half-written state
+        file. `capturelib.load_state` does not type-check this field, so a
+        doctor row that slices or parses the raw value without going
+        through a None-safe path would raise here. That must degrade to a
+        non-crashing status, never propagate past `_run_checks`'s own bare
+        except and collapse every other row into one generic FAIL."""
+        project = make_project(self)
+        with_project_env(self, project)
+        build_complete_install(project)
+        set_no_headless_latch(project, at="not-a-real-timestamp")
+        code, out = run_doctor(["--json"])
+        payload = json.loads(out)
+        self.assertIn(code, (0, 1))
+        self.assertNotEqual(code, 2)
+        rows = ledger_rows(payload)
+        self.assertEqual(len(rows), 1)
+        self.assertNotEqual(rows[0]["status"], "FAIL")
+        self.assertNotIn("\n", rows[0]["detail"])
+
+
+class FallbackFiringsTests(unittest.TestCase):
+    def test_fallback_firings_reported_by_channel(self):
+        """Adversarial where: zero fallback rows and a mix of `quiet` and
+        `block` channel rows are two equivalence classes of the 'fallback
+        firings by channel' behavior. A check that reports only a total
+        count (dropping the channel breakdown the task promises) would
+        still show numbers here but never distinguish `quiet` from
+        `block`."""
+        cases = [
+            ("no fallback rows: clean", [], False),
+            ("mixed quiet and block channels: both named", ["quiet", "quiet", "block"], True),
+        ]
+        for name, channels, expect_channels_named in cases:
+            with self.subTest(name=name):
+                project = make_project(self)
+                with_project_env(self, project)
+                build_complete_install(project)
+                root = capture_root(project)
+                for i, channel in enumerate(channels):
+                    capturelib.log_event(root, "fallback-fired", id=f"OPP-fb-{i}", channel=channel)
+                code, out = run_doctor(["--json"])
+                payload = json.loads(out)
+                self.assertEqual(code, 0)
+                rows = ledger_rows(payload)
+                self.assertEqual(len(rows), 1)
+                row = rows[0]
+                self.assertNotEqual(row["status"], "FAIL")
+                if expect_channels_named:
+                    detail_lower = row["detail"].lower()
+                    self.assertIn("quiet", detail_lower)
+                    self.assertIn("block", detail_lower)
+
+
+class LastFailureReasonTests(unittest.TestCase):
+    def test_last_failure_reason_is_most_recent_not_first(self):
+        """Adversarial where: two failed spawns exist with different
+        reasons in chronological order. A check that reports the first
+        failure it encounters (e.g. keeping the earliest match while
+        iterating instead of the latest) would show a stale reason; the row
+        must reflect the SECOND, most recently appended reason, and must
+        not still mention the first."""
+        project = make_project(self)
+        with_project_env(self, project)
+        build_complete_install(project)
+        root = capture_root(project)
+        capturelib.log_event(root, "worker-started", id="OPP-first", pid=1)
+        capturelib.log_event(root, "worker-failed", id="OPP-first", reason="lock-held")
+        capturelib.log_event(root, "worker-started", id="OPP-second", pid=2)
+        capturelib.log_event(root, "worker-failed", id="OPP-second", reason="no-headless")
+        code, out = run_doctor(["--json"])
+        payload = json.loads(out)
+        self.assertEqual(code, 0)
+        rows = ledger_rows(payload)
+        self.assertEqual(len(rows), 1)
+        detail = rows[0]["detail"]
+        self.assertIn("no-headless", detail)
+        self.assertNotIn("lock-held", detail)
+
+
+class LastThreeSpawnsFailedTests(unittest.TestCase):
+    def _spawn(self, root, opp_id, succeed):
+        capturelib.log_event(root, "worker-started", id=opp_id, pid=1)
+        if succeed:
+            capturelib.log_event(root, "worker-finished", id=opp_id, extracted="0 written")
+        else:
+            capturelib.log_event(root, "worker-failed", id=opp_id, reason="exit 1")
+
+    def test_last_three_spawns_all_failed_boundary(self):
+        """Adversarial where: 'the last three spawns all failed' is a
+        threshold condition, not a loose 'several failures' heuristic.
+        Exactly three failed spawns sits at the boundary and must WARN;
+        two failed spawns is one below it and must not (too few to
+        evaluate the rule at all, not a lesser degree of the same WARN);
+        three spawns with one success is the same count but not ALL
+        failed; four spawns where only the oldest failed must look at the
+        actual most recent three, not any three, or it would wrongly WARN
+        on a failure that already rolled out of the window."""
+        cases = [
+            ("exactly three, all failed: at the threshold", [False, False, False], True),
+            ("two failed, one below threshold: too few to evaluate", [False, False], False),
+            ("three total, one succeeded: not ALL failed", [False, True, False], False),
+            ("four total, only the oldest failed: outside the window",
+             [False, True, True, True], False),
+        ]
+        for name, outcomes, expect_warn in cases:
+            with self.subTest(name=name):
+                project = make_project(self)
+                with_project_env(self, project)
+                build_complete_install(project)
+                root = capture_root(project)
+                for i, succeed in enumerate(outcomes):
+                    self._spawn(root, f"OPP-spawn-{i}", succeed)
+                code, out = run_doctor(["--json"])
+                payload = json.loads(out)
+                self.assertEqual(code, 0)
+                rows = ledger_rows(payload)
+                self.assertEqual(len(rows), 1)
+                row = rows[0]
+                self.assertNotEqual(row["status"], "FAIL")
+                self.assertEqual(row["status"], "WARN" if expect_warn else "OK")
+                if expect_warn:
+                    # The automated-verification bullet is explicit: WARN
+                    # "with the reason", not a bare status flip.
+                    self.assertIn("exit 1", row["detail"])
+
+
+class NeverFailTests(unittest.TestCase):
+    def test_multiple_warn_conditions_stay_warn_not_fail(self):
+        project = make_project(self)
+        with_project_env(self, project)
+        build_complete_install(project)
+        write_capture_config(project, worker_grace_seconds=10)
+        root = capture_root(project)
+        log_row(project, "worker-started", at=iso_ago(999), id="OPP-dead", pid=1)
+        set_no_headless_latch(project, at=iso_ago(60))
+        for i in range(3):
+            capturelib.log_event(root, "worker-started", id=f"OPP-f{i}", pid=1)
+            capturelib.log_event(root, "worker-failed", id=f"OPP-f{i}", reason="exit 1")
+        code, out = run_doctor(["--json"])
+        payload = json.loads(out)
+        self.assertEqual(code, 0)
+        rows = ledger_rows(payload)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["status"], "WARN")
+
+    def test_ledger_row_never_fail_alongside_a_genuine_unrelated_fail(self):
+        """Adversarial where: a real install defect (missing plugin.yaml)
+        and a broken worker ledger co-occur. The genuine FAIL must still
+        move the exit code to 1, and the ledger row's own status must never
+        be reported as FAIL even while every WARN condition it owns fires
+        at once - D-10 rules the row can WARN but never FAIL, so it must
+        never be the thing that turns a run red, and its own WARNs must
+        never suppress the unrelated genuine FAIL."""
+        project = make_project(self)
+        with_project_env(self, project)
+        write_lessons_catalog(project)
+        write_settings(project, FULL_HOOK_EVENTS)
+        write_hooks_json(project)
+        write_full_cli(project)
+        write_agents(project)
+        write_skills(project)
+        # plugin.yaml deliberately omitted - the genuine defect.
+        write_capture_config(project, worker_grace_seconds=10)
+        log_row(project, "worker-started", at=iso_ago(999), id="OPP-dead", pid=1)
+        set_no_headless_latch(project, at=iso_ago(60))
+        code, out = run_doctor(["--json"])
+        payload = json.loads(out)
+        self.assertEqual(code, 1)
+        fail_rows = [row for row in payload["checks"] if row["status"] == "FAIL"]
+        self.assertTrue(any(row["check"] == "plugin.yaml" for row in fail_rows))
+        rows = ledger_rows(payload)
+        self.assertEqual(len(rows), 1)
+        self.assertNotEqual(rows[0]["status"], "FAIL")
+
+
+class LedgerReadFailureTests(unittest.TestCase):
+    def test_read_log_failure_degrades_other_rows_survive(self):
+        """Adversarial where: `capturelib.read_log` itself raises (a
+        filesystem-level failure reading the ledger, distinct from a
+        malformed JSON line, which `read_log` already swallows).
+        Precedent: `_unit_candidates_check` wraps its own scan in a local
+        try/except so one broken row degrades to WARN instead of reaching
+        `_run_checks`'s bare except and collapsing every other check into
+        one generic FAIL. The worker-ledger row must carry the same local
+        guard, and the six baseline rows plus the unit-promotion row must
+        come back unchanged."""
+        project = make_project(self)
+        with_project_env(self, project)
+        build_complete_install(project)
+        original = capturelib.read_log
+
+        def boom(*_args, **_kwargs):
+            raise OSError("disk gone")
+
+        capturelib.read_log = boom
+        try:
+            code, out = run_doctor(["--json"])
+        finally:
+            capturelib.read_log = original
+        payload = json.loads(out)
+        self.assertEqual(code, 0)
+        rows = ledger_rows(payload)
+        self.assertEqual(len(rows), 1)
+        self.assertNotEqual(rows[0]["status"], "FAIL")
+        baseline_statuses = {
+            row["check"]: row["status"]
+            for row in payload["checks"] if row["check"] in PRE_TASK_093_CHECKS
+        }
+        self.assertEqual(set(baseline_statuses), PRE_TASK_093_CHECKS)
+        self.assertTrue(all(status == "OK" for status in baseline_statuses.values()))
+
+
+class CorruptLogLineTests(unittest.TestCase):
+    def test_one_corrupt_line_among_well_formed_rows_does_not_crash(self):
+        """Adversarial where: the ledger file has one unparseable line
+        (asymmetric malformation - one bad row among good ones, not a
+        wholesale unreadable file) sitting next to an otherwise well-formed
+        `worker-finished` row. `capturelib.read_log` already skips lines
+        that fail to parse, so this exercises the doctor row's tolerance of
+        whatever `read_log` hands back rather than a raw parse failure - a
+        row built assuming every returned dict carries every expected key
+        could still raise reading past the corrupt line's gap."""
+        project = make_project(self)
+        with_project_env(self, project)
+        build_complete_install(project)
+        root = capture_root(project)
+        path = root / "tmp" / "capture-log.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "a", encoding="utf-8", newline="") as handle:
+            handle.write("{not valid json at all\n")
+        capturelib.log_event(root, "worker-finished", id="OPP-ok")
+        code, out = run_doctor(["--json"])
+        payload = json.loads(out)
+        self.assertEqual(code, 0)
+        rows = ledger_rows(payload)
+        self.assertEqual(len(rows), 1)
+        self.assertNotEqual(rows[0]["status"], "FAIL")
+
+
+class WorkerLedgerJsonOutputTests(unittest.TestCase):
+    def test_json_output_stays_one_parseable_object(self):
+        """Adversarial where: every worker-ledger condition fires in the
+        same run (unfinished-past-grace, the latch, a fallback row, a
+        finish). `--json` exposes only check/status/detail/fix, so a
+        multi-line summary block built for the table renderer, reused
+        as-is for `detail`, would either break `json.loads` outright or
+        smuggle embedded newlines into a field a downstream consumer
+        expects to be single-line."""
+        project = make_project(self)
+        with_project_env(self, project)
+        build_complete_install(project)
+        write_capture_config(project, worker_grace_seconds=10)
+        root = capture_root(project)
+        log_row(project, "worker-started", at=iso_ago(999), id="OPP-dead", pid=1)
+        set_no_headless_latch(project, at=iso_ago(60))
+        capturelib.log_event(root, "fallback-fired", id="OPP-fb", channel="quiet")
+        capturelib.log_event(root, "worker-finished", id="OPP-ok")
+        code, out = run_doctor(["--json"])
+        payload = json.loads(out)  # raises if the object is not one parseable blob
+        self.assertIsInstance(payload, dict)
+        self.assertIsInstance(payload["checks"], list)
+        rows = ledger_rows(payload)
+        self.assertEqual(len(rows), 1)
+        self.assertNotIn("\n", rows[0]["detail"])
 
 
 if __name__ == "__main__":
