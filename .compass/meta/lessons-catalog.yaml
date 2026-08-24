@@ -118,7 +118,7 @@ lessons:
     area: methodology
     tags: [derived-index, sync, append-only, staleness, catalog]
     score: 5
-    summary: "Append-only derived indexes miss source mutations; the mutator must update the row or the field never propagates"
+    summary: "Append-only derived indexes miss both stale mutations and second-writer duplicates; repair must be active, not assumed."
   - file: "LESSON-scratch-vaults-need-compass-dir.md"
     status: active
     category: process
@@ -245,3 +245,10 @@ lessons:
     tags: [hooks, headless, spawned-sessions, recursion, background-worker]
     score: 5
     summary: "A spawned claude session inherits the project's hooks; a hook-spawned worker fires its own machinery unless gated"
+  - file: "LESSON-headless-worker-denies-tools-silently.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [headless, permissions, tool-scoping, background-worker, silent-failure]
+    score: 5
+    summary: "Headless claude -p runs deny Write/Bash by default; scope the worker's tools exactly, don't bypass"
