@@ -54,6 +54,11 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 - [x] TASK-086: spec authoring routes into the owning unit (S, after 085)
 - [x] TASK-087: parent/child authoring template (S, after 086)
 
+## PLAN-009 wave 3 (elaborated 2026-08-24)
+
+- [ ] TASK-088: methodology documents the sizing surface, callable by name (S)
+- [ ] TASK-089: install refresh + acceptance from the installed copy (M, after 088)
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].

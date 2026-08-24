@@ -154,10 +154,24 @@ Elaborated 2026-08-24 from wave 1's verified outcomes. The changeability walk is
 
 **Pause point and elaboration step.** As after wave 1: reports, lessons, then promote from `## Later` with the delta recorded in a `## Wave 2 elaborated` section.
 
+### Wave 3 (detailed): the surface and the acceptance
+
+Elaborated 2026-08-24 after wave 2. Both tasks were commit-upfront material; wave 2 changed neither's substance.
+
+- [ ] TASK-088: the sizing surface, documented once and callable by name - complexity: S, depends_on: none, files: [plugin/skills/methodology/SKILL.md], decisions: [SPEC-016-sizing-work-beyond-one-spec/D-05]
+  - The methodology skill's hierarchy passage is rewritten for the shipped world: specs born folders at any depth, the unit question at vision, `make-unit`/`--undo`/`promote`/`demote` as the callable-by-name surface, the sizing log with `compass sizing stats`, `doctor`'s candidate advisory as the reactive backstop. Replaces the flat-vs-folder prose; net lines not increased.
+  - The silence preference (SPEC-016 D-03) lives where TASK-084 put it - a note in `vision.md` - and the methodology text names that in one clause.
+  - Automated verification: validate 0 errors; `grep -c "earns its own folder" plugin/skills/methodology/SKILL.md` returns 0; diff stat insertions <= deletions.
+  - Manual verification: a reader can answer "how do I undo a workspace Compass created" from the methodology skill alone.
+- [ ] TASK-089: install refresh and acceptance - complexity: M, depends_on: TASK-088, files: [.claude/], decisions: [ADR-011-sizing-is-a-procedure-not-a-score/D-11]
+  - Copy `plugin/cli`, `plugin/skills/*`, `plugin/templates/*` into `.claude/` (or run `/compass:update`), then run acceptance from the installed copy.
+  - Automated verification: full suite green from `plugin/cli`; `python .claude/cli/compass doctor` exits 0; `python .claude/cli/compass coverage PLAN-009-sizing-mechanism --strict` exits 0; `lesson-coverage` exits 0; a scratch-vault round trip (make-unit --apply --reason, sizing stats shows the row, --undo --reason, stats shows the correction joined by id) run from the installed copy.
+  - Manual verification: count the human's touchpoints across this plan against the one-approval baseline, and read the sizing log's two rows as the falsification instrument the initiative promised.
+
+**Pause point.** After TASK-089: reports, lessons, and the closing gates. TASK-090 stays in Later until decisions accumulate to audit.
+
 ## Later (intent only)
 
-- [ ] TASK-088: the persisted per-project preference and the named invocation path - files: [plugin/skills/methodology/SKILL.md, plugin/cli/commands/sizing.py], decisions: [SPEC-016-sizing-work-beyond-one-spec/D-05]
-- [ ] TASK-089: install refresh and acceptance - files: [.claude/], decisions: [ADR-011-sizing-is-a-procedure-not-a-score/D-11], commit-upfront: the acceptance battery is the shape every Compass plan runs and depends on nothing wave 1 produces
 - [ ] TASK-090: the blind re-audit that gives the correction rate a denominator - files: [plugin/cli/commands/sizing.py], decisions: [ADR-011-sizing-is-a-procedure-not-a-score/D-08]
 
 ## Parallel-safe tasks
@@ -210,3 +224,11 @@ Recorded 2026-08-24, per promoted line:
 - `TASK-086` - unchanged - intent held (its commit-upfront note said it did not depend on the prototype, and it did not).
 - `TASK-087` - changed only in framing: the parent/child rule now applies to every spec rather than to the rare promoted one; content is ADR-011 D-06 verbatim.
 - `TASK-088`, `TASK-089`, `TASK-090` - held in Later: 088/089 are wave 3 shape work, 090 still needs accumulated decisions to audit.
+
+## Wave 2 elaborated
+
+Recorded 2026-08-24, per promoted line:
+
+- `TASK-088` - unchanged in substance - intent held; the only fold-in is naming where TASK-084 put the silence preference (vision.md) instead of inventing a config file.
+- `TASK-089` - unchanged - intent held (commit-upfront, as its own line said); the acceptance battery gains the sizing-log round trip because the instrument now exists to exercise.
+- `TASK-090` - held in Later: the blind re-audit needs recorded decisions to audit, and the log holds two rows.
