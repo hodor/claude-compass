@@ -1,5 +1,5 @@
 """`compass make-unit <name> [artifact...]` - create a unit folder, optionally
-moving artifacts into it.
+moving artifacts into it. `compass make-unit --undo <name>` reverses it.
 
 Creates `<name>/` at the vault root with a `type: unit` `index.md` marker (the
 classification signal `classify_root_dirs` looks for) and git-moves each named
@@ -23,10 +23,23 @@ Dry-run by default; `--apply` executes. The operation refuses outright - exit
 already resolves as a wikilink target; when an artifact name is ambiguous, an
 artifact cannot be found, an artifact is not a root-level type-dir member, or
 two arguments overlap.
+
+`--undo <name>` is the inverse: every artifact under the unit's own type
+directories moves back to the matching root type directory it came from, and
+the unit folder - marker included - is removed. It refuses all-or-nothing,
+zero changes, when any restored artifact would collide with an existing file
+at the root, naming the colliding path, and when the unit folder holds
+anything besides its own `index.md` and recognized type directories - never
+inferring that unclassified content is safe to discard along with the folder
+(LESSON-installer-removes-only-what-it-installed - act only on the named
+artifacts, never assume the rest of the folder is clear to remove). Dry-run
+by default, `--apply` executes, then regenerates derived state and reports
+vault health the same way the forward direction does.
 """
 
 import datetime
 import re
+import shutil
 import sys
 
 import vaultlib
@@ -196,9 +209,96 @@ def _removable_lines(index_text, resolve, moved_files):
     return removable
 
 
+def _plan_undo_moves(vault_root, unit_dir, type_dirs):
+    """Every artifact currently under one of the unit's own type directories,
+    paired with the root type-dir path it moved from. Mirrors the forward
+    direction's `<name>/<type_dir>/<rel>` layout in reverse.
+
+    The move unit is each top-level entry of `<unit>/<type_dir>/` - a file or
+    a whole subdirectory. An artifact that was moved in as a single file
+    nested inside a subdirectory (a loose nested doc, see
+    `vaultlib.is_loose_nested`) restores its whole containing subdirectory,
+    which only round-trips cleanly when nothing else was left behind at the
+    root under that same subdirectory name."""
+    moves = []
+    for type_dir in type_dirs:
+        base = unit_dir / type_dir
+        for child in sorted(base.iterdir()):
+            moves.append({"src": child, "dest": vault_root / type_dir / child.name})
+    return moves
+
+
+def _run_undo(vault_root, positional, apply):
+    if not positional:
+        sys.stderr.write("usage: compass make-unit --undo <unit> [--apply]\n")
+        return 1
+    name = positional[0]
+    units = vaultlib.classify_root_dirs(vault_root)["units"]
+    if name not in units:
+        sys.stderr.write(f"compass make-unit --undo: not a unit: {name}\n")
+        return 1
+
+    unit_dir = vault_root / name
+    type_dirs = vaultlib.classify_root_dirs(unit_dir)["type_dirs"]
+    unexpected = sorted(
+        p.name for p in unit_dir.iterdir()
+        if p.name != "index.md" and p.name not in type_dirs
+    )
+    if unexpected:
+        sys.stderr.write(
+            "compass make-unit --undo: refused, no changes made\n"
+            f"  unexpected content in '{name}', not a recognized type "
+            f"directory: {', '.join(unexpected)}\n"
+        )
+        return 1
+
+    moves = _plan_undo_moves(vault_root, unit_dir, type_dirs)
+    collisions = [m for m in moves if m["dest"].exists()]
+    if collisions:
+        sys.stderr.write("compass make-unit --undo: refused, no changes made\n")
+        for move in collisions:
+            sys.stderr.write(
+                f"  target exists: {move['dest'].relative_to(vault_root).as_posix()}\n"
+            )
+        return 1
+
+    if not apply:
+        sys.stdout.write(
+            f"compass make-unit: would restore {len(moves)} artifact(s) from "
+            f"'{name}' and remove the unit folder (dry-run; pass --apply to write)\n"
+        )
+        for move in moves:
+            sys.stdout.write(
+                f"  {move['src'].relative_to(vault_root).as_posix()}"
+                f" -> {move['dest'].relative_to(vault_root).as_posix()}\n"
+            )
+        return 0
+
+    for move in moves:
+        move["dest"].parent.mkdir(parents=True, exist_ok=True)
+        if not git_mv(vault_root.parent, move["src"], move["dest"]):
+            move["src"].rename(move["dest"])
+    shutil.rmtree(unit_dir)
+
+    sys.stdout.write(
+        f"compass make-unit: restored {len(moves)} artifact(s) from '{name}' "
+        "and removed the unit folder\n"
+    )
+    # sync's tag-index write assumes meta/ already exists; ensure it here so
+    # a vault that has never had a shape-changing command run against it
+    # does not crash on the very first one.
+    (vault_root / "meta").mkdir(exist_ok=True)
+    if (vault_root / "index.md").is_file():
+        sync_command.sync(vault_root)
+    _report_vault_health(vault_root)
+    return 0
+
+
 def run(args):
     apply = "--apply" in args
     positional = [a for a in args if not a.startswith("--")]
+    if "--undo" in args:
+        return _run_undo(vaultlib.find_vault_root(), positional, apply)
     if not positional:
         sys.stderr.write("usage: compass make-unit <name> [artifact...] [--apply]\n")
         return 1
