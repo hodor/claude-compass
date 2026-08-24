@@ -1,8 +1,9 @@
 ---
 title: "Sizing Mechanism (Both Directions, a Self-Firing Record, and a Paired Prototype)"
 type: plan
-status: approved
+status: done
 approved: 2026-08-23
+completed: 2026-08-24
 confidence: medium
 area: methodology
 tags: [sizing, units, vision, harness, observability, decomposition]
@@ -163,7 +164,7 @@ Elaborated 2026-08-24 after wave 2. Both tasks were commit-upfront material; wav
   - The silence preference (SPEC-016 D-03) lives where TASK-084 put it - a note in `vision.md` - and the methodology text names that in one clause.
   - Automated verification: validate 0 errors; `grep -c "earns its own folder" plugin/skills/methodology/SKILL.md` returns 0; diff stat insertions <= deletions.
   - Manual verification: a reader can answer "how do I undo a workspace Compass created" from the methodology skill alone.
-- [ ] TASK-089: install refresh and acceptance - complexity: M, depends_on: TASK-088, files: [.claude/], decisions: [ADR-011-sizing-is-a-procedure-not-a-score/D-11]
+- [x] TASK-089: install refresh and acceptance - complexity: M, depends_on: TASK-088, files: [.claude/], decisions: [ADR-011-sizing-is-a-procedure-not-a-score/D-11]
   - Copy `plugin/cli`, `plugin/skills/*`, `plugin/templates/*` into `.claude/` (or run `/compass:update`), then run acceptance from the installed copy.
   - Automated verification: full suite green from `plugin/cli`; `python .claude/cli/compass doctor` exits 0; `python .claude/cli/compass coverage PLAN-009-sizing-mechanism --strict` exits 0; `lesson-coverage` exits 0; a scratch-vault round trip (make-unit --apply --reason, sizing stats shows the row, --undo --reason, stats shows the correction joined by id) run from the installed copy.
   - Manual verification: count the human's touchpoints across this plan against the one-approval baseline, and read the sizing log's two rows as the falsification instrument the initiative promised.

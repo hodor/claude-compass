@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 8405 / 5000 tokens (index.md 4064, active.md 1532, meta/lessons-catalog.yaml 2809). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 8814 / 5000 tokens (index.md 4105, active.md 1817, meta/lessons-catalog.yaml 2892). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -152,6 +152,7 @@ See [[backlog]].
 - [[LESSON-untestable-criterion-is-a-spec-defect]] - A criterion that defines no input class cannot be tested; report the spec defect, never invent the equivalence class
 - [[LESSON-measure-the-procedures-intermediates]] - Verdict agreement without intermediate agreement means a shared prior, not the procedure, produces the answer
 - [[LESSON-outputs-must-span-the-decision-space]] - A procedure answering in fewer categories than the decision space makes users invent the mapping, wrongly
+- [[LESSON-verify-worktree-isolation-is-real]] - Worktree isolation can silently not exist; confirm the path is in `git worktree list` before parallel writers run
 
 ## compass-cli
 - [[compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work]] - A Python `compass` CLI Owns All Mechanical Vault Work; the Hook Calls It as a Command
