@@ -147,7 +147,7 @@ Elaborated 2026-08-24 from wave 1's verified outcomes. The changeability walk is
   - The spec skill's destination step resolves the owning unit before defaulting to the root, per the obsidian skill's existing destination-root rule; the two skills state the rule once between them, not twice.
   - Automated verification: exactly one destination-resolution rule across the two files (grep count); validate 0 errors.
   - Manual verification: create a scratch spec while a unit exists whose topic matches; it must land in the unit without the human steering it.
-- [ ] TASK-087: the parent/child authoring template - complexity: S, depends_on: TASK-086, files: [plugin/skills/obsidian/SKILL.md, plugin/templates/], decisions: [ADR-011-sizing-is-a-procedure-not-a-score/D-06]
+- [x] TASK-087: the parent/child authoring template - complexity: S, depends_on: TASK-086, files: [plugin/skills/obsidian/SKILL.md, plugin/templates/], decisions: [ADR-011-sizing-is-a-procedure-not-a-score/D-06]
   - The folder-spec section gains the content rule now that every spec is a folder: the parent `index.md` holds the decisions shared by all children; a child exists to diverge on something the parent left open; divergence with no shared root decision above it is a sibling, not a child. Replaces the promote-centric framing rather than adding beside it.
   - Automated verification: the rule appears once, in the obsidian skill; net prose not increased; validate 0 errors.
   - Manual verification: a reader can answer "does this belong as a child or a sibling" from the rule alone against a real example.
