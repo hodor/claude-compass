@@ -1067,3 +1067,58 @@ class ConsolidateTriggerLiteralTests(unittest.TestCase):
                     any(w.startswith(marker) for w in writable),
                     f"consolidate waits for {marker!r}, which no sync marker starts with",
                 )
+
+
+class CatalogDuplicateRowTests(SyncFixture):
+    """A second writer (a model editing the catalog by hand) can insert a
+    row the hook already appended. The catalog is append-only by design, so
+    without a collapse the duplicate survives every later sync, validate and
+    doctor silently."""
+
+    def _row_block(self, filename):
+        text = (self.root / "meta" / "lessons-catalog.yaml").read_text(encoding="utf-8")
+        blocks = re.split(r"(?m)^(?=  - file: )", text)
+        return next(b for b in blocks if f'file: "{filename}"' in b)
+
+    def test_byte_identical_duplicate_row_collapses_to_one_and_is_reported(self):
+        """Adversarial where: the duplicate is byte-identical and sits at a
+        different position, exactly the worker's Edit. Appending-side dedup
+        (the `existing` set) cannot see it; only a collapse over the file can."""
+        self.write("lessons/LESSON-dup.md", lesson("Dup"))
+        sync_cmd.sync(self.root)
+        block = self._row_block("LESSON-dup.md")
+        path = self.root / "meta" / "lessons-catalog.yaml"
+        text = path.read_text(encoding="utf-8")
+        head, sep, rest = text.partition("  - file:")
+        path.write_text(head + block + sep + rest, encoding="utf-8")
+        self.assertEqual(path.read_text(encoding="utf-8").count('file: "LESSON-dup.md"'), 2)
+        report = sync_cmd.sync(self.root)
+        after = path.read_text(encoding="utf-8")
+        self.assertEqual(after.count('file: "LESSON-dup.md"'), 1)
+        self.assertIn('summary: "summary of Dup"', after)
+        self.assertTrue(lessonslib.load_catalog(self.root))
+        self.assertEqual(report.get("catalog_duplicates_removed"), 1)
+        self.assertIn("duplicate", sync_cmd.format_report(report).lower())
+
+    def test_two_distinct_adjacent_rows_are_untouched(self):
+        self.write("lessons/LESSON-a.md", lesson("A"))
+        self.write("lessons/LESSON-b.md", lesson("B"))
+        sync_cmd.sync(self.root)
+        report = sync_cmd.sync(self.root)
+        text = (self.root / "meta" / "lessons-catalog.yaml").read_text(encoding="utf-8")
+        self.assertEqual(text.count('file: "LESSON-a.md"'), 1)
+        self.assertEqual(text.count('file: "LESSON-b.md"'), 1)
+        self.assertEqual(report.get("catalog_duplicates_removed", 0), 0)
+
+    def test_summary_containing_the_word_file_is_not_a_block_boundary(self):
+        """Adversarial where: a naive split on `file:` would cut a row whose
+        summary text contains that token. The block boundary is the row
+        start, not the substring."""
+        self.write("lessons/LESSON-c.md", lesson("C").replace(
+            'summary: "summary of C"', 'summary: "the file: field is the key"'))
+        sync_cmd.sync(self.root)
+        report = sync_cmd.sync(self.root)
+        text = (self.root / "meta" / "lessons-catalog.yaml").read_text(encoding="utf-8")
+        self.assertEqual(text.count('file: "LESSON-c.md"'), 1)
+        self.assertIn('summary: "the file: field is the key"', text)
+        self.assertEqual(report.get("catalog_duplicates_removed", 0), 0)

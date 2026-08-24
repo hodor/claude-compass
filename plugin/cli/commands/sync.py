@@ -276,11 +276,14 @@ def _sync_catalog(vault_root, records):
     The empty-list marker `lessons: []` is replaced with the block-sequence
     header `lessons:` the moment any row sits under it, whether newly
     appended in this run or already present, so the file is always valid
-    YAML."""
+    YAML. Duplicate rows for one filename - a second writer inserting a row
+    the hook already appended - collapse to the first block, and the count
+    removed is returned so the repair is reported rather than silent."""
     catalog_path = vault_root / "meta" / "lessons-catalog.yaml"
     if not catalog_path.is_file():
-        return 0, []
+        return 0, [], 0
     text = vaultlib.read_vault_text(catalog_path)
+    text, duplicates_removed = _collapse_duplicate_rows(text)
     existing = set(re.findall(r'file:\s*"?([^"\n]+)"?', text))
     by_filename = {}
     for record in records:
@@ -300,12 +303,40 @@ def _sync_catalog(vault_root, records):
             rows.append(row)
 
     corrupted = bool(existing) and bool(LESSONS_EMPTY_MARKER.search(text))
-    if rows or corrupted:
+    if rows or corrupted or duplicates_removed:
         text = LESSONS_EMPTY_MARKER.sub("lessons:", text, count=1)
         if rows:
             text = text.rstrip("\n") + "\n" + "\n".join(rows) + "\n"
         vaultlib.write_text_lf(catalog_path, text)
-    return len(rows), collisions
+    return len(rows), collisions, duplicates_removed
+
+
+CATALOG_ROW_START = re.compile(r"(?m)^(?=  - file: )")
+
+
+def _collapse_duplicate_rows(text):
+    """Keep the first row block per filename; return (text, removed).
+
+    A block starts at a line beginning with `  - file: ` and runs to the
+    next such line, so a `file:` token inside a summary string is never a
+    boundary. The first occurrence wins: it is the one the hook wrote from
+    the lesson's frontmatter."""
+    blocks = CATALOG_ROW_START.split(text)
+    if len(blocks) <= 2:
+        return text, 0
+    head, rows = blocks[0], blocks[1:]
+    seen, kept, removed = set(), [], 0
+    for block in rows:
+        match = re.match(r'  - file:\s*"?([^"\n]+)"?', block)
+        key = match.group(1) if match else block
+        if key in seen:
+            removed += 1
+            continue
+        seen.add(key)
+        kept.append(block)
+    if not removed:
+        return text, 0
+    return head + "".join(kept), removed
 
 
 def _sync_tag_index(vault_root, records):
@@ -472,12 +503,13 @@ def sync(vault_root):
     records = vaultlib.scan_artifacts(vault_root)
     _load_data(records)
     index_added = _sync_index(vault_root, records)
-    catalog_added, catalog_collisions = _sync_catalog(vault_root, records)
+    catalog_added, catalog_collisions, catalog_duplicates = _sync_catalog(vault_root, records)
     logs_deleted, capture_log_pruned = _clean_logs(vault_root)
     return {
         "index_added": index_added,
         "catalog_added": catalog_added,
         "catalog_collisions": catalog_collisions,
+        "catalog_duplicates_removed": catalog_duplicates,
         "tags": _sync_tag_index(vault_root, records),
         "caps": _check_caps(vault_root, records),
         "logs_deleted": logs_deleted,
@@ -493,6 +525,8 @@ def format_report(report):
         parts.append(f"catalog rows added: {report['catalog_added']}")
     for collision in report["catalog_collisions"]:
         parts.append(f"catalog filename collision: {collision}")
+    if report.get("catalog_duplicates_removed"):
+        parts.append(f"catalog duplicate rows removed: {report['catalog_duplicates_removed']}")
     parts.append(f"tags indexed: {report['tags']}")
     if report["caps"]:
         parts.append(f"caps exceeded (warning written): {', '.join(report['caps'])}")

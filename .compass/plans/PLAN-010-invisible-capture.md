@@ -109,7 +109,7 @@ The capture pass keeps running on every due opportunity and stops occupying the 
 
 Elaborated 2026-08-24 from wave 1's verified outcomes: the path works with zero footprint; the cheap tier failed the blind judge on reasoning; the worker session doubled catalog rows.
 
-- [ ] TASK-099: catalog rows double for lessons written inside a worker session - complexity: M, depends_on: none, files: [plugin/cli/commands/sync.py, plugin/cli/tests/test_sync.py], decisions: [ADR-013-detached-worker-quiet-fallback/D-11], lessons: [LESSON-hook-payloads-observe-before-coding]
+- [x] TASK-099: catalog rows double for lessons written inside a worker session - complexity: M, depends_on: none, files: [plugin/cli/commands/sync.py, plugin/cli/tests/test_sync.py], decisions: [ADR-013-detached-worker-quiet-fallback/D-11], lessons: [LESSON-hook-payloads-observe-before-coding]
   - Evidence: three identical catalog row blocks appended twice, 21 lines apart, after the haiku worker wrote three lessons; an in-process write-then-edit-then-sync probe yields one row, so the trigger is specific to the worker session (its PostToolUse sync racing the main session's, or `existing` read through a path the worker's environment changes). Reproduce it through a real spawned session first, then fix; a fix without the reproduction is a guess.
   - Automated verification: the reproduction pinned as a regression test that fails before and passes after; existing sync idempotency tests unchanged.
   - Manual verification: a lesson written by the balanced-tier re-fire produces exactly one catalog row.
