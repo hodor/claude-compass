@@ -64,11 +64,14 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 [[PLAN-010-invisible-capture]] APPROVED. Capture moves off the conversation; ADR-013 D-01..D-11 bind.
 
 - [x] TASK-091: worker wrapper + ledger vocabulary (L, first - 092/093 read its vocabulary)
-- [ ] TASK-092: capture-check spawns, gates recursion, orders fallbacks (L, after 091)
+- [x] TASK-092: capture-check spawns, gates recursion, orders fallbacks (L, after 091)
 - [x] TASK-093: doctor reconciles the worker ledger (S, after 091, parallel with 092) - new "worker ledger" row wraps `capturelib.read_log`/`load_config`/`load_state` in its own try/except; WARNs on an unfinished spawn past `worker_grace_seconds`, the `no_headless_at` latch, or the last three completed spawns all failing, OK otherwise, never FAIL. One sanctioned collateral edit in test_doctor.py's older `UnitPromotionCandidateTests` (bumped 3 hardcoded row-count literals 7→8, extended `KNOWN_BASELINE_CHECKS` after `PRE_TASK_093_CHECKS` is computed) - see `.compass/.annotations/plugin--cli--tests--test_doctor.py.json`.
 - [x] TASK-092: capture-check spawns, gates recursion, orders fallbacks (L, after 091). Code review caught and fixed two real bugs pre-handoff: `worker-spawn-error` rows were invisible to the ladder (missing from `WORKER_EVENTS`, delaying retry by a full grace window) and a respawn's own Popen failure double-spent the two-attempt budget in one call (`_spawn_worker` no longer spends; spending is centralized in `_respawn_or_quiet`). Re-ran suite after the fix: same result, no regressions. Suite: 675 passed, 1 skipped, 63 subtests passed; 19 failed = test_doctor.py's 18 expected TASK-093 reds + 1 discovered pre-existing casualty (`CaptureCheckTests::test_concurrent_check_blocked_by_run_lock`, out of the six sanctioned test edits, asserts the old block-on-due contract on an unmocked due path - needs a 7th edit in a fix cycle).
-- [ ] TASK-093: doctor reconciles the worker ledger (S, after 091, parallel with 092)
-- [ ] TASK-094: live fire, paired and judged blind (L, last)
+- [x] TASK-093: doctor reconciles the worker ledger (S, after 091, parallel with 092)
+- [x] TASK-094: live fire PASS on path/cost, FAIL on cheap-tier quality (blind judge: reasoning) -> tier bumped to balanced, re-fire pending
+
+- [ ] TASK-099: worker-session double catalog rows - reproduce through a real spawned session, then fix (M)
+- [ ] TASK-095: balanced-tier re-fire judged blind, then fleet v0.8.0 to 50 vaults (M, after 099)
 
 Later tasks in [[backlog]].
 

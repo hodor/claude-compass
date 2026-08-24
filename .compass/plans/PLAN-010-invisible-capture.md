@@ -91,7 +91,7 @@ The capture pass keeps running on every due opportunity and stops occupying the 
   - A row reading the ledger via `capturelib.read_log`: workers started/finished/failed counts, started-without-end past grace (naming the opp-id and age), fallback firings by channel, the last failure reason, and **the no-headless latch when set, with its date** - a worker path silently latched off is exactly what this row exists to surface. WARN on any of: unfinished past grace, latch set, or the last three spawns all failed; OK otherwise; never FAIL, never moves the exit code; wrapped in its own try/except like the unit-candidates row.
   - Automated verification: unittest - healthy ledger OK with counts; unfinished past grace WARNs naming the opp-id; latch set WARNs with the date; three consecutive failures WARN with the reason; corrupt log line degrades to WARN not crash; exit code untouched throughout; --json stays one object.
   - Manual verification: run doctor after the live fire and confirm the row tells the story at a glance, including that the latch line is absent on this healthy host.
-- [ ] TASK-094: live fire - the worker against a paired in-session pass, judged blind - complexity: L, kind: prototype, depends_on: TASK-092, TASK-093, files: [.compass/tmp/worker-logs/], decisions: [ADR-013-detached-worker-quiet-fallback/D-01, ADR-013-detached-worker-quiet-fallback/D-03], lessons: [LESSON-blind-the-author-in-self-validation, LESSON-score-the-do-nothing-baseline-before-running, LESSON-revert-to-prove-a-regression-test]
+- [x] TASK-094: live fire - the worker against a paired in-session pass, judged blind - complexity: L, kind: prototype, depends_on: TASK-092, TASK-093, files: [.compass/tmp/worker-logs/], decisions: [ADR-013-detached-worker-quiet-fallback/D-01, ADR-013-detached-worker-quiet-fallback/D-03], lessons: [LESSON-blind-the-author-in-self-validation, LESSON-score-the-do-nothing-baseline-before-running, LESSON-revert-to-prove-a-regression-test]
   - **Question:** does the detached path work end-to-end with the real binary on this machine, and does a cold worker's extraction hold up against the in-session pass on the SAME opportunity?
   - **Paired, not sequential:** when the next genuine opportunity opens, copy its directory before anything processes it. The worker runs against the live one (the real path); an in-session subagent pass of today's shape runs against the copy in a scratch vault carrying the same catalog. Both produce candidate lists and verdicts.
   - **Judged blind:** a separate agent, not the orchestrator and shown neither pass's provenance, compares candidates and verdicts against the extract-lessons contract (triggers honored, anti-list applied, dedup correct) and flags disagreements. Pre-registered: the worker passes when it reaches the same write/reject verdicts on the candidates both passes surfaced and misses no candidate the in-session pass wrote. The do-nothing baseline is stated in advance: an empty window where both passes write zero is a void trial, not a pass - the comparison counts only when the in-session pass found at least one candidate.
@@ -105,9 +105,23 @@ The capture pass keeps running on every due opportunity and stops occupying the 
 
 **Pause point and elaboration step.** As before: reports, lessons, then promote from `## Later` with the delta recorded.
 
+### Wave 2 (detailed): the re-fire, the distribution gate, and the doubled-row defect
+
+Elaborated 2026-08-24 from wave 1's verified outcomes: the path works with zero footprint; the cheap tier failed the blind judge on reasoning; the worker session doubled catalog rows.
+
+- [ ] TASK-099: catalog rows double for lessons written inside a worker session - complexity: M, depends_on: none, files: [plugin/cli/commands/sync.py, plugin/cli/tests/test_sync.py], decisions: [ADR-013-detached-worker-quiet-fallback/D-11], lessons: [LESSON-hook-payloads-observe-before-coding]
+  - Evidence: three identical catalog row blocks appended twice, 21 lines apart, after the haiku worker wrote three lessons; an in-process write-then-edit-then-sync probe yields one row, so the trigger is specific to the worker session (its PostToolUse sync racing the main session's, or `existing` read through a path the worker's environment changes). Reproduce it through a real spawned session first, then fix; a fix without the reproduction is a guess.
+  - Automated verification: the reproduction pinned as a regression test that fails before and passes after; existing sync idempotency tests unchanged.
+  - Manual verification: a lesson written by the balanced-tier re-fire produces exactly one catalog row.
+- [ ] TASK-095: the balanced-tier re-fire, then fleet distribution (v0.8.0) - complexity: M, depends_on: TASK-099, files: [plugin/.claude-plugin/plugin.json, bench/scripts/fleet_update.py], decisions: [ADR-013-detached-worker-quiet-fallback/D-05, ADR-013-detached-worker-quiet-fallback/D-09]
+  - Gate: the next genuine opportunity runs on the balanced tier; a blind paired judge scores it against an in-session pass with limb (i) measured against the contract, not the other pass. Pass → bump `plugin.json` to 0.8.0, run `bench/scripts/fleet_update.py --apply --commit --push`, which refreshes all 50 vaults, stamps the version the last distribution skipped, applies models, runs doctor, and commits Compass-owned paths. The shipped default tier stays cheap only if the balanced fire shows the cheap tier's failures were run-specific; otherwise the roster default moves to balanced before shipping.
+  - Automated verification: fleet script exits 0 (every vault doctor-clean, hooks registered); the degradation drill on a scratch vault (`COMPASS_CLAUDE_BIN` at a failing stub) shows latch, quiet-channel row, recovery.
+  - Manual verification: the human confirms the re-fire showed nothing on their screen; the push list is reviewed for the known no-remote and push-rejected projects.
+
+**Pause point and elaboration step.** As before.
+
 ## Later (intent only)
 
-- [ ] TASK-095: fleet distribution (v0.8.0) - the worker plus everything shipped since v0.7.0 - decisions: [ADR-013-detached-worker-quiet-fallback/D-05]
 - [ ] TASK-096: POSIX detach verification on a non-Windows fleet host - decisions: [ADR-013-detached-worker-quiet-fallback/D-01]
 - [ ] TASK-097: SessionStart pickup of opportunities left open on hosts that could never run workers - decisions: [ADR-013-detached-worker-quiet-fallback/D-05]
 - [ ] TASK-098: the pipeline posture between gates - relays, consults and status lines the orchestrator still emits, audited against the outcomes-and-gates-only bar - decisions: [SPEC-018-scaffolding-invisible-to-the-human/D-02]
@@ -145,3 +159,9 @@ summary: 6 cited, 0 scoped, 0 unresolvable, 3 surfaced-but-uncited (advisory) ->
 Twelve trackable, not thirteen: ADR-013 D-08's `[informational]` tag removes it from tracking, which is the tag's purpose.
 
 The intended before-image: SPEC-018/D-02 `scoped` on TASK-098, making `--strict` FAIL now and pass only once that wave builds it - a completion gate that can actually fail.
+
+## Wave 1 elaborated
+
+- `TASK-095` - changed: gated on a balanced-tier re-fire judged blind, because the cheap-tier live fire failed the judge on reasoning; carries the version stamp fix the fleet scan exposed; depends on TASK-099 so the double-row defect does not ship to 50 vaults.
+- `TASK-099` - new: the worker-session double catalog row, found by the audit, unreproduced in-process.
+- `TASK-096`, `TASK-097`, `TASK-098` - held in Later.
