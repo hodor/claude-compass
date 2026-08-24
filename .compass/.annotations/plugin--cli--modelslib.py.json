@@ -1,0 +1,11 @@
+{
+  "path": "plugin/cli/modelslib.py",
+  "notes": [
+    {
+      "text": "Adding a row to DEFAULT_ROSTER (as TASK-091 did for `capture-worker: cheap`) invalidates two pre-existing pinned assertions the builder is not permitted to touch (test files are off-limits during a checkpointed task): plugin/cli/tests/test_modelslib.py::RosterTests::test_roster_matches_d03_assignments hardcodes the exact `cheap`-tier agent set (needs the new name added to the expected set), and plugin/cli/tests/test_commands.py::ModelsTests::test_table_lists_all_roster_rows hardcodes the `compass models` table's total line count (needs +1 and its comment updated). A row excluded from AGENT_FILES (like `index-summary`, `capture-worker`) does NOT break test_modelslib.py::test_agent_files_are_the_13_known_agents, since that count is unaffected. Any future roster addition should update both of the first two assertions in the same change - they are not part of any test-checkpoint mechanism, just ordinary tests that need to track the roster's size and membership.",
+      "by": "builder",
+      "date": "2026-08-24",
+      "tags": ["gotcha", "modelslib", "roster", "pinned-test", "test-commands", "test-modelslib"]
+    }
+  ]
+}

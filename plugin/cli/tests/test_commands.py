@@ -399,8 +399,8 @@ class ModelsTests(ModelCommandBase):
         code, out, _ = self.run_command(models, [])
         self.assertEqual(code, 0)
         lines = out.strip().splitlines()
-        # Header plus the 13 agents plus the detached index-summary job row.
-        self.assertEqual(len(lines), 15)
+        # Header plus the 13 agents plus the two detached job rows (index-summary, capture-worker).
+        self.assertEqual(len(lines), 16)
         self.assertIn("source", lines[0])
         for agent in modelslib.DEFAULT_ROSTER:
             self.assertTrue(any(line.startswith(agent) for line in lines[1:]), agent)

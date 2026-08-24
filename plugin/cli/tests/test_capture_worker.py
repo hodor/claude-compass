@@ -359,10 +359,16 @@ class ModelRosterTests(unittest.TestCase):
 
 
 class ArgHandlingTests(WorkerHarness):
+    def setUp(self):
+        super().setUp()
+        # The harness's own open_opportunity writes an `opened` row; a
+        # refusal must add nothing beyond that baseline.
+        self.baseline_rows = read_log_rows(self.root)
+
     def test_missing_opp_id_exits_1_no_rows(self):
         code = capture_worker.run([])
         self.assertEqual(code, 1)
-        self.assertEqual(read_log_rows(self.root), [])
+        self.assertEqual(read_log_rows(self.root), self.baseline_rows)
         self.assertFalse(self.marker_path.exists())
 
     def test_opp_id_shaped_but_no_matching_directory_exits_1_no_rows(self):
@@ -372,13 +378,13 @@ class ArgHandlingTests(WorkerHarness):
         # string, and one a shape-only validator would miss.
         code = capture_worker.run(["OPP-20260101T000000000000Z"])
         self.assertEqual(code, 1)
-        self.assertEqual(read_log_rows(self.root), [])
+        self.assertEqual(read_log_rows(self.root), self.baseline_rows)
         self.assertFalse(self.marker_path.exists())
 
     def test_malformed_opp_id_string_exits_1_no_rows(self):
         code = capture_worker.run(["../../not/an/opportunity;$(rm)"])
         self.assertEqual(code, 1)
-        self.assertEqual(read_log_rows(self.root), [])
+        self.assertEqual(read_log_rows(self.root), self.baseline_rows)
 
     def test_never_returns_exit_code_2_on_any_malformed_invocation(self):
         for bad_args in ([], ["nonexistent-id"], ["../evil"], ["OPP-x", "extra-arg"]):
@@ -386,7 +392,8 @@ class ArgHandlingTests(WorkerHarness):
             self.assertNotEqual(code, 2, f"args={bad_args!r} returned exit 2")
             # Every one of these shapes is a refusal, not a partial attempt -
             # none of them may leave a trace row behind either.
-            self.assertEqual(read_log_rows(self.root), [], f"args={bad_args!r} wrote a row")
+            self.assertEqual(read_log_rows(self.root), self.baseline_rows,
+                             f"args={bad_args!r} wrote a row")
 
 
 # ---------------------------------------------------------------------------

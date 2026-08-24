@@ -37,6 +37,8 @@ DEFAULT_CONFIG = {
     "interval": 12,
     "max_reemits": 3,
     "abandon_after_seconds": 900,
+    "worker_grace_seconds": 600,
+    "no_headless_retry_seconds": 86400,
 }
 
 RUN_LOCK_STALE_SECONDS = 60
@@ -47,6 +49,12 @@ DEFAULT_STATE = {
     "open_opportunity": None,
     "reemits": 0,
     "last_opportunity_at": None,
+    # Flat, not nested under a sub-dict: `_default_state` only deep-copies
+    # `signals`, so a nested value here would share one mutable dict across
+    # every vault loaded in-process.
+    "worker_attempts": 0,
+    "worker_quiet_at": None,
+    "no_headless_at": None,
 }
 
 # Signal kinds that make an opportunity due on their own, independent of the
@@ -161,6 +169,40 @@ def _log_event(vault_root, event, **fields):
             handle.write(json.dumps(row) + "\n")
     except OSError:
         pass
+
+
+def log_event(vault_root, event, **fields):
+    """Public entry point onto the append-only capture log. The in-process
+    callers on this module's own hook path use `_log_event` directly; this
+    alias exists for callers outside it - the worker wrapper runs as a
+    separate process spawned by the hook and has no other way onto the
+    ledger's `worker-*` and `fallback-fired` vocabulary."""
+    _log_event(vault_root, event, **fields)
+
+
+def read_log(vault_root):
+    """Every well-formed row from `.compass/tmp/capture-log.jsonl`, oldest
+    first, or an empty list when the log is absent. Unlike
+    `commands.capture_stats.load_rows`, this applies no known-event filter:
+    a caller reconciling the ledger (`doctor`, the worker wrapper's own
+    tests) wants every row this module's writers produced, not the subset
+    one report's vocabulary currently recognizes. A line that fails to
+    parse or is not a JSON object is skipped rather than raising."""
+    path = _log_path(vault_root)
+    if not path.is_file():
+        return []
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(row, dict):
+            rows.append(row)
+    return rows
 
 
 def load_config(vault_root):

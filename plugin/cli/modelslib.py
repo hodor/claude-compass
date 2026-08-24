@@ -29,8 +29,9 @@ HOST_CATALOGS = {
     "claude-code": {"strong": "opus", "balanced": "sonnet", "cheap": "haiku"},
 }
 
-# Built-in tier per agent. `index-summary` is the detached vault index summary
-# job, which runs headless and has no agent definition file.
+# Built-in tier per agent. `index-summary` and `capture-worker` are detached
+# headless jobs, not agents: they run outside a conversation and have no
+# agent definition file for apply-models to rewrite.
 DEFAULT_ROSTER = {
     "planner": "strong",
     "validator": "strong",
@@ -46,13 +47,18 @@ DEFAULT_ROSTER = {
     "codebase-locator": "cheap",
     "pr-describe": "cheap",
     "index-summary": "cheap",
+    "capture-worker": "cheap",
 }
+
+# Roster rows with no agent definition file: detached headless jobs excluded
+# from AGENT_FILES below.
+NON_AGENT_ROSTER_NAMES = frozenset({"index-summary", "capture-worker"})
 
 # The agent definition filenames Compass installs. apply-models rewrites these
 # and nothing else: any other file in the target directory is user-authored
 # and is never read or written.
 AGENT_FILES = tuple(
-    f"{name}.md" for name in DEFAULT_ROSTER if name != "index-summary"
+    f"{name}.md" for name in DEFAULT_ROSTER if name not in NON_AGENT_ROSTER_NAMES
 )
 
 # Default effort per tier, used when no override names an effort.

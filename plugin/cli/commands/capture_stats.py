@@ -18,7 +18,15 @@ import sys
 
 import vaultlib
 
-KNOWN_EVENTS = {"opened", "skipped", "fired", "closed"}
+KNOWN_EVENTS = {
+    "opened", "skipped", "fired", "closed",
+    # The detached worker's ledger vocabulary (ADR-013 D-03): started/
+    # spawn-error are written by the hook that spawns the worker,
+    # finished/failed by the worker itself, fallback-fired by the hook when
+    # the fallback ladder degrades to the quiet or block channel.
+    "worker-started", "worker-spawn-error", "worker-finished", "worker-failed",
+    "fallback-fired",
+}
 
 
 def _log_path(vault_root):
