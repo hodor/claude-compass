@@ -158,7 +158,7 @@ Elaborated 2026-08-24 from wave 1's verified outcomes. The changeability walk is
 
 Elaborated 2026-08-24 after wave 2. Both tasks were commit-upfront material; wave 2 changed neither's substance.
 
-- [ ] TASK-088: the sizing surface, documented once and callable by name - complexity: S, depends_on: none, files: [plugin/skills/methodology/SKILL.md], decisions: [SPEC-016-sizing-work-beyond-one-spec/D-05]
+- [x] TASK-088: the sizing surface, documented once and callable by name - complexity: S, depends_on: none, files: [plugin/skills/methodology/SKILL.md], decisions: [SPEC-016-sizing-work-beyond-one-spec/D-05]
   - The methodology skill's hierarchy passage is rewritten for the shipped world: specs born folders at any depth, the unit question at vision, `make-unit`/`--undo`/`promote`/`demote` as the callable-by-name surface, the sizing log with `compass sizing stats`, `doctor`'s candidate advisory as the reactive backstop. Replaces the flat-vs-folder prose; net lines not increased.
   - The silence preference (SPEC-016 D-03) lives where TASK-084 put it - a note in `vision.md` - and the methodology text names that in one clause.
   - Automated verification: validate 0 errors; `grep -c "earns its own folder" plugin/skills/methodology/SKILL.md` returns 0; diff stat insertions <= deletions.
