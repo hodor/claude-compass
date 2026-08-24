@@ -92,3 +92,17 @@ class HooksJsonTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SessionStartPickupTests(unittest.TestCase):
+    """A host that could never run workers leaves opportunities open with
+    no session to wake; the next session start must run the same ladder so
+    they are picked up rather than stranded."""
+
+    def test_manifest_registers_session_start_capture_check(self):
+        manifest = json.loads(
+            (Path(__file__).resolve().parents[2] / "hooks" / "hooks.json").read_text(encoding="utf-8")
+        )["hooks"]
+        self.assertIn("SessionStart", manifest)
+        commands = [h["command"] for entry in manifest["SessionStart"] for h in entry["hooks"]]
+        self.assertTrue(any("capture-check --hook" in c for c in commands))

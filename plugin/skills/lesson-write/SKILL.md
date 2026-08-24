@@ -78,6 +78,8 @@ Read the manifest. Pick one of three branches based on overlap with existing les
 
 If unsure between recurrence and refinement, pick refinement. If unsure between refinement and new, pick new. Bias toward keeping signal.
 
+The one exception: when the catalog carries its over-cap warning marker, "unsure between refinement and new" resolves to refinement. Signal is kept by sharpening an existing rule instead of adding a row to a catalog that is already too large to load.
+
 ### 4a. Write recurrence
 
 Read the matched lesson file's frontmatter.

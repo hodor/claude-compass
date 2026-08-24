@@ -1,8 +1,9 @@
 ---
 title: "Invisible Capture (the Detached Worker, the Quiet Fallback, the Worker Ledger)"
 type: plan
-status: approved
+status: done
 approved: 2026-08-24
+completed: 2026-08-24
 confidence: medium
 area: architecture
 tags: [capture, hooks, headless, background-worker, observability]
@@ -120,11 +121,20 @@ Elaborated 2026-08-24 from wave 1's verified outcomes: the path works with zero 
 
 **Pause point and elaboration step.** As before.
 
+### Wave 3 (detailed, built 2026-08-24): the posture, the pickup, and the POSIX note
+
+- [x] TASK-096: POSIX detach - complexity: XS, depends_on: none, files: [plugin/cli/commands/capture_check.py], decisions: [ADR-013-detached-worker-quiet-fallback/D-01]
+  - No non-Windows host exists in this fleet (50 of 50 vaults on one Windows machine), so the POSIX branch (`start_new_session=True`) is verified by its unit test only, which is skipped on this host. Recorded as pinned-not-observed; the worker ledger makes a silent difference visible per host the day a POSIX fleet member appears.
+- [x] TASK-097: SessionStart pickup - complexity: S, depends_on: none, files: [plugin/hooks/hooks.json, plugin/cli/tests/test_hooks_config.py, bench/scripts/fleet_update.py], decisions: [ADR-013-detached-worker-quiet-fallback/D-05]
+  - A `SessionStart` hook entry runs `capture-check --hook`; an opportunity left open by a host that could never wake a session is picked up by the same ladder at the next start. The fleet script merges absent hook events into settings.json, leaving registered ones untouched.
+  - Automated verification: the manifest pins the entry; the fleet script reports `+hooks:SessionStart` per vault on the next distribution.
+- [x] TASK-098: the posture between gates - complexity: S, depends_on: none, files: [plugin/templates/rules/compass-pipeline.md, plugin/skills/build/SKILL.md, plugin/cli/commands/capture_check.py], decisions: [SPEC-018-scaffolding-invisible-to-the-human/D-02]
+  - The pipeline rule gains "between gates, silence": a background completion that changes nothing the human must decide costs zero lines. The build skill's 7b reads the ledger instead of narrating a pass. The quiet channel's instruction says tell the human nothing, speak only on failure, in one line.
+
 ## Later (intent only)
 
-- [ ] TASK-096: POSIX detach verification on a non-Windows fleet host - decisions: [ADR-013-detached-worker-quiet-fallback/D-01]
-- [ ] TASK-097: SessionStart pickup of opportunities left open on hosts that could never run workers - decisions: [ADR-013-detached-worker-quiet-fallback/D-05]
-- [ ] TASK-098: the pipeline posture between gates - relays, consults and status lines the orchestrator still emits, audited against the outcomes-and-gates-only bar - decisions: [SPEC-018-scaffolding-invisible-to-the-human/D-02]
+Nothing remains in Later.
+
 
 ## Parallel-safe tasks
 

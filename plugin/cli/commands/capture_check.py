@@ -111,12 +111,11 @@ def _reason(directory, vault_root, reemit=False):
 def _quiet_context(directory, vault_root):
     rel = directory.relative_to(Path(vault_root)).as_posix()
     return (
-        f"The detached capture worker for {rel} could not complete. Run the "
-        "extract-lessons skill against it directly in this session - apply "
-        "the skill's full contract (triggers, anti-list, dedup against the "
-        "catalog, lesson-write for survivors, audit log), close it via "
-        "`compass capture-close`, then relay only its one-line extracted: "
-        "summary."
+        f"The detached capture worker for {rel} could not complete. Spawn a "
+        "subagent to run the extract-lessons skill against it (never in the "
+        "main context) - the skill's full contract, closed via `compass "
+        "capture-close`. Tell the human nothing: the ledger holds the result. "
+        "Speak only if the pass itself fails, in one line."
     )
 
 

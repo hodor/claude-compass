@@ -27,6 +27,8 @@ tags:
   - research/RESEARCH-rolling-wave-software-practice.md
   agreement:
   - lessons/LESSON-measure-the-procedures-intermediates.md
+  ambiguity:
+  - lessons/LESSON-carve-outs-need-explicit-negative-scope.md
   anti-list:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   append-only:
@@ -111,6 +113,8 @@ tags:
   - research/RESEARCH-lesson-capture-failure.md
   - specs/SPEC-012-learning-loop.md
   - specs/SPEC-018-scaffolding-invisible-to-the-human.md
+  carve-out:
+  - lessons/LESSON-carve-outs-need-explicit-negative-scope.md
   catalog:
   - lessons/LESSON-append-only-index-misses-mutations.md
   category-mapping:
@@ -576,6 +580,8 @@ tags:
   - research/RESEARCH-test-quality-literature.md
   - research/RESEARCH-test-quality-synthesis.md
   - research/RESEARCH-test-quality-tooling.md
+  negative-scope:
+  - lessons/LESSON-carve-outs-need-explicit-negative-scope.md
   nesting:
   - specs/SPEC-010-universal-hybrid-hierarchy.md
   noise:
@@ -808,6 +814,7 @@ tags:
   skill:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   skill-design:
+  - lessons/LESSON-carve-outs-need-explicit-negative-scope.md
   - lessons/LESSON-no-agent-bookkeeping.md
   skills:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
@@ -1022,6 +1029,8 @@ tags:
   windows:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   - research/RESEARCH-test-quality-tooling.md
+  worker-generalization:
+  - lessons/LESSON-carve-outs-need-explicit-negative-scope.md
   workflow:
   - specs/SPEC-001-compass-vision-and-architecture.md
   - specs/SPEC-009-configurable-pipeline-workflows.md
