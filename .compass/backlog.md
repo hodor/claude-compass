@@ -11,10 +11,6 @@ updated: 2026-05-24
 
 Held under [[PLAN-009-sizing-mechanism]]'s `## Later` region. Promoted into a detailed wave at the elaboration step, not worked from here.
 
-- [ ] TASK-084: the vision skill runs the walk, acts, records every need it walks, says the shape once in plain words
-- [ ] TASK-085: the spec skill's bloat check gains the depth branch
-- [ ] TASK-086: spec authoring writes into the unit the work belongs to (commit-upfront: does not depend on the prototype)
-- [ ] TASK-087: the parent/child authoring template
 - [ ] TASK-088: the persisted per-project preference and the named invocation path
 - [ ] TASK-089: install refresh and acceptance (commit-upfront)
 - [ ] TASK-090: the blind re-audit that gives the correction rate a denominator

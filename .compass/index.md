@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 8158 / 5000 tokens (index.md 4030, active.md 1310, meta/lessons-catalog.yaml 2818). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 8405 / 5000 tokens (index.md 4064, active.md 1532, meta/lessons-catalog.yaml 2809). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass

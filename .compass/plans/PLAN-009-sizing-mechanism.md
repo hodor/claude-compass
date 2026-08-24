@@ -114,7 +114,7 @@ The coherent concern is the shape-change mechanism end to end: create, undo, rec
   - Automated verification: unittest - a vault with a spec whose tracers span three artifact types *including the spec's own* (`unit_check.py:100-103`, threshold 3, so spec plus two others) produces a candidate row; a vault with none produces the clean row; candidates never change the exit code; artifacts already inside units produce no candidates; an unparseable artifact produces the WARN and all other rows survive with exit 0; `doctor` still exits 1 on a genuine FAIL alongside candidates; `--json` stays one parseable object.
   - Manual verification: run `python plugin/cli/compass doctor` on this vault and confirm the candidate list is one a human agrees with.
 
-- [ ] TASK-083: prototype - does the changeability walk raise agreement over unaided judgment? - complexity: L, kind: prototype, depends_on: none, files: [.compass/tmp/sizing-prototype/], decisions: [ADR-011-sizing-is-a-procedure-not-a-score/D-01, ADR-011-sizing-is-a-procedure-not-a-score/D-02], lessons: [LESSON-blind-the-author-in-self-validation, LESSON-pin-the-motivating-datum]
+- [x] TASK-083: prototype - does the changeability walk raise agreement over unaided judgment? - complexity: L, kind: prototype, depends_on: none, files: [.compass/tmp/sizing-prototype/], decisions: [ADR-011-sizing-is-a-procedure-not-a-score/D-01, ADR-011-sizing-is-a-procedure-not-a-score/D-02], lessons: [LESSON-blind-the-author-in-self-validation, LESSON-pin-the-motivating-datum]
   - **Question:** does giving raters the walk produce higher agreement than giving them nothing? Reliability is not validity, so agreement alone cannot license shipping; the claim [[ADR-011-sizing-is-a-procedure-not-a-score]] D-02 needs is that the walk *raises* agreement over unaided judgment.
   - **Paired, per this vault's own standard** ([[RESEARCH-test-quality-bar-validation]]). Arm A: raters get the need and the three shapes, no procedure. Arm B: raters get the walk verbatim. Same corpus, same prompt scaffold, same rater count.
   - **Corpus adequacy is a precondition, not a caveat.** This vault holds 16 flat specs, 0 folder specs and 1 unit. On that corpus a rater answering "flat" every time scores ~94% and, under a naive agreement band, ships the walk. The corpus must carry at least 5 items whose correct answer is not flat, drawn from outside this vault's own sizing history, and a discrimination check must show the verdict distribution differs from the constant-majority baseline. **If the corpus cannot be assembled, this task does not run** and the plan says so. A caveat in the writeup does not repair the number.
@@ -128,12 +128,34 @@ The coherent concern is the shape-change mechanism end to end: create, undo, rec
 
 **Pause point and elaboration step.** Build step 7d, after the phase reports are assembled and lessons extracted, before the next phase's step 3. Read TASK-083's answer and the wave's verified outcomes; promote the next coherent set of intent lines into a `### Wave 2 (detailed)` section above `## Later`; delete the consumed lines from the Later region rather than editing them in place; move the promoted ids from `backlog.md` into `active.md`; append a `## Wave 1 elaborated` section recording per promoted line what changed and which outcome changed it, or "unchanged - intent held", quoting any superseded intent line only inside a fence. Present the delta; do not re-approve.
 
+### Wave 2 (detailed): the prose, rewritten around the rulings
+
+Elaborated 2026-08-24 from wave 1's verified outcomes. The changeability walk is not taught to any skill: TASK-083's paired experiment landed in its pre-registered escalation band, and the human resolved it by dissolving the judgment (SPEC-016 D-06/D-07 - every spec born folder-like, recursively). The only sizing judgment left in prose is the unit question. Net prose across this wave must be negative or flat: the walk text that would have shipped is the budget these tasks spend from.
+
+- [ ] TASK-084: the vision skill asks only the unit question, in plain words, once - complexity: M, depends_on: TASK-085, files: [plugin/skills/vision/SKILL.md], decisions: [SPEC-016-sizing-work-beyond-one-spec/D-02, SPEC-016-sizing-work-beyond-one-spec/D-03, SPEC-016-sizing-work-beyond-one-spec/D-04, ADR-011-sizing-is-a-procedure-not-a-score/D-05, ADR-011-sizing-is-a-procedure-not-a-score/D-07, ADR-011-sizing-is-a-procedure-not-a-score/D-09], lessons: [LESSON-remove-context-before-adding]
+  - The spec-list step gains one judgment: for each need, will the work be driven as one continuous thread inside this project (a root spec), or is it its own workstream deserving its own pipeline (a unit, created up front via `compass make-unit <name> --apply --reason ...`, which records itself)? That is ADR-011 D-07's test, applied to what the human actually said (D-05), decided without asking (D-02).
+  - The notice is one plain sentence per affected need - "I set X up as its own workspace; say the word to fold it back" - no vocabulary (D-04), said once and silenceable per project (D-03), naming that it is reversible (D-09; `make-unit --undo` exists and is one command).
+  - Automated verification: the skill text contains no occurrence of "changeability walk", "flat spec", or "folder spec" in the human-facing script; `compass validate` 0 errors; full suite green; net line count of SKILL.md not increased (measured by `git diff --stat`).
+  - Manual verification: read the updated skill as a first-time user; the unit offer must read as a plain-language aside, not a feature pitch.
+- [ ] TASK-085: every spec is born a folder, recursively - complexity: M, depends_on: none, files: [plugin/skills/spec/SKILL.md], decisions: [SPEC-016-sizing-work-beyond-one-spec/D-06, SPEC-016-sizing-work-beyond-one-spec/D-07]
+  - Step 5 creates `specs/SPEC-NNN-name/index.md` instead of `specs/SPEC-NNN-name.md`. Wikilinks already resolve the folder by bare stem; `next-num` and `sync` already handle folder-index records (the golden vault pins both). A child spec is created the same way inside its parent, at any depth (D-07); `compass next-num spec <parent-path>` numbers locally.
+  - The bloat-check keeps its split-into-siblings branch for genuinely distinct problems, and gains one sentence for the one-problem-many-parts case: add children inside your own folder. The walk is not mentioned.
+  - `promote` stays for legacy flat specs and is not mentioned in the authoring flow.
+  - Automated verification: skill text instructs folder creation (grep pins on the index.md path pattern); no "changeability walk" anywhere; net prose not increased; validate 0 errors; suite green.
+  - Manual verification: author a scratch spec end to end with the updated skill and confirm the result resolves, numbers, and syncs identically to a flat spec.
+- [ ] TASK-086: spec authoring writes into the unit the work belongs to - complexity: S, depends_on: TASK-085, files: [plugin/skills/spec/SKILL.md, plugin/skills/obsidian/SKILL.md], decisions: [SPEC-016-sizing-work-beyond-one-spec/D-01]
+  - The spec skill's destination step resolves the owning unit before defaulting to the root, per the obsidian skill's existing destination-root rule; the two skills state the rule once between them, not twice.
+  - Automated verification: exactly one destination-resolution rule across the two files (grep count); validate 0 errors.
+  - Manual verification: create a scratch spec while a unit exists whose topic matches; it must land in the unit without the human steering it.
+- [ ] TASK-087: the parent/child authoring template - complexity: S, depends_on: TASK-086, files: [plugin/skills/obsidian/SKILL.md, plugin/templates/], decisions: [ADR-011-sizing-is-a-procedure-not-a-score/D-06]
+  - The folder-spec section gains the content rule now that every spec is a folder: the parent `index.md` holds the decisions shared by all children; a child exists to diverge on something the parent left open; divergence with no shared root decision above it is a sibling, not a child. Replaces the promote-centric framing rather than adding beside it.
+  - Automated verification: the rule appears once, in the obsidian skill; net prose not increased; validate 0 errors.
+  - Manual verification: a reader can answer "does this belong as a child or a sibling" from the rule alone against a real example.
+
+**Pause point and elaboration step.** As after wave 1: reports, lessons, then promote from `## Later` with the delta recorded in a `## Wave 2 elaborated` section.
+
 ## Later (intent only)
 
-- [ ] TASK-084: the vision skill runs the walk, acts, records every need it walks, and says the shape once in plain words - files: [plugin/skills/vision/SKILL.md], decisions: [SPEC-016-sizing-work-beyond-one-spec/D-02, SPEC-016-sizing-work-beyond-one-spec/D-03, SPEC-016-sizing-work-beyond-one-spec/D-04, ADR-011-sizing-is-a-procedure-not-a-score/D-05, ADR-011-sizing-is-a-procedure-not-a-score/D-07, ADR-011-sizing-is-a-procedure-not-a-score/D-09]
-- [ ] TASK-085: the spec skill's bloat check gains the depth branch beside the split-into-siblings branch - files: [plugin/skills/spec/SKILL.md], decisions: [ADR-011-sizing-is-a-procedure-not-a-score/D-02]
-- [ ] TASK-086: spec authoring writes into the unit the work belongs to instead of hardcoding the vault root - files: [plugin/skills/spec/SKILL.md, plugin/skills/obsidian/SKILL.md], decisions: [SPEC-016-sizing-work-beyond-one-spec/D-01], commit-upfront: destination routing is fixed by SPEC-016 D-01 and the existing unit conventions; nothing about it moves on the prototype's answer
-- [ ] TASK-087: the parent/child authoring template - what a unit or folder `index.md` holds versus its children - files: [plugin/skills/obsidian/SKILL.md, plugin/templates/], decisions: [ADR-011-sizing-is-a-procedure-not-a-score/D-06]
 - [ ] TASK-088: the persisted per-project preference and the named invocation path - files: [plugin/skills/methodology/SKILL.md, plugin/cli/commands/sizing.py], decisions: [SPEC-016-sizing-work-beyond-one-spec/D-05]
 - [ ] TASK-089: install refresh and acceptance - files: [.claude/], decisions: [ADR-011-sizing-is-a-procedure-not-a-score/D-11], commit-upfront: the acceptance battery is the shape every Compass plan runs and depends on nothing wave 1 produces
 - [ ] TASK-090: the blind re-audit that gives the correction rate a denominator - files: [plugin/cli/commands/sizing.py], decisions: [ADR-011-sizing-is-a-procedure-not-a-score/D-08]
@@ -178,3 +200,13 @@ compass validate: 0 error(s), 5 warning(s)
 ```
 
 Sixteen decisions, not the fifteen the first draft measured: D-11 was added by the review. At completion `compass coverage PLAN-009-sizing-mechanism --strict` must exit 0, with the exception recorded in the Risks section: if TASK-083 lands in the escalation band, ADR-011 D-02 stays uncovered by design and the plan closes on that finding.
+
+## Wave 1 elaborated
+
+Recorded 2026-08-24, per promoted line:
+
+- `TASK-084` - changed: the walk is gone. TASK-083's experiment (escalation band: kappa gain +0.084 CI includes zero, both arms below the constant-majority baseline, raters up-size) and the human's D-06/D-07 ruling dissolve the flat-versus-folder judgment; what survives to vision is only the unit question under ADR-011 D-07, and the notice-once/plain-words/reversible decisions now lean on wave 1's `make-unit --undo` actually existing.
+- `TASK-085` - changed: from "bloat check gains the depth branch" to "every spec is born a folder, recursively" (SPEC-016 D-06/D-07). The experiment's sharpest finding - D-02 gave a two-way answer for a three-way choice and raters invented a backwards mapping - is moot once the choice no longer exists.
+- `TASK-086` - unchanged - intent held (its commit-upfront note said it did not depend on the prototype, and it did not).
+- `TASK-087` - changed only in framing: the parent/child rule now applies to every spec rather than to the rare promoted one; content is ADR-011 D-06 verbatim.
+- `TASK-088`, `TASK-089`, `TASK-090` - held in Later: 088/089 are wave 3 shape work, 090 still needs accumulated decisions to audit.
