@@ -39,6 +39,7 @@ Observed 2026-08-22 (Roger): a vision session in a game project produced seven n
 - **D-04:** The machinery is never named to a human who did not ask for it. Plain words only, never "unit", "folder spec", or a command name. (Roger, 2026-08-22.)
 - **D-05:** The behavior is configurable, and directly callable by name for a human who does know it. Invisible by default is not the same as unavailable. (Roger, 2026-08-22.)
 - **D-06:** Prefer dissolving the sizing choice over improving the judgment: make every spec folder-like from birth if that simplifies the system, so the flat-versus-folder decision disappears instead of getting a better procedure. (Roger, 2026-08-24: "I rather making everything always a folder-like structure if that makes things easier." Resolves TASK-083's pre-registered escalation: the changeability walk showed no consistency gain, and raters systematically chose heavier shapes than the human did.)
+- **D-07:** The folder shape is recursive with no depth limit: every child spec can itself hold children, born folder-like the same way, at every level. (Roger, 2026-08-24: "every subspec should also enable more subspecs then.")
 
 ## Desired Outcome
 
