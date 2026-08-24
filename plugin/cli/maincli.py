@@ -40,6 +40,7 @@ COMMAND_SPECS = [
     ("capture-check", "Bump the turn counter, evaluate due(), and emit the Stop-hook block contract on a capture opportunity. Hook entry point."),
     ("capture-stats", "Report opportunities opened, fire rate, write rate, and per-trigger breakdown from the capture trace log."),
     ("capture-close", "Close a capture opportunity with an outcome and candidate/written/recurrence/rejected/revised/archived/error counts."),
+    ("capture-worker", "Run the extract-lessons pass against an opportunity in a spawned headless child; writes only worker-finished/worker-failed ledger rows. Detached-worker entry point."),
     ("doctor", "Diagnose install drift: plugin.yaml, hook registration, CLI completeness, agents/skills, lessons catalog. Exit 1 on any FAIL."),
     ("lessons", "Ranked catalog rows for an area, tag set, free text, or a document. Exit 1 on a malformed catalog row or missing catalog."),
     ("lesson-coverage", "Report cited, surfaced-but-uncited, and unresolvable lesson citations for a plan's `lessons:` fields. Advisory: exit 1 only on an unresolvable citation."),
