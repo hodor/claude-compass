@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 8814 / 5000 tokens (index.md 4105, active.md 1817, meta/lessons-catalog.yaml 2892). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 8987 / 5000 tokens (index.md 4215, active.md 1880, meta/lessons-catalog.yaml 2892). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -68,8 +68,10 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-rolling-wave-synthesis]] - cross-axis synthesis and recommended mechanism
 - [[RESEARCH-cache-theory-for-context-tiers]] - tag/data split, inclusion cost, and why a hardware miss cannot cost correctness
 - [[RESEARCH-decomposition-criteria-for-sizing]] - no sizing metric exists; cheap reversal licenses acting early; the surviving risk is lock-in
+- [[RESEARCH-invisible-scaffolding]] - detached hook-spawned workers survive (verified live); additionalContext wakes the model without rendering
 - [[RESEARCH-cache-theory-for-context-tiers]] - Cache Theory for Compass's Context Tiers: Tag/Data Split, Inclusion, and the Correctness of a Miss
 - [[RESEARCH-decomposition-criteria-for-sizing]] - Decomposition Criteria for Sizing: No Metric Exists, Cheap Reversal Licenses Acting, and the Surviving Risk Is Social
+- [[RESEARCH-invisible-scaffolding]] - detached hook-spawned workers survive on the fleet host (verified live); additionalContext reaches the model and continues the session; the block channel becomes fallback
 
 ## Plans
 
@@ -98,6 +100,8 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[ADR-010-identity-resident-fetch-mandatory]] - Identity Stays Resident, the Fetch Stops Being Optional, and Every Miss Is Counted
 - [[ADR-011-sizing-is-a-procedure-not-a-score]] - Sizing Is a Judgment Procedure the Harness Triggers and Records, Never a Score
 - [[ADR-012-test-checkpoint-py-membership-git-authoritative]] - `.py` membership in `test-checkpoint verify` stays git-authoritative; a bundled non-`.py` file is classified only when recorded
+- [[ADR-013-detached-worker-quiet-fallback]] - capture runs in a detached worker; additionalContext is the fallback; every run recorded
+- [[ADR-013-detached-worker-quiet-fallback]] - the Stop hook spawns a detached headless worker for the extraction pass; additionalContext replaces the rendered block as fallback; worker runs are logged and reconciled
 
 ## Active Work
 
