@@ -11,8 +11,6 @@ updated: 2026-05-24
 
 Held under [[PLAN-009-sizing-mechanism]]'s `## Later` region. Promoted into a detailed wave at the elaboration step, not worked from here.
 
-- [ ] TASK-088: the persisted per-project preference and the named invocation path
-- [ ] TASK-089: install refresh and acceptance (commit-upfront)
 - [ ] TASK-090: the blind re-audit that gives the correction rate a denominator
 
 ## Candidate specs (raised, not yet drafted)
