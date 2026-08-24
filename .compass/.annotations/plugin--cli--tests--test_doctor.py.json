@@ -1,0 +1,11 @@
+{
+  "path": "plugin/cli/tests/test_doctor.py",
+  "notes": [
+    {
+      "text": "KNOWN_BASELINE_CHECKS (~line 409) and PRE_TASK_093_CHECKS (~line 632, = KNOWN_BASELINE_CHECKS | {\"unit-promotion candidates\"}) are both module-level sets read by different test classes: non_baseline_rows() (older UnitPromotionCandidateTests) filters on KNOWN_BASELINE_CHECKS directly; ledger_rows() (TASK-093's classes) filters on PRE_TASK_093_CHECKS. Every doctor.py check added after TASK-093 makes non_baseline_rows() return one more row than UnitPromotionCandidateTests expects. The fix is to .add() the new check's name to KNOWN_BASELINE_CHECKS, but that statement MUST be placed textually after PRE_TASK_093_CHECKS's own definition line - PRE_TASK_093_CHECKS's `|` creates a brand-new set object at that line, so a mutation appearing before it would leak into PRE_TASK_093_CHECKS and hide the new row from ledger_rows(); a mutation placed after it only affects non_baseline_rows(), which re-reads the global at call time. Also update the three hardcoded `len(payload[\"checks\"]), N` literals in UnitPromotionCandidateTests (build_complete_install's total row count) each time a new unconditional doctor row is added.",
+      "by": "builder",
+      "date": "2026-08-24",
+      "tags": ["gotcha", "doctor", "test-fixtures", "set-ordering"]
+    }
+  ]
+}
