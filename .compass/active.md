@@ -26,6 +26,11 @@ Triggered by a live failure in another project: a vision session produced seven 
 - [ ] NEXT: research both specs, then one ADR. Open axes: SPEC-016's mechanism (skill step vs hook vs CLI gate), SPEC-017's index location.
 - [ ] Open: pin the project where the seven-monster-specs session happened ([[LESSON-pin-the-motivating-datum]]).
 
+## Scaffolding-noise initiative (Roger, 2026-08-24)
+
+- [x] Capture re-nag spaced to every 5 turns (commit fc9ce75) - the per-turn 'still open' spam is gone.
+- [ ] [[SPEC-018-scaffolding-invisible-to-the-human]] drafted, awaiting promotion. D-01 scaffolding stays hidden not removed; D-02 agents run the show between gates.
+
 ## PLAN-009 wave 1 (approved 2026-08-23)
 
 [[PLAN-009-sizing-mechanism]] APPROVED. Wave 1 is the shape-change mechanism end to end; the prose waits on TASK-083.
@@ -36,7 +41,7 @@ Triggered by a live failure in another project: a vision session produced seven 
 - [ ] TASK-080: sizing decisions record themselves from the commands that perform them, keyed on a stable `sizing_id` (L, after 078/079)
 - [ ] TASK-081: `validate` reconciles shapes on disk against the log (S, after 080)
 - [ ] TASK-082: `compass doctor` reports unit-promotion candidates (S, after 078)
-- [x] TASK-083: prototype COMPLETE, pre-registered ESCALATION band (2026-08-23): kappa gain +0.084 CI [-0.140,+0.361] includes zero; both arms 40.0% accuracy vs 46.7% constant-majority baseline; raters up-size vs the human shape; D-02 gives a two-way answer for a three-way choice and raters mapped breadth->unit, contradicting ADR-011 D-06. Full record: .compass/tmp/sizing-prototype/RESULTS.md. AWAITING HUMAN RULING on D-02; wave-2 prose tasks (084/085/087) blocked on it, 086/088/089 are not.
+- [x] TASK-083: prototype COMPLETE, pre-registered ESCALATION band (2026-08-23): kappa gain +0.084 CI [-0.140,+0.361] includes zero; both arms 40.0% accuracy vs 46.7% constant-majority baseline; raters up-size vs the human shape; D-02 gives a two-way answer for a three-way choice and raters mapped breadth->unit, contradicting ADR-011 D-06. Full record: .compass/tmp/sizing-prototype/RESULTS.md. RESOLVED 2026-08-24 by SPEC-016 D-06: every spec is born folder-like if that simplifies; the flat-vs-folder judgment dissolves. Wave-2 elaboration folds the ruling in.
 
 Elaboration fires at the merge gate once wave 1's outcomes are verified. Later tasks are in [[backlog]].
 
