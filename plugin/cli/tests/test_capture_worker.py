@@ -345,7 +345,10 @@ class ModelRosterTests(unittest.TestCase):
         # precedent row as index-summary (test_modelslib.py:63), no project
         # override, no env override, default host.
         self.assertEqual(
-            modelslib.resolve("capture-worker"), ("haiku", "low", "built-in")
+            modelslib.resolve(
+                "capture-worker", config=modelslib.empty_config(), environ={}
+            ),
+            ("haiku", "low", "built-in"),
         )
         # A distinct fact resolve() cannot show: apply-models rewrites every
         # name in AGENT_FILES as an agent-definition file, so a roster row
