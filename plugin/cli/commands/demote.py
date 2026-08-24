@@ -18,11 +18,21 @@ path already exists.
 Dry-run by default; `--apply` executes, then regenerates derived vault state
 (`compass sync`) and reports vault health, mirroring `make_unit.py`'s
 contract.
+
+A demote is a correction of the `promote` decision it reverses and requires
+`--reason <text>` on `--apply`; `--volatile <text>` (repeatable) and `--by
+human|agent` are optional. The correction row it writes carries the SAME
+`sizing_id` the folder's `index.md` already carries from `promote`, joining
+the two rows for `compass sizing stats` (see `commands/sizing.py`). A
+folder that predates the sizing log, with no id ever stamped, falls back to
+a fresh id: there is no earlier decision row to join against.
 """
 
+import datetime
 import sys
 
 import vaultlib
+from commands import sizing
 from commands import sync as sync_command
 from commands.make_unit import _report_vault_health
 from commands.promote import git_mv
@@ -69,10 +79,19 @@ def _drop_children_count(path):
 
 
 def run(args):
-    apply = "--apply" in args
-    positional = [a for a in args if not a.startswith("--")]
+    remaining, reason, volatile, by, flag_error = sizing.parse_flags(args)
+    if flag_error:
+        sys.stderr.write(f"compass demote: {flag_error}\n")
+        return 1
+    apply = "--apply" in remaining
+    positional = [a for a in remaining if not a.startswith("--")]
     if not positional:
-        sys.stderr.write("usage: compass demote <folder-spec> [--apply]\n")
+        sys.stderr.write("usage: compass demote <folder-spec> [--reason <text>] [--apply]\n")
+        return 1
+    if apply and reason is None:
+        sys.stderr.write(
+            "compass demote: --reason is required on --apply, no changes made\n"
+        )
         return 1
     target = positional[0]
     vault_root = vaultlib.find_vault_root()
@@ -107,10 +126,27 @@ def run(args):
         return 0
 
     index_path = folder / "index.md"
+    original_id = None
+    data, frontmatter_error = vaultlib.parse_frontmatter(index_path)
+    if frontmatter_error is None:
+        original_id = data.get("sizing_id")
+
     if not git_mv(vault_root.parent, index_path, dest):
         index_path.rename(dest)
     folder.rmdir()
     _drop_children_count(dest)
+
+    correction_id = original_id or sizing.mint_id(vault_root)
+    sizing.append_row(vault_root, {
+        "id": correction_id,
+        "action": "correction",
+        "shape": "folder",
+        "subject": dest.relative_to(vault_root).as_posix(),
+        "reason": reason,
+        "volatile": volatile,
+        "by": by,
+        "at": datetime.date.today().isoformat(),
+    })
 
     sys.stdout.write(
         f"demoted: {dest.stem} (folder -> flat)\n"
