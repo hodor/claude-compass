@@ -59,6 +59,17 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 - [x] TASK-088: methodology documents the sizing surface, callable by name (S)
 - [x] TASK-089: acceptance PASS from installed copy (2026-08-24): doctor 0 FAIL, suite 625 green, coverage --strict 18/18, lesson-coverage PASS, scratch round trip decision+correction joined by id. PLAN-009 COMPLETE: 12/12 live tasks across 3 waves + 2 elaborations; TASK-090 parked in Later behind its accumulate-decisions trigger.
 
+## PLAN-010 wave 1 (approved 2026-08-24)
+
+[[PLAN-010-invisible-capture]] APPROVED. Capture moves off the conversation; ADR-013 D-01..D-11 bind.
+
+- [ ] TASK-091: worker wrapper + ledger vocabulary (L, first - 092/093 read its vocabulary)
+- [ ] TASK-092: capture-check spawns, gates recursion, orders fallbacks (L, after 091)
+- [ ] TASK-093: doctor reconciles the worker ledger (S, after 091, parallel with 092)
+- [ ] TASK-094: live fire, paired and judged blind (L, last)
+
+Later tasks in [[backlog]].
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].
