@@ -263,20 +263,18 @@ Agents depending on external tools (MCP, `gh`, specific runtimes) verify availab
 ├── backlog.md            - Cold: future tasks
 ├── meta/
 │   ├── lessons-catalog.yaml - O(1) lesson tag lookup (numbering is JIT, no counter file)
+│   ├── sizing-log.yaml      - shape-change decisions/corrections (`compass sizing stats`)
 │   └── plugin.yaml          - Plugin source path + installed version (written by setup)
-├── specs/                - Specifications
-├── research/             - Research findings
-├── plans/                - Implementation plans
-├── decisions/            - ADRs
-├── lessons/              - Lessons
-├── handoffs/             - Session continuity
-├── prs/                  - PR descriptions
+├── specs/               - every spec is a folder; `index.md` is the artifact itself
+├── research/ plans/ decisions/ lessons/ handoffs/ prs/  - flat, one file each
 ├── <unit-name>/          - Unit folder: one large unit of work (index.md has `type: unit`)
 │   ├── index.md          - Unit marker, title, children listing
 │   ├── specs/ plans/ ... - Own type subdirs, unit-local numbering
 │   └── lessons/          - Aggregated into meta/lessons-catalog.yaml by sync
 └── archive/              - Completed/retired
 ```
+
+The unit question is judged once, at vision, from what the human actually said: a workstream earns `compass make-unit <name> --apply --reason "<why>"` before the spec list is even shown, named in plain words, once - the silence preference, if the human asks for it, lives in `vision.md`. A human who knows the feature calls it by name: `make-unit` / `make-unit --undo`, `promote` / `demote` for the rare flat-to-folder spec conversion, and `compass sizing stats` for the log all four write to. `doctor`'s unit-promotion candidate row is the reactive backstop for whatever judgment and silence miss.
 
 Unit artifacts are linked path-qualified (`[[<unit>/specs/SPEC-001-name]]`); root artifacts keep bare stems. The obsidian skill documents the full unit-folder conventions.
 
