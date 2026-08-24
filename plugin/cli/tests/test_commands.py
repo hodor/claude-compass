@@ -17,7 +17,7 @@ import modelslib  # noqa: E402
 import vaultlib  # noqa: E402
 from commands import (  # noqa: E402
     coverage, decisions, make_unit, models, next_num, resolve_model, tree,
-    hot_path, unit_check, validate,
+    hot_path, sizing, unit_check, validate,
 )
 
 
@@ -863,6 +863,154 @@ class EmptyUnitAcceptanceTests(unittest.TestCase):
         self.assertFalse(
             any(w.startswith("unclassified_root_folder: core") for w in warnings)
         )
+
+
+class SizingReconciliationTests(unittest.TestCase):
+    """TASK-081: `validate` reconciles unit folders and folder specs on disk
+    against `.compass/meta/sizing-log.yaml` (ADR-011 D-08). A shape with no
+    `sizing_id` in frontmatter, or one whose id resolves to no row in the
+    log, is reported as a warning - never an error, since the vault predates
+    the log and every pre-existing shape starts out unrecorded."""
+
+    FOLDER_SPEC_TEMPLATE = (
+        "---\ntitle: T\ntype: spec\nstatus: approved\narea: x\n"
+        "tags: [a]\ncreated: 2026-06-14\nupdated: 2026-06-14\n"
+        "children_count: 0\n"
+        "{sizing_line}"
+        'summary: "a folder spec"\n---\n\nbody\n'
+    )
+    UNIT_TEMPLATE = (
+        "---\ntitle: U\ntype: unit\nstatus: active\n"
+        "{sizing_line}"
+        "---\n\n# U\n"
+    )
+
+    def _vault(self):
+        root = make_vault(self)
+        (root / "index.md").write_text("# Index\n", encoding="utf-8")
+        with_vault_env(self, root)
+        return root
+
+    def _row(self, id_, shape, subject, at="2026-08-01"):
+        return {
+            "id": id_, "action": "decision", "shape": shape, "subject": subject,
+            "reason": "test fixture decision", "volatile": [], "by": "agent", "at": at,
+        }
+
+    def test_unit_folder_missing_sizing_id_produces_warning(self):
+        """Adversarial where: an implementation might key its 'was this
+        recorded' check off something other than the literal `sizing_id`
+        frontmatter field - e.g. off whether the log file exists at all, or
+        off a `subject:` text match against the unit's own name. A unit
+        index carrying no `sizing_id` key whatsoever must still be caught."""
+        root = self._vault()
+        write(root, "sizingcore/index.md", self.UNIT_TEMPLATE.format(sizing_line=""))
+        errors, warnings = validate.check_vault(root)
+        self.assertEqual(errors, [])
+        self.assertTrue(any("sizingcore" in w for w in warnings))
+
+    def test_unit_folder_with_resolving_id_produces_no_warning(self):
+        """Adversarial where: an implementation might treat 'the log is
+        non-empty' as sufficient proof of a recorded decision instead of
+        confirming this specific artifact's own id resolves to a row - the
+        log here carries exactly one row, minted through the real
+        `sizing.append_row` writer, and the unit's frontmatter carries that
+        exact id."""
+        root = self._vault()
+        sizing.append_row(root, self._row("sz-2026-08-01-3", "unit", "sizingcore"))
+        write(root, "sizingcore/index.md",
+              self.UNIT_TEMPLATE.format(sizing_line="sizing_id: sz-2026-08-01-3\n"))
+        errors, warnings = validate.check_vault(root)
+        self.assertEqual(errors, [])
+        self.assertFalse(any("sizingcore" in w for w in warnings))
+
+    def test_folder_spec_missing_sizing_id_produces_warning(self):
+        """Adversarial where: same defect class as the unit-folder case
+        above, but folder specs are discovered through a structurally
+        different traversal (`vaultlib.scan_artifacts`'s `folder-index`
+        records, not `classify_root_dirs()['units']`); an implementation
+        that wires up only the unit-folder path would pass the sibling test
+        while silently never checking a single folder spec."""
+        root = self._vault()
+        write(root, "specs/SPEC-777-sizeme/index.md",
+              self.FOLDER_SPEC_TEMPLATE.format(sizing_line=""))
+        errors, warnings = validate.check_vault(root)
+        self.assertEqual(errors, [])
+        self.assertTrue(any("SPEC-777-sizeme" in w for w in warnings))
+
+    def test_folder_spec_with_resolving_id_produces_no_warning(self):
+        """Adversarial where: the folder-spec resolving case, mirroring the
+        unit-folder resolving test above across the same structurally
+        different traversal - a folder spec whose stamped id matches a real
+        log row must not be flagged."""
+        root = self._vault()
+        sizing.append_row(root, self._row(
+            "sz-2026-08-02-5", "folder", "specs/SPEC-777-sizeme/index.md", at="2026-08-02"
+        ))
+        write(root, "specs/SPEC-777-sizeme/index.md",
+              self.FOLDER_SPEC_TEMPLATE.format(sizing_line="sizing_id: sz-2026-08-02-5\n"))
+        errors, warnings = validate.check_vault(root)
+        self.assertEqual(errors, [])
+        self.assertFalse(any("SPEC-777-sizeme" in w for w in warnings))
+
+    def test_id_present_but_absent_from_log_produces_distinct_warning_naming_id(self):
+        """Adversarial where: an id stamped in frontmatter that names no row
+        in the log must produce its own warning, naming the id, distinct
+        from the no-id-at-all case - and it must do so beside a second,
+        healthy shape in the same vault without either verdict bleeding
+        into the other (asymmetric fixture: one shape resolves cleanly, the
+        sibling carries an orphaned id; neither may contaminate the other's
+        result)."""
+        root = self._vault()
+        sizing.append_row(root, self._row("sz-2026-08-01-3", "unit", "sizingcore"))
+        write(root, "sizingcore/index.md",
+              self.UNIT_TEMPLATE.format(sizing_line="sizing_id: sz-2026-08-01-3\n"))
+        orphan_id = "sz-2026-05-01-9"
+        write(root, "orphan/index.md",
+              self.UNIT_TEMPLATE.format(sizing_line=f"sizing_id: {orphan_id}\n"))
+        errors, warnings = validate.check_vault(root)
+        self.assertEqual(errors, [])
+        self.assertTrue(any(orphan_id in w for w in warnings))
+        self.assertFalse(any("sizingcore" in w for w in warnings))
+        orphan_warnings = [w for w in warnings if "orphan" in w]
+        self.assertTrue(orphan_warnings)
+        self.assertTrue(any(orphan_id in w for w in orphan_warnings))
+
+    def test_reconciliation_warnings_never_change_exit_code(self):
+        """Adversarial where: a reconciliation finding reads more severely
+        than a stray wikilink ('the log says this should exist'), which
+        could tempt an implementation into routing it through the errors
+        list instead of warnings. The plan is explicit these never affect
+        the exit code; assert through `validate.run` end to end, not just
+        `check_vault`'s return tuple, so the exit-code wiring itself is
+        exercised."""
+        root = self._vault()
+        write(root, "sizingcore/index.md", self.UNIT_TEMPLATE.format(sizing_line=""))
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = validate.run([])
+        self.assertEqual(code, 0)
+        self.assertIn("0 error(s)", err.getvalue())
+
+    def test_vault_with_no_log_file_produces_no_crash_only_unrecorded_warnings(self):
+        """Adversarial where: `.compass/meta/sizing-log.yaml` does not exist
+        at all - the real state of this project's own vault, which predates
+        TASK-080. Code that unconditionally opens the log path would raise
+        FileNotFoundError on every vault that has never run a shape-changing
+        command. Neither fixture shape here carries a `sizing_id` (nothing
+        has ever recorded them), so only the no-id warning class may fire -
+        an implementation that also emits an id-absent-from-log warning by
+        treating a missing log as 'zero rows, check anyway' would produce
+        the wrong finding shape even though it doesn't crash."""
+        root = self._vault()
+        write(root, "sizingcore/index.md", self.UNIT_TEMPLATE.format(sizing_line=""))
+        write(root, "specs/SPEC-777-sizeme/index.md",
+              self.FOLDER_SPEC_TEMPLATE.format(sizing_line=""))
+        self.assertFalse((root / "meta" / "sizing-log.yaml").exists())
+        errors, warnings = validate.check_vault(root)
+        self.assertEqual(errors, [])
+        self.assertTrue(any("sizingcore" in w for w in warnings))
+        self.assertTrue(any("SPEC-777-sizeme" in w for w in warnings))
 
 
 class DecisionCommandBase(unittest.TestCase):
