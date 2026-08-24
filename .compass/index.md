@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 8987 / 5000 tokens (index.md 4215, active.md 1880, meta/lessons-catalog.yaml 2892). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 9106 / 5000 tokens (index.md 4334, active.md 1880, meta/lessons-catalog.yaml 2892). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -84,6 +84,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-008-rolling-wave]] - Rolling-Wave Plans (Detail Regions, Three-State Coverage, the Elaboration Loop)
 - [[PLAN-009-sizing-mechanism]] - zero-artifact units, the sizing record, and the changeability walk (draft, awaiting approval)
 - [[PLAN-009-sizing-mechanism]] - Sizing Mechanism (Zero-Artifact Units, the Sizing Record, and the Changeability Walk)
+- [[PLAN-010-invisible-capture]] - capture moves off the conversation into a hook-spawned detached worker, with recorded runs, dead-worker detection, a quiet fallback, and a live-fire acceptance
 
 ## Decisions
 
