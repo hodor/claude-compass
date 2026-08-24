@@ -337,7 +337,10 @@ def open_opportunity(vault_root, kind, triggers, evidence):
     `open_opportunity` with the new id, resets `reemits` to 0, clears
     `turns_since_capture` and `signals` (the window that produced this
     opportunity is spent; the next one starts counting fresh), and stamps
-    `last_opportunity_at`. Returns the opportunity directory path."""
+    `last_opportunity_at`. Also resets `worker_attempts` to 0 and
+    `worker_quiet_at` to `None`: a prior opportunity's spawn deaths or quiet
+    firing must never carry into this one's fresh fallback ladder. Returns
+    the opportunity directory path."""
     now = _now()
     opened_at = _iso(now)
     opp_id = "OPP-" + now.strftime("%Y%m%dT%H%M%S") + f"{now.microsecond:06d}Z"
@@ -359,6 +362,8 @@ def open_opportunity(vault_root, kind, triggers, evidence):
     state["turns_since_capture"] = 0
     state["signals"] = []
     state["last_opportunity_at"] = opened_at
+    state["worker_attempts"] = 0
+    state["worker_quiet_at"] = None
     save_state(vault_root, state)
     _log_event(vault_root, "opened", id=opp_id, kind=kind, triggers=triggers)
     return directory

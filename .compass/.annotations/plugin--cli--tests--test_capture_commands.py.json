@@ -1,0 +1,11 @@
+{
+  "path": "plugin/cli/tests/test_capture_commands.py",
+  "notes": [
+    {
+      "text": "CaptureCheckTests::test_concurrent_check_blocked_by_run_lock (pre-existing, not one of TASK-092's six sanctioned edits) still asserts the old contract: `self.assertIn(\"decision\", out)` after its second, unmocked `capture_check.run` call opens a due opportunity. Under the TASK-092 spawn-and-print-nothing contract this call now spawns the detached worker (real, unmocked `subprocess.Popen`) and prints nothing, so `out == \"\"` and the assertion fails. This is the same class of change the four sanctioned block-on-due tests received; this one was not in the station's enumerated six and was left untouched per the builder's exact-six-no-others constraint. Fix: patch `commands.capture_check.subprocess.Popen` and assert `out == \"\"` instead, mirroring the sanctioned edits above it in this file.",
+      "by": "builder",
+      "date": "2026-08-24",
+      "tags": ["gotcha", "task-092", "stale-assertion", "known-red"]
+    }
+  ]
+}
