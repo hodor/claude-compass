@@ -45,6 +45,15 @@ Triggered by a live failure in another project: a vision session produced seven 
 
 Elaboration fires at the merge gate once wave 1's outcomes are verified. Later tasks are in [[backlog]].
 
+## PLAN-009 wave 2 (elaborated 2026-08-24)
+
+Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a folder, recursively; only the unit question survives to vision.
+
+- [ ] TASK-085: spec skill - every spec born a folder, recursively (M, first: 084/086 depend on it)
+- [ ] TASK-084: vision skill - only the unit question, plain words, once (M, after 085)
+- [ ] TASK-086: spec authoring routes into the owning unit (S, after 085)
+- [ ] TASK-087: parent/child authoring template (S, after 086)
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].
