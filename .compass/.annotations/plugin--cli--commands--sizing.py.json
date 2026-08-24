@@ -1,0 +1,17 @@
+{
+  "path": "plugin/cli/commands/sizing.py",
+  "notes": [
+    {
+      "text": "A row's `shape` field names the kind of sizing decision being recorded or corrected, not the artifact's shape after the write completes. `promote` writes `shape: folder` (a spec becoming a folder is a folder decision); `demote`'s correction row also carries `shape: folder`, even though the artifact ends up flat again - it is correcting the folder decision, and matching shape keeps a decision/correction pair groupable by (id, shape) as well as by id alone. `shape: spec` is reserved for a future 'stays flat' decision no wave-1 command ever writes (TASK-084's job); do not read its absence from today's log as a bug.",
+      "by": "builder",
+      "date": "2026-08-23",
+      "tags": ["gotcha", "sizing", "schema"]
+    },
+    {
+      "text": "append_row() is pure text concatenation (read full log text, append one formatted row block, write full text back) and never parses existing rows - so a malformed neighboring row can never block a write. parse_log() is the only reader, used solely by `sizing stats`, and is deliberately lenient: a row missing any required field, or a `  - ` line that isn't `  - id: ...`, is counted in `skipped` and dropped rather than raising. Do not reuse parse_log() as a gate on write - it exists to make stats resilient, not to validate the log before appending.",
+      "by": "builder",
+      "date": "2026-08-23",
+      "tags": ["gotcha", "sizing", "resilience"]
+    }
+  ]
+}

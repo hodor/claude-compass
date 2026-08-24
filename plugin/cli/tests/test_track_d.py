@@ -38,7 +38,9 @@ def use_vault(test_case, root):
 
 
 class PromoteTests(unittest.TestCase):
-    def test_flat_to_folder(self):
+    def test_dry_run_makes_no_changes(self):
+        """`promote` gained the same dry-run/--apply gate `make-unit` and
+        `demote` already carry - a bare invocation must preview, not act."""
         root = make_vault(self)
         (root / "specs").mkdir()
         (root / "specs" / "SPEC-002-tile.md").write_text(SPEC, encoding="utf-8")
@@ -46,6 +48,20 @@ class PromoteTests(unittest.TestCase):
         out = io.StringIO()
         with redirect_stdout(out):
             self.assertEqual(promote.run(["SPEC-002-tile"]), 0)
+        self.assertIn("dry-run", out.getvalue())
+        self.assertTrue((root / "specs" / "SPEC-002-tile.md").is_file())
+        self.assertFalse((root / "specs" / "SPEC-002-tile").exists())
+
+    def test_flat_to_folder(self):
+        root = make_vault(self)
+        (root / "specs").mkdir()
+        (root / "specs" / "SPEC-002-tile.md").write_text(SPEC, encoding="utf-8")
+        use_vault(self, root)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(
+                promote.run(["SPEC-002-tile", "--reason", "splitting into sub-concerns", "--apply"]), 0
+            )
         self.assertFalse((root / "specs" / "SPEC-002-tile.md").exists())
         index = root / "specs" / "SPEC-002-tile" / "index.md"
         self.assertTrue(index.exists())

@@ -175,7 +175,7 @@ class DemoteTests(unittest.TestCase):
         other flat spec in the vault ever has."""
         root = self._clean_vault()
         write(root, "specs/SPEC-002-tile/index.md", FOLDER_BODY)
-        code, _, _ = run_cli(["demote", "SPEC-002-tile", "--apply"])
+        code, _, _ = run_cli(["demote", "SPEC-002-tile", "--reason", "reverting the split", "--apply"])
         self.assertEqual(code, 0)
         restored = root / "specs" / "SPEC-002-tile.md"
         self.assertTrue(restored.is_file())
@@ -202,7 +202,7 @@ class DemoteTests(unittest.TestCase):
             'summary: "refers to the tile spec"\n---\n\n'
             "See [[SPEC-002-tile]] for details.\n",
         )
-        code, _, _ = run_cli(["demote", "SPEC-002-tile", "--apply"])
+        code, _, _ = run_cli(["demote", "SPEC-002-tile", "--reason", "reverting the split", "--apply"])
         self.assertEqual(code, 0)
         self.assertTrue((root / "specs" / "SPEC-002-tile.md").is_file())
         errors, warnings = validate.check_vault(root)
@@ -219,7 +219,7 @@ class DemoteTests(unittest.TestCase):
         write(root, "specs/SPEC-004-haskids/index.md", FOLDER_BODY_WITH_CHILD)
         write(root, "specs/SPEC-004-haskids/SPEC-001-child.md", FLAT_BODY)
         index_before = (root / "index.md").read_text(encoding="utf-8")
-        code, _, err = run_cli(["demote", "SPEC-004-haskids", "--apply"])
+        code, _, err = run_cli(["demote", "SPEC-004-haskids", "--reason", "reverting the split", "--apply"])
         self.assertEqual(code, 1)
         # Pins the refusal *reason*, not just the exit code: a demote that
         # exits 1 for an unrelated cause (e.g. today's "unknown command"
@@ -248,7 +248,7 @@ class DemoteTests(unittest.TestCase):
         root = self._clean_vault()
         cases = {
             "no_args": [],
-            "nonexistent_folder": ["SPEC-999-none", "--apply"],
+            "nonexistent_folder": ["SPEC-999-none", "--reason", "reverting the split", "--apply"],
         }
         for label, extra in cases.items():
             with self.subTest(name=label):
@@ -273,7 +273,7 @@ class DemoteTests(unittest.TestCase):
             'summary: "a target"\n---\n\nbody\n',
         )
         write(root, "specs/SPEC-003-complex/index.md", FOLDER_BODY_COMPLEX)
-        code, _, _ = run_cli(["demote", "SPEC-003-complex", "--apply"])
+        code, _, _ = run_cli(["demote", "SPEC-003-complex", "--reason", "reverting the split", "--apply"])
         self.assertEqual(code, 0)
         restored = root / "specs" / "SPEC-003-complex.md"
         self.assertTrue(restored.is_file())
@@ -304,7 +304,7 @@ class MakeUnitUndoTests(unittest.TestCase):
             encoding="utf-8",
         )
         with_vault_env(self, root)
-        code, _, err = run_module(make_unit, self.MAKE_ARGS + ["--apply"])
+        code, _, err = run_module(make_unit, self.MAKE_ARGS + ["--reason", "grouping the core work", "--apply"])
         self.assertEqual(code, 0, f"fixture setup failed: {err}")
         return root
 
@@ -328,7 +328,7 @@ class MakeUnitUndoTests(unittest.TestCase):
         subdirectory (e.g. only `specs/`) and silently drops the rest would
         still pass a single-artifact-type test."""
         root = self._unit_vault()
-        code, _, _ = run_module(make_unit, ["--undo", "core", "--apply"])
+        code, _, _ = run_module(make_unit, ["--undo", "core", "--reason", "reverting the split", "--apply"])
         self.assertEqual(code, 0)
         restored_spec = root / "specs" / "SPEC-001-core.md"
         restored_plan = root / "plans" / "PLAN-001-impl.md"
@@ -350,7 +350,7 @@ class MakeUnitUndoTests(unittest.TestCase):
         artifacts stay inside the unit."""
         root = self._unit_vault()
         write(root, "specs/SPEC-001-core.md", "---\ntype: spec\n---\n\nstray reused name\n")
-        code, _, err = run_module(make_unit, ["--undo", "core", "--apply"])
+        code, _, err = run_module(make_unit, ["--undo", "core", "--reason", "reverting the split", "--apply"])
         self.assertEqual(code, 1)
         # Pins the refusal to the actual colliding artifact, not just the
         # exit code: today's args, misparsed with no `--undo` support,
@@ -383,10 +383,10 @@ class MakeUnitUndoTests(unittest.TestCase):
         (root / "meta" / "lessons-catalog.yaml").write_text("lessons:\n", encoding="utf-8")
         (root / "index.md").write_text("# Index\n", encoding="utf-8")
         with_vault_env(self, root)
-        setup_code, _, setup_err = run_module(make_unit, ["core", "--apply"])
+        setup_code, _, setup_err = run_module(make_unit, ["core", "--reason", "reserve the workspace", "--apply"])
         self.assertEqual(setup_code, 0, f"fixture setup failed: {setup_err}")
         self.assertTrue((root / "core").is_dir())
-        code, _, _ = run_module(make_unit, ["--undo", "core", "--apply"])
+        code, _, _ = run_module(make_unit, ["--undo", "core", "--reason", "reverting the split", "--apply"])
         self.assertEqual(code, 0)
         self.assertFalse((root / "core").exists())
 
@@ -403,7 +403,7 @@ class MakeUnitUndoTests(unittest.TestCase):
         cases = {"missing_unit": "nosuch", "not_a_unit": "specs"}
         for label, name in cases.items():
             with self.subTest(name=label):
-                code, _, _ = run_module(make_unit, ["--undo", name, "--apply"])
+                code, _, _ = run_module(make_unit, ["--undo", name, "--reason", "reverting the split", "--apply"])
                 self.assertNotEqual(code, 2)
                 self.assertEqual(code, 1)
         self.assertTrue((root / "core").is_dir())
