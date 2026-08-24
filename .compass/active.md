@@ -71,7 +71,7 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 - [x] TASK-094: live fire PASS on path/cost, FAIL on cheap-tier quality (blind judge: reasoning) -> tier bumped to balanced, re-fire pending
 
 - [x] TASK-099: root cause found in the worker's transcript (it hand-inserted rows the hook had appended); sync now collapses duplicate rows and reports it; lesson-write's carve-out closed
-- [ ] TASK-095: balanced-tier re-fire judged blind, then fleet v0.8.0 to 50 vaults (M, after 099)
+- [x] TASK-095: re-fire PASS (worker 5/5 vs in-session 4/5, $0.96); v0.8.0 distributed to 50/50 vaults, all doctor-clean (2026-08-24)
 
 Later tasks in [[backlog]].
 
