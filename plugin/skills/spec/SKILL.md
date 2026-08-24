@@ -58,7 +58,7 @@ Before saving, re-read Problem and Desired Outcome. Multiple distinct problems o
 
 ### 5. Create the spec file
 
-Every spec is a folder: `.compass/specs/SPEC-NNN-descriptive-name/index.md`, NNN from `compass next-num spec`. A child spec is created the same way inside its parent's folder, at any depth - `compass next-num spec <parent-path>` numbers it locally. Required sections: Problem and Desired Outcome. Optional: User Scenarios, Constraints, Decisions, Non-Goals, Risks, Open Questions. Omit any optional section if empty - don't include a heading with no content.
+Before creating the spec file, resolve its destination per the `obsidian` skill's "Where a new artifact goes" rule - the owning unit's `specs/` dir, or the root. Every spec is a folder: `.compass/specs/SPEC-NNN-descriptive-name/index.md`, NNN from `compass next-num spec`. A child spec is created the same way inside its parent's folder, at any depth - `compass next-num spec <parent-path>` numbers it locally. Required sections: Problem and Desired Outcome. Optional: User Scenarios, Constraints, Decisions, Non-Goals, Risks, Open Questions. Omit any optional section if empty - don't include a heading with no content.
 
 ```markdown
 ---
