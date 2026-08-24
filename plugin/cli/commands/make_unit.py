@@ -35,6 +35,14 @@ inferring that unclassified content is safe to discard along with the folder
 artifacts, never assume the rest of the folder is clear to remove). Dry-run
 by default, `--apply` executes, then regenerates derived state and reports
 vault health the same way the forward direction does.
+
+Every `--apply` that creates or removes a unit is a sizing decision and
+requires `--reason <text>`; `--volatile <text>` (repeatable) and `--by
+human|agent` are optional. A create mints a `sizing_id` and stamps it into
+the new unit's own `index.md`; `--undo` writes a correction row carrying
+the SAME id the unit's `index.md` already carried, joining the two rows for
+`compass sizing stats` (see `commands/sizing.py`). Dry-run never requires
+`--reason` - nothing is recorded because nothing changed.
 """
 
 import datetime
@@ -43,6 +51,7 @@ import shutil
 import sys
 
 import vaultlib
+from commands import sizing
 from commands import sync as sync_command
 from commands import validate as validate_command
 from commands.promote import git_mv
@@ -228,9 +237,14 @@ def _plan_undo_moves(vault_root, unit_dir, type_dirs):
     return moves
 
 
-def _run_undo(vault_root, positional, apply):
+def _run_undo(vault_root, positional, apply, reason, volatile, by):
     if not positional:
-        sys.stderr.write("usage: compass make-unit --undo <unit> [--apply]\n")
+        sys.stderr.write("usage: compass make-unit --undo <unit> [--reason <text>] [--apply]\n")
+        return 1
+    if apply and reason is None:
+        sys.stderr.write(
+            "compass make-unit --undo: --reason is required on --apply, no changes made\n"
+        )
         return 1
     name = positional[0]
     units = vaultlib.classify_root_dirs(vault_root)["units"]
@@ -274,11 +288,35 @@ def _run_undo(vault_root, positional, apply):
             )
         return 0
 
+    # The unit's own sizing_id, read before the folder is removed - the
+    # correction row must carry the SAME id as the decision it reverses
+    # (ADR-011 D-08), not a freshly minted one. A unit that predates the
+    # sizing log (no id ever stamped) falls back to a fresh id: there is no
+    # earlier decision row to join against.
+    original_id = None
+    unit_index = unit_dir / "index.md"
+    if unit_index.is_file():
+        data, frontmatter_error = vaultlib.parse_frontmatter(unit_index)
+        if frontmatter_error is None:
+            original_id = data.get("sizing_id")
+
     for move in moves:
         move["dest"].parent.mkdir(parents=True, exist_ok=True)
         if not git_mv(vault_root.parent, move["src"], move["dest"]):
             move["src"].rename(move["dest"])
     shutil.rmtree(unit_dir)
+
+    correction_id = original_id or sizing.mint_id(vault_root)
+    sizing.append_row(vault_root, {
+        "id": correction_id,
+        "action": "correction",
+        "shape": "unit",
+        "subject": name,
+        "reason": reason,
+        "volatile": volatile,
+        "by": by,
+        "at": datetime.date.today().isoformat(),
+    })
 
     sys.stdout.write(
         f"compass make-unit: restored {len(moves)} artifact(s) from '{name}' "
@@ -295,12 +333,21 @@ def _run_undo(vault_root, positional, apply):
 
 
 def run(args):
-    apply = "--apply" in args
-    positional = [a for a in args if not a.startswith("--")]
-    if "--undo" in args:
-        return _run_undo(vaultlib.find_vault_root(), positional, apply)
+    remaining, reason, volatile, by, flag_error = sizing.parse_flags(args)
+    if flag_error:
+        sys.stderr.write(f"compass make-unit: {flag_error}\n")
+        return 1
+    apply = "--apply" in remaining
+    positional = [a for a in remaining if not a.startswith("--")]
+    if "--undo" in remaining:
+        return _run_undo(vaultlib.find_vault_root(), positional, apply, reason, volatile, by)
     if not positional:
-        sys.stderr.write("usage: compass make-unit <name> [artifact...] [--apply]\n")
+        sys.stderr.write("usage: compass make-unit <name> [artifact...] [--reason <text>] [--apply]\n")
+        return 1
+    if apply and reason is None:
+        sys.stderr.write(
+            "compass make-unit: --reason is required on --apply, no changes made\n"
+        )
         return 1
     name, artifacts = positional[0], positional[1:]
     vault_root = vaultlib.find_vault_root()
@@ -329,6 +376,18 @@ def run(args):
         vaultlib.write_text_lf(
             unit_dir / "index.md", _unit_index_text(name, [], today)
         )
+        sizing_id = sizing.mint_id(vault_root)
+        sizing.stamp_id(unit_dir / "index.md", sizing_id)
+        sizing.append_row(vault_root, {
+            "id": sizing_id,
+            "action": "decision",
+            "shape": "unit",
+            "subject": name,
+            "reason": reason,
+            "volatile": volatile,
+            "by": by,
+            "at": today,
+        })
         sys.stdout.write(
             f"compass make-unit: created unit '{name}' at {name}/index.md "
             "with no artifacts\n"
@@ -361,9 +420,20 @@ def run(args):
         if not git_mv(vault_root.parent, move["src"], move["dest"]):
             move["src"].rename(move["dest"])
     today = datetime.date.today().isoformat()
-    vaultlib.write_text_lf(
-        vault_root / name / "index.md", _unit_index_text(name, moves, today)
-    )
+    unit_index_path = vault_root / name / "index.md"
+    vaultlib.write_text_lf(unit_index_path, _unit_index_text(name, moves, today))
+    sizing_id = sizing.mint_id(vault_root)
+    sizing.stamp_id(unit_index_path, sizing_id)
+    sizing.append_row(vault_root, {
+        "id": sizing_id,
+        "action": "decision",
+        "shape": "unit",
+        "subject": name,
+        "reason": reason,
+        "volatile": volatile,
+        "by": by,
+        "at": today,
+    })
     if removable and index_text:
         drop = set(removable)
         lines = index_text.split("\n")
