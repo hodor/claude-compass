@@ -7,7 +7,10 @@ for a command the installed `maincli.py` declares, and missing or empty
 agents/skills directories. Alongside install drift, it also surfaces
 unit-promotion candidates - root-level artifact groups that have outgrown
 the flat vault layout - as an advisory row, since `compass unit-check` exists
-but nothing else prompts a human to run it.
+but nothing else prompts a human to run it, and reconciles the detached
+capture worker's ledger (ADR-013 D-10): spawn/finish/failure counts, a
+started worker with no end row past its grace period, fallback-channel
+firings, the last failure reason, and the no-headless latch's date when set.
 
 Claude Code loads hooks only from a settings file's `hooks` key
 (`.claude/settings.json`, `.claude/settings.local.json`, `~/.claude/settings.json`)
@@ -19,8 +22,10 @@ hooks.json is reported as the defect it is.
 Each check reports OK, WARN, or FAIL with a one-line fix command. WARN never
 fails the run - it flags something worth knowing but not broken (TeammateIdle
 registration, whose lifecycle may not exist in every harness; unit-promotion
-candidates, which are the human's call to act on). Read-only: doctor mutates
-no file on disk. Exit 1 on any FAIL, 0 otherwise, never 2.
+candidates, which are the human's call to act on; worker-ledger conditions,
+which reflect the capture worker's own health rather than an install defect).
+Read-only: doctor mutates no file on disk. Exit 1 on any FAIL, 0 otherwise,
+never 2.
 """
 
 import importlib.util
@@ -28,6 +33,7 @@ import json
 import re
 import sys
 
+import capturelib
 import vaultlib
 from commands import unit_check
 
@@ -242,6 +248,117 @@ def _unit_candidates_check(vault_root):
     return Check("unit-promotion candidates", WARN, detail, fix)
 
 
+def _flatten(value):
+    """`str(value)` with embedded newlines collapsed to spaces. Ledger rows
+    are hand-editable JSON (`LedgerReadFailureTests`/`CorruptLogLineTests`
+    exercise this file's tolerance of exactly that), so any field spliced
+    into a one-line `detail` string - an id, a failure reason, a fallback
+    channel - must not be trusted to already be single-line."""
+    return " ".join(str(value).split())
+
+
+def _worker_ledger_check(vault_root):
+    """Advisory row reconciling `capturelib.read_log`'s worker vocabulary
+    (`worker-started`, `worker-finished`, `worker-failed`, `fallback-fired`)
+    against `load_config`'s `worker_grace_seconds` and the state's
+    `no_headless_at` latch (ADR-013 D-10). Reports started/finished/failed
+    counts, any started row whose id has no later finished or failed row and
+    is aged past grace (naming the id and age), fallback firings by channel,
+    the most recently logged failure reason, and the no-headless latch's date
+    when set - a worker path silently latched off is exactly what this row
+    exists to surface. WARNs on an unfinished spawn past grace, the latch
+    being set, or the last three completed spawns all failing; OK otherwise;
+    never FAIL, since the invisible machinery's own health never moves
+    doctor's exit code. Kept in its own try/except like
+    `_unit_candidates_check` - `read_log`, `load_config`, and `load_state` are
+    each best-effort inside `capturelib` but a caller-side failure (a stubbed
+    `read_log` raising, a hand-edited state file) must still degrade to WARN
+    rather than reaching `_run_checks`'s outer bare `except` and collapsing
+    every other row into one generic FAIL."""
+    try:
+        rows = capturelib.read_log(vault_root)
+        config = capturelib.load_config(vault_root)
+        grace = config.get("worker_grace_seconds", capturelib.DEFAULT_CONFIG["worker_grace_seconds"])
+        state = capturelib.load_state(vault_root)
+
+        started = finished = failed = 0
+        open_spawns = {}
+        last_failure_reason = None
+        channel_counts = {}
+        terminal_sequence = []
+
+        for row in rows:
+            event = row.get("event")
+            row_id = row.get("id")
+            if event == "worker-started":
+                started += 1
+                if row_id is not None:
+                    open_spawns[row_id] = row
+            elif event == "worker-finished":
+                finished += 1
+                if row_id is not None:
+                    open_spawns.pop(row_id, None)
+                terminal_sequence.append(("finished", None))
+            elif event == "worker-failed":
+                failed += 1
+                if row_id is not None:
+                    open_spawns.pop(row_id, None)
+                last_failure_reason = row.get("reason")
+                terminal_sequence.append(("failed", last_failure_reason))
+            elif event == "fallback-fired":
+                channel = row.get("channel")
+                if channel:
+                    channel = _flatten(channel)
+                    channel_counts[channel] = channel_counts.get(channel, 0) + 1
+
+        now = capturelib._now()
+        unfinished = None
+        for row_id, started_row in open_spawns.items():
+            at = capturelib.parse_iso(started_row.get("at"))
+            if at is None:
+                continue
+            age = (now - at).total_seconds()
+            if age >= grace and (unfinished is None or age > unfinished[1]):
+                unfinished = (row_id, age)
+
+        last_three = terminal_sequence[-3:]
+        last_three_failed = len(last_three) == 3 and all(kind == "failed" for kind, _reason in last_three)
+
+        parts = [f"{started} started, {finished} finished, {failed} failed"]
+        status = OK
+
+        if unfinished:
+            row_id, age = unfinished
+            parts.append(f"unfinished past grace: {_flatten(row_id)} (age {int(age)}s)")
+            status = WARN
+
+        if channel_counts:
+            channel_text = ", ".join(
+                f"{count} {channel}" for channel, count in sorted(channel_counts.items())
+            )
+            parts.append(f"fallback firings: {channel_text}")
+
+        if last_failure_reason:
+            parts.append(f"last failure: {_flatten(last_failure_reason)}")
+
+        if last_three_failed:
+            parts.append(f"last three spawns all failed ({_flatten(last_failure_reason)})")
+            status = WARN
+
+        latch_at = state.get("no_headless_at")
+        if latch_at:
+            parsed_latch = capturelib.parse_iso(latch_at)
+            date_text = parsed_latch.date().isoformat() if parsed_latch else _flatten(latch_at)
+            parts.append(f"no-headless latch set since {date_text}")
+            status = WARN
+
+        detail = "; ".join(parts)
+        fix = "check .compass/tmp/worker-logs/<opp-id>.log; re-run by hand with `compass capture-worker <opp-id>`"
+        return Check("worker ledger", status, detail, fix if status != OK else None)
+    except Exception as exc:
+        return Check("worker ledger", WARN, f"ledger reconciliation failed: {_flatten(exc)}")
+
+
 def _run_checks():
     try:
         vault_root = vaultlib.find_vault_root()
@@ -262,6 +379,7 @@ def _run_checks():
     ))
     checks.append(_lessons_catalog_check(vault_root))
     checks.append(_unit_candidates_check(vault_root))
+    checks.append(_worker_ledger_check(vault_root))
     return checks
 
 
