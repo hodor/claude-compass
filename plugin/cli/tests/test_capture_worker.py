@@ -585,6 +585,21 @@ class WorkerLockTests(WorkerHarness):
 
 
 class ChildInvocationTests(WorkerHarness):
+    def test_child_argv_scopes_tools_and_never_bypasses_permissions(self):
+        """Adversarial where: a headless session refuses writes without a
+        human unless tools are allowed explicitly, and the tempting fix is
+        a blanket permission bypass. The worker must list exactly the tools
+        an extraction pass needs and never the bypass flag."""
+        self.close_via_stub()
+        self.run_worker()
+        argv = json.loads(self.marker_path.read_text(encoding="utf-8"))["argv"]
+        self.assertIn("--allowedTools", argv)
+        allowed = argv[argv.index("--allowedTools") + 1]
+        for tool in ("Write", "Edit", "Skill", "Bash(python:*)"):
+            self.assertIn(tool, allowed)
+        self.assertNotIn("--dangerously-skip-permissions", argv)
+        self.assertNotIn("--allow-dangerously-skip-permissions", argv)
+
     def test_child_argv_pins_model_never_inherit_and_output_format_json(self):
         with_env(self, "STUB_STDOUT", "extracted: 0 written, 0 revised, 0 rejected - ok\n")
         self.close_via_stub()
