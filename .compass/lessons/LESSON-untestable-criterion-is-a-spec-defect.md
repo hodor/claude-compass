@@ -6,10 +6,10 @@ category: process
 area: testing
 tags: [testing, pre-build-station, acceptance-criteria, spec-defect, oracle]
 created: 2026-08-23
-updated: 2026-08-23
-score: 5
+updated: 2026-08-24
+score: 6
 summary: "A criterion that defines no input class cannot be tested; report the spec defect, never invent the equivalence class"
-seen: []
+seen: [2026-08-24]
 ---
 
 A plan's verification bullet asserted "a malformed name exits 1" while defining malformed nowhere - no character class, no length rule, no sample - and the pre-build tester reported the gap rather than picking a plausible class.
