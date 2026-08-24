@@ -31,16 +31,16 @@ Required:
 2. **Users:** "Who uses this? What do they currently do without it?"
 3. **Success:** "If this is wildly successful, what's true that wasn't true before?"
 
-Optional, ask if not covered:
+Optional, ask if not covered - read the room, don't force every question:
 4. **Hard constraints:** budget, infrastructure, regulatory, team.
 5. **Non-goals at project level:** what this project is NOT trying to do.
 6. **Existing context:** what exists today, what's been tried, what's in the way.
 
-Read the room. Don't force every question.
-
 ### 3. Identify distinct needs
 
 Each distinct need becomes one spec. Use the spec rule: if you write "and also" between two needs, they're separate.
+
+For each need, judge - from only what the human said, never from scope nobody stated - whether it will run as one continuous thread inside this project, or is its own workstream deserving its own pipeline. Decide and act; don't ask how to run. A workstream gets its workspace declared now, before the list below is presented: `compass make-unit <name> --apply --reason "<why>"`, which records the decision itself.
 
 Present:
 
@@ -59,6 +59,8 @@ Does this list cover everything? Should I:
 - add any I missed?
 - remove any (out of scope)?
 ```
+
+For any need that just got its own workspace, add one plain sentence, said once: "I set up [need name] as its own workspace since it reads as ongoing work rather than a single spec - say the word and I'll fold it back." Never name the mechanism. If the human asks you to stop mentioning this, note the preference in `.compass/vision.md` and stay silent about it for the rest of the project.
 
 Iterate until the human approves.
 
@@ -124,8 +126,6 @@ SPEC-001: Build the AE plugin
   - AI image editing
   - AI video generation
   - Asset library
-  - User auth
-  - Billing
 ```
 
 **Vision + spec list - good:**
@@ -139,8 +139,6 @@ Spec Roadmap:
   1. SPEC-001: AI image editing in AE
   2. SPEC-002: AI video generation for previz
   3. SPEC-003: Shared AI asset library
-  4. SPEC-004: User authentication
-  5. SPEC-005: Usage-based billing
 ```
 
 ## When to re-run vision

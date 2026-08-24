@@ -50,7 +50,7 @@ Elaboration fires at the merge gate once wave 1's outcomes are verified. Later t
 Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a folder, recursively; only the unit question survives to vision.
 
 - [x] TASK-085: spec skill - every spec born a folder, recursively (M, first: 084/086 depend on it)
-- [ ] TASK-084: vision skill - only the unit question, plain words, once (M, after 085)
+- [x] TASK-084: vision skill - only the unit question, plain words, once - judges root-spec-vs-workspace from what the human said, acts via make-unit, never asks; notice one plain sentence, silenceable, reversible; net -2 lines
 - [x] TASK-086: spec authoring routes into the owning unit (S, after 085)
 - [ ] TASK-087: parent/child authoring template (S, after 086)
 
