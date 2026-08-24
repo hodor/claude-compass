@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 9940 / 5000 tokens (index.md 4416, active.md 2462, meta/lessons-catalog.yaml 3062). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 10073 / 5000 tokens (index.md 4455, active.md 2471, meta/lessons-catalog.yaml 3147). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -160,6 +160,7 @@ See [[backlog]].
 - [[LESSON-verify-worktree-isolation-is-real]] - Worktree isolation can silently not exist; confirm the path is in `git worktree list` before parallel writers run
 - [[LESSON-spawned-sessions-inherit-project-hooks]] - A spawned claude session inherits the project's hooks; a hook-spawned worker fires its own machinery unless gated
 - [[LESSON-headless-worker-denies-tools-silently]] - Headless claude -p runs deny Write/Bash by default; scope the worker's tools exactly, don't bypass
+- [[LESSON-carve-outs-need-explicit-negative-scope]] - A carve-out that states only the allowed action gets read as license for the action it should forbid
 
 ## compass-cli
 - [[compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work]] - A Python `compass` CLI Owns All Mechanical Vault Work; the Hook Calls It as a Command

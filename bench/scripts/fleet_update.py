@@ -93,6 +93,27 @@ def hooks_registered(project):
         return False
 
 
+def merge_hook_events(project):
+    """Register any hook event the manifest names that settings.json lacks.
+
+    Events already registered are left exactly as they are, so a project's
+    hand-tuned entries survive; only absent events are added, copied from
+    the manifest. Returns the list of events added."""
+    settings_path = project / ".claude" / "settings.json"
+    manifest = json.loads((project / ".claude" / "hooks" / "hooks.json").read_text(encoding="utf-8-sig"))["hooks"]
+    try:
+        settings = json.loads(settings_path.read_text(encoding="utf-8-sig")) if settings_path.is_file() else {}
+    except ValueError:
+        return []
+    hooks = settings.setdefault("hooks", {})
+    added = [event for event in manifest if event not in hooks]
+    for event in added:
+        hooks[event] = manifest[event]
+    if added:
+        settings_path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8", newline="\n")
+    return added
+
+
 def run_cli(project, *args):
     return subprocess.run(
         [sys.executable, str(project / ".claude" / "cli" / "compass"), *args],
@@ -138,10 +159,13 @@ def main(argv):
             continue
         refresh_install(project)
         stamp_version(project, version, today)
+        added_events = merge_hook_events(project)
         run_cli(project, "apply-models")
         doctor = run_cli(project, "doctor")
         doctor_ok = doctor.returncode == 0
         outcome = "doctor-ok" if doctor_ok else "DOCTOR-FAIL"
+        if added_events:
+            outcome += f" +hooks:{','.join(added_events)}"
         if commit:
             outcome += " / " + commit_and_push(project, version, push)
         results.append((project, outcome, hooks_registered(project)))

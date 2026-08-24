@@ -73,7 +73,7 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 - [x] TASK-099: root cause found in the worker's transcript (it hand-inserted rows the hook had appended); sync now collapses duplicate rows and reports it; lesson-write's carve-out closed
 - [x] TASK-095: re-fire PASS (worker 5/5 vs in-session 4/5, $0.96); v0.8.0 distributed to 50/50 vaults, all doctor-clean (2026-08-24)
 
-Later tasks in [[backlog]].
+- [x] TASK-096/097/098 (2026-08-24): POSIX pinned-not-observed, SessionStart pickup registered fleet-wide, between-gates silence in the pipeline rule and build skill. PLAN-010 COMPLETE.
 
 ## Next Up
 

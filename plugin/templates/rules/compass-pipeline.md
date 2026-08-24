@@ -25,6 +25,7 @@ Conversation output is never the record - logs, reports, and vault files are. On
 - Relay a subagent's result as its one-line summary, never its narration.
 - Never restate in conversation what a log or file already holds.
 - No process narration, no ceremony, no restating the obvious.
+- Between gates, silence. A background completion that changes nothing the human must decide costs them zero lines; status lives in the ledger and the vault, pulled on request, never pushed into the conversation. Speak at gates, on escalation, and when a result is in.
 
 ## Vision
 

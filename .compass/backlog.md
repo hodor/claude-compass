@@ -15,10 +15,6 @@ Held under [[PLAN-009-sizing-mechanism]]'s `## Later` region. Promoted into a de
 
 ## PLAN-010 later tasks (intent only)
 
-- [ ] TASK-095: fleet distribution (v0.8.0)
-- [ ] TASK-096: POSIX detach verification on a non-Windows fleet host
-- [ ] TASK-097: SessionStart pickup for hosts that could never run workers
-- [ ] TASK-098: pipeline posture between gates (SPEC-018 D-02)
 
 ## Candidate specs (raised, not yet drafted)
 
