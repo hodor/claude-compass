@@ -1,4 +1,4 @@
-compass validate: 0 error(s), 10 warning(s)
+compass validate: 0 error(s), 12 warning(s)
   warning frontmatter_missing_field: decisions/ADR-001-flat-vault-layout.md: summary
   warning frontmatter_missing_field: handoffs/2026-06-14_09-00-00_foundation-session.md: summary
   warning frontmatter_missing_field: plans/PLAN-001-foundation-build.md: summary
@@ -9,3 +9,5 @@ compass validate: 0 error(s), 10 warning(s)
   warning frontmatter_missing_field: specs/SPEC-002-tile-editor/SPEC-002-brush-system/SPEC-001-stroke-rendering.md: summary
   warning frontmatter_missing_field: specs/SPEC-003-retired-experiment.md: summary
   warning broken_wikilink: active.md:9: [[SPEC-999-mythical]]
+  warning sizing_unrecorded: SPEC-002-tile-editor: predates the sizing log, no sizing_id recorded
+  warning sizing_unrecorded: SPEC-002-tile-editor/SPEC-002-brush-system: predates the sizing log, no sizing_id recorded
