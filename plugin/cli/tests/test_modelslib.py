@@ -32,9 +32,10 @@ class RosterTests(unittest.TestCase):
         self.assertEqual(by_tier["balanced"], {
             "builder", "researcher", "tester",
             "vault-analyzer", "codebase-analyzer", "pattern-finder",
+            "capture-worker",
         })
         self.assertEqual(by_tier["cheap"], {
-            "vault-locator", "codebase-locator", "pr-describe", "index-summary", "capture-worker",
+            "vault-locator", "codebase-locator", "pr-describe", "index-summary",
         })
 
     def test_agent_files_are_the_13_known_agents(self):

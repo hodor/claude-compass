@@ -1,3 +1,0 @@
-agents:
-  capture-worker:
-    tier: balanced

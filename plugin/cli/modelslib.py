@@ -47,7 +47,7 @@ DEFAULT_ROSTER = {
     "codebase-locator": "cheap",
     "pr-describe": "cheap",
     "index-summary": "cheap",
-    "capture-worker": "cheap",
+    "capture-worker": "balanced",
 }
 
 # Roster rows with no agent definition file: detached headless jobs excluded
