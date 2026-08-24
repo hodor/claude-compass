@@ -94,7 +94,7 @@ When proposing a `plugin/` change, ask which goal it serves.
 │   ├── lessons-catalog.yaml  - lesson tag index (loaded with hot path)
 │   ├── tag-index.yaml        - facet index (loaded on demand for multi-tag queries)
 │   └── plugin.yaml           - plugin source path + installed version (for /compass:update)
-├── specs/                    - specifications (flat OR folders for complex specs)
+├── specs/                    - specifications (every spec is a folder; index.md is the artifact)
 ├── research/                 - research findings with confidence levels
 ├── plans/                    - implementation plans (mirror spec hierarchy)
 ├── decisions/                - ADRs
@@ -104,7 +104,7 @@ When proposing a `plugin/` change, ask which goal it serves.
 └── archive/                  - completed/retired documents
 ```
 
-A spec earns its own folder when its body exceeds ~2K tokens OR it has 3+ sub-concerns. Folder `index.md` is the parent spec at that level.
+Every spec is a folder whose `index.md` is the spec itself; children nest inside it at any depth, numbered locally. The parent holds the decisions shared by every child.
 
 ## When in doubt
 
