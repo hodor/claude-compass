@@ -118,6 +118,7 @@ created: <today YYYY-MM-DD>
 updated: <today YYYY-MM-DD>
 score: 5
 summary: <one-line summary>
+source: <the input source string, persisted so every lesson is attributable>
 seen: []
 ---
 ```
