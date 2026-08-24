@@ -1,10 +1,13 @@
-"""`compass doctor [--json]` - install-drift diagnosis.
+"""`compass doctor [--json]` - install-drift and vault-health diagnosis.
 
 Checks the drift classes RESEARCH-lesson-capture-failure Finding 5 found
 across the vault fleet: a missing `plugin.yaml`, hooks that are not actually
 registered where Claude Code reads them, a `.claude/cli/` missing a module
 for a command the installed `maincli.py` declares, and missing or empty
-agents/skills directories.
+agents/skills directories. Alongside install drift, it also surfaces
+unit-promotion candidates - root-level artifact groups that have outgrown
+the flat vault layout - as an advisory row, since `compass unit-check` exists
+but nothing else prompts a human to run it.
 
 Claude Code loads hooks only from a settings file's `hooks` key
 (`.claude/settings.json`, `.claude/settings.local.json`, `~/.claude/settings.json`)
@@ -15,8 +18,9 @@ hooks.json is reported as the defect it is.
 
 Each check reports OK, WARN, or FAIL with a one-line fix command. WARN never
 fails the run - it flags something worth knowing but not broken (TeammateIdle
-registration, whose lifecycle may not exist in every harness). Read-only:
-doctor mutates no file on disk. Exit 1 on any FAIL, 0 otherwise, never 2.
+registration, whose lifecycle may not exist in every harness; unit-promotion
+candidates, which are the human's call to act on). Read-only: doctor mutates
+no file on disk. Exit 1 on any FAIL, 0 otherwise, never 2.
 """
 
 import importlib.util
@@ -25,6 +29,7 @@ import re
 import sys
 
 import vaultlib
+from commands import unit_check
 
 OK, WARN, FAIL = "OK", "WARN", "FAIL"
 
@@ -212,6 +217,31 @@ def _lessons_catalog_check(vault_root):
     return Check("lessons-catalog.yaml", OK, f"{path} present")
 
 
+def _unit_candidates_check(vault_root):
+    """Advisory row for `unit_check.find_candidates`: WARN naming the
+    candidates when any exist, OK when the vault has none. `find_candidates`
+    decodes every root-level artifact, far more file-system exposure than any
+    other check here, so this function keeps its own try/except - an
+    unreadable artifact degrades to a WARN naming the scan failure instead of
+    reaching the outer handler and turning every other row into one FAIL."""
+    try:
+        candidates = unit_check.find_candidates(vault_root)
+    except Exception as exc:
+        return Check(
+            "unit-promotion candidates", WARN,
+            f"unit-promotion scan failed: {exc}",
+        )
+    if not candidates:
+        return Check("unit-promotion candidates", OK, "no unit-promotion candidates")
+    labels = sorted(
+        unit_check._suggested_name(vault_root / spec_rel)
+        for spec_rel, _members, _types in candidates
+    )
+    detail = f"{len(candidates)} candidate(s): {', '.join(labels)}"
+    fix = "run `compass unit-check` for the member list"
+    return Check("unit-promotion candidates", WARN, detail, fix)
+
+
 def _run_checks():
     try:
         vault_root = vaultlib.find_vault_root()
@@ -231,6 +261,7 @@ def _run_checks():
         "run /compass:setup or /compass:update to install skills",
     ))
     checks.append(_lessons_catalog_check(vault_root))
+    checks.append(_unit_candidates_check(vault_root))
     return checks
 
 

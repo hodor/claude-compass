@@ -40,7 +40,7 @@ Triggered by a live failure in another project: a vision session produced seven 
 - [ ] TASK-079: the inverse of every shape change - `compass demote`, `make-unit --undo` (M, after 078)
 - [ ] TASK-080: sizing decisions record themselves from the commands that perform them, keyed on a stable `sizing_id` (L, after 078/079)
 - [ ] TASK-081: `validate` reconciles shapes on disk against the log (S, after 080)
-- [ ] TASK-082: `compass doctor` reports unit-promotion candidates (S, after 078)
+- [x] TASK-082: `compass doctor` reports unit-promotion candidates (S, after 078) - advisory row wraps `unit_check.find_candidates` in its own try/except, degrading to WARN on a scan failure so it can never collapse the other rows into one FAIL
 - [x] TASK-083: prototype COMPLETE, pre-registered ESCALATION band (2026-08-23): kappa gain +0.084 CI [-0.140,+0.361] includes zero; both arms 40.0% accuracy vs 46.7% constant-majority baseline; raters up-size vs the human shape; D-02 gives a two-way answer for a three-way choice and raters mapped breadth->unit, contradicting ADR-011 D-06. Full record: .compass/tmp/sizing-prototype/RESULTS.md. RESOLVED 2026-08-24 by SPEC-016 D-06: every spec is born folder-like if that simplifies; the flat-vs-folder judgment dissolves. Wave-2 elaboration folds the ruling in.
 
 Elaboration fires at the merge gate once wave 1's outcomes are verified. Later tasks are in [[backlog]].
