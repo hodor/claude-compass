@@ -238,3 +238,10 @@ lessons:
     tags: [worktree, isolation, subagents, orchestration, silent-failure]
     score: 5
     summary: "Worktree isolation can silently not exist; confirm the path is in `git worktree list` before parallel writers run"
+  - file: "LESSON-spawned-sessions-inherit-project-hooks.md"
+    status: active
+    category: process
+    area: architecture
+    tags: [hooks, headless, spawned-sessions, recursion, background-worker]
+    score: 5
+    summary: "A spawned claude session inherits the project's hooks; a hook-spawned worker fires its own machinery unless gated"

@@ -6,10 +6,10 @@ category: process
 area: workflow
 tags: [validation, content-aware, parsing, self-reference, edit-anchors]
 created: 2026-05-27
-updated: 2026-08-11
-score: 5
+updated: 2026-08-23
+score: 6
 summary: "Match use, not mention - matchers and edit anchors alike: bind to grammar position, never a substring prose repeats"
-seen: []
+seen: [2026-08-23]
 ---
 
 Markdown writers use `[[NAME]]` inside backticks as examples; a naive resolver flagged 7 false positives to 1 real bug, so validators strip fenced blocks and inline code spans before resolving.

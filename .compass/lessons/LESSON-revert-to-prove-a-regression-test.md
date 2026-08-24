@@ -6,10 +6,10 @@ category: process
 area: testing
 tags: [testing, regression-tests, revert-check, bug-reports, empirical]
 created: 2026-08-08
-updated: 2026-08-11
-score: 5
+updated: 2026-08-23
+score: 6
 summary: "A test that passes without the change under test is unwritten; prove it per test, by revert after the fix or by the red run before it"
-seen: []
+seen: [2026-08-23]
 ---
 
 Twenty-three tests written for three field-reported bugs; re-run against a reverted copy of the fix, 16 failed, 7 passed both, and two of those seven were provably vacuous.
