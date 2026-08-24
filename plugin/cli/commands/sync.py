@@ -18,6 +18,7 @@ would block the user's write.
 
 import datetime
 import json
+import os
 import re
 import sys
 import time
@@ -440,10 +441,13 @@ def _prune_capture_log(vault_root):
 
 def _clean_logs(vault_root):
     """Prune stale logs under `tmp/`: whole-file deletion of
-    `extraction-log-*.md` past `LOG_MAX_AGE_DAYS`, row-level pruning of
-    `capture-log.jsonl` past `CAPTURE_LOG_MAX_AGE_DAYS` - a much longer
-    horizon, since a fleet-wide fire-rate measurement needs to look back
-    further than one month. Returns `(extraction_deleted, capture_rows_pruned)`.
+    `extraction-log-*.md` and `worker-logs/*.log` past `LOG_MAX_AGE_DAYS`
+    (ADR-013 D-07's pruning clause - the worker's own per-run logs were
+    previously unowned), row-level pruning of `capture-log.jsonl` past
+    `CAPTURE_LOG_MAX_AGE_DAYS` - a much longer horizon, since a fleet-wide
+    fire-rate measurement needs to look back further than one month. Returns
+    `(extraction_deleted, capture_rows_pruned)`, where `extraction_deleted`
+    counts both log kinds swept on the same 30-day horizon.
     """
     tmp = vault_root / "tmp"
     if not tmp.is_dir():
@@ -454,6 +458,12 @@ def _clean_logs(vault_root):
         if log.is_file() and log.stat().st_mtime < cutoff:
             log.unlink()
             deleted += 1
+    worker_logs_dir = tmp / "worker-logs"
+    if worker_logs_dir.is_dir():
+        for log in worker_logs_dir.glob("*.log"):
+            if log.is_file() and log.stat().st_mtime < cutoff:
+                log.unlink()
+                deleted += 1
     return deleted, _prune_capture_log(vault_root)
 
 
@@ -504,7 +514,13 @@ def _record_write_signal(vault_root, norm):
     `handoffs/`, `vault-write` otherwise, keyed on the vault-relative POSIX
     path of the written file. Any failure here (a capturelib error, a
     corrupt state file) is swallowed - the sync report and exit code must
-    never depend on this bookkeeping."""
+    never depend on this bookkeeping.
+
+    Never called under `COMPASS_WORKER_SESSION` (ADR-013 D-11) - see `run`'s
+    hook branch. The worker's own vault writes (new lessons) still need the
+    index synced, which is why this function is skipped rather than the
+    whole hook branch: recording a signal here would manufacture the exact
+    due() evidence that reopens the capture loop on itself."""
     try:
         ref = norm.split(".compass/", 1)[-1]
         kind = "handoff-written" if ref.startswith("handoffs/") else "vault-write"
@@ -540,7 +556,8 @@ def run(args):
                 return 0  # not a vault write
             if _is_generated_output(file_path):
                 return 0  # loop guard: a fire triggered by our own write
-            _record_write_signal(vault_root, norm)
+            if not os.environ.get("COMPASS_WORKER_SESSION"):
+                _record_write_signal(vault_root, norm)
             sync(vault_root)
             sys.stdout.write(json.dumps({"suppressOutput": True}))
             return 0
