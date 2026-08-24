@@ -56,7 +56,7 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 
 ## PLAN-009 wave 3 (elaborated 2026-08-24)
 
-- [ ] TASK-088: methodology documents the sizing surface, callable by name (S)
+- [x] TASK-088: methodology documents the sizing surface, callable by name (S)
 - [ ] TASK-089: install refresh + acceptance from the installed copy (M, after 088)
 
 ## Next Up
