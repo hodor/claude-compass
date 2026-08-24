@@ -1,0 +1,11 @@
+{
+  "path": "plugin/cli/commands/validate.py",
+  "notes": [
+    {
+      "text": "PLAN-009-sizing-mechanism's TASK-081 line says the unrecorded-shape warning 'names the backfill command'. No backfill command exists in this codebase (only `sizing stats` is registered) and TASK-081's own build instructions overrode that plan line: the `sizing_unrecorded` message names the shape and states it predates the log, without inventing a command name. Do not add one on a future task without first shipping the command it would name.",
+      "by": "builder",
+      "date": "2026-08-23",
+      "tags": ["gotcha", "sizing", "validate", "plan-drift"]
+    }
+  ]
+}
