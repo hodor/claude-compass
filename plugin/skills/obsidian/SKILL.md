@@ -30,7 +30,7 @@ type: spec | research | plan | task | lesson | decision | handoff  # REQUIRED - 
 status: draft | review | approved | active | done | archived  # REQUIRED - all
 confidence: low | medium | high                  # REQUIRED for spec, research, decision
 category: process | domain                       # REQUIRED for lesson
-summary: "one-line summary"                      # REQUIRED for lesson
+summary: "one-line summary"                      # REQUIRED for spec, plan, research, decision, lesson, handoff
 seen: [YYYY-MM-DD, ...]                          # OPTIONAL for lesson - recurrence dates, cap 3
 escalated: YYYY-MM-DD                            # OPTIONAL for lesson - set when seen would exceed 3
 escalation_reason: "..."                         # OPTIONAL for lesson - paired with escalated
@@ -139,21 +139,21 @@ Names must be self-descriptive - `SPEC-001.md` is never acceptable. Lowercase ke
 
 ## Hierarchical specs and plans (folders)
 
-A flat spec is a single `.md` file. A complex spec is a **folder** whose `index.md` is the parent spec at that level. Children inside the folder follow the same convention recursively. Path is identity; numbering resets per folder.
+Every spec is a folder: `.compass/specs/SPEC-NNN-descriptive-name/index.md` is the spec itself, at any depth. Children live inside that folder, born the same way, recursively - a child can hold children of its own with no depth limit. Path is identity; numbering resets at each level.
 
-**A spec earns its own folder when** it has 3+ sub-concerns OR its body would exceed roughly 2,000 tokens. Below the threshold the extra hop costs more than the split saves; above it, leaving content flat creates a mid-context blob that triggers the documented "lost in the middle" penalty (Liu et al. TACL 2024, 20-30 point accuracy hit).
+**The parent holds the decisions shared by every child; a child exists to diverge on something the parent left open.** Divergence sharing no root decision with the parent is a sibling spec, not a child (ADR-011 D-06).
 
 ```
 .compass/specs/
-├── SPEC-001-flat-thing.md                   leaf
-├── SPEC-002-tile-editor/                    folder = complex spec
+├── SPEC-001-flat-thing/                     leaf: index.md only, no children
+├── SPEC-002-tile-editor/                    parent with children
 │   ├── index.md                             the parent spec at this level
-│   ├── SPEC-001-master-material.md          child (local numbering resets)
-│   ├── SPEC-002-brush-system/               sub-complex = nested folder
+│   ├── SPEC-001-master-material/            child (local numbering resets)
+│   ├── SPEC-002-brush-system/               nested: same shape, recursively
 │   │   ├── index.md
-│   │   ├── SPEC-001-stroke-rendering.md
-│   │   └── SPEC-002-blending-modes.md
-│   └── SPEC-003-tile-grid.md
+│   │   ├── SPEC-001-stroke-rendering/
+│   │   └── SPEC-002-blending-modes/
+│   └── SPEC-003-tile-grid/
 ```
 
 Same convention for `plans/`. Plans typically map to specs and inherit the spec's structure.
@@ -315,6 +315,7 @@ status: draft
 confidence: low
 area: <area>
 tags: [tag1, tag2]
+summary: "<one line - the index copies this>"
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 ---
