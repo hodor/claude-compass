@@ -62,6 +62,7 @@ tags:
   - specs/SPEC-018-scaffolding-invisible-to-the-human.md
   background-worker:
   - decisions/ADR-013-detached-worker-quiet-fallback.md
+  - plans/PLAN-010-invisible-capture.md
   - research/RESEARCH-invisible-scaffolding.md
   backlinks:
   - research/RESEARCH-grep-vs-graph-experiment.md
@@ -102,6 +103,7 @@ tags:
   capture:
   - decisions/ADR-013-detached-worker-quiet-fallback.md
   - plans/PLAN-006-learning-loop.md
+  - plans/PLAN-010-invisible-capture.md
   - research/RESEARCH-hermes-memory-mechanics.md
   - research/RESEARCH-invisible-scaffolding.md
   - research/RESEARCH-lesson-capture-failure.md
@@ -365,6 +367,7 @@ tags:
   - specs/SPEC-011-vault-graph-queries.md
   headless:
   - decisions/ADR-013-detached-worker-quiet-fallback.md
+  - plans/PLAN-010-invisible-capture.md
   - research/RESEARCH-invisible-scaffolding.md
   hermes:
   - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
@@ -407,6 +410,7 @@ tags:
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
   - plans/PLAN-001-lessons-and-index-implementation.md
   - plans/PLAN-006-learning-loop.md
+  - plans/PLAN-010-invisible-capture.md
   - research/RESEARCH-invisible-scaffolding.md
   - research/RESEARCH-lessons-and-index-architecture.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
@@ -580,6 +584,7 @@ tags:
   - decisions/ADR-011-sizing-is-a-procedure-not-a-score.md
   - decisions/ADR-013-detached-worker-quiet-fallback.md
   - plans/PLAN-009-sizing-mechanism.md
+  - plans/PLAN-010-invisible-capture.md
   - research/RESEARCH-invisible-scaffolding.md
   obsidian:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
