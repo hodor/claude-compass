@@ -454,6 +454,7 @@ tags:
   - research/RESEARCH-okf-improvements-for-compass.md
   isolation:
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
+  - lessons/LESSON-verify-worktree-isolation-is-real.md
   jargon:
   - lessons/LESSON-walkthroughs-in-the-humans-words.md
   jit:
@@ -579,6 +580,7 @@ tags:
   - lessons/LESSON-long-agents-stall-resume-them.md
   - lessons/LESSON-subagent-reports-need-sendmessage.md
   - lessons/LESSON-subagent-worktrees-fork-stale.md
+  - lessons/LESSON-verify-worktree-isolation-is-real.md
   orphans:
   - research/RESEARCH-grep-vs-graph-experiment.md
   - specs/SPEC-011-vault-graph-queries.md
@@ -765,6 +767,8 @@ tags:
   - plans/PLAN-005-model-table.md
   shape-up:
   - research/RESEARCH-rolling-wave-software-practice.md
+  silent-failure:
+  - lessons/LESSON-verify-worktree-isolation-is-real.md
   sizing:
   - decisions/ADR-011-sizing-is-a-procedure-not-a-score.md
   - plans/PLAN-009-sizing-mechanism.md
@@ -815,6 +819,7 @@ tags:
   - lessons/LESSON-long-agents-stall-resume-them.md
   - lessons/LESSON-subagent-reports-need-sendmessage.md
   - lessons/LESSON-subagent-worktrees-fork-stale.md
+  - lessons/LESSON-verify-worktree-isolation-is-real.md
   suite-size:
   - lessons/LESSON-suite-size-is-not-coverage.md
   summaries:
@@ -991,3 +996,4 @@ tags:
   - specs/SPEC-003-hierarchical-vault-organization.md
   worktree:
   - lessons/LESSON-subagent-worktrees-fork-stale.md
+  - lessons/LESSON-verify-worktree-isolation-is-real.md

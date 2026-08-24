@@ -83,7 +83,7 @@ lessons:
     area: methodology
     tags: [install, update, cleanup, data-loss, user-files]
     score: 5
-    summary: "A tool that installs into a shared dir must delete only its own named artifacts on cleanup; 'remove anything not in my source' destroys user files"
+    summary: "Delete only what you installed or planned, by name; 'everything else here' always holds files that are not yours"
   - file: "LESSON-long-agents-stall-resume-them.md"
     status: active
     category: process
@@ -217,3 +217,24 @@ lessons:
     tags: [testing, pre-build-station, acceptance-criteria, spec-defect, oracle]
     score: 5
     summary: "A criterion that defines no input class cannot be tested; report the spec defect, never invent the equivalence class"
+  - file: "LESSON-measure-the-procedures-intermediates.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [experiments, measurement, procedure-evaluation, agreement, empirical]
+    score: 5
+    summary: "Verdict agreement without intermediate agreement means a shared prior, not the procedure, produces the answer"
+  - file: "LESSON-outputs-must-span-the-decision-space.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [decision-procedures, spec-defect, category-mapping, rater-bias, empirical]
+    score: 5
+    summary: "A procedure answering in fewer categories than the decision space makes users invent the mapping, wrongly"
+  - file: "LESSON-verify-worktree-isolation-is-real.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [worktree, isolation, subagents, orchestration, silent-failure]
+    score: 5
+    summary: "Worktree isolation can silently not exist; confirm the path is in `git worktree list` before parallel writers run"

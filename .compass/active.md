@@ -57,7 +57,7 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 ## PLAN-009 wave 3 (elaborated 2026-08-24)
 
 - [x] TASK-088: methodology documents the sizing surface, callable by name (S)
-- [ ] TASK-089: install refresh + acceptance from the installed copy (M, after 088)
+- [x] TASK-089: acceptance PASS from installed copy (2026-08-24): doctor 0 FAIL, suite 625 green, coverage --strict 18/18, lesson-coverage PASS, scratch round trip decision+correction joined by id. PLAN-009 COMPLETE: 12/12 live tasks across 3 waves + 2 elaborations; TASK-090 parked in Later behind its accumulate-decisions trigger.
 
 ## Next Up
 
