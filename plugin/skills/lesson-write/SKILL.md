@@ -32,7 +32,7 @@ Before any write, check whether the lesson falls into any of these buckets. If y
 - Code patterns, conventions, architecture, file paths, or project structure - readable from the codebase.
 - Git history, recent changes, or who-changed-what - `git log` and `git blame` are authoritative.
 - Debugging recipes whose fix is in the code - the commit message is the right home.
-- Anything already documented in a spec, ADR, plan, vision, or CLAUDE.md.
+- Anything already documented in a spec, ADR, plan, vision, CLAUDE.md, or the text of a shipped skill - a rule the skill itself states is guidance the next session already loads.
 - Standard patterns from framework or library official docs.
 - Personal style preferences.
 - Things obvious once you know the technology.
