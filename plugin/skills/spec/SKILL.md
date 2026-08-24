@@ -54,11 +54,11 @@ If the human states an explicit ruling during the interview (a trade-off resolve
 
 ### 4. Bloat check
 
-Before saving, re-read Problem and Desired Outcome. If they cover multiple distinct problems or unrelated successes, split into multiple specs and tell the human you're splitting. Don't ask permission.
+Before saving, re-read Problem and Desired Outcome. Multiple distinct problems or unrelated successes split into separate sibling specs - tell the human you're splitting, don't ask permission. One problem with many parts stays one spec, its parts added as children inside its own folder.
 
 ### 5. Create the spec file
 
-`.compass/specs/SPEC-NNN-descriptive-name.md` (NNN computed JIT: `max(N from glob '**/.compass/specs/SPEC-N-*.md') + 1`, default 1). Required sections: Problem and Desired Outcome. Optional: User Scenarios, Constraints, Decisions, Non-Goals, Risks, Open Questions. Omit any optional section if empty - don't include a heading with no content.
+Every spec is a folder: `.compass/specs/SPEC-NNN-descriptive-name/index.md`, NNN from `compass next-num spec`. A child spec is created the same way inside its parent's folder, at any depth - `compass next-num spec <parent-path>` numbers it locally. Required sections: Problem and Desired Outcome. Optional: User Scenarios, Constraints, Decisions, Non-Goals, Risks, Open Questions. Omit any optional section if empty - don't include a heading with no content.
 
 ```markdown
 ---
