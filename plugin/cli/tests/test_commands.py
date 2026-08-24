@@ -491,7 +491,7 @@ class MakeUnitTests(unittest.TestCase):
         root = self._vault()
         out = io.StringIO()
         with redirect_stdout(out):
-            self.assertEqual(make_unit.run(self.ARGS + ["--apply"]), 0)
+            self.assertEqual(make_unit.run(self.ARGS + ["--reason", "grouping the tile work", "--apply"]), 0)
         # Files moved into the unit's type dirs, frontmatter byte-identical.
         moved = root / "core" / "specs" / "SPEC-001-core.md"
         self.assertTrue(moved.is_file())
@@ -537,7 +537,7 @@ class MakeUnitTests(unittest.TestCase):
         )
         out = io.StringIO()
         with redirect_stdout(out):
-            self.assertEqual(make_unit.run(self.ARGS + ["--apply"]), 0)
+            self.assertEqual(make_unit.run(self.ARGS + ["--reason", "grouping the tile work", "--apply"]), 0)
         subprocess.run(["git", "add", "-A"], cwd=repo, check=True, capture_output=True)
         subprocess.run(
             ["git", "-c", "user.email=t@t", "-c", "user.name=t",
@@ -559,7 +559,7 @@ class MakeUnitTests(unittest.TestCase):
         (root / "core").mkdir()
         err = io.StringIO()
         with redirect_stderr(err):
-            self.assertEqual(make_unit.run(self.ARGS + ["--apply"]), 1)
+            self.assertEqual(make_unit.run(self.ARGS + ["--reason", "grouping the tile work", "--apply"]), 1)
         self.assertIn("target exists: core", err.getvalue())
         self.assertTrue((root / "specs" / "SPEC-001-core.md").is_file())
 
@@ -567,7 +567,7 @@ class MakeUnitTests(unittest.TestCase):
         root = self._vault()
         err = io.StringIO()
         with redirect_stderr(err):
-            self.assertEqual(make_unit.run(["prs", "specs/SPEC-001-core.md", "--apply"]), 1)
+            self.assertEqual(make_unit.run(["prs", "specs/SPEC-001-core.md", "--reason", "grouping the tile work", "--apply"]), 1)
         self.assertIn("reserved name: prs", err.getvalue())
         self.assertFalse((root / "prs").exists())
 
@@ -576,7 +576,7 @@ class MakeUnitTests(unittest.TestCase):
         write(root, "research/SPEC-001-core.md", self.SPEC)
         err = io.StringIO()
         with redirect_stderr(err):
-            self.assertEqual(make_unit.run(["core", "SPEC-001-core", "--apply"]), 1)
+            self.assertEqual(make_unit.run(["core", "SPEC-001-core", "--reason", "grouping the tile work", "--apply"]), 1)
         text = err.getvalue()
         self.assertIn("ambiguous: SPEC-001-core", text)
         self.assertIn("specs/SPEC-001-core.md", text)
@@ -588,7 +588,7 @@ class MakeUnitTests(unittest.TestCase):
         err = io.StringIO()
         with redirect_stderr(err):
             self.assertEqual(
-                make_unit.run(["core", "specs/SPEC-999-none.md", "--apply"]), 1
+                make_unit.run(["core", "specs/SPEC-999-none.md", "--reason", "grouping the tile work", "--apply"]), 1
             )
         self.assertIn("not found: specs/SPEC-999-none.md", err.getvalue())
         self.assertFalse((root / "core").exists())
@@ -600,7 +600,7 @@ class MakeUnitTests(unittest.TestCase):
         err = io.StringIO()
         with redirect_stderr(err):
             self.assertEqual(
-                make_unit.run(["core", "other/specs/SPEC-001-x.md", "--apply"]), 1
+                make_unit.run(["core", "other/specs/SPEC-001-x.md", "--reason", "grouping the tile work", "--apply"]), 1
             )
         self.assertIn("not in a root type directory", err.getvalue())
         self.assertFalse((root / "core").exists())
@@ -617,7 +617,7 @@ class MakeUnitTests(unittest.TestCase):
         root = self._vault()
         out = io.StringIO()
         with redirect_stdout(out):
-            self.assertEqual(make_unit.run(["core", "--apply"]), 0)
+            self.assertEqual(make_unit.run(["core", "--reason", "grouping the tile work", "--apply"]), 0)
         core_dir = root / "core"
         self.assertTrue(core_dir.is_dir())
         data, error = vaultlib.parse_frontmatter(core_dir / "index.md")
@@ -637,7 +637,7 @@ class MakeUnitTests(unittest.TestCase):
         index_before = (root / "index.md").read_text(encoding="utf-8")
         out = io.StringIO()
         with redirect_stdout(out):
-            self.assertEqual(make_unit.run(["core", "--apply"]), 0)
+            self.assertEqual(make_unit.run(["core", "--reason", "grouping the tile work", "--apply"]), 0)
         self.assertEqual(index_before, (root / "index.md").read_text(encoding="utf-8"))
 
     def test_zero_artifacts_dry_run_creates_nothing(self):
@@ -674,7 +674,7 @@ class MakeUnitTests(unittest.TestCase):
         root = self._vault()
         err = io.StringIO()
         with redirect_stderr(err):
-            self.assertEqual(make_unit.run(["prs", "--apply"]), 1)
+            self.assertEqual(make_unit.run(["prs", "--reason", "grouping the tile work", "--apply"]), 1)
         self.assertIn("reserved name: prs", err.getvalue())
         self.assertFalse((root / "prs").exists())
 
@@ -688,7 +688,7 @@ class MakeUnitTests(unittest.TestCase):
         (root / "core").mkdir()
         err = io.StringIO()
         with redirect_stderr(err):
-            self.assertEqual(make_unit.run(["core", "--apply"]), 1)
+            self.assertEqual(make_unit.run(["core", "--reason", "grouping the tile work", "--apply"]), 1)
         self.assertIn("target exists: core", err.getvalue())
         self.assertFalse((root / "core" / "index.md").exists())
 
@@ -707,7 +707,7 @@ class MakeUnitTests(unittest.TestCase):
         err = io.StringIO()
         with redirect_stderr(err):
             self.assertEqual(
-                make_unit.run(["helper", "specs/SPEC-001-core.md", "--apply"]), 1
+                make_unit.run(["helper", "specs/SPEC-001-core.md", "--reason", "grouping the tile work", "--apply"]), 1
             )
         self.assertFalse((root / "helper").exists())
         self.assertTrue((root / "research" / "helper.md").is_file())
@@ -729,7 +729,7 @@ class MakeUnitTests(unittest.TestCase):
             with self.subTest(name=label):
                 err = io.StringIO()
                 with redirect_stderr(err):
-                    self.assertEqual(make_unit.run([name, "--apply"]), 1)
+                    self.assertEqual(make_unit.run([name, "--reason", "grouping the tile work", "--apply"]), 1)
                 self.assertIn("invalid unit name:", err.getvalue())
                 self.assertFalse((root / name).exists())
 
@@ -745,7 +745,7 @@ class MakeUnitTests(unittest.TestCase):
         root = self._vault()
         err = io.StringIO()
         with redirect_stderr(err):
-            self.assertEqual(make_unit.run(["prs/", "--apply"]), 1)
+            self.assertEqual(make_unit.run(["prs/", "--reason", "grouping the tile work", "--apply"]), 1)
         self.assertIn("invalid unit name:", err.getvalue())
         self.assertNotIn("reserved name", err.getvalue())
         self.assertFalse((root / "prs").exists())
@@ -782,7 +782,7 @@ class MakeUnitTests(unittest.TestCase):
         write(root, "weird_folder/stray.md", "# stray\n")
         out = io.StringIO()
         with redirect_stdout(out):
-            self.assertEqual(make_unit.run(["core", "--apply"]), 0)
+            self.assertEqual(make_unit.run(["core", "--reason", "grouping the tile work", "--apply"]), 0)
         self.assertIn("validate:", out.getvalue())
         self.assertIn("unclassified_root_folder: weird_folder", out.getvalue())
 
@@ -798,7 +798,7 @@ class MakeUnitTests(unittest.TestCase):
         write(root, "research/meta.md", "---\ntype: spec\n---\n")
         err = io.StringIO()
         with redirect_stderr(err):
-            self.assertEqual(make_unit.run(["meta", "--apply"]), 1)
+            self.assertEqual(make_unit.run(["meta", "--reason", "grouping the tile work", "--apply"]), 1)
         self.assertIn("reserved name: meta", err.getvalue())
         self.assertNotIn("already resolves", err.getvalue())
         self.assertFalse((root / "meta" / "index.md").exists())
@@ -813,7 +813,7 @@ class MakeUnitTests(unittest.TestCase):
         write(root, "research/helper.md", "---\ntype: spec\n---\n")
         err = io.StringIO()
         with redirect_stderr(err):
-            self.assertEqual(make_unit.run(["helper/", "--apply"]), 1)
+            self.assertEqual(make_unit.run(["helper/", "--reason", "grouping the tile work", "--apply"]), 1)
         self.assertIn("invalid unit name: helper/", err.getvalue())
         self.assertNotIn("already resolves", err.getvalue())
         self.assertFalse((root / "helper").exists())
