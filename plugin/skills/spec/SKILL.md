@@ -68,6 +68,7 @@ status: draft
 confidence: low
 area: <area>
 tags: [tag1, tag2]
+summary: "<one line - the index copies this>"
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 ---
