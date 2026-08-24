@@ -612,6 +612,553 @@ class CaptureCheckTests(unittest.TestCase):
         self.assertEqual(out, "")
 
 
+# ---------------------------------------------------------------------------
+# TASK-092: the recursion gate, the detached spawn, and the fallback ladder
+# (ADR-013 D-01/D-04/D-05/D-11, mechanism decisions in PLAN-010). `capture_check.py`
+# does not import `subprocess` yet, so every test that patches
+# `commands.capture_check.subprocess.Popen` raises `AttributeError` at patch
+# setup until the builder adds it - a legitimate red, not a broken test, per
+# [[LESSON-revert-to-prove-a-regression-test]].
+# ---------------------------------------------------------------------------
+
+
+def with_worker_session_env(test_case):
+    """Set `COMPASS_WORKER_SESSION=1` for the duration of the test, restoring
+    whatever was there before (mirrors `with_vault_env`'s save/restore
+    shape, in this file already)."""
+    old = os.environ.get("COMPASS_WORKER_SESSION")
+    os.environ["COMPASS_WORKER_SESSION"] = "1"
+
+    def restore():
+        if old is None:
+            os.environ.pop("COMPASS_WORKER_SESSION", None)
+        else:
+            os.environ["COMPASS_WORKER_SESSION"] = old
+
+    test_case.addCleanup(restore)
+
+
+def _write_raw_log_row(root, event, at_offset_seconds=0, **fields):
+    """Append one capture-log row with a caller-controlled `at` timestamp,
+    bypassing `capturelib.log_event`'s own now-stamping so a worker row's
+    age can be backdated without sleeping - the same technique
+    `_backdate_opportunity` above uses for `opportunity.json`."""
+    ts = capturelib._now() - datetime.timedelta(seconds=at_offset_seconds)
+    row = {"at": capturelib._iso(ts), "event": event}
+    row.update(fields)
+    path = capture_log_path(root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write(json.dumps(row) + "\n")
+
+
+def _set_state_fields(root, **fields):
+    state = capturelib.load_state(root)
+    state.update(fields)
+    capturelib.save_state(root, state)
+    return state
+
+
+def _popen_argv(call):
+    """The first positional arg `subprocess.Popen` was called with, whether
+    the builder passed it positionally or as the `args=` keyword."""
+    if call.args:
+        return call.args[0]
+    return call.kwargs.get("args")
+
+
+class RecursionGateTests(unittest.TestCase):
+    """`capture_check.run` and `capture_signal.run` under
+    `COMPASS_WORKER_SESSION` (ADR-013 D-11): the worker's own headless
+    session inherits the vault's hooks, so without this gate it would
+    process the very opportunity it was spawned to close and manufacture the
+    signals that make the next one due - a loop, not a pass."""
+
+    def setUp(self):
+        with_worker_session_env(self)
+
+    def test_capture_check_gate_fires_before_any_due_work(self):
+        """Adversarial where: a marker check placed after the turn bump or
+        after due_and_log would still let the worker's own session advance
+        the counters or open the opportunity the gate exists to suppress -
+        a strong signal is armed here specifically because it would open an
+        opportunity on its own, below any interval, if the gate did not fire
+        first."""
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, interval=1)
+        capturelib.record_signal(root, "handoff-written", "handoffs/H.md")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = capture_check.run(["--hook"])
+        self.assertEqual(code, 0)
+        self.assertEqual(out.getvalue(), "")
+        self.assertFalse(opportunities_dir(root).exists())
+        state = capturelib.load_state(root)
+        self.assertEqual(state["turns_since_capture"], 0)
+        self.assertEqual(read_log_rows(root), [])
+
+    def test_capture_signal_gate_records_nothing(self):
+        """Adversarial where: the worker's own extract-lessons subagent pass
+        finishing would, ungated, record a validator/builder-finished signal
+        that feeds the exact due() arithmetic the recursion gate exists to
+        starve."""
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        feed_stdin(self, {
+            "agent_type": "validator", "agent_id": "a1", "last_assistant_message": "x",
+        })
+        code = capture_signal.run(["--hook"])
+        self.assertEqual(code, 0)
+        self.assertFalse(captures_dir(root).exists())
+        state = capturelib.load_state(root)
+        self.assertEqual(state["signals"], [])
+
+
+class WorkerSpawnTests(unittest.TestCase):
+    """`capture-check`'s due path spawns the detached worker instead of
+    rendering the block (ADR-013 D-01, D-05's first rung): the conversation
+    surface goes to zero on the common path, not just on the fallback ones."""
+
+    def _run(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = capture_check.run(["--hook"])
+        return code, out.getvalue()
+
+    def test_due_spawns_worker_detached_and_prints_nothing(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, interval=1)
+        capturelib.record_signal(root, "vault-write", "specs/SPEC-001.md")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            mock_popen.return_value = mock.Mock(pid=4242)
+            code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "", "the conversation must see nothing on a spawn")
+        self.assertEqual(mock_popen.call_count, 1)
+        argv = _popen_argv(mock_popen.call_args)
+        self.assertEqual(argv[0], sys.executable)
+        self.assertEqual(argv[-2], "capture-worker")
+        opp_id = argv[-1]
+        self.assertTrue(opp_id.startswith("OPP-"))
+
+        rows = [r for r in read_log_rows(root) if r["event"] == "worker-started"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["pid"], 4242)
+        self.assertEqual(rows[0]["id"], opp_id)
+
+    def test_popen_raising_writes_worker_spawn_error_and_prints_nothing(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, interval=1)
+        capturelib.record_signal(root, "vault-write", "specs/SPEC-001.md")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            mock_popen.side_effect = OSError("spawn failed")
+            code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "")
+        rows = [r for r in read_log_rows(root) if r["event"] == "worker-spawn-error"]
+        self.assertEqual(len(rows), 1)
+
+    @unittest.skipUnless(sys.platform == "win32", "Windows-only detach flags")
+    def test_windows_spawn_uses_detached_process_and_new_process_group(self):
+        import subprocess as subprocess_mod
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, interval=1)
+        capturelib.record_signal(root, "vault-write", "specs/SPEC-001.md")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            mock_popen.return_value = mock.Mock(pid=1)
+            self._run()
+        kwargs = mock_popen.call_args.kwargs
+        flags = kwargs.get("creationflags", 0)
+        self.assertTrue(flags & subprocess_mod.DETACHED_PROCESS, "DETACHED_PROCESS not set")
+        self.assertTrue(
+            flags & subprocess_mod.CREATE_NEW_PROCESS_GROUP, "CREATE_NEW_PROCESS_GROUP not set"
+        )
+
+    @unittest.skipIf(sys.platform == "win32", "POSIX-only start_new_session")
+    def test_posix_spawn_uses_start_new_session(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, interval=1)
+        capturelib.record_signal(root, "vault-write", "specs/SPEC-001.md")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            mock_popen.return_value = mock.Mock(pid=1)
+            self._run()
+        kwargs = mock_popen.call_args.kwargs
+        self.assertIs(kwargs.get("start_new_session"), True)
+
+
+class FallbackLadderTests(unittest.TestCase):
+    """`capture-check`'s subsequent-check ladder for an already-open
+    opportunity, branching on worker ledger rows and grace/attempt state
+    instead of pure turn-based reemit spacing (ADR-013 D-04, mechanism
+    decisions)."""
+
+    def _run(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = capture_check.run(["--hook"])
+        return code, out.getvalue()
+
+    def _open(self, root, grace=600):
+        write_capture_config(root, worker_grace_seconds=grace)
+        directory = capturelib.open_opportunity(
+            root, "interval", ["vault-write"], ["specs/SPEC-001.md"]
+        )
+        return directory.name
+
+    def test_dead_worker_or_zero_rows_past_grace_spend_attempt_and_respawn(self):
+        """Adversarial where: a started row with no end row, and an open
+        opportunity with NO worker rows at all, are two different shapes of
+        the same fact - a spawn that never produced a running worker - and
+        the plan calls out that the zero-rows case "behaves identically" to
+        the dead-started-row case. Two setups, one claim."""
+        cases = {
+            "started-row-no-end-past-grace": lambda root, opp_id: _write_raw_log_row(
+                root, "worker-started", at_offset_seconds=650, id=opp_id, pid=1
+            ),
+            "zero-worker-rows-past-grace": lambda root, opp_id: _backdate_opportunity(
+                root, opp_id, seconds=650
+            ),
+        }
+        for name, setup in cases.items():
+            with self.subTest(name=name):
+                root = make_vault(self)
+                with_vault_env(self, root.parent)
+                opp_id = self._open(root, grace=600)
+                setup(root, opp_id)
+                feed_stdin(self, {"hook_event_name": "Stop"})
+                with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+                    mock_popen.return_value = mock.Mock(pid=9999)
+                    code, out = self._run()
+                self.assertEqual(code, 0)
+                self.assertEqual(mock_popen.call_count, 1, f"{name}: expected a respawn")
+                state = capturelib.load_state(root)
+                self.assertEqual(state["worker_attempts"], 1, f"{name}: attempt not spent")
+
+    def test_lock_held_respawns_without_spending_attempt(self):
+        """Adversarial where: `lock-held` is contention, not a death - the
+        worker never even started running its pass, so charging an attempt
+        for it would burn through the two-attempt budget on host noise
+        rather than real failures."""
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        opp_id = self._open(root, grace=600)
+        _write_raw_log_row(root, "worker-started", at_offset_seconds=1, id=opp_id, pid=1)
+        _write_raw_log_row(root, "worker-failed", at_offset_seconds=0, id=opp_id, reason="lock-held")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            mock_popen.return_value = mock.Mock(pid=2)
+            code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertEqual(mock_popen.call_count, 1)
+        self.assertEqual(capturelib.load_state(root)["worker_attempts"], 0)
+
+    def test_worker_row_with_id_but_no_pid_does_not_crash_the_ladder(self):
+        """Adversarial where: a worker-started row carrying a valid,
+        matching id but no pid field - a partial malformation distinct from
+        a garbage row - must not raise; the ladder degrades to treating the
+        row as a normal grace check rather than crashing on a missing key."""
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        opp_id = self._open(root, grace=600)
+        _write_raw_log_row(root, "worker-started", at_offset_seconds=650, id=opp_id)  # no pid
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            mock_popen.return_value = mock.Mock(pid=1)
+            code, out = self._run()
+        self.assertNotEqual(code, 2)
+        self.assertEqual(code, 0)
+
+
+class QuietFallbackTests(unittest.TestCase):
+    """The quiet channel (`additionalContext`), the fallback ADR-013 D-05
+    prefers over the rendered block."""
+
+    def _run(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = capture_check.run(["--hook"])
+        return code, out.getvalue()
+
+    def test_third_death_past_two_attempts_goes_quiet_instead_of_respawning(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, worker_grace_seconds=600)
+        directory = capturelib.open_opportunity(
+            root, "interval", ["vault-write"], ["specs/SPEC-001.md"]
+        )
+        opp_id = directory.name
+        _set_state_fields(root, worker_attempts=2)
+        _write_raw_log_row(root, "worker-started", at_offset_seconds=650, id=opp_id, pid=1)
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            mock_popen.call_count, 0, "past two attempts must not respawn a third time"
+        )
+        payload = json.loads(out)
+        self.assertNotIn("decision", payload, "the quiet channel must not also render a block")
+        self.assertIn("additionalContext", payload.get("hookSpecificOutput", {}))
+        rows = [r for r in read_log_rows(root) if r["event"] == "fallback-fired"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["channel"], "quiet")
+        state = capturelib.load_state(root)
+        self.assertIsNotNone(state["worker_quiet_at"])
+
+    def test_quiet_does_not_refire_on_the_very_next_check(self):
+        """Adversarial where: "exactly once" is the claim - a ladder that
+        re-evaluates "past two attempts" on every check without also
+        checking whether quiet already fired would re-emit additionalContext
+        on every single turn, which is exactly the per-turn scaffolding cost
+        this design exists to remove."""
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, worker_grace_seconds=600)
+        directory = capturelib.open_opportunity(
+            root, "interval", ["vault-write"], ["specs/SPEC-001.md"]
+        )
+        opp_id = directory.name
+        _set_state_fields(
+            root, worker_attempts=2, worker_quiet_at=capturelib._iso(capturelib._now())
+        )
+        _write_raw_log_row(root, "fallback-fired", at_offset_seconds=0, id=opp_id, channel="quiet")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "", "already quiet, still inside the next grace: must stay silent")
+        self.assertEqual(mock_popen.call_count, 0)
+
+    def test_no_headless_latch_goes_quiet_immediately_without_two_attempts(self):
+        """Adversarial where: no-headless is a host-level fact (this
+        machine cannot run headless children at all), not a per-death
+        counter - it must not wait for worker_attempts to reach two the way
+        an ordinary transient death does, or a permanently auth-less host
+        would render two pointless respawn attempts before ever going
+        quiet."""
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, worker_grace_seconds=600)
+        directory = capturelib.open_opportunity(
+            root, "interval", ["vault-write"], ["specs/SPEC-001.md"]
+        )
+        opp_id = directory.name
+        _set_state_fields(
+            root, worker_attempts=0, no_headless_at=capturelib._iso(capturelib._now())
+        )
+        _write_raw_log_row(
+            root, "worker-failed", at_offset_seconds=0, id=opp_id, reason="no-headless"
+        )
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertEqual(mock_popen.call_count, 0)
+        payload = json.loads(out)
+        self.assertIn("additionalContext", payload.get("hookSpecificOutput", {}))
+        rows = [r for r in read_log_rows(root) if r["event"] == "fallback-fired"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["channel"], "quiet")
+
+
+class NoHeadlessLatchSuppressesSpawnTests(unittest.TestCase):
+    """The `no_headless_at` latch suppresses spawn attempts on a FRESH due
+    opportunity, not just on the ladder of an already-open one, and expires
+    on its own TTL (mechanism decisions: `no_headless_retry_seconds`)."""
+
+    def _run(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = capture_check.run(["--hook"])
+        return code, out.getvalue()
+
+    def test_latch_inside_ttl_attempts_no_spawn_on_a_fresh_due_opportunity(self):
+        # Fixture (100) deliberately distinct from capturelib's own default
+        # (86400): a broken override lookup that silently fell back to the
+        # module default would treat this latch as still-fresh either way,
+        # and this case alone could not tell the difference.
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, interval=1, no_headless_retry_seconds=100)
+        _set_state_fields(
+            root,
+            no_headless_at=capturelib._iso(
+                capturelib._now() - datetime.timedelta(seconds=50)
+            ),
+        )
+        capturelib.record_signal(root, "vault-write", "specs/SPEC-001.md")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertEqual(mock_popen.call_count, 0)
+
+    def test_latch_past_ttl_allows_spawn_on_a_fresh_due_opportunity(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, interval=1, no_headless_retry_seconds=100)
+        _set_state_fields(
+            root,
+            no_headless_at=capturelib._iso(
+                capturelib._now() - datetime.timedelta(seconds=150)
+            ),
+        )
+        capturelib.record_signal(root, "vault-write", "specs/SPEC-001.md")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            mock_popen.return_value = mock.Mock(pid=1)
+            code, out = self._run()
+        self.assertEqual(code, 0)
+        self.assertEqual(mock_popen.call_count, 1)
+
+
+class BlockLastResortTests(unittest.TestCase):
+    """The rendered block, retained only behind the quiet channel failing to
+    produce a pass (ADR-013 D-05's last resort)."""
+
+    def _run(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = capture_check.run(["--hook"])
+        return code, out.getvalue()
+
+    def test_quiet_then_another_grace_past_emits_block_with_fallback_fired_row(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, worker_grace_seconds=600)
+        directory = capturelib.open_opportunity(
+            root, "interval", ["vault-write"], ["specs/SPEC-001.md"]
+        )
+        opp_id = directory.name
+        _set_state_fields(
+            root, worker_attempts=2,
+            worker_quiet_at=capturelib._iso(
+                capturelib._now() - datetime.timedelta(seconds=650)
+            ),
+        )
+        _write_raw_log_row(
+            root, "fallback-fired", at_offset_seconds=650, id=opp_id, channel="quiet"
+        )
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            code, out = self._run()
+        self.assertEqual(code, 0)
+        payload = json.loads(out)
+        self.assertEqual(payload["decision"], "block")
+        rows = [r for r in read_log_rows(root) if r["event"] == "fallback-fired"]
+        channels = [r["channel"] for r in rows]
+        self.assertIn("block", channels)
+
+    def test_never_emits_two_json_payloads_in_one_run(self):
+        """Adversarial where: a check whose worker_quiet_at is already past
+        its own second grace (block-worthy) while ALSO carrying a fresh
+        started row shaped like a should-quiet death must still write
+        exactly one JSON object to stdout - never two concatenated writes
+        that would break the hook contract's single-payload parse."""
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, worker_grace_seconds=600)
+        directory = capturelib.open_opportunity(
+            root, "interval", ["vault-write"], ["specs/SPEC-001.md"]
+        )
+        opp_id = directory.name
+        _set_state_fields(
+            root, worker_attempts=2,
+            worker_quiet_at=capturelib._iso(
+                capturelib._now() - datetime.timedelta(seconds=650)
+            ),
+        )
+        _write_raw_log_row(
+            root, "fallback-fired", at_offset_seconds=650, id=opp_id, channel="quiet"
+        )
+        _write_raw_log_row(root, "worker-started", at_offset_seconds=650, id=opp_id, pid=1)
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            code, out = self._run()
+        self.assertEqual(code, 0)
+        lines = [l for l in out.splitlines() if l.strip()]
+        self.assertLessEqual(len(lines), 1, f"expected at most one JSON line, got: {out!r}")
+        if out.strip():
+            json.loads(out)  # must parse as exactly one JSON object, never two concatenated
+
+
+class AbandonDefersToLiveWorkerTests(unittest.TestCase):
+    """The abandon path defers while a live worker is inside its grace
+    (mechanism decisions, PLAN-010's last bullet)."""
+
+    def _run(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = capture_check.run(["--hook"])
+        return code, out.getvalue()
+
+    def test_abandon_defers_while_a_live_worker_is_inside_grace(self):
+        """Adversarial where: the pre-existing reemit-cap/age-based abandon
+        path, applied blindly, would close an opportunity out from under a
+        worker that is still legitimately running (a fresh started row, well
+        inside worker_grace_seconds) - exactly the scenario D-04's "never
+        abandoned out from under a running worker" guarantee exists for."""
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(
+            root, interval=1, max_reemits=0, abandon_after_seconds=10, worker_grace_seconds=600
+        )
+        directory = capturelib.open_opportunity(
+            root, "interval", ["vault-write"], ["specs/SPEC-001.md"]
+        )
+        opp_id = directory.name
+        _backdate_opportunity(root, opp_id, seconds=20)  # past abandon_after_seconds
+        _write_raw_log_row(root, "worker-started", at_offset_seconds=5, id=opp_id, pid=1)  # fresh
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            code, out = self._run()
+        self.assertEqual(code, 0)
+        state = capturelib.load_state(root)
+        self.assertEqual(state["open_opportunity"], opp_id, "abandon must defer to the live worker")
+
+
+class WorkerAttemptsResetOnOpenTests(unittest.TestCase):
+    """`worker_attempts` is a flat, vault-wide state field (mechanism
+    decisions, PLAN-010) reset on open - a value carried over from a prior
+    opportunity's spawn deaths must not make the NEXT opportunity's fallback
+    ladder think it already lost attempts before it ever spawned once."""
+
+    def _run(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = capture_check.run(["--hook"])
+        return code, out.getvalue()
+
+    def test_worker_attempts_reset_when_a_new_opportunity_opens(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        write_capture_config(root, interval=1)
+        first = capturelib.open_opportunity(
+            root, "interval", ["vault-write"], ["specs/SPEC-001.md"]
+        )
+        _set_state_fields(root, worker_attempts=2)
+        capturelib.close_opportunity(root, first.name, "fired", written=1)
+
+        capturelib.record_signal(root, "vault-write", "specs/SPEC-002.md")
+        feed_stdin(self, {"hook_event_name": "Stop"})
+        with mock.patch("commands.capture_check.subprocess.Popen") as mock_popen:
+            mock_popen.return_value = mock.Mock(pid=1)
+            code, out = self._run()
+        self.assertEqual(code, 0)
+        state = capturelib.load_state(root)
+        self.assertEqual(state["worker_attempts"], 0)
+
+
 class CaptureLogLifecycleTests(unittest.TestCase):
     """Tests for the trace rows `capturelib` appends to
     `.compass/tmp/capture-log.jsonl` around the opportunity lifecycle: the

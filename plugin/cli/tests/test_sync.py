@@ -407,6 +407,43 @@ class CaptureLogRetentionTests(SyncFixture):
         self.assertNotIn(b"\r\n", raw)
 
 
+class WorkerLogRetentionTests(SyncFixture):
+    """TASK-092: sync additionally sweeps `.compass/tmp/worker-logs/*.log` on
+    the same 30-day horizon as `extraction-log-*.md` (ADR-013 D-07's pruning
+    clause, "previously unowned" per PLAN-010's own task bullet). The plan
+    ties this to "the existing 30-day extraction-log retention" but gives no
+    literal report-key shape for the deleted count, so these assertions read
+    disk state directly rather than a specific `report[...]` key - the
+    unambiguous half of the claim."""
+
+    def test_31_day_old_worker_log_deleted_recent_kept(self):
+        logs_dir = self.root / "tmp" / "worker-logs"
+        logs_dir.mkdir(parents=True)
+        old = logs_dir / "OPP-old.log"
+        new = logs_dir / "OPP-new.log"
+        old.write_text("x", encoding="utf-8")
+        new.write_text("x", encoding="utf-8")
+        old_time = time.time() - 31 * 86400
+        os.utime(old, (old_time, old_time))
+        sync_cmd.sync(self.root)
+        self.assertFalse(old.exists())
+        self.assertTrue(new.exists())
+
+    def test_29_day_old_worker_log_kept(self):
+        """Adversarial where: a worker-log sweep reusing a stricter cutoff
+        than extraction logs by mistake would delete this file one day
+        early; 29 days sits inside the 30-day horizon and must survive -
+        the boundary the 31-day case above brackets from the other side."""
+        logs_dir = self.root / "tmp" / "worker-logs"
+        logs_dir.mkdir(parents=True)
+        recent = logs_dir / "OPP-recent.log"
+        recent.write_text("x", encoding="utf-8")
+        recent_time = time.time() - 29 * 86400
+        os.utime(recent, (recent_time, recent_time))
+        sync_cmd.sync(self.root)
+        self.assertTrue(recent.exists())
+
+
 class ResolutionMatchingTests(SyncFixture):
     def test_stem_entry_for_folder_child_not_reappended(self):
         self.write("specs/SPEC-004-pack/index.md", folder_spec("Pack", "the pack folder"))
@@ -801,6 +838,55 @@ class SignalRecordingTests(SyncFixture):
         self.assertEqual(len(state["signals"]), 1)
         self.assertEqual(state["signals"][0]["kind"], "vault-write")
         self.assertEqual(state["signals"][0]["ref"], "specs/SPEC-002-new.md")
+
+
+class WorkerSessionRecursionGateTests(SyncFixture):
+    """TASK-092: sync's hook mode under `COMPASS_WORKER_SESSION` (ADR-013
+    D-11). The worker's own vault writes must still update the index - that
+    part is wanted, since the worker really does write vault content (new
+    lessons) that the next session needs to find - but must record no
+    capture signal, or the worker would manufacture the very due() evidence
+    that reopens the capture loop on itself."""
+
+    def _set_env(self):
+        old = os.environ.get("CLAUDE_PROJECT_DIR")
+        os.environ["CLAUDE_PROJECT_DIR"] = str(self.root.parent)
+        self.addCleanup(
+            lambda: os.environ.__setitem__("CLAUDE_PROJECT_DIR", old) if old
+            else os.environ.pop("CLAUDE_PROJECT_DIR", None)
+        )
+
+    def _set_worker_session(self):
+        old = os.environ.get("COMPASS_WORKER_SESSION")
+        os.environ["COMPASS_WORKER_SESSION"] = "1"
+        self.addCleanup(
+            lambda: os.environ.__setitem__("COMPASS_WORKER_SESSION", old) if old
+            else os.environ.pop("COMPASS_WORKER_SESSION", None)
+        )
+
+    def _feed_stdin(self, payload):
+        self.addCleanup(setattr, sys, "stdin", sys.stdin)
+        sys.stdin = io.StringIO(json.dumps(payload))
+
+    def test_worker_session_write_syncs_index_but_records_no_signal(self):
+        self._set_env()
+        self._set_worker_session()
+        self.write("specs/SPEC-002-new.md", spec("New"))
+        self._feed_stdin({
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": str(self.root / "specs" / "SPEC-002-new.md")},
+        })
+        out = io.StringIO()
+        from contextlib import redirect_stdout
+        with redirect_stdout(out):
+            code = sync_cmd.run(["--hook"])
+        self.assertEqual(code, 0)
+        self.assertIn("[[SPEC-002-new]]", self.index_text(), "the worker's own write must still sync")
+        self.assertFalse(
+            (self.root / "tmp" / "capture-state.json").exists(),
+            "a worker-session write must record no capture signal",
+        )
 
 
 class HumanModeTests(SyncFixture):
