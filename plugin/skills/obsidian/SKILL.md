@@ -534,7 +534,7 @@ escalation_reason: "..."    # OPTIONAL - paired with escalated
 Free-form markdown body. **Hard cap 5 physical lines including embedded blank lines.** No `# Title` H1 - the frontmatter `title` field is the canonical title. Common shape (not required): the rule, the reason, the trigger condition. Compress.
 ```
 
-Lessons are never authored by agents in prose. Creation goes through the `lesson-write` skill, invoked by `extract-lessons` (auto at phase boundary) or `/compass:learned` (manual). Both paths share dedup, anti-list filtering, and the 5-line cap.
+Lessons are never authored by agents in prose. Creation goes through the `lesson-write` skill, invoked by `extract-lessons` (auto at phase boundary) or `/compass:learned` (manual). Both paths share dedup, anti-list filtering, and the 5-line cap. An agent that notices a candidate mid-work runs `compass capture-note "<one sentence>"`; the capture pass judges it, and the human is never asked.
 
 ### Handoff
 

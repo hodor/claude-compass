@@ -1,6 +1,6 @@
 ---
 title: Active Tasks
-updated: 2026-08-23
+updated: 2026-08-24
 ---
 
 # Active Tasks
@@ -74,6 +74,7 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 - [x] TASK-095: re-fire PASS (worker 5/5 vs in-session 4/5, $0.96); v0.8.0 distributed to 50/50 vaults, all doctor-clean (2026-08-24)
 
 - [x] TASK-096/097/098 (2026-08-24): POSIX pinned-not-observed, SessionStart pickup registered fleet-wide, between-gates silence in the pipeline rule and build skill. PLAN-010 COMPLETE.
+- [x] Off-plan fix v0.8.2 (2026-08-24): live defect in daschie-sort - the agent handed the human `/compass:learned` because no agent-callable capture path existed. [[ADR-013-detached-worker-quiet-fallback]] D-12: `compass capture-note` files the observation as evidence plus a strong signal; six skill/rule sites rewritten to forbid suggesting the slash command. 696 tests green.
 
 ## Next Up
 

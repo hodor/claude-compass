@@ -40,7 +40,7 @@ Directory contents:
 `kind` is one of `phase`, `signal`, or `interval`. `triggers` names the signal kinds that made the opportunity due. `evidence` is a list of vault-relative paths the extractor reads; which paths and how many depends on `kind`:
 
 - **`phase`** - one path, a `.compass/tmp/phase-reports/<phase-id>/` directory. Read `phase-summary.yaml` from it exactly as before, plus the per-task report files it names.
-- **`signal`** - one or more paths: a `tmp/subagent-captures/` file (a validator or debug subagent's captured report) and/or a `handoffs/` path when a `handoff-written` trigger fired.
+- **`signal`** - one or more paths: a `tmp/subagent-captures/` file (a validator or debug subagent's captured report, or an agent's `capture-note` observation) and/or a `handoffs/` path when a `handoff-written` trigger fired.
 - **`interval`** - one or more paths recorded in the window that reached the turn interval: `tmp/subagent-captures/` files and/or whatever vault artifact a `vault-write` trigger names.
 
 If `opportunity.json` does not exist or is malformed, halt and write a single-line extraction log entry: `error: opportunity.json missing or malformed at <path>`. Do not improvise.
@@ -97,6 +97,7 @@ For a `signal` or `interval` kind opportunity, `triggered` is always `true`: `co
 | STOP-and-report | phase | the build report carrying the STOP event |
 | plan revised | phase | the plan diff or revision note |
 | handoff written | signal (`handoff-written`) | the named `handoffs/` file |
+| agent noted | signal (`agent-noted`) | the named `tmp/subagent-captures/*_note.md` file, written by `compass capture-note` |
 | interval reached with signal(s) | interval (`vault-write`, `builder-finished`, `subagent-finished`) | every evidence path in the window |
 
 If `triggered: false` (only possible for a `phase` kind opportunity whose `phase-summary.yaml` carries no fired condition), there are zero candidates: proceed straight to step 7's "no candidates" log entry, then steps 8 and 9.
@@ -111,6 +112,7 @@ For each fired trigger, read the corresponding evidence from the table above:
 - STOP-and-report → the "Found" vs "Expected" mismatch in the build report carrying the event is a candidate.
 - plan revised → the revision rationale in the plan diff or revision note is a candidate.
 - handoff written → what the handoff records as open work or a surprising finding is a candidate source.
+- agent noted → the note body is one candidate as stated: the agent already judged it worth remembering, so the anti-list and dedup in steps 5-6 are the only filters. A note that names the incident but not the rule still yields a candidate; state the rule the incident implies.
 - interval reached with signal(s) → read every evidence file in the window. An interval opportunity fires on volume, not on one strong signal, so a finding only becomes a candidate if it would independently justify a lesson - the anti-list in step 5 is the filter that keeps this permissive read from flooding the catalog.
 
 A candidate is a discrete finding: one rule, one why. Do not group multiple findings into one. If the evidence has 3 findings, emit 3 candidates.

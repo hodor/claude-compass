@@ -37,6 +37,7 @@ COMMAND_SPECS = [
     ("decisions", "List a document's D-NN decisions with trackable flags; exit 1 on a format mismatch."),
     ("coverage", "Check a plan claims every trackable decision of its sources; exit 1 on any gap."),
     ("capture-signal", "Record a subagent-captures file and a capture signal from SubagentStop event JSON. Hook entry point."),
+    ("capture-note", "Record an agent's in-flight observation as capture evidence and a strong signal; the worker judges it at the next Stop."),
     ("capture-check", "Bump the turn counter, evaluate due(), and emit the Stop-hook block contract on a capture opportunity. Hook entry point."),
     ("capture-stats", "Report opportunities opened, fire rate, write rate, and per-trigger breakdown from the capture trace log."),
     ("capture-close", "Close a capture opportunity with an outcome and candidate/written/recurrence/rejected/revised/archived/error counts."),

@@ -60,7 +60,8 @@ DEFAULT_STATE = {
 # Signal kinds that make an opportunity due on their own, independent of the
 # turn interval.
 STRONG_SIGNAL_KINDS = frozenset(
-    {"handoff-written", "validator-finished", "debug-finished", "phase-summary"}
+    {"handoff-written", "validator-finished", "debug-finished", "phase-summary",
+     "agent-noted"}
 )
 
 # Oldest signals are dropped past this count so a long-idle or long-disabled

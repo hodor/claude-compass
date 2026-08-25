@@ -4,7 +4,7 @@ description: Capture an in-the-moment lesson the human just noticed. One-line ar
 version: 1.0.0
 allowed-tools: [Read, Glob, Grep]
 argument-hint: "<lesson text> [--process|--domain] [--area <area>] [--tags tag1,tag2]"
-when_to_use: "Use only when the human explicitly invokes /compass:learned. Never use proactively. The auto-extraction path runs at phase boundary via extract-lessons; this skill is the manual companion."
+when_to_use: "Use only when the human explicitly invokes /compass:learned. Never suggest it to the human and never run it on their behalf: an agent that notices something worth remembering runs compass capture-note with one sentence instead, and the auto-extraction path judges the note at the next capture opportunity."
 ---
 
 # /compass:learned - Manual Lesson Capture
