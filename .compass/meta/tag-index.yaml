@@ -27,8 +27,6 @@ tags:
   - research/RESEARCH-rolling-wave-software-practice.md
   agreement:
   - lessons/LESSON-measure-the-procedures-intermediates.md
-  ambiguity:
-  - lessons/LESSON-carve-outs-need-explicit-negative-scope.md
   anti-list:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   append-only:
@@ -113,8 +111,6 @@ tags:
   - research/RESEARCH-lesson-capture-failure.md
   - specs/SPEC-012-learning-loop.md
   - specs/SPEC-018-scaffolding-invisible-to-the-human.md
-  carve-out:
-  - lessons/LESSON-carve-outs-need-explicit-negative-scope.md
   catalog:
   - lessons/LESSON-append-only-index-misses-mutations.md
   category-mapping:
@@ -321,6 +317,7 @@ tags:
   feedback-loop:
   - specs/SPEC-015-rolling-wave-planning.md
   fleet:
+  - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
   - research/RESEARCH-fleet-test-census.md
   fleet-audit:
   - research/RESEARCH-lesson-capture-failure.md
@@ -360,6 +357,7 @@ tags:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
+  - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
   hang:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   harness:
@@ -477,6 +475,8 @@ tags:
   - specs/SPEC-012-learning-loop.md
   interoperability:
   - research/RESEARCH-okf-improvements-for-compass.md
+  invisible-capture:
+  - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
   isolation:
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
   - lessons/LESSON-verify-worktree-isolation-is-real.md
@@ -580,8 +580,6 @@ tags:
   - research/RESEARCH-test-quality-literature.md
   - research/RESEARCH-test-quality-synthesis.md
   - research/RESEARCH-test-quality-tooling.md
-  negative-scope:
-  - lessons/LESSON-carve-outs-need-explicit-negative-scope.md
   nesting:
   - specs/SPEC-010-universal-hybrid-hierarchy.md
   noise:
@@ -738,6 +736,8 @@ tags:
   reinertsen:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   - research/RESEARCH-rolling-wave-flow-theory.md
+  release:
+  - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
   replanning:
   - research/RESEARCH-rolling-wave-agent-planning.md
   replication:
@@ -808,13 +808,13 @@ tags:
   - lessons/LESSON-verify-worktree-isolation-is-real.md
   sizing:
   - decisions/ADR-011-sizing-is-a-procedure-not-a-score.md
+  - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
   - plans/PLAN-009-sizing-mechanism.md
   - research/RESEARCH-decomposition-criteria-for-sizing.md
   - specs/SPEC-016-sizing-work-beyond-one-spec.md
   skill:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   skill-design:
-  - lessons/LESSON-carve-outs-need-explicit-negative-scope.md
   - lessons/LESSON-no-agent-bookkeeping.md
   skills:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
@@ -1029,8 +1029,6 @@ tags:
   windows:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   - research/RESEARCH-test-quality-tooling.md
-  worker-generalization:
-  - lessons/LESSON-carve-outs-need-explicit-negative-scope.md
   workflow:
   - specs/SPEC-001-compass-vision-and-architecture.md
   - specs/SPEC-009-configurable-pipeline-workflows.md

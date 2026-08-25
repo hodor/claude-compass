@@ -174,7 +174,7 @@ lessons:
     area: testing
     tags: [testing, regression-tests, revert-check, bug-reports, empirical]
     score: 5
-    summary: "A test that passes without the change under test is unwritten; prove it per test, by revert after the fix or by the red run before it"
+    summary: "A test or fix that passes without discriminating the change under test is unwritten; prove it by revert or red run"
   - file: "LESSON-remove-context-before-adding.md"
     status: active
     category: process
@@ -223,7 +223,7 @@ lessons:
     area: methodology
     tags: [experiments, measurement, procedure-evaluation, agreement, empirical]
     score: 5
-    summary: "Verdict agreement without intermediate agreement means a shared prior, not the procedure, produces the answer"
+    summary: "Agreement can hide a shared prior; disagreement should fix the contract, not pick a winner between raters"
   - file: "LESSON-outputs-must-span-the-decision-space.md"
     status: active
     category: process
