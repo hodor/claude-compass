@@ -2,6 +2,8 @@
 title: "Handoff: PLAN-006 Phase 2 live; hooks fire from settings.json for the first time ever"
 type: handoff
 status: active
+area: methodology
+tags: [handoff, learning-loop, hooks]
 created: 2026-08-06
 updated: 2026-08-06
 git_branch: master

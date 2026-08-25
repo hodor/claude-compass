@@ -2,6 +2,7 @@
 title: Rolling-Wave Plans - Frontier Waves, Grounded Elaboration, Three-State Coverage
 type: decision
 status: accepted
+confidence: high
 area: methodology
 tags: [planning, rolling-wave, elaboration, coverage, plan-format]
 created: 2026-08-11
