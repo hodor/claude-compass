@@ -1,5 +1,5 @@
 """Tests for the capture-family commands: `capture-signal` and `capture-check`,
-the two hook entry points, and `capture-stats` and `capture-close`, the
+the two hook entry points, `capture-note`, the agent's own signal, and `capture-stats` and `capture-close`, the
 ordinary CLI surfaces that read and close what the hooks produced.
 Adversarial for the hook path: a SubagentStop or Stop hook must never fail
 the turn that triggered it, so most of those cases assert "exits 0, records
@@ -26,6 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import capturelib  # noqa: E402
 from commands import capture_check  # noqa: E402
 from commands import capture_close  # noqa: E402
+from commands import capture_note  # noqa: E402
 from commands import capture_signal  # noqa: E402
 from commands import capture_stats  # noqa: E402
 
@@ -1572,3 +1573,79 @@ class TeammateIdleTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CaptureNoteTests(unittest.TestCase):
+    """`capture-note` is the main agent's own door into the capture loop: a
+    note becomes evidence in subagent-captures plus a strong `agent-noted`
+    signal, so the worker fires at the next Stop without the human doing
+    anything. Adversarial on the two ways it could misfire: an empty note
+    must record nothing, and a note from inside the worker's own session
+    must record nothing (it would reopen the loop the worker closes)."""
+
+    def _run(self, args):
+        err = io.StringIO()
+        with mock.patch("sys.stderr", err):
+            code = capture_note.run(args)
+        return code, err.getvalue()
+
+    def test_note_writes_evidence_file_and_records_strong_signal(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        code, _ = self._run(["a destructive test read the shared store"])
+        self.assertEqual(code, 0)
+
+        files = list(captures_dir(root).glob("*_note.md"))
+        self.assertEqual(len(files), 1)
+        text = files[0].read_text(encoding="utf-8")
+        self.assertIn("type: agent_note\n", text)
+        body = text.split("---\n", 2)[2].strip()
+        self.assertEqual(body, "a destructive test read the shared store")
+
+        state = capturelib.load_state(root)
+        self.assertEqual(len(state["signals"]), 1)
+        self.assertEqual(state["signals"][0]["kind"], "agent-noted")
+        self.assertEqual(
+            state["signals"][0]["ref"], files[0].relative_to(root).as_posix()
+        )
+        is_due, reason = capturelib.due(state, capturelib.DEFAULT_CONFIG)
+        self.assertTrue(is_due, reason)
+
+    def test_multiword_args_join_into_one_note(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        code, _ = self._run(["shared", "default", "target"])
+        self.assertEqual(code, 0)
+        files = list(captures_dir(root).glob("*_note.md"))
+        body = files[0].read_text(encoding="utf-8").split("---\n", 2)[2].strip()
+        self.assertEqual(body, "shared default target")
+
+    def test_empty_note_records_nothing_and_fails(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        code, err = self._run([])
+        self.assertEqual(code, 1)
+        self.assertIn("usage", err)
+        self.assertFalse(captures_dir(root).exists())
+        self.assertEqual(capturelib.load_state(root)["signals"], [])
+
+    def test_worker_session_gate_records_nothing(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        with mock.patch.dict(os.environ, {"COMPASS_WORKER_SESSION": "1"}):
+            code, _ = self._run(["a note from inside the worker"])
+        self.assertEqual(code, 0)
+        self.assertFalse(captures_dir(root).exists())
+        self.assertEqual(capturelib.load_state(root)["signals"], [])
+
+    def test_two_notes_in_one_second_do_not_overwrite(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        fixed = datetime.datetime(2026, 8, 24, 12, 0, 0, tzinfo=datetime.timezone.utc)
+        with mock.patch.object(capture_note, "_now", return_value=fixed):
+            self.assertEqual(self._run(["first"])[0], 0)
+            self.assertEqual(self._run(["second"])[0], 0)
+        files = sorted(captures_dir(root).glob("*_note*.md"))
+        self.assertEqual(len(files), 2)
+        bodies = {f.read_text(encoding="utf-8").split("---\n", 2)[2].strip() for f in files}
+        self.assertEqual(bodies, {"first", "second"})

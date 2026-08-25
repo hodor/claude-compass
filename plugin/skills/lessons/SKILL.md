@@ -89,6 +89,8 @@ Do NOT write lessons from agent prose. Creation goes through the `lesson-write` 
 - `extract-lessons` - retrospective capture at a capture opportunity (auto, see Capture loop above)
 - `/compass:learned` - in-the-moment human capture (manual)
 
+When you notice something worth remembering mid-work - a test that destroyed shared state, a tool behaving unlike its docs, a plan step that was wrong - run `compass capture-note "<one sentence>"` and continue. The note becomes evidence for the next capture pass; the worker judges it. Never hand the human a command to run, never ask whether to record it, never write the lesson yourself.
+
 Both paths share dedup, anti-list filtering, atomic 3-file writes, and the 5-line body cap. See `lesson-write/SKILL.md` for the protocol.
 
 ## Application audit
