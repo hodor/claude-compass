@@ -1,6 +1,6 @@
 plugin:
   name: compass
-  version: 0.8.1
+  version: 0.8.2
   source: F:/claude/plugins/compass/plugin
   repository: https://github.com/hodor/claude-compass
   installed_at: 2026-08-24
