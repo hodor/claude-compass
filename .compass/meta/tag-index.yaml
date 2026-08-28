@@ -7,6 +7,9 @@ tags:
   - lessons/LESSON-untestable-criterion-is-a-spec-defect.md
   accuracy:
   - specs/SPEC-007-decision-coverage-tracing.md
+  active-tasks:
+  - research/RESEARCH-active-set-prior-art.md
+  - specs/SPEC-019-active-holds-only-active-work/index.md
   admission-bar:
   - plans/PLAN-007-test-quality.md
   - research/RESEARCH-test-quality-synthesis.md
@@ -87,6 +90,8 @@ tags:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   bookkeeping:
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
+  born-folder:
+  - lessons/LESSON-sizing-unrecorded-blind-to-born-folder.md
   briefs:
   - lessons/LESSON-dont-strip-agent-quality-stations.md
   - lessons/LESSON-subagent-reports-need-sendmessage.md
@@ -102,6 +107,7 @@ tags:
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - research/RESEARCH-rag-fit-for-large-vaults.md
   - specs/SPEC-003-hierarchical-vault-organization.md
+  - specs/SPEC-019-active-holds-only-active-work/index.md
   capture:
   - decisions/ADR-013-detached-worker-quiet-fallback.md
   - plans/PLAN-006-learning-loop.md
@@ -334,6 +340,8 @@ tags:
   - plans/PLAN-004-decision-coverage.md
   - research/RESEARCH-decision-coverage-impl.md
   - specs/SPEC-007-decision-coverage-tracing.md
+  generated-view:
+  - research/RESEARCH-active-set-prior-art.md
   git:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   - lessons/LESSON-subagent-worktrees-fork-stale.md
@@ -358,6 +366,7 @@ tags:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
   - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
+  - handoffs/PLAN-006-learning-loop/2026-08-06_06-02-00_phase2-live-hooks-first-firing.md
   hang:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   harness:
@@ -369,6 +378,7 @@ tags:
   - specs/SPEC-008-central-model-resolution-table.md
   - specs/SPEC-009-configurable-pipeline-workflows.md
   - specs/SPEC-011-vault-graph-queries.md
+  - specs/SPEC-019-active-holds-only-active-work/index.md
   headless:
   - decisions/ADR-013-detached-worker-quiet-fallback.md
   - lessons/LESSON-headless-worker-denies-tools-silently.md
@@ -406,6 +416,7 @@ tags:
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   - decisions/ADR-013-detached-worker-quiet-fallback.md
+  - handoffs/PLAN-006-learning-loop/2026-08-06_06-02-00_phase2-live-hooks-first-firing.md
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   - lessons/LESSON-hook-if-clause-no-or.md
@@ -418,6 +429,7 @@ tags:
   - plans/PLAN-001-lessons-and-index-implementation.md
   - plans/PLAN-006-learning-loop.md
   - plans/PLAN-010-invisible-capture.md
+  - research/RESEARCH-active-set-prior-art.md
   - research/RESEARCH-invisible-scaffolding.md
   - research/RESEARCH-lessons-and-index-architecture.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
@@ -431,8 +443,10 @@ tags:
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - decisions/ADR-010-identity-resident-fetch-mandatory.md
+  - research/RESEARCH-active-set-prior-art.md
   - research/RESEARCH-cache-theory-for-context-tiers.md
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
+  - specs/SPEC-019-active-holds-only-active-work/index.md
   hub-ranking:
   - specs/SPEC-011-vault-graph-queries.md
   human-attention:
@@ -487,6 +501,8 @@ tags:
   - lessons/LESSON-no-agent-bookkeeping.md
   kanban:
   - research/RESEARCH-rolling-wave-software-practice.md
+  kernel:
+  - research/RESEARCH-active-set-prior-art.md
   kimi:
   - specs/SPEC-006-multi-host-agent-cli-support.md
   kimi-code:
@@ -501,6 +517,7 @@ tags:
   - research/RESEARCH-rolling-wave-flow-theory.md
   learning-loop:
   - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
+  - handoffs/PLAN-006-learning-loop/2026-08-06_06-02-00_phase2-live-hooks-first-firing.md
   - plans/PLAN-006-learning-loop.md
   - research/RESEARCH-hermes-agent-capabilities.md
   - research/RESEARCH-hermes-memory-mechanics.md
@@ -681,6 +698,7 @@ tags:
   premises:
   - lessons/LESSON-verify-the-inverse-not-the-forward-path.md
   prior-art:
+  - research/RESEARCH-active-set-prior-art.md
   - research/RESEARCH-decision-coverage-impl.md
   - research/RESEARCH-graph-engineering-for-compass.md
   - research/RESEARCH-gsd-core-improvements-for-compass.md
@@ -725,6 +743,8 @@ tags:
   - lessons/LESSON-human-practice-rationing-assumes-human-scarcity.md
   real-options:
   - research/RESEARCH-decomposition-criteria-for-sizing.md
+  reconciliation:
+  - lessons/LESSON-sizing-unrecorded-blind-to-born-folder.md
   recursion:
   - lessons/LESSON-spawned-sessions-inherit-project-hooks.md
   reference:
@@ -809,6 +829,7 @@ tags:
   sizing:
   - decisions/ADR-011-sizing-is-a-procedure-not-a-score.md
   - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
+  - lessons/LESSON-sizing-unrecorded-blind-to-born-folder.md
   - plans/PLAN-009-sizing-mechanism.md
   - research/RESEARCH-decomposition-criteria-for-sizing.md
   - specs/SPEC-016-sizing-work-beyond-one-spec.md
@@ -864,6 +885,8 @@ tags:
   - lessons/LESSON-suite-size-is-not-coverage.md
   summaries:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
+  sweep:
+  - research/RESEARCH-active-set-prior-art.md
   sync:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
   - lessons/LESSON-append-only-index-misses-mutations.md
@@ -876,6 +899,8 @@ tags:
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   tamper-evidence:
   - decisions/ADR-012-test-checkpoint-py-membership-git-authoritative.md
+  taskwarrior:
+  - research/RESEARCH-active-set-prior-art.md
   taxonomy:
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - specs/SPEC-003-hierarchical-vault-organization.md
@@ -923,6 +948,9 @@ tags:
   tiers:
   - decisions/ADR-008-model-resolution-table.md
   - plans/PLAN-005-model-table.md
+  token-budget:
+  - research/RESEARCH-active-set-prior-art.md
+  - specs/SPEC-019-active-holds-only-active-work/index.md
   token-efficiency:
   - compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work.md
   - compass-cli/plans/PLAN-002-compass-cli-implementation.md
@@ -980,6 +1008,7 @@ tags:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
   validate:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
+  - lessons/LESSON-sizing-unrecorded-blind-to-born-folder.md
   - plans/PLAN-003-hybrid-hierarchy.md
   validation:
   - compass-cli/plans/PLAN-002-compass-cli-implementation.md
@@ -998,6 +1027,8 @@ tags:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   vault-design:
   - research/RESEARCH-okf-improvements-for-compass.md
+  vault-hygiene:
+  - specs/SPEC-019-active-holds-only-active-work/index.md
   vault-root:
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
   vault-structure:

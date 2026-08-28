@@ -26,6 +26,12 @@ Triggered by a live failure in another project: a vision session produced seven 
 - [ ] NEXT: research both specs, then one ADR. Open axes: SPEC-016's mechanism (skill step vs hook vs CLI gate), SPEC-017's index location.
 - [ ] Open: pin the project where the seven-monster-specs session happened ([[LESSON-pin-the-motivating-datum]]).
 
+## Active-set hygiene initiative (Roger, 2026-08-28)
+
+- [x] [[SPEC-019-active-holds-only-active-work]] APPROVED 2026-08-28 - active.md accumulates done tasks forever; hot path pays for history every turn.
+- [x] [[RESEARCH-active-set-prior-art]] - 3 parallel axes (Claude Code harness, hermes-agent, classic OSS), 49 findings. Flag-then-sweep dominates; no system lets intelligence decide membership; PostToolUse `compass sync` is the already-owned zero-token trigger.
+- [ ] NEXT: ADR choosing the mechanism (sweep-on-sync vs generated view), then plan.
+
 ## Scaffolding-noise initiative (Roger, 2026-08-24)
 
 - [x] Capture re-nag spaced to every 5 turns (commit fc9ce75) - the per-turn 'still open' spam is gone.

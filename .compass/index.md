@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 10172 / 5000 tokens (index.md 4509, active.md 2606, meta/lessons-catalog.yaml 3057). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 10538 / 5000 tokens (index.md 4654, active.md 2744, meta/lessons-catalog.yaml 3140). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -36,6 +36,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[SPEC-017-capabilities-are-reachable-and-measured]] - a capability no skill names is unreachable, and nothing counts usage so dead ones go unnoticed (approved 2026-08-23)
 - [[SPEC-018-scaffolding-invisible-to-the-human]] - the machinery keeps running but none of it occupies the human's conversation (approved 2026-08-24)
 - [[SPEC-018-scaffolding-invisible-to-the-human]] - the machinery keeps running - capture passes, checks, agent relays - but none of it occupies the human's conversation
+- [[SPEC-019-active-holds-only-active-work]] - completed work accumulates in active.md forever because nothing in the harness moves it out; the hot path pays for history on every turn
 
 ## Research
 
@@ -72,6 +73,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-cache-theory-for-context-tiers]] - Cache Theory for Compass's Context Tiers: Tag/Data Split, Inclusion, and the Correctness of a Miss
 - [[RESEARCH-decomposition-criteria-for-sizing]] - Decomposition Criteria for Sizing: No Metric Exists, Cheap Reversal Licenses Acting, and the Surviving Risk Is Social
 - [[RESEARCH-invisible-scaffolding]] - detached hook-spawned workers survive on the fleet host (verified live); additionalContext reaches the model and continues the session; the block channel becomes fallback
+- [[RESEARCH-active-set-prior-art]] - every mature system bounds its active set mechanically - flag-then-sweep dominates, atomic moves are rare, and Compass already owns the zero-token trigger (PostToolUse compass sync)
 
 ## Plans
 
@@ -162,6 +164,7 @@ See [[backlog]].
 - [[LESSON-verify-worktree-isolation-is-real]] - Worktree isolation can silently not exist; confirm the path is in `git worktree list` before parallel writers run
 - [[LESSON-spawned-sessions-inherit-project-hooks]] - A spawned claude session inherits the project's hooks; a hook-spawned worker fires its own machinery unless gated
 - [[LESSON-headless-worker-denies-tools-silently]] - Headless claude -p runs deny Write/Bash by default; scope the worker's tools exactly, don't bypass
+- [[LESSON-sizing-unrecorded-blind-to-born-folder]] - sizing_unrecorded fires on every spec since SPEC-016 D-06 made folder the birth shape, drowning real reconciliation failures
 
 ## compass-cli
 - [[compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work]] - A Python `compass` CLI Owns All Mechanical Vault Work; the Hook Calls It as a Command
