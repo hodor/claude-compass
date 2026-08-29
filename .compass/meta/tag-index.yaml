@@ -143,6 +143,7 @@ tags:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   - compass-cli/research/RESEARCH-cli-token-reduction-measurement.md
   - decisions/ADR-007-decision-coverage-mechanism.md
+  - decisions/ADR-015-self-update-on-session-start.md
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
@@ -153,9 +154,11 @@ tags:
   - plans/PLAN-007-test-quality.md
   - plans/PLAN-008-rolling-wave.md
   - plans/PLAN-011-active-sweep.md
+  - plans/PLAN-012-self-update.md
   - research/RESEARCH-decision-coverage-impl.md
   - research/RESEARCH-hybrid-hierarchy-impl.md
   - research/RESEARCH-model-resolution-impl.md
+  - research/RESEARCH-self-update-surfaces.md
   - research/RESEARCH-test-quality-bar-validation.md
   - research/RESEARCH-test-quality-empirical.md
   - specs/SPEC-017-capabilities-are-reachable-and-measured.md
@@ -270,8 +273,12 @@ tags:
   discovery:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   distribution:
+  - decisions/ADR-015-self-update-on-session-start.md
   - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
+  - plans/PLAN-012-self-update.md
+  - research/RESEARCH-self-update-surfaces.md
   - specs/SPEC-006-multi-host-agent-cli-support.md
+  - specs/SPEC-020-compass-updates-itself/index.md
   docker:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   drift:
@@ -330,6 +337,7 @@ tags:
   fleet:
   - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
   - research/RESEARCH-fleet-test-census.md
+  - specs/SPEC-020-compass-updates-itself/index.md
   fleet-audit:
   - research/RESEARCH-lesson-capture-failure.md
   flow:
@@ -421,6 +429,7 @@ tags:
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   - decisions/ADR-013-detached-worker-quiet-fallback.md
+  - decisions/ADR-015-self-update-on-session-start.md
   - handoffs/PLAN-006-learning-loop/2026-08-06_06-02-00_phase2-live-hooks-first-firing.md
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
@@ -434,11 +443,14 @@ tags:
   - plans/PLAN-001-lessons-and-index-implementation.md
   - plans/PLAN-006-learning-loop.md
   - plans/PLAN-010-invisible-capture.md
+  - plans/PLAN-012-self-update.md
   - research/RESEARCH-active-set-prior-art.md
   - research/RESEARCH-invisible-scaffolding.md
   - research/RESEARCH-lessons-and-index-architecture.md
+  - research/RESEARCH-self-update-surfaces.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
   - specs/SPEC-018-scaffolding-invisible-to-the-human.md
+  - specs/SPEC-020-compass-updates-itself/index.md
   host-adapter:
   - specs/SPEC-006-multi-host-agent-cli-support.md
   host-evaluation:
@@ -693,6 +705,8 @@ tags:
   plugin-config:
   - lessons/LESSON-hook-if-clause-no-or.md
   - lessons/LESSON-hook-type-prompt-no-skills.md
+  plugin-yaml:
+  - research/RESEARCH-self-update-surfaces.md
   popper:
   - research/RESEARCH-scientific-method-in-compass.md
   portability:
@@ -823,6 +837,11 @@ tags:
   - lessons/LESSON-wikilink-validator-skip-code.md
   sendmessage:
   - lessons/LESSON-subagent-reports-need-sendmessage.md
+  session-start:
+  - decisions/ADR-015-self-update-on-session-start.md
+  - plans/PLAN-012-self-update.md
+  - research/RESEARCH-self-update-surfaces.md
+  - specs/SPEC-020-compass-updates-itself/index.md
   settings:
   - lessons/LESSON-hooks-load-only-from-settings.md
   setup:
@@ -1011,9 +1030,13 @@ tags:
   - specs/SPEC-010-universal-hybrid-hierarchy.md
   update:
   - decisions/ADR-008-model-resolution-table.md
+  - decisions/ADR-015-self-update-on-session-start.md
   - lessons/LESSON-installer-removes-only-what-it-installed.md
   - plans/PLAN-005-model-table.md
+  - plans/PLAN-012-self-update.md
+  - research/RESEARCH-self-update-surfaces.md
   - specs/SPEC-014-update-safe-customizations.md
+  - specs/SPEC-020-compass-updates-itself/index.md
   usage-measurement:
   - specs/SPEC-017-capabilities-are-reachable-and-measured.md
   user-files:
@@ -1082,3 +1105,6 @@ tags:
   worktree:
   - lessons/LESSON-subagent-worktrees-fork-stale.md
   - lessons/LESSON-verify-worktree-isolation-is-real.md
+  zero-touch:
+  - decisions/ADR-015-self-update-on-session-start.md
+  - specs/SPEC-020-compass-updates-itself/index.md

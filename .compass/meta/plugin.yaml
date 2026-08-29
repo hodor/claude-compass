@@ -1,10 +1,10 @@
 plugin:
   name: compass
-  version: 0.8.2
+  version: 0.10.0
   source: F:/claude/plugins/compass/plugin
   repository: https://github.com/hodor/claude-compass
-  installed_at: 2026-08-24
-  installed_mode: update
+  installed_at: 2026-08-28
+  installed_mode: auto-update
   notes: |
     This vault IS the Compass plugin's own development vault. The plugin source
     at `source` above is what this vault uses to drive its workflow. Editing
