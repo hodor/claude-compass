@@ -32,7 +32,7 @@ Required directories: `specs/`, `research/`, `plans/`, `decisions/`, `lessons/`,
 
 ### 4. Vault integrity
 
-Same checks as the vault-health skill: frontmatter validation, wikilink resolution, orphan detection (files not referenced by index.md). Counter consistency check removed per [[ADR-003-drop-counter-file-jit-compute]].
+Same checks as the vault-health skill: frontmatter validation and wikilink resolution via `compass validate`, orphan detection via `compass graph orphans` (computed by the CLI; never crawl the vault for it). Counter consistency check removed per [[ADR-003-drop-counter-file-jit-compute]].
 
 ### 5. Task hygiene
 

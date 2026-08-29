@@ -15,6 +15,12 @@ import vaultlib
 
 TYPE_SPREAD_THRESHOLD = 3
 
+# A spec this many artifacts depend on directly is a vault-wide hub, not a
+# unit seed: half the vault tracing to it is dominance, not cohesion, and it
+# drowns the real candidates (SPEC-001 measured 17 inbound; genuine unit
+# seeds measure well under this).
+HUB_INBOUND_CAP = 10
+
 WIKILINK = re.compile(r"\[\[([^\]]+)\]\]")
 
 # Fallback type for an artifact whose frontmatter lacks `type`: the singular
@@ -95,8 +101,15 @@ def find_candidates(vault_root):
         for spec_rel in _reachable_specs(record["_rel"], edges, by_path):
             groups.setdefault(spec_rel, []).append(record["_rel"])
 
+    inbound_degree = {}
+    for deps in edges.values():
+        for dep in deps:
+            inbound_degree[dep] = inbound_degree.get(dep, 0) + 1
+
     candidates = []
     for spec_rel in sorted(groups):
+        if inbound_degree.get(spec_rel, 0) >= HUB_INBOUND_CAP:
+            continue
         members = sorted({spec_rel, *groups[spec_rel]})
         types = sorted({_artifact_type(by_path[rel]) for rel in members})
         if len(types) >= TYPE_SPREAD_THRESHOLD:

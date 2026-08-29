@@ -23,6 +23,7 @@ COMMAND_SPECS = [
     ("fix-frontmatter", "Add missing frontmatter / core fields to artifacts (dry-run; --apply to write)."),
     ("next-num", "Print the next local artifact number for a type."),
     ("usage", "Report the per-command invocation record: judgment-invoked, hook-fired, and NEVER USED."),
+    ("graph", "orphans | hubs [--top N] | impact <name> [--depth N] - link-graph queries computed from the markdown at invocation, every answer naming its edges."),
     ("hot-path", "Print the hot-path token count against the cap."),
     ("promote", "Move a flat spec into a folder and rewrite inbound wikilinks (dry-run; --apply to write)."),
     ("demote", "Move a childless folder spec back into a flat file, the inverse of promote (dry-run; --apply to write)."),
