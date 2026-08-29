@@ -34,6 +34,10 @@ Use the `pattern-finder` agent to verify that key assumptions are still accurate
 
 Run `compass lessons --for <spec> --context planner` and read the lessons it names. Present **domain** lessons as constraint-checks; **process** lessons as technique guidance.
 
+### 3b. Ripple
+
+Run `compass graph impact <spec-or-artifact>` for each source spec and any artifact the plan will modify. The output lists every inbound edge (`src -[kind]-> dst`) to depth 2 - the documents a change ripples into, with the edges named so you audit the traversal instead of trusting a total. Record the answer in the plan as a `## Ripple` section and let it inform task ordering and the What We're NOT Doing boundary. Hand-tallied ripple answers have miscounted in both directions ([[RESEARCH-grep-vs-graph-experiment]]); the query replaces that judgment, never supplements it.
+
 ### 4. Write the plan
 
 Use your judgment on wave boundaries and task sizes. The human reviews the whole plan in step 5, so there is no separate outline approval.

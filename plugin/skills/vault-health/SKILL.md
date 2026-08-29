@@ -23,19 +23,11 @@ python3 "$CLAUDE_PLUGIN_ROOT/cli/compass" validate
 
 ## 2. Orphan detection (`orphans`)
 
-Files not referenced by `index.md` or any other vault file. The CLI does not check this; do it here.
-
-Read `index.md` and every vault file's wikilinks. List files in `.compass/` (excluding `tmp/`, `meta/`, `.annotations/`). Report any not referenced anywhere.
-
+```bash
+python3 "$CLAUDE_PLUGIN_ROOT/cli/compass" graph orphans
 ```
-## Orphan Detection
 
-Unreferenced:
-- research/RESEARCH-old-api-study.md - not linked from any vault file
-- lessons/LESSON-stale-cache.md - not linked from index.md
-
-Summary: 18 files, 2 orphans
-```
+The CLI computes this from the markdown at invocation: artifacts with no inbound structural edge (`depends_on`, body wikilink, containment). The catalog row every artifact gets in `index.md` from sync does not count as a reference - that subtlety is encoded in the query, so never re-derive it by crawling. Surface the output as the report section.
 
 ## 3. Bare-reference check (`linking`)
 
