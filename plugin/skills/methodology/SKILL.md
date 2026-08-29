@@ -276,6 +276,8 @@ Agents depending on external tools (MCP, `gh`, specific runtimes) verify availab
 
 The unit question is judged once, at vision, from what the human actually said: a workstream earns `compass make-unit <name> --apply --reason "<why>"` before the spec list is even shown, named in plain words, once - the silence preference, if the human asks for it, lives in `vision.md`. A human who knows the feature calls it by name: `make-unit` / `make-unit --undo`, `promote` / `demote` for the rare flat-to-folder spec conversion, and `compass sizing stats` for the log all four write to. `doctor`'s unit-promotion candidate row is the reactive backstop for whatever judgment and silence miss.
 
+The full capability index is bare `compass` - every command, one line each. `compass usage` reports which commands are invoked and which never have been; `doctor` carries the same finding as an advisory row. Three commands await their wiring verdict on that record: `resolve-model` (per-agent model/effort query) and the admission-control pair `touched`/`admit-check` (ADR-004) - live or retire by measured use, not by guess.
+
 Unit artifacts are linked path-qualified (`[[<unit>/specs/SPEC-001-name]]`); root artifacts keep bare stems. The obsidian skill documents the full unit-folder conventions.
 
 ## Pattern discovery

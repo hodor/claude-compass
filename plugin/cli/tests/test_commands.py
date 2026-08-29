@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import modelslib  # noqa: E402
 import vaultlib  # noqa: E402
 from commands import (  # noqa: E402
-    coverage, decisions, make_unit, models, next_num, resolve_model, tree,
+    coverage, decisions, make_unit, models, next_num, resolve_model,
     hot_path, sizing, unit_check, validate,
 )
 
@@ -103,41 +103,6 @@ class NextNumTests(unittest.TestCase):
         with_vault_env(self, root)
         self.assertEqual(next_num.run(["spec", "../elsewhere"]), 1)
         self.assertEqual(next_num.run(["spec", "a/../../elsewhere"]), 1)
-
-
-class TreeTests(unittest.TestCase):
-    def test_nested_rendering(self):
-        root = make_vault(self)
-        write(root, "specs/SPEC-001-flat.md")
-        write(root, "specs/SPEC-002-tile/index.md")
-        write(root, "specs/SPEC-002-tile/SPEC-001-master.md")
-        rendered = tree.render(root)
-        self.assertEqual(
-            rendered,
-            "specs\n  SPEC-001-flat\n  SPEC-002-tile/\n    SPEC-001-master",
-        )
-
-    def test_unit_branch_rendering(self):
-        root = make_vault(self)
-        write(root, "specs/SPEC-001-flat.md")
-        write(root, "compass-cli/index.md", "---\ntitle: U\ntype: unit\n---\n")
-        write(root, "compass-cli/specs/SPEC-001-cli.md")
-        write(root, "compass-cli/specs/SPEC-002-sub/index.md")
-        write(root, "compass-cli/specs/SPEC-002-sub/SPEC-001-child.md")
-        write(root, "compass-cli/plans/PLAN-001-impl.md", "---\ntype: plan\n---\n")
-        rendered = tree.render(root)
-        self.assertEqual(
-            rendered,
-            "specs\n"
-            "  SPEC-001-flat\n"
-            "compass-cli\n"
-            "  plans\n"
-            "    PLAN-001-impl\n"
-            "  specs\n"
-            "    SPEC-001-cli\n"
-            "    SPEC-002-sub/\n"
-            "      SPEC-001-child",
-        )
 
 
 class HotPathTests(unittest.TestCase):

@@ -22,13 +22,12 @@ COMMAND_SPECS = [
     ("validate", "Check wikilinks, frontmatter, and the hot-path cap. Non-zero exit on any defect."),
     ("fix-frontmatter", "Add missing frontmatter / core fields to artifacts (dry-run; --apply to write)."),
     ("next-num", "Print the next local artifact number for a type."),
-    ("tree", "Render the hierarchical spec/folder tree."),
+    ("usage", "Report the per-command invocation record: judgment-invoked, hook-fired, and NEVER USED."),
     ("hot-path", "Print the hot-path token count against the cap."),
     ("promote", "Move a flat spec into a folder and rewrite inbound wikilinks (dry-run; --apply to write)."),
     ("demote", "Move a childless folder spec back into a flat file, the inverse of promote (dry-run; --apply to write)."),
     ("unit-check", "Report unit-promotion candidates: 3+ artifact types tracing to one spec via depends_on."),
     ("make-unit", "Create a unit folder, optionally git-moving named artifacts into it and rewriting the root index; --undo reverses it (dry-run; --apply to write)."),
-    ("clean-tmp", "Delete extraction logs older than 30 days."),
     ("touched", "Record a working-set marker for admission control."),
     ("admit-check", "Exit 0/1 for whether a spec may enter the hot path."),
     ("capture-bug", "Record a Compass bug locally (deduped by fingerprint) for later filing."),
@@ -112,6 +111,8 @@ def dispatch(name, args):
         module = __import__(module_name, fromlist=["run"])
     except ImportError:
         return cli_err(f"compass {name}: not implemented yet")
+    from commands import usage
+    usage.record(name)
     return module.run(args)
 
 

@@ -1,4 +1,4 @@
-"""Tests for promote, clean-tmp, touched, admit-check."""
+"""Tests for promote, touched, admit-check."""
 
 import io
 import os

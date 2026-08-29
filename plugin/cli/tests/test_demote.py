@@ -157,14 +157,14 @@ class DemoteTests(unittest.TestCase):
         root = self._clean_vault()
         write(root, "specs/SPEC-002-tile/index.md", FOLDER_BODY)
         index_before = (root / "index.md").read_text(encoding="utf-8")
-        files_before = sorted(p.relative_to(root).as_posix() for p in root.rglob("*"))
+        files_before = sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if p.relative_to(root).parts[0] != "meta")
         code, out, _ = run_cli(["demote", "SPEC-002-tile"])
         self.assertEqual(code, 0)
         self.assertIn("dry-run", out)
         self.assertTrue((root / "specs" / "SPEC-002-tile" / "index.md").is_file())
         self.assertFalse((root / "specs" / "SPEC-002-tile.md").exists())
         self.assertEqual(index_before, (root / "index.md").read_text(encoding="utf-8"))
-        files_after = sorted(p.relative_to(root).as_posix() for p in root.rglob("*"))
+        files_after = sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if p.relative_to(root).parts[0] != "meta")
         self.assertEqual(files_before, files_after)
 
     def test_apply_restores_flat_file_and_drops_children_count(self):
@@ -314,12 +314,12 @@ class MakeUnitUndoTests(unittest.TestCase):
         implementation that treats naming the unit alone as enough to act
         would git-mv real files back on a preview invocation."""
         root = self._unit_vault()
-        files_before = sorted(p.relative_to(root).as_posix() for p in root.rglob("*"))
+        files_before = sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if p.relative_to(root).parts[0] != "meta")
         code, out, _ = run_module(make_unit, ["--undo", "core"])
         self.assertEqual(code, 0)
         self.assertIn("dry-run", out)
         self.assertTrue((root / "core").is_dir())
-        files_after = sorted(p.relative_to(root).as_posix() for p in root.rglob("*"))
+        files_after = sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if p.relative_to(root).parts[0] != "meta")
         self.assertEqual(files_before, files_after)
 
     def test_undo_apply_restores_artifacts_and_removes_folder(self):
