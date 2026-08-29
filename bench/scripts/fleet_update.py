@@ -21,6 +21,9 @@ import sys
 from pathlib import Path
 
 SOURCE = Path(__file__).resolve().parents[2] / "plugin"
+
+sys.path.insert(0, str(SOURCE / "cli"))
+from commands import self_update  # noqa: E402
 ROOTS = [Path("F:/"), Path("C:/Users/rtgasi")]
 SKIP_DIRS = {
     "node_modules", ".git", "Library", "AppData", "scoop", ".cache", "venv",
@@ -74,12 +77,24 @@ def refresh_install(project):
     shutil.copy2(SOURCE / "hooks" / "hooks.json", claude / "hooks" / "hooks.json")
 
 
-def stamp_version(project, version, today):
+def stamp_version(project, version, today, commit_sha):
     path = project / ".compass" / "meta" / "plugin.yaml"
     text = path.read_text(encoding="utf-8-sig")
     text = re.sub(r"(?m)^(\s*version:\s*)\S+", rf"\g<1>{version}", text, count=1)
     text = re.sub(r"(?m)^(\s*installed_at:\s*)\S+", rf"\g<1>{today}", text, count=1)
     text = re.sub(r"(?m)^(\s*installed_mode:\s*)\S+", r"\g<1>update", text, count=1)
+    # commit: is compass self-update's sha gate; stamping the just-pushed HEAD
+    # makes each vault's first session-start check a cheap ls-remote no-op.
+    if commit_sha:
+        if re.search(r"(?m)^\s*commit:", text):
+            text = re.sub(r"(?m)^(\s*commit:\s*)\S+", rf"\g<1>{commit_sha}", text, count=1)
+        else:
+            text = re.sub(
+                r"(?m)^(\s*)version:.*$",
+                lambda m: m.group(0) + f"\n{m.group(1)}commit: {commit_sha}",
+                text,
+                count=1,
+            )
     path.write_text(text.replace("\r\n", "\n"), encoding="utf-8", newline="\n")
 
 
@@ -94,24 +109,14 @@ def hooks_registered(project):
 
 
 def merge_hook_events(project):
-    """Register any hook event the manifest names that settings.json lacks.
-
-    Events already registered are left exactly as they are, so a project's
-    hand-tuned entries survive; only absent events are added, copied from
-    the manifest. Returns the list of events added."""
-    settings_path = project / ".claude" / "settings.json"
-    manifest = json.loads((project / ".claude" / "hooks" / "hooks.json").read_text(encoding="utf-8-sig"))["hooks"]
-    try:
-        settings = json.loads(settings_path.read_text(encoding="utf-8-sig")) if settings_path.is_file() else {}
-    except ValueError:
-        return []
-    hooks = settings.setdefault("hooks", {})
-    added = [event for event in manifest if event not in hooks]
-    for event in added:
-        hooks[event] = manifest[event]
-    if added:
-        settings_path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8", newline="\n")
-    return added
+    """Register the manifest's hooks in settings.json via the CLI's own
+    merge: Compass-owned groups (any group whose commands mention `compass`)
+    are replaced with the manifest's current set, user-authored groups and
+    unrelated keys survive, and the PostToolUse triple collapses to one
+    Write|Edit|MultiEdit matcher. Returns the events the manifest carries."""
+    manifest_path = project / ".claude" / "hooks" / "hooks.json"
+    self_update.merge_settings(project, manifest_path)
+    return sorted(json.loads(manifest_path.read_text(encoding="utf-8-sig"))["hooks"])
 
 
 def run_cli(project, *args):
@@ -150,6 +155,11 @@ def main(argv):
     import datetime
     today = datetime.date.today().isoformat()
     version = source_version()
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=str(SOURCE.parent), capture_output=True, text=True,
+    )
+    commit_sha = head.stdout.strip() if head.returncode == 0 else ""
     vaults = find_vaults()
     print(f"source v{version}; {len(vaults)} vault(s); mode: {'apply' if apply else 'dry-run'}")
     results = []
@@ -158,7 +168,7 @@ def main(argv):
             results.append((project, "would-update", hooks_registered(project)))
             continue
         refresh_install(project)
-        stamp_version(project, version, today)
+        stamp_version(project, version, today, commit_sha)
         added_events = merge_hook_events(project)
         run_cli(project, "apply-models")
         doctor = run_cli(project, "doctor")
