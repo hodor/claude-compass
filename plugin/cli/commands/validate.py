@@ -24,6 +24,7 @@ import sys
 
 import vaultlib
 from commands import sizing
+from commands import sweep
 from commands.hot_path import HOT_PATH_CAP, measure
 
 # Missing one of these is an error - the artifact cannot be classified/indexed.
@@ -180,6 +181,19 @@ def check_vault(vault_root):
         warnings.append(f"cap_exceeded: hot path over {HOT_PATH_CAP} tokens")
 
     _reconcile_sizing(vault_root, layout, records, warnings)
+
+    _, active_sections = sweep.collect(vault_root)
+    lingering = sum(
+        1
+        for sec in active_sections
+        for kind, _ in sec["blocks"]
+        if kind == "done"
+    )
+    if lingering:
+        warnings.append(
+            f"active_done: {lingering} completed task(s) still in active.md "
+            f"- compass sync sweeps them to archive/done.md"
+        )
 
     return errors, warnings
 

@@ -101,8 +101,10 @@ When proposing a `plugin/` change, ask which goal it serves.
 ├── lessons/                  - lessons learned (5-line cap per body)
 ├── handoffs/                 - session continuity snapshots
 ├── prs/                      - PR descriptions
-└── archive/                  - completed/retired documents
+└── archive/                  - completed/retired documents; done.md holds tasks swept from active.md
 ```
+
+`active.md` holds only open work: `compass sync` (fired by the PostToolUse hook on every vault write) sweeps `[x]` task lines into `.compass/archive/done.md`, moving a section wholesale once every task in it is done. Check tasks off as always; their departure is automatic (ADR-014).
 
 Every spec is a folder whose `index.md` is the spec itself; children nest inside it at any depth, numbered locally. The parent holds the decisions shared by every child.
 

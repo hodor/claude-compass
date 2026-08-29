@@ -27,6 +27,7 @@ from pathlib import Path
 import capturelib
 import vaultlib
 from commands import hot_path
+from commands import sweep
 
 # A type directory's index section is its name title-cased, with overrides for
 # names that do not title-case cleanly. Unknown dirs (e.g. retro -> ## Retro)
@@ -500,12 +501,14 @@ def _clean_logs(vault_root):
 
 def sync(vault_root):
     """Run every sync step over the whole vault. Returns a report dict."""
+    active_swept = sweep.sweep_active(vault_root, apply=True)
     records = vaultlib.scan_artifacts(vault_root)
     _load_data(records)
     index_added = _sync_index(vault_root, records)
     catalog_added, catalog_collisions, catalog_duplicates = _sync_catalog(vault_root, records)
     logs_deleted, capture_log_pruned = _clean_logs(vault_root)
     return {
+        "active_swept": active_swept,
         "index_added": index_added,
         "catalog_added": catalog_added,
         "catalog_collisions": catalog_collisions,
@@ -519,6 +522,12 @@ def sync(vault_root):
 
 def format_report(report):
     parts = ["## Sync"]
+    swept = report.get("active_swept") or {}
+    if swept.get("items") or swept.get("sections"):
+        parts.append(
+            f"active.md swept: {swept['items']} item(s), "
+            f"{swept['sections']} whole section(s) -> archive/done.md"
+        )
     for atype, count in report["index_added"].items():
         parts.append(f"index: +{count} {atype}")
     if report["catalog_added"]:

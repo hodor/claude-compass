@@ -74,7 +74,7 @@ When code is written, formatted, and reviewed, your work ends. The orchestrator 
 ### 10. Update the vault
 
 - Check off the task `[x]` in the plan file.
-- Check off the task `[x]` in `active.md`.
+- Check off the task `[x]` in `active.md`. The sync sweep then moves the checked line to `archive/done.md`, so a later read finding it absent from `active.md` means closed, not lost.
 - Create an ADR in `.compass/decisions/` if a significant implementation decision was made.
 - Annotate `.compass/.annotations/` if you discovered a per-file gotcha future agents should know.
 
@@ -108,7 +108,7 @@ TASK-NNN ([[PLAN-NNN-name]] Phase N)
 - [decision]: [why] → [[ADR-NNN-name]]
 
 ### Vault
-- [x] active.md updated (index auto-synced)
+- [x] task closed in active.md (swept to archive/done.md; index auto-synced)
 ```
 
 ## Failure modes worth naming
