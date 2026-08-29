@@ -149,6 +149,7 @@ tags:
   - decisions/ADR-007-decision-coverage-mechanism.md
   - decisions/ADR-015-self-update-on-session-start.md
   - decisions/ADR-017-capability-index-and-usage-record.md
+  - decisions/ADR-018-graph-queries-jit-over-markdown.md
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
@@ -161,6 +162,7 @@ tags:
   - plans/PLAN-011-active-sweep.md
   - plans/PLAN-012-self-update.md
   - plans/PLAN-014-capability-usage.md
+  - plans/PLAN-015-graph-queries.md
   - research/RESEARCH-decision-coverage-impl.md
   - research/RESEARCH-hybrid-hierarchy-impl.md
   - research/RESEARCH-model-resolution-impl.md
@@ -375,6 +377,8 @@ tags:
   glob:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
   graph:
+  - decisions/ADR-018-graph-queries-jit-over-markdown.md
+  - plans/PLAN-015-graph-queries.md
   - research/RESEARCH-grep-vs-graph-experiment.md
   - specs/SPEC-011-vault-graph-queries.md
   graph-engineering:
@@ -479,6 +483,8 @@ tags:
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   - specs/SPEC-019-active-holds-only-active-work/index.md
   hub-ranking:
+  - decisions/ADR-018-graph-queries-jit-over-markdown.md
+  - plans/PLAN-015-graph-queries.md
   - specs/SPEC-011-vault-graph-queries.md
   human-attention:
   - specs/SPEC-018-scaffolding-invisible-to-the-human.md
@@ -502,6 +508,8 @@ tags:
   if-clause:
   - lessons/LESSON-hook-if-clause-no-or.md
   impact-traversal:
+  - decisions/ADR-018-graph-queries-jit-over-markdown.md
+  - plans/PLAN-015-graph-queries.md
   - research/RESEARCH-grep-vs-graph-experiment.md
   - specs/SPEC-011-vault-graph-queries.md
   in-vivo-coding:
@@ -665,6 +673,8 @@ tags:
   - lessons/LESSON-subagent-worktrees-fork-stale.md
   - lessons/LESSON-verify-worktree-isolation-is-real.md
   orphans:
+  - decisions/ADR-018-graph-queries-jit-over-markdown.md
+  - plans/PLAN-015-graph-queries.md
   - research/RESEARCH-grep-vs-graph-experiment.md
   - specs/SPEC-011-vault-graph-queries.md
   overfit:
@@ -775,6 +785,7 @@ tags:
   python-cli:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   queries:
+  - decisions/ADR-018-graph-queries-jit-over-markdown.md
   - research/RESEARCH-grep-vs-graph-experiment.md
   - specs/SPEC-011-vault-graph-queries.md
   rag:

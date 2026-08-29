@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 8497 / 5000 tokens (index.md 4996, active.md 346, meta/lessons-catalog.yaml 3155). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 8565 / 5000 tokens (index.md 5089, active.md 321, meta/lessons-catalog.yaml 3155). Run /compass:consolidate before next session. -->
 <!-- WARNING: index.md exceeded hot-path cap. Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
@@ -91,6 +91,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-012-self-update]] - implement ADR-015: self_update command with sha gate and local-source mode, SessionStart(startup) hook entry, setup/update skill alignment, live acceptance in this repo
 - [[PLAN-013-capture-by-extraction]] - implement ADR-016 across spec/vision/specs/retroactive skills and the pipeline rules; ship via push + fleet self-update
 - [[PLAN-014-capability-usage]] - implement ADR-017: usage recording in dispatch, usage report, doctor advisory, retirements, reachability line; ship v0.12.0
+- [[PLAN-015-graph-queries]] - implement ADR-018: graphlib, compass graph, consumer wiring, ripple step; live validation; v0.13.0
 
 ## Decisions
 
@@ -110,6 +111,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[ADR-015-self-update-on-session-start]] - SessionStart(startup) runs compass self-update: ls-remote sha gate, clone-and-apply replicating the update skill mechanically, dev repos copy from local plugin/, one context line on update, silence and exit 0 on every failure
 - [[ADR-016-capture-by-extraction]] - interview skills switch from synthesize-a-draft to extract-and-arrange: the human's sentences carry the capture sections, agent additions bracketed, uncertain words flagged never substituted, brevity binds only agent prose
 - [[ADR-017-capability-index-and-usage-record]] - bare compass is the progressive-disclosure index made reachable by one rule line; dispatch records every invocation; compass usage lists never-used commands explicitly; clean-tmp and tree retire; admission control's fate decided by data
+- [[ADR-018-graph-queries-jit-over-markdown]] - no derived store: compass graph parses edges at query time so staleness cannot exist; orphans/hubs/impact ship wired into vault-health, checkup, unit-check's hub guard, and a planner ripple step
 
 ## Active Work
 
