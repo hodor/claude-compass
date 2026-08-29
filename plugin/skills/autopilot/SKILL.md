@@ -58,7 +58,7 @@ Spawn the `validator` agent with the plan file.
 
 ### 6. Update the vault
 
-Verify `active.md` has completed tasks checked off, ADRs exist for significant decisions, `index.md` includes any new documents (PostToolUse hook auto-syncs). Lessons are captured retrospectively by `extract-lessons` at phase boundary, not here.
+Verify completed tasks are closed - checked off in the plan, and gone from `active.md` (the sync sweep moves checked lines to `archive/done.md`); ADRs exist for significant decisions, `index.md` includes any new documents (PostToolUse hook auto-syncs). Lessons are captured retrospectively by `extract-lessons` at phase boundary, not here.
 
 ### 7. Commit (if the human approved)
 

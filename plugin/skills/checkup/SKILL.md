@@ -38,10 +38,12 @@ Same checks as the vault-health skill: frontmatter validation, wikilink resoluti
 
 In `.compass/active.md`:
 
-- Tasks marked `[x]` done but no corresponding plan checkoff.
+- Tasks marked `[x]` still present - the sync sweep should have moved them to `archive/done.md`; run `compass sweep` to see what lingers and why.
 - Tasks marked `[ ]` but commits exist for them.
 - Tasks referencing plans that don't exist.
 - Tasks older than 14 days without progress (stale).
+
+In `.compass/archive/done.md`: swept tasks with no corresponding plan checkoff.
 
 ### 6. Handoff freshness
 

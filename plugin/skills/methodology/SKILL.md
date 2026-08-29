@@ -259,7 +259,7 @@ Agents depending on external tools (MCP, `gh`, specific runtimes) verify availab
 ```
 .compass/
 ├── index.md              - HOT: master map with 1-line summaries + [[links]]
-├── active.md             - HOT: current tasks
+├── active.md             - HOT: open tasks only; `compass sync` sweeps checked lines out
 ├── backlog.md            - Cold: future tasks
 ├── meta/
 │   ├── lessons-catalog.yaml - O(1) lesson tag lookup (numbering is JIT, no counter file)
@@ -271,7 +271,7 @@ Agents depending on external tools (MCP, `gh`, specific runtimes) verify availab
 │   ├── index.md          - Unit marker, title, children listing
 │   ├── specs/ plans/ ... - Own type subdirs, unit-local numbering
 │   └── lessons/          - Aggregated into meta/lessons-catalog.yaml by sync
-└── archive/              - Completed/retired
+└── archive/              - Completed/retired; done.md holds tasks swept from active.md
 ```
 
 The unit question is judged once, at vision, from what the human actually said: a workstream earns `compass make-unit <name> --apply --reason "<why>"` before the spec list is even shown, named in plain words, once - the silence preference, if the human asks for it, lives in `vision.md`. A human who knows the feature calls it by name: `make-unit` / `make-unit --undo`, `promote` / `demote` for the rare flat-to-folder spec conversion, and `compass sizing stats` for the log all four write to. `doctor`'s unit-promotion candidate row is the reactive backstop for whatever judgment and silence miss.

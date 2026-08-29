@@ -81,7 +81,7 @@ Spawn builder agents to execute tasks. The main conversation orchestrates; it do
 
 8. **Validate (optional).** Offer to spawn the validator with the plan file.
 
-9. **Vault.** Verify builders updated `active.md` and `index.md`. If any skipped, do it now. The SDK auto-cleans worktrees once their branches are merged.
+9. **Vault.** Verify each completed task is closed: checked off in the plan, and no longer open in `active.md` - builders check it off there, and the sync sweep moves the checked line to `archive/done.md`. If a builder skipped the checkoff, do it now. The SDK auto-cleans worktrees once their branches are merged.
 
 ## Report
 
