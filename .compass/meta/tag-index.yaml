@@ -378,6 +378,7 @@ tags:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
   graph:
   - decisions/ADR-018-graph-queries-jit-over-markdown.md
+  - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
   - plans/PLAN-015-graph-queries.md
   - research/RESEARCH-grep-vs-graph-experiment.md
   - specs/SPEC-011-vault-graph-queries.md
@@ -395,6 +396,7 @@ tags:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
   - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
+  - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
   - handoffs/PLAN-006-learning-loop/2026-08-06_06-02-00_phase2-live-hooks-first-firing.md
   hang:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
@@ -496,6 +498,8 @@ tags:
   - lessons/LESSON-walkthroughs-in-the-humans-words.md
   humanlayer:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
+  humans-words:
+  - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
   hybrid:
   - research/RESEARCH-hybrid-hierarchy-impl.md
   - specs/SPEC-010-universal-hybrid-hierarchy.md
@@ -815,6 +819,7 @@ tags:
   - research/RESEARCH-rolling-wave-flow-theory.md
   release:
   - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
+  - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
   replanning:
   - research/RESEARCH-rolling-wave-agent-planning.md
   replication:
@@ -871,6 +876,8 @@ tags:
   - research/RESEARCH-test-quality-empirical.md
   self-reference:
   - lessons/LESSON-wikilink-validator-skip-code.md
+  self-update:
+  - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
   sendmessage:
   - lessons/LESSON-subagent-reports-need-sendmessage.md
   session-start:
@@ -955,6 +962,7 @@ tags:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   sweep:
   - decisions/ADR-014-active-sweep-on-sync.md
+  - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
   - plans/PLAN-011-active-sweep.md
   - research/RESEARCH-active-set-prior-art.md
   sync:
@@ -1082,6 +1090,8 @@ tags:
   - research/RESEARCH-self-update-surfaces.md
   - specs/SPEC-014-update-safe-customizations.md
   - specs/SPEC-020-compass-updates-itself/index.md
+  usage:
+  - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
   usage-measurement:
   - decisions/ADR-017-capability-index-and-usage-record.md
   - plans/PLAN-014-capability-usage.md

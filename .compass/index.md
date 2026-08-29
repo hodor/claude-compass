@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 8565 / 5000 tokens (index.md 5089, active.md 321, meta/lessons-catalog.yaml 3155). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 8638 / 5000 tokens (index.md 5162, active.md 321, meta/lessons-catalog.yaml 3155). Run /compass:consolidate before next session. -->
 <!-- WARNING: index.md exceeded hot-path cap. Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
@@ -131,6 +131,7 @@ See [[backlog]].
 - [[2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next]] - lesson capture root-caused; SPEC-012 queued
   - [[2026-08-06_06-02-00_phase2-live-hooks-first-firing]] - Handoff: PLAN-006 Phase 2 live; hooks fire from settings.json for the first time ever
 - [[2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped]] - two initiatives shipped end to end and distributed to 50 vaults; hot-path tiering (ADR-010) is the next plan
+- [[2026-08-29_20-30-00_five-releases-queue-at-human-gates]] - five specs shipped end to end (active sweep, self-update, capture-by-extraction, capability usage, graph queries), fleet self-updating; next: SPEC-006 research session, SPEC-014 promotion ruling, SubagentStop payload observation
 
 ## Lessons
 

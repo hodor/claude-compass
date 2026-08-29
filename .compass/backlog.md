@@ -56,7 +56,7 @@ Held under [[PLAN-009-sizing-mechanism]]'s `## Later` region. Promoted into a de
 ## Other
 
 - [ ] Build `/compass` orchestrator skill - single entry point that delegates to agents based on project state
-- [ ] Archive workflow - move completed tasks from active.md to archive/
+- [x] Archive workflow - shipped v0.9.0: `compass sync` sweeps done tasks into archive/done.md ([[ADR-014-active-sweep-on-sync]], 2026-08-28)
 - [ ] Plugin marketplace listing - publish to Claude Code plugin marketplace
 
 ## Superseded by [[SPEC-002-lessons-and-index-subsystem]]
