@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 10538 / 5000 tokens (index.md 4654, active.md 2744, meta/lessons-catalog.yaml 3140). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 8335 / 5000 tokens (index.md 4759, active.md 436, meta/lessons-catalog.yaml 3140). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -87,6 +87,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-009-sizing-mechanism]] - zero-artifact units, the sizing record, and the changeability walk (draft, awaiting approval)
 - [[PLAN-009-sizing-mechanism]] - Sizing Mechanism (Zero-Artifact Units, the Sizing Record, and the Changeability Walk)
 - [[PLAN-010-invisible-capture]] - capture moves off the conversation into a hook-spawned detached worker, with recorded runs, dead-worker detection, a quiet fallback, and a live-fire acceptance
+- [[PLAN-011-active-sweep]] - implement ADR-014: sweep module with dry-run CLI command, wired into sync, validate drift warning, builder/build/checkup doc updates, live acceptance on this vault
 
 ## Decisions
 
@@ -105,6 +106,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[ADR-012-test-checkpoint-py-membership-git-authoritative]] - `.py` membership in `test-checkpoint verify` stays git-authoritative; a bundled non-`.py` file is classified only when recorded
 - [[ADR-013-detached-worker-quiet-fallback]] - capture runs in a detached worker; additionalContext is the fallback; every run recorded
 - [[ADR-013-detached-worker-quiet-fallback]] - the Stop hook spawns a detached headless worker for the extraction pass; additionalContext replaces the rendered block as fallback; worker runs are logged and reconciled
+- [[ADR-014-active-sweep-on-sync]] - sync gains a sweep step: done task lines leave active.md mechanically on every sync, whole sections move when fully done, records land verbatim in archive/done.md, validate warns on drift
 
 ## Active Work
 

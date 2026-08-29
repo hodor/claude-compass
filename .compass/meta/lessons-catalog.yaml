@@ -252,3 +252,10 @@ lessons:
     tags: [headless, permissions, tool-scoping, background-worker, silent-failure]
     score: 5
     summary: "Headless claude -p runs deny Write/Bash by default; scope the worker's tools exactly, don't bypass"
+  - file: "LESSON-sizing-unrecorded-blind-to-born-folder.md"
+    status: active
+    category: domain
+    area: methodology
+    tags: [sizing, validate, reconciliation, born-folder]
+    score: 5
+    summary: "sizing_unrecorded fires on every spec since SPEC-016 D-06 made folder the birth shape, drowning real reconciliation failures"

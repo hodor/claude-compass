@@ -8,6 +8,8 @@ tags:
   accuracy:
   - specs/SPEC-007-decision-coverage-tracing.md
   active-tasks:
+  - decisions/ADR-014-active-sweep-on-sync.md
+  - plans/PLAN-011-active-sweep.md
   - research/RESEARCH-active-set-prior-art.md
   - specs/SPEC-019-active-holds-only-active-work/index.md
   admission-bar:
@@ -46,6 +48,8 @@ tags:
   - lessons/LESSON-walkthroughs-in-the-humans-words.md
   architecture:
   - specs/SPEC-001-compass-vision-and-architecture.md
+  archive:
+  - decisions/ADR-014-active-sweep-on-sync.md
   argparse:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
@@ -148,6 +152,7 @@ tags:
   - plans/PLAN-006-learning-loop.md
   - plans/PLAN-007-test-quality.md
   - plans/PLAN-008-rolling-wave.md
+  - plans/PLAN-011-active-sweep.md
   - research/RESEARCH-decision-coverage-impl.md
   - research/RESEARCH-hybrid-hierarchy-impl.md
   - research/RESEARCH-model-resolution-impl.md
@@ -443,6 +448,8 @@ tags:
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - decisions/ADR-010-identity-resident-fetch-mandatory.md
+  - decisions/ADR-014-active-sweep-on-sync.md
+  - plans/PLAN-011-active-sweep.md
   - research/RESEARCH-active-set-prior-art.md
   - research/RESEARCH-cache-theory-for-context-tiers.md
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
@@ -886,11 +893,15 @@ tags:
   summaries:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   sweep:
+  - decisions/ADR-014-active-sweep-on-sync.md
+  - plans/PLAN-011-active-sweep.md
   - research/RESEARCH-active-set-prior-art.md
   sync:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
+  - decisions/ADR-014-active-sweep-on-sync.md
   - lessons/LESSON-append-only-index-misses-mutations.md
   - plans/PLAN-003-hybrid-hierarchy.md
+  - plans/PLAN-011-active-sweep.md
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   synthesis:
   - research/RESEARCH-rolling-wave-synthesis.md
@@ -949,6 +960,7 @@ tags:
   - decisions/ADR-008-model-resolution-table.md
   - plans/PLAN-005-model-table.md
   token-budget:
+  - decisions/ADR-014-active-sweep-on-sync.md
   - research/RESEARCH-active-set-prior-art.md
   - specs/SPEC-019-active-holds-only-active-work/index.md
   token-efficiency:
