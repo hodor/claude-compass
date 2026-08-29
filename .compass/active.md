@@ -15,7 +15,6 @@ Triggered by a live failure in another project: a vision session produced seven 
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].
 - [ ] [[SPEC-014-update-safe-customizations]] approval + research (issue #6).
-- [ ] [[SPEC-011-vault-graph-queries]] pipeline: research/ADR on substrate, then planner consumer.
 - [ ] [[SPEC-006-multi-host-agent-cli-support]] hosts: hermes first, then Kimi Code / Codex.
 - [ ] Blinded rerun of the test-bar experiment ([[LESSON-blind-the-author-in-self-validation]]).
 - [ ] Review and approve all plugin files - 3/21 approved, paused since 2026-03-12; largely superseded by the per-file reviews every later plan performed.

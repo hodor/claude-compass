@@ -106,3 +106,10 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 ### Scaffolding-noise initiative (Roger, 2026-08-24)
 
 - [x] [[SPEC-018-scaffolding-invisible-to-the-human]] approved 2026-08-24 and SHIPPED via [[ADR-013-detached-worker-quiet-fallback]]/PLAN-010 (stale line corrected).
+
+### Next Up
+- [x] [[ADR-018-graph-queries-jit-over-markdown]] accepted for [[SPEC-011-vault-graph-queries]].
+- [x] TASK-105: vaultgraph + compass graph orphans/hubs/impact ([[PLAN-015-graph-queries]])
+- [x] TASK-106: unit-check hub-dominance guard, cap 10 (after 105)
+- [x] TASK-107: vault-health/checkup/planner consumers (after 105)
+- [x] TASK-108: live validation PASS - SPEC-001 tally 21=21, ADR-005 off-by-one audited in graph's favor, 3 true orphans; suite 768 green (after 106/107)
