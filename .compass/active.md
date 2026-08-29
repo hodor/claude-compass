@@ -9,12 +9,7 @@ updated: 2026-08-24
 
 Triggered by a live failure in another project: a vision session produced seven epic-sized needs and Compass proposed seven flat specs with no signal anything was wrong.
 
-- [ ] NEXT: research both specs, then one ADR. Open axes: SPEC-016's mechanism (skill step vs hook vs CLI gate), SPEC-017's index location.
 - [ ] Open: pin the project where the seven-monster-specs session happened ([[LESSON-pin-the-motivating-datum]]).
-
-## Scaffolding-noise initiative (Roger, 2026-08-24)
-
-- [ ] [[SPEC-018-scaffolding-invisible-to-the-human]] drafted, awaiting promotion. D-01 scaffolding stays hidden not removed; D-02 agents run the show between gates.
 
 ## Next Up
 

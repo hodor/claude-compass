@@ -148,6 +148,7 @@ tags:
   - compass-cli/research/RESEARCH-cli-token-reduction-measurement.md
   - decisions/ADR-007-decision-coverage-mechanism.md
   - decisions/ADR-015-self-update-on-session-start.md
+  - decisions/ADR-017-capability-index-and-usage-record.md
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
@@ -159,6 +160,7 @@ tags:
   - plans/PLAN-008-rolling-wave.md
   - plans/PLAN-011-active-sweep.md
   - plans/PLAN-012-self-update.md
+  - plans/PLAN-014-capability-usage.md
   - research/RESEARCH-decision-coverage-impl.md
   - research/RESEARCH-hybrid-hierarchy-impl.md
   - research/RESEARCH-model-resolution-impl.md
@@ -235,6 +237,8 @@ tags:
   data-loss:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
   dead-code:
+  - decisions/ADR-017-capability-index-and-usage-record.md
+  - plans/PLAN-014-capability-usage.md
   - specs/SPEC-017-capabilities-are-reachable-and-measured.md
   decision-coverage:
   - decisions/ADR-007-decision-coverage-mechanism.md
@@ -272,6 +276,8 @@ tags:
   diagnosis:
   - research/RESEARCH-lesson-capture-failure.md
   discoverability:
+  - decisions/ADR-017-capability-index-and-usage-record.md
+  - plans/PLAN-014-capability-usage.md
   - specs/SPEC-016-sizing-work-beyond-one-spec.md
   - specs/SPEC-017-capabilities-are-reachable-and-measured.md
   discovery:
@@ -745,6 +751,7 @@ tags:
   - lessons/LESSON-measure-the-procedures-intermediates.md
   progressive-disclosure:
   - decisions/ADR-010-identity-resident-fetch-mandatory.md
+  - decisions/ADR-017-capability-index-and-usage-record.md
   - research/RESEARCH-cache-theory-for-context-tiers.md
   - specs/SPEC-017-capabilities-are-reachable-and-measured.md
   progressive-elaboration:
@@ -1065,6 +1072,8 @@ tags:
   - specs/SPEC-014-update-safe-customizations.md
   - specs/SPEC-020-compass-updates-itself/index.md
   usage-measurement:
+  - decisions/ADR-017-capability-index-and-usage-record.md
+  - plans/PLAN-014-capability-usage.md
   - specs/SPEC-017-capabilities-are-reachable-and-measured.md
   user-files:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
