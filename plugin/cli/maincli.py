@@ -18,6 +18,7 @@ EXIT_ERROR = 1
 COMMAND_SPECS = [
     ("sync", "Regenerate index.md + tag-index.yaml, sweep done tasks out of active.md, check caps, clean tmp logs. Hook entry point."),
     ("sweep", "Move completed tasks from active.md to archive/done.md, whole sections when fully done (dry-run; --apply to write)."),
+    ("self-update", "Refresh this project's Compass install from its recorded source; sha-gated, throttled, silent unless it updated. SessionStart hook entry point."),
     ("validate", "Check wikilinks, frontmatter, and the hot-path cap. Non-zero exit on any defect."),
     ("fix-frontmatter", "Add missing frontmatter / core fields to artifacts (dry-run; --apply to write)."),
     ("next-num", "Print the next local artifact number for a type."),

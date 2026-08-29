@@ -130,7 +130,9 @@ Re-running this is idempotent: it replaces only the hook groups it previously wr
 
 ### 6. Record the new version
 
-Update `.compass/meta/plugin.yaml`: set `version` to the clone's version, `installed_at: <today>`, `installed_mode: update`. Preserve `repository:` and `source:` (the latter documents the original install, not the update channel). If `plugin.yaml` does not exist, create it with the fields from [[setup]] step 2's template.
+Update `.compass/meta/plugin.yaml`: set `version` to the clone's version, `commit: $(git -C "$TMP/clone" rev-parse HEAD)`, `installed_at: <today>`, `installed_mode: update`. Preserve `repository:` and `source:` (the latter documents the original install, not the update channel). If `plugin.yaml` does not exist, create it with the fields from [[setup]] step 2's template.
+
+`commit:` is the sha gate `compass self-update` compares against `git ls-remote` at every session start - after this update lands, the install keeps itself current automatically (SessionStart hook, mandatory per SPEC-020) and this skill is only needed to force a refresh or repair a broken install.
 
 ### 7. Verify with `compass doctor`, clean up, and report
 
