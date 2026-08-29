@@ -223,6 +223,52 @@ def _lessons_catalog_check(vault_root):
     return Check("lessons-catalog.yaml", OK, f"{path} present")
 
 
+MEASUREMENT_WINDOW_DAYS = 14
+
+
+def _usage_check(vault_root):
+    """Advisory row for the invocation record (ADR-017). A zero minutes into
+    measurement is not a finding, so never-used commands WARN only once the
+    record is at least MEASUREMENT_WINDOW_DAYS old; younger records and a
+    missing file report OK with the state named. Scan failure degrades to
+    WARN, never FAIL."""
+    try:
+        import datetime
+
+        import maincli
+        from commands import usage as usage_mod
+
+        path = vault_root / usage_mod.RECORD_FILE
+        if not path.is_file():
+            return Check(
+                "capability usage", OK,
+                "no invocation record yet; it starts with the next compass command",
+            )
+        since, rows = usage_mod._parse(vaultlib.read_vault_text(path))
+        dead = [
+            name for name, _ in maincli.COMMAND_SPECS
+            if rows.get(name, {"count": 0})["count"] == 0
+        ]
+        if not dead:
+            return Check("capability usage", OK, "every command has recorded usage")
+        try:
+            age = (datetime.date.today() - datetime.date.fromisoformat(since)).days
+        except (TypeError, ValueError):
+            age = 0
+        if age < MEASUREMENT_WINDOW_DAYS:
+            return Check(
+                "capability usage", OK,
+                f"measuring since {since}; {len(dead)} command(s) unused so far",
+            )
+    except Exception as exc:
+        return Check("capability usage", WARN, f"usage scan failed: {exc}")
+    return Check(
+        "capability usage", WARN,
+        f"{len(dead)} command(s) never used in {age} days of measurement",
+        "run `compass usage` for the NEVER USED list",
+    )
+
+
 def _unit_candidates_check(vault_root):
     """Advisory row for `unit_check.find_candidates`: WARN naming the
     candidates when any exist, OK when the vault has none. `find_candidates`
@@ -379,6 +425,7 @@ def _run_checks():
     ))
     checks.append(_lessons_catalog_check(vault_root))
     checks.append(_unit_candidates_check(vault_root))
+    checks.append(_usage_check(vault_root))
     checks.append(_worker_ledger_check(vault_root))
     return checks
 

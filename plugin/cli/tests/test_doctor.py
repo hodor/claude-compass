@@ -413,6 +413,7 @@ KNOWN_BASELINE_CHECKS = {
     "agents",
     "skills",
     "lessons-catalog.yaml",
+    "capability usage",
 }
 
 
@@ -437,7 +438,7 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        self.assertEqual(len(payload["checks"]), 8)
+        self.assertEqual(len(payload["checks"]), 9)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         row = new_rows[0]
@@ -466,7 +467,7 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        self.assertEqual(len(payload["checks"]), 8)
+        self.assertEqual(len(payload["checks"]), 9)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         self.assertEqual(new_rows[0]["status"], "OK")
@@ -524,7 +525,7 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        self.assertEqual(len(payload["checks"]), 8)
+        self.assertEqual(len(payload["checks"]), 9)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         self.assertEqual(new_rows[0]["status"], "WARN")
