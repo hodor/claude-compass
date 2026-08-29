@@ -114,13 +114,17 @@ tags:
   - specs/SPEC-019-active-holds-only-active-work/index.md
   capture:
   - decisions/ADR-013-detached-worker-quiet-fallback.md
+  - decisions/ADR-016-capture-by-extraction.md
   - plans/PLAN-006-learning-loop.md
   - plans/PLAN-010-invisible-capture.md
+  - plans/PLAN-013-capture-by-extraction.md
   - research/RESEARCH-hermes-memory-mechanics.md
+  - research/RESEARCH-humans-words-fidelity.md
   - research/RESEARCH-invisible-scaffolding.md
   - research/RESEARCH-lesson-capture-failure.md
   - specs/SPEC-012-learning-loop.md
   - specs/SPEC-018-scaffolding-invisible-to-the-human.md
+  - specs/SPEC-021-capture-in-the-humans-words/index.md
   catalog:
   - lessons/LESSON-append-only-index-misses-mutations.md
   category-mapping:
@@ -322,6 +326,8 @@ tags:
   - decisions/ADR-007-decision-coverage-mechanism.md
   fail-safe:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
+  faithfulness:
+  - research/RESEARCH-humans-words-fidelity.md
   false-positive:
   - decisions/ADR-012-test-checkpoint-py-membership-git-authoritative.md
   false-positives:
@@ -474,6 +480,8 @@ tags:
   - lessons/LESSON-walkthroughs-in-the-humans-words.md
   human-practice:
   - lessons/LESSON-human-practice-rationing-assumes-human-scarcity.md
+  human-voice:
+  - lessons/LESSON-walkthroughs-in-the-humans-words.md
   humanlayer:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   hybrid:
@@ -490,6 +498,8 @@ tags:
   impact-traversal:
   - research/RESEARCH-grep-vs-graph-experiment.md
   - specs/SPEC-011-vault-graph-queries.md
+  in-vivo-coding:
+  - research/RESEARCH-humans-words-fidelity.md
   inclusion:
   - research/RESEARCH-cache-theory-for-context-tiers.md
   index:
@@ -508,6 +518,9 @@ tags:
   - specs/SPEC-012-learning-loop.md
   interoperability:
   - research/RESEARCH-okf-improvements-for-compass.md
+  interviews:
+  - decisions/ADR-016-capture-by-extraction.md
+  - specs/SPEC-021-capture-in-the-humans-words/index.md
   invisible-capture:
   - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
   isolation:
@@ -658,6 +671,8 @@ tags:
   - lessons/LESSON-score-the-do-nothing-baseline-before-running.md
   parallel-builders:
   - lessons/LESSON-subagent-worktrees-fork-stale.md
+  paraphrase:
+  - lessons/LESSON-walkthroughs-in-the-humans-words.md
   parnas:
   - research/RESEARCH-decomposition-criteria-for-sizing.md
   parser:
@@ -738,6 +753,9 @@ tags:
   - research/RESEARCH-rolling-wave-software-practice.md
   - research/RESEARCH-rolling-wave-synthesis.md
   - specs/SPEC-015-rolling-wave-planning.md
+  prompting:
+  - decisions/ADR-016-capture-by-extraction.md
+  - research/RESEARCH-humans-words-fidelity.md
   prose:
   - lessons/LESSON-remove-context-before-adding.md
   prototypes:
@@ -867,6 +885,7 @@ tags:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
   - lessons/LESSON-hook-type-prompt-no-skills.md
   - plans/PLAN-001-lessons-and-index-implementation.md
+  - plans/PLAN-013-capture-by-extraction.md
   spawned-sessions:
   - lessons/LESSON-spawned-sessions-inherit-project-hooks.md
   spec-005:
@@ -882,9 +901,14 @@ tags:
   - research/RESEARCH-gsd-core-improvements-for-compass.md
   spec-redesign:
   - handoffs/2026-03-12_review-all-plugin-files.md
+  spec-writing:
+  - decisions/ADR-016-capture-by-extraction.md
+  - plans/PLAN-013-capture-by-extraction.md
+  - specs/SPEC-021-capture-in-the-humans-words/index.md
   specs:
   - lessons/LESSON-adversarial-plan-review-before-build.md
   - lessons/LESSON-pin-the-motivating-datum.md
+  - lessons/LESSON-walkthroughs-in-the-humans-words.md
   speculation:
   - research/RESEARCH-cache-theory-for-context-tiers.md
   stale-base:
@@ -923,6 +947,7 @@ tags:
   - plans/PLAN-011-active-sweep.md
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   synthesis:
+  - lessons/LESSON-walkthroughs-in-the-humans-words.md
   - research/RESEARCH-rolling-wave-synthesis.md
   - research/RESEARCH-test-quality-synthesis.md
   tag-index:
@@ -1008,6 +1033,8 @@ tags:
   - plans/PLAN-004-decision-coverage.md
   - research/RESEARCH-decision-coverage-impl.md
   - specs/SPEC-007-decision-coverage-tracing.md
+  transcription:
+  - research/RESEARCH-humans-words-fidelity.md
   triggers:
   - plans/PLAN-006-learning-loop.md
   - research/RESEARCH-lesson-capture-failure.md
@@ -1073,6 +1100,14 @@ tags:
   - lessons/LESSON-glob-hidden-dirs-prefix.md
   vector-search:
   - research/RESEARCH-rag-fit-for-large-vaults.md
+  verbatim:
+  - decisions/ADR-016-capture-by-extraction.md
+  - plans/PLAN-013-capture-by-extraction.md
+  - research/RESEARCH-humans-words-fidelity.md
+  - specs/SPEC-021-capture-in-the-humans-words/index.md
+  verbosity:
+  - research/RESEARCH-humans-words-fidelity.md
+  - specs/SPEC-021-capture-in-the-humans-words/index.md
   verification:
   - lessons/LESSON-verify-the-inverse-not-the-forward-path.md
   - specs/SPEC-013-test-quality.md
@@ -1080,9 +1115,15 @@ tags:
   - decisions/ADR-012-test-checkpoint-py-membership-git-authoritative.md
   vision:
   - decisions/ADR-011-sizing-is-a-procedure-not-a-score.md
+  - decisions/ADR-016-capture-by-extraction.md
+  - lessons/LESSON-walkthroughs-in-the-humans-words.md
   - plans/PLAN-009-sizing-mechanism.md
+  - plans/PLAN-013-capture-by-extraction.md
   - specs/SPEC-001-compass-vision-and-architecture.md
   - specs/SPEC-016-sizing-work-beyond-one-spec.md
+  - specs/SPEC-021-capture-in-the-humans-words/index.md
+  voice:
+  - specs/SPEC-021-capture-in-the-humans-words/index.md
   walkthroughs:
   - lessons/LESSON-walkthroughs-in-the-humans-words.md
   wave-sizing:

@@ -186,9 +186,9 @@ lessons:
     status: active
     category: process
     area: workflow
-    tags: [walkthroughs, human-decision, plain-language, jargon, approval]
+    tags: [walkthroughs, human-decision, plain-language, jargon, approval, specs, vision, human-voice, synthesis, paraphrase]
     score: 5
-    summary: "A walkthrough carrying the work's own vocabulary stalls the ruling it exists to get; write it in plain words"
+    summary: "Jargon in walkthroughs and paraphrase in specs both erase the human's own words where they must recognize themselves"
   - file: "LESSON-human-practice-rationing-assumes-human-scarcity.md"
     status: active
     category: process

@@ -86,3 +86,12 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 - [x] TASK-095: `compass self-update` command - sha gate, throttle, local-source mode, staged apply ([[PLAN-012-self-update]])
 - [x] TASK-096: SessionStart(startup) hook entry + setup/update skill alignment (after 095)
 - [x] TASK-097: live acceptance: applied-local 0.8.2 -> 0.10.0, throttle held on rerun, settings registered, doctor 0 FAIL (after 096)
+
+## 2026-08-29
+
+### Human's-words initiative (Roger, 2026-08-28)
+
+- [x] [[SPEC-021-capture-in-the-humans-words]] approved; [[RESEARCH-humans-words-fidelity]] complete (54 findings, 3 axes); [[ADR-016-capture-by-extraction]] accepted.
+- [x] TASK-098: spec skill extract-and-arrange rewrite ([[PLAN-013-capture-by-extraction]])
+- [x] TASK-099: vision + specs + retroactive skills, same discipline (after 098)
+- [x] TASK-100: pipeline-rule scope line, 0.11.0, suite 734 green, pushed, fleet pull verified (after 099)
