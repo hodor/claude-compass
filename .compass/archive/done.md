@@ -95,3 +95,14 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 - [x] TASK-098: spec skill extract-and-arrange rewrite ([[PLAN-013-capture-by-extraction]])
 - [x] TASK-099: vision + specs + retroactive skills, same discipline (after 098)
 - [x] TASK-100: pipeline-rule scope line, 0.11.0, suite 734 green, pushed, fleet pull verified (after 099)
+
+### Sizing + discoverability initiative (Roger, 2026-08-23)
+- [x] [[ADR-017-capability-index-and-usage-record]] accepted for [[SPEC-017-capabilities-are-reachable-and-measured]].
+- [x] TASK-101: usage.py + dispatch recording + report ([[PLAN-014-capability-usage]])
+- [x] TASK-102: doctor never-used advisory, 14-day window before WARN (after 101)
+- [x] TASK-103: retire clean-tmp/tree; reachability line; methodology note (after 101)
+- [x] TASK-104: suite 746 green, v0.12.0, pushed, fleet pull verified (after 102/103)
+
+### Scaffolding-noise initiative (Roger, 2026-08-24)
+
+- [x] [[SPEC-018-scaffolding-invisible-to-the-human]] approved 2026-08-24 and SHIPPED via [[ADR-013-detached-worker-quiet-fallback]]/PLAN-010 (stale line corrected).
