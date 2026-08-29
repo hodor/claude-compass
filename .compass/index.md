@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 8220 / 5000 tokens (index.md 4644, active.md 436, meta/lessons-catalog.yaml 3140). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 8475 / 5000 tokens (index.md 4884, active.md 436, meta/lessons-catalog.yaml 3155). Run /compass:consolidate before next session. -->
 <!-- WARNING: index.md exceeded hot-path cap. Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
@@ -38,6 +38,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[SPEC-018-scaffolding-invisible-to-the-human]] - the machinery keeps running but none of it occupies the human's conversation (approved 2026-08-24)
 - [[SPEC-019-active-holds-only-active-work]] - completed work accumulates in active.md forever because nothing in the harness moves it out; the hot path pays for history on every turn
 - [[SPEC-020-compass-updates-itself]] (folder, 0 children) - a project's Compass install refreshes itself from the canonical repo at session start - mandatory, zero tokens, silent when current (approved 2026-08-28)
+- [[SPEC-021-capture-in-the-humans-words]] - spec/vision interviews rewrite what the human said into polished agent prose; the human's own sentences must survive into the documents, with agent additions marked (approved 2026-08-28)
 
 ## Research
 
@@ -73,6 +74,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-invisible-scaffolding]] - detached hook-spawned workers survive (verified live); additionalContext wakes the model without rendering
 - [[RESEARCH-active-set-prior-art]] - every mature system bounds its active set mechanically - flag-then-sweep dominates, atomic moves are rare, and Compass already owns the zero-token trigger (PostToolUse compass sync)
 - [[RESEARCH-self-update-surfaces]] - the whole update flow is already mechanical (clone, copy, settings merge, apply-models, plugin.yaml record); SessionStart startup-matcher is the right trigger; a stored commit sha makes the current-check one ls-remote
+- [[RESEARCH-humans-words-fidelity]] - verbosity and paraphrase infidelity are documented, mechanistic LLM failures; every source-word discipline shares one grammar (verbatim layer + bracketed insertions + speaker sign-off); positive extract-and-quote instructions beat do-not-paraphrase prohibitions
 
 ## Plans
 
@@ -87,6 +89,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-010-invisible-capture]] - capture moves off the conversation into a hook-spawned detached worker, with recorded runs, dead-worker detection, a quiet fallback, and a live-fire acceptance
 - [[PLAN-011-active-sweep]] - implement ADR-014: sweep module with dry-run CLI command, wired into sync, validate drift warning, builder/build/checkup doc updates, live acceptance on this vault
 - [[PLAN-012-self-update]] - implement ADR-015: self_update command with sha gate and local-source mode, SessionStart(startup) hook entry, setup/update skill alignment, live acceptance in this repo
+- [[PLAN-013-capture-by-extraction]] - implement ADR-016 across spec/vision/specs/retroactive skills and the pipeline rules; ship via push + fleet self-update
 
 ## Decisions
 
@@ -104,6 +107,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[ADR-013-detached-worker-quiet-fallback]] - capture runs in a detached worker; additionalContext is the fallback; every run recorded
 - [[ADR-014-active-sweep-on-sync]] - sync gains a sweep step: done task lines leave active.md mechanically on every sync, whole sections move when fully done, records land verbatim in archive/done.md, validate warns on drift
 - [[ADR-015-self-update-on-session-start]] - SessionStart(startup) runs compass self-update: ls-remote sha gate, clone-and-apply replicating the update skill mechanically, dev repos copy from local plugin/, one context line on update, silence and exit 0 on every failure
+- [[ADR-016-capture-by-extraction]] - interview skills switch from synthesize-a-draft to extract-and-arrange: the human's sentences carry the capture sections, agent additions bracketed, uncertain words flagged never substituted, brevity binds only agent prose
 
 ## Active Work
 
@@ -152,7 +156,7 @@ See [[backlog]].
 - [[LESSON-suite-size-is-not-coverage]] - 44 tests for two behaviors carried mass redundancy and two critical holes at once; a delete list is half a review
 - [[LESSON-revert-to-prove-a-regression-test]] - A test that passes without the change under test is unwritten; prove it per test, by revert after the fix or by the red run before it
 - [[LESSON-remove-context-before-adding]] - Fix a behavior bug by removing the prose that trains it or adding a harness gate; added prose is the last resort and must be net-negative
-- [[LESSON-walkthroughs-in-the-humans-words]] - A walkthrough carrying the work's own vocabulary stalls the ruling it exists to get; write it in plain words
+- [[LESSON-walkthroughs-in-the-humans-words]] - Jargon in walkthroughs and paraphrase in specs both erase the human's own words where they must recognize themselves
 - [[LESSON-human-practice-rationing-assumes-human-scarcity]] - Name the precondition a borrowed mechanism needs before importing it; mark every finding maps or metaphor
 - [[LESSON-verify-the-inverse-not-the-forward-path]] - Cheap reversal licenses acting without asking; verify it on the inverse command, never by reading the forward one
 - [[LESSON-score-the-do-nothing-baseline-before-running]] - Score the constant-answer baseline, fix the threshold, and check the stop verdict can fire and end the plan
