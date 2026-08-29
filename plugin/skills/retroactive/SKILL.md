@@ -43,6 +43,8 @@ If the change involved an architectural choice:
 
 If the human doesn't know an answer, mark it as unknown. Don't invent.
 
+The sections are assembled from the human's own sentences - extract and arrange his words, clean-verbatim only (drop filler, fix obvious transcription errors; his grammar and word choice stay his). A garbled word gets `[unclear: heard "X"]` and a question; anything you add is bracketed `[guess: ...]`.
+
 ### 5. Create the retroactive spec
 
 Compute next SPEC number JIT (`max(N from glob '**/.compass/specs/SPEC-N-*.md') + 1`). Create `SPEC-NNN-descriptive-name.md`:

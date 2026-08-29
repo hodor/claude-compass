@@ -48,7 +48,11 @@ Two questions are required. The rest are optional. Read the room - if the human 
 5. What is explicitly NOT in scope?
 6. What could go wrong?
 
-Between questions, draft the section back as a single block quote (no acknowledgement preamble) and ask the next question. If you suggested content not in the human's words, mark it as a guess in brackets.
+Between questions, read the section back as a single block quote (no acknowledgement preamble) and ask the next question.
+
+**The section is assembled from the human's own sentences.** Extract his words and arrange them; write connective tissue between his sentences, never replacements for them. The test for every line: whose words is this? Cleaning is clean-verbatim only - drop filler, stammer, and false starts, fix obvious speech-to-text errors; his grammar, word choice, and enumerations stay his. When the transcript garbles a word, flag it `[unclear: heard "X"]` and ask - a garbled word is a question for the human, and he will have the real one. Mark anything you added as a guess in brackets: `[guess: ...]`. His framing is often the requirement itself - a phrase like "a simple USD for knowledge" carries more design information than any paraphrase of it.
+
+When part of an answer belongs to a different spec or a captured note, quote his sentences there verbatim - routing moves his words, it never summarizes them.
 
 If the human states an explicit ruling during the interview (a trade-off resolved, an approach chosen over an alternative), record it as a `- **D-NN:** text` bullet under `## Decisions (made by the human)`, not as prose folded into Problem or Desired Outcome - see the "Decision bullets" convention in the `obsidian` skill. This makes the ruling a checkable claim later plans must cite.
 
@@ -88,7 +92,9 @@ Edit `.compass/index.md`, add the new spec under `## Specs` with `[[wikilinks]]`
 
 ### 7. Present for approval
 
-Read back the spec (or summarize if long):
+This read-back is the human validating that the document says what he said - so it shows him his own words, and he holds final say on any departure from them.
+
+Read back the spec (or summarize if long - the summary lines below may compress, the spec body itself keeps his sentences):
 
 ```
 Here's the spec:
@@ -109,6 +115,8 @@ After approval, offer: "Create another spec, or start research on this one?"
 ## Failure modes worth naming
 
 - Bundling multiple concerns ("we need X and also Y"). Split.
+- Rewriting the human into polished agent prose. He reads the spec back and does not recognize himself; his framing - which was the requirement - is gone. Extract and arrange his sentences instead.
+- Substituting a generic for a word the transcript garbled ("Permis" becoming "any other tool"). Flag `[unclear: heard "X"]` and ask.
 - Describing HOW instead of WHAT ("we need REST/WebSocket" is implementation).
 - Structuring around system components ("Plugin Architecture") instead of user needs.
 - Writing open questions as "[TBD]" instead of asking the human.

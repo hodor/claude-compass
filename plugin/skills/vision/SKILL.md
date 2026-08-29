@@ -24,6 +24,8 @@ Ask the human:
 
 Wait. Don't interrupt. Don't ask questions yet.
 
+Organizing means arranging the human's sentences under headings - his words carry the content, your words only connect them. Clean-verbatim only: drop filler and false starts, fix obvious speech-to-text errors; his grammar, word choice, and enumerations stay his. A garbled word gets `[unclear: heard "X"]` and a question, never a generic substitute. Anything you add is bracketed `[guess: ...]`.
+
 ### 2. Targeted questions, one at a time
 
 Required:
@@ -47,7 +49,7 @@ Present:
 ```
 Based on what you've described, I see N distinct needs that would each become a spec:
 
-1. **[Need name]** - [one-line problem statement]
+1. **[Need name]** - [the problem in the human's words, one line]
    - User: [who needs this]
    - Success: [what success looks like]
 
@@ -80,7 +82,7 @@ updated: YYYY-MM-DD
 # Vision: [Project Name]
 
 ## Goal
-[One paragraph - overall purpose and what the world looks like with this project succeeding]
+[One paragraph - overall purpose and what the world looks like with this project succeeding, assembled from the human's own sentences]
 
 ## Users
 [Who uses this and what they currently do without it]
