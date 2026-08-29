@@ -1,17 +1,17 @@
 ---
-title: Walkthroughs for a Human Ruling Use Plain Words, Not the Work's Vocabulary
+title: Represent the Human in Their Own Words, Not the System's Synthesis
 type: lesson
 status: active
 category: process
 area: workflow
-tags: [walkthroughs, human-decision, plain-language, jargon, approval]
+tags: [walkthroughs, human-decision, plain-language, jargon, approval, specs, vision, human-voice, synthesis, paraphrase]
 created: 2026-08-11
-updated: 2026-08-11
+updated: 2026-08-29
 score: 5
-summary: "A walkthrough carrying the work's own vocabulary stalls the ruling it exists to get; write it in plain words"
+summary: "Jargon in walkthroughs and paraphrase in specs both erase the human's own words where they must recognize themselves"
 seen: []
 ---
 
-A synthesis walkthrough written in the vocabulary the research invented (frontier, appetite, elaboration record) had to be re-explained in plain words before the human could rule - a wasted round trip on the one surface where the human decides.
+A synthesis walkthrough in the research's own vocabulary, and spec/vision Problem/Desired Outcome sections paraphrased into brevity-trained one-liners, are the same failure: the artifact built for internal use replaces the human's own words on the surface where they must recognize themselves.
 
-That vocabulary is load-bearing for the ADR, not for the person approving it. Present each decision as what changes, what it costs, and what you recommend. The walkthrough's job is a ruling; jargon defers it.
+Present walkthrough decisions in plain language; build spec/vision sections from the human's own sentences, fixing only transcription errors.
