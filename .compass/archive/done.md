@@ -80,3 +80,9 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 - [x] TASK-092: wire into sync + `active_done` validate warning (after 091)
 - [x] TASK-093: doc alignment - builder, build, checkup, CLAUDE.md (after 092)
 - [x] TASK-094: local install refresh + live acceptance: sweep moved 36 lines, hot path 10172->8489, validate 0 errors (after 093)
+
+### Self-update initiative (Roger, 2026-08-28)
+
+- [x] TASK-095: `compass self-update` command - sha gate, throttle, local-source mode, staged apply ([[PLAN-012-self-update]])
+- [x] TASK-096: SessionStart(startup) hook entry + setup/update skill alignment (after 095)
+- [x] TASK-097: live acceptance: applied-local 0.8.2 -> 0.10.0, throttle held on rerun, settings registered, doctor 0 FAIL (after 096)
