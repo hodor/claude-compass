@@ -115,6 +115,8 @@ plugin:
   installed_mode: new | migrate | update
 ```
 
+The install keeps itself current from here: the SessionStart hook runs `compass self-update` at every session start (sha-gated against `repository`, silent when current, mandatory - no opt-out). It records a `commit:` field in this file on its first update.
+
 This file is the single source of truth for "where did this project's Compass install come from." Future `/compass:update` runs read it directly; no filesystem rediscovery. `/compass:checkup` can diff the recorded version against the source's current version to detect drift.
 
 If agents are already installed (re-running setup on a project), ask once before overwriting. Refreshing an existing install from git is `/compass:update`, not this skill.
