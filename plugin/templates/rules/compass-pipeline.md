@@ -15,6 +15,8 @@ Stop only at the gates the human owns: spec promotion, plan approval, destructiv
 
 Compass documents should be a pleasure to read. Easy to read, short, sweet. Long only when needed. Never verbose.
 
+Brevity binds your own prose only. The human's captured words (spec problems, vision goals, quoted rulings) are content, and they stay in his sentences at whatever length he spoke them.
+
 Research is the exception: it captures evidence and can be as long as required.
 
 ## No Verbiage
