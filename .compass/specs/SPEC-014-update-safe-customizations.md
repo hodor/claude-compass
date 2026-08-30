@@ -30,6 +30,7 @@ Since v0.10.0 ([[ADR-015-self-update-on-session-start]]) update is no longer a c
 
 ## Decisions (made by the human)
 
+- **D-02:** What the mechanism must guarantee, and the bar for done: "as long as we don't make projects lose their own claude.md and their agents know how to use compass I'm good." The Defold customizations were wiped - the research could not tell from evidence whether update destroyed them or they were never applied; Roger settled it: "those were wiped." (Roger, 2026-08-30, on [[RESEARCH-update-safe-customization]] finding the corpus empty.)
 - **D-01:** This is separate from [[SPEC-009-configurable-pipeline-workflows]]: SPEC-009 configures the pipeline's shape (phases, order) and stays deferred; this spec is only about local modifications - whatever their content - surviving update. Shipping this first gives SPEC-009 a substrate to live on later. (Roger, 2026-08-09.)
 
 ## Desired Outcome
@@ -57,7 +58,8 @@ If customizations live in update-untouchable local files with mechanical re-appl
 
 ## Success criteria
 
-- The Defold customization set survives a real `/compass:update` round-trip intact, with the report naming what was re-applied.
+- A project's own `CLAUDE.md` is never touched by update, proven by test and by a live round-trip.
+- A project's Compass-usage instructions for its agents survive a real update round-trip intact, with the report naming what was re-applied. (The Defold set named at spec time no longer exists on disk - it is the wiped evidence, not a live benchmark.)
 - A shipped update to a customized file lands alongside the local additions without conflict on the benchmark set.
 - doctor flags a stale or unapplicable customization with an actionable message.
 
