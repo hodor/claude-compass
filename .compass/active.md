@@ -13,8 +13,7 @@ Triggered by a live failure in another project: a vision session produced seven 
 
 ## Per-domain organization initiative
 
-- [x] [[PLAN-016-domain-taxonomy]] APPROVED 2026-08-30; the human reviews the migrated vault, not the tasks.
-- [ ] TASK-109: record names, count refresh, loop guard, piped links
+- [x] TASK-109: record names, count refresh, loop guard, piped links
 - [ ] TASK-110: make-domain + validate suggestions
 - [ ] TASK-111: link rules
 - [ ] TASK-112: skill contracts

@@ -87,15 +87,15 @@ class ScanArtifactsTests(unittest.TestCase):
         by_name = {r["name"]: r for r in records}
 
         self.assertEqual(by_name["SPEC-001-flat"]["kind"], "flat")
-        self.assertEqual(by_name["SPEC-002-tile-editor"]["kind"], "folder-index")
+        self.assertEqual(by_name["specs/SPEC-002-tile-editor"]["kind"], "folder-index")
         self.assertEqual(
-            by_name["SPEC-002-tile-editor/SPEC-001-master-material"]["kind"], "child"
+            by_name["specs/SPEC-002-tile-editor/SPEC-001-master-material"]["kind"], "child"
         )
         self.assertEqual(
-            by_name["SPEC-002-tile-editor/SPEC-002-brush"]["kind"], "folder-index"
+            by_name["specs/SPEC-002-tile-editor/SPEC-002-brush"]["kind"], "folder-index"
         )
         self.assertEqual(
-            by_name["SPEC-002-tile-editor/SPEC-002-brush/SPEC-001-stroke"]["depth"], 2
+            by_name["specs/SPEC-002-tile-editor/SPEC-002-brush/SPEC-001-stroke"]["depth"], 2
         )
 
     def test_missing_type_dirs_are_skipped(self):
@@ -139,12 +139,12 @@ class LooseNestedDocTests(unittest.TestCase):
         self.assertEqual(records[0]["name"], "research/sub/note")
         self.assertEqual(records[0]["kind"], "child")
 
-    def test_folder_spec_child_name_omits_the_type_dir(self):
+    def test_folder_spec_child_name_is_vault_relative(self):
         self._write("specs/SPEC-002-tile/index.md")
         self._write("specs/SPEC-002-tile/SPEC-001-master.md")
         by_name = {r["rel"]: r for r in vaultlib.scan_artifacts(self.tmp)}
         child = by_name["SPEC-002-tile/SPEC-001-master.md"]
-        self.assertEqual(child["name"], "SPEC-002-tile/SPEC-001-master")
+        self.assertEqual(child["name"], "specs/SPEC-002-tile/SPEC-001-master")
 
     def test_two_loose_children_sharing_a_stem_get_distinct_names(self):
         self._write("research/sub-a/note.md")
@@ -316,10 +316,10 @@ class FlatVaultRecordsUnchangedTests(unittest.TestCase):
             {"path": self.tmp / "specs" / "SPEC-002-tile" / "SPEC-001-master.md",
              "type_dir": "specs", "kind": "child",
              "rel": "SPEC-002-tile/SPEC-001-master.md",
-             "name": "SPEC-002-tile/SPEC-001-master", "depth": 1, "unit": None},
+             "name": "specs/SPEC-002-tile/SPEC-001-master", "depth": 1, "unit": None},
             {"path": self.tmp / "specs" / "SPEC-002-tile" / "index.md",
              "type_dir": "specs", "kind": "folder-index",
-             "rel": "SPEC-002-tile/index.md", "name": "SPEC-002-tile",
+             "rel": "SPEC-002-tile/index.md", "name": "specs/SPEC-002-tile",
              "depth": 0, "unit": None},
         ]
         # Path.rglob order differs across platforms (WindowsPath sorts

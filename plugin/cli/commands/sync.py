@@ -38,13 +38,15 @@ SECTION_OVERRIDES = {"prs": "PRs"}
 def section_for(type_dir):
     return "## " + SECTION_OVERRIDES.get(type_dir, type_dir.capitalize())
 
-# Files `sync` itself writes; a hook fire for any of these is its own echo.
-GENERATED_OUTPUTS = [
+# Vault-root-relative paths `sync` itself writes; a hook fire for any of
+# these is its own echo. Exact matches only: a nested folder's index.md is
+# an artifact whose write must sync, not an echo.
+GENERATED_OUTPUTS = {
     "index.md",
     "meta/tag-index.yaml",
     "meta/lessons-catalog.yaml",
     "meta/working-set.yaml",
-]
+}
 
 INDEX_TOKEN_CAP = 5000
 INDEX_LINE_CAP = 250
@@ -108,9 +110,12 @@ def _link_name(record):
     nested doc (`vaultlib.is_loose_nested`) also gets the vault-relative
     form, since nothing scopes its subfolder to keep the bare stem unique.
     """
+    if record["kind"] == "folder-index":
+        # A folder is not a file, so a bare folder link cannot be clicked
+        # open in Obsidian; the piped full path to its index.md can, and
+        # displays as the plain folder name.
+        return f"{record['name']}/index|{record['path'].parent.name}"
     if record["unit"] is None:
-        if record["kind"] == "folder-index":
-            return record["path"].parent.name
         if vaultlib.is_loose_nested(record["path"], record["kind"]):
             return record["name"]
         return record["path"].stem
@@ -229,6 +234,9 @@ def _sync_index(vault_root, records):
             if r["unit"] is None and vaultlib.is_loose_nested(r["path"], r["kind"])
         }
 
+        folder_by_path = {
+            _rel_path(vault_root, r): r for r in recs if r["kind"] == "folder-index"
+        }
         indexed_paths = set()
         section_lines = []
         for line in lines[start + 1:end]:
@@ -239,6 +247,18 @@ def _sync_index(vault_root, records):
                 resolved = resolve.get(target)
                 if resolved:
                     indexed_paths.update(resolved)
+                    if len(resolved) == 1 and "(folder," in updated:
+                        folder_rec = folder_by_path.get(resolved[0])
+                        if folder_rec is not None:
+                            count = _child_count(folder_rec, records)
+                            fresh = re.sub(
+                                r"\(folder, \d+ children\)",
+                                f"(folder, {count} children)",
+                                updated,
+                            )
+                            if fresh != updated:
+                                updated = fresh
+                                rewrites += 1
                     continue
                 legacy_record = legacy.get(target)
                 if legacy_record is not None:
@@ -582,7 +602,11 @@ def format_report(report):
 
 def _is_generated_output(file_path):
     norm = str(file_path).replace("\\", "/")
-    return any(norm.endswith(suffix) for suffix in GENERATED_OUTPUTS)
+    if "/.compass/" in norm:
+        rel = norm.split("/.compass/", 1)[1]
+    else:
+        rel = norm.split(".compass/", 1)[-1]
+    return rel in GENERATED_OUTPUTS
 
 
 def _record_write_signal(vault_root, norm):

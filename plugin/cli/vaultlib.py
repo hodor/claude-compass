@@ -245,27 +245,28 @@ def _scan_type_dir(base, type_dir, unit):
                 # A bare `<type>/index.md` is not an artifact; skip it.
                 continue
             kind = "folder-index"
-            name = "/".join(parts[:-1])
+            core = "/".join(parts[:-1])
             # A folder spec renders at the depth of its folder, which sits
             # one level above its own `index.md` file.
             depth = len(parts) - 2
         elif len(parts) == 1:
             kind = "flat"
-            name = path.stem
+            core = path.stem
             depth = 0
         else:
             kind = "child"
-            loose = is_loose_nested(path, kind)
-            if loose:
-                name = "/".join([type_dir] + list(parts[:-1]) + [path.stem])
-            else:
-                name = "/".join(list(parts[:-1]) + [path.stem])
+            core = "/".join(list(parts[:-1]) + [path.stem])
             depth = len(parts) - 1
+        # A record's name is its vault-relative path without extension for
+        # everything except a root flat artifact, whose bare stem is unique
+        # by construction. Same-named folders on different branches
+        # (specs/dup, research/dup) therefore never share a name.
         if unit is not None:
-            if kind == "child" and loose:
-                name = f"{unit}/{name}"
-            else:
-                name = f"{unit}/{type_dir}/{name}"
+            name = f"{unit}/{type_dir}/{core}"
+        elif kind == "flat":
+            name = core
+        else:
+            name = f"{type_dir}/{core}"
         records.append({
             "path": path,
             "type_dir": type_dir,
