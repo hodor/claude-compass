@@ -10,6 +10,7 @@ created: 2026-08-28
 updated: 2026-08-28
 depends_on: ["[[compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget]]", "[[SPEC-003-hierarchical-vault-organization]]"]
 summary: "completed work accumulates in active.md forever because nothing in the harness moves it out; the hot path pays for history on every turn (approved 2026-08-28)"
+aliases: ["SPEC-019-active-holds-only-active-work"]
 ---
 
 # active.md Holds Only Active Work
