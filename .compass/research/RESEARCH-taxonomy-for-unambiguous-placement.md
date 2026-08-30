@@ -18,7 +18,21 @@ depends_on: ["[[SPEC-022-vault-organized-per-domain]]", "[[SPEC-005-index-auto-m
 
 [[SPEC-022-vault-organized-per-domain]], the stated goal verbatim: "how humans organize topics and how machines organize topics - the main goal is to have it organized in a way that there is no ambiguity in which main area you should go to find the info you need." Three axes, classification science primary per D-06; full findings verbatim below the synthesis.
 
-## Synthesis (framed by the classification science)
+## Synthesis
+
+**The CS axis is the critical one (SPEC-022 D-06): computer science applies classification as delegated namespaces, and four of its results transfer structurally, not metaphorically.**
+
+- **Hop count is the cost unit, quantitatively** (B-tree theory: cost = depth x per-hop fetch): in the vault one hop is one folder marker doc read, so fewer, broader top domains beat many fine ones - the same conclusion the human-classification data reaches by inter-indexer agreement.
+- **A folder's marker doc is a RAPTOR summary node**: retrievable as an answer on its own AND the signal to descend. That is the retrieval shape the per-folder index already has; RAPTOR is evidence it wins on multi-hop questions.
+- **Generality at the parent, autonomy at the child** (DNS zone delegation, Bazel package trees): the root never re-explains what a domain's own doc explains; a domain governs everything under it. Independent confirmation of the depth gradient.
+- **Names are load-bearing and expensive to change** (Java/Go/Rust package norms, npm's scoping retrofit): fix the naming convention before the corpus grows; dumping-ground names (common, util, misc) are forbidden everywhere the pattern appears.
+- **Convention over configuration kills filer choice** (Rails/Maven/FHS): where placement is decided by stated convention, the filer never chooses, so filer disagreement stops mattering.
+- **The spec's metric has no ready-made instrument** - nothing in the literature measures "tokens loaded but unused by the task's output"; effective-context-length and lost-in-the-middle curves measure adjacent things. The metric must be defined and baselined fresh.
+- **One flagged tension, surfaced not resolved**: type-dir-first with domains nested inside is closer to package-by-layer than package-by-feature, which the software literature associates with lower cohesion; the tag-index is the cross-cutting compensation.
+
+**The human-classification and design-space findings (below, as reference)** supply the operating rules the CS axis does not: scope notes at the point of doubt (DDC/MSC two-tier), one primary home plus facet cross-references, shallow-when-unsure under top-down error propagation, categories born from warrant, splits triggered by ceiling, human-curated tops with machine-assisted placement, and the measured 10-60% filer disagreement that all of it must tolerate.
+
+### Original synthesis (framed by the human-classification science)
 
 **1. Perfect placement agreement does not exist - design for the finder, not just the filer.**
 Inter-indexer consistency runs 10-60% and the literature calls the inconsistency inherent (Markey: 7% exact-term, 13% concept-level agreement). Card sorting shows organizers and finders use different mental models. So "no ambiguity" cannot be achieved by drawing better categories alone; it is engineered by making every reasonable path lead to the document: one physical home plus cross-cutting facets (Compass's tag-index already is this - ADR-004's design is validated, though its Ranganathan citation is metaphor, not mechanism), cross-references, and scope notes.
@@ -43,7 +57,127 @@ Nesting classification, next-num at arbitrary depth, make-unit path checks, vali
 Full findings verbatim per axis below.
 
 
-## Axis: Classification science (rs-taxonomy-science, PRIMARY per D-06)
+## Axis: CS-applied classification (rs-cs-classification, PRIMARY per SPEC-022 D-06)
+
+### Research: How Computer Science Applies Classification/Taxonomy to Navigable Namespaces
+
+From [[SPEC-022-vault-organized-per-domain]], axis: what CS itself (as opposed to library/information science, covered separately) does when it builds navigable hierarchical namespaces, and what is measurably true about retrieval cost as depth/fanout vary.
+
+#### Question
+
+What do filesystem/OS taxonomies, language/package namespaces, distributed naming schemes, monorepo code organization, and retrieval-cost theory (B-trees, RAG/LLM literature) establish about organizing a namespace so placement is unambiguous and retrieval is cheap - and which of those findings are structural maps onto a markdown vault versus loose metaphors?
+
+#### Methodology
+
+WebSearch across six sub-axes (filesystem/OS, language namespaces, distributed naming, monorepo code organization, retrieval-cost theory, convention-over-configuration), cross-checked against official specs/docs and primary sources (RFC-adjacent specs, language blogs, original papers) per claim. Per [[LESSON-human-practice-rationing-assumes-human-scarcity]], every finding below is checked for the precondition its source mechanism depends on before being offered as a transfer.
+
+#### Findings
+
+1. **FHS's own placement rule rests on two orthogonal axes (shareable/unshareable, variable/static), not topical meaning - and FHS documents its own ambiguous zones rather than hiding them** (confidence: high)
+   /usr is defined as shareable, read-only data; anything host-specific or time-varying goes elsewhere - `/bin` vs `/usr/bin` is a documented historical accident (a 1970s two-disk split), and FHS 3.0 §4.6/§4.11 explicitly discusses the /usr/lib vs /usr/share fuzziness (executable-vs-data is "the key factor," but interpreted-language modules don't cleanly split) rather than resolving it, leaving distributors discretion.
+   - https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch04s06.html
+   - https://sinclairtarget.com/blog/2024/11/making-sense-of-the-linux-filesystem-hierarchy/
+
+2. **Plan 9's union directories compose a namespace from ordered, non-merging layers, replacing PATH-style search lists with the filesystem itself** (confidence: high)
+   A union directory concatenates several directories bound at one mount point in a fixed order (first match wins); it does not recursively merge subdirectories - `/bin` is a union of several binary directories instead of a `$PATH` variable. Namespaces are private per process, built by explicit bind/mount operations, not inferred.
+   - http://man.cat-v.org/plan_9/4/namespace
+   - https://en.wikipedia.org/wiki/Union_mount
+
+3. **XDG Base Directory splits user files by volatility/portability (config/data/state/cache), not by application identity, and defines a precedence order for multi-directory search** (confidence: high)
+   Four axes: `XDG_CONFIG_HOME` (user edits), `XDG_DATA_HOME` (survives cache cleanup), `XDG_STATE_HOME` (persists across restarts but not "real" data), `XDG_CACHE_HOME` (safely deletable). Search-path directories are ordered by importance; the first hit wins, exactly like Plan 9's union order.
+   - https://specifications.freedesktop.org/basedir/latest/
+
+4. **Reverse-domain package naming (Java) solves namespace collision by delegating to an existing external authority (domain registration), not by better classification** (confidence: high)
+   `com.example.foo` is unique because DNS ownership is already unique; Oracle's own docs call this a convention, not a compiler-enforced rule, and note the escape hatch for developers who own no domain (fall back to a platform username, e.g. `com.github.user`). This is a different unambiguity mechanism than a classification scheme: it borrows uniqueness from another namespace instead of producing it locally.
+   - https://docs.oracle.com/javase/tutorial/java/package/namingpkgs.html
+
+5. **Every language style guide converges on the same granularity anti-pattern: avoid dumping-ground package/module names, and package/module names become de-facto public API that is expensive to rename later** (confidence: high)
+   Google's Java style guide bans underscores and generic catch-alls like `common`/`base`; Go's blog explicitly tells developers to avoid `util` in favor of a specific name (`ioutil`, not `util`); Rust's style guide treats the module tree as part of the crate's API surface, gating what's public via `pub`/`pub use` rather than folder location alone. All three treat renaming a package/module as one of the most disruptive refactors because it breaks every import path referencing the fully-qualified name.
+   - https://go.dev/blog/package-names
+   - https://pingcap.github.io/style-guide/rust/modules.html
+
+6. **Ousterhout's deep-vs-shallow module framing gives a concrete cost/benefit test for "how much should live at one level": benefit is functionality exposed, cost is interface complexity, and both matter independently of tree depth** (confidence: high)
+   A deep module (Unix file I/O: 5 syscalls, huge functionality) hides much behind a simple interface; a shallow module has a complex interface hiding little. Ousterhout names "classitis" - many small shallow classes - as increasing total system complexity even though each individual class looks simple, because the reader now must learn N interfaces instead of one deep one.
+   - https://milkov.tech/assets/psd.pdf
+
+7. **npm's scoped-namespace fix (2014) could not retrofit onto the pre-existing flat namespace, and the two other major package ecosystems chose the opposite trade-off at inception** (confidence: high)
+   Packagist (Composer) required `vendor/package` from day one, pushing the collision problem up one level but never leaving a flat legacy tier; npm's most-used packages (`express`, `lodash`, `react`) predate scopes and cannot move into a scope without breaking the world, so scopes ended up used mainly by new/organizational packages. PyPI's PEP 752 explicitly cites npm's retrofit cost as the reason to weigh scoping trade-offs before, not after, ecosystem growth.
+   - https://blog.npmjs.org/post/116936804365/solving-npms-hard-problem-naming-packages.html
+   - https://peps.python.org/pep-0752/
+
+8. **DNS enforces a strict generality gradient by delegation: the root knows only TLDs, each zone is authoritative only for its own namespace, and resolution recurses top-down while caching narrows the walk on repeat lookups** (confidence: high)
+   No server holds global knowledge; a domain owner can delegate an entire subtree (`eu.example.com`) to a different administrative authority without coordinating with the parent again after delegation. This is the canonical instance of "generality forced at the top, specificity pushed down," with autonomy - not just naming - transferred at each delegation boundary.
+   - https://en.wikipedia.org/wiki/DNS_root_zone
+   - https://www.cloudns.net/blog/dns-delegation/
+
+9. **Kubernetes separates two different classification problems into two different mechanisms: API groups organize by function/extensibility, while namespaces solve name collision and policy scoping - conflating them was an explicit early design mistake the group-split fixed** (confidence: high)
+   API groups (`apps`, `batch`, `/apis/<group>/<version>`) exist so the API can grow without bloating one monolithic v1 surface, and each carries its own version-maturity signal (alpha/beta/stable) with a round-trip-safety guarantee across versions. Namespaces are explicitly documented as optional, needed only "when multiple teams/tenants share a cluster" - not a general-purpose classification device.
+   - https://kubernetes.io/docs/concepts/overview/kubernetes-api/
+   - https://github.com/kubernetes/design-proposals-archive/blob/main/api-machinery/api-group.md
+
+10. **Bazel makes the directory itself the unit of access control, and provides an explicit binding/advisory-style scope-note mechanism (`package_group`) instead of leaving cross-package use to convention** (confidence: high)
+    Default visibility is private (own package only); `//foo:__subpackages__` grants an entire subtree; `package_group` names a reusable allowlist so many targets share one written scope rule instead of drifting out of sync. Google's own guidance explicitly warns against defaulting to public, "the risk of inadvertently creating public targets increases as the codebase grows" - i.e., ambiguity is cheap to introduce and must be actively fenced.
+    - https://bazel.build/concepts/visibility
+
+11. **The feature-folders vs. layer-folders debate has a measured cohesion argument on one side (feature folders) and a predictability/onboarding argument on the other (layer folders), and the field's converged answer is hybrid, not a clean winner** (confidence: medium, practitioner sources, not peer-reviewed)
+    Layer-first ("package by layer") has documented low intra-package cohesion and high inter-package coupling because unrelated classes share a technical role; feature-first ("package by feature"/"screaming architecture") groups by business concept, improving discoverability and enabling package-private encapsulation, at the cost of deciding where shared/cross-cutting code lives. Multiple practitioner reports describe migrating from layer-first to feature-first for delivery speed, but no source claims feature-first is strictly superior at all scales.
+    - https://milanjovanovic.tech/blog/screaming-architecture
+    - https://dvmhn07.medium.com/screaming-architecture-letting-your-code-tell-its-story-203de594cf74
+
+12. **DDD's bounded context makes orthogonality explicit by letting the same word carry different meanings in different regions of the system on purpose, with the boundary drawn along team/codebase/schema lines - not resolved by better shared vocabulary** (confidence: high)
+    Evans' own guidance: "explicitly set boundaries in terms of team organization, usage within specific parts of the application, and physical manifestations such as code bases and database schemas." A word like "Creator" legitimately means different things in Onboarding vs. Payment Processing; DDD's answer to ambiguity is not a universal ontology but a fence plus an explicit translation layer between fenced regions.
+    - https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf
+
+13. **B-tree analysis gives a hard cost model for depth vs. fanout: lookup cost is height x per-level fetch cost, and height is logarithmic in the branching factor, so wide-and-shallow beats narrow-and-deep exactly when per-level fetch is cheap relative to the number of levels saved** (confidence: high)
+    Formally O(log_B N) I/Os for an N-node tree with branching factor B; a billion keys need ~30 levels at branching factor 2 but only 3-4 levels at branching factor ~200. The "optimal" fanout is not fixed - it is set by matching node size to the medium's latency/bandwidth (SSD favors smaller nodes/faster fetch, high-latency stores favor huge nodes/fewer hops), which is a directly quantified version of "few broad top levels beat many fine ones," but with an explicit variable (per-hop cost) the library-science literature does not name.
+    - https://www.usenix.org/system/files/login/articles/login_oct15_05_bender.pdf
+    - https://pages.cs.ubc.ca/~laks/Btrees.pdf
+
+14. **RAPTOR demonstrates that a recursively-summarized tree over a corpus measurably beats flat chunk retrieval on multi-hop questions, because summary nodes at higher tree levels are retrievable in the same pass as leaf-level detail** (confidence: medium, single architecture, self-reported gains not independently replicated at scale)
+    RAPTOR clusters and LLM-summarizes chunks bottom-up into a tree, then retrieves by flattening all levels into one candidate pool ("collapsed tree traversal") so a query can pull a high-level summary and a granular leaf in the same retrieval step. Reported to outperform flat RAG specifically on cross-chunk reasoning, the failure mode flat chunking has no answer for.
+    - https://arxiv.org/abs/2401.18059 (Sarthi et al., "RAPTOR: Recursive Abstractive Processing for Tree-Organized Retrieval")
+    - https://superlinked.com/vectorhub/articles/improve-rag-with-raptor
+
+15. **MemGPT's OS-paging metaphor treats forgetting/summarization as a designed feature, not data loss: the agent itself decides what to page out of the active context and into searchable cold storage, and recursive summarization compresses evicted history rather than dropping it** (confidence: high)
+    Three tiers mirror OS virtual memory: main context (RAM-equivalent, actively in the prompt), recall storage (all past messages, disk-equivalent), archival storage (vector-indexed cold store). The LLM calls functions (`archival_memory_search`, `core_memory_append`) to move data between tiers itself, and demonstrated a large task-accuracy gain (89% vs. 63% baseline) on document analysis specifically from this self-directed paging.
+    - https://arxiv.org/abs/2310.08560
+
+16. **"Lost in the middle" is a measured, position-driven accuracy curve independent of how well-organized the source corpus is: relevant information in the middle of a long context is retrieved 15-30 points worse than the same information at the start or end, across six+ model families** (confidence: high)
+    This is a property of what's inside the active context window at generation time, not of folder/index structure - it does not directly measure "useless tokens loaded for a task." The literature's closest proxy for that metric is *effective context length* benchmarks (RULER, BABILong): the fraction of an advertised context window a model can actually use before accuracy collapses, reported as low as 5-50% of the nominal window depending on task and model. No source located defines a token-level "used vs. loaded-but-unused" attribution metric directly; this is a gap, not a finding.
+    - https://arxiv.org/abs/2307.03172 (Liu et al., "Lost in the Middle")
+    - https://redis.io/blog/context-rot/
+
+17. **Convention-over-configuration (Rails, Maven) eliminates the filing decision entirely for the common case by fixing directory meaning ahead of time, so ambiguity can only occur for genuinely novel content, never for standard artifacts** (confidence: high)
+    Maven's `src/main/java`, `src/test/java`, `src/main/resources` are fixed; deviating is "strongly discouraged" because tooling and cross-developer familiarity both depend on the convention holding everywhere. This is a stronger unambiguity guarantee than any scope-note or facet system: it removes the decision point rather than disambiguating it after the fact.
+    - https://maven.apache.org/guides/introduction/introduction-to-the-standard-directory-layout.html
+
+#### Transfers
+
+Each rule states whether it is a structural **map** (the vault has the same mechanism/precondition) or a **metaphor** (borrowed language, precondition absent or unverified), per [[LESSON-human-practice-rationing-assumes-human-scarcity]].
+
+1. **Fewer, broader top-level domains reduce hop count, and hop count is the real cost unit** (MAPS). B-tree theory (Finding 13) makes this quantitative: cost = depth x per-hop cost. In the vault, one hop = one agent reading one folder's `index.md`; this is a direct structural analog (each level read gates descent into the next), not a metaphor - the vault's hop cost and a B-tree's page-fetch cost are the same shape of problem (bounded lookahead, sequential descent).
+
+2. **A domain's `index.md` should behave like a RAPTOR summary node: retrievable on its own as an answer, or as a signal to descend** (MAPS). Compass's index-per-folder design (D-05, D-03) already gives an agent exactly what RAPTOR's collapsed-tree retrieval exploits - a summary usable standalone plus a pointer to more detail below it. Unlike RAPTOR's clustering (unsupervised, corpus-driven), Compass's grouping is human-approved, but the retrieval-time shape (summary-or-descend, one item per level) is identical.
+
+3. **Generality-forced-at-the-parent, autonomy-delegated-to-the-child (DNS/Bazel)**: the root index should never re-explain what a domain folder's own index already explains, and a domain folder should be self-governing for everything under it once created (MAPS). This is already SPEC-022's D-03 and ADR-021's D-01; DNS and Bazel are independent confirmations that this is the standard solution wherever delegation-based namespaces scale, not a Compass-specific choice.
+
+4. **Fix the domain-folder naming convention once, before the vault has many domains, because retrofitting a naming scheme after growth is a documented, expensive migration** (MAPS, with the precondition named explicitly). npm's flat-legacy-vs-scoped split (Finding 7) is the direct precedent: once enough content exists under one naming convention, changing it stops being a local edit and becomes an ecosystem-wide compatibility cost. The vault's open question (bare-name vs. `SPEC-NNN-name/` for domain folders, per the sibling design-axis research) is exactly this decision point, made while switching cost is still low.
+
+5. **Visibility/scope notes should be an explicit, written rule on the folder, not an inferred one** (MAPS for the mechanism, METAPHOR for the enforcement guarantee). Bazel's `package_group` and DDD's bounded-context boundary both make disambiguation a first-class artifact, not tribal knowledge - this maps directly onto writing binding/advisory scope notes into each domain's `index.md` (already recommended by the sibling classification-science research). It is a metaphor at the enforcement level: Bazel's rule is compiler-checked and DDD's is team/codebase-enforced, while a markdown scope note has no mechanical gate unless `compass validate` is taught to check placement against it - that gate does not exist today.
+
+6. **Domain-folder names are load-bearing like package names: avoid dumping-ground names (`common`, `util`, `misc`), and treat a chosen name as expensive to change later** (MAPS). Findings 5's cross-language convergence (Java/Go/Rust all independently forbid the generic catch-all) applies unchanged to a vault domain folder, since Compass already treats folder names as part of a stable wikilink path.
+
+7. **"Useless tokens loaded per task" has no ready-made literature metric to borrow - the nearest instruments (lost-in-the-middle position curves, effective-context-length benchmarks) measure something adjacent, not identical** (GAP, not a transfer). Do not adopt "attention utilization" or "effective context fraction" as SPEC-022's metric without first checking whether either instrument's precondition (a fixed context window being probed by a single model call) matches Compass's actual mechanism (bounded hot-path inclusion decided by file-loading, not by attention weight inside one long prompt). The metric SPEC-022 wants - bytes/tokens read into an agent's context that its final output never used - would need to be defined and measured fresh; no existing benchmark reports it directly.
+
+8. **A markdown vault's type-dir-first, domain-nested-within structure is closer to "package by layer" than "package by feature," which the software-organization literature (Finding 11) reports as the choice associated with lower cohesion and more cross-cutting navigation** (flagged, not a transfer - a tension for the planner). Specs, research, decisions, and plans about the same real-world topic (e.g. "domain taxonomy" itself) currently live in four different type-dirs rather than one feature folder; screaming-architecture/feature-folder evidence would suggest the opposite grouping (by topic first, artifact-type second) for discoverability, while Compass's existing tag-index is the mechanism that currently substitutes for feature-first cohesion. This is presented as a documented trade-off in the literature, not a recommendation to restructure.
+
+#### Gaps
+
+- No literature source directly defines or measures "tokens loaded into context but unused by the task's final output" - the exact metric SPEC-022 names as its goal (Transfer 7). The closest instruments (RULER/BABILong effective-context-length, Liu et al.'s lost-in-the-middle position curves) measure retrieval accuracy by position or by nominal-vs-effective window size, not token-level load/use attribution.
+- All B-tree/DNS/Bazel cost evidence is about machine-executed lookups (page reads, resolver hops, compiler visibility checks) with zero-latency-variance repeatability; whether an LLM agent's "cost" of reading one extra folder's `index.md` behaves the same way (same log-linear scaling with fanout) is asserted by structural analogy in Transfer 1, not independently measured for an agent-driven vault.
+- RAPTOR's reported gains (Finding 14) are from the paper's own benchmarks; no independent replication was located confirming the magnitude of the multi-hop improvement generalizes outside its original evaluation corpora.
+
+## Axis: Classification science (rs-taxonomy-science, reference)
 
 From [[SPEC-022-vault-organized-per-domain]].
 

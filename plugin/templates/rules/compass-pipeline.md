@@ -23,6 +23,12 @@ Documents describe what IS, never the process that produced them. No review narr
 
 State rules directly; never attribute them to their speaker. No "X said", no name-and-date tags on decisions, no quoted-conversation framing - a document is not meeting minutes. Authority comes from the document's own status and its Decisions section, not from citing who spoke. Preserving the human's phrasing (the capture rule above) means the sentence itself survives as the content - not that it gets wrapped in quotation marks with a byline.
 
+The ornamental test, applied to every sentence: does this information help the document do its job for a later reader? Not a ban on numbers, dates, or history - any of them stays when load-bearing and goes when decorative. "How it was before" earns its place only when the need cannot be explained without it.
+
+Decisions consolidate by topic - one full decision, not one bullet per utterance. A redundant decision merges into its sibling. The section heading is `## Decisions`.
+
+Rules default to judgment. Write defaults with latitude - the point of an agent is that it can decide what is better in context. Reserve MUST for true invariants: the Data rule, the human's gates.
+
 ## No Verbiage
 
 Conversation output is never the record - logs, reports, and vault files are. On every surface (agent reports, skill output, hook-triggered passes, relays to the human):

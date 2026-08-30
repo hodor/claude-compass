@@ -639,9 +639,11 @@ tags:
   - compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work.md
   measurement:
   - compass-cli/research/RESEARCH-cli-token-reduction-measurement.md
+  - decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md
   - lessons/LESSON-adversarial-plan-review-before-build.md
   - lessons/LESSON-blind-the-author-in-self-validation.md
   - lessons/LESSON-measure-the-procedures-intermediates.md
+  - plans/PLAN-016-domain-taxonomy.md
   memgpt:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
@@ -682,6 +684,8 @@ tags:
   - research/RESEARCH-test-quality-literature.md
   - research/RESEARCH-test-quality-synthesis.md
   - research/RESEARCH-test-quality-tooling.md
+  namespaces:
+  - decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md
   nesting:
   - specs/SPEC-010-universal-hybrid-hierarchy.md
   noise:
@@ -749,8 +753,6 @@ tags:
   per-agent:
   - specs/SPEC-008-central-model-resolution-table.md
   per-folder-index:
-  - decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md
-  - plans/PLAN-016-domain-taxonomy.md
   - research/RESEARCH-taxonomy-for-unambiguous-placement.md
   permission-rules:
   - lessons/LESSON-hook-if-clause-no-or.md
@@ -987,8 +989,6 @@ tags:
   - lessons/LESSON-walkthroughs-in-the-humans-words.md
   speculation:
   - research/RESEARCH-cache-theory-for-context-tiers.md
-  split-trigger:
-  - decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md
   stale-base:
   - lessons/LESSON-subagent-worktrees-fork-stale.md
   staleness:
@@ -1220,8 +1220,6 @@ tags:
   - specs/SPEC-021-capture-in-the-humans-words.md
   walkthroughs:
   - lessons/LESSON-walkthroughs-in-the-humans-words.md
-  warrant:
-  - decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md
   wave-sizing:
   - research/RESEARCH-rolling-wave-synthesis.md
   wikilinks:

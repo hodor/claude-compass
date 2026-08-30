@@ -219,8 +219,15 @@
   },
   "active": "070ed694cd97ed87",
   "lastOpenFiles": [
-    "tmp/subagent-captures/2026-08-30T21-18-00_unknown.md",
+    "plans/PLAN-016-domain-taxonomy.md.tmp.6560.aeb2bd4aca4f",
+    "specs/SPEC-001-compass-vision-and-architecture.md.tmp.6560.1c2ed29b0270",
+    "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md.tmp.6560.8e797f0a998d",
+    "tmp/research-spec022/cs-classification.md.tmp.6560.6960e736709d",
+    "tmp/research-spec022/cs-classification.md",
+    "tmp/research-spec022/cs-classification.md.tmp.6560.136a441bbfdc",
     "tmp/capture-check.lock",
+    "tmp/subagent-captures/2026-08-30T21-20-54_unknown.md",
+    "tmp/subagent-captures/2026-08-30T21-18-00_unknown.md",
     "plans/PLAN-016-domain-taxonomy.md.tmp.6560.a3eb86e985b4",
     "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md.tmp.6560.2943c3dda43d",
     "specs/SPEC-022-vault-organized-per-domain.md.tmp.6560.f0bf02d2c822",
@@ -234,11 +241,7 @@
     "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md.tmp.6560.f10cda5d9471",
     "specs/SPEC-021-capture-in-the-humans-words.md",
     "specs/SPEC-020-compass-updates-itself.md",
-    "meta/sizing-log.yaml",
     "specs/SPEC-019-active-holds-only-active-work.md",
-    "tmp/worker-logs/OPP-20260830T211005283158Z.log",
-    "tmp/extraction-log-2026-08-30.md.tmp.6332.72903a9938c3",
-    "plans/PLAN-016-domain-taxonomy.md.tmp.6560.4eadb25f187f",
     "SPEC-022-vault-organized-per-domain.md",
     "specs/SPEC-022-vault-organized-per-domain/index.md",
     "research/RESEARCH-taxonomy-for-unambiguous-placement.md",
@@ -251,9 +254,6 @@
     "tmp/subagent-captures/2026-08-30T19-18-45_note.md",
     "tmp/subagent-captures/2026-08-30T19-17-29_unknown-1.md",
     "tmp/subagent-captures/2026-08-30T19-17-29_unknown.md",
-    "tmp/subagent-captures/2026-08-30T19-12-33_unknown-1.md",
-    "tmp/subagent-captures/2026-08-30T19-12-33_unknown.md",
-    "tmp/subagent-captures/2026-08-30T19-09-09_unknown-1.md",
-    "tmp/subagent-captures/2026-08-30T19-09-09_unknown.md"
+    "tmp/subagent-captures/2026-08-30T19-12-33_unknown-1.md"
   ]
 }

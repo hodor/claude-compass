@@ -2,10 +2,10 @@
 since: 2026-08-30
 usage:
   apply-models:
-    count: 2
+    count: 3
     last: 2026-08-30
   capture-check:
-    count: 38
+    count: 40
     last: 2026-08-30
   capture-close:
     count: 4
@@ -14,16 +14,16 @@ usage:
     count: 2
     last: 2026-08-30
   capture-signal:
-    count: 29
+    count: 31
     last: 2026-08-30
   capture-worker:
     count: 4
     last: 2026-08-30
   coverage:
-    count: 10
+    count: 11
     last: 2026-08-30
   decisions:
-    count: 7
+    count: 8
     last: 2026-08-30
   demote:
     count: 4
@@ -35,11 +35,11 @@ usage:
     count: 1
     last: 2026-08-30
   self-update:
-    count: 5
+    count: 6
     last: 2026-08-30
   sync:
-    count: 45
+    count: 54
     last: 2026-08-30
   validate:
-    count: 5
+    count: 6
     last: 2026-08-30
