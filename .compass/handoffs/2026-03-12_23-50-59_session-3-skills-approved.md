@@ -41,11 +41,11 @@ Files 1-3 of 21 in TASK-001 complete (all skills). Next: 15 agent files, then 3 
 ## Code Changes
 
 - `plugin/skills/lessons/SKILL.md`:
-  - Added `status` field (`active`/`archived`) to catalog schema, fields list, and catalog update protocol
-  - Added file naming convention: `LESSON-<descriptive-slug>.md`
-  - Rewrote search algorithm: replaced mechanical tag-matching with AI judgment + subagent for large catalogs
-  - Added "When to Search for Lessons" section (before making/implementing plans)
-  - Replaced inline lesson template with reference to obsidian skill
+ - Added `status` field (`active`/`archived`) to catalog schema, fields list, and catalog update protocol
+ - Added file naming convention: `LESSON-<descriptive-slug>.md`
+ - Rewrote search algorithm: replaced mechanical tag-matching with AI judgment + subagent for large catalogs
+ - Added "When to Search for Lessons" section (before making/implementing plans)
+ - Replaced inline lesson template with reference to obsidian skill
 
 ## Decisions Made
 

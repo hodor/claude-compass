@@ -16,17 +16,17 @@ summary: "completed tasks swept out of active.md by compass sweep, verbatim, new
 - [x] [[PLAN-007-test-quality]] - v0.6.0-v0.6.3, 12 live tasks (Phase C parked behind named unpark triggers). The paired experiment validated the bar: Arm B 15/15 vs Arm A 13/15 on 77 tests vs 109 ([[RESEARCH-test-quality-bar-validation]]).
 - [x] [[PLAN-008-rolling-wave]] - v0.7.0, 12 tasks across 3 waves + 2 live elaborations, fleet-wide in 48/48 vaults 2026-08-11.
 
-### Sizing + discoverability initiative (Roger, 2026-08-23)
+### Sizing + discoverability initiative
 - [x] [[SPEC-016-sizing-work-beyond-one-spec]] APPROVED, D-01..D-05. Both creation paths ship; Compass sizes and acts without asking; the notice is said once and silenceable; internal vocabulary never surfaced; configurable and callable.
 - [x] [[SPEC-017-capabilities-are-reachable-and-measured]] APPROVED, D-01..D-02. Adopt both hermes mechanisms (progressive-disclosure index + usage measurement). Audit: `make-unit`, `unit-check`, `admit-check`, `touched`, `resolve-model` reachable from nothing; `clean-tmp` and `tree` redundant with `sync`. Admission control from [[ADR-004-hierarchical-specs-with-facets]] has never run in any vault.
 - [x] Two consolidate-gate defects fixed in passing: its trigger markers did not match the literals `sync` writes, and the aggregate hot-path cap had no marker or responder at all. `sync` now writes a hot-path marker carrying a per-file breakdown.
 
-### Active-set hygiene initiative (Roger, 2026-08-28)
+### Active-set hygiene initiative
 - [x] [[SPEC-019-active-holds-only-active-work]] APPROVED 2026-08-28 - active.md accumulates done tasks forever; hot path pays for history every turn.
 - [x] [[RESEARCH-active-set-prior-art]] - 3 parallel axes (Claude Code harness, hermes-agent, classic OSS), 49 findings. Flag-then-sweep dominates; no system lets intelligence decide membership; PostToolUse `compass sync` is the already-owned zero-token trigger.
 - [x] [[ADR-014-active-sweep-on-sync]] accepted: flag-then-sweep inside sync; wholesale section moves; archive/done.md; validate drift warning.
 
-### Scaffolding-noise initiative (Roger, 2026-08-24)
+### Scaffolding-noise initiative
 - [x] Capture re-nag spaced to every 5 turns (commit fc9ce75) - the per-turn 'still open' spam is gone.
 
 ### PLAN-009 wave 1 (approved 2026-08-23)
@@ -74,14 +74,14 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 - [x] TASK-096/097/098 (2026-08-24): POSIX pinned-not-observed, SessionStart pickup registered fleet-wide, between-gates silence in the pipeline rule and build skill. PLAN-010 COMPLETE.
 - [x] Off-plan fix v0.8.2 (2026-08-24): live defect in daschie-sort - the agent handed the human `/compass:learned` because no agent-callable capture path existed. [[ADR-013-detached-worker-quiet-fallback]] D-12: `compass capture-note` files the observation as evidence plus a strong signal; six skill/rule sites rewritten to forbid suggesting the slash command. 696 tests green.
 
-### Active-set hygiene initiative (Roger, 2026-08-28)
+### Active-set hygiene initiative
 
 - [x] TASK-091: sweep engine + `compass sweep` dry-run/apply ([[PLAN-011-active-sweep]])
 - [x] TASK-092: wire into sync + `active_done` validate warning (after 091)
 - [x] TASK-093: doc alignment - builder, build, checkup, CLAUDE.md (after 092)
 - [x] TASK-094: local install refresh + live acceptance: sweep moved 36 lines, hot path 10172->8489, validate 0 errors (after 093)
 
-### Self-update initiative (Roger, 2026-08-28)
+### Self-update initiative
 
 - [x] TASK-095: `compass self-update` command - sha gate, throttle, local-source mode, staged apply ([[PLAN-012-self-update]])
 - [x] TASK-096: SessionStart(startup) hook entry + setup/update skill alignment (after 095)
@@ -89,21 +89,21 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 
 ## 2026-08-29
 
-### Human's-words initiative (Roger, 2026-08-28)
+### Human's-words initiative
 
 - [x] [[SPEC-021-capture-in-the-humans-words]] approved; [[RESEARCH-humans-words-fidelity]] complete (54 findings, 3 axes); [[ADR-016-capture-by-extraction]] accepted.
 - [x] TASK-098: spec skill extract-and-arrange rewrite ([[PLAN-013-capture-by-extraction]])
 - [x] TASK-099: vision + specs + retroactive skills, same discipline (after 098)
 - [x] TASK-100: pipeline-rule scope line, 0.11.0, suite 734 green, pushed, fleet pull verified (after 099)
 
-### Sizing + discoverability initiative (Roger, 2026-08-23)
+### Sizing + discoverability initiative
 - [x] [[ADR-017-capability-index-and-usage-record]] accepted for [[SPEC-017-capabilities-are-reachable-and-measured]].
 - [x] TASK-101: usage.py + dispatch recording + report ([[PLAN-014-capability-usage]])
 - [x] TASK-102: doctor never-used advisory, 14-day window before WARN (after 101)
 - [x] TASK-103: retire clean-tmp/tree; reachability line; methodology note (after 101)
 - [x] TASK-104: suite 746 green, v0.12.0, pushed, fleet pull verified (after 102/103)
 
-### Scaffolding-noise initiative (Roger, 2026-08-24)
+### Scaffolding-noise initiative
 
 - [x] [[SPEC-018-scaffolding-invisible-to-the-human]] approved 2026-08-24 and SHIPPED via [[ADR-013-detached-worker-quiet-fallback]]/PLAN-010 (stale line corrected).
 
@@ -121,5 +121,14 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 - [x] SubagentStop FIXED ([[ADR-019-subagentstop-redelivery-and-teammate-typing]]): inline spawns were always typed; double-delivery found and deduped; teammates typed from name. Suite 775 green.
 
 ### Next Up
-- [x] [[RESEARCH-update-safe-customization]] complete: prior art charted; the Defold benchmark corpus was found empty (Roger: "those were wiped").
+- [x] [[RESEARCH-update-safe-customization]] complete: prior art charted; the Defold benchmark corpus was found empty
 - [x] [[ADR-020-local-overlays-appended-after-refresh]] accepted and SHIPPED v0.14.0: `.compass/meta/local/` overlays appended after each refresh, `compass overlay`, doctor row, CLAUDE.md pinned untouched by test. Live round-trip verified.
+
+## 2026-08-30
+
+### Per-domain organization initiative
+- [x] [[ADR-021-index-speaks-in-domains]] accepted + SHIPPED v0.15.0: root index lists depth-0 only; taxonomize retired into consolidate as its Structure pass
+
+### Per-domain organization initiative
+- [x] [[RESEARCH-taxonomy-for-unambiguous-placement]] complete (50 findings, 3 axes, science primary).
+- [x] [[ADR-022-domains-scope-notes-shallow-when-unsure]] accepted on the human's go ("sounds great let's give it a shot go").

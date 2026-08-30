@@ -9,10 +9,10 @@ created: 2026-08-07
 updated: 2026-08-07
 author: "reviewer (Claude)"
 depends_on:
-  - "[[SPEC-013-test-quality]]"
-  - "[[RESEARCH-test-quality-literature]]"
-  - "[[RESEARCH-test-quality-tooling]]"
-  - "[[RESEARCH-test-quality-empirical]]"
+ - "[[SPEC-013-test-quality]]"
+ - "[[RESEARCH-test-quality-literature]]"
+ - "[[RESEARCH-test-quality-tooling]]"
+ - "[[RESEARCH-test-quality-empirical]]"
 summary: "three instruments reconciled; station model recommendation"
 ---
 
@@ -125,13 +125,13 @@ The 63.6% and the 99%/86.7% are consistent once decomposed. The suite is strong 
 
 6. **Scope, not tool choice, decides whether mutation is affordable.** (confidence: high) Tooling F4 measures the gap at 3.8 minutes versus 9.1 hours. My section 2b adds the cost of the cheap option: the scoping that buys the 3.8 minutes is what produced 77% of the false signal.
 
-## 4. Disagreements and open questions for Roger
+## 4. Disagreements and open questions for the human
 
 **Q1. Does SPEC-013's problem statement still hold for this fleet? (The one that changes the plan's shape.)**
 
 The spec's motivating evidence is bloat: "841 tests in a suite", "178 tests in a single day", "nobody can say which of those tests earn their keep". The empirical axis went and looked. This repo's suite is 420 tests at a 1.19:1 test-to-source line ratio, 99.0% clean against the D-01 bar with zero FAIL grades, catching 13 of 15 hand-seeded realistic defects, and the "178 in a day" burst is actually 164 tests across 6 files in a suite the axis calls "close to the outcome D-01 asks for already" (empirical F1, F2, F3, F7, takeaway 1).
 
-This is not a disagreement between axes. It is a disagreement between the spec's premise and the measurement. It does not weaken D-01 as policy, and the 841-test suite the spec cites was not measured here. But it changes what the mechanism is *for*: a guard that prevents regression and keeps the current discipline legible, rather than a cleanup that prunes accumulated bloat. Those two framings produce materially different plans, and only Roger can rule on which SPEC-013 is buying. **My reading: build the guard, not the cleanup.** (confidence: high on the measurement, medium on the recommendation, since it rests on one repo's suite.)
+This is not a disagreement between axes. It is a disagreement between the spec's premise and the measurement. It does not weaken D-01 as policy, and the 841-test suite the spec cites was not measured here. But it changes what the mechanism is *for*: a guard that prevents regression and keeps the current discipline legible, rather than a cleanup that prunes accumulated bloat. Those two framings produce materially different plans, and only the human can rule on which SPEC-013 is buying. **My reading: build the guard, not the cleanup.** (confidence: high on the measurement, medium on the recommendation, since it rests on one repo's suite.)
 
 **Q2. Is the trace and observability layer in scope for the admission bar?**
 
@@ -139,7 +139,7 @@ Mutation says `capturelib`'s log-row construction is the least-pinned code in th
 
 **Q3. May a mutation result ever block?**
 
-I recommend diagnostic-only, never a gate and never on a hook path, for the reasons in 2b and 2e. Roger owns whether the validator may ever fail a task on it.
+I recommend diagnostic-only, never a gate and never on a hook path, for the reasons in 2b and 2e. the human owns whether the validator may ever fail a task on it.
 
 **Q4. Where does the mechanism live?**
 

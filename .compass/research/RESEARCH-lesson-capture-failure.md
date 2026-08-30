@@ -13,7 +13,7 @@ summary: "why capture almost never happens (40-vault diagnosis)"
 
 ## Question
 
-Roger's observation: "Compass is REALLY BAD at capturing lessons - it almost never happens." Verified against every `.compass` vault on F:. Is it true, and what is the root cause?
+the human's observation: "Compass is REALLY BAD at capturing lessons - it almost never happens." Verified against every `.compass` vault on F:. Is it true, and what is the root cause?
 
 ## Methodology
 

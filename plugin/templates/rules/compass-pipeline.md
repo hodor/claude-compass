@@ -21,6 +21,8 @@ Research is the exception: it captures evidence and can be as long as required.
 
 Documents describe what IS, never the process that produced them. No review narration, no draft history, no "this was revised/rejected/survived", no "the first version did X" - a reader months later has only the document, and the story of its making belongs in git history and commit messages. If a sentence only makes sense to someone who watched the document get written, delete it.
 
+State rules directly; never attribute them to their speaker. No "X said", no name-and-date tags on decisions, no quoted-conversation framing - a document is not meeting minutes. Authority comes from the document's own status and its Decisions section, not from citing who spoke. Preserving the human's phrasing (the capture rule above) means the sentence itself survives as the content - not that it gets wrapped in quotation marks with a byline.
+
 ## No Verbiage
 
 Conversation output is never the record - logs, reports, and vault files are. On every surface (agent reports, skill output, hook-triggered passes, relays to the human):

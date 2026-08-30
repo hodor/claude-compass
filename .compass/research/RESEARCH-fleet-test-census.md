@@ -29,7 +29,7 @@ Three independent identification methods were run against every discoverable Com
 ### Method 2: literal text search for "841" and its likely phrasings
 
 ```
-grep -rIl "841" <vault> --include="*.md"          # every vault, all markdown
+grep -rIl "841" <vault> --include="*.md" # every vault, all markdown
 grep -rIlE "suite green|841 test|841 pass|841/841|Ran 841" <vault> --include="*.md"
 grep -rIlE "5 of 6 task|5/6 task" <vault> --include="*.md"
 ```
@@ -93,10 +93,10 @@ grep -rIlE "5 of 6 task|5/6 task" <vault> --include="*.md"
 
 # mechanical test count per project root (repeat <root> for each project directory containing .compass)
 find <root> -type d \( -name node_modules -o -name .git -o -name venv -o -name .venv \
-  -o -name __pycache__ -o -name .compass -o -name site-packages -o -name trials \
-  -o -iname "repo" -o -name dist -o -name build \) -prune -o -type f -name "*.py" -print \
-  | xargs -r grep -c "^\s*def test_\|^\s*async def test_" \
-  | awk -F: '{s+=$2} END {print s+0}'
+ -o -name __pycache__ -o -name .compass -o -name site-packages -o -name trials \
+ -o -iname "repo" -o -name dist -o -name build \) -prune -o -type f -name "*.py" -print \
+ | xargs -r grep -c "^\s*def test_\|^\s*async def test_" \
+ | awk -F: '{s+=$2} END {print s+0}'
 ```
 
 ## Comparison baseline (for whenever the target is named)

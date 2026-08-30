@@ -42,11 +42,11 @@ A spec earns its own folder when it has 3+ sub-concerns OR its body would exceed
 .compass/specs/
 ├── SPEC-001-flat-thing.md
 ├── SPEC-002-tile-editor/
-│   ├── index.md
-│   ├── SPEC-001-master-material.md
-│   └── SPEC-002-brush-system/
-│       ├── index.md
-│       └── SPEC-001-stroke-rendering.md
+│ ├── index.md
+│ ├── SPEC-001-master-material.md
+│ └── SPEC-002-brush-system/
+│ ├── index.md
+│ └── SPEC-001-stroke-rendering.md
 ```
 
 ### Part 3: Faceted tag overlay

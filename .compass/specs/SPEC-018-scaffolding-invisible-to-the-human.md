@@ -30,8 +30,8 @@ The human's words: "all that shit is noise to me. I just want to read what you t
 
 ## Decisions (made by the human)
 
-- **D-01:** The scaffolding stays. Nothing about the capture loop, the checks, or the passes is reduced or removed; the fix is to hide it. (Roger, 2026-08-24: "the fix for the scaffolding verbose IS NEVER TO NOT HAVE SCAFFOLDING but to figure out a way to HIDE THAT from the claude code user.")
-- **D-02:** Agents run the show. The pipeline proceeds without consulting the human step by step; the human is engaged at real gates - spec promotion, plan approval, escalations - and otherwise reads outcomes. (Roger, 2026-08-24: "We need to make this work with agents running the show not with agents asking the human every step along the way.")
+- **D-01:** The scaffolding stays. Nothing about the capture loop, the checks, or the passes is reduced or removed; the fix is to hide it.
+- **D-02:** Agents run the show. The pipeline proceeds without consulting the human step by step; the human is engaged at real gates - spec promotion, plan approval, escalations - and otherwise reads outcomes.
 
 ## Desired Outcome
 

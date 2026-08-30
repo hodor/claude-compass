@@ -30,8 +30,8 @@ Since v0.10.0 ([[ADR-015-self-update-on-session-start]]) update is no longer a c
 
 ## Decisions (made by the human)
 
-- **D-02:** What the mechanism must guarantee, and the bar for done: "as long as we don't make projects lose their own claude.md and their agents know how to use compass I'm good." The Defold customizations were wiped - the research could not tell from evidence whether update destroyed them or they were never applied; Roger settled it: "those were wiped." (Roger, 2026-08-30, on [[RESEARCH-update-safe-customization]] finding the corpus empty.)
-- **D-01:** This is separate from [[SPEC-009-configurable-pipeline-workflows]]: SPEC-009 configures the pipeline's shape (phases, order) and stays deferred; this spec is only about local modifications - whatever their content - surviving update. Shipping this first gives SPEC-009 a substrate to live on later. (Roger, 2026-08-09.)
+- **D-02:** What the mechanism must guarantee, and the bar for done: "as long as we don't make projects lose their own claude.md and their agents know how to use compass I'm good." The Defold customizations were wiped - the research could not tell from evidence whether update destroyed them or they were never applied; settled: "those were wiped."
+- **D-01:** This is separate from [[SPEC-009-configurable-pipeline-workflows]]: SPEC-009 configures the pipeline's shape (phases, order) and stays deferred; this spec is only about local modifications - whatever their content - surviving update. Shipping this first gives SPEC-009 a substrate to live on later.
 
 ## Desired Outcome
 

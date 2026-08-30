@@ -25,10 +25,10 @@ Five pipelines ran spec-to-fleet across 2026-08-28/29, all committed and pushed,
 
 1. **SubagentStop typed-signal fix** (backlog, evidence in `tmp/subagentstop-payloads.jsonl` note): FIRST observe whether an inline Agent-tool spawn populates `agent_type` - instrument, spawn one, read the payload ([[LESSON-hook-payloads-observe-before-coding]]). Then type from TeammateIdle side or retire SIGNAL_KINDS honestly.
 2. **SPEC-006 multi-host (hermes first)**: needs its own research session - hermes host surface for Compass's hooks/CLI/skills. Big; treat as a fresh pipeline.
-3. **Roger's gates**: [[SPEC-014-update-safe-customizations]] promotion ruling; pin the seven-monster-specs project ([[LESSON-pin-the-motivating-datum]]) - only he knows which project it was.
+3. **the human's gates**: [[SPEC-014-update-safe-customizations]] promotion ruling; pin the seven-monster-specs project ([[LESSON-pin-the-motivating-datum]]) - only he knows which project it was.
 
 ## Known small items
 
 - doctor's unit-promotion labels show "index" for born-folder specs (capture-note filed 2026-08-28).
-- Hot path still over aggregate cap (index 4.5K + catalog 3K); `/compass:consolidate` is the responder when Roger wants it.
+- Hot path still over aggregate cap (index 4.5K + catalog 3K); `/compass:consolidate` is the responder when the human wants it.
 - F:/Creative/calendar vault: 227 true orphans per the new query - that vault's own concern.

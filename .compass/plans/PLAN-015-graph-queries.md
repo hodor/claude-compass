@@ -19,7 +19,7 @@ lessons: ["[[LESSON-wikilink-validator-skip-code]]", "[[LESSON-verify-the-invers
 
 ## Goal
 
-Implements every D of [[ADR-018-graph-queries-jit-over-markdown]]. Approved 2026-08-29 under Roger's standing go; stations collapsed into the main thread, tests red-first.
+Implements every D of [[ADR-018-graph-queries-jit-over-markdown]]. Approved 2026-08-29 under the standing go; stations collapsed into the main thread, tests red-first.
 
 ## Ripple (compass graph impact, run at plan time once TASK-105 lands)
 
