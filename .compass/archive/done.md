@@ -119,3 +119,7 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 
 ### Next Up
 - [x] SubagentStop FIXED ([[ADR-019-subagentstop-redelivery-and-teammate-typing]]): inline spawns were always typed; double-delivery found and deduped; teammates typed from name. Suite 775 green.
+
+### Next Up
+- [x] [[RESEARCH-update-safe-customization]] complete: prior art charted; the Defold benchmark corpus was found empty (Roger: "those were wiped").
+- [x] [[ADR-020-local-overlays-appended-after-refresh]] accepted and SHIPPED v0.14.0: `.compass/meta/local/` overlays appended after each refresh, `compass overlay`, doctor row, CLAUDE.md pinned untouched by test. Live round-trip verified.

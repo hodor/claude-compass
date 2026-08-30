@@ -187,6 +187,8 @@ tags:
   - research/RESEARCH-hermes-vs-compass-fit.md
   competitive:
   - research/RESEARCH-gsd-core-improvements-for-compass.md
+  concatenation:
+  - decisions/ADR-020-local-overlays-appended-after-refresh.md
   config:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
   configurable:
@@ -237,6 +239,7 @@ tags:
   cross-platform:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   customization:
+  - decisions/ADR-020-local-overlays-appended-after-refresh.md
   - research/RESEARCH-update-safe-customization.md
   - specs/SPEC-009-configurable-pipeline-workflows.md
   - specs/SPEC-014-update-safe-customizations.md
@@ -297,6 +300,8 @@ tags:
   - specs/SPEC-020-compass-updates-itself/index.md
   docker:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
+  doctor:
+  - decisions/ADR-020-local-overlays-appended-after-refresh.md
   drift:
   - specs/SPEC-014-update-safe-customizations.md
   drop-ins:
@@ -695,6 +700,7 @@ tags:
   overfit:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   overlays:
+  - decisions/ADR-020-local-overlays-appended-after-refresh.md
   - research/RESEARCH-update-safe-customization.md
   - specs/SPEC-014-update-safe-customizations.md
   paired-experiment:
@@ -1104,6 +1110,7 @@ tags:
   update:
   - decisions/ADR-008-model-resolution-table.md
   - decisions/ADR-015-self-update-on-session-start.md
+  - decisions/ADR-020-local-overlays-appended-after-refresh.md
   - lessons/LESSON-installer-removes-only-what-it-installed.md
   - plans/PLAN-005-model-table.md
   - plans/PLAN-012-self-update.md
