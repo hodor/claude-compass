@@ -1,7 +1,7 @@
 ---
 title: "Hook `type: prompt` cannot invoke skills; use `type: agent`"
 type: lesson
-status: active
+status: archived
 category: process
 area: workflow
 tags: [hooks, hook-type, skills, plugin-config]

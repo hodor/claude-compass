@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 8800 / 5000 tokens (index.md 5346, active.md 302, meta/lessons-catalog.yaml 3152). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 7042 / 5000 tokens (index.md 3796, active.md 302, meta/lessons-catalog.yaml 2944). Run /compass:consolidate before next session. -->
 <!-- WARNING: index.md exceeded hot-path cap. Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
@@ -138,43 +138,7 @@ See [[backlog]].
 
 ## Lessons
 
-- [[LESSON-glob-hidden-dirs-prefix]] - Glob tool needs `**/` prefix to traverse hidden dirs like .compass/
-- [[LESSON-hook-if-clause-no-or]] - Settings hook entries have no `if` clause; select tools via matcher, filter paths in the command
-- [[LESSON-hook-type-prompt-no-skills]] - Hook `type: prompt` is single-shot; cannot call Skill tool; use `type: agent` instead
-- [[LESSON-no-agent-bookkeeping]] - Mechanical bookkeeping (counters, indexes, catalogs) belongs in scripts/hooks/JIT, not agent steps
-- [[LESSON-wikilink-validator-skip-code]] - Match use, not mention - matchers and edit anchors alike: bind to grammar position, never a substring prose repeats
-- [[LESSON-test-driven-tasks-dont-discriminate]] - When tests fully encode the spec, frontier models already read-tests-first; methodology can't be measured on such tasks
-- [[LESSON-windows-crlf-breaks-linux-container-scripts]] - Python `open(p, 'w')` on Windows writes CRLF; mount that into a Linux container and bash chokes on $'\r'
-- [[LESSON-tag-index-trades-cost-for-directed-retrieval]] - Tag index gives directed retrieval and faster wall-time; token cost depends on query shape; SPEC-003's 30% claim falsified on N=1
-- [[LESSON-autocrlf-churns-lf-writers]] - With core.autocrlf=true and no .gitattributes, git checks files out as CRLF; a tool that writes LF rewrites them every run, causing perpetual diffs
-- [[LESSON-hook-cli-gate-stdin-on-flag]] - Gate hook-stdin reads behind an explicit flag (--hook), not isatty probing; probing blocks forever in a non-interactive shell with no piped input
-- [[LESSON-type-dir-discovery-needs-content-signal]] - Treating every .compass subdir as an artifact type dir breaks on vaults that store non-artifact dirs there; require the known core dirs OR a typed-artifact signal
-- [[LESSON-installer-removes-only-what-it-installed]] - A tool that installs into a shared dir must delete only its own named artifacts on cleanup; 'remove anything not in my source' destroys user files
-- [[LESSON-long-agents-stall-resume-them]] - A subagent completion notice whose final text reads like mid-task narration is a stall, not a result; resume it with 'continue from exactly where you stopped' instead of respawning
-- [[LESSON-subagent-worktrees-fork-stale]] - Worktree-isolated subagents fork from a pre-session commit; without a fast-forward to master and committed prior waves, they see a world where earlier work does not exist
-- [[LESSON-hooks-load-only-from-settings]] - Hooks load only from settings-file hooks keys or registered plugins; a bare .claude/hooks/hooks.json never fires
-- [[LESSON-subagent-reports-need-sendmessage]] - A spawned agent's final plain text is invisible to its orchestrator; briefs must mandate an explicit SendMessage delivery
-- [[LESSON-append-only-index-misses-mutations]] - Append-only derived indexes miss both stale mutations and second-writer duplicates; repair must be active, not assumed.
-- [[LESSON-scratch-vaults-need-compass-dir]] - CLAUDE_PROJECT_DIR redirects the compass CLI only when it contains .compass; otherwise cwd-walk silently targets the enclosing vault
-- [[LESSON-hook-payloads-observe-before-coding]] - Observe the real emission or code path first; assumed shapes and reported causes ship dead work under a green suite
-- [[LESSON-adversarial-plan-review-before-build]] - Review specs/plans with 3 adversarial lenses before approval, and have reviewers measure against the real corpus, not opine
-- [[LESSON-pin-the-motivating-datum]] - When a spec cites a triggering observation, record its source (project, session, machine) at spec time; unpinned data become unfindable
-- [[LESSON-dont-strip-agent-quality-stations]] - A blanket no-sub-agents ban in a spawn brief strips the builder's review station; twice violated, both violations caught real bugs
-- [[LESSON-blind-the-author-in-self-validation]] - Blinding fails through the answer key and the vault's own hot path, not only shared roles; verify the rater is blind
-- [[LESSON-suite-size-is-not-coverage]] - 44 tests for two behaviors carried mass redundancy and two critical holes at once; a delete list is half a review
-- [[LESSON-revert-to-prove-a-regression-test]] - A test that passes without the change under test is unwritten; prove it per test, by revert after the fix or by the red run before it
-- [[LESSON-remove-context-before-adding]] - Fix a behavior bug by removing the prose that trains it or adding a harness gate; added prose is the last resort and must be net-negative
-- [[LESSON-walkthroughs-in-the-humans-words]] - Jargon in walkthroughs and paraphrase in specs both erase the human's own words where they must recognize themselves
-- [[LESSON-human-practice-rationing-assumes-human-scarcity]] - Name the precondition a borrowed mechanism needs before importing it; mark every finding maps or metaphor
-- [[LESSON-verify-the-inverse-not-the-forward-path]] - Cheap reversal licenses acting without asking; verify it on the inverse command, never by reading the forward one
-- [[LESSON-score-the-do-nothing-baseline-before-running]] - Score the constant-answer baseline, fix the threshold, and check the stop verdict can fire and end the plan
-- [[LESSON-untestable-criterion-is-a-spec-defect]] - A criterion that defines no input class cannot be tested; report the spec defect, never invent the equivalence class
-- [[LESSON-measure-the-procedures-intermediates]] - Verdict agreement without intermediate agreement means a shared prior, not the procedure, produces the answer
-- [[LESSON-outputs-must-span-the-decision-space]] - A procedure answering in fewer categories than the decision space makes users invent the mapping, wrongly
-- [[LESSON-verify-worktree-isolation-is-real]] - Worktree isolation can silently not exist; confirm the path is in `git worktree list` before parallel writers run
-- [[LESSON-spawned-sessions-inherit-project-hooks]] - A spawned claude session inherits the project's hooks; a hook-spawned worker fires its own machinery unless gated
-- [[LESSON-headless-worker-denies-tools-silently]] - Headless claude -p runs deny Write/Bash by default; scope the worker's tools exactly, don't bypass
-- [[LESSON-sizing-unrecorded-blind-to-born-folder]] - sizing_unrecorded fires on every spec since SPEC-016 D-06 made folder the birth shape, drowning real reconciliation failures
+Indexed in meta/lessons-catalog.yaml (loaded with the hot path); files in `lessons/`, archived ones in `archive/lessons/`.
 
 ## compass-cli
 - [[compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work]] - A Python `compass` CLI Owns All Mechanical Vault Work; the Hook Calls It as a Command

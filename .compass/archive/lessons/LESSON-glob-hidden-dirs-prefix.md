@@ -1,7 +1,7 @@
 ---
 title: Glob requires `**/` prefix to traverse hidden directories
 type: lesson
-status: active
+status: archived
 category: process
 area: workflow
 tags: [glob, hidden-dirs, vault-traversal, tool-quirks]

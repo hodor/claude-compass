@@ -108,8 +108,21 @@ def _parse_citations(plan_text, regions):
     return citations
 
 
-def _resolve_citations(citations, catalog):
-    """Match citations against catalog rows (archived rows included).
+def _archived_row(vault_root, norm):
+    """Resolve a citation against lesson files on disk when no catalog row
+    matches. The catalog holds active rows only; an archived lesson keeps
+    its full file in `archive/lessons/` (or, mid-transition, `lessons/`), so
+    a citation to it is a resolved historical claim, not a typo."""
+    filename = norm if norm.endswith(".md") else f"{norm}.md"
+    for rel in (f"archive/lessons/{filename}", f"lessons/{filename}"):
+        if (vault_root / rel).is_file():
+            return {"file": filename, "status": "archived"}
+    return None
+
+
+def _resolve_citations(citations, catalog, vault_root):
+    """Match citations against catalog rows, falling back to lesson files
+    on disk for archived lessons the active-only catalog no longer rows.
 
     Returns `(cited, scoped, unresolved)`. `cited` maps a canonical catalog
     filename to the ordered list of detailed-region tasks that cited it.
@@ -129,7 +142,7 @@ def _resolve_citations(citations, catalog):
         if citation["region"] == "record":
             continue
         norm = _normalize(citation["raw"])
-        row = index.get(norm)
+        row = index.get(norm) or _archived_row(vault_root, norm)
         if row is None:
             entry = unresolved.setdefault(norm, {"raw": citation["raw"], "tasks": []})
             if citation["task"] not in entry["tasks"]:
@@ -187,7 +200,7 @@ def run(args):
     has_later = any(status == "scoped" for status in regions.values())
 
     citations = _parse_citations(plan_text, regions)
-    cited, scoped, unresolved = _resolve_citations(citations, catalog)
+    cited, scoped, unresolved = _resolve_citations(citations, catalog, vault_root)
 
     tags = plan_data.get("tags") or []
     if isinstance(tags, str):

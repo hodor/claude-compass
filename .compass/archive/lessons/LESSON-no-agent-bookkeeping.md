@@ -1,7 +1,7 @@
 ---
 title: Mechanical bookkeeping belongs in scripts or hooks, not agent protocol steps
 type: lesson
-status: active
+status: archived
 category: process
 area: methodology
 tags: [token-efficiency, automation, hooks, skill-design, jit]
