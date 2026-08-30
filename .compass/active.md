@@ -13,7 +13,16 @@ Triggered by a live failure in another project: a vision session produced seven 
 
 ## Per-domain organization initiative
 
-- [ ] [[PLAN-016-domain-taxonomy]] revised through 3-lens review (11 blockers folded in); gates pass (decisions 11 rows, coverage 18/18); AWAITING ROGER'S APPROVAL.
+- [x] [[PLAN-016-domain-taxonomy]] APPROVED 2026-08-30; the human reviews the migrated vault, not the tasks.
+- [ ] TASK-109: record names, count refresh, loop guard, piped links
+- [ ] TASK-110: make-domain + validate suggestions
+- [ ] TASK-111: link rules
+- [ ] TASK-112: skill contracts
+- [ ] TASK-116: compass tree
+- [ ] TASK-117: useless-token baseline
+- [ ] TASK-113: proposal by the atomic rule + Wikipedia score
+- [ ] TASK-114: migrate this vault, drills, re-measure
+- [ ] TASK-115: ship + fleet verify + handoff
 - [ ] v0.15.0's premature skill/sync edits were reverted; index depth-0 rule stays (shipped); everything further waits on the plan.
 
 ## Next Up

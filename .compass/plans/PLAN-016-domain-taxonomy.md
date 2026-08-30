@@ -1,7 +1,8 @@
 ---
 title: "Domain Taxonomy"
 type: plan
-status: draft
+status: approved
+approved: 2026-08-30
 confidence: high
 area: methodology
 tags: [taxonomy, domains, sync, scope-notes, migration, measurement]
