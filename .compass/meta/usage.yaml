@@ -2,22 +2,22 @@
 since: 2026-08-30
 usage:
   capture-check:
-    count: 20
+    count: 27
     last: 2026-08-30
   capture-close:
-    count: 1
+    count: 2
     last: 2026-08-30
   capture-signal:
-    count: 20
+    count: 24
     last: 2026-08-30
   capture-worker:
-    count: 1
+    count: 2
     last: 2026-08-30
   coverage:
-    count: 3
+    count: 6
     last: 2026-08-30
   decisions:
-    count: 2
+    count: 3
     last: 2026-08-30
   next-num:
     count: 2
@@ -26,8 +26,8 @@ usage:
     count: 1
     last: 2026-08-30
   self-update:
-    count: 1
+    count: 2
     last: 2026-08-30
   sync:
-    count: 16
+    count: 23
     last: 2026-08-30
