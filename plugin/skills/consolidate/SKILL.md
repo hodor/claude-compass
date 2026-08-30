@@ -94,18 +94,18 @@ lessons:
     summary: "YAML values with colons must be quoted"
 ```
 
-Active lessons first (sorted by score descending, then alpha by filename). Archived lessons after, separated by a `# Archived below` comment.
+Active lessons only, sorted by score descending, then alpha by filename. An archived lesson has no row: its file in `.compass/archive/lessons/` carries every field the row would copy, the row is derived and regenerable, and the catalog loads on the hot path - dropping the row is tiering, not loss. (The orphaned-row rule below covers only rows whose FILE is missing.)
 
 A catalog row pointing to a file that no longer exists signals corruption (nothing in Compass deletes lesson files); move such rows under a trailing `# Orphaned rows (file missing)` comment block rather than removing them, and name each in the report - the row's summary may be the only surviving trace of the lesson.
 
-### 8. Rebuild the Lessons section of index.md
+### 8. The Lessons section of index.md is a pointer
 
-Replace the `## Lessons` section with one line per active lesson, sorted by score descending, then alpha:
+Lessons are indexed by the catalog, which already loads with the hot path; listing them again in `index.md` puts every summary in the hot path twice. Replace whatever the `## Lessons` section holds with the single pointer:
 
 ```markdown
 ## Lessons
-- [[LESSON-foo]] - YAML values with colons must be quoted (score 8)
-- [[LESSON-bar]] - Users need batch export, not single-file (score 6)
+
+Indexed in [[lessons-catalog|meta/lessons-catalog.yaml]] (loaded with the hot path); files in `lessons/`, archived ones in `archive/lessons/`.
 ```
 
 Do not touch other sections of `index.md`.

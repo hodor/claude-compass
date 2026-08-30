@@ -64,7 +64,6 @@ tags:
   - compass-cli/plans/PLAN-002-compass-cli-implementation.md
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/ADR-003-drop-counter-file-jit-compute.md
-  - lessons/LESSON-no-agent-bookkeeping.md
   autonomy:
   - specs/SPEC-018-scaffolding-invisible-to-the-human.md
   background-worker:
@@ -385,8 +384,6 @@ tags:
   - lessons/LESSON-subagent-worktrees-fork-stale.md
   gitattributes:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
-  glob:
-  - lessons/LESSON-glob-hidden-dirs-prefix.md
   graph:
   - decisions/ADR-018-graph-queries-jit-over-markdown.md
   - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
@@ -433,8 +430,6 @@ tags:
   - research/RESEARCH-hermes-agent-capabilities.md
   - research/RESEARCH-hermes-memory-mechanics.md
   - research/RESEARCH-hermes-vs-compass-fit.md
-  hidden-dirs:
-  - lessons/LESSON-glob-hidden-dirs-prefix.md
   hierarchical-specs:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   hierarchy:
@@ -448,8 +443,6 @@ tags:
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   - specs/SPEC-010-universal-hybrid-hierarchy.md
   - specs/SPEC-016-sizing-work-beyond-one-spec.md
-  hook-type:
-  - lessons/LESSON-hook-type-prompt-no-skills.md
   hooks:
   - compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work.md
   - compass-cli/plans/PLAN-002-compass-cli-implementation.md
@@ -465,9 +458,7 @@ tags:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   - lessons/LESSON-hook-if-clause-no-or.md
   - lessons/LESSON-hook-payloads-observe-before-coding.md
-  - lessons/LESSON-hook-type-prompt-no-skills.md
   - lessons/LESSON-hooks-load-only-from-settings.md
-  - lessons/LESSON-no-agent-bookkeeping.md
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
   - lessons/LESSON-spawned-sessions-inherit-project-hooks.md
   - plans/PLAN-001-lessons-and-index-implementation.md
@@ -560,7 +551,6 @@ tags:
   - lessons/LESSON-walkthroughs-in-the-humans-words.md
   jit:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
-  - lessons/LESSON-no-agent-bookkeeping.md
   kanban:
   - research/RESEARCH-rolling-wave-software-practice.md
   kernel:
@@ -759,7 +749,6 @@ tags:
   - lessons/LESSON-adversarial-plan-review-before-build.md
   plugin-config:
   - lessons/LESSON-hook-if-clause-no-or.md
-  - lessons/LESSON-hook-type-prompt-no-skills.md
   plugin-yaml:
   - research/RESEARCH-self-update-surfaces.md
   popper:
@@ -926,11 +915,8 @@ tags:
   - specs/SPEC-016-sizing-work-beyond-one-spec.md
   skill:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
-  skill-design:
-  - lessons/LESSON-no-agent-bookkeeping.md
   skills:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
-  - lessons/LESSON-hook-type-prompt-no-skills.md
   - plans/PLAN-001-lessons-and-index-implementation.md
   - plans/PLAN-013-capture-by-extraction.md
   spawned-sessions:
@@ -1065,7 +1051,6 @@ tags:
   - compass-cli/research/RESEARCH-cli-token-reduction-measurement.md
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/ADR-003-drop-counter-file-jit-compute.md
-  - lessons/LESSON-no-agent-bookkeeping.md
   - lessons/LESSON-remove-context-before-adding.md
   tokens:
   - decisions/ADR-008-model-resolution-table.md
@@ -1074,8 +1059,6 @@ tags:
   - specs/SPEC-008-central-model-resolution-table.md
   tool-output:
   - lessons/LESSON-hook-payloads-observe-before-coding.md
-  tool-quirks:
-  - lessons/LESSON-glob-hidden-dirs-prefix.md
   tool-scoping:
   - lessons/LESSON-headless-worker-denies-tools-silently.md
   tooling:
@@ -1154,8 +1137,6 @@ tags:
   vault-structure:
   - research/RESEARCH-hybrid-hierarchy-impl.md
   - specs/SPEC-010-universal-hybrid-hierarchy.md
-  vault-traversal:
-  - lessons/LESSON-glob-hidden-dirs-prefix.md
   vector-search:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   verbatim:

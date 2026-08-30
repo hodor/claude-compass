@@ -48,7 +48,10 @@ GENERATED_OUTPUTS = [
 
 INDEX_TOKEN_CAP = 5000
 INDEX_LINE_CAP = 250
-CATALOG_LINE_CAP = 200
+# 50 lessons (LESSON_COUNT_CAP) at the fixed 7-line row shape, plus header;
+# the two caps agree by construction so a legal lesson count cannot trip the
+# line cap on its own.
+CATALOG_LINE_CAP = 360
 CATALOG_BYTE_CAP = 25_000
 LESSON_COUNT_CAP = 50
 LOG_MAX_AGE_DAYS = 30
@@ -168,6 +171,11 @@ def _sync_index(vault_root, records):
     unit_recs = {}
     for record in records:
         if record["_data"].get("status") == "archived":
+            continue
+        # Lessons are indexed by the catalog, which loads with the hot path;
+        # a second per-lesson listing here would put every summary in the
+        # hot path twice. The index's Lessons section is a pointer.
+        if record["type_dir"] == "lessons":
             continue
         if record["unit"] is None:
             root_by_dir.setdefault(record["type_dir"], []).append(record)

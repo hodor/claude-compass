@@ -23,7 +23,6 @@ Master map of the fixture vault. One line per artifact.
 ## Lessons
 
 - [[LESSON-known-quoting]] - quote YAML values that contain colons
-- [[LESSON-fresh-globbing]] - Glob needs a **/ prefix to traverse hidden directories
 
 ## Handoffs
 - [[2026-06-14_09-00-00_foundation-session]] - Handoff: foundation session

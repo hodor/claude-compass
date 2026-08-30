@@ -603,7 +603,9 @@ class UnitSyncTests(SyncFixture):
         text = self.index_text()
         self.assertIn("## Unit X", text)
         section = text.split("## Unit X", 1)[1]
-        self.assertIn("- [[unitx/lessons/LESSON-unit-fresh]] - summary of Unit Fresh", section)
+        # Unit lessons aggregate into the root catalog like every lesson;
+        # the catalog is their index, so no per-lesson line appears here.
+        self.assertNotIn("LESSON-unit-fresh", section)
         self.assertIn("- [[unitx/specs/SPEC-001-alpha]] - Alpha", section)
         self.assertNotIn("[[SPEC-001-alpha]] -", text.split("## Unit X", 1)[0])
 
