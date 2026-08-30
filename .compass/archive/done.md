@@ -113,3 +113,9 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 - [x] TASK-106: unit-check hub-dominance guard, cap 10 (after 105)
 - [x] TASK-107: vault-health/checkup/planner consumers (after 105)
 - [x] TASK-108: live validation PASS - SPEC-001 tally 21=21, ADR-005 off-by-one audited in graph's favor, 3 true orphans; suite 768 green (after 106/107)
+
+### Next Up
+- [x] [[SPEC-014-update-safe-customizations]] APPROVED 2026-08-29 (issue #6); self-update raised the stakes, folded into the Problem.
+
+### Next Up
+- [x] SubagentStop FIXED ([[ADR-019-subagentstop-redelivery-and-teammate-typing]]): inline spawns were always typed; double-delivery found and deduped; teammates typed from name. Suite 775 green.

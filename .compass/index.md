@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 8638 / 5000 tokens (index.md 5162, active.md 321, meta/lessons-catalog.yaml 3155). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 8697 / 5000 tokens (index.md 5218, active.md 327, meta/lessons-catalog.yaml 3152). Run /compass:consolidate before next session. -->
 <!-- WARNING: index.md exceeded hot-path cap. Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
@@ -112,6 +112,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[ADR-016-capture-by-extraction]] - interview skills switch from synthesize-a-draft to extract-and-arrange: the human's sentences carry the capture sections, agent additions bracketed, uncertain words flagged never substituted, brevity binds only agent prose
 - [[ADR-017-capability-index-and-usage-record]] - bare compass is the progressive-disclosure index made reachable by one rule line; dispatch records every invocation; compass usage lists never-used commands explicitly; clean-tmp and tree retire; admission control's fate decided by data
 - [[ADR-018-graph-queries-jit-over-markdown]] - no derived store: compass graph parses edges at query time so staleness cannot exist; orphans/hubs/impact ship wired into vault-health, checkup, unit-check's hub guard, and a planner ripple step
+- [[ADR-019-subagentstop-redelivery-and-teammate-typing]] - live payload observation falsifies the dead-code claim (inline spawns are typed, teammates are not) and reveals SubagentStop double-delivery, now deduped on agent_id
 
 ## Active Work
 
