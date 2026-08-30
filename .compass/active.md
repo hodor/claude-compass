@@ -13,9 +13,6 @@ Triggered by a live failure in another project: a vision session produced seven 
 
 ## Per-domain organization initiative
 
-- [x] TASK-112: skill contracts
-- [x] TASK-118: born flat - folder at the second member; self-update normalizes over-shaped vaults
-- [ ] TASK-116: compass tree
 - [ ] TASK-117: useless-token baseline
 - [ ] TASK-113: proposal by the atomic rule + Wikipedia score
 - [ ] TASK-114: migrate this vault, drills, re-measure

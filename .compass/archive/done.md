@@ -132,3 +132,18 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 ### Per-domain organization initiative
 - [x] [[RESEARCH-taxonomy-for-unambiguous-placement]] complete (50 findings, 3 axes, science primary).
 - [x] [[ADR-022-domains-scope-notes-shallow-when-unsure]] accepted on the human's go ("sounds great let's give it a shot go").
+
+### Per-domain organization initiative
+- [x] [[PLAN-016-domain-taxonomy]] APPROVED 2026-08-30; the human reviews the migrated vault, not the tasks.
+
+### Per-domain organization initiative
+- [x] TASK-109: record names, count refresh, loop guard, piped links
+- [x] TASK-110: make-domain + validate suggestions
+- [x] TASK-111: link rules
+
+### Per-domain organization initiative
+- [x] TASK-112: skill contracts
+- [x] TASK-118: born flat - folder at the second member; self-update normalizes over-shaped vaults
+
+### Per-domain organization initiative
+- [x] TASK-116: compass tree
