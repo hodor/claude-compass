@@ -487,9 +487,8 @@ class ResolutionMatchingTests(SyncFixture):
         sync_cmd.sync(self.root)
         text = self.index_text()
         # The folder line is the pointer (ADR-021); the child is not listed.
-        self.assertIn("- [[SPEC-004-pack]] (folder, 1 children)", text)
+        self.assertIn("- [[specs/SPEC-004-pack/index|SPEC-004-pack]] (folder, 1 children)", text)
         self.assertNotIn("SPEC-001-inner", text)
-        self.assertIn("- [[SPEC-004-pack]] (folder, 1 children) - the pack folder", text)
         self.assertNotIn("[[SPEC-004-pack/SPEC-001-inner]]", text)
 
 
@@ -584,7 +583,7 @@ class NestedDocWikilinkTests(SyncFixture):
         sync_cmd.sync(self.root)
         text = self.index_text()
         # The folder line is the pointer (ADR-021); the child is not listed.
-        self.assertIn("- [[pack]] (folder, 1 children)", text)
+        self.assertIn("- [[research/pack/index|pack]] (folder, 1 children)", text)
         self.assertNotIn("RESEARCH-inner", text)
         self.assertNotIn("[[research/pack/RESEARCH-inner]]", text)
 
@@ -619,7 +618,7 @@ class UnitSyncTests(SyncFixture):
         self.write("unitx/specs/SPEC-002-sub/SPEC-001-leaf.md", spec("Leaf"))
         sync_cmd.sync(self.root)
         text = self.index_text()
-        self.assertIn("- [[unitx/specs/SPEC-002-sub]] (folder, 1 children) - the sub folder", text)
+        self.assertIn("- [[unitx/specs/SPEC-002-sub/index|SPEC-002-sub]] (folder, 1 children) - the sub folder", text)
         # The folder line is the pointer (ADR-021); its child is not listed.
         self.assertNotIn("SPEC-002-sub/SPEC-001-leaf", text)
 
@@ -1154,3 +1153,91 @@ class CatalogDuplicateRowTests(SyncFixture):
         self.assertEqual(text.count('file: "LESSON-c.md"'), 1)
         self.assertIn('summary: "the file: field is the key"', text)
         self.assertEqual(report.get("catalog_duplicates_removed", 0), 0)
+
+
+class Task109Tests(SyncFixture):
+    """Record names are vault-relative, folder lines are piped full paths
+    with live counts, and the loop guard matches exact root paths."""
+
+    def _set_env(self):
+        old = os.environ.get("CLAUDE_PROJECT_DIR")
+        os.environ["CLAUDE_PROJECT_DIR"] = str(self.root.parent)
+        self.addCleanup(
+            lambda: os.environ.__setitem__("CLAUDE_PROJECT_DIR", old) if old
+            else os.environ.pop("CLAUDE_PROJECT_DIR", None)
+        )
+
+    def _feed_stdin(self, payload):
+        old = sys.stdin
+        sys.stdin = io.StringIO(json.dumps(payload))
+        self.addCleanup(lambda: setattr(sys, "stdin", old))
+
+    def test_nested_record_names_are_vault_relative(self):
+        self.write("specs/SPEC-004-pack/index.md", folder_spec("Pack", "the pack folder"))
+        self.write("specs/SPEC-004-pack/SPEC-001-inner.md", spec("Inner"))
+        names = {r["name"]: r["kind"] for r in vaultlib.scan_artifacts(self.root)}
+        self.assertIn("specs/SPEC-004-pack", names)
+        self.assertEqual(names["specs/SPEC-004-pack"], "folder-index")
+        self.assertIn("specs/SPEC-004-pack/SPEC-001-inner", names)
+
+    def test_folder_line_is_piped_full_path(self):
+        self.write("specs/SPEC-004-pack/index.md", folder_spec("Pack", "the pack folder"))
+        self.write("specs/SPEC-004-pack/SPEC-001-inner.md", spec("Inner"))
+        sync_cmd.sync(self.root)
+        self.assertIn(
+            "- [[specs/SPEC-004-pack/index|SPEC-004-pack]] (folder, 1 children) - the pack folder",
+            self.index_text(),
+        )
+
+    def test_same_named_branches_disjoint_counts(self):
+        self.write("specs/dup/index.md", folder_spec("Dup S", "spec side"))
+        self.write("specs/dup/SPEC-001-a.md", spec("A"))
+        self.write("specs/dup/SPEC-002-b.md", spec("B"))
+        self.write("research/dup/index.md", folder_spec("Dup R", "research side"))
+        self.write("research/dup/RESEARCH-a.md", research_doc("RA"))
+        sync_cmd.sync(self.root)
+        text = self.index_text()
+        self.assertIn("[[specs/dup/index|dup]] (folder, 2 children)", text)
+        self.assertIn("[[research/dup/index|dup]] (folder, 1 children)", text)
+
+    def test_stale_folder_count_refreshes_in_place(self):
+        self.write("specs/SPEC-004-pack/index.md", folder_spec("Pack", "the pack folder"))
+        self.write("specs/SPEC-004-pack/SPEC-001-inner.md", spec("Inner"))
+        seeded = INDEX_TEMPLATE.replace(
+            "- [[SPEC-001-existing]] - hand written description, do not touch",
+            "- [[SPEC-001-existing]] - hand written description, do not touch\n"
+            "- [[SPEC-004-pack]] (folder, 5 children) - my own words stay",
+        )
+        (self.root / "index.md").write_text(seeded, encoding="utf-8")
+        sync_cmd.sync(self.root)
+        text = self.index_text()
+        self.assertIn("(folder, 1 children) - my own words stay", text)
+        self.assertNotIn("(folder, 5 children)", text)
+        # recognized as the same artifact: no second line appended
+        self.assertEqual(text.count("SPEC-004-pack"), 1)
+
+    def test_nested_index_write_triggers_sync(self):
+        self._set_env()
+        self.write("specs/SPEC-009-orphan.md", spec("Orphan"))
+        self.write("specs/SPEC-004-pack/index.md", folder_spec("Pack", "p"))
+        self._feed_stdin({
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": str(self.root / "specs" / "SPEC-004-pack" / "index.md")},
+        })
+        code = sync_cmd.run(["--hook"])
+        self.assertEqual(code, 0)
+        self.assertIn("SPEC-009-orphan", self.index_text())
+
+    def test_near_name_file_not_swallowed(self):
+        self._set_env()
+        self.write("specs/SPEC-009-orphan.md", spec("Orphan"))
+        self.write("specs/reindex.md", spec("Re"))
+        self._feed_stdin({
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": str(self.root / "specs" / "reindex.md")},
+        })
+        code = sync_cmd.run(["--hook"])
+        self.assertEqual(code, 0)
+        self.assertIn("SPEC-009-orphan", self.index_text())

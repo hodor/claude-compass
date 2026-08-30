@@ -2,7 +2,7 @@
 since: 2026-08-30
 usage:
   apply-models:
-    count: 11
+    count: 12
     last: 2026-08-30
   capture-check:
     count: 79
@@ -17,7 +17,7 @@ usage:
     count: 57
     last: 2026-08-30
   capture-worker:
-    count: 8
+    count: 10
     last: 2026-08-30
   coverage:
     count: 17
@@ -28,6 +28,9 @@ usage:
   demote:
     count: 4
     last: 2026-08-30
+  lesson-coverage:
+    count: 4
+    last: 2026-08-30
   next-num:
     count: 2
     last: 2026-08-30
@@ -35,10 +38,10 @@ usage:
     count: 1
     last: 2026-08-30
   self-update:
-    count: 17
+    count: 18
     last: 2026-08-30
   sync:
-    count: 78
+    count: 80
     last: 2026-08-30
   validate:
     count: 6
