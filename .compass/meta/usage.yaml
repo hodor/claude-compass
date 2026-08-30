@@ -5,10 +5,10 @@ usage:
     count: 1
     last: 2026-08-30
   capture-check:
-    count: 35
+    count: 36
     last: 2026-08-30
   capture-close:
-    count: 3
+    count: 4
     last: 2026-08-30
   capture-note:
     count: 2
@@ -20,9 +20,12 @@ usage:
     count: 4
     last: 2026-08-30
   coverage:
-    count: 7
+    count: 9
     last: 2026-08-30
   decisions:
+    count: 6
+    last: 2026-08-30
+  demote:
     count: 4
     last: 2026-08-30
   next-num:
@@ -35,8 +38,8 @@ usage:
     count: 4
     last: 2026-08-30
   sync:
-    count: 35
+    count: 39
     last: 2026-08-30
   validate:
-    count: 3
+    count: 4
     last: 2026-08-30

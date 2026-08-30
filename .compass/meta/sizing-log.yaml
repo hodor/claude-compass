@@ -1,0 +1,33 @@
+log:
+  - id: sz-2026-08-30-1
+    action: correction
+    shape: folder
+    subject: "specs/SPEC-019-active-holds-only-active-work.md"
+    reason: "childless born-folder spec breaks Obsidian click-through (basename-only resolution); flat until it has children"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-2
+    action: correction
+    shape: folder
+    subject: "specs/SPEC-020-compass-updates-itself.md"
+    reason: "childless born-folder spec breaks Obsidian click-through (basename-only resolution); flat until it has children"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-3
+    action: correction
+    shape: folder
+    subject: "specs/SPEC-021-capture-in-the-humans-words.md"
+    reason: "childless born-folder spec breaks Obsidian click-through (basename-only resolution); flat until it has children"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-4
+    action: correction
+    shape: folder
+    subject: "specs/SPEC-022-vault-organized-per-domain.md"
+    reason: "childless born-folder spec breaks Obsidian click-through (basename-only resolution); flat until it has children"
+    by: agent
+    at: 2026-08-30
+    volatile: []
