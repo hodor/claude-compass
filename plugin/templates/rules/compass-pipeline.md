@@ -13,6 +13,10 @@ Stop only at the gates the human owns: spec promotion, plan approval, destructiv
 
 ## Document Writing
 
+Write every document for a reader who has only the document - no memory of the conversation that produced it, no knowledge of where the work stands. Every writing rule below is an instance of this one test.
+
+Before presenting any document, have fresh eyes read it: a cheap sub-agent holding only the document and these rules, never the conversation. A sentence the fresh reader cannot justify from the document alone is conversation residue; it goes.
+
 Compass documents should be a pleasure to read. Easy to read, short, sweet. Long only when needed. Never verbose.
 
 Brevity binds your own prose only. The human's captured words (spec problems, vision goals, quoted rulings) are content, and they stay in his sentences at whatever length he spoke them.
