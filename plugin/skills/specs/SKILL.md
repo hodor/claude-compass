@@ -16,7 +16,7 @@ For when the human has many ideas at once and shouldn't be asked the same setup 
 
 > "Tell me everything you have in your head about what you want to build. Don't worry about structure - just get it all out. I'll organize it into specs after."
 
-Organizing means routing the human's sentences to the right spec - each spec's Problem and Desired Outcome carry his words verbatim, per the `spec` skill's extraction rule; your words only connect them. A garbled word gets `[unclear: heard "X"]` and a question; anything you add is bracketed `[guess: ...]`.
+Organizing means routing the human's sentences to the right spec - each spec's Problem and Desired Outcome carry his words verbatim, per the `spec` skill's extraction rule; your words only connect them. A garbled word gets `[unclear: heard "X"]` and a question; anything you add is bracketed `[guess: ...]`. Each spec is placed into the topic tree per the `spec` skill's placement step; genuine placement doubt becomes its `taxonomy_hint:`.
 
 Wait for the response. Don't interrupt.
 

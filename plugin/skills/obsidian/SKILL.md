@@ -139,7 +139,7 @@ Names must be self-descriptive - `SPEC-001.md` is never acceptable. Lowercase ke
 
 ## Hierarchical specs and plans (folders)
 
-Every spec is a folder: `.compass/specs/SPEC-NNN-descriptive-name/index.md` is the spec itself, at any depth. Children live inside that folder, born the same way, recursively - a child can hold children of its own with no depth limit. Path is identity; numbering resets at each level.
+A spec is a file; the folder shape is earned by the second member. When a spec gains its first child, it becomes `.compass/specs/SPEC-NNN-descriptive-name/index.md` (`compass promote`) with children inside, recursively and with no depth limit - and a folder that drops back to its index alone gets demoted to a file again. Path is identity; numbering resets at each level.
 
 **The parent holds the decisions shared by every child; a child exists to diverge on something the parent left open.** Divergence sharing no root decision with the parent is a sibling spec, not a child (ADR-011 D-06).
 
@@ -190,7 +190,17 @@ summary: "..."         # REQUIRED - one-line representation of the branch
 - [[SPEC-003-tile-grid]] — one-line summary
 ```
 
-When the children change, the `## Children` section must be refreshed (`/compass:consolidate` does this).
+The folder is the listing: members are read live (`ls`/Glob), never maintained inside the doc. A folder doc found carrying an old `## Children` section gets it removed on the next touch - a derived listing whose facts live in the filesystem and in each child's own `summary:`.
+
+### Scope notes (domain folders)
+
+A domain's `index.md` carries a `## Scope` section - the placement answer at the point of doubt, hand-authored, never regenerated:
+
+- `Class here:` names what belongs, in finder words.
+- `Class elsewhere: X -> [[<type-dir>/<domain>/index|<domain>]]` is a binding redirect: X does not file here.
+- `See also:` points sideways, advisory only.
+
+The domain's `summary:` frontmatter reads as its class-here digest, so the root index line answers the obvious case without opening the doc.
 
 ## Unit folders (the hybrid root)
 

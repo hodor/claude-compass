@@ -265,8 +265,8 @@ Agents depending on external tools (MCP, `gh`, specific runtimes) verify availab
 │   ├── lessons-catalog.yaml - O(1) lesson tag lookup (numbering is JIT, no counter file)
 │   ├── sizing-log.yaml      - shape-change decisions/corrections (`compass sizing stats`)
 │   └── plugin.yaml          - Plugin source path + installed version (written by setup)
-├── specs/               - every spec is a folder; `index.md` is the artifact itself
-├── research/ plans/ decisions/ lessons/ handoffs/ prs/  - flat, one file each
+├── specs/               - one file per spec; a folder only once it holds 2+ specs
+├── research/ plans/ decisions/ lessons/ handoffs/ prs/  - one file per artifact; specs/ and research/ group into domain folders as their corpus grows
 ├── <unit-name>/          - Unit folder: one large unit of work (index.md has `type: unit`)
 │   ├── index.md          - Unit marker, title, children listing
 │   ├── specs/ plans/ ... - Own type subdirs, unit-local numbering

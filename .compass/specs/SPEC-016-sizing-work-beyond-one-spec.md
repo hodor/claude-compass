@@ -9,6 +9,7 @@ tags: [sizing, units, hierarchy, discoverability, vision, defaults]
 created: 2026-08-23
 updated: 2026-08-24
 depends_on: ["[[SPEC-010-universal-hybrid-hierarchy]]", "[[SPEC-003-hierarchical-vault-organization]]"]
+amended_by: ["[[SPEC-022-vault-organized-per-domain]]"]
 summary: "work too big for one spec gets the bigger shape without the human knowing the machinery (approved 2026-08-23)"
 ---
 
@@ -38,7 +39,7 @@ Observed 2026-08-22: a vision session in a game project produced seven needs, ea
 - **D-03:** What Compass says about the sizing is said at most once. If the human would rather not hear it again, they say so and Compass proceeds silently from then on.
 - **D-04:** The machinery is never named to a human who did not ask for it. Plain words only, never "unit", "folder spec", or a command name.
 - **D-05:** The behavior is configurable, and directly callable by name for a human who does know it. Invisible by default is not the same as unavailable.
-- **D-06:** Prefer dissolving the sizing choice over improving the judgment: make every spec folder-like from birth if that simplifies the system, so the flat-versus-folder decision disappears instead of getting a better procedure.
+- **D-06:** Prefer dissolving the sizing choice over improving the judgment: make every spec folder-like from birth if that simplifies the system, so the flat-versus-folder decision disappears instead of getting a better procedure. [Superseded by [[SPEC-022-vault-organized-per-domain]] D-10: a spec is born a file; the folder shape is earned by the second member.]
 - **D-07:** The folder shape is recursive with no depth limit: every child spec can itself hold children, born folder-like the same way, at every level.
 
 ## Desired Outcome

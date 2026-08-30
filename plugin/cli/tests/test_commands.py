@@ -464,15 +464,14 @@ class MakeUnitTests(unittest.TestCase):
         self.assertFalse((root / "specs" / "SPEC-001-core.md").exists())
         self.assertTrue((root / "core" / "plans" / "PLAN-001-impl.md").is_file())
         self.assertTrue((root / "core" / "decisions" / "ADR-001-choice.md").is_file())
-        # The unit marker index exists with the type: unit frontmatter and a
-        # one-line-per-member children listing.
+        # The unit marker index exists with the type: unit frontmatter; the
+        # folder is the listing, so it carries no member lines.
         data, error = vaultlib.parse_frontmatter(root / "core" / "index.md")
         self.assertIsNone(error)
         self.assertEqual(data["type"], "unit")
         unit_index = (root / "core" / "index.md").read_text(encoding="utf-8")
-        self.assertIn("- [[core/specs/SPEC-001-core]] - Core spec", unit_index)
-        self.assertIn("- [[core/plans/PLAN-001-impl]] - Impl plan", unit_index)
-        self.assertIn("- [[core/decisions/ADR-001-choice]] - Choice", unit_index)
+        self.assertNotIn("## Children", unit_index)
+        self.assertNotIn("[[core/specs/SPEC-001-core]]", unit_index)
         # Root index: old bare-stem entries removed, sync appended the unit
         # section with path-qualified links.
         index_text = (root / "index.md").read_text(encoding="utf-8")

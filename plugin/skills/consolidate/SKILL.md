@@ -147,6 +147,8 @@ The lessons half above shrinks textual redundancy. This half shrinks structural 
 
 ### S1. Inventory
 
+First collect the hints: grep `taxonomy_hint:` across `specs/` and `research/`. Each is a placement judgment recorded at creation by the agent that understood the artifact best, and together they are this pass's work queue. Acting on one clears it - the move happens, or the placement is confirmed fine - and the frontmatter line is removed either way.
+
 Glob every flat root artifact in scope (specs and research first; plans mirror their specs). Read frontmatter (title, area, tags, summary, status) and record outbound wikilinks. `compass graph hubs` and `compass graph impact` give the link structure cheaply.
 
 ### S2. Propose domains
