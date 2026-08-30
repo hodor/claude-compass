@@ -2,10 +2,10 @@
 since: 2026-08-30
 usage:
   apply-models:
-    count: 7
+    count: 8
     last: 2026-08-30
   capture-check:
-    count: 69
+    count: 71
     last: 2026-08-30
   capture-close:
     count: 7
@@ -35,7 +35,7 @@ usage:
     count: 1
     last: 2026-08-30
   self-update:
-    count: 12
+    count: 13
     last: 2026-08-30
   sync:
     count: 74
