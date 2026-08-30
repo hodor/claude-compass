@@ -242,7 +242,7 @@ ADR-006 D-02/D-03 solved bare-stem collision across *unit* folders by mandating 
 
 ## Axis: Ripple (rs-taxonomy-ripple)
 
-Traces to [[SPEC-022-vault-organized-per-domain/index]]. Documentarian pass only - no recommendations.
+Traces to [[SPEC-022-vault-organized-per-domain]]. Documentarian pass only - no recommendations.
 
 ### Finding 1: Domain folders and folder specs are the same code-level object
 
