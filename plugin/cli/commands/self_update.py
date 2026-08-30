@@ -241,6 +241,14 @@ def _apply(src, project_root, apply_models):
     hooks_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src / "hooks" / "hooks.json", hooks_dir / "hooks.json")
     merge_settings(project_root, hooks_dir / "hooks.json")
+    # The shipped files above were just replaced wholesale; re-apply the
+    # project's own additions on top of them (ADR-020).
+    try:
+        from commands import overlay
+
+        overlay.apply_overlays(Path(project_root) / ".compass")
+    except Exception:
+        pass
     if apply_models:
         python = sys.executable or "python"
         try:

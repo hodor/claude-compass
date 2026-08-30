@@ -78,6 +78,15 @@ elif command -v python >/dev/null 2>&1; then
 fi
 ```
 
+### 4b. Re-apply project-local overlays
+
+```bash
+if command -v python3 >/dev/null 2>&1; then PYBIN=python3; else PYBIN=python; fi
+"$PYBIN" .claude/cli/compass overlay --apply
+```
+
+Step 4 replaced every shipped agent, rule, and skill; this appends back the project's own additions from `.compass/meta/local/` (ADR-020). Report what it names, including any ORPHAN line - an overlay whose target is no longer installed. `CLAUDE.md` is never touched by any step here.
+
 ### 5. Register hooks in `.claude/settings.json`
 
 `.claude/hooks/hooks.json`, just copied, is a manifest - Claude Code loads hooks only from a settings file's `hooks` key or a registered plugin, never from a bare `hooks.json` on disk. Translate the manifest into `.claude/settings.json`, merging into whatever is already there rather than overwriting it: preserve unrelated top-level keys (`permissions`, etc.) and any non-Compass hook entries a project has added by hand. Never write hook registration to `.claude/settings.local.json` - that file is user-owned.
@@ -153,8 +162,8 @@ Report: version delta (old -> new), counts of files refreshed, whether the pytho
 
 ## What this does NOT do
 
-- Touch the `.compass/` vault (specs, plans, research, lessons, index). Only `.compass/meta/plugin.yaml` is updated.
-- Modify `CLAUDE.md`.
+- Touch the `.compass/` vault (specs, plans, research, lessons, index). Only `.compass/meta/plugin.yaml` is updated, and `.compass/meta/local/` is read but never written.
+- Modify `CLAUDE.md`. A project's own instructions are its own; nothing in Compass reads, writes, or moves that file.
 - Run vision/spec scaffolding. That is `/compass:setup` territory.
 
 ## Failure modes worth naming

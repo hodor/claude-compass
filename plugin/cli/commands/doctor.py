@@ -223,6 +223,29 @@ def _lessons_catalog_check(vault_root):
     return Check("lessons-catalog.yaml", OK, f"{path} present")
 
 
+def _overlay_check(vault_root):
+    """Advisory row for project-local overlays (ADR-020): OK naming how many
+    are applied, WARN when one names a target that no longer ships - an
+    overlay that matches nothing must not silently do nothing."""
+    try:
+        from commands import overlay as overlay_mod
+
+        report = overlay_mod.apply_overlays(vault_root, apply=False)
+    except Exception as exc:
+        return Check("local overlays", WARN, f"overlay scan failed: {exc}")
+    live = len(report["applied"]) + len(report["skipped"])
+    if report["orphans"]:
+        return Check(
+            "local overlays", WARN,
+            f"{len(report['orphans'])} overlay(s) name an uninstalled target: "
+            f"{', '.join(report['orphans'])}",
+            "run `compass overlay` to list them; rename or remove the stale file",
+        )
+    if not live:
+        return Check("local overlays", OK, "none")
+    return Check("local overlays", OK, f"{live} applied")
+
+
 MEASUREMENT_WINDOW_DAYS = 14
 
 
@@ -426,6 +449,7 @@ def _run_checks():
     checks.append(_lessons_catalog_check(vault_root))
     checks.append(_unit_candidates_check(vault_root))
     checks.append(_usage_check(vault_root))
+    checks.append(_overlay_check(vault_root))
     checks.append(_worker_ledger_check(vault_root))
     return checks
 

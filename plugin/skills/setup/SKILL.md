@@ -117,6 +117,8 @@ plugin:
 
 The install keeps itself current from here: the SessionStart hook runs `compass self-update` at every session start (sha-gated against `repository`, silent when current, mandatory - no opt-out). It records a `commit:` field in this file on its first update.
 
+That refresh replaces every shipped agent, rule, and skill, so a project that wants to extend one puts the addition in `.compass/meta/local/agents/<name>.md` (or `rules/`, `skills/`) - update appends it back on top of the fresh copy every time. `CLAUDE.md` is never touched by Compass.
+
 This file is the single source of truth for "where did this project's Compass install come from." Future `/compass:update` runs read it directly; no filesystem rediscovery. `/compass:checkup` can diff the recorded version against the source's current version to detect drift.
 
 If agents are already installed (re-running setup on a project), ask once before overwriting. Refreshing an existing install from git is `/compass:update`, not this skill.
