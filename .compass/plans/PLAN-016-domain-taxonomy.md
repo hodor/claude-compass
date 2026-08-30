@@ -21,7 +21,7 @@ Implement [[SPEC-022-vault-organized-per-domain]] and [[ADR-022-domains-scope-no
 
 ## Not in this plan
 
-- Plans and decisions group in a later round (SPEC-022 D-02 partially deferred); lessons are excluded by the spec's Non-Goals.
+- SPEC-022 D-02 applies the taxonomy to everything in the vault; this plan covers specs and research, and defers grouping plans/ and decisions/ to a later round. Lessons are excluded by the spec's Non-Goals.
 
 ## Wave 1: mechanism
 
@@ -36,18 +36,18 @@ Implement [[SPEC-022-vault-organized-per-domain]] and [[ADR-022-domains-scope-no
   - Manual: read the rewritten linking section for contradiction with its own examples.
 - [ ] TASK-112: skill and record contracts - spec/specs/vision place into the taxonomy at creation, file shallower when unsure, small vaults do nothing, `taxonomy_hint:` on genuine doubt; consolidate takes hints as its queue and clears on move or confirm-fine; obsidian carries scope-note authoring and the folder-is-the-listing convention (Children mandate retired, existing sections removed as folders are touched, index.md is every folder's doc, type dirs included); promote-spec's false refusal claim corrected; methodology/setup trees updated; ADR-021 stamped `amended_by`; SPEC-005 status updated - complexity: M, after 110, files: [plugin/skills/spec/SKILL.md, plugin/skills/specs/SKILL.md, plugin/skills/vision/SKILL.md, plugin/skills/consolidate/SKILL.md, plugin/skills/obsidian/SKILL.md, plugin/skills/promote-spec/SKILL.md, plugin/skills/methodology/SKILL.md, plugin/skills/setup/SKILL.md, .compass/decisions/ADR-021-index-speaks-in-domains.md, .compass/specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md], decisions: [SPEC-022-vault-organized-per-domain/D-01, SPEC-022-vault-organized-per-domain/D-05, SPEC-022-vault-organized-per-domain/D-08]
   - Automated: grep gates - no skill claims "flat, one file each", the promote refusal, or mandates a Children section; the hint field named in the spec skill and both consumers.
-  - Manual: walk the spec skill's placement step as a busy agent; the obvious case costs zero extra reads.
+  - Manual: walk the spec skill's placement step as a busy agent; a spec whose domain is unambiguous is placed without opening any domain index.
 - [ ] TASK-116: `compass tree` - the whole-tree view with per-entry summaries, computed at invocation, registered in maincli and named in the pipeline-rules Capabilities line - complexity: S, after 109, files: [plugin/cli/commands/tree.py, plugin/cli/maincli.py, plugin/templates/rules/compass-pipeline.md], decisions: [SPEC-022-vault-organized-per-domain/D-08]
   - Automated: tree renders nested domains with summaries (two-level domain fixture); the usage record counts it.
   - Manual: run it on this vault; the output answers "what specs exist" in one command.
 
 ## Wave 2: this vault (after the human approves the migration diff)
 
-Scope notes, taxonomy hints, the split ceiling, make-domain's mandatory scope line, and the useless-token definition are hypotheses this wave tests; a result that resolves a fork gets its ADR then.
+This wave tests one hypothesis: domains plus scope notes plus hints let a filer place documents where a finder looks for them, and cut the share of loaded-but-unused vault tokens. A scope note is a short section in a folder's index.md: `Class here:` names what belongs, `Class elsewhere: X -> [[domain]]` redirects, `See also:` points sideways. The judges are TASK-114's drill bars and TASK-117's measure; a mechanism that proves itself gets its ADR then, one that does not is dropped.
 
-- [ ] TASK-117: define and baseline the useless-token measure - per task, vault tokens loaded into context versus tokens the task's output used; instrumented over the 5 most recent real tasks before any file moves, re-measured on equivalent tasks after TASK-114 - complexity: M, after 112
+- [ ] TASK-117: define and baseline the useless-token measure - per task, vault tokens loaded into context versus tokens the task's output used; instrumented over the 5 most recent real tasks (real work loads the vault as synthetic probes cannot; 5 bounds the cost) before any file moves, re-measured on equivalent tasks after TASK-114 - complexity: M, after 112
   - Automated: definition and per-task numbers recorded in this plan; baseline complete before 114 begins.
-  - Manual: the definition survives one adversarial read - a token the output paraphrases counts as used, a token merely loaded does not.
+  - Manual: the definition survives one adversarial read - a token counts as used when the output restates its content (quote, synonym, or derivation); a token merely loaded for context is unused.
 - [ ] TASK-113: build the domain proposal by running the atomic rule - place each artifact under the deepest folder whose fixed values apply; factor on the second value; one characteristic per level - with scope notes per domain (class-here digests as the summaries) and expected useless-token and root-index deltas. Score against Wikipedia: for each artifact's nearest subject, compare our chain of divisions to the dominant chain in that subject's category path; register the prediction before scoring (dimension-set agreement high, citation-order agreement partial). Present proposal plus score as a diff - complexity: M, after 117, decisions: [SPEC-022-vault-organized-per-domain/D-06, SPEC-022-vault-organized-per-domain/D-09]
   - Automated: proposal names pass make-domain's collision check in dry-run.
   - Manual: the human approves the diff; nothing further proceeds without it.
@@ -60,4 +60,4 @@ Scope notes, taxonomy hints, the split ceiling, make-domain's mandatory scope li
 
 ## Verification gates
 
-Suite green at every task; `compass validate` 0 errors after every migration step; `compass coverage PLAN-016-domain-taxonomy` passes with SPEC-022 D-02's partial deferral stated above; the Data-rule audit on the migration diff.
+Suite green at every task; `compass validate` 0 errors after every migration step; `compass coverage PLAN-016-domain-taxonomy` passes with the D-02 deferral stated under Not in this plan; the Data-rule audit on the migration diff.
