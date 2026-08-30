@@ -16,7 +16,7 @@ summary: "plan detail tracks proximity; waves elaborate from completed-task know
 
 ## Problem
 
-Compass plans specify every task at full detail before any task runs, and the human approves the whole plan at once. But every completed task produces knowledge the plan's later tasks were written without - so far-away tasks are specified at a precision the planner does not actually have, the human approves detail that is partly fiction, and when reality diverges the choice is a plan-iteration ceremony or silent drift. The observed cost: builders hitting "the codebase contradicts the plan" stops on tasks specced many tasks ago, and plan amendments landing mid-build to re-litigate detail that was never really known. (Roger, 2026-08-11: "every task we complete will give us more knowledge to make the plan better... focus on what's in front of us with more details, and things that are far away we put less details on.")
+Compass plans specify every task at full detail before any task runs, and the human approves the whole plan at once. But every completed task produces knowledge the plan's later tasks were written without - so far-away tasks are specified at a precision the planner does not actually have, the human approves detail that is partly fiction, and when reality diverges the choice is a plan-iteration ceremony or silent drift. The observed cost: builders hitting "the codebase contradicts the plan" stops on tasks specced many tasks ago, and plan amendments landing mid-build to re-litigate detail that was never really known.
 
 ## Who is affected
 
@@ -27,9 +27,9 @@ Compass plans specify every task at full detail before any task runs, and the hu
 
 ## Decisions (made by the human)
 
-- **D-02:** The near, detailed work includes prototype tasks when a question blocks later detail: a prototype exists to answer a named question, and its answer is elaboration input like any other completed-work knowledge. (Roger, 2026-08-11.)
-- **D-03:** A wave is what can be worked on right now within one coherent phase or concern. No numeric cap and no size budget - agents judge the boundary themselves. Size-rationing is a human-era planning concept; AI build speed makes it noise. (Roger, 2026-08-11.)
-- **D-04:** Two detail tiers only: fully detailed now, one-line intent later. No formal middle band - the loop elaborates a one-liner the lap before it is built. (Roger, 2026-08-11, accepting the synthesis recommendation.)
+- **D-02:** The near, detailed work includes prototype tasks when a question blocks later detail: a prototype exists to answer a named question, and its answer is elaboration input like any other completed-work knowledge.
+- **D-03:** A wave is what can be worked on right now within one coherent phase or concern. No numeric cap and no size budget - agents judge the boundary themselves. Size-rationing is a human-era planning concept; AI build speed makes it noise.
+- **D-04:** Two detail tiers only: fully detailed now, one-line intent later. No formal middle band - the loop elaborates a one-liner the lap before it is built.
 
 ## Desired Outcome
 

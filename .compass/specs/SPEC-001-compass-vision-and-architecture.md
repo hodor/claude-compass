@@ -97,24 +97,24 @@ The vault is type-first at the root for small work, and feature-first for large 
 
 ```
 .compass/
-├── index.md              - HOT: master map, pointers only, bounded, machine-maintained
-├── active.md             - HOT: current tasks (in-progress + blocked)
-├── backlog.md            - cold: future work (with trigger conditions)
-├── meta/                 - lessons-catalog.yaml, tag-index.yaml, plugin.yaml
-├── specs/                - small standalone specs (flat)
-├── research/             - research findings
-├── plans/                - implementation plans
-├── decisions/            - ADRs
-├── lessons/              - lessons learned
-├── handoffs/             - session continuity
-├── archive/              - completed/retired documents
+├── index.md - HOT: master map, pointers only, bounded, machine-maintained
+├── active.md - HOT: current tasks (in-progress + blocked)
+├── backlog.md - cold: future work (with trigger conditions)
+├── meta/ - lessons-catalog.yaml, tag-index.yaml, plugin.yaml
+├── specs/ - small standalone specs (flat)
+├── research/ - research findings
+├── plans/ - implementation plans
+├── decisions/ - ADRs
+├── lessons/ - lessons learned
+├── handoffs/ - session continuity
+├── archive/ - completed/retired documents
 │
-└── compass-cli/          - a large unit of work: a folder at the root, named for the
-    ├── index.md            work itself, co-locating all of ITS own artifact types.
-    ├── specs/              Any root folder that is not a reserved type name (above)
-    ├── research/           is a unit of work; its numbering is local to it.
-    ├── plans/
-    └── decisions/
+└── compass-cli/ - a large unit of work: a folder at the root, named for the
+ ├── index.md work itself, co-locating all of ITS own artifact types.
+ ├── specs/ Any root folder that is not a reserved type name (above)
+ ├── research/ is a unit of work; its numbering is local to it.
+ ├── plans/
+ └── decisions/
 ```
 
 Numbering is JIT max+1 from the filesystem, local per folder; there is no counter file. See [[ADR-003-drop-counter-file-jit-compute]].
@@ -138,7 +138,7 @@ Retrospective capture at phase boundaries with binary triggers, an anti-list fil
 - **Harness over prompts** - mechanical behavior lives in the CLI/hooks, not skills. [[ADR-005-compass-cli-for-mechanical-work]].
 - **Configurable pipeline** - a shipped phase vocabulary that projects can reorder, subset, or extend. [[SPEC-009-configurable-pipeline-workflows]].
 - **Hybrid hierarchy** - type-first root, plus a root-level folder per large unit of work that co-locates its own artifact types; every type can nest. [[SPEC-010-universal-hybrid-hierarchy]].
-- **The filesystem is a taxonomy** - artifacts of a kind live grouped per domain, recursively, "the same way you organize mathematics into subdomains"; every folder has its own `index.md`, and every index (root included) explains only the first level below it. Organizing the files, not the index, is the mechanism. (Roger, 2026-08-30.) [[SPEC-022-vault-organized-per-domain]], [[SPEC-005-index-auto-maintained-and-mirrored-per-folder]].
+- **The filesystem is a taxonomy** - artifacts of a kind live grouped per domain, recursively, "the same way you organize mathematics into subdomains"; every folder has its own `index.md`, and every index (root included) explains only the first level below it. Organizing the files, not the index, is the mechanism. [[SPEC-022-vault-organized-per-domain]], [[SPEC-005-index-auto-maintained-and-mirrored-per-folder]].
 - **Multi-host by design** - vault and harness are host-agnostic. [[SPEC-006-multi-host-agent-cli-support]].
 - **Methodology = skill**, not project instructions. The project's own instructions get only a thin pointer.
 - **ADRs are required** - a project with none gets flagged.

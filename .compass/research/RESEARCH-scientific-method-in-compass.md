@@ -13,7 +13,7 @@ summary: "does Compass embody the scientific method or borrow its vocabulary; 8 
 
 ## Question
 
-Roger says the scientific method was his core motivation for building Compass. Does the current Spec to Research to Plan to Build to Validate pipeline, plus the lessons subsystem and "Bayesian convergence" pattern, actually implement scientific-method practices, or only borrow the vocabulary? What is missing?
+the human says the scientific method was his core motivation for building Compass. Does the current Spec to Research to Plan to Build to Validate pipeline, plus the lessons subsystem and "Bayesian convergence" pattern, actually implement scientific-method practices, or only borrow the vocabulary? What is missing?
 
 ## Methodology
 

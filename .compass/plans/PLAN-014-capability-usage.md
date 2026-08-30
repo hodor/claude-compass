@@ -18,7 +18,7 @@ depends_on: ["[[SPEC-017-capabilities-are-reachable-and-measured]]", "[[ADR-017-
 
 ## Goal
 
-Implements every D of [[ADR-017-capability-index-and-usage-record]]. Approved 2026-08-29 under Roger's standing go ("continue with the other specs until we're done"); stations collapsed into the main thread, tests red-first.
+Implements every D of [[ADR-017-capability-index-and-usage-record]]. Approved 2026-08-29 under the standing go ("continue with the other specs until we're done"); stations collapsed into the main thread, tests red-first.
 
 ## Tasks
 

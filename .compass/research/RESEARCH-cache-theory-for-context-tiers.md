@@ -18,7 +18,7 @@ summary: "tag/data split, inclusion cost, and why a hardware miss cannot cost co
 
 How should a bounded always-resident tier relate to a larger on-demand store, when a miss must never silently lose required content?
 
-The human's requirement, verbatim (Roger, 2026-08-23): "only relevant lessons should be added and at the relevant time but IT IS 100% REQUIRED that they do load at the appropriate time."
+The human's requirement, verbatim: "only relevant lessons should be added and at the relevant time but IT IS 100% REQUIRED that they do load at the appropriate time."
 
 ## Method
 

@@ -244,16 +244,16 @@ Full mechanism lives in `plugin/cli/modelslib.py`:
 
 - **Location**: `<vault_root>/meta/models.yaml`, i.e. `.compass/meta/models.yaml` (`modelslib.py:161`, via `load_project_config` at `modelslib.py:150-168`). No vault or missing file -> empty config, no warning (`modelslib.py:162-163`). Present-but-unreadable file -> empty config plus one warning, never raises (`modelslib.py:164-167`).
 - **Schema** (`parse_models_yaml`, `modelslib.py:81-147`), a hand-rolled two-level parser (not YAML-library-based):
-  ```yaml
-  tiers:
-    cheap: sonnet          # remap a tier's model for this host
-  agents:
-    vault-locator: opus    # scalar pin: literal model name OR a tier name
-    planner:
-      tier: balanced
-      effort: medium
-  ```
-  Unparseable lines, unknown top-level keys, unknown tiers, and unknown per-agent keys are all skipped with a `warnings` entry appended - the parser never raises (`modelslib.py:110-146`).
+ ```yaml
+ tiers:
+ cheap: sonnet # remap a tier's model for this host
+ agents:
+ vault-locator: opus # scalar pin: literal model name OR a tier name
+ planner:
+ tier: balanced
+ effort: medium
+ ```
+ Unparseable lines, unknown top-level keys, unknown tiers, and unknown per-agent keys are all skipped with a `warnings` entry appended - the parser never raises (`modelslib.py:110-146`).
 - **Precedence, lowest to highest** (doc header `modelslib.py:1-11`, implemented in `resolve()` `modelslib.py:198-272`): built-in `DEFAULT_ROSTER` tier -> project override (`models.yaml` `agents.<name>.model`/`.tier`) -> environment (`COMPASS_MODEL_<AGENT>`, `COMPASS_EFFORT_<AGENT>`, agent name uppercased with `-`->`_`, `modelslib.py:219,233,257`). A `tiers:` remap in `models.yaml` also outranks the built-in `HOST_CATALOGS` mapping for that tier (`_merged_tier_map`, `modelslib.py:177-185`) - so a tier-level override affects every agent resolved through that tier, not just one named agent.
 - **Application point**: `commands/apply_models.py`. `run()` (`apply_models.py:91-132`) resolves `target = <vault_root>/../.claude/agents` by default, or `--dir DIR` (`_target_dir`, `apply_models.py:73-88`). It iterates only `modelslib.AGENT_FILES` - the 13 Compass agent filenames minus the two headless jobs (`modelslib.py:35-62`) - and for each, if the file exists, rewrites **only** its frontmatter `model:`/`effort:` lines via `rewrite_frontmatter` (`apply_models.py:30-70`); every other byte of the file (body, other frontmatter keys) is untouched. `model == "inherit"` deletes the `model:` line entirely rather than writing the literal string (`apply_models.py:54-56`, `modelslib.py:191-195`) - omission is how "inherit" is expressed on every host. `vaultlib.write_text_lf` is used so output is always LF (`apply_models.py:120`); a file already matching the resolved policy produces no write (`apply_models.py:119-125`, idempotent).
 - **Invocation points**: called automatically at the end of `_apply()` in `self_update.py:244-254` (subprocess, best-effort, swallowed exceptions/timeout) when `apply_models=True` (the default), and explicitly in step 4 of `update/SKILL.md:70-78`. Also runnable standalone as `compass apply-models [--dir DIR]`.

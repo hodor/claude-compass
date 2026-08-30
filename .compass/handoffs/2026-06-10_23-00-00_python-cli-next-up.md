@@ -31,7 +31,7 @@ Stopping point: agreed in conversation to build a Python CLI (`compass <cmd>`) t
 | Build `compass` Python CLI | NEXT | See Action Items below |
 | Convert PostToolUse hook from agent to command | NEXT | Coupled with CLI build |
 | Validation sweep across query shapes for SPEC-003 hypothesis | DEFERRED | N=1 falsified the 30% claim; need 5-10 queries to map where tag-index wins on cost |
-| Other 6 scientific-method recommendations from [[RESEARCH-scientific-method-in-compass]] | DEFERRED | Roger picked Bayesian rename + agreed on plan-predictions + agreed on lesson polarity, others pending |
+| Other 6 scientific-method recommendations from [[RESEARCH-scientific-method-in-compass]] | DEFERRED | the human picked Bayesian rename + agreed on plan-predictions + agreed on lesson polarity, others pending |
 
 ## Current Phase
 
@@ -75,7 +75,7 @@ Implementation of the Python `compass` CLI. Spec-stage in conversation (not yet 
 - Bayesian convergence renamed to "Multi-Agent Convergence Voting" (was misnamed - it's majority voting, not Bayesian)
 - Plans should pre-register predictions (accepted, not yet implemented)
 - Lessons get a `polarity` field eventually (accepted, deferred)
-- Spec snapshot to prevent HARKing - REJECTED by Roger (git already tracks; rewrite via `supersedes` field is enough)
+- Spec snapshot to prevent HARKing - REJECTED by the human (git already tracks; rewrite via `supersedes` field is enough)
 - Replication mechanism - REJECTED (that's tester job, not methodology)
 - Hierarchical specs use MemGPT 3-tier model + faceted tag overlay
 - Numbering is LOCAL per folder (not global) so subtrees are portable
@@ -104,16 +104,16 @@ None hard. Soft: SPEC-003's 30% claim needs more queries to know if it holds any
 
 1. **Write SPEC-004 and ADR-005 for the `compass` Python CLI.** Hypothesis: moving the PostToolUse hook from agent type to command type running `compass sync` will reduce per-session token usage by at least 80% on bookkeeping operations, with no loss of vault integrity (validated by running `compass validate` and confirming zero new findings vs the current LLM-hook implementation).
 2. **Build `plugin/bin/compass`** (Python entry point) with commands:
-   - `compass sync` - index-sync mechanical work
-   - `compass next-num <type>` - JIT numbering
-   - `compass tag-index` - included in sync
-   - `compass validate` - wikilinks + frontmatter + caps
-   - `compass tree` - render hierarchical spec tree
-   - `compass hot-path` - print hot-path token count
-   - `compass promote <spec>` - git mv + frontmatter edit
-   - `compass clean-tmp` - delete `tmp/extraction-log-*.md` older than 30 days
-   - `compass touched <spec>` - working-set marker for admission control
-   - `compass admit-check <spec>` - returns 0/1 for hot-path expansion
+ - `compass sync` - index-sync mechanical work
+ - `compass next-num <type>` - JIT numbering
+ - `compass tag-index` - included in sync
+ - `compass validate` - wikilinks + frontmatter + caps
+ - `compass tree` - render hierarchical spec tree
+ - `compass hot-path` - print hot-path token count
+ - `compass promote <spec>` - git mv + frontmatter edit
+ - `compass clean-tmp` - delete `tmp/extraction-log-*.md` older than 30 days
+ - `compass touched <spec>` - working-set marker for admission control
+ - `compass admit-check <spec>` - returns 0/1 for hot-path expansion
 3. **Convert `plugin/hooks/hooks.json` PostToolUse from `type: agent` to `type: command`** running `compass sync`. Drop from 3-5K tokens per fire to 0.
 4. **Shrink skills**: `index-sync/SKILL.md`, `vault-health/SKILL.md`, parts of `promote-spec/SKILL.md` become "call CLI, surface findings" - down from hundreds of lines of protocol.
 5. **Validation**: write `compass validate` test fixtures; verify it catches the broken-wikilink scenario, missing-frontmatter scenario, cap-exceeded scenario. Then run on the dogfood vault and confirm zero false positives.
@@ -136,7 +136,7 @@ None. Two commits pushed this session:
 
 - The dogfood vault is fully populated and exercises every Compass mechanism. Use it as a test fixture.
 - The bench harness at `bench/` works end-to-end on Windows after three real-bug fixes (CRLF, double-encoding, tag truncation). The custom adapter for Compass arm against Terminal-Bench is the remaining bench infrastructure work, but it's not the priority right now.
-- Roger's stated north star goals are now in SPEC-001: accuracy, perfect memory, almost zero cache misses, low token usage. The CLI work directly serves #4 and indirectly serves #3 (by freeing tokens for non-bookkeeping context).
+- the human's stated north star goals are now in SPEC-001: accuracy, perfect memory, almost zero cache misses, low token usage. The CLI work directly serves #4 and indirectly serves #3 (by freeing tokens for non-bookkeeping context).
 - The previous session ran in plan mode for the bench work; the auto mode flag was set later. Either should work for the CLI build.
 - Be honest about empirical findings even when they falsify our own design claims. The SPEC-003 30% number was a guess and the data killed it. Capturing that as a lesson preserved the methodology's integrity. Next session should not handwave the validation.
 - The user prefers concise, evidence-based answers. No em-dashes ever. Skip ceremony unless it's earning value. Spawn parallel agents for diverse perspectives when the question is consequential.

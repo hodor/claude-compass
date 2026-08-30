@@ -29,101 +29,101 @@ WebSearch and WebFetch across primary sources (Basecamp's Shape Up book, PMI/PMB
 ### Terminology anchor
 
 1. **"Rolling wave planning" is a named, formal PMBOK technique, not an XP/Agile-only concept** (confidence: high)
-   PMBOK defines it as "an iterative planning technique in which the work to be accomplished in the near term is planned in detail, while work further in the future is planned at a higher level... a form of progressive elaboration applicable to work packages, planning packages, and release planning when using an Agile or Waterfall approach." It predates and spans both paradigms, which is useful framing: SPEC-015 is reviving a pre-Agile PM technique, not inventing agile-adjacent process.
-   - [PM Study Circle - Rolling Wave Planning](https://pmstudycircle.com/rolling-wave-planning/)
-   - [PMI - Rolling Wave Approach](https://www.pmi.org/learning/library/rolling-wave-approach-project-management-10514)
+ PMBOK defines it as "an iterative planning technique in which the work to be accomplished in the near term is planned in detail, while work further in the future is planned at a higher level... a form of progressive elaboration applicable to work packages, planning packages, and release planning when using an Agile or Waterfall approach." It predates and spans both paradigms, which is useful framing: SPEC-015 is reviving a pre-Agile PM technique, not inventing agile-adjacent process.
+ - [PM Study Circle - Rolling Wave Planning](https://pmstudycircle.com/rolling-wave-planning/)
+ - [PMI - Rolling Wave Approach](https://www.pmi.org/learning/library/rolling-wave-approach-project-management-10514)
 
 ### XP Planning Game
 
 2. **XP splits granularity into two distinct meetings (release vs. iteration), not one document with mixed precision** (confidence: high)
-   Release planning fixes high-level vision, scope, and story priority (value/risk-ordered) for the whole release. Iteration planning (1-2 week horizon) takes only the next slice, breaks it into tasks, and estimates at a finer grain. The mechanic: precision is a function of *which meeting you're in*, not a field on every story. This maps directly onto SPEC-015's "boundary explicit" need - XP makes the boundary an event (a meeting), not a marker inside a single artifact.
-   - [ZenTao - XP Planning Game](https://www.zentao.pm/blog/Extreme-Programming-the-Planning-Game-805.html)
+ Release planning fixes high-level vision, scope, and story priority (value/risk-ordered) for the whole release. Iteration planning (1-2 week horizon) takes only the next slice, breaks it into tasks, and estimates at a finer grain. The mechanic: precision is a function of *which meeting you're in*, not a field on every story. This maps directly onto SPEC-015's "boundary explicit" need - XP makes the boundary an event (a meeting), not a marker inside a single artifact.
+ - [ZenTao - XP Planning Game](https://www.zentao.pm/blog/Extreme-Programming-the-Planning-Game-805.html)
 
 3. **XP's iteration planning has three phases: exploration, commitment, guidance** (confidence: medium)
-   Exploration breaks stories into tasks and estimates; commitment is where each developer *voluntarily claims* tasks and finalizes estimates (the human/team approval point); guidance is execution (pairing, TDD, CI). Commitment is per-task and per-person, not a single blanket sign-off - a more granular approval unit than Compass's current whole-plan approval.
-   - [ZenTao - XP Planning Game](https://www.zentao.pm/blog/Extreme-Programming-the-Planning-Game-805.html)
+ Exploration breaks stories into tasks and estimates; commitment is where each developer *voluntarily claims* tasks and finalizes estimates (the human/team approval point); guidance is execution (pairing, TDD, CI). Commitment is per-task and per-person, not a single blanket sign-off - a more granular approval unit than Compass's current whole-plan approval.
+ - [ZenTao - XP Planning Game](https://www.zentao.pm/blog/Extreme-Programming-the-Planning-Game-805.html)
 
 ### Scrum backlog refinement
 
 4. **"Definition of Ready" is the near-wave elaboration gate, and it is explicitly NOT part of the Scrum Guide** (confidence: high)
-   DoR is a "complementary practice," team-invented, used to decide when a backlog item has enough detail to enter a sprint. Unlike Definition of Done (which is codified in the Scrum Guide as an artifact commitment), DoR is deliberately left out. Scrum.org's own reasoning: over-formalizing readiness risks becoming a heavyweight gate in itself - a documented tension directly relevant to SPEC-015's falsification criterion "elaboration becomes its own approval ceremony."
-   - [Scrum.org - Why isn't DoR in the Scrum Guide?](https://www.scrum.org/resources/blog/why-isnt-definition-ready-described-scrum-guide)
-   - [Agile Ambition - The DoR Is Not Part of Scrum](https://www.agileambition.com/Atomic-Notes/The-Definition-of-Ready-Is-Not-Part-of-Scrum)
+ DoR is a "complementary practice," team-invented, used to decide when a backlog item has enough detail to enter a sprint. Unlike Definition of Done (which is codified in the Scrum Guide as an artifact commitment), DoR is deliberately left out. Scrum.org's own reasoning: over-formalizing readiness risks becoming a heavyweight gate in itself - a documented tension directly relevant to SPEC-015's falsification criterion "elaboration becomes its own approval ceremony."
+ - [Scrum.org - Why isn't DoR in the Scrum Guide?](https://www.scrum.org/resources/blog/why-isnt-definition-ready-described-scrum-guide)
+ - [Agile Ambition - The DoR Is Not Part of Scrum](https://www.agileambition.com/Atomic-Notes/The-Definition-of-Ready-Is-Not-Part-of-Scrum)
 
 5. **Epic-to-story decomposition is a gradient, and the "just enough" phrasing appears verbatim in practitioner sources** (confidence: medium)
-   "An Epic should have already been refined by the team with just enough details and clarity to be taken up in the near-future Sprints and hence should have been broken down into consumable & estimable Stories." Epics = far/coarse; stories = near/fine. Refinement is continuous and precedes sprint planning, not concurrent with it - refinement and commitment are separate ceremonies.
-   - [Public Agile - Story Refinement](https://publicagile.org/agile-playbook/scrum-events/story-refinement/)
+ "An Epic should have already been refined by the team with just enough details and clarity to be taken up in the near-future Sprints and hence should have been broken down into consumable & estimable Stories." Epics = far/coarse; stories = near/fine. Refinement is continuous and precedes sprint planning, not concurrent with it - refinement and commitment are separate ceremonies.
+ - [Public Agile - Story Refinement](https://publicagile.org/agile-playbook/scrum-events/story-refinement/)
 
 6. **Sprint commitment (Sprint Planning) is the near-wave approval act; it commits only what's in the sprint, nothing beyond** (confidence: high)
-   "Refinement ensures the highest priority Stories meet DoR... this preparation ensures your team can confidently select and commit to work they understand." The backlog beyond the sprint is never "approved" - it's prioritized and roughly sized, but commitment is scoped strictly to the wave about to execute.
-   - [monday.com - Backlog Refinement Guide](https://monday.com/blog/rnd/backlog-grooming/)
+ "Refinement ensures the highest priority Stories meet DoR... this preparation ensures your team can confidently select and commit to work they understand." The backlog beyond the sprint is never "approved" - it's prioritized and roughly sized, but commitment is scoped strictly to the wave about to execute.
+ - [monday.com - Backlog Refinement Guide](https://monday.com/blog/rnd/backlog-grooming/)
 
 ### Kanban
 
 7. **Kanban defers commitment further than Scrum: no backlog at all, a "pool of options," with the commitment point as an explicit line, not a ceremony** (confidence: high)
-   "In a true Kanban system, you won't have a backlog - you will have a pool of options, and commitment will be made at the replenishment meeting as you pull work into your kanban system." The commitment point is described as a literal line on the board: work left of it is a droppable option, work right of it is a delivery promise. Kanban shops commonly run *two* commitment points (work-start commitment, then delivery commitment) - a two-phase-commit pattern, finer than a single approve/reject gate.
-   - [businessmap.io - Commitment Points in Kanban](https://businessmap.io/blog/what-are-commitment-points-in-kanban)
-   - [Medium/Cuenca - Commitment, Real Options & Kanban](https://medium.com/@fernando.a.cuenca/commitment-real-options-kanban-392e0ad12a2f)
+ "In a true Kanban system, you won't have a backlog - you will have a pool of options, and commitment will be made at the replenishment meeting as you pull work into your kanban system." The commitment point is described as a literal line on the board: work left of it is a droppable option, work right of it is a delivery promise. Kanban shops commonly run *two* commitment points (work-start commitment, then delivery commitment) - a two-phase-commit pattern, finer than a single approve/reject gate.
+ - [businessmap.io - Commitment Points in Kanban](https://businessmap.io/blog/what-are-commitment-points-in-kanban)
+ - [Medium/Cuenca - Commitment, Real Options & Kanban](https://medium.com/@fernando.a.cuenca/commitment-real-options-kanban-392e0ad12a2f)
 
 8. **Kanban's critique of fixed timeboxes (David J. Anderson) is a direct argument against forcing uniform elaboration onto a schedule boundary** (confidence: high)
-   Anderson's three failure modes of sprint-boundary rigidity: (1) requirements analysis burden - shorter boxes force artificial task-type splitting ("architecture story," "design story") that creates false cross-sprint dependencies instead of coherent slices; (2) estimation overhead - fitting work into a box forces "big estimation up front," which he names as an anti-pattern; (3) dependency crisis - the deadline pressure turns normal cross-team dependencies into cross-sprint coordination failures. His fix is WIP-limited continuous flow instead of a time-boxed wave. This is a documented counter-position to wave-based elaboration itself: fixed-size waves reproduce sprint-boundary problems at the plan-wave level if wave sizing is naive.
-   - [DJAA - Tyranny of the Timebox Revisited](https://djaa.com/tyranny-of-the-timebox-revisited/)
+ Anderson's three failure modes of sprint-boundary rigidity: (1) requirements analysis burden - shorter boxes force artificial task-type splitting ("architecture story," "design story") that creates false cross-sprint dependencies instead of coherent slices; (2) estimation overhead - fitting work into a box forces "big estimation up front," which he names as an anti-pattern; (3) dependency crisis - the deadline pressure turns normal cross-team dependencies into cross-sprint coordination failures. His fix is WIP-limited continuous flow instead of a time-boxed wave. This is a documented counter-position to wave-based elaboration itself: fixed-size waves reproduce sprint-boundary problems at the plan-wave level if wave sizing is naive.
+ - [DJAA - Tyranny of the Timebox Revisited](https://djaa.com/tyranny-of-the-timebox-revisited/)
 
 ### Shape Up (Basecamp)
 
 9. **Appetite inverts the estimate: it fixes time and lets scope flex, which is what makes far-task under-specification safe rather than reckless** (confidence: high)
-   "Instead of asking 'how long will this take?' you ask 'how much time is this worth?' That becomes the time box." Because the *cost* is fixed by appetite and only the *scope* is negotiable, an under-specified far task never turns into an open-ended estimate risk - it turns into a scope-cut risk, which is contained by design. This is the mechanism, not just a philosophy: it's what makes low far-detail non-dangerous.
-   - [UXCam - Shape Up Methodology Guide](https://uxcam.com/blog/shape-up-methodology/)
+ "Instead of asking 'how long will this take?' you ask 'how much time is this worth?' That becomes the time box." Because the *cost* is fixed by appetite and only the *scope* is negotiable, an under-specified far task never turns into an open-ended estimate risk - it turns into a scope-cut risk, which is contained by design. This is the mechanism, not just a philosophy: it's what makes low far-detail non-dangerous.
+ - [UXCam - Shape Up Methodology Guide](https://uxcam.com/blog/shape-up-methodology/)
 
 10. **Fat marker sketches are a physical-constraint mechanism for enforcing imprecision, not a discipline the author has to self-impose** (confidence: high)
-    "A fat marker sketch is a sketch made with such broad strokes that adding detail is difficult or impossible." Breadboarding (places/affordances/connection lines, borrowed from electrical engineering notation) forces debate about functional topology while making visual/implementation detail *impossible to express* in the notation. The lesson for Compass: SPEC-015's "far shape" tier could benefit from a format that structurally can't hold fine detail (e.g., a scope-and-intent field with a length/field-shape cap), rather than relying on the planner's discipline not to over-specify.
-    - [Basecamp - Shape Up ch. 4, Shaping](https://basecamp.com/shapeup/1.3-chapter-04)
+ "A fat marker sketch is a sketch made with such broad strokes that adding detail is difficult or impossible." Breadboarding (places/affordances/connection lines, borrowed from electrical engineering notation) forces debate about functional topology while making visual/implementation detail *impossible to express* in the notation. The lesson for Compass: SPEC-015's "far shape" tier could benefit from a format that structurally can't hold fine detail (e.g., a scope-and-intent field with a length/field-shape cap), rather than relying on the planner's discipline not to over-specify.
+ - [Basecamp - Shape Up ch. 4, Shaping](https://basecamp.com/shapeup/1.3-chapter-04)
 
 11. **The betting table is a single, scheduled, all-or-nothing approval event per cycle - approve the shaped pitch as a whole, or don't** (confidence: high)
-    Only pitches (pre-shaped, appetite-bounded, "No Gos" scoped) are eligible; nothing else reaches the table. Decision is binary per pitch: bet (enters next cycle) or release (dropped, no central backlog tracking - an advocate must re-lobby fresh later). This is the approval gate for the *whole bet at appetite-level granularity* - it does not approve individual tasks inside the bet; those are discovered during the cycle itself.
-    - [Basecamp - Shape Up ch. 7, Bets Not Backlogs](https://basecamp.com/shapeup/2.1-chapter-07)
+ Only pitches (pre-shaped, appetite-bounded, "No Gos" scoped) are eligible; nothing else reaches the table. Decision is binary per pitch: bet (enters next cycle) or release (dropped, no central backlog tracking - an advocate must re-lobby fresh later). This is the approval gate for the *whole bet at appetite-level granularity* - it does not approve individual tasks inside the bet; those are discovered during the cycle itself.
+ - [Basecamp - Shape Up ch. 7, Bets Not Backlogs](https://basecamp.com/shapeup/2.1-chapter-07)
 
 12. **No backlog is a deliberate rejection of speculative elaboration, justified by psychological cost, not just process cost** (confidence: high)
-    "Dozens and eventually hundreds of tasks pile up that we all know we'll never have time for." Basecamp's stated reason for no shared backlog is that maintaining one creates constant "reviewing, grooming and organizing old ideas" - overhead spent on work that will likely never happen. Individuals keep private idea lists; nothing is centrally pre-elaborated. This is the strongest documented case against Compass planning (eloborating) tasks that may never be reached.
-    - [Basecamp - Shape Up ch. 7, Bets Not Backlogs](https://basecamp.com/shapeup/2.1-chapter-07)
+ "Dozens and eventually hundreds of tasks pile up that we all know we'll never have time for." Basecamp's stated reason for no shared backlog is that maintaining one creates constant "reviewing, grooming and organizing old ideas" - overhead spent on work that will likely never happen. Individuals keep private idea lists; nothing is centrally pre-elaborated. This is the strongest documented case against Compass planning (eloborating) tasks that may never be reached.
+ - [Basecamp - Shape Up ch. 7, Bets Not Backlogs](https://basecamp.com/shapeup/2.1-chapter-07)
 
 13. **Hill charts let teams report and update true progress mid-bet without re-triggering the betting-table approval** (confidence: high)
-    A hill chart is "a diagram showing the status of work on a spectrum from unknown to known to done," split into an uphill "figuring out" phase (unknowns, unsolved problems) and a downhill "execution" phase (known, remaining is just building). Newly discovered scope during the uphill phase is *absorbed inside the fixed cycle* and shown by moving the scope marker - it does not require going back to stakeholders. This is the closest published analogue to Compass's "elaboration without re-approval": the update mechanism (hill chart) is distinct from and cheaper than the approval mechanism (betting table).
-    - [Basecamp - Shape Up ch. 11, Hill Charts / Showing Progress](https://basecamp.com/shapeup/3.2-chapter-11)
+ A hill chart is "a diagram showing the status of work on a spectrum from unknown to known to done," split into an uphill "figuring out" phase (unknowns, unsolved problems) and a downhill "execution" phase (known, remaining is just building). Newly discovered scope during the uphill phase is *absorbed inside the fixed cycle* and shown by moving the scope marker - it does not require going back to stakeholders. This is the closest published analogue to Compass's "elaboration without re-approval": the update mechanism (hill chart) is distinct from and cheaper than the approval mechanism (betting table).
+ - [Basecamp - Shape Up ch. 11, Hill Charts / Showing Progress](https://basecamp.com/shapeup/3.2-chapter-11)
 
 ### Highsmith ASD / Cynefin
 
 14. **Highsmith's Adaptive Software Development names "speculate" (not "plan") as the deliberate word choice for the far-detail phase** (confidence: medium)
-    "In traditional models, teams 'plan.' In ASD, they speculate... it's impossible to foresee every detail in advance." The three-phase cycle is speculate -> collaborate -> learn, repeated per iteration; "learn" is an explicit end-of-cycle activity (customer focus groups, technical reviews, post-mortems) that feeds the next speculation. The naming itself functions as an epistemic honesty marker: don't call far-detail a "plan" if it isn't one - name it as a hypothesis.
-    - [Airfocus - What Is ASD?](https://airfocus.com/glossary/what-is-adaptive-software-development/)
+ "In traditional models, teams 'plan.' In ASD, they speculate... it's impossible to foresee every detail in advance." The three-phase cycle is speculate -> collaborate -> learn, repeated per iteration; "learn" is an explicit end-of-cycle activity (customer focus groups, technical reviews, post-mortems) that feeds the next speculation. The naming itself functions as an epistemic honesty marker: don't call far-detail a "plan" if it isn't one - name it as a hypothesis.
+ - [Airfocus - What Is ASD?](https://airfocus.com/glossary/what-is-adaptive-software-development/)
 
 15. **Cynefin's probe-sense-respond gives the epistemic justification for why far-task detail cannot be known upfront in complex domains** (confidence: high)
-    "In the complex domain, one can perceive the relationship between cause and effect only in retrospect, but not in advance." The prescribed response is small, fail-safe experiments (probes), sensing the outcome, then responding - explicitly not "plan the solution and execute." This underwrites SPEC-015's hypothesis that far-task detail is fiction the planner cannot actually possess yet, as opposed to detail that's merely inconvenient to write.
-    - [ModelThinkers - Cynefin Framework](https://modelthinkers.com/mental-model/cynefin-framework)
+ "In the complex domain, one can perceive the relationship between cause and effect only in retrospect, but not in advance." The prescribed response is small, fail-safe experiments (probes), sensing the outcome, then responding - explicitly not "plan the solution and execute." This underwrites SPEC-015's hypothesis that far-task detail is fiction the planner cannot actually possess yet, as opposed to detail that's merely inconvenient to write.
+ - [ModelThinkers - Cynefin Framework](https://modelthinkers.com/mental-model/cynefin-framework)
 
 16. **Denne/Cleland-Huang's Incremental Funding Method decomposes work into Minimum Marketable Features (MMFs) sequenced by ROI, not into a single big plan with graded detail** (confidence: medium)
-    IFM's contribution is scheduling *self-contained* value-bearing chunks (MMFs) rather than task-level detail gradation; it's a sequencing/ordering discipline layered on top of decomposition, oriented at financial ROI rather than knowledge-elaboration. Less directly transferable to SPEC-015's wave-elaboration mechanic than ASD or Shape Up - it answers "in what order" more than "how much detail per wave."
-    - [ResearchGate - The Incremental Funding Method](https://www.researchgate.net/publication/3248118_The_incremental_funding_method_Data-driven_software_development)
+ IFM's contribution is scheduling *self-contained* value-bearing chunks (MMFs) rather than task-level detail gradation; it's a sequencing/ordering discipline layered on top of decomposition, oriented at financial ROI rather than knowledge-elaboration. Less directly transferable to SPEC-015's wave-elaboration mechanic than ASD or Shape Up - it answers "in what order" more than "how much detail per wave."
+ - [ResearchGate - The Incremental Funding Method](https://www.researchgate.net/publication/3248118_The_incremental_funding_method_Data-driven_software_development)
 
 ### Dual-track (adjacent, discovery/delivery split)
 
 17. **Jeff Patton's dual-track agile runs discovery and delivery as parallel continuous tracks with the same people, not sequential phases** (confidence: medium)
-    "Two tracks, not two teams" - the same people alternate between discovery activities (interviews, probing the "why") and delivery (building what discovery validated). This is the named practitioner answer to SPEC-015's own non-goal reference to the "human-review-model redesign... WHERE review lands": dual-track shows discovery-track output (validated understanding) feeding delivery-track input continuously, rather than a single upfront discovery phase gating all delivery.
-    - [Academy4PM - Dual Track Agile, Jeff Patton](https://academy4pm.org/lessons/dual-track-agile/)
+ "Two tracks, not two teams" - the same people alternate between discovery activities (interviews, probing the "why") and delivery (building what discovery validated). This is the named practitioner answer to SPEC-015's own non-goal reference to the "human-review-model redesign... WHERE review lands": dual-track shows discovery-track output (validated understanding) feeding delivery-track input continuously, rather than a single upfront discovery phase gating all delivery.
+ - [Academy4PM - Dual Track Agile, Jeff Patton](https://academy4pm.org/lessons/dual-track-agile/)
 
 ### Failure modes
 
 18. **"Refinement theater" as a named phrase is not established in the literature; the underlying anti-patterns are, and they cluster on frequency, not depth** (confidence: medium)
-    Practitioner sources (age-of-product.com's widely cited "28 anti-patterns" piece) document "too detailed refinements" as a distinct, named anti-pattern alongside "not enough" and "too many" refinements - confirming the *decay toward over-elaboration* SPEC-015 worries about is a recognized, real failure mode in the field, even without the exact "theater" label. A second named anti-pattern: refinement done by individuals in isolation rather than the whole team, producing tickets nobody but the author understands - relevant if Compass's elaboration step is a solo builder pass rather than a checked step.
-    - [age-of-product.com - 28 Product Backlog and Refinement Anti-Patterns](https://age-of-product.com/28-product-backlog-anti-patterns/)
+ Practitioner sources (age-of-product.com's widely cited "28 anti-patterns" piece) document "too detailed refinements" as a distinct, named anti-pattern alongside "not enough" and "too many" refinements - confirming the *decay toward over-elaboration* SPEC-015 worries about is a recognized, real failure mode in the field, even without the exact "theater" label. A second named anti-pattern: refinement done by individuals in isolation rather than the whole team, producing tickets nobody but the author understands - relevant if Compass's elaboration step is a solo builder pass rather than a checked step.
+ - [age-of-product.com - 28 Product Backlog and Refinement Anti-Patterns](https://age-of-product.com/28-product-backlog-anti-patterns/)
 
 19. **The improvisation-decay failure mode (no one elaborates, work starts anyway) is the documented flip side of "too detailed"** (confidence: medium)
-    The same anti-pattern taxonomy lists "unprepared refinements" (PO lacks necessary detail going in) and "rare refinement" (infrequent sessions leave items unclear) as the under-elaboration counterpart. Both directions are named failure clusters, which supports SPEC-015 treating "degenerates into improvisation" as a real, not hypothetical, risk requiring its own falsification check rather than being dismissed as unlikely once over-elaboration is guarded against.
-    - [age-of-product.com - 28 Product Backlog and Refinement Anti-Patterns](https://age-of-product.com/28-product-backlog-anti-patterns/)
+ The same anti-pattern taxonomy lists "unprepared refinements" (PO lacks necessary detail going in) and "rare refinement" (infrequent sessions leave items unclear) as the under-elaboration counterpart. Both directions are named failure clusters, which supports SPEC-015 treating "degenerates into improvisation" as a real, not hypothetical, risk requiring its own falsification check rather than being dismissed as unlikely once over-elaboration is guarded against.
+ - [age-of-product.com - 28 Product Backlog and Refinement Anti-Patterns](https://age-of-product.com/28-product-backlog-anti-patterns/)
 
 20. **Sprint-boundary rigidity is independently documented outside Kanban's own literature** (confidence: medium)
-    Practitioner criticism (Medium, "Why Sprints Are Useless") echoes Anderson's DJAA argument from outside the Kanban camp: fixed timeboxes cause rushed hasty implementations near boundary close, or padding of low-priority work to fill the box, and force cross-team dependency friction at sprint edges. Converging independent sources on the same failure shape raises confidence that *any* fixed-size wave (not just Scrum sprints) risks this failure if Compass's wave sizing is naive fixed-N-tasks.
-    - [Medium - Why Sprints are Useless for Agile Teams](https://medium.com/@shub-sharma/why-sprints-might-be-useless-for-your-truly-agile-team-d4dbd9629273)
+ Practitioner criticism (Medium, "Why Sprints Are Useless") echoes Anderson's DJAA argument from outside the Kanban camp: fixed timeboxes cause rushed hasty implementations near boundary close, or padding of low-priority work to fill the box, and force cross-team dependency friction at sprint edges. Converging independent sources on the same failure shape raises confidence that *any* fixed-size wave (not just Scrum sprints) risks this failure if Compass's wave sizing is naive fixed-N-tasks.
+ - [Medium - Why Sprints are Useless for Agile Teams](https://medium.com/@shub-sharma/why-sprints-might-be-useless-for-your-truly-agile-team-d4dbd9629273)
 
 ## Approval-semantics map
 

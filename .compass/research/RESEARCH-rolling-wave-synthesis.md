@@ -11,10 +11,10 @@ git_branch: "master"
 git_commit: "268aebc"
 author: "reviewer (Claude)"
 depends_on:
-  - "[[SPEC-015-rolling-wave-planning]]"
-  - "[[RESEARCH-rolling-wave-flow-theory]]"
-  - "[[RESEARCH-rolling-wave-software-practice]]"
-  - "[[RESEARCH-rolling-wave-agent-planning]]"
+ - "[[SPEC-015-rolling-wave-planning]]"
+ - "[[RESEARCH-rolling-wave-flow-theory]]"
+ - "[[RESEARCH-rolling-wave-software-practice]]"
+ - "[[RESEARCH-rolling-wave-agent-planning]]"
 summary: "cross-axis synthesis and recommended mechanism"
 ---
 
@@ -99,7 +99,7 @@ The remaining three are not competitors. They answer different questions, and th
 
 > A wave is the set of tasks whose preconditions are already satisfied by completed, verified work (the dependency frontier), bounded by a size budget rather than a task count, and ordered within itself by urgency. It ends at the first task whose specification depends on an outcome not yet observed. It is never one task alone.
 
-Reasoning: the frontier is the only sizing signal all three axes independently support (Flow-11 look-ahead constraint removal, Agent-5 HTN precondition-at-decomposition, Practice's finding that dependency-frontier sizing has the strongest practitioner support). It is also self-correcting in a way fixed-N is not: when the graph is wide the wave is naturally large and cheap to detail, when the graph is a chain the wave is naturally short. The size budget is Shape Up's appetite (Practice-9), imported because a wide frontier plus no cap reintroduces exactly the speculative-batch problem the spec exists to kill; Compass already carries per-task sizes, so the budget has a unit. Cost-of-delay ordering (Flow-3) is included in the rule but is the weakest-supported element (1.5 of 3 axes) and is flagged below as a decision for Roger.
+Reasoning: the frontier is the only sizing signal all three axes independently support (Flow-11 look-ahead constraint removal, Agent-5 HTN precondition-at-decomposition, Practice's finding that dependency-frontier sizing has the strongest practitioner support). It is also self-correcting in a way fixed-N is not: when the graph is wide the wave is naturally large and cheap to detail, when the graph is a chain the wave is naturally short. The size budget is Shape Up's appetite (Practice-9), imported because a wide frontier plus no cap reintroduces exactly the speculative-batch problem the spec exists to kill; Compass already carries per-task sizes, so the budget has a unit. Cost-of-delay ordering (Flow-3) is included in the rule but is the weakest-supported element (1.5 of 3 axes) and is flagged below as a decision for the human.
 
 The **trigger** is separate from the sizing and is not in dispute: elaboration fires when a wave's tasks complete and their verification passes (Agent-12, Flow-11), never on cadence and never on the planner rereading itself.
 
@@ -121,7 +121,7 @@ There is a second-order finding worth carrying into the ADR (confidence: medium,
 
 Practice contradiction 2 is unresolved in its own document: ASD and Cynefin treat far detail as unknowable in principle (Practice-14, Practice-15), Scrum's Definition of Ready treats it as knowable but not yet written (Practice-4). SPEC-015 does not distinguish them.
 
-The frontier rule resolves this without a new concept (confidence: medium-high). A task blocked on knowledge that does not exist yet is outside the frontier and must stay scoped. A task whose knowledge exists but has not been written up is inside the frontier and should simply be elaborated now. That is exactly the Last Planner look-ahead function (Flow-11): the stage exists to clear constraints so a task becomes eligible, not to write detail. The distinction is real and it is already encoded in "is this task on the frontier," so it needs no separate field, though Roger may want it named explicitly in the planner brief.
+The frontier rule resolves this without a new concept (confidence: medium-high). A task blocked on knowledge that does not exist yet is outside the frontier and must stay scoped. A task whose knowledge exists but has not been written up is inside the frontier and should simply be elaborated now. That is exactly the Last Planner look-ahead function (Flow-11): the stage exists to clear constraints so a task becomes eligible, not to write detail. The distinction is real and it is already encoded in "is this task on the frontier," so it needs no separate field, though the human may want it named explicitly in the planner brief.
 
 ## Agreements strong enough to bind the ADR
 
@@ -141,13 +141,13 @@ Each of these is 3/3 or unopposed-with-explicit-support, and each has at least o
 
 7. **Both failure directions are real and need separate checks** (confidence: high). Over-elaboration (Practice-18: "too detailed refinements" is a named anti-pattern) and improvisation decay (Practice-19: "unprepared" and "rare" refinements) are independently documented clusters. Flow-15 gives the sharp version of the second: past the last responsible moment, decisions are made by default rather than staying open. Agent-3 gives the formal version: zero lookahead is provably suboptimal. SPEC-015's falsification criteria should keep testing both; guarding one does not guard the other.
 
-## Open points for Roger
+## Open points for the human
 
 Four decisions the evidence does not settle.
 
 1. **Does a Compass wave carry a size budget?** The frontier rule sizes the wave by dependency structure. Shape Up's appetite (Practice-9) is the only surveyed mechanism that makes low far-detail safe by construction rather than by hope, and it is 1-of-3 support with nothing opposing it. Adding a per-wave size budget bounds a pathologically wide frontier; omitting it keeps the plan format simpler. Recommendation: include it, since Compass already carries task sizes so the unit is free.
 
-2. **Two detail tiers or three?** SPEC-015 assumes two (full near, scope-and-intent far). Flow-10 argues from the Last Planner System that three has industrial precedent (strategic shape, constraint-cleared and ready, committed), with the middle tier's job being constraint removal rather than detail writing. Practice's methodologies mostly use two (XP's two meetings, Shape Up's pitch and tasks). This is a real design split and it changes the plan format. Recommendation: two tiers, because the frontier rule already performs the middle tier's constraint-clearance function without needing a document tier to hold it. Roger should rule.
+2. **Two detail tiers or three?** SPEC-015 assumes two (full near, scope-and-intent far). Flow-10 argues from the Last Planner System that three has industrial precedent (strategic shape, constraint-cleared and ready, committed), with the middle tier's job being constraint removal rather than detail writing. Practice's methodologies mostly use two (XP's two meetings, Shape Up's pitch and tasks). This is a real design split and it changes the plan format. Recommendation: two tiers, because the frontier rule already performs the middle tier's constraint-clearance function without needing a document tier to hold it. the human should rule.
 
 3. **Is cost-of-delay reordering in scope?** Flow-3 argues the planner should be able to pull a far but urgent task forward rather than always detailing in sequence. Support is 1.5 of 3 axes and the concept may not transfer: Compass plans are dependency-ordered and cost of delay is not something a planner agent can currently measure. Recommendation: leave it out of the first mechanism as unmeasurable, and revisit if plans start showing sequence-driven detail waste.
 

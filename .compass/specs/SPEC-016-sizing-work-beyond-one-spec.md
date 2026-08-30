@@ -22,7 +22,7 @@ When a need is too big to be one spec, Compass has no path to the bigger shape. 
 
 The result: the human gets monster specs, and the only exit is to already know units exist and ask for them by name. The human who most needs the bigger shape is the one least likely to know it exists.
 
-Observed 2026-08-22 (Roger): a vision session in a game project produced seven needs, each of them an epic worth six to eight specs. Compass proposed seven flat specs and gave no signal anything was wrong. The correct shape was found only because the human said "those specs are monsters" and the session then went looking for mechanisms it had never been told about.
+Observed 2026-08-22: a vision session in a game project produced seven needs, each of them an epic worth six to eight specs. Compass proposed seven flat specs and gave no signal anything was wrong. The correct shape was found only because the human said "those specs are monsters" and the session then went looking for mechanisms it had never been told about.
 
 ## Who is affected
 
@@ -33,13 +33,13 @@ Observed 2026-08-22 (Roger): a vision session in a game project produced seven n
 
 ## Decisions (made by the human)
 
-- **D-01:** Both creation paths ship: a workspace declared up front and empty, and an existing flat spec converted into one later. Today only the second is possible, and only by hand. (Roger, 2026-08-23.)
-- **D-02:** Compass never asks the human how Compass should run. It judges the sizing and acts, then says what it did. Modeled explicitly on hermes: "it never asks me how hermes should be running, it just runs." (Roger, 2026-08-23.)
-- **D-03:** What Compass says about the sizing is said at most once. If the human would rather not hear it again, they say so and Compass proceeds silently from then on. (Roger, 2026-08-22.)
-- **D-04:** The machinery is never named to a human who did not ask for it. Plain words only, never "unit", "folder spec", or a command name. (Roger, 2026-08-22.)
-- **D-05:** The behavior is configurable, and directly callable by name for a human who does know it. Invisible by default is not the same as unavailable. (Roger, 2026-08-22.)
-- **D-06:** Prefer dissolving the sizing choice over improving the judgment: make every spec folder-like from birth if that simplifies the system, so the flat-versus-folder decision disappears instead of getting a better procedure. (Roger, 2026-08-24: "I rather making everything always a folder-like structure if that makes things easier." Resolves TASK-083's pre-registered escalation: the changeability walk showed no consistency gain, and raters systematically chose heavier shapes than the human did.)
-- **D-07:** The folder shape is recursive with no depth limit: every child spec can itself hold children, born folder-like the same way, at every level. (Roger, 2026-08-24: "every subspec should also enable more subspecs then.")
+- **D-01:** Both creation paths ship: a workspace declared up front and empty, and an existing flat spec converted into one later. Today only the second is possible, and only by hand.
+- **D-02:** Compass never asks the human how Compass should run. It judges the sizing and acts, then says what it did. Modeled explicitly on hermes: "it never asks me how hermes should be running, it just runs."
+- **D-03:** What Compass says about the sizing is said at most once. If the human would rather not hear it again, they say so and Compass proceeds silently from then on.
+- **D-04:** The machinery is never named to a human who did not ask for it. Plain words only, never "unit", "folder spec", or a command name.
+- **D-05:** The behavior is configurable, and directly callable by name for a human who does know it. Invisible by default is not the same as unavailable.
+- **D-06:** Prefer dissolving the sizing choice over improving the judgment: make every spec folder-like from birth if that simplifies the system, so the flat-versus-folder decision disappears instead of getting a better procedure.
+- **D-07:** The folder shape is recursive with no depth limit: every child spec can itself hold children, born folder-like the same way, at every level.
 
 ## Desired Outcome
 

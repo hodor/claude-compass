@@ -33,10 +33,10 @@ Two compounders make it worse: install drift (19/40 vaults cannot run the Stop-h
 
 ## Decisions (made by the human)
 
-- **D-01:** Compass becomes "a framework that learns" in the hermes sense but with Compass discipline: harness-owned triggers, anti-list quality gates, auditable output. (Roger, 2026-07-26.)
-- **D-02:** Capture-fix is sequenced before retrieval and application - retrieval and audit are worthless until capture produces input. (Roger, 2026-07-26; the fleet diagnosis reordered the pillars.)
-- **D-03:** The design must be informed by a review of how hermes updates and retrieves its memory. [[RESEARCH-hermes-memory-mechanics]] is that review; its takeaways bind: the trigger decision is harness-owned arithmetic attached to events that occur in every session, model judgment is confined to what gets saved, and hermes's fire-and-forget blind spot (no trace distinguishing "reviewed, nothing to save" from "never ran") is the anti-pattern Compass must not replicate. (Roger, 2026-07-26.)
-- **D-04:** Whether retrieval rides a graph substrate is gated on [[SPEC-011-vault-graph-queries]]'s grep-vs-graph experiment; this spec does not presuppose it. (Roger, 2026-07-26.)
+- **D-01:** Compass becomes "a framework that learns" in the hermes sense but with Compass discipline: harness-owned triggers, anti-list quality gates, auditable output.
+- **D-02:** Capture-fix is sequenced before retrieval and application - retrieval and audit are worthless until capture produces input.
+- **D-03:** The design must be informed by a review of how hermes updates and retrieves its memory. [[RESEARCH-hermes-memory-mechanics]] is that review; its takeaways bind: the trigger decision is harness-owned arithmetic attached to events that occur in every session, model judgment is confined to what gets saved, and hermes's fire-and-forget blind spot (no trace distinguishing "reviewed, nothing to save" from "never ran") is the anti-pattern Compass must not replicate.
+- **D-04:** Whether retrieval rides a graph substrate is gated on [[SPEC-011-vault-graph-queries]]'s grep-vs-graph experiment; this spec does not presuppose it.
 
 ## Desired Outcome
 

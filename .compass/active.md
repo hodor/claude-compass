@@ -5,13 +5,13 @@ updated: 2026-08-24
 
 # Active Tasks
 
-## Sizing + discoverability initiative (Roger, 2026-08-23)
+## Sizing + discoverability initiative
 
 Triggered by a live failure in another project: a vision session produced seven epic-sized needs and Compass proposed seven flat specs with no signal anything was wrong.
 
 - [ ] Open: pin the project where the seven-monster-specs session happened ([[LESSON-pin-the-motivating-datum]]).
 
-## Per-domain organization initiative (Roger, 2026-08-30)
+## Per-domain organization initiative
 
 - [ ] [[PLAN-016-domain-taxonomy]] revised through 3-lens review (11 blockers folded in); gates pass (decisions 11 rows, coverage 18/18); AWAITING ROGER'S APPROVAL.
 - [ ] v0.15.0's premature skill/sync edits were reverted; index depth-0 rule stays (shipped); everything further waits on the plan.

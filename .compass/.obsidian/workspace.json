@@ -1,0 +1,259 @@
+{
+  "main": {
+    "id": "5e79e33da82c4e40",
+    "type": "split",
+    "children": [
+      {
+        "id": "c965dd011d7ec3fd",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "4829818117cbbfec",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "ADR-022-domains-scope-notes-shallow-when-unsure"
+            }
+          },
+          {
+            "id": "070ed694cd97ed87",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "specs/SPEC-022-vault-organized-per-domain.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "SPEC-022-vault-organized-per-domain"
+            }
+          },
+          {
+            "id": "5312ec5e94803c0f",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "specs/SPEC-010-universal-hybrid-hierarchy.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "SPEC-010-universal-hybrid-hierarchy"
+            }
+          }
+        ],
+        "currentTab": 1
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "04a3dffc6618695d",
+    "type": "split",
+    "children": [
+      {
+        "id": "5df87d6ca0f0c9f8",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "fa6e5126ce97c59a",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "ef495efe2802cb6b",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "ee9f1ac1c4367b8d",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "d320396da056779c",
+    "type": "split",
+    "children": [
+      {
+        "id": "9af594efdd730f7b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "00e704fed146abd2",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "specs/SPEC-022-vault-organized-per-domain.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "c3b80496521a5b65",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "specs/SPEC-022-vault-organized-per-domain.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "bd44ba721b546cbf",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "7039f621f688dcea",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "2b03f11aedd4069f",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "specs/SPEC-022-vault-organized-per-domain.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "070ed694cd97ed87",
+  "lastOpenFiles": [
+    "plans/PLAN-016-domain-taxonomy.md.tmp.6560.a3eb86e985b4",
+    "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md.tmp.6560.2943c3dda43d",
+    "specs/SPEC-022-vault-organized-per-domain.md.tmp.6560.f0bf02d2c822",
+    "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md",
+    "plans/PLAN-016-domain-taxonomy.md",
+    "specs/SPEC-010-universal-hybrid-hierarchy.md",
+    "specs/SPEC-022-vault-organized-per-domain.md",
+    "tmp/subagent-captures/2026-08-30T21-13-39_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T21-13-39_unknown.md",
+    "tmp/capture-check.lock",
+    "plans/PLAN-016-domain-taxonomy.md.tmp.6560.d9b308d847f0",
+    "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md.tmp.6560.f10cda5d9471",
+    "specs/SPEC-021-capture-in-the-humans-words.md",
+    "specs/SPEC-020-compass-updates-itself.md",
+    "meta/sizing-log.yaml",
+    "specs/SPEC-019-active-holds-only-active-work.md",
+    "tmp/worker-logs/OPP-20260830T211005283158Z.log",
+    "tmp/extraction-log-2026-08-30.md.tmp.6332.72903a9938c3",
+    "plans/PLAN-016-domain-taxonomy.md.tmp.6560.4eadb25f187f",
+    "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md.tmp.6560.85cf1cdd00fb",
+    "SPEC-022-vault-organized-per-domain.md",
+    "specs/SPEC-022-vault-organized-per-domain/index.md",
+    "research/RESEARCH-taxonomy-for-unambiguous-placement.md",
+    "tmp/subagent-captures/2026-08-30T21-09-39_note.md",
+    "specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md",
+    "tmp/subagent-captures/2026-08-30T19-23-09_unknown.md",
+    "lessons/LESSON-obsidian-bare-link-creates-stray-note.md",
+    "tmp/subagent-captures/2026-08-30T19-19-28_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T19-19-28_unknown.md",
+    "tmp/subagent-captures/2026-08-30T19-18-45_note.md",
+    "tmp/subagent-captures/2026-08-30T19-17-29_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T19-17-29_unknown.md",
+    "tmp/subagent-captures/2026-08-30T19-12-33_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T19-12-33_unknown.md",
+    "tmp/subagent-captures/2026-08-30T19-09-09_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T19-09-09_unknown.md"
+  ]
+}

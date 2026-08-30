@@ -270,7 +270,7 @@ Evidence: `todo.sh:1183-1193` -
 ```
 sed -i.bak -e '/./!d' "$TODO_FILE"
 if grep "^x " "$TODO_FILE" >> "$DONE_FILE"; then
-    sed -i.bak '/^x /d' "$TODO_FILE"
+ sed -i.bak '/^x /d' "$TODO_FILE"
 ```
 
 ### Finding 11: By default `do` immediately re-invokes `archive`, fusing the two steps into one user-visible action; this is configurable
@@ -279,7 +279,7 @@ Confidence: high
 Evidence: `todo.sh:1297-1300` -
 ```
 if [ "$TODOTXT_AUTO_ARCHIVE" = 1 ]; then
-    "$TODO_FULL_SH" archive || status=$?
+ "$TODO_FULL_SH" archive || status=$?
 fi
 ```
 Default is ON: `todo.sh:662` `TODOTXT_AUTO_ARCHIVE=${TODOTXT_AUTO_ARCHIVE:-1}`. CLI flags `-a`/`-A` and the `TODOTXT_AUTO_ARCHIVE` env/config var override it (`todo.sh:590,593,756-757`); with it off, `x`-lines accumulate in `todo.txt` until `archive` is run by hand.

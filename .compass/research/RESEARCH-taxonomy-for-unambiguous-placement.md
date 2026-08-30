@@ -16,7 +16,7 @@ depends_on: ["[[SPEC-022-vault-organized-per-domain]]", "[[SPEC-005-index-auto-m
 
 ## Question
 
-[[SPEC-022-vault-organized-per-domain]], Roger's goal verbatim: "how humans organize topics and how machines organize topics - the main goal is to have it organized in a way that there is no ambiguity in which main area you should go to find the info you need." Three axes, classification science primary per D-06; full findings verbatim below the synthesis.
+[[SPEC-022-vault-organized-per-domain]], the stated goal verbatim: "how humans organize topics and how machines organize topics - the main goal is to have it organized in a way that there is no ambiguity in which main area you should go to find the info you need." Three axes, classification science primary per D-06; full findings verbatim below the synthesis.
 
 ## Synthesis (framed by the classification science)
 
@@ -30,7 +30,7 @@ Inter-indexer consistency runs 10-60% and the literature calls the inconsistency
 - ONE PRIMARY HOME plus optional secondary pointers (MSC's primary/secondary codes) - not poly-hierarchy for the physical tree; facets carry the multi-parent axis.
 - LITERARY WARRANT: categories are created only when the corpus already justifies them, never invented ahead. Domains come from what exists - exactly SPEC-022's non-goal against speculative domains.
 - HARD SPLIT TRIGGERS beat judgment calls (Johnny.Decimal's numeric ceilings): a category-size threshold that mechanically flags "split me" avoids the documented too-late-to-split failure.
-- Human-curated top levels with machine-assisted leaf placement is the literature's recommended division of labor - which is precisely the consolidate-proposes/Roger-approves gate already ruled in ADR-021 D-03.
+- Human-curated top levels with machine-assisted leaf placement is the literature's recommended division of labor - which is precisely the consolidate-proposes/the human-approves gate already ruled in ADR-021 D-03.
 
 **3. The design space is narrower than it looked (design axis):**
 ADR-021 already ruled domains reuse the folder-spec kind via existing commands. The real open decisions the ADR left unmade: (a) the THIN domain (no natural parent spec - "distribution", "pipeline") has no creating command and no content template - and the folder-spec template's Problem/Decisions framing does not fit a topical bag; (b) folder Children listings are hand-written or one-shot, never synced - SPEC-005's auto-regeneration was specced and never built, held ONLY on unproven LLM-summary cost, not design disagreement; (c) naming: numbered SPEC-NNN-name/ (promoted parents) vs bare names (thin domains) already coexist in the live proposal, and local numbering inside domains reopens ADR-006's bare-stem collision for a case its unit-only path-qualification never covered; (d) taxonomy_hint has zero implementation; (e) area: frontmatter is a near-domain field already drifted past its documented enum, unenforced.
@@ -60,93 +60,93 @@ WebSearch across four sub-axes (human classification theory, measured filing/ret
 #### Human classification theory
 
 1. **MECE is an ideal that fails on real, multi-dimensional items** (confidence: high)
-   Mutually Exclusive/Collectively Exhaustive (Minto, McKinsey, traces to Aristotle) requires picking one basis of segmentation at a time; mixing dimensions (e.g., age AND occupation in one category set) breaks mutual exclusivity. Real documents routinely span more than one dimension (a book both "Science" and "History"), which pure MECE cannot resolve without an arbitrary tie-break rule. "Exhaustive" is also scope-relative: a MECE set only covers what was declared in scope, so it can quietly omit new material.
-   - https://en.wikipedia.org/wiki/MECE_principle
+ Mutually Exclusive/Collectively Exhaustive (Minto, McKinsey, traces to Aristotle) requires picking one basis of segmentation at a time; mixing dimensions (e.g., age AND occupation in one category set) breaks mutual exclusivity. Real documents routinely span more than one dimension (a book both "Science" and "History"), which pure MECE cannot resolve without an arbitrary tie-break rule. "Exhaustive" is also scope-relative: a MECE set only covers what was declared in scope, so it can quietly omit new material.
+ - https://en.wikipedia.org/wiki/MECE_principle
 
 2. **Enumerative classification (Dewey/LCC) pre-lists every class; faceted classification (Ranganathan's Colon Classification, 1933) synthesizes a notation from independent facets instead** (confidence: high)
-   Ranganathan's PMEST (Personality, Matter, Energy, Space, Time) analyzes any subject into up to five facets and combines them with colon separators into one compound notation, rather than looking up a pre-enumerated single class number. This was a direct response to enumerative schemes being unable to keep pace with new interdisciplinary subjects. UDC is a hybrid ("almost-faceted": enumerative base plus facet indicators); DDC added auxiliary tables (faceting grafted onto an enumerative base) starting with its 18th edition (1971).
-   - https://www.redalyc.org/journal/3843/384357586006/html/
-   - https://ebooks.inflibnet.ac.in/lisp2/chapter/species-of-bibliographic-classifications-enumerative-and-faceted/
+ Ranganathan's PMEST (Personality, Matter, Energy, Space, Time) analyzes any subject into up to five facets and combines them with colon separators into one compound notation, rather than looking up a pre-enumerated single class number. This was a direct response to enumerative schemes being unable to keep pace with new interdisciplinary subjects. UDC is a hybrid ("almost-faceted": enumerative base plus facet indicators); DDC added auxiliary tables (faceting grafted onto an enumerative base) starting with its 18th edition (1971).
+ - https://www.redalyc.org/journal/3843/384357586006/html/
+ - https://ebooks.inflibnet.ac.in/lisp2/chapter/species-of-bibliographic-classifications-enumerative-and-faceted/
 
 3. **Compass's tag facets are folksonomy post-coordination, not Ranganathan-style pre-coordinate faceting - maps as metaphor, not mechanism** (confidence: high, direct comparison)
-   Ranganathan's facets are combined at classification time into a single compound call number that still fixes one shelf location; multi-parent access in CC comes from chain-indexing/cross-references, not from the primary notation living in two places. Compass's own [[ADR-004-hierarchical-specs-with-facets]] tags are explicitly "folksonomy (free-form, not controlled vocabulary)" (`ADR-004-hierarchical-specs-with-facets.md:54`) used for a separate `tag-index.yaml` lookup - closer to post-coordinate keyword indexing than to PMEST notation-building. Per [[LESSON-human-practice-rationing-assumes-human-scarcity]]'s naming discipline: the precondition Ranganathan's facets need (a controlled, analyzed set of fundamental categories synthesized into one address) is absent; Compass's tags are an orthogonal retrieval index layered over a single-path folder tree, which is closer to what CC calls chain indexing than to CC's own classification act.
+ Ranganathan's facets are combined at classification time into a single compound call number that still fixes one shelf location; multi-parent access in CC comes from chain-indexing/cross-references, not from the primary notation living in two places. Compass's own [[ADR-004-hierarchical-specs-with-facets]] tags are explicitly "folksonomy (free-form, not controlled vocabulary)" (`ADR-004-hierarchical-specs-with-facets.md:54`) used for a separate `tag-index.yaml` lookup - closer to post-coordinate keyword indexing than to PMEST notation-building. Per [[LESSON-human-practice-rationing-assumes-human-scarcity]]'s naming discipline: the precondition Ranganathan's facets need (a controlled, analyzed set of fundamental categories synthesized into one address) is absent; Compass's tags are an orthogonal retrieval index layered over a single-path folder tree, which is closer to what CC calls chain indexing than to CC's own classification act.
 
 4. **Living recursive domain taxonomies (MSC, ACM CCS) solve multi-topic placement two different ways: single-primary-plus-secondary vs. true poly-hierarchy** (confidence: high)
-   - MSC2020 (Mathematical Reviews/zbMATH): every item gets exactly **one** primary code - "the MSC code that describes its principal contribution" - chosen as the *most important* contribution when several exist, plus optional secondary codes for the rest. Hierarchical, 2/3/5-digit levels (63 top-level, 529 three-digit, 6,022 five-digit as of 2020).
-   - ACM CCS 2012 replaced the 1998 letter-number scheme with a **poly-hierarchical** ontology: one concept (e.g., "Cluster analysis") legitimately sits under six different branches at once (Theory of computation, Machine learning, Information retrieval, etc.), with 13 top-level roots.
-   - Both schemes require literature to actually justify a class (see Finding 6) and both are periodically revised by an editorial board rather than fixed once.
-   - https://msc2020.org/MSC_2020.pdf
-   - https://www.acm.org/publications/class-2012 ; https://en.wikipedia.org/wiki/ACM_Computing_Classification_System
+ - MSC2020 (Mathematical Reviews/zbMATH): every item gets exactly **one** primary code - "the MSC code that describes its principal contribution" - chosen as the *most important* contribution when several exist, plus optional secondary codes for the rest. Hierarchical, 2/3/5-digit levels (63 top-level, 529 three-digit, 6,022 five-digit as of 2020).
+ - ACM CCS 2012 replaced the 1998 letter-number scheme with a **poly-hierarchical** ontology: one concept (e.g., "Cluster analysis") legitimately sits under six different branches at once (Theory of computation, Machine learning, Information retrieval, etc.), with 13 top-level roots.
+ - Both schemes require literature to actually justify a class (see Finding 6) and both are periodically revised by an editorial board rather than fixed once.
+ - https://msc2020.org/MSC_2020.pdf
+ - https://www.acm.org/publications/class-2012 ; https://en.wikipedia.org/wiki/ACM_Computing_Classification_System
 
 5. **MSC2020's cross-reference syntax distinguishes mandatory redirection from optional related-topic pointers** (confidence: high)
-   Braces `{For A, see X}` mean "contributions described by A should usually be assigned X, not this section" (a placement override); brackets `[See also ...]` / `[See mainly ...]` mean the classifier may but need not also use that code, and must judge which is most appropriate. This is a two-tier disambiguation device: one binding, one advisory.
-   - https://msc2020.org/MSC_2020.pdf (§ classification instructions)
+ Braces `{For A, see X}` mean "contributions described by A should usually be assigned X, not this section" (a placement override); brackets `[See also ...]` / `[See mainly ...]` mean the classifier may but need not also use that code, and must judge which is most appropriate. This is a two-tier disambiguation device: one binding, one advisory.
+ - https://msc2020.org/MSC_2020.pdf (§ classification instructions)
 
 6. **Literary warrant: categories are only created once the corpus already contains enough documents to justify them, not invented ahead of the fact** (confidence: high)
-   Coined by E. Wyndham Hulme (1911-1912): "if there are books on the subject of electricity and magnetism, there is literary warrant for providing a number for such a class." Ranganathan folded this into his laws of classification (arrange isolates by decreasing published quantity). Both LCC and DDC explicitly trace their scope to the literary warrant of their host collections; DDC's editions have been revised under this principle for over a century.
-   - https://www.isko.org/cyclo/literary_warrant
-   - https://www.researchgate.net/publication/357117744
+ Coined by E. Wyndham Hulme (1911-1912): "if there are books on the subject of electricity and magnetism, there is literary warrant for providing a number for such a class." Ranganathan folded this into his laws of classification (arrange isolates by decreasing published quantity). Both LCC and DDC explicitly trace their scope to the literary warrant of their host collections; DDC's editions have been revised under this principle for over a century.
+ - https://www.isko.org/cyclo/literary_warrant
+ - https://www.researchgate.net/publication/357117744
 
 7. **Literary warrant is one of a family of "warrants"; Beghtol's 1986 typology names at least a dozen, several directly relevant to a vault used by both a human and agents** (confidence: medium)
-   Beghtol (1986, 1992) and later Barité group warrants into tiers; besides literary warrant, named warrants include user warrant (users' participation in shaping the scheme - Beghtol cites Patterson et al. 2000: "collaboration of potential users... in the development and use of any knowledge management system"), organizational warrant, cultural warrant ("every classification system is based on the assumptions and preoccupations of a certain culture," Beghtol 2002), structural warrant, and scientific/educational warrant. No single canonical list exists across scholars (Barité notes the literature "lacks a homogeneous, stable body of ideas").
-   - https://www.researchgate.net/publication/312094149_Warrant_as_a_means_to_study_classification_system_design (Bullard 2017)
-   - Beghtol, C. (2002). "A proposed ethical warrant for global knowledge representation and organization systems." Journal of Documentation, 58(5), 507-532.
+ Beghtol (1986, 1992) and later Barité group warrants into tiers; besides literary warrant, named warrants include user warrant (users' participation in shaping the scheme - Beghtol cites Patterson et al. 2000: "collaboration of potential users... in the development and use of any knowledge management system"), organizational warrant, cultural warrant ("every classification system is based on the assumptions and preoccupations of a certain culture," Beghtol 2002), structural warrant, and scientific/educational warrant. No single canonical list exists across scholars (Barité notes the literature "lacks a homogeneous, stable body of ideas").
+ - https://www.researchgate.net/publication/312094149_Warrant_as_a_means_to_study_classification_system_design (Bullard 2017)
+ - Beghtol, C. (2002). "A proposed ethical warrant for global knowledge representation and organization systems." Journal of Documentation, 58(5), 507-532.
 
 #### Measured ambiguity (does this actually work when tried)
 
 8. **Inter-indexer consistency is low and considered inherent, not a fixable anomaly** (confidence: high)
-   Since the 1960s, studies converge on "inconsistency is an inherent feature of indexing." Markey (1984): 39 indexers on 100 art works, 7% exact-term agreement, 13% concept-level agreement. Across the heterogeneous body of studies (different methodologies, not directly comparable), reported consistency ranges roughly 10-60%.
-   - https://asistdl.onlinelibrary.wiley.com/doi/full/10.1002/meet.14504301274
-   - https://www.researchgate.net/publication/235290123_Inter-indexer_Consistency_in_Graphic_Materials_Indexing_at_the_National_Library_of_Wales
+ Since the 1960s, studies converge on "inconsistency is an inherent feature of indexing." Markey (1984): 39 indexers on 100 art works, 7% exact-term agreement, 13% concept-level agreement. Across the heterogeneous body of studies (different methodologies, not directly comparable), reported consistency ranges roughly 10-60%.
+ - https://asistdl.onlinelibrary.wiley.com/doi/full/10.1002/meet.14504301274
+ - https://www.researchgate.net/publication/235290123_Inter-indexer_Consistency_in_Graphic_Materials_Indexing_at_the_National_Library_of_Wales
 
 9. **What raises consistency: fewer/broader terms, conceptual (not exact-string) matching, and indexer expertise - with at least one contradicting study** (confidence: medium)
-   Sievert & Andrews (1991): 50.4% consistency at mean depth of 1 term vs 33.9% at depth 7.48 terms - more categories assigned per item lowers agreement. Neshat & Horri (2006) state the same direction generally. Markey (1984) found concept-level agreement (13%) nearly double exact-term agreement (7%) - broader/conceptual grouping is more reproducible than literal labels. Shoham & Kedar (2001): novice/expert indexer agreement is low; Saarti (2002): professional indexers agree more than patrons. Contradiction: an unnamed earlier study cited in the same review found consistency "does not seem to change much with depth" - the depth-consistency relationship is not universally replicated.
-   - https://informationr.net/ir/16-4/paper502.html
+ Sievert & Andrews (1991): 50.4% consistency at mean depth of 1 term vs 33.9% at depth 7.48 terms - more categories assigned per item lowers agreement. Neshat & Horri (2006) state the same direction generally. Markey (1984) found concept-level agreement (13%) nearly double exact-term agreement (7%) - broader/conceptual grouping is more reproducible than literal labels. Shoham & Kedar (2001): novice/expert indexer agreement is low; Saarti (2002): professional indexers agree more than patrons. Contradiction: an unnamed earlier study cited in the same review found consistency "does not seem to change much with depth" - the depth-consistency relationship is not universally replicated.
+ - https://informationr.net/ir/16-4/paper502.html
 
 10. **Card sorting shows a structural gap between organizer categories and user (finder) mental models** (confidence: high)
-    Teams often sort by their own organization (e.g., "Product," "Support," "Engineering") while users group by goal (e.g., "Getting Started," "Troubleshooting"). Open card sorts (participant-defined categories) reveal mental models but are less consistent across participants than closed sorts (fixed categories) - and closed sorts, by construction, cannot tell you whether the given categories were right to begin with.
-    - https://www.nngroup.com/articles/card-sorting-definition/
+ Teams often sort by their own organization (e.g., "Product," "Support," "Engineering") while users group by goal (e.g., "Getting Started," "Troubleshooting"). Open card sorts (participant-defined categories) reveal mental models but are less consistent across participants than closed sorts (fixed categories) - and closed sorts, by construction, cannot tell you whether the given categories were right to begin with.
+ - https://www.nngroup.com/articles/card-sorting-definition/
 
 11. **Tree testing's "first click" on the top-level category is the single best predictor of a finder locating the right document** (confidence: high)
-    Because subcategories are invisible until a top-level node is opened, the first click is necessarily a top-level choice, and getting it right correlates strongly with ultimate task success. A documented failure pattern: correct top-level chosen first by only 48% of participants but visited eventually (after backtracking) by 71% - the gap between "first click %" and "visited during %" is the diagnostic for an unclear top-level label.
-    - https://www.nngroup.com/articles/interpreting-tree-test-results/
-    - https://www.optimalworkshop.com/101-guides/tree-testing-101/first-click-tab
+ Because subcategories are invisible until a top-level node is opened, the first click is necessarily a top-level choice, and getting it right correlates strongly with ultimate task success. A documented failure pattern: correct top-level chosen first by only 48% of participants but visited eventually (after backtracking) by 71% - the gap between "first click %" and "visited during %" is the diagnostic for an unclear top-level label.
+ - https://www.nngroup.com/articles/interpreting-tree-test-results/
+ - https://www.optimalworkshop.com/101-guides/tree-testing-101/first-click-tab
 
 #### Machine organization
 
 12. **Two competing paradigms for corpus-driven taxonomy construction, each with a documented failure mode** (confidence: medium, active research area, mostly 2024-2026 arXiv preprints not yet fully peer-reviewed)
-    Corpus-driven methods (embedding clustering, e.g. UMAP+HDBSCAN, k-means-based HERCULES) capture domain nuance but suffer from data sparsity producing fragmented/overly-narrow structures on small corpora. LLM-driven methods (prompt the model to propose a taxonomy directly, e.g. CHIME, TNT-LLM) give broader conceptual coverage but miss emerging topics absent from pretraining. Recent hybrids (TaxoAdapt, TIER, SCYCHIC) combine embedding clustering with LLM-generated labels/refinement and report gains over either paradigm alone on their own benchmarks (e.g., TaxoAdapt: +26.5% path granularity, +50.4% coherence vs. LLM-only/corpus-only baselines - self-reported, not independently replicated).
-    - https://arxiv.org/pdf/2510.15125 (iterative topic taxonomy induction)
-    - https://arxiv.org/pdf/2506.10737 (TaxoAdapt)
-    - https://en.wikipedia.org/wiki/Automatic_taxonomy_construction
+ Corpus-driven methods (embedding clustering, e.g. UMAP+HDBSCAN, k-means-based HERCULES) capture domain nuance but suffer from data sparsity producing fragmented/overly-narrow structures on small corpora. LLM-driven methods (prompt the model to propose a taxonomy directly, e.g. CHIME, TNT-LLM) give broader conceptual coverage but miss emerging topics absent from pretraining. Recent hybrids (TaxoAdapt, TIER, SCYCHIC) combine embedding clustering with LLM-generated labels/refinement and report gains over either paradigm alone on their own benchmarks (e.g., TaxoAdapt: +26.5% path granularity, +50.4% coherence vs. LLM-only/corpus-only baselines - self-reported, not independently replicated).
+ - https://arxiv.org/pdf/2510.15125 (iterative topic taxonomy induction)
+ - https://arxiv.org/pdf/2506.10737 (TaxoAdapt)
+ - https://en.wikipedia.org/wiki/Automatic_taxonomy_construction
 
 13. **Hierarchical classification's central documented weakness is top-down error propagation: a wrong top-level pick cannot be corrected lower in the tree** (confidence: high, this is the standard/textbook finding, Silla & Freitas survey is the most-cited reference in the field)
-    "An incorrect parent node almost guarantees an incorrect prediction" - errors at higher levels compound downward and cannot be rectified at lower levels. A related, distinct failure is "blocking": items wrongly rejected by a high-level classifier never reach the lower-level classifiers that could have placed them correctly. One deliberate mitigation trades recall for safety: only pass an item down a level if confidence exceeds a threshold, otherwise stop it at a coarser, correct-but-less-specific ancestor node rather than force a wrong leaf.
-    - https://www.cs.kent.ac.uk/people/staff/aaf/pub_papers.dir/DMKD-J-2010-Silla.pdf (Silla & Freitas, widely-cited survey)
-    - https://arxiv.org/pdf/1706.01214 (inconsistent-node flattening as one fix)
+ "An incorrect parent node almost guarantees an incorrect prediction" - errors at higher levels compound downward and cannot be rectified at lower levels. A related, distinct failure is "blocking": items wrongly rejected by a high-level classifier never reach the lower-level classifiers that could have placed them correctly. One deliberate mitigation trades recall for safety: only pass an item down a level if confidence exceeds a threshold, otherwise stop it at a coarser, correct-but-less-specific ancestor node rather than force a wrong leaf.
+ - https://www.cs.kent.ac.uk/people/staff/aaf/pub_papers.dir/DMKD-J-2010-Silla.pdf (Silla & Freitas, widely-cited survey)
+ - https://arxiv.org/pdf/1706.01214 (inconsistent-node flattening as one fix)
 
 14. **The literature explicitly recommends human-curated top levels with machine-assisted lower-level placement over full automation, for taxonomy-building specifically (not just classification of pre-existing items)** (confidence: medium)
-    Meier & Glinka (arXiv:2307.16481, "To Classify is to Interpret") argue explicitly against relying only on black-boxed ML systems for taxonomy building because it sidelines user/domain expertise, proposing instead an iterative process where humans take multiple model outputs into their own sensemaking loop. A CHIIR 2026 system and an industry case study (Coreon) both describe the same division of labor in practice: embedding-based clustering produces a structured first-pass tree, and a human does final curation - the clustering's value is making the human's work methodical and distributable, not replacing the human's placement judgment.
-    - https://arxiv.org/pdf/2307.16481
-    - https://dl.acm.org/doi/10.1145/3786304.3787912
-    - https://coreon.com/2021/01/11/keeping-your-sanity-with-machine-taxonomization/
+ Meier & Glinka (arXiv:2307.16481, "To Classify is to Interpret") argue explicitly against relying only on black-boxed ML systems for taxonomy building because it sidelines user/domain expertise, proposing instead an iterative process where humans take multiple model outputs into their own sensemaking loop. A CHIIR 2026 system and an industry case study (Coreon) both describe the same division of labor in practice: embedding-based clustering produces a structured first-pass tree, and a human does final curation - the clustering's value is making the human's work methodical and distributable, not replacing the human's placement judgment.
+ - https://arxiv.org/pdf/2307.16481
+ - https://dl.acm.org/doi/10.1145/3786304.3787912
+ - https://coreon.com/2021/01/11/keeping-your-sanity-with-machine-taxonomization/
 
 #### Operational disambiguation devices
 
 15. **DDC's "class here" / "class elsewhere" notes are the explicit textual device schemes use to pre-empt filer ambiguity, and they follow a fixed ordering** (confidence: high)
-    A class-here note lists topics that approximate the whole of a class (so standard subdivisions may attach to any of them). A class-elsewhere note tells the classifier where an interrelated topic actually belongs instead - it can set a preference order, redirect to an interdisciplinary number, or point across a hierarchical array. Rule for telling them apart: any note starting with the word "class" is class-elsewhere *unless* it starts with "class here." Notes in a DDC schedule entry appear in a fixed sequence (definition, scope, including, class-here, ..., class-elsewhere, see-reference, see-also) - the scheme itself enforces where disambiguating text lives so classifiers check it in the same order every time.
-    - https://help.oclc.org/Librarian_Toolbox/OCLC_glossaries/Dewey_Decimal_Classification_glossary
-    - https://ddc.typepad.com/025431/2017/12/class-here-notes.html
+ A class-here note lists topics that approximate the whole of a class (so standard subdivisions may attach to any of them). A class-elsewhere note tells the classifier where an interrelated topic actually belongs instead - it can set a preference order, redirect to an interdisciplinary number, or point across a hierarchical array. Rule for telling them apart: any note starting with the word "class" is class-elsewhere *unless* it starts with "class here." Notes in a DDC schedule entry appear in a fixed sequence (definition, scope, including, class-here, ..., class-elsewhere, see-reference, see-also) - the scheme itself enforces where disambiguating text lives so classifiers check it in the same order every time.
+ - https://help.oclc.org/Librarian_Toolbox/OCLC_glossaries/Dewey_Decimal_Classification_glossary
+ - https://ddc.typepad.com/025431/2017/12/class-here-notes.html
 
 16. **Johnny.Decimal enforces disambiguation with a hard numeric ceiling rather than a semantic rule: max 10 areas x max 10 categories x max 100 items, and files must live inside a category, never loose at the area or category level** (confidence: high)
-    The system's own documentation frames the ceiling as the mechanism, not the decimal notation: "these structural rules are what make JD powerful... not necessarily the [decimal] prefix." When a category would exceed 100 items, the documented remedy is an appended identifier or splitting into a new category - the limit is the trigger for reorganization, not a hint to ignore. A forum-reported failure mode: teams often can't tell in advance whether an emerging cluster of files should become its own category or stay a "bucket" inside an existing one, and by the time a category nears 100 items it is already too late to cleanly re-split.
-    - https://johnnydecimal.com/documentation/philosophy
-    - https://forum.johnnydecimal.com/t/using-johnny-decimal-with-more-than-100-files-per-category/441
+ The system's own documentation frames the ceiling as the mechanism, not the decimal notation: "these structural rules are what make JD powerful... not necessarily the [decimal] prefix." When a category would exceed 100 items, the documented remedy is an appended identifier or splitting into a new category - the limit is the trigger for reorganization, not a hint to ignore. A forum-reported failure mode: teams often can't tell in advance whether an emerging cluster of files should become its own category or stay a "bucket" inside an existing one, and by the time a category nears 100 items it is already too late to cleanly re-split.
+ - https://johnnydecimal.com/documentation/philosophy
+ - https://forum.johnnydecimal.com/t/using-johnny-decimal-with-more-than-100-files-per-category/441
 
 17. **PARA organizes by actionability (Projects/Areas/Resources/Archives), not by topic - a different axis than Johnny.Decimal's topical numbering, and practitioners report combining or abandoning one for the other rather than running both cleanly forever** (confidence: low, practitioner blog reports, not peer-reviewed)
-    PARA's top-level split answers "how soon will I act on this," while Johnny.Decimal's areas/categories answer "what is this about." Multiple independent practitioner write-ups describe migrating between the two or nesting one inside the other (JD's 10-way split applied inside each PARA bucket) rather than finding either sufficient alone; one write-up called PARA "philosophical rather than taxonomical" and reported it not scaling past a year of use.
-    - https://help.noteplan.co/article/155-how-to-organize-your-notes-and-folders-using-johnny-decimal-and-para
-    - https://crystaljjlee.com/blog/two-approaches-to-pkm/
+ PARA's top-level split answers "how soon will I act on this," while Johnny.Decimal's areas/categories answer "what is this about." Multiple independent practitioner write-ups describe migrating between the two or nesting one inside the other (JD's 10-way split applied inside each PARA bucket) rather than finding either sufficient alone; one write-up called PARA "philosophical rather than taxonomical" and reported it not scaling past a year of use.
+ - https://help.noteplan.co/article/155-how-to-organize-your-notes-and-folders-using-johnny-decimal-and-para
+ - https://crystaljjlee.com/blog/two-approaches-to-pkm/
 
 ### Contradictions
 
@@ -169,7 +169,7 @@ ADR-021 (accepted 2026-08-30, shipped v0.15.0) rules D-01 (root index lists dept
 
 ### Finding 2: The vault's own live proposal already exercises three distinct domain-folder shapes
 
-`.compass/tmp/domain-proposal-2026-08-30.md` (Structure-pass output, awaiting Roger's approval per `.compass/active.md:17`) groups 22 root specs into 5 lines and 35 research docs into ~9, using three different realizations:
+`.compass/tmp/domain-proposal-2026-08-30.md` (Structure-pass output, awaiting the human's approval per `.compass/active.md:17`) groups 22 root specs into 5 lines and 35 research docs into ~9, using three different realizations:
 - **Promoted-natural-parent** (D1, D2): an existing spec already conceptually parents its group; `compass promote` turns it into the folder, e.g. `SPEC-003-hierarchical-vault-organization` promoted to hold SPEC-005, SPEC-010, SPEC-016, SPEC-019, SPEC-011, SPEC-022 as children.
 - **Thin synthetic grouping, no natural parent** (D3 `specs/distribution/`, D4 `specs/pipeline/`): explicitly labeled "new grouping folder ... thin domain index" - no existing spec is promoted; the folder and its `index.md` are created fresh.
 - **Research folder backed by a synthesis doc** (R1, R2) vs **"thin index"** research folder with no synthesis doc (R3-R6, e.g. `research/hermes/`, `research/distribution/`).
@@ -212,7 +212,7 @@ ADR-004 Part 3 and obsidian SKILL.md's "Facet tags" section keep `tags:` as free
 
 ### Finding 11: `taxonomy_hint` (SPEC-022 D-04) is a named concept with zero implementation - not even a stub field
 
-Roger's D-04: "when making a new spec is a good point to reorganize if needed, and at least mark for the next consolidate/taxonomize a hint - by the agent who understands the spec better than others." A repo-wide grep for `taxonomy_hint` returns zero matches anywhere in `plugin/` or `.compass/` - no frontmatter field, no capture-note integration, no mention in ADR-021 or the consolidate skill (which only reacts to a hard-cap warning, not to a per-spec hint left at creation time). This is a genuinely open question, not merely under-specified: ADR-021 resolved D-01/D-02/D-03/D-04 of its own numbering but never addresses SPEC-022's D-04 at all. (Confidence: high - repo-wide grep returned zero hits; ADR-021 text re-read confirms no mention)
+the human's D-04: "when making a new spec is a good point to reorganize if needed, and at least mark for the next consolidate/taxonomize a hint - by the agent who understands the spec better than others." A repo-wide grep for `taxonomy_hint` returns zero matches anywhere in `plugin/` or `.compass/` - no frontmatter field, no capture-note integration, no mention in ADR-021 or the consolidate skill (which only reacts to a hard-cap warning, not to a per-spec hint left at creation time). This is a genuinely open question, not merely under-specified: ADR-021 resolved D-01/D-02/D-03/D-04 of its own numbering but never addresses SPEC-022's D-04 at all. (Confidence: high - repo-wide grep returned zero hits; ADR-021 text re-read confirms no mention)
 
 ### Finding 12: Two incompatible naming conventions already coexist for domain folders depending on origin
 
@@ -268,8 +268,8 @@ Confidence: high. Evidence: `plugin/cli/commands/sync.py:147-269`, specifically 
 
 ```python
 def _is_generated_output(file_path):
-    norm = str(file_path).replace("\\", "/")
-    return any(norm.endswith(suffix) for suffix in GENERATED_OUTPUTS)
+ norm = str(file_path).replace("\\", "/")
+ return any(norm.endswith(suffix) for suffix in GENERATED_OUTPUTS)
 ```
 (`plugin/cli/commands/sync.py:583-585`, `GENERATED_OUTPUTS` at `:42-47`). Verified by direct execution: `.compass/specs/SPEC-010-foo/index.md`, `.compass/specs/domain-x/index.md`, `.compass/specs/domain-x/SPEC-001-y/index.md`, and `.compass/research/domain-x/index.md` all return `True`; only a non-index file like `.compass/research/domain-x/RESEARCH-001.md` returns `False`. This is the PostToolUse hook's loop guard (`run(args)`, `:621-648`): today it happens to also suppress the capture-signal / recursive-sync check for every nested folder-spec's own `index.md` write, not only the root's. This behavior is completely untested - `test_own_output_write_is_noop` and `test_generated_output_records_nothing` (`plugin/cli/tests/test_sync.py:719`, `:799`) only exercise the literal root `self.root / "index.md"` path.
 Confidence: high (verified by direct test execution, reproduced above; test-suite gap confirmed by grep).
@@ -288,8 +288,8 @@ Confidence: medium (code-traced, not reproduced with an actual same-named collis
 
 `next_num.py:41-49` treats `scope` as an opaque string that may contain `/`; if it doesn't match a known unit name, `base = vault_root / type_dir / scope` is used directly - this already works transparently for scopes that don't exist yet. Verified live against this repo (read-only):
 ```
-python .claude/cli/compass next-num spec specs/SPEC-022-vault-organized-per-domain  -> 001, exit 0
-python .claude/cli/compass next-num spec nonexistent-domain/nonexistent-subdomain    -> 001, exit 0
+python .claude/cli/compass next-num spec specs/SPEC-022-vault-organized-per-domain -> 001, exit 0
+python .claude/cli/compass next-num spec nonexistent-domain/nonexistent-subdomain -> 001, exit 0
 ```
 No existing test exercises a multi-level scope - `test_commands.py` only covers single-level scopes (`"compass-cli"`, `"SPEC-002-tile"`) and `".."`-rejection.
 Confidence: high (verified by live command execution against the real repo, non-destructive).
@@ -332,7 +332,7 @@ Confidence: high. Evidence: `plugin/skills/vision/SKILL.md:99-107`.
 
 ### Finding 16: methodology and setup skills both document research/plans/decisions/lessons/handoffs/prs as "flat, one file each" - a documentation claim SPEC-022 D-02 directly contradicts
 
-`plugin/skills/methodology/SKILL.md:269`: `research/ plans/ decisions/ lessons/ handoffs/ prs/  - flat, one file each`. This is a Claude-facing statement of the vault-tree contract. SPEC-022 D-02 explicitly extends the domain-folder taxonomy to "specs, research, anything else inside Compass" - meaning this documented contract would no longer hold for `research/` (and potentially others) once domain grouping is adopted there.
+`plugin/skills/methodology/SKILL.md:269`: `research/ plans/ decisions/ lessons/ handoffs/ prs/ - flat, one file each`. This is a Claude-facing statement of the vault-tree contract. SPEC-022 D-02 explicitly extends the domain-folder taxonomy to "specs, research, anything else inside Compass" - meaning this documented contract would no longer hold for `research/` (and potentially others) once domain grouping is adopted there.
 `plugin/skills/setup/SKILL.md:232-251` (new-project scaffold) shows a flat directory tree for `.compass/` with `research/`, `plans/`, `decisions/`, `lessons/`, `handoffs/`, `prs/` as plain directories (no nested example) - consistent with, but not as explicit as, methodology's "flat, one file each" line. Neither skill currently shows a nested-domain example under `research/` the way the obsidian skill does for `specs/`.
 Confidence: high. Evidence: `plugin/skills/methodology/SKILL.md:269`; `plugin/skills/setup/SKILL.md:232-251`.
 

@@ -9,8 +9,8 @@ created: 2026-08-07
 updated: 2026-08-07
 author: "researcher (Claude)"
 depends_on:
-  - "[[SPEC-013-test-quality]]"
-  - "[[RESEARCH-test-quality-synthesis]]"
+ - "[[SPEC-013-test-quality]]"
+ - "[[RESEARCH-test-quality-synthesis]]"
 summary: "test craft and AI testing practice, the missing axis"
 ---
 

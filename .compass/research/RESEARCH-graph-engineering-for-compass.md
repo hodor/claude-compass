@@ -33,60 +33,60 @@ Compass's vault is already a real, if informally-named, graph: wikilinks are unt
 ### Axis 1 - What "graph engineering" means now (web survey)
 
 1. **"Graph engineering" is not an established discipline name** (confidence: medium). Unlike "context engineering" (traceable coinage: Tobi Lütke, June 2025, amplified by Karpathy, formalized in an Anthropic engineering post and an arXiv survey), no equivalent canonical definition or manifesto exists for "graph engineering." Where the phrase appears in 2025-2026 sources it means "building graph-structured memory," treated as one tactic subordinate to context/memory engineering, not a parallel discipline.
-   - https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents
-   - https://arxiv.org/pdf/2507.13334
+ - https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents
+ - https://arxiv.org/pdf/2507.13334
 
 2. **GraphRAG mechanism: entity/relationship extraction + hierarchical community detection, tuned for two distinct query shapes** (confidence: high). Microsoft GraphRAG builds an entity graph via LLM extraction, then runs Leiden community detection. Local search combines graph entities with raw chunks for specific questions; global search map-reduces over AI-generated community summaries for broad/thematic questions. Microsoft's own guidance: general questions -> global search, specific questions -> local (effectively vector-like) search.
-   - arXiv:2404.16130 (original GraphRAG paper)
+ - arXiv:2404.16130 (original GraphRAG paper)
 
 3. **Indexing/query cost varies by 2-3 orders of magnitude across GraphRAG variants** (confidence: medium). Full Microsoft GraphRAG indexing runs ~$20-40 per 1M tokens (GPT-4o); LightRAG claims ~$0.50 for comparable indexing; Microsoft's own LazyGraphRAG claims ~0.1% of GraphRAG's indexing cost. One source reports GraphRAG global search needing ~610K tokens/query versus LightRAG's ~100 tokens - illustrative of the cost spread, not a like-for-like query comparison.
-   - https://www.microsoft.com/en-us/research/blog/lazygraphrag-setting-a-new-standard-for-quality-and-cost/
-   - https://callsphere.ai/blog/vw6g-microsoft-graphrag-knowledge-graph-2026
+ - https://www.microsoft.com/en-us/research/blog/lazygraphrag-setting-a-new-standard-for-quality-and-cost/
+ - https://callsphere.ai/blog/vw6g-microsoft-graphrag-knowledge-graph-2026
 
 4. **Consensus query-type split: graphs help multi-hop/entity-centric/global-summary queries, not single-fact lookup** (confidence: medium, corroborated across sources, not one controlled study). Vector-only baselines were measured at 77.9% recall at 2-hop, dropping to 46.2% at 4-hop - the degradation curve cited as the graph opportunity zone. HippoRAG (NeurIPS 2024) claims up to 20% improvement on multi-hop QA via Personalized PageRank seeded from query entities, and claims single-step retrieval 10-20x cheaper than iterative retrieval - the paper's own figures, no independent replication found.
-   - https://www.falkordb.com/blog/vectorrag-vs-graphrag-technical-challenges-enterprise-ai-march25/
-   - NeurIPS 2024 HippoRAG paper; github.com/osu-nlp-group/hipporag
+ - https://www.falkordb.com/blog/vectorrag-vs-graphrag-technical-challenges-enterprise-ai-march25/
+ - NeurIPS 2024 HippoRAG paper; github.com/osu-nlp-group/hipporag
 
 5. **Temporal KG (Graphiti/Zep): bi-temporal edges, incremental update, contested benchmark claims** (confidence: medium). Every Graphiti edge carries a validity interval (`t_valid`/`t_invalid`); facts are invalidated, not deleted, and entities/communities update incrementally per new "episode" without full-graph recomputation. Zep's own/vendor-adjacent benchmark reports beating Mem0 (63.8% vs 49.0% on LongMemEval, concentrated in temporal/knowledge-update queries) and MemGPT narrowly (94.8% vs 93.4% on MemGPT's own DMR benchmark) - but see Contradictions.
-   - arXiv:2501.13956 ("Zep: A Temporal Knowledge Graph Architecture for Agent Memory")
-   - https://vectorize.io/articles/mem0-vs-zep
+ - arXiv:2501.13956 ("Zep: A Temporal Knowledge Graph Architecture for Agent Memory")
+ - https://vectorize.io/articles/mem0-vs-zep
 
 6. **An independent framework paper finds graphs do NOT consistently beat flat/sequential memory** (confidence: medium, single paper but directly adversarial and on-topic). "Does Memory Need Graphs?" finds simpler flat/sequential organizations often match or exceed graph-based approaches at substantially lower compute; graph benefit concentrates in complex-reasoning queries and narrows as scale decreases, while indexing/query-latency/storage overhead are measurably higher for graphs.
-   - arXiv:2601.01280
+ - arXiv:2601.01280
 
 7. **Code graphs enable structural queries grep/embeddings cannot: call chains, blast radius, dependency chains** (confidence: medium-high). Aider's repo-map extracts tree-sitter definition/reference tags per file, builds a cross-file reference graph, and ranks symbols with NetworkX PageRank - computed fresh per request, never persisted as a queryable store. Sourcegraph's SCIP (protobuf schema, stable symbol IDs) is the foundation for cross-repo code intelligence, though even Sourcegraph does not offer "blast radius" as a single first-class graph operation - it composes search + code intel.
-   - https://aider.chat/2023/10/22/repomap.html
-   - https://sourcegraph.com/blog/announcing-scip
+ - https://aider.chat/2023/10/22/repomap.html
+ - https://sourcegraph.com/blog/announcing-scip
 
 8. **Small-scale guidance: syntactic/tree-sitter maps suffice below enterprise scale; graph databases are often unneeded infrastructure** (confidence: medium). One synthesized source: "Tree-sitter repo maps, SQLite symbol stores... often give enough structure for small-to-mid repositories at low cost. They do not need a build." Separately, Hamel Husain's RAG retrospective argues graph databases are "usually overkill for RAG" - a CSV or Postgres table, or even HNSW's internal graph structure, already gets graph-like retrieval without new infrastructure.
-   - https://anthonywest.co.uk/research/code-intelligence-indexing-2026-openai
-   - https://hamel.dev/notes/llm/rag/not_dead.html
+ - https://anthonywest.co.uk/research/code-intelligence-indexing-2026-openai
+ - https://hamel.dev/notes/llm/rag/not_dead.html
 
 9. **Small-corpus direct evidence is thin; the one directly relevant data point favors flat retrieval** (confidence: low/gap, explicitly flagged by the sub-agent). No study isolates corpus size as the sole variable at Compass's scale (tens-hundreds of docs). The closest: a page-level study on a single math textbook found plain embedding RAG beating GraphRAG on both retrieval accuracy and F1 - the graph pipeline pulled in extraneous pages with "limited control over granularity."
-   - arXiv:2509.16780
+ - arXiv:2509.16780
 
 10. **No graph-memory failure postmortems found; documented failure modes are latency variance and overconfidence, not narrative "we reverted" stories** (confidence: medium for the failure modes, gap for postmortems). A 2026 cyber-threat-intel evaluation reports graph-only pipelines showing latency variance and overconfident answers when the graph lacks needed information (no "I don't know" fallback); hybrid pipelines with query repair performed more reliably. Direct search for reversion postmortems (team abandoned GraphRAG for simpler retrieval) found none - absence of evidence, not evidence of absence.
-    - arXiv:2604.11419v1
+ - arXiv:2604.11419v1
 
 ### Axis 2 - What Compass already has, graph-theoretically
 
 11. **Wikilinks are untyped edges, resolved by a real name-resolution index** (confidence: high). `resolvable_names_map` maps every markdown file's stem, path-qualified name, and (for folder specs) folder name to its vault-relative path; a name mapping to 2+ paths is an ambiguous edge.
-    - `plugin/cli/vaultlib.py:283-305`
+ - `plugin/cli/vaultlib.py:283-305`
 
 12. **`depends_on` is a typed(-ish) edge list, already walked transitively** (confidence: high). `unit_check.py`'s `_reachable_specs` does a real BFS/DFS-style transitive closure over `depends_on` edges (cycle-safe via a visited set) to find every spec reachable from an artifact, then groups artifacts by reachable spec to detect type-spread clusters.
-    - `plugin/cli/commands/unit_check.py:43-56, 67-104`
+ - `plugin/cli/commands/unit_check.py:43-56, 67-104`
 
 13. **`decisions:doc/D-NN` citation is a new, genuinely typed, source-qualified edge shipped in v0.4.0** (confidence: high). `decisionslib.py` extracts discrete `D-NN` decision nodes from spec/ADR "Decisions" sections (three bullet grammars, trackable/non-trackable via `[informational]`/`[deferred]` tags or a discretion subheading); `coverage.py` resolves `<doc-name>/D-NN` citations in plan bodies back to those nodes through the same name-resolution wikilinks use, and reports covered/uncovered per source.
-    - `plugin/cli/decisionslib.py:1-29, 194-234`; `plugin/cli/commands/coverage.py:28-42, 91-110`
+ - `plugin/cli/decisionslib.py:1-29, 194-234`; `plugin/cli/commands/coverage.py:28-42, 91-110`
 
 14. **Folder containment and tags are two more edge types already materialized** (confidence: high). `classify_root_dirs`/`scan_artifacts` encode hierarchy (type dir, unit, depth) as structural containment; `_sync_tag_index` in `sync.py` regenerates `meta/tag-index.yaml`, a full tag-to-file hyperedge map, on every write.
-    - `plugin/cli/vaultlib.py:55-96, 260-280`; `plugin/cli/commands/sync.py:230-246`
+ - `plugin/cli/vaultlib.py:55-96, 260-280`; `plugin/cli/commands/sync.py:230-246`
 
 15. **`compass validate` resolves every wikilink vault-wide but does not compute backlinks, orphans, or any centrality metric** (confidence: high, direct read of the full command). It reports `broken_wikilink` and `ambiguous_wikilink` per outgoing link found, and hot-path cap breaches - no reverse-index, no orphan report, no degree/centrality output anywhere in the CLI.
-    - `plugin/cli/commands/validate.py:1-137` (full file read, no orphan logic present)
+ - `plugin/cli/commands/validate.py:1-137` (full file read, no orphan logic present)
 
 16. **Orphan/backlink detection is delegated to an agent-token vault crawl instead of the harness** (confidence: high). `vault-health/SKILL.md` states outright: "Files not referenced by `index.md` or any other vault file. The CLI does not check this; do it here" - then instructs the agent to read `index.md` and every vault file's wikilinks in-context to compute the diff. This is the exact category of mechanical, deterministic work [[ADR-005-compass-cli-for-mechanical-work]] says belongs in the CLI, not a skill.
-    - `plugin/skills/vault-health/SKILL.md:24-38`
+ - `plugin/skills/vault-health/SKILL.md:24-38`
 
 17. **No mechanical multi-hop typed query exists today** (confidence: high, absence verified by reading every CLI command). Compass cannot answer "which builds implement decisions from specs that this research influenced" as a single command; it would require chaining `depends_on` (research -> spec) with `decisions`-citation edges (spec -> plan) by hand.
 
@@ -95,30 +95,30 @@ Compass's vault is already a real, if informally-named, graph: wikilinks are unt
 ### Axis 3 - Source-verified prior art
 
 19. **MemPalace: (subject, predicate, object) triples with provenance and temporal validity, additive by design** (confidence: high, direct source read). Facts get `valid_from`/`valid_to`; the triple itself is the idempotency key (`mempalace_kg_query` before `mempalace_kg_add`, skip if already present with the same `valid_from`); superseded facts are invalidated via `mempalace_kg_invalidate`, never deleted. Every operation is `onError: skip` and wing-scoped (never crosses project boundaries) - a MemPalace failure must never fail the host pipeline's ship step.
-    - `gsd-core/agents/gsd-mempalace-curator.md:18-46`; `gsd-core/capabilities/mempalace/capability.json:32-41`
+ - `gsd-core/agents/gsd-mempalace-curator.md:18-46`; `gsd-core/capabilities/mempalace/capability.json:32-41`
 
 20. **Graphify is a real, shipping graph engine, not a markdown convention** (confidence: high, full TypeScript source read). `graph.json` holds `{nodes, edges, hyperedges, built_at_commit}`; queries run seed-then-expand BFS (label/description substring match, `maxHops=2` default) over a bidirectional adjacency map; a token budget trims edges by dropping confidence tiers in strict order `AMBIGUOUS -> INFERRED -> EXTRACTED` before removing unreachable nodes; `graphify status` compares `built_at_commit` against current HEAD via `git rev-list --count` to report `commit_stale` distinctly from mtime-based staleness; `graphify diff` computes added/removed/changed nodes and edges against a saved snapshot.
-    - `gsd-core/src/graphify.cts:178-339, 405-563`
+ - `gsd-core/src/graphify.cts:178-339, 405-563`
 
 21. **Graphify's build step must run in the foreground, never a spawned subagent** (confidence: high). A documented incident (#3166) shows subagent isolation SIGTERM'ing the post-extraction phase mid-write when the parent agent exited, leaving the AST-extraction cache populated but no `graph.json` written - the skill's anti-pattern #1 is "DO NOT spawn an agent for any operation."
-    - `gsd-core/commands/gsd/graphify.md:150-152, 198-201`
+ - `gsd-core/commands/gsd/graphify.md:150-152, 198-201`
 
 22. **Graphify is opt-in, gated, and depends on an external Python binary** (confidence: high). `graphify.enabled` defaults `false`; the capability shells out to a separately `uv pip install`'d `graphifyy` CLI with version-range checks (`>=0.4.0,<1.0`) and a 300s default build timeout - a real external dependency, not bundled logic.
-    - `gsd-core/src/graphify.cts:106-174`; `gsd-core/capabilities/graphify/capability.json`
+ - `gsd-core/src/graphify.cts:106-174`; `gsd-core/capabilities/graphify/capability.json`
 
 23. **Hermes's `learning_graph.py` is an ephemeral visualization graph, not a persisted/queried store** (confidence: high, full source read). It rebuilds nodes/edges on each call from declared `related_skills` links (explicit, not inferred) plus lexical token-overlap scoring between memory-file chunks and skill names; output is a JSON payload for a desktop panel. No query language, no persistence beyond the source files it reads, no LLM extraction step.
-    - `hermes-agent/agent/learning_graph.py:125-323`
+ - `hermes-agent/agent/learning_graph.py:125-323`
 
 ### Axis 4 - The Compass-native opportunity
 
 24. **The reverse-index needed for backlinks/orphans is already one map-flip away from existing stdlib code, matching a prior measured harness-vs-agent-token precedent** (confidence: high). `resolvable_names_map` (vaultlib.py:283-305) plus a single pass over every file's outgoing wikilinks gives backlinks/orphans in pure stdlib with no new parsing. The SPEC-004 measurement of moving vault bookkeeping from an agent hook to the CLI found a ~99.8% token-floor reduction (3,145 -> ~6 tokens per fire) for a structurally similar move; orphan detection today does the same category of full-vault-crawl-in-context work `vault-health/SKILL.md:24-28` performs today.
-    - `plugin/cli/vaultlib.py:283-305`; `.compass/compass-cli/research/RESEARCH-cli-token-reduction-measurement.md:17-31`
+ - `plugin/cli/vaultlib.py:283-305`; `.compass/compass-cli/research/RESEARCH-cli-token-reduction-measurement.md:17-31`
 
 25. **The decision-citation graph is already fully parsed; only a query/report layer is missing** (confidence: high). `coverage.py` and `decisionslib.py` already produce, for a given plan, every `(source, D-NN, covered/uncovered)` tuple - the data for a "decision lineage" report already exists; nothing new needs to be extracted from prose.
-    - `plugin/cli/commands/coverage.py:167-216`
+ - `plugin/cli/commands/coverage.py:167-216`
 
 26. **`unit_check.py`'s transitive closure is already generic enough to extend to a general graph traversal** (confidence: high). `_reachable_specs` walks `depends_on` edges filtered to one target type (`spec`); the same edge dictionary (`edges = {record: [dep, ...]}`) generalizes trivially to "traverse any typed edge, forward or reversed, to any target type" - which is most of what an "impact of change" (who depends on X) or "what does X reach" query needs.
-    - `plugin/cli/commands/unit_check.py:43-56, 83-91`
+ - `plugin/cli/commands/unit_check.py:43-56, 83-91`
 
 ## Taxonomy: capability classification
 
@@ -175,7 +175,7 @@ Ranked by cost against the four goals, same discipline as [[RESEARCH-rag-fit-for
 
 ## Addendum: the Anthropic-playbook synthesis note (human-supplied, 2026-07-25)
 
-A 12-page working note ('Knowledge Graph Engineering for Multi-Agentic Systems: The Anthropic Playbook', independent synthesis of Anthropic's KG cookbook + agent-pattern guidance; supplied by Roger via Drive) describes the full unstructured-to-graph pipeline: Haiku structured-output extraction, Sonnet entity resolution, MultiDiGraph assembly with hub summarization, k-hop subgraph querying with edge citations. Reading it against this research sharpens the conclusion rather than changing it:
+A 12-page working note ('Knowledge Graph Engineering for Multi-Agentic Systems: The Anthropic Playbook', independent synthesis of Anthropic's KG cookbook + agent-pattern guidance; supplied by the human via Drive) describes the full unstructured-to-graph pipeline: Haiku structured-output extraction, Sonnet entity resolution, MultiDiGraph assembly with hub summarization, k-hop subgraph querying with edge citations. Reading it against this research sharpens the conclusion rather than changing it:
 
 - **Compass skips the expensive half by construction (HIGH).** The playbook spends its LLM budget on stages 1-2 (extraction, resolution) because its input is unstructured documents. The vault is authored structure: wikilinks, depends_on, decisions:/D-NN citations, tags, and containment are pre-extracted typed edges with canonical names enforced by validate. Compass needs no NER, no resolver.
 - **What the playbook calls stages 3-4 is exactly the recommended build.** Assembly (a derived queryable graph) and querying (multi-hop with citations) are the missing pieces this research already recommends as compass graph + meta/graph.json.

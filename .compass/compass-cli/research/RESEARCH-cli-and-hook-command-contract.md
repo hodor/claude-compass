@@ -28,7 +28,7 @@ Read of the Claude Code TypeScript source to ground SPEC-004's `compass` CLI and
 | `2` | **Blocks the tool. stderr is shown as a blocking message.** |
 | `1`, `3+` | Non-blocking error. stderr shown, edit proceeds. |
 
-**Design consequence:** `compass sync` is in the write path. A crash that exits 2 would block Roger's edit. The CLI MUST trap every exception and exit `0` (preferred) or `1`, **never `2`**, on any internal failure. This is the SPEC-004 safe-degrade constraint made concrete: fail-safe is not aspirational, it is "never let a non-zero-but-2 escape." Golden rule for the hook entry point: wrap `main()` in a catch-all that prints a one-line warning to stderr and exits 1.
+**Design consequence:** `compass sync` is in the write path. A crash that exits 2 would block the human's edit. The CLI MUST trap every exception and exit `0` (preferred) or `1`, **never `2`**, on any internal failure. This is the SPEC-004 safe-degrade constraint made concrete: fail-safe is not aspirational, it is "never let a non-zero-but-2 escape." Golden rule for the hook entry point: wrap `main()` in a catch-all that prints a one-line warning to stderr and exits 1.
 
 ### F2. The 3-way hook split can collapse to one entry (confidence: medium)
 
@@ -45,14 +45,14 @@ So the three agent entries with `if` guards may become **one command entry** wit
 
 ```json
 {
-  "session_id": "...",
-  "transcript_path": "/abs/path",
-  "cwd": "/working/dir",
-  "hook_event_name": "PostToolUse",
-  "tool_name": "Write",
-  "tool_input": { "file_path": "...", "content": "..." },
-  "tool_response": { ... },
-  "tool_use_id": "uuid"
+ "session_id": "...",
+ "transcript_path": "/abs/path",
+ "cwd": "/working/dir",
+ "hook_event_name": "PostToolUse",
+ "tool_name": "Write",
+ "tool_input": { "file_path": "...", "content": "..." },
+ "tool_response": { ... },
+ "tool_use_id": "uuid"
 }
 ```
 

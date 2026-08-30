@@ -8,7 +8,7 @@ tags: [taxonomy, domains, scope-notes, per-folder-index, warrant, split-trigger,
 created: 2026-08-30
 updated: 2026-08-30
 author: "orchestrator"
-summary: "the classification-science design after three-lens review and Roger's ls ruling: few finder-named vault-unique domains, scope notes at the point of doubt, one home plus facets, shallow under doubt, warranted birth and ceiling-suggested splits, index.md carries identity and scope only while the folder itself is the listing, compass tree is the JIT whole-view, path-qualified links below domains going forward, and every reorganization surfaced as a suggestion"
+summary: "orthogonal finder-named vault-unique domains with scope notes at the point of doubt, one home plus facets, shallow under doubt, warranted birth and ceiling-suggested splits, the folder itself as the listing with marker docs named for their folder, compass tree as the JIT whole-view, path-qualified links below domains going forward, and every reorganization surfaced as a suggestion"
 depends_on: ["[[SPEC-022-vault-organized-per-domain]]", "[[RESEARCH-taxonomy-for-unambiguous-placement]]", "[[ADR-021-index-speaks-in-domains]]", "[[SPEC-005-index-auto-maintained-and-mirrored-per-folder]]", "[[ADR-006-hybrid-hierarchy-implementation]]"]
 ---
 
