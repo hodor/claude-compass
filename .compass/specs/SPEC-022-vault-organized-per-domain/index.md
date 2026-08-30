@@ -29,9 +29,15 @@ In his words: "In this organization, you should go per domain. Right? The same w
 - Consolidation includes this grouping: when the index is what's over cap, the move is taxonomy - group and point - not trimming lines.
 - The grouping actually runs on this vault, not just ships as capability.
 
+The goal, in his words (2026-08-30): "what we're talking about here for taxonomy is 2 things - how humans organize topics and how machines organize topics. The main goal is to have it organized in a way that there is no ambiguity in which main area you should go to find the info you need."
+
 ## Decisions (made by the human)
 
 - **D-01:** "Consolidation is also taxonomy." When the hot path is over cap and the weight is structural (many flat lines), the remedy is grouping into domains, never deleting or truncating entries. (Roger, 2026-08-30.)
+- **D-03:** "This is NOT about organizing the index file, it's about always organizing all the files in a folder structure that enforces taxonomy - this IS CRITICAL for us." The filesystem is the taxonomy; every index is just a view of one level: "the index just explains the first level of that structure, and if you go into that folder you just see the first level of that folder, and so on." (Roger, 2026-08-30.)
+- **D-04:** Taxonomize applies at spec creation too: "when making a new spec is a good point to reorganize if needed, and at least mark for the next consolidate/taxonomize a hint - by the agent who understands the spec better than others." (Roger, 2026-08-30.)
+- **D-05:** "Each folder should have its own index.md!" (Roger, 2026-08-30.) This revives [[SPEC-005-index-auto-maintained-and-mirrored-per-folder]], on hold since 2026-06-19 - the per-folder index is the view of that folder's first level.
+- **D-06:** The classification-science research (how humans and machines organize topics, placement without ambiguity) "should be the most important one" - it grounds the design; the codebase and design-space axes serve its findings, not the reverse. (Roger, 2026-08-30.)
 - **D-02:** Per-domain organization applies to everything in the vault - "both specs, research, anything else inside Compass" - and recurses: subdomains within domains, "the same way you organize mathematics." (Roger, 2026-08-30.)
 
 ## Non-Goals

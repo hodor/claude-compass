@@ -138,6 +138,7 @@ Retrospective capture at phase boundaries with binary triggers, an anti-list fil
 - **Harness over prompts** - mechanical behavior lives in the CLI/hooks, not skills. [[ADR-005-compass-cli-for-mechanical-work]].
 - **Configurable pipeline** - a shipped phase vocabulary that projects can reorder, subset, or extend. [[SPEC-009-configurable-pipeline-workflows]].
 - **Hybrid hierarchy** - type-first root, plus a root-level folder per large unit of work that co-locates its own artifact types; every type can nest. [[SPEC-010-universal-hybrid-hierarchy]].
+- **The filesystem is a taxonomy** - artifacts of a kind live grouped per domain, recursively, "the same way you organize mathematics into subdomains"; every folder has its own `index.md`, and every index (root included) explains only the first level below it. Organizing the files, not the index, is the mechanism. (Roger, 2026-08-30.) [[SPEC-022-vault-organized-per-domain]], [[SPEC-005-index-auto-maintained-and-mirrored-per-folder]].
 - **Multi-host by design** - vault and harness are host-agnostic. [[SPEC-006-multi-host-agent-cli-support]].
 - **Methodology = skill**, not project instructions. The project's own instructions get only a thin pointer.
 - **ADRs are required** - a project with none gets flagged.

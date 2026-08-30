@@ -13,8 +13,8 @@ Triggered by a live failure in another project: a vision session produced seven 
 
 ## Per-domain organization initiative (Roger, 2026-08-30)
 
-- [x] [[ADR-021-index-speaks-in-domains]] accepted + SHIPPED v0.15.0: root index lists depth-0 only; taxonomize retired into consolidate as its Structure pass (Roger: "need to be consolidated into one").
-- [ ] Domain-grouping proposal for this vault presented; awaiting Roger's approval, then apply via promote/make-unit/git mv.
+- [ ] SPEC-022 full pipeline (Roger: no jumping to code): 3 researchers running - classification science (PRIMARY per D-06), ripple, design-space. Then synthesis, ADR, plan for approval, build with tests. The interim domain proposal in tmp/ is superseded by this pipeline.
+- [ ] v0.15.0's premature skill/sync edits were reverted; index depth-0 rule stays (shipped); everything further waits on the plan.
 
 ## Next Up
 
