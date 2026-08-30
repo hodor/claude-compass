@@ -41,7 +41,7 @@ The goal: two things at once - how humans organize topics and how machines find 
 - **D-05:** Each folder has its own index doc. Similar to [[SPEC-005-index-auto-maintained-and-mirrored-per-folder]].
 - **D-06:** The classification-science research (how humans and machines organize topics; placement without ambiguity) is an important reference. Research into how computer-science applies classification science is the most critical for us. 
 - **D-07:** Reorganization moves are suggested to the human, never something the human must remember to trigger. The harness notices the trigger - ceiling breach, pending hints, cap warning - and puts the proposal forward; approval applies it.
-- **D-09:** No forced domain count. The real rule is orthogonality, plus the depth gradient: the deeper a subtree is, the more generic its top must be. Ten spec folders with ten completely orthogonal topics are fine.
+- **D-09:** No forced domain count. Each level splits by one characteristic only; a folder's name states the value it fixes. Siblings are values of that characteristic, so they cannot overlap. A folder splits when a second value arrives, never before. A name widens only when its contents widen - depth alone never forces a more generic top.
 
 ## Non-Goals
 
