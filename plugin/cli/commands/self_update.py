@@ -43,7 +43,7 @@ NETWORK_TIMEOUT = 15
 # Compass skills that no longer exist; their installed dirs are removed on
 # update so a stale command does not linger. User-authored skills are never
 # touched - only these exact names.
-RETIRED_SKILLS = ["bootstrap"]
+RETIRED_SKILLS = ["bootstrap", "taxonomize"]
 
 
 def _read_plugin_yaml(vault_root):

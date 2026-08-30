@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 7042 / 5000 tokens (index.md 3796, active.md 302, meta/lessons-catalog.yaml 2944). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 7225 / 5000 tokens (index.md 3920, active.md 361, meta/lessons-catalog.yaml 2944). Run /compass:consolidate before next session. -->
 <!-- WARNING: index.md exceeded hot-path cap. Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
@@ -39,6 +39,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[SPEC-019-active-holds-only-active-work]] - completed work accumulates in active.md forever because nothing in the harness moves it out; the hot path pays for history on every turn
 - [[SPEC-020-compass-updates-itself]] (folder, 0 children) - a project's Compass install refreshes itself from the canonical repo at session start - mandatory, zero tokens, silent when current (approved 2026-08-28)
 - [[SPEC-021-capture-in-the-humans-words]] - spec/vision interviews rewrite what the human said into polished agent prose; the human's own sentences must survive into the documents, with agent additions marked (approved 2026-08-28)
+- [[SPEC-022-vault-organized-per-domain]] - similar specs and research group into domain folders, recursively; the root index says one line per broad area instead of dropping every artifact flat (approved 2026-08-30, Roger's ruling)
 
 ## Research
 
@@ -115,6 +116,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[ADR-018-graph-queries-jit-over-markdown]] - no derived store: compass graph parses edges at query time so staleness cannot exist; orphans/hubs/impact ship wired into vault-health, checkup, unit-check's hub guard, and a planner ripple step
 - [[ADR-019-subagentstop-redelivery-and-teammate-typing]] - live payload observation falsifies the dead-code claim (inline spawns are typed, teammates are not) and reveals SubagentStop double-delivery, now deduped on agent_id
 - [[ADR-020-local-overlays-appended-after-refresh]] - concatenation over splicing: update copies the shipped file pristine then appends the project's local addendum, so no anchor can drift; CLAUDE.md stays untouched and is proven so by test
+- [[ADR-021-index-speaks-in-domains]] - sync stops listing folder children in the root index - the folder line with its child count is the pointer; taxonomize retires into consolidate as its Structure pass; the migration itself is a proposal the human approves
 
 ## Active Work
 

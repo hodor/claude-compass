@@ -56,7 +56,7 @@ After setup, `/compass:*` commands are available in this repo. Categories:
 
 **Maintain:** `/compass:checkup`, `/compass:vault-health`, `/compass:consolidate`, `/compass:annotate`
 
-**Migrate:** `/compass:promote-spec`, `/compass:taxonomize`
+**Migrate:** `/compass:promote-spec` (structural grouping lives in `/compass:consolidate`)
 
 **Session continuity:** `/compass:handoff`, `/compass:learned`, `/compass:retroactive`
 

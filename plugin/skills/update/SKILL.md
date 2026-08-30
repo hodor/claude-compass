@@ -47,7 +47,7 @@ done
 # linger. ONLY these named Compass skills are removed - user-authored project
 # skills in .claude/skills/ are never touched. Add a name here when a Compass
 # skill is renamed or deleted (e.g. bootstrap -> setup).
-for retired in bootstrap; do
+for retired in bootstrap taxonomize; do
   [ -d ".claude/skills/$retired" ] && rm -rf ".claude/skills/$retired" && echo "removed retired Compass skill: $retired"
 done
 
