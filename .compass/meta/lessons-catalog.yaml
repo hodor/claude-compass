@@ -256,6 +256,6 @@ lessons:
     status: active
     category: domain
     area: methodology
-    tags: [sizing, validate, reconciliation, born-folder]
+    tags: [sizing, validate, reconciliation, born-folder, doctor]
     score: 5
-    summary: "sizing_unrecorded fires on every spec since SPEC-016 D-06 made folder the birth shape, drowning real reconciliation failures"
+    summary: "SPEC-016 D-06's folder shape breaks file-stem==spec-name assumptions: sizing check, doctor suggested-name"
