@@ -55,6 +55,7 @@ Conversation output is never the record - logs, reports, and vault files are. On
 
 - Research traces to a spec.
 - Every finding gets a confidence level.
+- Before spawning researchers, present the planned axes - each in one plain line: the question and where the answers will be sought - and invite the human in. When he joins, research runs as a conversation: findings surface as they land and his readings steer the axes. When he passes, run and deliver as usual.
 
 ## Plans
 
