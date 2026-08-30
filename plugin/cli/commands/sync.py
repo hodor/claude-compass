@@ -177,6 +177,17 @@ def _sync_index(vault_root, records):
         # hot path twice. The index's Lessons section is a pointer.
         if record["type_dir"] == "lessons":
             continue
+        # The root index speaks in top-level entries (ADR-021): a folder
+        # artifact's line, with its child count, is the pointer to its whole
+        # subtree. Children of a folder artifact live inside it and resolve
+        # by wikilink; listing them here would price every domain member
+        # back onto the hot path. A loose nested doc (plain grouping
+        # subfolder, no index.md above it) has no folder line pointing at
+        # it, so it stays listed.
+        if record["depth"] > 0 and not vaultlib.is_loose_nested(
+            record["path"], record["kind"]
+        ):
+            continue
         if record["unit"] is None:
             root_by_dir.setdefault(record["type_dir"], []).append(record)
         else:

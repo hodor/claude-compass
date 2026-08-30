@@ -1,6 +1,6 @@
 ---
 name: consolidate
-description: Long-horizon merge, prune, and demote pass over the lessons set. Runs only when a hard-cap warning is present (proves bloat triggered). Merges near-duplicates the per-phase dedup missed, rewrites verbose bodies preserving the displaced text in-file, archives stale baseline-score lessons, rebuilds the catalog and the index Lessons section. Never archives escalated lessons; flags them for human review.
+description: The long-horizon consolidation pass, textual and structural in one skill. Runs only when a hard-cap warning is present (proves bloat triggered). Lessons half: merges near-duplicates, rewrites verbose bodies preserving the displaced text in-file, archives stale baseline lessons, rebuilds the catalog. Structure half (consolidation is also taxonomy, SPEC-022): when the weight is non-redundant index lines, proposes domain groupings - similar specs and research folded under folder specs/units, recursively - as a diff the human approves; the root index then says one line per broad area. Never archives escalated lessons; never destroys information.
 version: 1.0.0
 allowed-tools: [Read, Glob, Grep, Write, Edit]
 argument-hint: "(no arguments; uses warning state)"
@@ -21,7 +21,7 @@ Read `.compass/index.md` and `.compass/meta/lessons-catalog.yaml`. Look for any 
 
 If none present, exit: `no consolidation needed (no cap warning)`. The bloat trigger is the contract; do not run unprompted.
 
-The hot-path marker is the aggregate one: `index.md`, `active.md`, and the lessons catalog together exceed the cap even though each component cap passes. It carries a per-file token breakdown. Read it before starting, because the lessons pass only reaches the catalog and the index's Lessons section. If the breakdown names `active.md` or a non-Lessons index section as the dominant contributor, consolidation alone cannot clear the marker: run it for the lessons share, then report the breakdown and say plainly which file is carrying the weight and what would have to be cut. That is a human decision, not a silent trim.
+The hot-path marker is the aggregate one: `index.md`, `active.md`, and the lessons catalog together exceed the cap even though each component cap passes. It carries a per-file token breakdown. Read it before starting, because the lessons pass only reaches the catalog and the index's Lessons section. If the breakdown names `active.md` as the dominant contributor, the sweep owns that file; report it. If it names the index and the lines are non-redundant, that is structural weight: run the lessons half for its share, then run the Structure pass below - consolidation is also taxonomy (SPEC-022 D-01), and grouping, never trimming, is the remedy for an index of flat lines.
 
 ## Protocol
 
@@ -140,6 +140,33 @@ Once consolidation completes, strip the WARNING comments from `index.md` and `le
 - lessons/: <N> active files (cap 50)
 ```
 
+
+## Structure pass (consolidation is also taxonomy)
+
+The lessons half above shrinks textual redundancy. This half shrinks structural weight: a root index listing every artifact flat. The remedy is grouping into domains - "the same way you organize mathematics into subdomains", recursively - so the root index says one line per broad area (ADR-021: children of a folder artifact are not listed at the root; the folder line with its child count is the pointer).
+
+### S1. Inventory
+
+Glob every flat root artifact in scope (specs and research first; plans mirror their specs). Read frontmatter (title, area, tags, summary, status) and record outbound wikilinks. `compass graph hubs` and `compass graph impact` give the link structure cheaply.
+
+### S2. Propose domains
+
+Group artifacts that share tags, a title theme, or a dependency neighborhood under a proposed domain: related flat specs fold as children into a folder spec (`compass promote` on the natural parent, or a new parent folder); research docs fold into a folder named for the domain; a domain that is a genuine ongoing workstream is a unit (`compass make-unit`). Subdomains nest inside domains at any depth. Spawn an agent sub-task for the grouping judgment when the corpus is large - it is heuristic work and benefits from a fresh context.
+
+While proposing, also flag tag-vocabulary repairs (synonyms to one canonical form, tags on a single artifact, artifacts with no tags) - the facets are what multi-domain retrieval uses.
+
+### S3. Present the proposal as a diff, and stop
+
+One block per proposed domain: the folder to create, the files that move into it (exact `git mv` paths), the one index line that replaces their N lines, and the rationale. Domains are the human's knowledge's shape - only his approval moves files. Without approval this pass is read-only.
+
+### S4. Apply after approval
+
+Execute with the existing commands - `compass promote --apply`, `compass make-unit --apply`, `git mv` into folder specs - so every shape change lands in the sizing log where those commands write it. Wikilinks keep resolving (bare stems stay unique or become path-qualified per the linking rule); run `compass validate` after each domain and stop on any broken link. Nothing is deleted, ever: grouping moves files.
+
+### S5. Report
+
+Domains created, files moved per domain, index lines before -> after, validate clean.
+
 ## Failure modes worth naming
 
 - Archiving an escalated lesson. Escalated lessons need human attention, not silent removal.
@@ -148,4 +175,5 @@ Once consolidation completes, strip the WARNING comments from `index.md` and `le
 - Destroying information to fit a cap. Consolidation shrinks the hot representation (summaries, catalog rows, index lines); the data itself always survives in the file or the archive. Too big for its tier means break it up or move it colder, never delete it.
 - Removing the warning without actually reducing the cap. The warning reflects reality; if reality is still over the cap, the warning should re-appear on the next sync.
 - Running on a fixed cadence. The contract is the warning. Do not run unprompted.
+- Moving files in the Structure pass without the human's approval of the proposal. His knowledge, his shape.
 - Deleting lesson files. Archive moves them to `.compass/archive/lessons/`; consolidation never `rm`s.

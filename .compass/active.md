@@ -11,6 +11,11 @@ Triggered by a live failure in another project: a vision session produced seven 
 
 - [ ] Open: pin the project where the seven-monster-specs session happened ([[LESSON-pin-the-motivating-datum]]).
 
+## Per-domain organization initiative (Roger, 2026-08-30)
+
+- [x] [[ADR-021-index-speaks-in-domains]] accepted + SHIPPED v0.15.0: root index lists depth-0 only; taxonomize retired into consolidate as its Structure pass (Roger: "need to be consolidated into one").
+- [ ] Domain-grouping proposal for this vault presented; awaiting Roger's approval, then apply via promote/make-unit/git mv.
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].

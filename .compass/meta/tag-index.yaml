@@ -197,6 +197,9 @@ tags:
   configuration:
   - research/RESEARCH-model-resolution-impl.md
   - specs/SPEC-008-central-model-resolution-table.md
+  consolidation:
+  - decisions/ADR-021-index-speaks-in-domains.md
+  - specs/SPEC-022-vault-organized-per-domain/index.md
   content-aware:
   - lessons/LESSON-wikilink-validator-skip-code.md
   context-engineering:
@@ -301,6 +304,9 @@ tags:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   doctor:
   - decisions/ADR-020-local-overlays-appended-after-refresh.md
+  domains:
+  - decisions/ADR-021-index-speaks-in-domains.md
+  - specs/SPEC-022-vault-organized-per-domain/index.md
   drift:
   - specs/SPEC-014-update-safe-customizations.md
   drop-ins:
@@ -435,6 +441,7 @@ tags:
   hierarchy:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
+  - decisions/ADR-021-index-speaks-in-domains.md
   - plans/PLAN-003-hybrid-hierarchy.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - research/RESEARCH-hybrid-hierarchy-impl.md
@@ -443,6 +450,7 @@ tags:
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   - specs/SPEC-010-universal-hybrid-hierarchy.md
   - specs/SPEC-016-sizing-work-beyond-one-spec.md
+  - specs/SPEC-022-vault-organized-per-domain/index.md
   hooks:
   - compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work.md
   - compass-cli/plans/PLAN-002-compass-cli-implementation.md
@@ -487,6 +495,7 @@ tags:
   - research/RESEARCH-cache-theory-for-context-tiers.md
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   - specs/SPEC-019-active-holds-only-active-work/index.md
+  - specs/SPEC-022-vault-organized-per-domain/index.md
   hub-ranking:
   - decisions/ADR-018-graph-queries-jit-over-markdown.md
   - plans/PLAN-015-graph-queries.md
@@ -524,11 +533,13 @@ tags:
   inclusion:
   - research/RESEARCH-cache-theory-for-context-tiers.md
   index:
+  - decisions/ADR-021-index-speaks-in-domains.md
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   - plans/PLAN-001-lessons-and-index-implementation.md
   - research/RESEARCH-lessons-and-index-architecture.md
   - specs/SPEC-002-lessons-and-index-subsystem.md
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
+  - specs/SPEC-022-vault-organized-per-domain/index.md
   install:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
   - specs/SPEC-014-update-safe-customizations.md
@@ -978,6 +989,7 @@ tags:
   sync:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
   - decisions/ADR-014-active-sweep-on-sync.md
+  - decisions/ADR-021-index-speaks-in-domains.md
   - lessons/LESSON-append-only-index-misses-mutations.md
   - plans/PLAN-003-hybrid-hierarchy.md
   - plans/PLAN-011-active-sweep.md
@@ -993,8 +1005,10 @@ tags:
   taskwarrior:
   - research/RESEARCH-active-set-prior-art.md
   taxonomy:
+  - decisions/ADR-021-index-speaks-in-domains.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - specs/SPEC-003-hierarchical-vault-organization.md
+  - specs/SPEC-022-vault-organized-per-domain/index.md
   tdd:
   - research/RESEARCH-test-quality-craft-and-practice.md
   teammates:

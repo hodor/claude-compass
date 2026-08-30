@@ -486,7 +486,9 @@ class ResolutionMatchingTests(SyncFixture):
         self.write("specs/SPEC-004-pack/SPEC-001-inner.md", spec("Inner"))
         sync_cmd.sync(self.root)
         text = self.index_text()
-        self.assertIn("  - [[SPEC-001-inner]] - Inner", text)
+        # The folder line is the pointer (ADR-021); the child is not listed.
+        self.assertIn("- [[SPEC-004-pack]] (folder, 1 children)", text)
+        self.assertNotIn("SPEC-001-inner", text)
         self.assertIn("- [[SPEC-004-pack]] (folder, 1 children) - the pack folder", text)
         self.assertNotIn("[[SPEC-004-pack/SPEC-001-inner]]", text)
 
@@ -581,7 +583,9 @@ class NestedDocWikilinkTests(SyncFixture):
         self.write("research/pack/RESEARCH-inner.md", research_doc("Inner"))
         sync_cmd.sync(self.root)
         text = self.index_text()
-        self.assertIn("[[RESEARCH-inner]]", text)
+        # The folder line is the pointer (ADR-021); the child is not listed.
+        self.assertIn("- [[pack]] (folder, 1 children)", text)
+        self.assertNotIn("RESEARCH-inner", text)
         self.assertNotIn("[[research/pack/RESEARCH-inner]]", text)
 
 
@@ -616,7 +620,8 @@ class UnitSyncTests(SyncFixture):
         sync_cmd.sync(self.root)
         text = self.index_text()
         self.assertIn("- [[unitx/specs/SPEC-002-sub]] (folder, 1 children) - the sub folder", text)
-        self.assertIn("  - [[unitx/specs/SPEC-002-sub/SPEC-001-leaf]] - Leaf", text)
+        # The folder line is the pointer (ADR-021); its child is not listed.
+        self.assertNotIn("SPEC-002-sub/SPEC-001-leaf", text)
 
     def test_sync_written_links_validate_clean(self):
         self.make_unit()
