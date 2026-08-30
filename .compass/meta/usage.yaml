@@ -5,7 +5,7 @@ usage:
     count: 5
     last: 2026-08-30
   capture-check:
-    count: 49
+    count: 54
     last: 2026-08-30
   capture-close:
     count: 5
@@ -14,16 +14,16 @@ usage:
     count: 3
     last: 2026-08-30
   capture-signal:
-    count: 38
+    count: 41
     last: 2026-08-30
   capture-worker:
     count: 5
     last: 2026-08-30
   coverage:
-    count: 12
+    count: 13
     last: 2026-08-30
   decisions:
-    count: 9
+    count: 10
     last: 2026-08-30
   demote:
     count: 4
