@@ -43,7 +43,16 @@ EXPECTED_FIELDS = {
     "decision": ["title", "type", "status", "confidence", "area", "tags", "created", "updated", "summary"],
     "lesson": ["title", "type", "status", "category", "area", "tags", "created", "updated", "score", "summary"],
     "handoff": ["title", "type", "status", "area", "tags", "created", "updated", "summary"],
+    "domain": ["title", "type", "status", "tags", "created", "updated", "summary"],
 }
+
+# Direct-children ceiling for taxonomy-governed folders (the type dirs
+# specs/ and research/, and every domain folder inside them). Past it,
+# validate suggests a split; the number is a tunable default, and exempt
+# dirs (lessons/ is catalog-indexed; plans/, decisions/, handoffs/, prs/
+# are ungoverned) never warn so the suggestion stays meaningful.
+FOLDER_CEILING = 12
+CEILING_GOVERNED_DIRS = ("specs", "research")
 
 SPECIAL_TARGETS = {"active", "backlog", "index", "vision"}
 # Top-level vault files whose own wikilinks are validated. A stale index entry
@@ -136,6 +145,55 @@ def _reconcile_sizing(vault_root, layout, records, warnings):
             _check_sizing_id(record["name"], record["path"], known_ids, warnings)
 
 
+def _taxonomy_checks(vault_root, records, warnings):
+    """The taxonomy's standing suggestions: `folder_over_ceiling` when a
+    governed folder's direct children pass the ceiling, `empty_scope` when
+    a domain's Scope has no Class-here line, and `taxonomy_hints: N
+    pending` naming every artifact whose author recorded placement doubt.
+    Suggestions surface on every run so nothing waits on anyone's memory;
+    all are warnings and never touch the exit code."""
+    for root_name in CEILING_GOVERNED_DIRS:
+        base = vault_root / root_name
+        if not base.is_dir():
+            continue
+        candidates = [base] + [p.parent for p in base.rglob("index.md")]
+        for folder in candidates:
+            children = [
+                e for e in folder.iterdir()
+                if e.name != "index.md" and not e.name.startswith(".")
+                and (e.suffix == ".md" or e.is_dir())
+            ]
+            if len(children) > FOLDER_CEILING:
+                rel = folder.relative_to(vault_root).as_posix()
+                warnings.append(
+                    f"folder_over_ceiling: {rel}: {len(children)} direct children "
+                    f"(ceiling {FOLDER_CEILING}) - a split is worth proposing"
+                )
+
+    hints = []
+    for record in records:
+        data = record.get("_v_data")
+        if data is None:
+            data, error = vaultlib.parse_frontmatter(record["path"])
+            if error:
+                continue
+        if data.get("type") == "domain":
+            body = record["path"].read_text(encoding="utf-8")
+            if not any(l.startswith("Class here:") for l in body.splitlines()):
+                rel = record["path"].relative_to(vault_root).as_posix()
+                warnings.append(
+                    f"empty_scope: {rel}: Scope has no Class-here line - a blank "
+                    f"at the point of doubt reads as 'nothing belongs here'"
+                )
+        if data.get("taxonomy_hint"):
+            hints.append(record["path"].stem if record["path"].name != "index.md"
+                         else record["path"].parent.name)
+    if hints:
+        warnings.append(
+            f"taxonomy_hints: {len(hints)} pending - {', '.join(sorted(hints))}"
+        )
+
+
 def check_vault(vault_root):
     """Return (errors, warnings), each a list of human-readable strings."""
     errors, warnings = [], []
@@ -181,6 +239,7 @@ def check_vault(vault_root):
         warnings.append(f"cap_exceeded: hot path over {HOT_PATH_CAP} tokens")
 
     _reconcile_sizing(vault_root, layout, records, warnings)
+    _taxonomy_checks(vault_root, records, warnings)
 
     _, active_sections = sweep.collect(vault_root)
     lingering = sum(

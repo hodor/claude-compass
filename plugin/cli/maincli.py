@@ -29,6 +29,7 @@ COMMAND_SPECS = [
     ("promote", "Move a flat spec into a folder and rewrite inbound wikilinks (dry-run; --apply to write)."),
     ("demote", "Move a childless folder spec back into a flat file, the inverse of promote (dry-run; --apply to write)."),
     ("unit-check", "Report unit-promotion candidates: 3+ artifact types tracing to one spec via depends_on."),
+    ("make-domain", "Create a domain folder with its scope-carrying index.md inside a type dir, at any depth; --undo removes an empty one (dry-run; --apply to write)."),
     ("make-unit", "Create a unit folder, optionally git-moving named artifacts into it and rewriting the root index; --undo reverses it (dry-run; --apply to write)."),
     ("touched", "Record a working-set marker for admission control."),
     ("admit-check", "Exit 0/1 for whether a spec may enter the hot path."),
