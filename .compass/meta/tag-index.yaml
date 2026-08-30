@@ -136,6 +136,7 @@ tags:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   classification:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
+  - research/RESEARCH-taxonomy-for-unambiguous-placement.md
   claude-code:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   - lessons/LESSON-hooks-load-only-from-settings.md
@@ -342,6 +343,8 @@ tags:
   - lessons/LESSON-measure-the-procedures-intermediates.md
   extension-surface:
   - research/RESEARCH-hermes-agent-capabilities.md
+  faceted:
+  - research/RESEARCH-taxonomy-for-unambiguous-placement.md
   facets:
   - decisions/ADR-004-hierarchical-specs-with-facets.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
@@ -548,6 +551,8 @@ tags:
   - plans/PLAN-006-learning-loop.md
   - research/RESEARCH-lesson-capture-failure.md
   - specs/SPEC-012-learning-loop.md
+  inter-indexer:
+  - research/RESEARCH-taxonomy-for-unambiguous-placement.md
   interoperability:
   - research/RESEARCH-okf-improvements-for-compass.md
   interviews:
@@ -727,6 +732,8 @@ tags:
   - lessons/LESSON-hook-payloads-observe-before-coding.md
   per-agent:
   - specs/SPEC-008-central-model-resolution-table.md
+  per-folder-index:
+  - research/RESEARCH-taxonomy-for-unambiguous-placement.md
   permission-rules:
   - lessons/LESSON-hook-if-clause-no-or.md
   permissions:
@@ -875,6 +882,8 @@ tags:
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   - lessons/LESSON-adversarial-plan-review-before-build.md
+  ripple:
+  - research/RESEARCH-taxonomy-for-unambiguous-placement.md
   rolling-wave:
   - decisions/ADR-009-rolling-wave-mechanism.md
   - plans/PLAN-008-rolling-wave.md
@@ -889,6 +898,8 @@ tags:
   - research/RESEARCH-rag-fit-for-large-vaults.md
   scientific-method:
   - research/RESEARCH-scientific-method-in-compass.md
+  scope-notes:
+  - research/RESEARCH-taxonomy-for-unambiguous-placement.md
   scrum:
   - research/RESEARCH-rolling-wave-software-practice.md
   seeded-defects:
@@ -1007,6 +1018,7 @@ tags:
   taxonomy:
   - decisions/ADR-021-index-speaks-in-domains.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
+  - research/RESEARCH-taxonomy-for-unambiguous-placement.md
   - specs/SPEC-003-hierarchical-vault-organization.md
   - specs/SPEC-022-vault-organized-per-domain/index.md
   tdd:
