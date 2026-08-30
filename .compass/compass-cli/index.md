@@ -4,6 +4,7 @@ type: unit
 status: active
 created: 2026-07-24
 updated: 2026-07-24
+aliases: ["compass-cli"]
 ---
 
 # compass-cli

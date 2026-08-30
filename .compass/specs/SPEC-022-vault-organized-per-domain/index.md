@@ -10,6 +10,7 @@ created: 2026-08-30
 updated: 2026-08-30
 depends_on: ["[[SPEC-003-hierarchical-vault-organization]]", "[[SPEC-010-universal-hybrid-hierarchy]]", "[[SPEC-005-index-auto-maintained-and-mirrored-per-folder]]"]
 summary: "similar specs and research group into domain folders, recursively; the root index says one line per broad area instead of dropping every artifact flat (approved 2026-08-30, Roger's ruling)"
+aliases: ["SPEC-022-vault-organized-per-domain"]
 ---
 
 # The Vault Is Organized Per Domain, Recursively

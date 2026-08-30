@@ -10,6 +10,7 @@ created: 2026-08-28
 updated: 2026-08-28
 depends_on: ["[[compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget]]", "[[SPEC-018-scaffolding-invisible-to-the-human]]"]
 summary: "a project's Compass install refreshes itself from the canonical repo at session start - mandatory, zero tokens, silent when current (approved 2026-08-28)"
+aliases: ["SPEC-020-compass-updates-itself"]
 ---
 
 # Compass Updates Itself at Session Start

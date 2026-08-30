@@ -10,6 +10,7 @@ created: 2026-08-28
 updated: 2026-08-28
 depends_on: ["[[SPEC-018-scaffolding-invisible-to-the-human]]"]
 summary: "spec/vision interviews rewrite what the human said into polished agent prose; the human's own sentences must survive into the documents, with agent additions marked (approved 2026-08-28)"
+aliases: ["SPEC-021-capture-in-the-humans-words"]
 ---
 
 # Capture Documents Keep the Human's Own Words
