@@ -5,7 +5,7 @@ usage:
     count: 1
     last: 2026-08-30
   capture-check:
-    count: 33
+    count: 35
     last: 2026-08-30
   capture-close:
     count: 3
@@ -17,13 +17,13 @@ usage:
     count: 27
     last: 2026-08-30
   capture-worker:
-    count: 3
+    count: 4
     last: 2026-08-30
   coverage:
-    count: 6
+    count: 7
     last: 2026-08-30
   decisions:
-    count: 3
+    count: 4
     last: 2026-08-30
   next-num:
     count: 2
@@ -32,10 +32,10 @@ usage:
     count: 1
     last: 2026-08-30
   self-update:
-    count: 3
+    count: 4
     last: 2026-08-30
   sync:
-    count: 32
+    count: 35
     last: 2026-08-30
   validate:
     count: 3
