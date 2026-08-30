@@ -62,6 +62,9 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
 ## Goal
 [One paragraph: what this plan achieves and why. Reference the source inline: "This plan implements [[SPEC-NNN-name]] based on findings from [[RESEARCH-name]]."]
 
+## The waves
+[One line per wave, before any task detail: what it delivers and the gate it ends at. The reader gets the whole arc before the first task - a season overview, never episode one first.]
+
 ## Prerequisites
 [What must be true before starting]
 

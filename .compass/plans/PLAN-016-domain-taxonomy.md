@@ -19,6 +19,11 @@ lessons: ["[[LESSON-adversarial-plan-review-before-build]]", "[[LESSON-wikilink-
 
 Implement [[SPEC-022-vault-organized-per-domain]] and [[ADR-022-domains-scope-notes-shallow-when-unsure]], and migrate this vault first.
 
+## The waves
+
+1. **Mechanism** - the machinery the taxonomy needs: fixed record names and loop guard, `make-domain`, link rules, placement contracts in the skills, `compass tree`. Ends with everything live and tested, no file moved.
+2. **This vault migrates** - baseline the useless-token measure, build the proposal by the atomic rule and score it against Wikipedia, the human approves the diff, files move domain-by-domain, and the blind drills plus the re-measure judge the result. Ends with the release on the fleet.
+
 ## Not in this plan
 
 - SPEC-022 D-02 applies the taxonomy to everything in the vault; this plan covers specs and research, and defers grouping plans/ and decisions/ to a later round. Lessons are excluded by the spec's Non-Goals.
