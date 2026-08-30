@@ -36,7 +36,7 @@ Run `compass lessons --for <spec> --context planner` and read the lessons it nam
 
 ### 3b. Ripple
 
-Run `compass graph impact <spec-or-artifact>` for each source spec and any artifact the plan will modify. The output lists every inbound edge (`src -[kind]-> dst`) to depth 2 - the documents a change ripples into, with the edges named so you audit the traversal instead of trusting a total. Record the answer in the plan as a `## Ripple` section and let it inform task ordering and the What We're NOT Doing boundary. Hand-tallied ripple answers have miscounted in both directions ([[RESEARCH-grep-vs-graph-experiment]]); the query replaces that judgment, never supplements it.
+Run `compass graph impact <spec-or-artifact>` for each source spec and any artifact the plan will modify. The output lists every inbound edge (`src -[kind]-> dst`) to depth 2 - the documents a change ripples into, with the edges named so you audit the traversal instead of trusting a total. The answer shapes the plan's task file lists, ordering, and scope boundary; it is working input, not a plan section - the plan holds what to do, and the analysis stays in the research it came from. Hand-tallied ripple answers have miscounted in both directions ([[RESEARCH-grep-vs-graph-experiment]]); the query replaces that judgment, never supplements it.
 
 ### 4. Write the plan
 
