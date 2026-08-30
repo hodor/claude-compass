@@ -16,7 +16,7 @@ summary: "similar specs and research group into domain folders, recursively; the
 
 ## Problem
 
-Nothing aggregates. Every spec and every research doc is dropped flat at the root, one index line each - 22 specs, 35 research docs, 20 ADRs, 15 plans, 3,796 tokens of index against a 5,000-token hot-path cap - and consolidation can only trim lessons, because the other lines are individually non-redundant: the redundancy is structural. Things that belong together are not together, so consolidation has nothing to merge. Consolidation is also taxonomy.
+Every spec and every research doc is dropped flat at the root, one index line each - 22 specs, 35 research docs, 20 ADRs, 15 plans, 3,796 tokens of index against a 5,000-token hot-path cap - and consolidation can only trim lessons, because the other lines are individually non-redundant: the redundancy is structural. Things that belong together are not together, so consolidation has nothing to merge. Consolidation is also taxonomy.
 
 The grouping machinery has existed for months - folder specs nest to any depth ([[SPEC-010-universal-hybrid-hierarchy]]), a bulk-migration skill was built for exactly this - and the usage record shows it never ran anywhere, while `doctor` reported 17 unactioned grouping candidates. The same disease [[SPEC-017-capabilities-are-reachable-and-measured]] names: capability shipped, nothing drives it.
 
