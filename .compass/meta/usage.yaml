@@ -2,13 +2,16 @@
 since: 2026-08-30
 usage:
   capture-check:
-    count: 27
+    count: 29
     last: 2026-08-30
   capture-close:
     count: 2
     last: 2026-08-30
+  capture-note:
+    count: 1
+    last: 2026-08-30
   capture-signal:
-    count: 24
+    count: 25
     last: 2026-08-30
   capture-worker:
     count: 2
@@ -29,5 +32,8 @@ usage:
     count: 2
     last: 2026-08-30
   sync:
-    count: 23
+    count: 24
+    last: 2026-08-30
+  validate:
+    count: 2
     last: 2026-08-30
