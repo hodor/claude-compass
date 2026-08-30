@@ -27,7 +27,9 @@ import vaultlib
 
 # Maps an event's agent_type to the signal kind capture-check's due() reads.
 # Any agent_type outside this map (including one absent from the event) gets
-# the default kind.
+# the default kind. An inline `Agent`-tool spawn carries its type here; a
+# teammate-style (named) spawn arrives with `agent_type` empty and is typed,
+# when possible, from its name on the TeammateIdle path below.
 SIGNAL_KINDS = {
     "validator": "validator-finished",
     "debug": "debug-finished",
@@ -37,6 +39,13 @@ DEFAULT_SIGNAL_KIND = "subagent-finished"
 DEFAULT_AGENT_TYPE = "unknown"
 
 CAPTURES_DIR = "subagent-captures"
+
+# The harness delivers SubagentStop more than once for a single completion -
+# same `agent_id`, milliseconds apart. Recording each delivery would double
+# every capture file, and double a STRONG signal for a validator or debug
+# finish, so the cadence would read two events where one happened. Ids seen
+# recently are held in the capture state and re-delivery is dropped.
+SEEN_AGENTS_MAX = 40
 
 
 def _now():
@@ -99,6 +108,21 @@ def _write_capture(vault_root, agent_type, agent_id, message):
     return path.relative_to(vault_root).as_posix()
 
 
+def _already_recorded(vault_root, agent_id):
+    """Whether this completion was already recorded, and remember it when it
+    was not. An empty id identifies nothing, so it is never deduped - two
+    unrelated completions must not collapse into one."""
+    if not agent_id:
+        return False
+    state = capturelib.load_state(vault_root)
+    seen = state.get("seen_agents", [])
+    if agent_id in seen:
+        return True
+    state["seen_agents"] = (seen + [agent_id])[-SEEN_AGENTS_MAX:]
+    capturelib.save_state(vault_root, state)
+    return False
+
+
 def run(args):
     if "--hook" not in args:
         # Nothing to do outside the hook path, and stdin is never touched,
@@ -114,13 +138,14 @@ def run(args):
 
         if event.get("hook_event_name") == "TeammateIdle":
             # A TeammateIdle event carries a teammate_name but no agent type
-            # and no message, so there is nothing to capture to a file; the
-            # idle itself is recorded as a weak activity signal.
+            # and no message, so there is nothing to capture to a file. The
+            # name is the only type information a teammate completion offers,
+            # so a name whose leading token is a known agent type is typed
+            # from it; every other name records the weak activity signal.
             name = event.get("teammate_name") or "unknown"
             vault_root = vaultlib.find_vault_root()
-            capturelib.record_signal(
-                vault_root, DEFAULT_SIGNAL_KIND, f"teammate:{name}"
-            )
+            kind = SIGNAL_KINDS.get(name.split("-")[0], DEFAULT_SIGNAL_KIND)
+            capturelib.record_signal(vault_root, kind, f"teammate:{name}")
             return 0
 
         agent_type = event.get("agent_type") or DEFAULT_AGENT_TYPE
@@ -128,6 +153,8 @@ def run(args):
         message = event.get("last_assistant_message", "")
 
         vault_root = vaultlib.find_vault_root()
+        if _already_recorded(vault_root, agent_id):
+            return 0
         ref = _write_capture(vault_root, agent_type, agent_id, message)
         capturelib.record_signal(
             vault_root, SIGNAL_KINDS.get(agent_type, DEFAULT_SIGNAL_KIND), ref
