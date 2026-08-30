@@ -21,8 +21,9 @@ Implement [[SPEC-022-vault-organized-per-domain]] and [[ADR-022-domains-scope-no
 
 ## The waves
 
-1. **Mechanism** - the machinery the taxonomy needs: fixed record names and loop guard, `make-domain`, link rules, placement contracts in the skills, `compass tree`. Ends with everything live and tested, no file moved.
-2. **This vault migrates** - baseline the useless-token measure, build the proposal by the atomic rule and score it against Wikipedia, the human approves the diff, files move domain-by-domain, and the blind drills plus the re-measure judge the result. Ends with the release on the fleet.
+1. **Build the organizing tools.** The vault is getting organized into topic folders, and this wave builds what that needs: a command that creates a topic folder and makes it say what belongs inside; checks that suggest a split when a folder grows too big and that keep reminding about documents waiting to be filed; link handling so everything stays clickable and unambiguous once files live in folders; updates to the document-creating skills so new documents get filed into the right topic from birth; and a command that prints the whole tree at a glance. Nothing in the vault moves yet - this wave ends with the tools built and tested.
+
+2. **Organize this vault with them.** First, measure how much irrelevant material tasks currently drag into context - that number is what the whole effort exists to shrink. Then propose the actual grouping of this vault's documents into topics, check the proposal against how Wikipedia organizes the same subjects, and stop: the human approves the grouping before a single file moves. After approval, files move group by group, and the result is tested by strangers - fresh agents must find documents on the first try and agree on where new ones go - and by re-measuring the number. Ends with the release shipped to every project.
 
 ## Not in this plan
 
