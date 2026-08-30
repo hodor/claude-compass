@@ -105,6 +105,110 @@ def write_capture_config(root, **overrides):
     return config
 
 
+class SubagentStopRedeliveryTests(unittest.TestCase):
+    """The harness delivers SubagentStop twice for one completion - same
+    agent_id, milliseconds apart (observed 2026-08-30 from a raw payload
+    dump). Without dedupe every subagent doubles its capture files, and a
+    validator or debug completion doubles a STRONG signal, so the capture
+    cadence reads two events where one happened."""
+
+    def _run(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            return capture_signal.run(["--hook"])
+
+    def _deliver(self, test, agent_id, agent_type="debug", message="done"):
+        feed_stdin(test, {
+            "agent_type": agent_type,
+            "agent_id": agent_id,
+            "last_assistant_message": message,
+        })
+        return self._run()
+
+    def test_redelivery_of_one_completion_records_once(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        self._deliver(self, "agent-dup")
+        self._deliver(self, "agent-dup")
+        self.assertEqual(len(list(captures_dir(root).glob("*_debug.md"))), 1)
+        state = capturelib.load_state(root)
+        self.assertEqual(len(state["signals"]), 1)
+
+    def test_distinct_agents_each_record(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        self._deliver(self, "agent-a")
+        self._deliver(self, "agent-b")
+        state = capturelib.load_state(root)
+        self.assertEqual(len(state["signals"]), 2)
+
+    def test_empty_agent_id_is_never_deduped(self):
+        """An absent id must not collapse unrelated completions into one."""
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        self._deliver(self, "", agent_type="", message="first")
+        self._deliver(self, "", agent_type="", message="second")
+        state = capturelib.load_state(root)
+        self.assertEqual(len(state["signals"]), 2)
+
+    def test_seen_ids_stay_bounded(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        for n in range(capture_signal.SEEN_AGENTS_MAX + 10):
+            self._deliver(self, f"agent-{n}")
+        state = capturelib.load_state(root)
+        self.assertLessEqual(
+            len(state.get("seen_agents", [])), capture_signal.SEEN_AGENTS_MAX
+        )
+
+
+class TeammateNameTypingTests(unittest.TestCase):
+    """A teammate completion arrives with agent_type empty (verified in the
+    same payload dump), so the only type information available is the name
+    the orchestrator chose. A name that leads with a known agent type is
+    typed from it; any other name stays the weak default."""
+
+    def _run(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            return capture_signal.run(["--hook"])
+
+    def test_named_teammate_types_from_its_name(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        feed_stdin(self, {
+            "hook_event_name": "TeammateIdle",
+            "teammate_name": "validator-wave-3",
+        })
+        self._run()
+        state = capturelib.load_state(root)
+        self.assertEqual(state["signals"][0]["kind"], "validator-finished")
+
+    def test_arbitrary_name_stays_the_weak_default(self):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        feed_stdin(self, {
+            "hook_event_name": "TeammateIdle",
+            "teammate_name": "rs-overlay-priorart",
+        })
+        self._run()
+        state = capturelib.load_state(root)
+        self.assertEqual(state["signals"][0]["kind"], "subagent-finished")
+
+    def test_type_match_is_a_whole_leading_token(self):
+        """`debugger-x` is not a debug agent; matching a bare prefix would
+        manufacture a strong signal from an unrelated name."""
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        feed_stdin(self, {
+            "hook_event_name": "TeammateIdle",
+            "teammate_name": "debugger-x",
+        })
+        self._run()
+        state = capturelib.load_state(root)
+        self.assertEqual(state["signals"][0]["kind"], "subagent-finished")
+
+
 class CaptureSignalTests(unittest.TestCase):
     def _run(self):
         out = io.StringIO()
