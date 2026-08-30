@@ -1,14 +1,15 @@
 ---
 title: Project-Local Workflow Customizations Survive Update
 type: spec
-status: draft
+status: approved
+approved: 2026-08-29
 confidence: high
 area: methodology
 tags: [update, customization, overlays, install, drift, local]
 created: 2026-08-09
 updated: 2026-08-09
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]"]
-summary: "Project-Local Workflow Customizations Survive Update"
+summary: "project-local workflow customizations live in files update never touches and are re-applied mechanically (approved 2026-08-29)"
 ---
 
 # Project-Local Workflow Customizations Survive Update
@@ -18,6 +19,8 @@ summary: "Project-Local Workflow Customizations Survive Update"
 Projects customize the Compass workflow - extra protocol steps in agents, project-specific rules, modified skill orchestration - and the only place those customizations can live is the installed copies under `.claude/`, which `/compass:update` overwrites wholesale. The Defold project's upstream-contribution workflow (a mandatory upstream issue/PR sweep in the researcher, a contribution-path stop in autopilot, PR-body rules in pr-describe) has been wiped by update twice and re-applied by hand from an ADR both times. The current best practice is literally "document your customizations so you can retype them after every update." (GitHub issue #6.)
 
 The model policy already solved this for one surface: `.compass/meta/models.yaml` survives update and `compass apply-models` re-applies it. Every other customization surface has no equivalent.
+
+Since v0.10.0 ([[ADR-015-self-update-on-session-start]]) update is no longer a command someone chooses to run - it fires at every session start, mandatory. A customized project now loses its customizations automatically, without anyone typing anything.
 
 ## Who is affected
 

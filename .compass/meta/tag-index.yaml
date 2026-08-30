@@ -115,6 +115,7 @@ tags:
   capture:
   - decisions/ADR-013-detached-worker-quiet-fallback.md
   - decisions/ADR-016-capture-by-extraction.md
+  - decisions/ADR-019-subagentstop-redelivery-and-teammate-typing.md
   - plans/PLAN-006-learning-loop.md
   - plans/PLAN-010-invisible-capture.md
   - plans/PLAN-013-capture-by-extraction.md
@@ -448,6 +449,7 @@ tags:
   - decisions/ADR-002-retrospective-lessons-subsystem.md
   - decisions/ADR-013-detached-worker-quiet-fallback.md
   - decisions/ADR-015-self-update-on-session-start.md
+  - decisions/ADR-019-subagentstop-redelivery-and-teammate-typing.md
   - handoffs/PLAN-006-learning-loop/2026-08-06_06-02-00_phase2-live-hooks-first-firing.md
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
@@ -662,6 +664,8 @@ tags:
   - plans/PLAN-009-sizing-mechanism.md
   - plans/PLAN-010-invisible-capture.md
   - research/RESEARCH-invisible-scaffolding.md
+  observation:
+  - decisions/ADR-019-subagentstop-redelivery-and-teammate-typing.md
   obsidian:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   okf:
@@ -892,6 +896,8 @@ tags:
   - plans/PLAN-005-model-table.md
   shape-up:
   - research/RESEARCH-rolling-wave-software-practice.md
+  signals:
+  - decisions/ADR-019-subagentstop-redelivery-and-teammate-typing.md
   silent-failure:
   - lessons/LESSON-headless-worker-denies-tools-silently.md
   - lessons/LESSON-verify-worktree-isolation-is-real.md
@@ -956,6 +962,8 @@ tags:
   - lessons/LESSON-subagent-reports-need-sendmessage.md
   - lessons/LESSON-subagent-worktrees-fork-stale.md
   - lessons/LESSON-verify-worktree-isolation-is-real.md
+  subagentstop:
+  - decisions/ADR-019-subagentstop-redelivery-and-teammate-typing.md
   suite-size:
   - lessons/LESSON-suite-size-is-not-coverage.md
   summaries:
@@ -987,6 +995,8 @@ tags:
   - specs/SPEC-003-hierarchical-vault-organization.md
   tdd:
   - research/RESEARCH-test-quality-craft-and-practice.md
+  teammates:
+  - decisions/ADR-019-subagentstop-redelivery-and-teammate-typing.md
   templates:
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
