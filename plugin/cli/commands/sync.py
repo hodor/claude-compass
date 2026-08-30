@@ -438,19 +438,19 @@ def _check_caps(vault_root, records):
 
 
 def _prune_capture_log(vault_root):
-    """Drop rows in `tmp/capture-log.jsonl` older than
-    `CAPTURE_LOG_MAX_AGE_DAYS`, keyed by each row's own `at` timestamp
-    rather than the file's mtime, since the whole log lives in one
-    continuously-appended file. A line that cannot be parsed or dated is
-    dropped along with the aged-out rows: a row that cannot be judged to be
-    recent cannot be judged to have earned another year on disk either."""
+    """Move rows of `tmp/capture-log.jsonl` older than
+    `CAPTURE_LOG_MAX_AGE_DAYS` into `archive/logs/capture-log-archive.jsonl`,
+    keyed by each row's own `at` timestamp rather than the file's mtime,
+    since the whole log lives in one continuously-appended file. A line that
+    cannot be parsed or dated ages out with them - archived, not judged, so
+    even a corrupt row survives somewhere."""
     path = vault_root / "tmp" / "capture-log.jsonl"
     if not path.is_file():
         return 0
     cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
         days=CAPTURE_LOG_MAX_AGE_DAYS
     )
-    kept, pruned = [], 0
+    kept, aged = [], []
     for line in path.read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
         if not stripped:
@@ -459,44 +459,59 @@ def _prune_capture_log(vault_root):
             row = json.loads(stripped)
             at = datetime.datetime.fromisoformat(row["at"].replace("Z", "+00:00"))
         except (ValueError, KeyError, TypeError, AttributeError):
-            pruned += 1
+            aged.append(stripped)
             continue
         if at < cutoff:
-            pruned += 1
+            aged.append(stripped)
             continue
         kept.append(stripped)
-    if pruned:
+    if aged:
+        archive = vault_root / "archive" / "logs" / "capture-log-archive.jsonl"
+        archive.parent.mkdir(parents=True, exist_ok=True)
+        with open(archive, "a", encoding="utf-8", newline="\n") as handle:
+            handle.write("\n".join(aged) + "\n")
         text = "\n".join(kept) + ("\n" if kept else "")
         vaultlib.write_text_lf(path, text)
-    return pruned
+    return len(aged)
 
 
 def _clean_logs(vault_root):
-    """Prune stale logs under `tmp/`: whole-file deletion of
-    `extraction-log-*.md` and `worker-logs/*.log` past `LOG_MAX_AGE_DAYS`
-    (ADR-013 D-07's pruning clause - the worker's own per-run logs were
-    previously unowned), row-level pruning of `capture-log.jsonl` past
-    `CAPTURE_LOG_MAX_AGE_DAYS` - a much longer horizon, since a fleet-wide
-    fire-rate measurement needs to look back further than one month. Returns
-    `(extraction_deleted, capture_rows_pruned)`, where `extraction_deleted`
-    counts both log kinds swept on the same 30-day horizon.
+    """Age stale logs out of `tmp/` into `archive/logs/` - moved, never
+    deleted: nothing in Compass destroys information; a log too old for the
+    working set gets colder, not gone. Whole files (`extraction-log-*.md`,
+    `worker-logs/*.log`) move past `LOG_MAX_AGE_DAYS` (ADR-013 D-07's aging
+    clause); rows of `capture-log.jsonl` past `CAPTURE_LOG_MAX_AGE_DAYS` - a
+    much longer horizon, since a fleet-wide fire-rate measurement needs to
+    look back further than one month - append to
+    `archive/logs/capture-log-archive.jsonl` before leaving the live file.
+    Returns `(logs_archived, capture_rows_archived)`.
     """
     tmp = vault_root / "tmp"
     if not tmp.is_dir():
         return 0, 0
+    archive_dir = vault_root / "archive" / "logs"
     cutoff = time.time() - LOG_MAX_AGE_DAYS * 86400
-    deleted = 0
-    for log in tmp.glob("extraction-log-*.md"):
-        if log.is_file() and log.stat().st_mtime < cutoff:
-            log.unlink()
-            deleted += 1
+    moved = 0
+    aged = [log for log in tmp.glob("extraction-log-*.md")
+            if log.is_file() and log.stat().st_mtime < cutoff]
     worker_logs_dir = tmp / "worker-logs"
     if worker_logs_dir.is_dir():
-        for log in worker_logs_dir.glob("*.log"):
-            if log.is_file() and log.stat().st_mtime < cutoff:
-                log.unlink()
-                deleted += 1
-    return deleted, _prune_capture_log(vault_root)
+        aged.extend(log for log in worker_logs_dir.glob("*.log")
+                    if log.is_file() and log.stat().st_mtime < cutoff)
+    for log in aged:
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        dest = archive_dir / log.name
+        # A name collision keeps both: the archived copy is the record.
+        counter = 1
+        while dest.exists():
+            dest = archive_dir / f"{log.stem}-{counter}{log.suffix}"
+            counter += 1
+        try:
+            log.replace(dest)
+            moved += 1
+        except OSError:
+            pass  # a locked file just waits for the next sync
+    return moved, _prune_capture_log(vault_root)
 
 
 def sync(vault_root):
@@ -540,9 +555,9 @@ def format_report(report):
     if report["caps"]:
         parts.append(f"caps exceeded (warning written): {', '.join(report['caps'])}")
     if report["logs_deleted"]:
-        parts.append(f"extraction logs deleted: {report['logs_deleted']}")
+        parts.append(f"logs aged to archive/logs: {report['logs_deleted']}")
     if report["capture_log_pruned"]:
-        parts.append(f"capture-log rows pruned: {report['capture_log_pruned']}")
+        parts.append(f"capture-log rows aged to archive/logs: {report['capture_log_pruned']}")
     return "\n".join(parts)
 
 

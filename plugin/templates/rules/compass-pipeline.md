@@ -84,6 +84,10 @@ Bare `compass` lists every command with a one-liner - check it before assuming a
 - After creating ANY vault document (spec, plan, research, ADR, lesson, vision, handoff, review), add a link to it in `.compass/index.md` under the appropriate section. This is mandatory in the same step that creates the document, not a follow-up. Documents not in index.md are invisible to the next session.
 - The index is an index. Its one-line description is a copy of the document's own `summary:` frontmatter, never the only place that text exists. Write `summary:` when you create the document; `compass validate` warns when it is missing. An index that stores what it should point at cannot be shortened without losing it.
 
+## Data
+
+- Nothing destroys information, ever. Too big for its tier means break it into smaller pieces or move it colder (archive/, a Record section, a colder file) - never delete, never compress away. Caps bound what LOADS, not what EXISTS.
+
 ## Linking
 
 - Mention vault documents with `[[wikilinks]]`, not bare names or file paths.

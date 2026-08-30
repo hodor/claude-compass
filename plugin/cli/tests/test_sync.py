@@ -321,18 +321,36 @@ class CheckCapsMissingIndexTests(unittest.TestCase):
 
 
 class LogCleanupTests(SyncFixture):
-    def test_old_logs_deleted_recent_kept(self):
+    def test_old_logs_move_to_archive_recent_stay(self):
         (self.root / "tmp").mkdir()
         old = self.root / "tmp" / "extraction-log-old.md"
         new = self.root / "tmp" / "extraction-log-new.md"
-        old.write_text("x", encoding="utf-8")
+        old.write_text("the audit trail", encoding="utf-8")
         new.write_text("x", encoding="utf-8")
         old_time = time.time() - 40 * 86400
         os.utime(old, (old_time, old_time))
-        deleted = sync_cmd.sync(self.root)["logs_deleted"]
-        self.assertEqual(deleted, 1)
+        moved = sync_cmd.sync(self.root)["logs_deleted"]
+        self.assertEqual(moved, 1)
         self.assertFalse(old.exists())
         self.assertTrue(new.exists())
+        archived = self.root / "archive" / "logs" / "extraction-log-old.md"
+        self.assertEqual(archived.read_text(encoding="utf-8"), "the audit trail")
+
+    def test_archive_name_collision_keeps_both(self):
+        (self.root / "tmp").mkdir()
+        (self.root / "archive" / "logs").mkdir(parents=True)
+        (self.root / "archive" / "logs" / "extraction-log-old.md").write_text(
+            "earlier archive", encoding="utf-8"
+        )
+        old = self.root / "tmp" / "extraction-log-old.md"
+        old.write_text("later archive", encoding="utf-8")
+        old_time = time.time() - 40 * 86400
+        os.utime(old, (old_time, old_time))
+        sync_cmd.sync(self.root)
+        logs = sorted((self.root / "archive" / "logs").glob("extraction-log-old*.md"))
+        self.assertEqual(len(logs), 2)
+        contents = {p.read_text(encoding="utf-8") for p in logs}
+        self.assertEqual(contents, {"earlier archive", "later archive"})
 
 
 class CaptureLogRetentionTests(SyncFixture):
@@ -378,9 +396,13 @@ class CaptureLogRetentionTests(SyncFixture):
         self.assertEqual(report["capture_log_pruned"], 1)
         rows = [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
         self.assertEqual(len(rows), 1)
+        archive = self.root / "archive" / "logs" / "capture-log-archive.jsonl"
+        aged = [json.loads(l) for l in archive.read_text(encoding="utf-8").splitlines() if l.strip()]
+        self.assertEqual(len(aged), 1)
+        self.assertEqual(aged[0]["id"], "OPP-old")
         self.assertEqual(rows[0]["id"], "OPP-new")
 
-    def test_malformed_capture_log_line_pruned_without_crashing(self):
+    def test_malformed_capture_log_line_ages_out_preserved_raw(self):
         (self.root / "tmp").mkdir(exist_ok=True)
         path = self.root / "tmp" / "capture-log.jsonl"
         path.write_text(
@@ -392,6 +414,9 @@ class CaptureLogRetentionTests(SyncFixture):
         rows = [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["id"], "OPP-new")
+        # The unjudgeable line is archived verbatim, not destroyed.
+        archive = self.root / "archive" / "logs" / "capture-log-archive.jsonl"
+        self.assertIn("{not valid json", archive.read_text(encoding="utf-8"))
 
     def test_no_capture_log_is_a_noop(self):
         report = sync_cmd.sync(self.root)

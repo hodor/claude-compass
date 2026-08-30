@@ -1,6 +1,6 @@
 ---
 name: extract-lessons
-description: Retrospectively extract lessons from a capture opportunity. Reads opportunity.json from .compass/tmp/capture-opportunities/OPP-<UTC>/, checks the binary triggers against the opportunity's kind and evidence, applies the anti-list, hands survivors to lesson-write, and may revise or archive a lesson through lesson-write when opportunity evidence contradicts it. Writes an audit log of every candidate considered (kept 30 days) and closes the opportunity via `compass capture-close`. Never invoked directly by humans.
+description: Retrospectively extract lessons from a capture opportunity. Reads opportunity.json from .compass/tmp/capture-opportunities/OPP-<UTC>/, checks the binary triggers against the opportunity's kind and evidence, applies the anti-list, hands survivors to lesson-write, and may revise or archive a lesson through lesson-write when opportunity evidence contradicts it. Writes an audit log of every candidate considered (aged into archive/logs/ after 30 days) and closes the opportunity via `compass capture-close`. Never invoked directly by humans.
 version: 2.0.0
 allowed-tools: [Read, Glob, Grep, Write, Edit, Bash]
 when_to_use: "Invoked against a capture opportunity directory - most often the one named in the Stop hook's block decision. /compass:build's phase-completion path builds the same opportunity shape from its phase report. Not user-facing."
