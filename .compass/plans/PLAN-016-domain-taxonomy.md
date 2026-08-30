@@ -52,7 +52,7 @@ From [[RESEARCH-taxonomy-for-unambiguous-placement]] (ripple axis, 19 findings):
 
 ## Wave 2 (after Roger approves the migration diff): this vault
 
-- [ ] TASK-113: regenerate the domain proposal under ADR-022 - vault-unique bare names (the distribution collision renamed), scope notes drafted per domain with class-here digests as the domain summaries, domain count justified against the corpus, expected root-index token delta computed - and present as a diff for approval - complexity: S, after 112, decisions: [SPEC-022-vault-organized-per-domain/D-06]
+- [ ] TASK-113: regenerate the domain proposal under ADR-022 - vault-unique bare names (the distribution collision renamed), scope notes drafted per domain with class-here digests as the domain summaries, orthogonality and the depth-generality gradient demonstrated against the corpus (count unforced), expected root-index token delta computed - and present as a diff for approval - complexity: S, after 112, decisions: [SPEC-022-vault-organized-per-domain/D-06, SPEC-022-vault-organized-per-domain/D-09]
   - Automated: proposal names pass make-domain's collision check in dry-run.
   - Manual: Roger approves the diff - the explicit gate; nothing in Wave 2 proceeds without it.
 - [ ] TASK-114: apply the approved migration domain-by-domain (make-domain / promote / git mv), replace each migrated member line in the root index with its domain line, `compass validate` 0 errors after each domain, sizing rows for every shape change - complexity: L, after 113
