@@ -63,7 +63,7 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
 [One paragraph: what this plan achieves and why. Reference the source inline: "This plan implements [[SPEC-NNN-name]] based on findings from [[RESEARCH-name]]."]
 
 ## The waves
-[One line per wave, before any task detail: what it delivers and the gate it ends at. The reader gets the whole arc before the first task - a season overview, never episode one first.]
+[A short paragraph per wave, before any task detail: tell what happens and why in words a newcomer understands, and name the gate each wave ends at. Explain, never enumerate - a list of internal command names reads like 'grappling hook, boss key, shield; ends with the tree dying' to anyone who has not played the game.]
 
 ## Prerequisites
 [What must be true before starting]
