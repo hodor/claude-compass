@@ -5,25 +5,25 @@ usage:
     count: 5
     last: 2026-08-30
   capture-check:
-    count: 56
+    count: 60
     last: 2026-08-30
   capture-close:
-    count: 5
+    count: 6
     last: 2026-08-30
   capture-note:
     count: 3
     last: 2026-08-30
   capture-signal:
-    count: 42
+    count: 44
     last: 2026-08-30
   capture-worker:
-    count: 5
+    count: 6
     last: 2026-08-30
   coverage:
-    count: 13
+    count: 14
     last: 2026-08-30
   decisions:
-    count: 10
+    count: 11
     last: 2026-08-30
   demote:
     count: 4
@@ -35,10 +35,10 @@ usage:
     count: 1
     last: 2026-08-30
   self-update:
-    count: 8
+    count: 9
     last: 2026-08-30
   sync:
-    count: 64
+    count: 66
     last: 2026-08-30
   validate:
     count: 6
