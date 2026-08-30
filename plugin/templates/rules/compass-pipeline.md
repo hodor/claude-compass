@@ -19,15 +19,17 @@ Brevity binds your own prose only. The human's captured words (spec problems, vi
 
 Research is the exception: it captures evidence and can be as long as required.
 
-Documents describe what IS, never the process that produced them. No review narration, no draft history, no "this was revised/rejected/survived", no "the first version did X" - a reader months later has only the document, and the story of its making belongs in git history and commit messages. If a sentence only makes sense to someone who watched the document get written, delete it.
+The ornamental test, applied to every sentence: it helps the document do its job for a later reader, or it goes.
 
-State rules directly; never attribute them to their speaker. No "X said", no name-and-date tags on decisions, no quoted-conversation framing - a document is not meeting minutes. Authority comes from the document's own status and its Decisions section, not from citing who spoke. Preserving the human's phrasing (the capture rule above) means the sentence itself survives as the content - not that it gets wrapped in quotation marks with a byline.
+Documents describe what IS. The story of a document's making lives in git history and commit messages; a sentence that only makes sense to someone who watched the document get written is deleted.
 
-The ornamental test, applied to every sentence: does this information help the document do its job for a later reader? Not a ban on numbers, dates, or history - any of them stays when load-bearing and goes when decorative. "How it was before" earns its place only when the need cannot be explained without it.
+Documents speak with their own authority. A rule is stated as the rule, and the human's phrasing survives as the document's own prose; who spoke, and when, lives in git.
 
-Decisions consolidate by topic - one full decision, not one bullet per utterance. A redundant decision merges into its sibling. The section heading is `## Decisions`.
+State principles positively. Listing what a rule is not about makes that list read as the rule's real subject.
 
-Rules default to judgment. Write defaults with latitude - the point of an agent is that it can decide what is better in context. Reserve MUST for true invariants: the Data rule, the human's gates.
+Decisions consolidate by topic: a ruling that refines an existing decision merges into it. The section heading is `## Decisions`.
+
+Rules default to judgment - an agent's value is deciding what is better in context. MUST is reserved for true invariants: the Data rule, the human's gates.
 
 ## No Verbiage
 

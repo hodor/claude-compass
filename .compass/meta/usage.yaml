@@ -2,19 +2,19 @@
 since: 2026-08-30
 usage:
   apply-models:
-    count: 3
+    count: 4
     last: 2026-08-30
   capture-check:
-    count: 40
+    count: 41
     last: 2026-08-30
   capture-close:
     count: 4
     last: 2026-08-30
   capture-note:
-    count: 2
+    count: 3
     last: 2026-08-30
   capture-signal:
-    count: 31
+    count: 32
     last: 2026-08-30
   capture-worker:
     count: 4
@@ -35,10 +35,10 @@ usage:
     count: 1
     last: 2026-08-30
   self-update:
-    count: 6
+    count: 7
     last: 2026-08-30
   sync:
-    count: 54
+    count: 55
     last: 2026-08-30
   validate:
     count: 6
