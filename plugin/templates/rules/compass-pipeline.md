@@ -19,6 +19,8 @@ Brevity binds your own prose only. The human's captured words (spec problems, vi
 
 Research is the exception: it captures evidence and can be as long as required.
 
+Documents describe what IS, never the process that produced them. No review narration, no draft history, no "this was revised/rejected/survived", no "the first version did X" - a reader months later has only the document, and the story of its making belongs in git history and commit messages. If a sentence only makes sense to someone who watched the document get written, delete it.
+
 ## No Verbiage
 
 Conversation output is never the record - logs, reports, and vault files are. On every surface (agent reports, skill output, hook-triggered passes, relays to the human):
