@@ -1,6 +1,6 @@
 ---
 name: consolidate
-description: Long-horizon merge, prune, and demote pass over the lessons set. Runs only when a hard-cap warning is present (proves bloat triggered). Merges near-duplicates the per-phase dedup missed, rewrites verbose bodies, archives stale baseline-score lessons, trims seen arrays, rebuilds the catalog and the index Lessons section. Never archives escalated lessons; flags them for human review.
+description: Long-horizon merge, prune, and demote pass over the lessons set. Runs only when a hard-cap warning is present (proves bloat triggered). Merges near-duplicates the per-phase dedup missed, rewrites verbose bodies preserving the displaced text in-file, archives stale baseline-score lessons, rebuilds the catalog and the index Lessons section. Never archives escalated lessons; flags them for human review.
 version: 1.0.0
 allowed-tools: [Read, Glob, Grep, Write, Edit]
 argument-hint: "(no arguments; uses warning state)"
@@ -51,21 +51,21 @@ If a pair matches, merge:
 - Keep the lesson with higher `score` (or earlier `created` if tied)
 - Sum the `score` values, cap at 10
 - Union the `tags`
-- Union the `seen` arrays, then trim per step 5
+- Union the `seen` arrays, keeping every date (step 5)
 - The losing lesson becomes `status: archived`, its filename is added to the kept lesson's frontmatter as `merged_from: ["LESSON-loser.md"]`
 - The body of the kept lesson is preserved unchanged unless the loser had nuance worth absorbing; if so, compress and fit under the 5-line cap
 
 Report every merge for the human's audit.
 
-### 4. Rewrite verbose bodies
+### 4. Rewrite verbose bodies - never destroying the original
 
-For each lesson body longer than 5 lines: compress to <=5 lines. Keep the rule + reason; drop specific instances. Use judgment, not mechanical truncation.
+For each lesson body longer than 5 lines: distill the rule + reason into <=5 lines, and move the displaced text - the specific instances, the longer wording - into the same file under a `## Record (preserved)` heading below the body. That section is exempt from the 5-line cap, exactly as an archived lesson's `Superseded:` line is: the cap governs the active guidance competing for read budget, and the record below it is cold detail fetched only when someone opens the file. Nothing is dropped; the hot representation shrinks, the data stays.
 
 Report every rewrite with before/after for the human's audit.
 
-### 5. Trim seen arrays
+### 5. Seen arrays are never trimmed
 
-For each lesson with `seen: [...]` of more than 3 entries: keep the 3 most recent dates. Drop the rest.
+`seen:` is the recurrence evidence - the dates a lesson proved itself again. It lives only in the lesson file's frontmatter, which no hot-path surface loads, so trimming saves nothing that matters and destroys history that does. Leave every date in place.
 
 ### 6. Archive stale baseline lessons
 
@@ -96,7 +96,7 @@ lessons:
 
 Active lessons first (sorted by score descending, then alpha by filename). Archived lessons after, separated by a `# Archived below` comment.
 
-Remove any catalog rows pointing to files that no longer exist (mark as `# stale entry removed: <file>` in a report-only log).
+A catalog row pointing to a file that no longer exists signals corruption (nothing in Compass deletes lesson files); move such rows under a trailing `# Orphaned rows (file missing)` comment block rather than removing them, and name each in the report - the row's summary may be the only surviving trace of the lesson.
 
 ### 8. Rebuild the Lessons section of index.md
 
@@ -131,8 +131,8 @@ Once consolidation completes, strip the WARNING comments from `index.md` and `le
 ### Archived (baseline + stale)
 - [[LESSON-old]] - score 5, no recurrence, last updated 2026-01-15
 
-### Trimmed seen arrays
-- 3 lessons trimmed (oldest dates dropped)
+### Records preserved
+- [[LESSON-qux]] - displaced body text moved under `## Record (preserved)`
 
 ### Caps after consolidation
 - index.md: <N> lines (cap 200)
@@ -144,7 +144,8 @@ Once consolidation completes, strip the WARNING comments from `index.md` and `le
 
 - Archiving an escalated lesson. Escalated lessons need human attention, not silent removal.
 - Merging across categories. process and domain stay separate; merging blurs the Reinertsen split.
-- Rewriting a body to grow past 5 lines while compressing. The cap is the cap.
+- Rewriting a body to grow past 5 lines while compressing. The cap is the cap - and the displaced text goes under `## Record (preserved)`, never out of the file.
+- Destroying information to fit a cap. Consolidation shrinks the hot representation (summaries, catalog rows, index lines); the data itself always survives in the file or the archive. Too big for its tier means break it up or move it colder, never delete it.
 - Removing the warning without actually reducing the cap. The warning reflects reality; if reality is still over the cap, the warning should re-appear on the next sync.
 - Running on a fixed cadence. The contract is the warning. Do not run unprompted.
 - Deleting lesson files. Archive moves them to `.compass/archive/lessons/`; consolidation never `rm`s.
