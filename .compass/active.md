@@ -15,7 +15,7 @@ Triggered by a live failure in another project: a vision session produced seven 
 
 - [x] TASK-109: record names, count refresh, loop guard, piped links
 - [x] TASK-110: make-domain + validate suggestions
-- [ ] TASK-111: link rules
+- [x] TASK-111: link rules
 - [ ] TASK-112: skill contracts
 - [ ] TASK-116: compass tree
 - [ ] TASK-117: useless-token baseline

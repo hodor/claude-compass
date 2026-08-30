@@ -17,7 +17,7 @@ usage:
     count: 57
     last: 2026-08-30
   capture-worker:
-    count: 11
+    count: 12
     last: 2026-08-30
   coverage:
     count: 17
@@ -29,7 +29,7 @@ usage:
     count: 4
     last: 2026-08-30
   lesson-coverage:
-    count: 6
+    count: 8
     last: 2026-08-30
   next-num:
     count: 2
@@ -41,7 +41,7 @@ usage:
     count: 18
     last: 2026-08-30
   sync:
-    count: 82
+    count: 86
     last: 2026-08-30
   validate:
     count: 6

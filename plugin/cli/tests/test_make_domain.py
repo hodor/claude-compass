@@ -202,3 +202,50 @@ class ValidateTaxonomyTests(DomainFixture):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LinkAmbiguityTests(DomainFixture):
+    """Same-named domains on different branches are the supported case;
+    the proof obligations are that a bare link to the shared name warns as
+    ambiguous, path-qualified links to both stay clean, and unique bare
+    stems never warn."""
+
+    def setUp(self):
+        super().setUp()
+        self.make("specs/network")
+        self.make("specs/gpu-hardware")
+        self.make("specs/network/cache", "cpu-side caching")
+        self.make("specs/gpu-hardware/cache", "gpu-side caching")
+        self.write("specs/SPEC-001-solo.md", spec_body("Solo"))
+
+    def _warnings_for(self, body):
+        plan = (
+            "---\ntitle: P\ntype: plan\nstatus: active\narea: w\ntags: [x]\n"
+            "created: 2026-08-30\nupdated: 2026-08-30\n---\n\n" + body + "\n"
+        )
+        self.write("plans/PLAN-001-p.md", plan)
+        _, warnings = validate_cmd.check_vault(self.root)
+        return warnings
+
+    def test_bare_link_to_shared_name_warns_ambiguous(self):
+        warnings = self._warnings_for("see [[cache]]")
+        self.assertTrue(any(w.startswith("ambiguous_wikilink") and "[[cache]]" in w
+                            for w in warnings))
+
+    def test_path_qualified_links_to_both_stay_clean(self):
+        warnings = self._warnings_for(
+            "see [[specs/network/cache]] and [[specs/gpu-hardware/cache]]"
+        )
+        self.assertFalse(any("ambiguous_wikilink" in w or "broken_wikilink" in w
+                             for w in warnings))
+
+    def test_unique_bare_stem_stays_warning_free(self):
+        warnings = self._warnings_for("see [[SPEC-001-solo]]")
+        self.assertFalse(any(
+            ("ambiguous_wikilink" in w or "broken_wikilink" in w) and "SPEC-001-solo" in w
+            for w in warnings
+        ))
+
+
+if __name__ == "__main__":
+    unittest.main()

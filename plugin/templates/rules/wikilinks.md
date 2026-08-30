@@ -14,9 +14,9 @@ When you see a wikilink like `[[SPEC-001]]` or `[[vision]]` in a vault file and 
 
 Example: `[[SPEC-001]]` -> `Glob: .compass/**/SPEC-001*.md` -> `.compass/specs/SPEC-001-roblox-ingestion.md` -> Read.
 
-## Path-qualified links (unit artifacts)
+## Path-qualified links (unit artifacts and domain members)
 
-Artifacts inside a unit folder (a root folder whose `index.md` declares `type: unit`) are linked path-qualified: the vault-relative path without extension, e.g. `[[compass-cli/specs/SPEC-001-name]]`. Numbering is local per unit, so the same bare stem can exist at the root and inside any unit.
+Artifacts inside a unit folder (a root folder whose `index.md` declares `type: unit`) and artifacts below a domain folder (a topic folder inside `specs/` or `research/`) are linked path-qualified: the vault-relative path without extension, e.g. `[[compass-cli/specs/SPEC-001-name]]` or `[[specs/network/cache/SPEC-001-eviction]]`. Numbering is local per folder, and domain names reuse across branches, so bare stems are genuinely ambiguous; the path is the identity. Generated surfaces link a folder as the piped full path to its index (`[[specs/network/index|network]]`) because Obsidian opens files, never folders.
 
 - Resolving: a path-qualified link maps straight to one file - `.compass/<link>.md` (a folder spec resolves to `.compass/<link>/index.md`). No search needed.
 - Authoring: always write the path-qualified form for unit artifacts. Bare stems are for root artifacts only. A root doc nested in a plain grouping subfolder (its parent has no index.md) is also linked by its full vault-relative path, e.g. `[[research/sub/note]]`.
