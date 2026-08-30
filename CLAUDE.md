@@ -106,7 +106,7 @@ When proposing a `plugin/` change, ask which goal it serves.
 
 `active.md` holds only open work: `compass sync` (fired by the PostToolUse hook on every vault write) sweeps `[x]` task lines into `.compass/archive/done.md`, moving a section wholesale once every task in it is done. Check tasks off as always; their departure is automatic (ADR-014).
 
-Every spec is a folder whose `index.md` is the spec itself; children nest inside it at any depth, numbered locally. The parent holds the decisions shared by every child.
+A spec is a file until it earns children: at the second member it becomes a folder whose `index.md` is the spec itself, children nested at any depth, numbered locally. The parent holds the decisions shared by every child; a folder holding only its own index gets demoted back to a file.
 
 ## When in doubt
 

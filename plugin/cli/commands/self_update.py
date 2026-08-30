@@ -262,6 +262,52 @@ def _apply(src, project_root, apply_models):
             pass
 
 
+def _normalize_flat_specs(vault_root):
+    """A spec is a file until its second member: any folder spec holding
+    nothing but its own index.md flattens back to `<name>.md`, with a
+    sizing correction row under the id the promotion minted. Domains and
+    units keep their folders - a domain is a topic, not a spec shape."""
+    flattened = 0
+    try:
+        records = vaultlib.scan_artifacts(vault_root)
+    except Exception:
+        return 0
+    for record in records:
+        try:
+            if record["kind"] != "folder-index":
+                continue
+            data, error = vaultlib.parse_frontmatter(record["path"])
+            if error or data.get("type") != "spec":
+                continue
+            folder = record["path"].parent
+            members = [p for p in folder.iterdir() if p != record["path"]]
+            if members:
+                continue
+            target = folder.parent / f"{folder.name}.md"
+            if target.exists():
+                continue
+            text = vaultlib.read_vault_text(record["path"])
+            lines = [l for l in text.split("\n") if not l.startswith("children_count:")]
+            vaultlib.write_text_lf(target, "\n".join(lines))
+            shutil.rmtree(folder)
+            flattened += 1
+            try:
+                from commands import sizing as _sizing
+                rel = target.relative_to(vault_root).as_posix()[:-3]
+                _sizing.append_row(vault_root, {
+                    "id": data.get("sizing_id") or _sizing.mint_id(vault_root),
+                    "action": "correction", "shape": "folder", "subject": rel,
+                    "reason": "folder held only its own index; a spec is a file until its second member",
+                    "by": "agent", "at": datetime.date.today().isoformat(),
+                    "volatile": [],
+                })
+            except Exception:
+                pass
+        except Exception:
+            continue
+    return flattened
+
+
 def perform(vault_root, force=False, apply_models=True):
     """The whole check-and-update. Returns a dict with `status` and, when a
     notice belongs in context, `notice`. Never raises."""
@@ -297,6 +343,7 @@ def _perform(vault_root, project_root, force, apply_models):
         if inside and (src_dir / ".claude-plugin" / "plugin.json").is_file():
             new_version = _plugin_version(src_dir) or "?"
             _apply(src_dir, project_root, apply_models)
+            _normalize_flat_specs(vault_root)
             notice = None
             if new_version != installed:
                 if raw:
@@ -333,6 +380,7 @@ def _perform(vault_root, project_root, force, apply_models):
             _log(vault_root, f"bad-source {repository}")
             return {"status": "bad-source", "notice": None}
         _apply(src, project_root, apply_models)
+        _normalize_flat_specs(vault_root)
         _write_plugin_yaml(
             vault_root,
             raw,

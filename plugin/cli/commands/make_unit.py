@@ -172,8 +172,8 @@ def _plan_moves(vault_root, name, artifacts, resolve):
 
 
 def _unit_index_text(name, moves, today):
-    """The unit's `index.md`: the `type: unit` marker frontmatter plus a
-    one-line-per-member children listing with path-qualified wikilinks."""
+    """The unit's `index.md`: the `type: unit` marker frontmatter. The
+    folder itself is the listing; members are read live."""
     lines = [
         "---",
         f"title: {name}",
@@ -185,14 +185,7 @@ def _unit_index_text(name, moves, today):
         "",
         f"# {name}",
         "",
-        "## Children",
-        "",
     ]
-    for move in sorted(moves, key=lambda m: m["link"]):
-        data = move["data"]
-        summary = data.get("summary") or data.get("title") or move["link"].rsplit("/", 1)[-1]
-        lines.append(f"- [[{move['link']}]] - {summary}")
-    lines.append("")
     return "\n".join(lines)
 
 

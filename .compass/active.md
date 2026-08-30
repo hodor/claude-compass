@@ -13,10 +13,8 @@ Triggered by a live failure in another project: a vision session produced seven 
 
 ## Per-domain organization initiative
 
-- [x] TASK-109: record names, count refresh, loop guard, piped links
-- [x] TASK-110: make-domain + validate suggestions
-- [x] TASK-111: link rules
-- [ ] TASK-112: skill contracts
+- [x] TASK-112: skill contracts
+- [x] TASK-118: born flat - folder at the second member; self-update normalizes over-shaped vaults
 - [ ] TASK-116: compass tree
 - [ ] TASK-117: useless-token baseline
 - [ ] TASK-113: proposal by the atomic rule + Wikipedia score

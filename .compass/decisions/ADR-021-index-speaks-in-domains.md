@@ -10,6 +10,7 @@ updated: 2026-08-30
 author: "orchestrator"
 summary: "sync stops listing folder children in the root index - the folder line with its child count is the pointer; taxonomize retires into consolidate as its Structure pass; the migration itself is a proposal the human approves"
 depends_on: ["[[SPEC-022-vault-organized-per-domain]]", "[[ADR-004-hierarchical-specs-with-facets]]", "[[ADR-006-hybrid-hierarchy-implementation]]"]
+amended_by: ["[[ADR-022-domains-scope-notes-shallow-when-unsure]]"]
 ---
 
 # The Index Speaks in Domains

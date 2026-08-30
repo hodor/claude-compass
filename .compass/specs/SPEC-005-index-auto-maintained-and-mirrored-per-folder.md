@@ -1,7 +1,8 @@
 ---
 title: Index Auto-Maintained on Add and Remove, Mirrored Per Folder
 type: spec
-status: draft
+status: superseded
+superseded_by: "[[ADR-022-domains-scope-notes-shallow-when-unsure]]"
 confidence: high
 area: methodology
 tags: [index, hierarchy, sync, hot-path, auto-maintenance, delete]

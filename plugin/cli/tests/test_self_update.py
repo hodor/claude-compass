@@ -364,3 +364,60 @@ class NeverBlocksTests(SelfUpdateFixture):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NormalizeFlatSpecsTests(SelfUpdateFixture):
+    """A spec is a file until its second member: update flattens any folder
+    spec holding only its own index, logs the correction, and leaves folder
+    specs with children, domains, and everything non-spec untouched."""
+
+    def setUp(self):
+        super().setUp()
+        self.local_src = make_plugin_tree(self.project / "plugin", version="9.9.9")
+        self.write_plugin_yaml(source=str(self.project / "plugin"))
+
+    def _spec(self, title):
+        return (
+            f"---\ntitle: {title}\ntype: spec\nstatus: approved\narea: w\n"
+            f"tags: [x]\nchildren_count: 0\nsizing_id: sz-2026-08-30-9\n"
+            f"created: 2026-08-30\nupdated: 2026-08-30\n---\n\nbody\n"
+        )
+
+    def _domain(self, title):
+        return (
+            f"---\ntitle: {title}\ntype: domain\nstatus: active\ntags: []\n"
+            f"summary: \"s\"\ncreated: 2026-08-30\nupdated: 2026-08-30\n---\n\n"
+            f"## Scope\n\nClass here: things\n"
+        )
+
+    def _write(self, rel, body):
+        path = self.vault / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body, encoding="utf-8")
+
+    def test_lone_index_folder_spec_flattens_with_correction_row(self):
+        self._write("specs/SPEC-001-lone/index.md", self._spec("Lone"))
+        self.forbid_network()
+        self.perform()
+        self.assertFalse((self.vault / "specs" / "SPEC-001-lone").exists())
+        flat = self.vault / "specs" / "SPEC-001-lone.md"
+        text = flat.read_text(encoding="utf-8")
+        self.assertIn("title: Lone", text)
+        self.assertNotIn("children_count:", text)
+        log = (self.vault / "meta" / "sizing-log.yaml").read_text(encoding="utf-8")
+        self.assertIn("action: correction", log)
+        self.assertIn("sz-2026-08-30-9", log)
+
+    def test_folder_spec_with_child_is_untouched(self):
+        self._write("specs/SPEC-002-pair/index.md", self._spec("Pair"))
+        self._write("specs/SPEC-002-pair/SPEC-001-kid.md", self._spec("Kid"))
+        self.forbid_network()
+        self.perform()
+        self.assertTrue((self.vault / "specs" / "SPEC-002-pair" / "index.md").is_file())
+        self.assertTrue((self.vault / "specs" / "SPEC-002-pair" / "SPEC-001-kid.md").is_file())
+
+    def test_domain_index_is_untouched(self):
+        self._write("specs/network/index.md", self._domain("network"))
+        self.forbid_network()
+        self.perform()
+        self.assertTrue((self.vault / "specs" / "network" / "index.md").is_file())

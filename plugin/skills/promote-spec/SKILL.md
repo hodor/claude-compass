@@ -32,5 +32,5 @@ The folder now exists with an empty `index.md` parent. Create child specs inside
 ## Failure modes worth naming
 
 - Promoting a spec that will never have children - a folder with a lone `index.md` is worse than the flat file. Don't.
-- Promoting a non-spec/plan/decision artifact - the CLI refuses; respect it.
+- Promoting an artifact that is missing or already a folder - the CLI refuses; respect it. Any flat artifact type promotes.
 - Hand-editing wikilinks to new paths - unnecessary, Obsidian resolves the short form to the folder's `index.md`.
