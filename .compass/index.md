@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 8697 / 5000 tokens (index.md 5218, active.md 327, meta/lessons-catalog.yaml 3152). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 8764 / 5000 tokens (index.md 5285, active.md 327, meta/lessons-catalog.yaml 3152). Run /compass:consolidate before next session. -->
 <!-- WARNING: index.md exceeded hot-path cap. Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
@@ -75,6 +75,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-active-set-prior-art]] - every mature system bounds its active set mechanically - flag-then-sweep dominates, atomic moves are rare, and Compass already owns the zero-token trigger (PostToolUse compass sync)
 - [[RESEARCH-self-update-surfaces]] - the whole update flow is already mechanical (clone, copy, settings merge, apply-models, plugin.yaml record); SessionStart startup-matcher is the right trigger; a stored commit sha makes the current-check one ls-remote
 - [[RESEARCH-humans-words-fidelity]] - verbosity and paraphrase infidelity are documented, mechanistic LLM failures; every source-word discipline shares one grammar (verbatim layer + bracketed insertions + speaker sign-off); positive extract-and-quote instructions beat do-not-paraphrase prohibitions
+- [[RESEARCH-update-safe-customization]] - overlay mechanisms are well-charted (drop-in dirs dominate, patches fail loudest, markers fail silently), but SPEC-014's benchmark corpus does not exist: zero content customizations survive and models.yaml is adopted nowhere
 
 ## Plans
 

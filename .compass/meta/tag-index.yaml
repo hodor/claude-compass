@@ -212,6 +212,8 @@ tags:
   - specs/SPEC-018-scaffolding-invisible-to-the-human.md
   core:
   - specs/SPEC-001-compass-vision-and-architecture.md
+  corpus:
+  - research/RESEARCH-update-safe-customization.md
   cost:
   - decisions/ADR-008-model-resolution-table.md
   - lessons/LESSON-tag-index-trades-cost-for-directed-retrieval.md
@@ -235,6 +237,7 @@ tags:
   cross-platform:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   customization:
+  - research/RESEARCH-update-safe-customization.md
   - specs/SPEC-009-configurable-pipeline-workflows.md
   - specs/SPEC-014-update-safe-customizations.md
   data-loss:
@@ -296,6 +299,8 @@ tags:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   drift:
   - specs/SPEC-014-update-safe-customizations.md
+  drop-ins:
+  - research/RESEARCH-update-safe-customization.md
   edit-anchors:
   - lessons/LESSON-wikilink-validator-skip-code.md
   elaboration:
@@ -601,6 +606,8 @@ tags:
   - specs/SPEC-014-update-safe-customizations.md
   lost-in-the-middle:
   - research/RESEARCH-hierarchical-knowledge-base-design.md
+  markers:
+  - research/RESEARCH-update-safe-customization.md
   mcp:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   mcp-rejected:
@@ -688,6 +695,7 @@ tags:
   overfit:
   - lessons/LESSON-type-dir-discovery-needs-content-signal.md
   overlays:
+  - research/RESEARCH-update-safe-customization.md
   - specs/SPEC-014-update-safe-customizations.md
   paired-experiment:
   - research/RESEARCH-test-quality-bar-validation.md
@@ -706,6 +714,8 @@ tags:
   parsing:
   - lessons/LESSON-hook-payloads-observe-before-coding.md
   - lessons/LESSON-wikilink-validator-skip-code.md
+  patches:
+  - research/RESEARCH-update-safe-customization.md
   payloads:
   - lessons/LESSON-hook-payloads-observe-before-coding.md
   per-agent:
@@ -1098,6 +1108,7 @@ tags:
   - plans/PLAN-005-model-table.md
   - plans/PLAN-012-self-update.md
   - research/RESEARCH-self-update-surfaces.md
+  - research/RESEARCH-update-safe-customization.md
   - specs/SPEC-014-update-safe-customizations.md
   - specs/SPEC-020-compass-updates-itself/index.md
   usage:
