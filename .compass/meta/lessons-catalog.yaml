@@ -238,3 +238,24 @@ lessons:
     tags: [windows, crlf, docker, line-endings, cross-platform]
     score: 5
     summary: "Python `open(p, 'w')` on Windows writes CRLF; mount that into a Linux container and bash chokes on $'\\\\r'"
+  - file: "LESSON-hierarchical-placement-tolerate-disagreement.md"
+    status: active
+    category: domain
+    area: methodology
+    tags: [taxonomy, classification, hierarchical-placement, literature-import, confidence-threshold]
+    score: 5
+    summary: "Inter-indexer agreement is inherently low; stop at a correct coarse ancestor rather than force a wrong specific leaf"
+  - file: "LESSON-template-shape-vs-template-precondition.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [templates, folder-spec, taxonomy, spec-writing]
+    score: 5
+    summary: "A folder-spec template built for 'problem + decisions' doesn't fit a folder that only groups topically related docs"
+  - file: "LESSON-obsidian-bare-link-creates-stray-note.md"
+    status: active
+    category: domain
+    area: methodology
+    tags: [obsidian, wikilinks, folder-spec, born-folder, click-through]
+    score: 5
+    summary: "Obsidian does not resolve a bare folder-spec wikilink to its index.md; click-through creates a zero-byte stray note"
