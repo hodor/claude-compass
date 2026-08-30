@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 7356 / 5000 tokens (index.md 3994, active.md 418, meta/lessons-catalog.yaml 2944). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 7690 / 5000 tokens (index.md 4179, active.md 391, meta/lessons-catalog.yaml 3120). Run /compass:consolidate before next session. -->
 <!-- WARNING: index.md exceeded hot-path cap. Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
@@ -95,6 +95,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-013-capture-by-extraction]] - implement ADR-016 across spec/vision/specs/retroactive skills and the pipeline rules; ship via push + fleet self-update
 - [[PLAN-014-capability-usage]] - implement ADR-017: usage recording in dispatch, usage report, doctor advisory, retirements, reachability line; ship v0.12.0
 - [[PLAN-015-graph-queries]] - implement ADR-018: graphlib, compass graph, consumer wiring, ripple step; live validation; v0.13.0
+- [[PLAN-016-domain-taxonomy]] - implement ADR-022 in two waves: mechanism first (Contents sync + loop-guard fix, make-domain, validate ceiling + link rules, skill contracts), then the human-approved migration of this vault; live acceptance is a filer drill and a finder drill on the migrated vault
 
 ## Decisions
 
@@ -118,6 +119,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[ADR-019-subagentstop-redelivery-and-teammate-typing]] - live payload observation falsifies the dead-code claim (inline spawns are typed, teammates are not) and reveals SubagentStop double-delivery, now deduped on agent_id
 - [[ADR-020-local-overlays-appended-after-refresh]] - concatenation over splicing: update copies the shipped file pristine then appends the project's local addendum, so no anchor can drift; CLAUDE.md stays untouched and is proven so by test
 - [[ADR-021-index-speaks-in-domains]] - sync stops listing folder children in the root index - the folder line with its child count is the pointer; taxonomize retires into consolidate as its Structure pass; the migration itself is a proposal the human approves
+- [[ADR-022-domains-scope-notes-shallow-when-unsure]] - the classification-science design: 4-6 finder-named domains per type dir, scope notes in every domain index (binding and advisory), one physical home with tags as the cross axis, shallow placement under doubt, corpus-warranted birth and size-triggered splits, sync-maintained first-level Contents with no LLM summaries, type: domain for thin indexes, path-qualified links below domains
 
 ## Active Work
 
