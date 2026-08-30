@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "specs/SPEC-022-vault-organized-per-domain.md",
+                "file": "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "SPEC-022-vault-organized-per-domain"
+              "title": "ADR-022-domains-scope-notes-shallow-when-unsure"
             }
           },
           {
@@ -128,7 +128,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "specs/SPEC-022-vault-organized-per-domain.md",
+                "file": "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -147,7 +147,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "specs/SPEC-022-vault-organized-per-domain.md",
+                "file": "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
@@ -190,7 +190,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "specs/SPEC-022-vault-organized-per-domain.md",
+                "file": "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -219,41 +219,41 @@
   },
   "active": "070ed694cd97ed87",
   "lastOpenFiles": [
-    "plans/PLAN-016-domain-taxonomy.md.tmp.6560.aeb2bd4aca4f",
-    "specs/SPEC-001-compass-vision-and-architecture.md.tmp.6560.1c2ed29b0270",
-    "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md.tmp.6560.8e797f0a998d",
-    "tmp/research-spec022/cs-classification.md.tmp.6560.6960e736709d",
-    "tmp/research-spec022/cs-classification.md",
-    "tmp/research-spec022/cs-classification.md.tmp.6560.136a441bbfdc",
+    "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md.tmp.6560.cccc2a4d394d",
+    "tmp/subagent-captures/2026-08-30T22-29-09_unknown.md",
     "tmp/capture-check.lock",
-    "tmp/subagent-captures/2026-08-30T21-20-54_unknown.md",
-    "tmp/subagent-captures/2026-08-30T21-18-00_unknown.md",
-    "plans/PLAN-016-domain-taxonomy.md.tmp.6560.a3eb86e985b4",
-    "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md.tmp.6560.2943c3dda43d",
-    "specs/SPEC-022-vault-organized-per-domain.md.tmp.6560.f0bf02d2c822",
-    "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md",
-    "plans/PLAN-016-domain-taxonomy.md",
-    "specs/SPEC-010-universal-hybrid-hierarchy.md",
-    "specs/SPEC-022-vault-organized-per-domain.md",
-    "tmp/subagent-captures/2026-08-30T21-13-39_unknown-1.md",
-    "tmp/subagent-captures/2026-08-30T21-13-39_unknown.md",
-    "plans/PLAN-016-domain-taxonomy.md.tmp.6560.d9b308d847f0",
-    "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md.tmp.6560.f10cda5d9471",
-    "specs/SPEC-021-capture-in-the-humans-words.md",
-    "specs/SPEC-020-compass-updates-itself.md",
-    "specs/SPEC-019-active-holds-only-active-work.md",
-    "SPEC-022-vault-organized-per-domain.md",
-    "specs/SPEC-022-vault-organized-per-domain/index.md",
+    "tmp/subagent-captures/2026-08-30T22-24-36_unknown.md",
+    "tmp/subagent-captures/2026-08-30T22-22-19_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T22-22-19_unknown.md",
+    "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md.tmp.6560.cfec013abefa",
+    "tmp/subagent-captures/2026-08-30T22-19-19_unknown.md",
+    "tmp/worker-logs/OPP-20260830T221553391983Z.log",
+    "tmp/extraction-log-2026-08-30.md.tmp.71028.f1e27bca18f9",
+    "tmp/subagent-captures/2026-08-30T22-15-59_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T22-15-59_unknown.md",
+    "tmp/capture-worker.lock",
+    "tmp/capture-opportunities/OPP-20260830T221553391983Z/opportunity.json",
+    "tmp/capture-opportunities/OPP-20260830T221553391983Z",
+    "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md.tmp.6560.70774f807b1b",
+    "tmp/subagent-captures/2026-08-30T22-14-23_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T22-14-23_unknown.md",
+    "tmp/subagent-captures/2026-08-30T22-11-14_unknown.md",
+    "tmp/subagent-captures/2026-08-30T22-06-42_unknown.md",
+    "tmp/subagent-captures/2026-08-30T22-03-21_unknown.md",
+    "plans/PLAN-016-domain-taxonomy.md.tmp.6560.40680d934a94",
+    "plans/PLAN-016-domain-taxonomy.md.tmp.6560.a8947e0d34df",
+    "tmp/subagent-captures/2026-08-30T21-59-59_unknown.md",
     "research/RESEARCH-taxonomy-for-unambiguous-placement.md",
-    "tmp/subagent-captures/2026-08-30T21-09-39_note.md",
-    "specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md",
-    "tmp/subagent-captures/2026-08-30T19-23-09_unknown.md",
-    "lessons/LESSON-obsidian-bare-link-creates-stray-note.md",
-    "tmp/subagent-captures/2026-08-30T19-19-28_unknown-1.md",
-    "tmp/subagent-captures/2026-08-30T19-19-28_unknown.md",
-    "tmp/subagent-captures/2026-08-30T19-18-45_note.md",
-    "tmp/subagent-captures/2026-08-30T19-17-29_unknown-1.md",
-    "tmp/subagent-captures/2026-08-30T19-17-29_unknown.md",
-    "tmp/subagent-captures/2026-08-30T19-12-33_unknown-1.md"
+    "research/RESEARCH-update-safe-customization.md",
+    "specs/SPEC-022-vault-organized-per-domain.md",
+    "tmp/subagent-captures/2026-08-30T21-54-40_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T21-54-40_unknown.md",
+    "tmp/subagent-captures/2026-08-30T21-53-27_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T21-53-27_unknown.md",
+    "tmp/subagent-captures/2026-08-30T21-48-46_unknown.md",
+    "tmp/subagent-captures/2026-08-30T21-48-40_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T21-48-40_unknown.md",
+    "tmp/subagent-captures/2026-08-30T21-48-19_note.md",
+    "tmp/subagent-captures/2026-08-30T21-47-07_unknown-1.md"
   ]
 }

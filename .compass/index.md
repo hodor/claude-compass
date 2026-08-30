@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 7761 / 5000 tokens (index.md 4175, active.md 381, meta/lessons-catalog.yaml 3205). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 7697 / 5000 tokens (index.md 4111, active.md 381, meta/lessons-catalog.yaml 3205). Run /compass:consolidate before next session. -->
 <!-- WARNING: index.md exceeded hot-path cap. Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
@@ -119,7 +119,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[ADR-019-subagentstop-redelivery-and-teammate-typing]] - live payload observation falsifies the dead-code claim (inline spawns are typed, teammates are not) and reveals SubagentStop double-delivery, now deduped on agent_id
 - [[ADR-020-local-overlays-appended-after-refresh]] - concatenation over splicing: update copies the shipped file pristine then appends the project's local addendum, so no anchor can drift; CLAUDE.md stays untouched and is proven so by test
 - [[ADR-021-index-speaks-in-domains]] - sync stops listing folder children in the root index - the folder line with its child count is the pointer; taxonomize retires into consolidate as its Structure pass; the migration itself is a proposal the human approves
-- [[ADR-022-domains-scope-notes-shallow-when-unsure]] - the classification-science design: 4-6 finder-named domains per type dir, scope notes in every domain index (binding and advisory), one physical home with tags as the cross axis, shallow placement under doubt, corpus-warranted birth and size-triggered splits, sync-maintained first-level Contents with no LLM summaries, type: domain for thin indexes, path-qualified links below domains
+- [[ADR-022-domains-scope-notes-shallow-when-unsure]] - every folder's doc is index.md, type dirs included; generated surfaces emit piped full-path links so they click through in Obsidian
 
 ## Active Work
 
