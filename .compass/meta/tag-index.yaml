@@ -337,6 +337,8 @@ tags:
   - research/RESEARCH-test-quality-empirical.md
   env-var:
   - lessons/LESSON-scratch-vaults-need-compass-dir.md
+  escaping:
+  - lessons/LESSON-windows-heredoc-backslash-escapes.md
   evaluation:
   - lessons/LESSON-test-driven-tasks-dont-discriminate.md
   - research/RESEARCH-evaluation-benchmarks.md
@@ -401,6 +403,8 @@ tags:
   git:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   - lessons/LESSON-subagent-worktrees-fork-stale.md
+  git-bash:
+  - lessons/LESSON-windows-heredoc-backslash-escapes.md
   gitattributes:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   graph:
@@ -425,6 +429,7 @@ tags:
   - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
   - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
   - handoffs/PLAN-006-learning-loop/2026-08-06_06-02-00_phase2-live-hooks-first-firing.md
+  - handoffs/PLAN-016-domain-taxonomy/2026-08-30_16-47-06_wave1-tree-uncommitted.md
   hang:
   - lessons/LESSON-hook-cli-gate-stdin-on-flag.md
   harness:
@@ -443,6 +448,8 @@ tags:
   - lessons/LESSON-spawned-sessions-inherit-project-hooks.md
   - plans/PLAN-010-invisible-capture.md
   - research/RESEARCH-invisible-scaffolding.md
+  heredoc:
+  - lessons/LESSON-windows-heredoc-backslash-escapes.md
   hermes:
   - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
   hermes-agent:
@@ -919,6 +926,8 @@ tags:
   scope-notes:
   - plans/PLAN-016-domain-taxonomy.md
   - research/RESEARCH-taxonomy-for-unambiguous-placement.md
+  scratchpad:
+  - lessons/LESSON-windows-heredoc-backslash-escapes.md
   scrum:
   - research/RESEARCH-rolling-wave-software-practice.md
   seeded-defects:
@@ -1039,6 +1048,7 @@ tags:
   taxonomy:
   - decisions/ADR-021-index-speaks-in-domains.md
   - decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md
+  - handoffs/PLAN-016-domain-taxonomy/2026-08-30_16-47-06_wave1-tree-uncommitted.md
   - lessons/LESSON-hierarchical-placement-tolerate-disagreement.md
   - lessons/LESSON-template-shape-vs-template-precondition.md
   - plans/PLAN-016-domain-taxonomy.md
@@ -1219,6 +1229,8 @@ tags:
   - lessons/LESSON-walkthroughs-in-the-humans-words.md
   wave-sizing:
   - research/RESEARCH-rolling-wave-synthesis.md
+  wave1:
+  - handoffs/PLAN-016-domain-taxonomy/2026-08-30_16-47-06_wave1-tree-uncommitted.md
   wikilinks:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
   - decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md
@@ -1228,6 +1240,7 @@ tags:
   - research/RESEARCH-hybrid-hierarchy-impl.md
   windows:
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
+  - lessons/LESSON-windows-heredoc-backslash-escapes.md
   - research/RESEARCH-test-quality-tooling.md
   workflow:
   - specs/SPEC-001-compass-vision-and-architecture.md

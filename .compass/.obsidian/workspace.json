@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md",
+                "file": "plans/PLAN-016-domain-taxonomy.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "ADR-022-domains-scope-notes-shallow-when-unsure"
+              "title": "PLAN-016-domain-taxonomy"
             }
           },
           {
@@ -128,7 +128,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md",
+                "file": "plans/PLAN-016-domain-taxonomy.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -147,7 +147,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md",
+                "file": "plans/PLAN-016-domain-taxonomy.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
@@ -190,7 +190,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md",
+                "file": "plans/PLAN-016-domain-taxonomy.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -219,41 +219,41 @@
   },
   "active": "070ed694cd97ed87",
   "lastOpenFiles": [
-    "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md.tmp.6560.cccc2a4d394d",
-    "tmp/subagent-captures/2026-08-30T22-29-09_unknown.md",
+    "handoffs/PLAN-016-domain-taxonomy/2026-08-30_16-47-06_wave1-tree-uncommitted.md.tmp.6560.9b876c8e5108",
+    "active.md.tmp.6560.872661d12c07",
+    "plans/PLAN-016-domain-taxonomy.md.tmp.6560.f3d781b5d2e4",
+    "plans/PLAN-016-domain-taxonomy.md.tmp.6560.4f0844ddf2f0",
+    "tmp/worker-logs/OPP-20260830T234845477891Z.log",
+    "tmp/extraction-log-2026-08-30.md.tmp.78024.6c10e2049508",
+    "lessons/LESSON-windows-heredoc-backslash-escapes.md",
+    "lessons/LESSON-windows-heredoc-backslash-escapes.md.tmp.78024.1f38b822d35b",
     "tmp/capture-check.lock",
-    "tmp/subagent-captures/2026-08-30T22-24-36_unknown.md",
-    "tmp/subagent-captures/2026-08-30T22-22-19_unknown-1.md",
-    "tmp/subagent-captures/2026-08-30T22-22-19_unknown.md",
-    "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md.tmp.6560.cfec013abefa",
-    "tmp/subagent-captures/2026-08-30T22-19-19_unknown.md",
-    "tmp/worker-logs/OPP-20260830T221553391983Z.log",
-    "tmp/extraction-log-2026-08-30.md.tmp.71028.f1e27bca18f9",
-    "tmp/subagent-captures/2026-08-30T22-15-59_unknown-1.md",
-    "tmp/subagent-captures/2026-08-30T22-15-59_unknown.md",
+    "tmp/subagent-captures/2026-08-30T23-48-52_unknown.md",
     "tmp/capture-worker.lock",
-    "tmp/capture-opportunities/OPP-20260830T221553391983Z/opportunity.json",
-    "tmp/capture-opportunities/OPP-20260830T221553391983Z",
-    "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md.tmp.6560.70774f807b1b",
-    "tmp/subagent-captures/2026-08-30T22-14-23_unknown-1.md",
-    "tmp/subagent-captures/2026-08-30T22-14-23_unknown.md",
-    "tmp/subagent-captures/2026-08-30T22-11-14_unknown.md",
-    "tmp/subagent-captures/2026-08-30T22-06-42_unknown.md",
-    "tmp/subagent-captures/2026-08-30T22-03-21_unknown.md",
-    "plans/PLAN-016-domain-taxonomy.md.tmp.6560.40680d934a94",
-    "plans/PLAN-016-domain-taxonomy.md.tmp.6560.a8947e0d34df",
-    "tmp/subagent-captures/2026-08-30T21-59-59_unknown.md",
-    "research/RESEARCH-taxonomy-for-unambiguous-placement.md",
-    "research/RESEARCH-update-safe-customization.md",
-    "specs/SPEC-022-vault-organized-per-domain.md",
-    "tmp/subagent-captures/2026-08-30T21-54-40_unknown-1.md",
-    "tmp/subagent-captures/2026-08-30T21-54-40_unknown.md",
-    "tmp/subagent-captures/2026-08-30T21-53-27_unknown-1.md",
-    "tmp/subagent-captures/2026-08-30T21-53-27_unknown.md",
-    "tmp/subagent-captures/2026-08-30T21-48-46_unknown.md",
-    "tmp/subagent-captures/2026-08-30T21-48-40_unknown-1.md",
-    "tmp/subagent-captures/2026-08-30T21-48-40_unknown.md",
-    "tmp/subagent-captures/2026-08-30T21-48-19_note.md",
-    "tmp/subagent-captures/2026-08-30T21-47-07_unknown-1.md"
+    "tmp/capture-opportunities/OPP-20260830T234845477891Z/opportunity.json",
+    "tmp/capture-opportunities/OPP-20260830T234845477891Z",
+    "handoffs/PLAN-016-domain-taxonomy/2026-08-30_16-47-06_wave1-tree-uncommitted.md",
+    "tmp/subagent-captures/2026-08-30T23-21-45_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T23-21-45_unknown.md",
+    "tmp/subagent-captures/2026-08-30T23-20-51_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T23-20-51_unknown.md",
+    "tmp/subagent-captures/2026-08-30T23-20-32_note.md",
+    "tmp/subagent-captures/2026-08-30T23-11-13_unknown.md",
+    "tmp/subagent-captures/2026-08-30T23-04-52_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T23-04-52_unknown.md",
+    "tmp/subagent-captures/2026-08-30T23-04-45_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T23-04-45_unknown.md",
+    "tmp/subagent-captures/2026-08-30T23-03-06_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T23-03-06_unknown.md",
+    "tmp/subagent-captures/2026-08-30T22-41-58_unknown.md",
+    "tmp/subagent-captures/2026-08-30T22-38-06_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T22-38-06_unknown.md",
+    "decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md",
+    "tmp/subagent-captures/2026-08-30T22-36-40_unknown-1.md",
+    "tmp/subagent-captures/2026-08-30T22-36-40_unknown.md",
+    "tmp/subagent-captures/2026-08-30T22-36-16_note.md",
+    "tmp/subagent-captures/2026-08-30T22-29-09_unknown.md",
+    "tmp/subagent-captures/2026-08-30T22-24-36_unknown.md",
+    "tmp/subagent-captures/2026-08-30T22-22-19_unknown-1.md"
   ]
 }

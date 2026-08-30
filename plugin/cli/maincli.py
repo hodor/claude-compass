@@ -25,6 +25,7 @@ COMMAND_SPECS = [
     ("usage", "Report the per-command invocation record: judgment-invoked, hook-fired, and NEVER USED."),
     ("graph", "orphans | hubs [--top N] | impact <name> [--depth N] - link-graph queries computed from the markdown at invocation, every answer naming its edges."),
     ("overlay", "List or re-apply project-local additions from .compass/meta/local/ onto shipped agents, rules, and skills (list-only; --apply to write)."),
+    ("tree", "Render every artifact under every type dir and unit with its summary, indented by depth - the whole vault at a glance, computed at invocation."),
     ("hot-path", "Print the hot-path token count against the cap."),
     ("promote", "Move a flat spec into a folder and rewrite inbound wikilinks (dry-run; --apply to write)."),
     ("demote", "Move a childless folder spec back into a flat file, the inverse of promote (dry-run; --apply to write)."),

@@ -104,7 +104,7 @@ Conversation output is never the record - logs, reports, and vault files are. On
 
 ## Capabilities
 
-Bare `compass` lists every command with a one-liner - check it before assuming a capability is missing. `compass usage` shows which are actually used and which never have been.
+Bare `compass` lists every command with a one-liner - check it before assuming a capability is missing. `compass usage` shows which are actually used and which never have been. `compass tree` renders every artifact with its summary at a glance - the root index shows only the first level, so this is the whole-vault view.
 
 ## Vault State
 

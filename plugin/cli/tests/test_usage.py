@@ -100,16 +100,15 @@ class ReportTests(UsageFixture):
 
 
 class RetirementTests(unittest.TestCase):
-    def test_tree_and_clean_tmp_are_gone_from_dispatch(self):
-        self.assertNotIn("tree", maincli.VALID_COMMANDS)
+    def test_clean_tmp_is_gone_and_tree_is_back(self):
         self.assertNotIn("clean-tmp", maincli.VALID_COMMANDS)
+        self.assertIn("tree", maincli.VALID_COMMANDS)
 
     def test_usage_is_dispatchable(self):
         self.assertIn("usage", maincli.VALID_COMMANDS)
 
-    def test_retired_modules_are_deleted(self):
+    def test_retired_module_is_deleted(self):
         commands_dir = Path(maincli.__file__).parent / "commands"
-        self.assertFalse((commands_dir / "tree.py").exists())
         self.assertFalse((commands_dir / "clean_tmp.py").exists())
 
 
