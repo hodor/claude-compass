@@ -38,6 +38,7 @@ The goal, in his words (2026-08-30): "what we're talking about here for taxonomy
 - **D-04:** Taxonomize applies at spec creation too: "when making a new spec is a good point to reorganize if needed, and at least mark for the next consolidate/taxonomize a hint - by the agent who understands the spec better than others." (Roger, 2026-08-30.)
 - **D-05:** "Each folder should have its own index.md!" (Roger, 2026-08-30.) This revives [[SPEC-005-index-auto-maintained-and-mirrored-per-folder]], on hold since 2026-06-19 - the per-folder index is the view of that folder's first level.
 - **D-06:** The classification-science research (how humans and machines organize topics, placement without ambiguity) "should be the most important one" - it grounds the design; the codebase and design-space axes serve its findings, not the reverse. (Roger, 2026-08-30.)
+- **D-07:** Reorganization moves "need to be suggested to the user, it cannot be something the user has to remember to trigger." (Roger, 2026-08-30, on PLAN-016's hand-run migration wording.) The harness notices the trigger - ceiling breach, pending hints, cap warning - and puts the proposal in front of him; his approval applies it. Nothing waits on human memory.
 - **D-02:** Per-domain organization applies to everything in the vault - "both specs, research, anything else inside Compass" - and recurses: subdomains within domains, "the same way you organize mathematics." (Roger, 2026-08-30.)
 
 ## Non-Goals

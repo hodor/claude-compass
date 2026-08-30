@@ -136,6 +136,7 @@ tags:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   classification:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
+  - lessons/LESSON-hierarchical-placement-tolerate-disagreement.md
   - research/RESEARCH-taxonomy-for-unambiguous-placement.md
   claude-code:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
@@ -189,6 +190,8 @@ tags:
   - research/RESEARCH-gsd-core-improvements-for-compass.md
   concatenation:
   - decisions/ADR-020-local-overlays-appended-after-refresh.md
+  confidence-threshold:
+  - lessons/LESSON-hierarchical-placement-tolerate-disagreement.md
   config:
   - decisions/ADR-003-drop-counter-file-jit-compute.md
   configurable:
@@ -307,6 +310,8 @@ tags:
   - decisions/ADR-020-local-overlays-appended-after-refresh.md
   domains:
   - decisions/ADR-021-index-speaks-in-domains.md
+  - decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md
+  - plans/PLAN-016-domain-taxonomy.md
   - specs/SPEC-022-vault-organized-per-domain/index.md
   drift:
   - specs/SPEC-014-update-safe-customizations.md
@@ -375,6 +380,8 @@ tags:
   - research/RESEARCH-lesson-capture-failure.md
   flow:
   - research/RESEARCH-rolling-wave-flow-theory.md
+  folder-spec:
+  - lessons/LESSON-template-shape-vs-template-precondition.md
   foundational:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   frontier-models:
@@ -439,6 +446,8 @@ tags:
   - research/RESEARCH-hermes-agent-capabilities.md
   - research/RESEARCH-hermes-memory-mechanics.md
   - research/RESEARCH-hermes-vs-compass-fit.md
+  hierarchical-placement:
+  - lessons/LESSON-hierarchical-placement-tolerate-disagreement.md
   hierarchical-specs:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   hierarchy:
@@ -610,6 +619,7 @@ tags:
   - lessons/LESSON-autocrlf-churns-lf-writers.md
   - lessons/LESSON-windows-crlf-breaks-linux-container-scripts.md
   literature-import:
+  - lessons/LESSON-hierarchical-placement-tolerate-disagreement.md
   - lessons/LESSON-human-practice-rationing-assumes-human-scarcity.md
   llm-test-generation:
   - research/RESEARCH-test-quality-literature.md
@@ -645,6 +655,7 @@ tags:
   migration:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
   - plans/PLAN-003-hybrid-hierarchy.md
+  - plans/PLAN-016-domain-taxonomy.md
   - research/RESEARCH-hybrid-hierarchy-impl.md
   - specs/SPEC-010-universal-hybrid-hierarchy.md
   model-policy:
@@ -733,6 +744,8 @@ tags:
   per-agent:
   - specs/SPEC-008-central-model-resolution-table.md
   per-folder-index:
+  - decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md
+  - plans/PLAN-016-domain-taxonomy.md
   - research/RESEARCH-taxonomy-for-unambiguous-placement.md
   permission-rules:
   - lessons/LESSON-hook-if-clause-no-or.md
@@ -899,6 +912,8 @@ tags:
   scientific-method:
   - research/RESEARCH-scientific-method-in-compass.md
   scope-notes:
+  - decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md
+  - plans/PLAN-016-domain-taxonomy.md
   - research/RESEARCH-taxonomy-for-unambiguous-placement.md
   scrum:
   - research/RESEARCH-rolling-wave-software-practice.md
@@ -958,6 +973,7 @@ tags:
   - handoffs/2026-03-12_review-all-plugin-files.md
   spec-writing:
   - decisions/ADR-016-capture-by-extraction.md
+  - lessons/LESSON-template-shape-vs-template-precondition.md
   - plans/PLAN-013-capture-by-extraction.md
   - specs/SPEC-021-capture-in-the-humans-words/index.md
   specs:
@@ -966,6 +982,8 @@ tags:
   - lessons/LESSON-walkthroughs-in-the-humans-words.md
   speculation:
   - research/RESEARCH-cache-theory-for-context-tiers.md
+  split-trigger:
+  - decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md
   stale-base:
   - lessons/LESSON-subagent-worktrees-fork-stale.md
   staleness:
@@ -1004,6 +1022,7 @@ tags:
   - lessons/LESSON-append-only-index-misses-mutations.md
   - plans/PLAN-003-hybrid-hierarchy.md
   - plans/PLAN-011-active-sweep.md
+  - plans/PLAN-016-domain-taxonomy.md
   - specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   synthesis:
   - lessons/LESSON-walkthroughs-in-the-humans-words.md
@@ -1017,6 +1036,10 @@ tags:
   - research/RESEARCH-active-set-prior-art.md
   taxonomy:
   - decisions/ADR-021-index-speaks-in-domains.md
+  - decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md
+  - lessons/LESSON-hierarchical-placement-tolerate-disagreement.md
+  - lessons/LESSON-template-shape-vs-template-precondition.md
+  - plans/PLAN-016-domain-taxonomy.md
   - research/RESEARCH-hierarchical-knowledge-base-design.md
   - research/RESEARCH-taxonomy-for-unambiguous-placement.md
   - specs/SPEC-003-hierarchical-vault-organization.md
@@ -1028,6 +1051,7 @@ tags:
   templates:
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
+  - lessons/LESSON-template-shape-vs-template-precondition.md
   test-checkpoint:
   - decisions/ADR-012-test-checkpoint-py-membership-git-authoritative.md
   test-design:
@@ -1191,10 +1215,13 @@ tags:
   - specs/SPEC-021-capture-in-the-humans-words/index.md
   walkthroughs:
   - lessons/LESSON-walkthroughs-in-the-humans-words.md
+  warrant:
+  - decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md
   wave-sizing:
   - research/RESEARCH-rolling-wave-synthesis.md
   wikilinks:
   - decisions/ADR-006-hybrid-hierarchy-implementation.md
+  - decisions/ADR-022-domains-scope-notes-shallow-when-unsure.md
   - plans/PLAN-003-hybrid-hierarchy.md
   - research/RESEARCH-graph-engineering-for-compass.md
   - research/RESEARCH-hybrid-hierarchy-impl.md

@@ -13,7 +13,7 @@ Triggered by a live failure in another project: a vision session produced seven 
 
 ## Per-domain organization initiative (Roger, 2026-08-30)
 
-- [ ] SPEC-022 full pipeline (Roger: no jumping to code): 3 researchers running - classification science (PRIMARY per D-06), ripple, design-space. Then synthesis, ADR, plan for approval, build with tests. The interim domain proposal in tmp/ is superseded by this pipeline.
+- [ ] [[PLAN-016-domain-taxonomy]] revised through 3-lens review (11 blockers folded in); gates pass (decisions 11 rows, coverage 18/18); AWAITING ROGER'S APPROVAL.
 - [ ] v0.15.0's premature skill/sync edits were reverted; index depth-0 rule stays (shipped); everything further waits on the plan.
 
 ## Next Up
