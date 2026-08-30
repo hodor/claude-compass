@@ -54,7 +54,9 @@ Between questions, read the section back as a single block quote (no acknowledge
 
 When part of an answer belongs to a different spec or a captured note, quote his sentences there verbatim - routing moves his words, it never summarizes them.
 
-If the human states an explicit ruling during the interview (a trade-off resolved, an approach chosen over an alternative), record it as a `- **D-NN:** text` bullet under `## Decisions (made by the human)`, not as prose folded into Problem or Desired Outcome - see the "Decision bullets" convention in the `obsidian` skill. This makes the ruling a checkable claim later plans must cite.
+If the human states an explicit ruling during the interview (a trade-off resolved, an approach chosen over an alternative), record it as a `- **D-NN:** text` bullet under `## Decisions`, not as prose folded into Problem or Desired Outcome - see the "Decision bullets" convention in the `obsidian` skill. This makes the ruling a checkable claim later plans must cite. Decisions consolidate by topic: when a new ruling refines an existing bullet, merge it there rather than minting another number.
+
+Somewhere in the interview, look for the spec's KPI: the measurable number that says this worked (a rate reaching a bar, a cost reaching zero). Brainstorm it with the human rather than inventing it - a short research pass is fine when neither of you knows what is measurable - and record it in Desired Outcome. It guides every agent downstream: the planner's pass bars and the validator's probes come from it. Not every spec has one; skip without ceremony when it does not.
 
 ### 4. Bloat check
 
@@ -89,6 +91,10 @@ updated: YYYY-MM-DD
 ### 6. Update index.md
 
 Edit `.compass/index.md`, add the new spec under `## Specs` with `[[wikilinks]]` and a one-line description. A spec not in `index.md` is invisible to the next session. If the spec was tracked as a task, update `active.md` too.
+
+### 6b. Cheap review pass
+
+Before presenting, spawn a reviewer sub-agent on the cheap model tier with exactly this brief: the draft spec's path, and the Document Writing rules from the pipeline rules (the ornamental test, direct statement, decisions consolidated by topic, a KPI where one exists, resident invariants cited where the work touches them - the Data rule above all). It returns a findings list; apply the edits, don't debate them. This pass exists so nothing falls through the cracks between the rules and the draft - it reviews writing, never substance: the problem and rulings are the human's.
 
 ### 7. Present for approval
 

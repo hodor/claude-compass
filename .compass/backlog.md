@@ -53,6 +53,10 @@ Held under [[PLAN-009-sizing-mechanism]]'s `## Later` region. Promoted into a de
 - [ ] **Convert the `Stop` and `SubagentStop` hooks from `type: agent` to command hooks.** SPEC-004 moved PostToolUse to a command (per-write, ~0 tokens) but left these two as agents. `Stop` (extract-lessons backstop) spawns an agent on EVERY turn-end; `SubagentStop` (capture) spawns one per subagent. Both do mechanical work - a glob check for unprocessed phase-reports, and writing a subagent report verbatim - that belongs in `compass` commands (e.g. `compass stop-check`, `compass capture-subagent`), the same way `compass sync` replaced the PostToolUse agent. This is the biggest remaining ongoing Compass token cost: it fires per-turn, not just on vault writes. Extends [[SPEC-004-mechanical-work-off-the-agent-budget]] / [[ADR-005-compass-cli-for-mechanical-work]]; same `[[LESSON-no-agent-bookkeeping]]` principle.
 - [ ] **Bootstrap/setup should not leave a stale `settings.local.json` tester hook.** Old installs (iwyc-unreal, product-owner) still carry an agent-type "tester-after-builder" SubagentStop hook in `settings.local.json`, redundant with the new capture hook and spawning a full tester agent per builder. Decide: is auto-test-after-builder wanted at all (vs `/compass:build`'s fix loop)? If not, have setup/update remove it; if yes, make it a deliberate, documented opt-in.
 
+## Candidate specs
+
+- [ ] **Surface-or-automate UX (flagged by SPEC-022's Problem).** The root issue behind unused capability: the user will not remember to use functionality unless it is presented or runs automatically. A high-level UX spec would define, for every capability, whether it surfaces as a suggestion, runs automatically, or is callable-only - one policy instead of per-feature judgment.
+
 ## Other
 
 - [ ] Build `/compass` orchestrator skill - single entry point that delegates to agents based on project state
