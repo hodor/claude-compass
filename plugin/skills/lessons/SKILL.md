@@ -37,7 +37,7 @@ lessons:
 ```
 
 Fields:
-- `file` - lesson filename in `.compass/lessons/`
+- `file` - the lesson's bare filename; the file lives anywhere under `.compass/lessons/` (domain subfolders included), so resolve it by glob `.compass/lessons/**/<file>`
 - `status` - `active` or `archived`
 - `category` - `process` or `domain`
 - `area` - from the lesson's frontmatter
@@ -62,7 +62,7 @@ Every run appends a row to `.compass/tmp/retrieval-log.jsonl` recording the quer
 If the catalog does not exist (`compass lessons` exits 1 naming a malformed vault), fall back to a manual crawl:
 
 ```
-Glob: .compass/lessons/*.md
+Glob: .compass/lessons/**/*.md   (skip each folder's own index.md)
 Grep: tags matching current work area
 ```
 
