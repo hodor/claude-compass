@@ -139,6 +139,28 @@ class LessonsIndexSyncTests(unittest.TestCase):
         sync.sync(self.root)
         self.assertNotIn(warning, self.read("index.md"))
 
+    def test_lesson_count_cap_ignores_domain_scope_notes(self):
+        # GitHub #11: a vault grouping its lessons into domains gains one
+        # index.md per domain; those scope notes are not lessons and must
+        # not push the catalog's lesson count over its cap.
+        original = sync.LESSON_COUNT_CAP
+        self.addCleanup(setattr, sync, "LESSON_COUNT_CAP", original)
+        sync.LESSON_COUNT_CAP = 2
+        self.write("lessons/subagents/index.md", domain_index("subagents", "agents"))
+        self.write("lessons/platform/index.md", domain_index("platform", "hosts"))
+        report = sync.sync(self.root)
+        catalog = (self.root / "meta" / "lessons-catalog.yaml").read_text(encoding="utf-8")
+        self.assertNotIn("WARNING: catalog exceeded cap", catalog)
+        self.assertNotIn("lessons-catalog.yaml", report["caps"])
+
+    def test_stale_catalog_cap_warning_clears_once_back_under(self):
+        (self.root / "meta" / "lessons-catalog.yaml").write_text(
+            sync.CATALOG_WARNING + "\nlessons: []\n", encoding="utf-8"
+        )
+        sync.sync(self.root)
+        catalog = (self.root / "meta" / "lessons-catalog.yaml").read_text(encoding="utf-8")
+        self.assertNotIn(sync.CATALOG_WARNING, catalog)
+
     def test_hot_path_counts_lessons_index_not_catalog(self):
         self.assertIn("lessons/index.md", hot_path.HOT_PATH_FILES)
         self.assertNotIn("meta/lessons-catalog.yaml", hot_path.HOT_PATH_FILES)

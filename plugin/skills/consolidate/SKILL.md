@@ -107,12 +107,12 @@ A catalog row pointing to a file that no longer exists signals corruption (nothi
 
 ### 8. The Lessons section of index.md is a pointer
 
-Lessons are indexed by the catalog, which already loads with the hot path; listing them again in `index.md` puts every summary in the hot path twice. Replace whatever the `## Lessons` section holds with the single pointer:
+The lessons surface is `lessons/index.md` (on the hot path; sync regenerates its listing), so listing lessons again in the root `index.md` puts them in the hot path twice. Replace whatever the root `## Lessons` section holds with the single pointer:
 
 ```markdown
 ## Lessons
 
-Indexed in [[lessons-catalog|meta/lessons-catalog.yaml]] (loaded with the hot path); files in `lessons/`, archived ones in `archive/lessons/`.
+See `lessons/index.md` - the grep-first surface sync keeps current; `compass lessons` ranks via `meta/lessons-catalog.yaml`; archived lessons live in `archive/lessons/`.
 ```
 
 Do not touch other sections of `index.md`.
@@ -160,7 +160,7 @@ Glob every flat root artifact in scope: specs, research, decisions, and lessons 
 
 ### S2. Propose domains
 
-Group artifacts that share tags, a title theme, or a dependency neighborhood under a proposed domain, by the atomic rule (SPEC-022 D-09): each level splits by one characteristic only, a folder's name states the value it fixes, and a folder exists only at its second member - never propose a folder that would hold one file (D-10: a spec is a file until its second member). The usual shape is a thin domain (`compass make-domain`, whose `index.md` carries the Class-here scope note); `compass promote` fits only when an existing spec genuinely parents its group's decisions; a genuine ongoing workstream is a unit (`compass make-unit`). Subdomains nest inside domains at any depth. Spawn an agent sub-task for the grouping judgment when the corpus is large - it is heuristic work and benefits from a fresh context.
+Group artifacts that share tags, a title theme, or a dependency neighborhood under a proposed domain, by the atomic rule (SPEC-022 D-09): each level splits by one characteristic only, a folder's name states the value it fixes, and a folder exists only at its second member - never propose a folder that would hold one file (D-10: a spec is a file until its second member). The rule cuts both ways: two members sharing a craft IS full warrant - a pair is a domain, because the folder splits the moment the second value arrives. Shallow-when-unsure governs where one doubtful artifact goes, never whether a genuine pair may form; and a standing ceiling warning is the corpus asking to be grouped - propose the grouping, do not argue the warning down as ignorable. Only an artifact with no sibling in any craft stays flat. The usual shape is a thin domain (`compass make-domain`, whose `index.md` carries the Class-here scope note); `compass promote` fits only when an existing spec genuinely parents its group's decisions; a genuine ongoing workstream is a unit (`compass make-unit`). Subdomains nest inside domains at any depth. Spawn an agent sub-task for the grouping judgment when the corpus is large - it is heuristic work and benefits from a fresh context.
 
 While proposing, also flag tag-vocabulary repairs (synonyms to one canonical form, tags on a single artifact, artifacts with no tags) - the facets are what multi-domain retrieval uses.
 
