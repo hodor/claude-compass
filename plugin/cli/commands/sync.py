@@ -584,18 +584,27 @@ def _check_caps(vault_root, records):
     catalog_path = vault_root / "meta" / "lessons-catalog.yaml"
     if catalog_path.is_file():
         ctext = vaultlib.read_vault_text(catalog_path)
+        # Measure without the warning line itself, so a stale warning can
+        # neither trip the line cap nor keep itself alive at the boundary.
+        stripped_cat = "\n".join(
+            line for line in ctext.split("\n") if line != CATALOG_WARNING
+        )
         lesson_count = sum(
             1 for r in records
-            if r["type_dir"] == "lessons" and r["_data"].get("status") != "archived"
+            if r["type_dir"] == "lessons"
+            and r["kind"] != "folder-index"  # domain scope notes are not lessons
+            and r["_data"].get("status") != "archived"
         )
         over_cat = (
-            len(ctext.splitlines()) > CATALOG_LINE_CAP
-            or len(ctext.encode("utf-8")) > CATALOG_BYTE_CAP
+            len(stripped_cat.splitlines()) > CATALOG_LINE_CAP
+            or len(stripped_cat.encode("utf-8")) > CATALOG_BYTE_CAP
             or lesson_count > LESSON_COUNT_CAP
         )
         if over_cat and CATALOG_WARNING not in ctext:
             vaultlib.write_text_lf(catalog_path, CATALOG_WARNING + "\n" + ctext)
             warnings.append("lessons-catalog.yaml")
+        elif not over_cat and CATALOG_WARNING in ctext:
+            vaultlib.write_text_lf(catalog_path, stripped_cat)
 
     if _check_hot_path_cap(vault_root, index_path):
         warnings.append("hot path")
