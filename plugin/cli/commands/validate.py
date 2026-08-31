@@ -47,12 +47,13 @@ EXPECTED_FIELDS = {
 }
 
 # Direct-children ceiling for taxonomy-governed folders (the type dirs
-# specs/ and research/, and every domain folder inside them). Past it,
-# validate suggests a split; the number is a tunable default, and exempt
-# dirs (lessons/ is catalog-indexed; plans/, decisions/, handoffs/, prs/
-# are ungoverned) never warn so the suggestion stays meaningful.
+# specs/, research/, decisions/, and lessons/, and every domain folder
+# inside them - lessons and ADRs taxonomize like everything else, SPEC-022
+# D-12). Past it, validate suggests a split; the number is a tunable
+# default, and exempt dirs (plans/ mirror their specs; handoffs/ and prs/
+# are chronological) never warn so the suggestion stays meaningful.
 FOLDER_CEILING = 12
-CEILING_GOVERNED_DIRS = ("specs", "research")
+CEILING_GOVERNED_DIRS = ("specs", "research", "decisions", "lessons")
 
 SPECIAL_TARGETS = {"active", "backlog", "index", "vision"}
 # Top-level vault files whose own wikilinks are validated. A stale index entry

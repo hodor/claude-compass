@@ -20,7 +20,7 @@ Read `.compass/index.md` and `.compass/meta/lessons-catalog.yaml`, and run `comp
 - `# WARNING: catalog exceeded cap.` (in the catalog)
 - a `folder_over_ceiling` warning from validate
 - a `taxonomy_hints: N pending` warning from validate
-- the human explicitly asking for a grouping proposal
+- the human asking for a grouping proposal - in the invocation's arguments, in the conversation, or by invoking /compass:consolidate again right after a no-trigger exit. The ask IS the trigger: run the Structure pass; never answer an ask with another confirmation question.
 
 If none present, exit: `no consolidation needed (no trigger standing)`. A trigger is the contract; do not run unprompted.
 
