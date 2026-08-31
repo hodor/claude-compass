@@ -150,3 +150,6 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 
 ### Per-domain organization initiative
 - [x] TASK-117: useless-token baseline
+
+### Per-domain organization initiative
+- [x] TASK-113: proposal by the atomic rule + Wikipedia score (diff approved 2026-08-30)
