@@ -5,7 +5,7 @@ usage:
     count: 18
     last: 2026-08-30
   capture-check:
-    count: 105
+    count: 109
     last: 2026-08-30
   capture-close:
     count: 12
@@ -14,7 +14,7 @@ usage:
     count: 6
     last: 2026-08-30
   capture-signal:
-    count: 111
+    count: 116
     last: 2026-08-30
   capture-worker:
     count: 29
@@ -50,7 +50,7 @@ usage:
     count: 27
     last: 2026-08-30
   sync:
-    count: 303
+    count: 312
     last: 2026-08-30
   tree:
     count: 2
