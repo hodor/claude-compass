@@ -2,16 +2,16 @@
 since: 2026-08-30
 usage:
   apply-models:
-    count: 19
+    count: 20
     last: 2026-08-30
   capture-check:
-    count: 116
+    count: 118
     last: 2026-08-30
   capture-close:
-    count: 12
+    count: 13
     last: 2026-08-30
   capture-note:
-    count: 7
+    count: 8
     last: 2026-08-30
   capture-signal:
     count: 121
@@ -27,6 +27,9 @@ usage:
     last: 2026-08-30
   demote:
     count: 4
+    last: 2026-08-30
+  doctor:
+    count: 1
     last: 2026-08-30
   hot-path:
     count: 3
@@ -47,14 +50,14 @@ usage:
     count: 1
     last: 2026-08-30
   self-update:
-    count: 29
+    count: 30
     last: 2026-08-30
   sync:
-    count: 325
+    count: 335
     last: 2026-08-30
   tree:
     count: 3
     last: 2026-08-30
   validate:
-    count: 19
+    count: 20
     last: 2026-08-30

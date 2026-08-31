@@ -147,13 +147,13 @@ The lessons half above shrinks textual redundancy. This half shrinks structural 
 
 ### S1. Inventory
 
-First collect the hints: grep `taxonomy_hint:` across `specs/` and `research/`. Each is a placement judgment recorded at creation by the agent that understood the artifact best, and together they are this pass's work queue. Acting on one clears it - the move happens, or the placement is confirmed fine - and the frontmatter line is removed either way.
+First collect the hints: grep `taxonomy_hint:` across `specs/`, `research/`, `decisions/`, and `lessons/`. Each is a placement judgment recorded at creation by the agent that understood the artifact best, and together they are this pass's work queue. Acting on one clears it - the move happens, or the placement is confirmed fine - and the frontmatter line is removed either way.
 
-Glob every flat root artifact in scope (specs and research first; plans mirror their specs). Read frontmatter (title, area, tags, summary, status) and record outbound wikilinks. `compass graph hubs` and `compass graph impact` give the link structure cheaply.
+Glob every flat root artifact in scope: specs, research, decisions, and lessons all taxonomize the same way (SPEC-022 D-12) - ADRs usually reuse the spec domains since every ruling resolves a fork inside one; lessons split by the craft each teaches; plans mirror their specs. Read frontmatter (title, area, tags, summary, status) and record outbound wikilinks. `compass graph hubs` and `compass graph impact` give the link structure cheaply.
 
 ### S2. Propose domains
 
-Group artifacts that share tags, a title theme, or a dependency neighborhood under a proposed domain: related flat specs fold as children into a folder spec (`compass promote` on the natural parent, or a new parent folder); research docs fold into a folder named for the domain; a domain that is a genuine ongoing workstream is a unit (`compass make-unit`). Subdomains nest inside domains at any depth. Spawn an agent sub-task for the grouping judgment when the corpus is large - it is heuristic work and benefits from a fresh context.
+Group artifacts that share tags, a title theme, or a dependency neighborhood under a proposed domain, by the atomic rule (SPEC-022 D-09): each level splits by one characteristic only, a folder's name states the value it fixes, and a folder exists only at its second member - never propose a folder that would hold one file (D-10: a spec is a file until its second member). The usual shape is a thin domain (`compass make-domain`, whose `index.md` carries the Class-here scope note); `compass promote` fits only when an existing spec genuinely parents its group's decisions; a genuine ongoing workstream is a unit (`compass make-unit`). Subdomains nest inside domains at any depth. Spawn an agent sub-task for the grouping judgment when the corpus is large - it is heuristic work and benefits from a fresh context.
 
 While proposing, also flag tag-vocabulary repairs (synonyms to one canonical form, tags on a single artifact, artifacts with no tags) - the facets are what multi-domain retrieval uses.
 
@@ -163,7 +163,7 @@ One block per proposed domain: the folder to create, the files that move into it
 
 ### S4. Apply after approval
 
-Execute with the existing commands - `compass promote --apply`, `compass make-unit --apply`, `git mv` into folder specs - so every shape change lands in the sizing log where those commands write it. Wikilinks keep resolving (bare stems stay unique or become path-qualified per the linking rule); run `compass validate` after each domain and stop on any broken link. Nothing is deleted, ever: grouping moves files.
+Execute with the existing commands - `compass make-domain --apply` (with `--reason` and `--class-here`), `compass promote --apply`, `compass make-unit --apply`, `git mv` into the created folders - so every shape change lands in the sizing log where those commands write it. Wikilinks keep resolving (bare stems stay unique or become path-qualified per the linking rule); run `compass validate` after each domain and stop on any broken link. Nothing is deleted, ever: grouping moves files.
 
 ### S5. Report
 
