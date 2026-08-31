@@ -86,8 +86,7 @@ See [[backlog]].
 - [[2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped]] - two initiatives shipped end to end and distributed to 50 vaults; hot-path tiering (ADR-010) is the next plan
 - [[2026-08-29_20-30-00_five-releases-queue-at-human-gates]] - five specs shipped end to end (active sweep, self-update, capture-by-extraction, capability usage, graph queries), fleet self-updating; next: SPEC-006 research session, SPEC-014 promotion ruling, SubagentStop payload observation
   - [[handoffs/PLAN-016-domain-taxonomy/2026-08-30_16-47-06_wave1-tree-uncommitted]] - PLAN-016 Wave 1 committed through TASK-118; TASK-116 (compass tree) sits on disk with its tests, suite unrun, uncommitted; Wave 2 starts at the useless-token baseline
-  - [[handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated]] - PLAN-016 complete through TASK-115: vault migrated into 10 domains, drills passed (finder 9/10, filer 4/5 unanimous, probes -30% useless), v0.16.0 fleet-verified; open: TASK-120 (lessons+ADRs taxonomize, his gate), TASK-119 (prove the measure), consolidate lessons pass for the cap
-  - [[handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated]] - PLAN-016 complete through TASK-115: vault migrated into 10 domains, drills passed (finder 9/10, filer 4/5 unanimous, probes -30% useless), v0.16.0 fleet-verified; open: TASK-120 (lessons+ADRs taxonomize, his gate), TASK-119 (prove the measure), consolidate lessons pass for the cap
+  - [[handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated]] - PLAN-016 complete: vault migrated into 20 domains across specs/research/decisions/lessons, drills passed (finder 9/10, filer 4/5 unanimous, probes -30% useless), v0.16.1 fleet-verified; open: TASK-119 (prove the measure), D-13 grep-first follow-up, consolidate lessons pass for the cap
 
 ## Lessons
 
