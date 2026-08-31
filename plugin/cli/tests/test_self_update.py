@@ -228,6 +228,21 @@ class RemoteUpdateTests(SelfUpdateFixture):
             (self.project / ".claude" / "skills" / "my-own" / "SKILL.md").is_file()
         )
 
+    def test_commands_copied_and_tree_skill_retired(self):
+        commands_src = self.external_src / "templates" / "commands"
+        commands_src.mkdir(parents=True, exist_ok=True)
+        (commands_src / "tree.md").write_text("run it", encoding="utf-8")
+        (self.project / ".claude" / "skills" / "tree").mkdir(parents=True)
+        self.fake_remote()
+        self.perform()
+        self.assertEqual(
+            (self.project / ".claude" / "commands" / "tree.md").read_text(
+                encoding="utf-8"
+            ),
+            "run it",
+        )
+        self.assertFalse((self.project / ".claude" / "skills" / "tree").exists())
+
     def test_bad_clone_leaves_install_untouched(self):
         self_update._ls_remote = lambda repo, timeout=5: "abc123"
 
