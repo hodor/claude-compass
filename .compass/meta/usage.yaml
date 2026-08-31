@@ -5,16 +5,16 @@ usage:
     count: 18
     last: 2026-08-30
   capture-check:
-    count: 109
+    count: 115
     last: 2026-08-30
   capture-close:
     count: 12
     last: 2026-08-30
   capture-note:
-    count: 6
+    count: 7
     last: 2026-08-30
   capture-signal:
-    count: 116
+    count: 121
     last: 2026-08-30
   capture-worker:
     count: 29
@@ -50,10 +50,10 @@ usage:
     count: 27
     last: 2026-08-30
   sync:
-    count: 312
+    count: 321
     last: 2026-08-30
   tree:
-    count: 2
+    count: 3
     last: 2026-08-30
   validate:
     count: 19

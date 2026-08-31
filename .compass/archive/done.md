@@ -168,3 +168,6 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 
 ### Per-domain organization initiative
 - [x] TASK-121: lessons load like everything else (D-14) - hot path 3,332/5,000, under cap for the first time
+
+### Per-domain organization initiative
+- [x] TASK-119: measurement empirically proven (runs 2-3: 12/12 recall, 0 hallucination, 0.0000 token error); D-11 binding active

@@ -74,7 +74,7 @@ This wave tests one hypothesis: domains plus scope notes plus hints let a filer 
 - [x] TASK-121 (applied 2026-08-30, v0.17.0: hot path 7,777 at session start -> 3,332, under the 5,000 cap for the first time; suite 826 green; ADR-010 stamped amended_by D-14): lessons load like everything else (SPEC-022 D-14) - the hot path carries `lessons/index.md` (high level) instead of the whole catalog; each `lessons/<domain>/index.md` lists its members with summaries, regenerated mechanically by sync from lesson frontmatter (never hand-maintained); the catalog file stays as `compass lessons`' machine index off the hot path; session-start rules, CLAUDE.md contract, methodology and lessons skills point at the index hierarchy (grep the main index, descend) - complexity: M, after 120, files: [plugin/cli/commands/sync.py, plugin/cli/vaultlib.py, plugin/cli/tests/test_sync.py, plugin/templates/rules/session-start.md, plugin/skills/methodology/SKILL.md, plugin/skills/lessons/SKILL.md, CLAUDE.md]
   - Automated (red-first): sync writes each lessons domain index's listing from frontmatter and refreshes it on change; the hot-path cap counts lessons/index.md and not the catalog; catalog rebuild unchanged; full suite green.
   - Manual: hot-path warning drops below cap on this vault; `compass lessons` still ranks; read lessons/index.md as the thing an agent greps first.
-- [ ] TASK-119: taxonomy optimized by measured efficiency (SPEC-022 D-11) - "optimize our taxonomy/categorization by measuring against the unrelated token consumption of subagents"; first "ensure our measurement is 100% accurate" and "figure out ways to empirically prove that it is"; after that "the strategy we use to organize will be 100% dependent on the efficiency of it" - complexity: L, after 115
+- [x] TASK-119 (proven 2026-08-30, runs 2-3: recall 12/12, hallucination 0, token-share error 0.0000 replicated; D-11's binding is active - every organization move now justifies itself with the measure): taxonomy optimized by measured efficiency (SPEC-022 D-11) - "optimize our taxonomy/categorization by measuring against the unrelated token consumption of subagents"; first "ensure our measurement is 100% accurate" and "figure out ways to empirically prove that it is"; after that "the strategy we use to organize will be 100% dependent on the efficiency of it" - complexity: L, after 115
   - Automated: an accuracy validation of the useless-token measure runs against constructed ground truth (probes whose truly-relevant token set is known by construction); accuracy numbers recorded in this plan before any strategy binds to the measure.
   - Accuracy is established empirically, never by ruling (the human, 2026-08-30: "that's not something for me to rule that's something to be empirically proven"): the measure passes its pre-registered bars on leak-proof constructed ground truth, replicated on a fresh fixture, with no author-judged corrections admissible.
 
@@ -169,9 +169,18 @@ All pre-registered bars pass with no correction applied. Run 2 also explains run
 
 Replication status: recall and hallucination bars are replicated across both fixtures (11 graders); the token-share bar has one clean measurement, so run 3 repeats it on a third fixture with fresh plants and a fresh negative diff before the measure is declared proven.
 
-### Run 3 (replication fixture)
+### Run 3 (replication fixture, recorded 2026-08-30)
 
-(recorded when grading completes)
+Fresh plants (12, all index.md), fresh negative diff (CSV parser), same checker-proven exhaustive truth: 386 of 8,507 tokens truly used (4.5%).
+
+| Grader | Recall | False positives | Token-share error |
+|---|---|---|---|
+| P1, P2, P3 | 12/12 each, identical line sets | 0 | **0.0000** each |
+| N1 | - | 0 marks | 0 |
+
+### Verdict
+
+The measure is empirically proven at the pre-registered bars, replicated across two leak-proof fixtures with no correction of any kind: recall 59/60 planted lines over three runs, hallucination 0 across 6 negative graders and 3 unrelated diffs, token-share exact wherever the truth was exhaustive by construction. Run 1's apparent overcount was demonstrated to be fixture leakage. Caveat that stands: accuracy is proven for output-restatement grading on documents of this kind; D-11's strategy binding is now active - organization moves justify themselves with this measure. (The run-3 fixture was rebuilt deterministically after the session scratchpad wiped mid-run; every number above was scored from reconstructed identical inputs.)
 
 ## Verification gates
 
