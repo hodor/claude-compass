@@ -1,7 +1,8 @@
 """`compass sync` - regenerate derived vault state from disk.
 
-Reproduces the mechanical half of the former index-sync skill: append missing
-entries to the root index (append-only, human lines preserved), append missing
+Reproduces the mechanical half of the former index-sync skill: heal the root
+index in both directions (append missing entries, prune lines that relocation
+made stale - never a line whose text exists nowhere else), append missing
 lesson rows to the catalog (aggregating unit `lessons/` dirs), fully regenerate
 the tag index, check hot-path caps, and prune old extraction logs.
 
@@ -149,17 +150,120 @@ def _child_count(folder_record, records):
     )
 
 
+def _covered_by_folder_line(record):
+    """True when an ancestor folder between this record and its type-dir
+    root carries an `index.md` - the folder artifact whose own entry line,
+    with its child count, is the root index's pointer to this record's
+    whole subtree (ADR-021 D-01). Checks every ancestor, so a doc inside a
+    plain grouping subfolder of a listed domain counts as covered too."""
+    parts = record["rel"].split("/")
+    base = record["path"].parents[len(parts) - 1]
+    folder = record["path"].parent
+    if record["kind"] == "folder-index":
+        folder = folder.parent
+    while folder != base:
+        if (folder / "index.md").is_file():
+            return True
+        folder = folder.parent
+    return False
+
+
+# An index entry line: bullet, one wikilink, optional folder child count,
+# optionally a dash-separated description (hand-authored lines use plain,
+# em, or en dashes). Only lines of this shape are ever prune candidates.
+ENTRY_PATTERN = re.compile(
+    r"^\s*-\s+\[\[[^\]]+\]\]\s*(?:\(folder, \d+ children\))?"
+    r"\s*(?:[-—–]\s+(?P<desc>.*\S))?\s*$"
+)
+
+
+def _text_preserved(desc, record):
+    """A dropped line must take no text with it (the Data rule): the line
+    carries no description, or one the artifact's own `summary:` or
+    `title:` already holds."""
+    if desc is None:
+        return True
+    data = record["_data"] or {}
+    return desc in (data.get("summary"), data.get("title"))
+
+
+def _drop_reason(line, infos, covered, listed, section_paths, indexed_paths):
+    """Why this section line should be pruned, or None to keep it.
+
+    Only a single-link entry line resolving to exactly one file can drop,
+    and only when `_text_preserved` proves the prune loses nothing:
+    `covered` - a listed folder's line now points at the artifact's subtree;
+    `duplicate` - this section already indexed the artifact on an earlier
+    line; `mislocated` - the artifact is listed, but its home is another
+    section, which holds or will receive its entry."""
+    match = ENTRY_PATTERN.match(line)
+    if not match or len(infos) != 1:
+        return None
+    resolved = infos[0][3]
+    if len(resolved) != 1:
+        return None
+    path = resolved[0]
+    desc = match.group("desc")
+    record = covered.get(path)
+    if record is not None and _text_preserved(desc, record):
+        return "covered"
+    record = listed.get(path)
+    if record is not None and _text_preserved(desc, record):
+        if path in indexed_paths:
+            return "duplicate"
+        if path not in section_paths:
+            return "mislocated"
+    return None
+
+
+def _merge_duplicate_sections(lines):
+    """Fold repeated identical `## ` headings into the first occurrence:
+    each later body appends to the first section and the later heading
+    goes. Returns (lines, merged_count)."""
+    spans = []
+    for i, line in enumerate(lines):
+        if line.startswith("## "):
+            if spans:
+                spans[-1][1] = i
+            spans.append([i, len(lines), line.strip()])
+    first_end, relocate, remove = {}, {}, set()
+    merged = 0
+    for start, end, text in spans:
+        if text in first_end:
+            relocate.setdefault(first_end[text], []).extend(
+                l for l in lines[start + 1:end] if l.strip()
+            )
+            remove.update(range(start, end))
+            merged += 1
+        else:
+            first_end[text] = end
+    if not merged:
+        return lines, 0
+    out = []
+    for i, line in enumerate(lines):
+        if i in relocate:
+            out.extend(relocate[i])
+        if i in remove:
+            continue
+        out.append(line)
+    return out, merged
+
+
 def _sync_index(vault_root, records):
-    """Append missing entries: one section per root type dir, one section per
-    unit titled from the unit's `index.md`. Entry lines are append-only:
-    existing lines, including human-authored descriptions, are never
-    removed. An artifact counts as already indexed when any existing
-    wikilink in its section resolves to the artifact's file. A line linking
-    a loose nested doc by its type-dir-omitted name is recognized as the
-    same artifact and rewritten in place to the current vault-relative form
+    """Heal the root index in both directions. Additions: one section per
+    root type dir, one section per unit titled from the unit's `index.md`;
+    an artifact counts as already indexed when any existing wikilink in its
+    section resolves to the artifact's file. Removals: an entry line whose
+    artifact a listed folder now covers, a duplicate of an earlier entry,
+    and a repeated section heading all go - but only when the line's
+    description text survives in the artifact itself (`_text_preserved`),
+    so a prune can never destroy information. A line linking a loose
+    nested doc by its type-dir-omitted name is recognized as the same
+    artifact and rewritten in place to the current vault-relative form
     (see the per-section loop below), so it resolves on this and every
     later run. A vault with no `index.md` yet gets the same minimal
-    skeleton `/compass:setup` writes."""
+    skeleton `/compass:setup` writes. Returns
+    (added_per_section, pruned_count, merged_heading_count)."""
     index_path = vault_root / "index.md"
     if index_path.is_file():
         lines = index_path.read_text(encoding="utf-8").split("\n")
@@ -168,12 +272,15 @@ def _sync_index(vault_root, records):
         today = datetime.date.today().isoformat()
         lines = INDEX_SKELETON.format(date=today).split("\n")
         existed = False
+    lines, sections_merged = _merge_duplicate_sections(lines)
     resolve = vaultlib.resolvable_names_map(vault_root)
     added = {}
     rewrites = 0
+    pruned = 0
 
     root_by_dir = {}
     unit_recs = {}
+    covered = {}
     for record in records:
         if record["_data"].get("status") == "archived":
             continue
@@ -186,17 +293,20 @@ def _sync_index(vault_root, records):
         # artifact's line, with its child count, is the pointer to its whole
         # subtree. Children of a folder artifact live inside it and resolve
         # by wikilink; listing them here would price every domain member
-        # back onto the hot path. A loose nested doc (plain grouping
-        # subfolder, no index.md above it) has no folder line pointing at
-        # it, so it stays listed.
-        if record["depth"] > 0 and not vaultlib.is_loose_nested(
-            record["path"], record["kind"]
-        ):
+        # back onto the hot path. A loose nested doc with no listed folder
+        # above it has no line pointing at it, so it stays listed.
+        if record["depth"] > 0 and _covered_by_folder_line(record):
+            covered[_rel_path(vault_root, record)] = record
             continue
         if record["unit"] is None:
             root_by_dir.setdefault(record["type_dir"], []).append(record)
         else:
             unit_recs.setdefault(record["unit"], []).append(record)
+    listed = {
+        _rel_path(vault_root, r): r
+        for recs in list(root_by_dir.values()) + list(unit_recs.values())
+        for r in recs
+    }
 
     sections = [
         (type_dir, section_for(type_dir), sorted(recs, key=lambda r: r["rel"]))
@@ -237,14 +347,23 @@ def _sync_index(vault_root, records):
         folder_by_path = {
             _rel_path(vault_root, r): r for r in recs if r["kind"] == "folder-index"
         }
+        section_paths = {_rel_path(vault_root, r) for r in recs}
         indexed_paths = set()
         section_lines = []
         for line in lines[start + 1:end]:
-            updated = line
+            infos = []
             for raw in WIKILINK.findall(line):
                 split_at = next((i for i, c in enumerate(raw) if c in "#|"), len(raw))
                 target = raw[:split_at].strip()
-                resolved = vaultlib.resolve_link(resolve, target)
+                infos.append(
+                    (raw, split_at, target, vaultlib.resolve_link(resolve, target))
+                )
+            if _drop_reason(line, infos, covered, listed, section_paths,
+                            indexed_paths):
+                pruned += 1
+                continue
+            updated = line
+            for raw, split_at, target, resolved in infos:
                 if resolved:
                     indexed_paths.update(resolved)
                     if len(resolved) == 1 and "(folder," in updated:
@@ -272,6 +391,9 @@ def _sync_index(vault_root, records):
                     rewrites += 1
             section_lines.append(updated)
         lines[start + 1:end] = section_lines
+        # Pruned lines shrank the section; the insertion point below must
+        # track the new end or it lands past the next heading.
+        end = start + 1 + len(section_lines)
 
         missing = [r for r in recs if _rel_path(vault_root, r) not in indexed_paths]
         if not missing:
@@ -284,9 +406,9 @@ def _sync_index(vault_root, records):
         lines[insert_at:insert_at] = new_lines
         added[key] = len(new_lines)
 
-    if added or rewrites or not existed:
+    if added or rewrites or pruned or sections_merged or not existed:
         vaultlib.write_text_lf(index_path, "\n".join(lines))
-    return added
+    return added, pruned, sections_merged
 
 
 def _catalog_row(filename, data):
@@ -693,13 +815,15 @@ def sync(vault_root):
     active_swept = sweep.sweep_active(vault_root, apply=True)
     records = vaultlib.scan_artifacts(vault_root)
     _load_data(records)
-    index_added = _sync_index(vault_root, records)
+    index_added, index_pruned, index_sections_merged = _sync_index(vault_root, records)
     catalog_added, catalog_collisions, catalog_duplicates = _sync_catalog(vault_root, records)
     lessons_indexes = _sync_lessons_indexes(vault_root, records)
     logs_deleted, capture_log_pruned = _clean_logs(vault_root)
     return {
         "active_swept": active_swept,
         "index_added": index_added,
+        "index_pruned": index_pruned,
+        "index_sections_merged": index_sections_merged,
         "catalog_added": catalog_added,
         "catalog_collisions": catalog_collisions,
         "catalog_duplicates_removed": catalog_duplicates,
@@ -721,6 +845,12 @@ def format_report(report):
         )
     for atype, count in report["index_added"].items():
         parts.append(f"index: +{count} {atype}")
+    if report.get("index_pruned"):
+        parts.append(f"index: -{report['index_pruned']} stale/duplicate line(s)")
+    if report.get("index_sections_merged"):
+        parts.append(
+            f"index: merged {report['index_sections_merged']} duplicate heading(s)"
+        )
     if report["catalog_added"]:
         parts.append(f"catalog rows added: {report['catalog_added']}")
     for collision in report["catalog_collisions"]:

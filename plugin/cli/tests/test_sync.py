@@ -506,6 +506,106 @@ class ResolutionMatchingTests(SyncFixture):
         self.assertNotIn("[[SPEC-004-pack/SPEC-001-inner]]", text)
 
 
+def spec_with_summary(name, summary):
+    return (
+        f"---\ntitle: {name}\ntype: spec\nstatus: approved\narea: w\ntags: [x]\n"
+        f'summary: "{summary}"\ncreated: 2026-06-14\nupdated: 2026-06-14\n---\n\nbody\n'
+    )
+
+
+class IndexPruneTests(SyncFixture):
+    """sync heals relocations, not just additions (issues #14 and #17): a
+    line whose artifact a folder pointer now covers is pruned, duplicates
+    collapse, duplicate headings merge - and nothing prunes while the line's
+    description text lives nowhere else (the Data rule)."""
+
+    def test_relocated_entry_pruned_once_folder_covers_it(self):
+        self.write("specs/net/index.md", folder_spec("net", "network topics"))
+        self.write("specs/net/SPEC-002-new.md",
+                   spec_with_summary("New", "summary of New"))
+        seeded = INDEX_TEMPLATE.replace(
+            "## Plans", "- [[SPEC-002-new]] - summary of New\n\n## Plans"
+        )
+        (self.root / "index.md").write_text(seeded, encoding="utf-8")
+        sync_cmd.sync(self.root)
+        text = self.index_text()
+        self.assertNotIn("[[SPEC-002-new]]", text)
+        self.assertIn("[[specs/net/index|net]]", text)
+
+    def test_machine_title_line_of_summaryless_artifact_pruned(self):
+        # sync's own lines for a summary-less artifact carry the title; the
+        # title lives in the artifact, so pruning destroys nothing.
+        self.write("specs/net/index.md", folder_spec("net", "network topics"))
+        self.write("specs/net/SPEC-002-new.md", spec("New"))
+        seeded = INDEX_TEMPLATE.replace(
+            "## Plans", "- [[SPEC-002-new]] - New\n\n## Plans"
+        )
+        (self.root / "index.md").write_text(seeded, encoding="utf-8")
+        sync_cmd.sync(self.root)
+        self.assertNotIn("[[SPEC-002-new]]", self.index_text())
+
+    def test_hand_description_of_relocated_entry_survives(self):
+        # The hand-written description exists nowhere else; the Data rule
+        # keeps the line until --lift-summaries moves the text into the
+        # artifact.
+        self.write("specs/net/index.md", folder_spec("net", "network topics"))
+        self.write("specs/net/SPEC-002-new.md", spec("New"))
+        seeded = INDEX_TEMPLATE.replace(
+            "## Plans", "- [[SPEC-002-new]] - hand-written, only copy\n\n## Plans"
+        )
+        (self.root / "index.md").write_text(seeded, encoding="utf-8")
+        sync_cmd.sync(self.root)
+        self.assertIn("hand-written, only copy", self.index_text())
+
+    def test_duplicate_lines_collapse_to_one(self):
+        self.write("specs/SPEC-002-new.md",
+                   spec_with_summary("New", "summary of New"))
+        seeded = INDEX_TEMPLATE.replace(
+            "## Plans",
+            "- [[SPEC-002-new]] - summary of New\n"
+            "- [[SPEC-002-new]] - summary of New\n\n## Plans",
+        )
+        (self.root / "index.md").write_text(seeded, encoding="utf-8")
+        sync_cmd.sync(self.root)
+        self.assertEqual(self.index_text().count("[[SPEC-002-new]]"), 1)
+
+    def test_duplicate_section_headings_merge(self):
+        self.write("specs/SPEC-002-new.md",
+                   spec_with_summary("New", "summary of New"))
+        seeded = INDEX_TEMPLATE + (
+            "\n## Specs\n\n- [[SPEC-002-new]] - summary of New\n"
+        )
+        (self.root / "index.md").write_text(seeded, encoding="utf-8")
+        sync_cmd.sync(self.root)
+        text = self.index_text()
+        self.assertEqual(text.count("## Specs"), 1)
+        self.assertEqual(text.count("[[SPEC-001-existing]]"), 1)
+        self.assertEqual(text.count("[[SPEC-002-new]]"), 1)
+
+    def test_loose_nested_doc_under_domain_not_listed(self):
+        # A grouping subfolder inside a domain has no index.md of its own,
+        # but the domain's folder line already points at the whole subtree
+        # (ADR-021 D-01): the doc must not surface in the root index.
+        self.write("specs/net/index.md", folder_spec("net", "network topics"))
+        self.write("specs/net/notes/DOC-scratch.md",
+                   spec_with_summary("Scratch", "scratch notes"))
+        sync_cmd.sync(self.root)
+        self.assertNotIn("DOC-scratch", self.index_text())
+
+    def test_second_sync_after_prune_is_stable(self):
+        self.write("specs/net/index.md", folder_spec("net", "network topics"))
+        self.write("specs/net/SPEC-002-new.md",
+                   spec_with_summary("New", "summary of New"))
+        seeded = INDEX_TEMPLATE.replace(
+            "## Plans", "- [[SPEC-002-new]] - summary of New\n\n## Plans"
+        )
+        (self.root / "index.md").write_text(seeded, encoding="utf-8")
+        sync_cmd.sync(self.root)
+        first = self.index_text()
+        sync_cmd.sync(self.root)
+        self.assertEqual(self.index_text(), first)
+
+
 class NestedDocWikilinkTests(SyncFixture):
     """A root-level doc nested under a subfolder with no folder-spec
     `index.md` sibling (issue #1): sync and validate must resolve the same
