@@ -14,7 +14,6 @@ Triggered by a live failure in another project: a vision session produced seven 
 ## Per-domain organization initiative
 
 - [ ] D-13 follow-up: grep across all indexes made the most obvious first move for agents (capability + rule nudge; folds into TASK-119's strategy work)
-- [ ] TASK-119: measurement proven accurate, then taxonomy optimized by measured efficiency (SPEC-022 D-11)
 - [ ] v0.15.0's premature skill/sync edits were reverted; index depth-0 rule stays (shipped); everything further waits on the plan.
 
 ## Next Up
