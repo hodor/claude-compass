@@ -90,6 +90,20 @@ Registered before any grading ran.
 
 Mean useless share: **89.7%**. Per-doc pattern, stable across all five tasks: `index.md` loads ~4,150 tokens and at most 3 lines (38-174 tokens) are ever used; `lessons-catalog.yaml` loads 3,205 with 0-127 used; the plan itself is the most-used document (207-1,904). TASK-114's re-measure passes when the mean useless share on equivalent tasks drops below this baseline.
 
+### Retrieval probes
+
+The build-task measure above catches what a working session drags in; this catches what a searching agent wades through. Per probe: a fresh agent holds only a question, starts at `.compass/index.md`, navigates by Read only (follow index lines, folder indexes, links - no content grep), and reports the answer plus every vault file it read. Useless = tokens of the files it read minus the tokens of the documents its answer used. Five questions, targets sampled mechanically (seed 22) from the artifacts the migration will move; the same five questions re-run on the migrated vault in TASK-114, pass = probe useless tokens drop.
+
+| Probe question | Target doc | Pre-migration read / useless | Post-migration read / useless |
+|---|---|---|---|
+| What did the GSD research recommend Compass adopt? | RESEARCH-gsd-core-improvements-for-compass | 7,010 / 4,214 | |
+| Do detached hook-spawned workers survive; which channel wakes the model silently? | RESEARCH-invisible-scaffolding | 6,053 / 4,214 | |
+| Why can a hardware cache miss never cost correctness; implication for context tiers? | RESEARCH-cache-theory-for-context-tiers | 8,735 / 4,214 | |
+| Which agent CLIs beyond Claude Code; what problem does that spec capture? | SPEC-006-multi-host-agent-cli-support | 6,025 / 4,214 | |
+| How was the test admission bar validated; what did it show? | RESEARCH-test-quality-bar-validation | 8,168 / 4,214 | |
+
+Pre-migration (2026-08-30): every probe answered in exactly two reads - root index, then target - first click 5/5. The useless load is the whole root index (4,214 tokens), identical across probes. The detached-workers probe's subagent tripped a harness security classifier mid-run; its answer was verified against the target doc and kept.
+
 ## Verification gates
 
 Suite green at every task; `compass validate` 0 errors after every migration step; `compass coverage PLAN-016-domain-taxonomy` passes with the D-02 deferral stated under Not in this plan; the Data-rule audit on the migration diff.
