@@ -76,7 +76,7 @@ This wave tests one hypothesis: domains plus scope notes plus hints let a filer 
   - Manual: hot-path warning drops below cap on this vault; `compass lessons` still ranks; read lessons/index.md as the thing an agent greps first.
 - [ ] TASK-119: taxonomy optimized by measured efficiency (SPEC-022 D-11) - "optimize our taxonomy/categorization by measuring against the unrelated token consumption of subagents"; first "ensure our measurement is 100% accurate" and "figure out ways to empirically prove that it is"; after that "the strategy we use to organize will be 100% dependent on the efficiency of it" - complexity: L, after 115
   - Automated: an accuracy validation of the useless-token measure runs against constructed ground truth (probes whose truly-relevant token set is known by construction); accuracy numbers recorded in this plan before any strategy binds to the measure.
-  - Manual: the human rules the measurement accurate; only then does measured efficiency start driving organization moves.
+  - Accuracy is established empirically, never by ruling (the human, 2026-08-30: "that's not something for me to rule that's something to be empirically proven"): the measure passes its pre-registered bars on leak-proof constructed ground truth, replicated on a fresh fixture, with no author-judged corrections admissible.
 
 ## TASK-117: the useless-token measure
 
@@ -150,7 +150,13 @@ Constructed truth: 12 planted lines, 1,058 of 8,507 loaded tokens truly used (12
 - **Token-share error runs hot (+2 to +4.5 points), and the raw bar (<=2) fails for P2/P3** - but recomputed against alias-corrected truth the error collapses; the residual bias is systematic and conservative: restated content spans multiple real lines and graders correctly mark all of them, so measured "used" overcounts slightly and measured useless is a floor, never an inflated claim.
 - **Inter-grader agreement:** all three positive graders identical on spec.md (8/8 same lines); plan.md shares the 5-line core with per-grader alias variation.
 
-Verdict against the pre-registered bars: recall and negative-arm bars pass outright; the token-share bar fails raw and passes alias-corrected - reported as-is for the human's accuracy ruling, which gates any strategy binding per D-11.
+Verdict against the pre-registered bars: recall and negative-arm bars pass outright; the token-share bar fails raw and passes only alias-corrected.
+
+Run 1 is therefore inconclusive on the token-share bar: the alias reclassification is the author judging his own construction's leaks, which is not empirical proof. Run 2 repeats the validation on a leak-proof fixture - plants chosen so their subject appears on exactly one line across all loaded docs, verified by a mechanical checker (no unplanted line may share distinctive vocabulary with the diff) - so the truth set is exhaustive by construction and no post-hoc judgment enters the score.
+
+### Run 2 (leak-proof fixture)
+
+(recorded when grading completes)
 
 ## Verification gates
 
