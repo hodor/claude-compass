@@ -85,6 +85,7 @@ See [[backlog]].
 - [[2026-08-29_20-30-00_five-releases-queue-at-human-gates]] - five specs shipped end to end (active sweep, self-update, capture-by-extraction, capability usage, graph queries), fleet self-updating; next: SPEC-006 research session, SPEC-014 promotion ruling, SubagentStop payload observation
   - [[handoffs/PLAN-016-domain-taxonomy/2026-08-30_16-47-06_wave1-tree-uncommitted]] - PLAN-016 Wave 1 committed through TASK-118; TASK-116 (compass tree) sits on disk with its tests, suite unrun, uncommitted; Wave 2 starts at the useless-token baseline
   - [[handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated]] - PLAN-016 complete plus D-14: the whole vault lives in domains, lessons load through the index hierarchy instead of the catalog, hot path 3,269/5,000 - under cap for the first time (v0.17.0 fleet-verified); open: TASK-119 (prove the measure), D-13 grep-first follow-up
+- [[2026-08-31_12-04-15_v0.17.x-hardening]] - the useless-token measure is empirically proven (runs 2-3 flawless) and D-11 binds strategy to it; twelve releases (v0.17.1-12) hardened the taxonomy against live fleet friction - triggers, wording bias, five GitHub issues; open: a 2-domain lesson grouping at the human's gate, D-13 grep-first capability, SPEC-014
 
 ## Lessons
 
