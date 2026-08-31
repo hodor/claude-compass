@@ -150,7 +150,10 @@ class ValidateTaxonomyTests(DomainFixture):
         _, warnings = self._warnings()
         self.assertTrue(any(w.startswith("folder_over_ceiling: specs") for w in warnings))
 
-    def test_ceiling_never_fires_on_exempt_dirs(self):
+    def test_ceiling_governs_lessons_and_decisions_too(self):
+        # Lessons and decisions taxonomize like everything else (SPEC-022
+        # D-12), so a flat pile of them past the ceiling is a standing
+        # split suggestion, not an exemption.
         for n in range(14):
             self.write(
                 f"lessons/LESSON-l{n}.md",
@@ -159,7 +162,18 @@ class ValidateTaxonomyTests(DomainFixture):
                 f"created: 2026-08-30\nupdated: 2026-08-30\n---\n\nbody\n",
             )
         _, warnings = self._warnings()
-        self.assertFalse(any("lessons" in w and w.startswith("folder_over_ceiling") for w in warnings))
+        self.assertTrue(any(w.startswith("folder_over_ceiling: lessons") for w in warnings))
+
+    def test_ceiling_never_fires_on_exempt_dirs(self):
+        for n in range(14):
+            self.write(
+                f"handoffs/2026-08-{n:02}_00-00-00_h{n}.md",
+                f"---\ntitle: H{n}\ntype: handoff\nstatus: done\narea: w\n"
+                f"tags: [x]\nsummary: \"s\"\n"
+                f"created: 2026-08-30\nupdated: 2026-08-30\n---\n\nbody\n",
+            )
+        _, warnings = self._warnings()
+        self.assertFalse(any("handoffs" in w and w.startswith("folder_over_ceiling") for w in warnings))
 
     def test_empty_scope_warns_and_filled_scope_does_not(self):
         self.make("specs/network")

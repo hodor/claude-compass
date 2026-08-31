@@ -2,10 +2,10 @@
 since: 2026-08-30
 usage:
   apply-models:
-    count: 23
+    count: 24
     last: 2026-08-30
   capture-check:
-    count: 122
+    count: 124
     last: 2026-08-30
   capture-close:
     count: 14
@@ -14,10 +14,10 @@ usage:
     count: 8
     last: 2026-08-30
   capture-signal:
-    count: 124
+    count: 128
     last: 2026-08-30
   capture-worker:
-    count: 36
+    count: 37
     last: 2026-08-30
   coverage:
     count: 17
@@ -35,7 +35,7 @@ usage:
     count: 3
     last: 2026-08-30
   lesson-coverage:
-    count: 42
+    count: 44
     last: 2026-08-30
   lessons:
     count: 1
@@ -50,13 +50,13 @@ usage:
     count: 1
     last: 2026-08-30
   self-update:
-    count: 34
+    count: 35
     last: 2026-08-30
   sync:
-    count: 349
+    count: 353
     last: 2026-08-30
   tree:
-    count: 4
+    count: 5
     last: 2026-08-30
   validate:
     count: 20
