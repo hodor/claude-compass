@@ -66,6 +66,37 @@ class ParseFrontmatterTests(unittest.TestCase):
         self.assertEqual(data["git_branch"], "master")
 
 
+class QuotedScalarEscapeTests(unittest.TestCase):
+    """YAML escapes its quote characters - `''` inside single quotes, `\\\"`
+    inside double - and a parser that strips the quote layer without
+    unescaping misreads YAML-correct frontmatter (issue #22): one vault
+    carried 132 summaries showing doubled apostrophes."""
+
+    def test_single_quote_doubling_unescaped(self):
+        data, _ = vaultlib.parse_frontmatter_text(
+            "---\nsummary: 'Rogerio''s directive'\n---\n"
+        )
+        self.assertEqual(data["summary"], "Rogerio's directive")
+
+    def test_double_quote_backslash_escapes_unescaped(self):
+        data, _ = vaultlib.parse_frontmatter_text(
+            '---\nsummary: "say \\"hi\\" to a \\\\ backslash"\n---\n'
+        )
+        self.assertEqual(data["summary"], 'say "hi" to a \\ backslash')
+
+    def test_unquoted_value_untouched(self):
+        data, _ = vaultlib.parse_frontmatter_text(
+            "---\nsummary: it''s not quoted so '' stays\n---\n"
+        )
+        self.assertEqual(data["summary"], "it''s not quoted so '' stays")
+
+    def test_double_quote_serializer_round_trips_both_quote_kinds(self):
+        value = 'both "double" and single\'s, plus a \\ backslash'
+        text = f"---\nsummary: {vaultlib.yaml_double_quote(value)}\n---\n"
+        data, _ = vaultlib.parse_frontmatter_text(text)
+        self.assertEqual(data["summary"], value)
+
+
 class BlockScalarTests(unittest.TestCase):
     """`summary: >` block scalars are valid YAML the vault's authors use;
     parsing them as the literal indicator character corrupts every consumer

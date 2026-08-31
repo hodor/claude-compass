@@ -178,6 +178,26 @@ class CatalogBlockScalarHealTests(SyncFixture):
         self.assertEqual(catalog.count("LESSON-folded.md"), 1)
 
 
+class CatalogQuoteEscapeTests(SyncFixture):
+    """A summary containing a double quote must survive the write-read
+    cycle: the row is serialized YAML-escaped and lessonslib reads the
+    original text back (issue #22)."""
+
+    def test_row_round_trips_summary_with_both_quote_kinds(self):
+        value = 'human\'s "exact words" survive'
+        self.write("lessons/LESSON-quoted.md", (
+            "---\ntitle: Q\ntype: lesson\nstatus: active\ncategory: process\n"
+            f"area: workflow\ntags: [c]\nscore: 5\n"
+            f"summary: {vaultlib.yaml_double_quote(value)}\n"
+            "created: 2026-06-14\nupdated: 2026-06-14\n---\n\nbody\n"
+        ))
+        sync_cmd.sync(self.root)
+        rows = lessonslib.parse_catalog(
+            (self.root / "meta" / "lessons-catalog.yaml").read_text(encoding="utf-8"))
+        row = next(r for r in rows if r["file"] == "LESSON-quoted.md")
+        self.assertEqual(row["summary"], value)
+
+
 class CatalogEmptyMarkerTests(SyncFixture):
     """`meta/lessons-catalog.yaml` starts life as `lessons: []` (the
     /compass:setup skeleton). The marker is valid YAML only while the

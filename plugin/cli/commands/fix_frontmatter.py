@@ -51,14 +51,6 @@ def _type_for(type_dir):
     return SINGULAR.get(type_dir, type_dir)
 
 
-def _quote(value):
-    if '"' not in value:
-        return f'"{value}"'
-    if "'" not in value:
-        return f"'{value}'"
-    return '"' + value.replace('"', "'") + '"'
-
-
 def _index_descriptions(vault_root):
     """Map vault-relative artifact path -> its one-line description in the
     root index. A link that resolves to nothing or to several files is
@@ -108,7 +100,7 @@ def _plan_fix(record, today, description=None):
         )
         if description:
             head, _, _ = block.rpartition("---\n")
-            block = head + f"summary: {_quote(description)}\n---\n"
+            block = head + f"summary: {vaultlib.yaml_double_quote(description)}\n---\n"
             return block + text, ["added frontmatter", "lifted summary from index.md"]
         return block + text, ["added frontmatter"]
 
@@ -127,7 +119,7 @@ def _plan_fix(record, today, description=None):
         inserts.append("status: draft")
         changes.append("added status")
     if description and not data.get("summary"):
-        inserts.append(f"summary: {_quote(description)}")
+        inserts.append(f"summary: {vaultlib.yaml_double_quote(description)}")
         changes.append("lifted summary from index.md")
     if not inserts:
         return None, []

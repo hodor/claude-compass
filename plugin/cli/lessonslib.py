@@ -50,9 +50,14 @@ def catalog_path(vault_root):
 
 
 def _unquote(value):
+    """Strip a matching quote layer with YAML unescaping - the inverse of
+    the `vaultlib.yaml_double_quote` form `_catalog_row` writes."""
     value = value.strip()
     if len(value) >= 2 and value[0] in "\"'" and value[-1] == value[0]:
-        return value[1:-1]
+        inner = value[1:-1]
+        if value[0] == "'":
+            return inner.replace("''", "'")
+        return re.sub(r'\\(["\\])', r"\1", inner)
     return value
 
 
