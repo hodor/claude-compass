@@ -12,7 +12,7 @@ lessons:
     area: methodology
     tags: [derived-index, sync, append-only, staleness, catalog]
     score: 6
-    summary: "Append-only derived indexes miss both stale mutations and second-writer duplicates; repair must be active, not assumed."
+    summary: "Derived-index repair must be active, and every prune gated on provable coverage, or self-healing self-destroys."
   - file: "LESSON-long-agents-stall-resume-them.md"
     status: active
     category: process
