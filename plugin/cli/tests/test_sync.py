@@ -557,6 +557,36 @@ class IndexPruneTests(SyncFixture):
         sync_cmd.sync(self.root)
         self.assertIn("hand-written, only copy", self.index_text())
 
+    def test_relocated_entry_with_cited_link_in_description_pruned(self):
+        # Descriptions cite related artifacts by convention; the citation
+        # travels with the description text, which the artifact's summary
+        # already preserves - the subject link alone decides the prune
+        # (issue #21).
+        self.write("decisions/ADR-007-io.md", spec_with_summary("IO", "io adr"))
+        self.write("specs/net/index.md", folder_spec("net", "network topics"))
+        self.write("specs/net/SPEC-002-new.md",
+                   spec_with_summary("New", "resolved by [[ADR-007-io]]"))
+        seeded = INDEX_TEMPLATE.replace(
+            "## Plans",
+            "- [[SPEC-002-new]] - resolved by [[ADR-007-io]]\n\n## Plans",
+        )
+        (self.root / "index.md").write_text(seeded, encoding="utf-8")
+        sync_cmd.sync(self.root)
+        self.assertNotIn("[[SPEC-002-new]]", self.index_text())
+
+    def test_cited_link_description_diverging_from_summary_survives(self):
+        self.write("decisions/ADR-007-io.md", spec_with_summary("IO", "io adr"))
+        self.write("specs/net/index.md", folder_spec("net", "network topics"))
+        self.write("specs/net/SPEC-002-new.md",
+                   spec_with_summary("New", "summary of New"))
+        seeded = INDEX_TEMPLATE.replace(
+            "## Plans",
+            "- [[SPEC-002-new]] - hand note, see [[ADR-007-io]]\n\n## Plans",
+        )
+        (self.root / "index.md").write_text(seeded, encoding="utf-8")
+        sync_cmd.sync(self.root)
+        self.assertIn("hand note, see [[ADR-007-io]]", self.index_text())
+
     def test_duplicate_lines_collapse_to_one(self):
         self.write("specs/SPEC-002-new.md",
                    spec_with_summary("New", "summary of New"))
