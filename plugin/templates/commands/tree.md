@@ -7,4 +7,6 @@ allowed-tools: Bash(python .claude/cli/compass tree:*), Bash(python3 .claude/cli
 
 !`python .claude/cli/compass tree`
 
-The tree above is the complete answer: repeat it verbatim as your entire reply, inside one code block. No file reads, no summarizing, no commentary.
+The tree already ran and its full output sits in the shell result above - the reader expands it there. Reply with exactly one line, no restatement of the tree, no file writes, no further commands:
+
+`Vault tree rendered above (expand the shell result to read it in full). Zero-token variant: type "! python .claude/cli/compass tree".`
