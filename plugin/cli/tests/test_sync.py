@@ -146,6 +146,38 @@ class CatalogSyncTests(SyncFixture):
         self.assertEqual(added, 0)
 
 
+class CatalogBlockScalarHealTests(SyncFixture):
+    """A catalog row written while the parser read `summary: >` as a
+    literal `>` is stale derived state; sync regenerates it from the file's
+    now-correctly-parsed frontmatter (issue #22)."""
+
+    FOLDED_LESSON = (
+        "---\ntitle: Folded\ntype: lesson\nstatus: active\ncategory: process\n"
+        "area: workflow\ntags: [c]\nscore: 5\nsummary: >\n  the real text\n"
+        "created: 2026-06-14\nupdated: 2026-06-14\n---\n\nbody\n"
+    )
+
+    def test_misparsed_row_summary_regenerated_from_file(self):
+        self.write("lessons/LESSON-folded.md", self.FOLDED_LESSON)
+        (self.root / "meta" / "lessons-catalog.yaml").write_text(
+            CATALOG_TEMPLATE
+            + '  - file: "LESSON-folded.md"\n'
+            "    status: active\n"
+            "    category: process\n"
+            "    area: workflow\n"
+            "    tags: [c]\n"
+            "    score: 5\n"
+            '    summary: ">"\n',
+            encoding="utf-8",
+        )
+        sync_cmd.sync(self.root)
+        catalog = (self.root / "meta" / "lessons-catalog.yaml").read_text(
+            encoding="utf-8")
+        self.assertIn('summary: "the real text"', catalog)
+        self.assertNotIn('summary: ">"', catalog)
+        self.assertEqual(catalog.count("LESSON-folded.md"), 1)
+
+
 class CatalogEmptyMarkerTests(SyncFixture):
     """`meta/lessons-catalog.yaml` starts life as `lessons: []` (the
     /compass:setup skeleton). The marker is valid YAML only while the
@@ -586,6 +618,22 @@ class IndexPruneTests(SyncFixture):
         (self.root / "index.md").write_text(seeded, encoding="utf-8")
         sync_cmd.sync(self.root)
         self.assertIn("hand note, see [[ADR-007-io]]", self.index_text())
+
+    def test_folded_summary_still_allows_the_prune(self):
+        # A folded block summary must compare equal to the single-line
+        # index description it renders as (issue #22).
+        self.write("specs/net/index.md", folder_spec("net", "network topics"))
+        self.write("specs/net/SPEC-002-new.md", (
+            "---\ntitle: New\ntype: spec\nstatus: approved\narea: w\ntags: [x]\n"
+            "summary: >\n  summary of\n  New\n"
+            "created: 2026-06-14\nupdated: 2026-06-14\n---\n\nbody\n"
+        ))
+        seeded = INDEX_TEMPLATE.replace(
+            "## Plans", "- [[SPEC-002-new]] - summary of New\n\n## Plans"
+        )
+        (self.root / "index.md").write_text(seeded, encoding="utf-8")
+        sync_cmd.sync(self.root)
+        self.assertNotIn("[[SPEC-002-new]]", self.index_text())
 
     def test_duplicate_lines_collapse_to_one(self):
         self.write("specs/SPEC-002-new.md",

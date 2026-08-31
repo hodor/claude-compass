@@ -163,14 +163,50 @@ def _split_inline_list(inner):
     return [_scalar(item) for item in items]
 
 
+def _block_scalar(style, block_lines):
+    """Value of a `>` folded or `|` literal block scalar. Continuation
+    lines drop the first content line's indentation; `|` keeps line breaks,
+    `>` folds them to spaces and keeps a blank line as a paragraph break.
+    Chomping indicators only govern trailing newlines, which these stripped
+    values never keep."""
+    contents, indent = [], None
+    for line in block_lines:
+        if not line.strip():
+            contents.append("")
+            continue
+        if indent is None:
+            indent = len(line) - len(line.lstrip())
+        if not line[:indent].strip():
+            contents.append(line[indent:].rstrip())
+        else:
+            contents.append(line.strip())
+    while contents and contents[0] == "":
+        contents.pop(0)
+    while contents and contents[-1] == "":
+        contents.pop()
+    if style == "|":
+        return "\n".join(contents)
+    paragraphs, current = [], []
+    for line in contents:
+        if line:
+            current.append(line)
+        elif current:
+            paragraphs.append(" ".join(current))
+            current = []
+    if current:
+        paragraphs.append(" ".join(current))
+    return "\n".join(paragraphs)
+
+
 def parse_frontmatter_text(text):
     """Parse a YAML frontmatter block from `text`.
 
     Returns `(data, error)`. `error` is None on success, or a short string
     when the block is missing or unterminated. Handles the frontmatter subset
-    the vault uses: scalar `key: value`, inline `key: [a, b]`, and block lists
-    of `- item` under a key. Never raises on malformed content; unparseable
-    lines are skipped.
+    the vault uses: scalar `key: value`, inline `key: [a, b]`, block lists
+    of `- item` under a key, and `key: >` / `key: |` block scalars (with
+    chomping indicators), whose indented continuation lines fold into the
+    value. Never raises on malformed content; unparseable lines are skipped.
     """
     lines = text.splitlines()
     if not lines or lines[0].strip() != "---":
@@ -185,19 +221,32 @@ def parse_frontmatter_text(text):
 
     data = {}
     key = None
-    for raw in lines[1:end]:
+    i = 1
+    while i < end:
+        raw = lines[i]
         stripped = raw.strip()
         if not stripped or stripped.startswith("#"):
+            i += 1
             continue
         if stripped.startswith("- ") and key is not None:
             if not isinstance(data.get(key), list):
                 data[key] = []
             data[key].append(_scalar(stripped[2:].strip()))
+            i += 1
             continue
         match = re.match(r"^([A-Za-z0-9_]+):\s*(.*)$", raw)
         if not match:
+            i += 1
             continue
         key, value = match.group(1), match.group(2).strip()
+        if re.fullmatch(r"[>|][+-]?", value):
+            block = []
+            i += 1
+            while i < end and (not lines[i].strip() or lines[i][0] in " \t"):
+                block.append(lines[i])
+                i += 1
+            data[key] = _block_scalar(value[0], block)
+            continue
         if value == "":
             data[key] = ""
         elif value.startswith("[") and value.endswith("]"):
@@ -205,6 +254,7 @@ def parse_frontmatter_text(text):
             data[key] = _split_inline_list(inner) if inner else []
         else:
             data[key] = _scalar(value)
+        i += 1
     return data, None
 
 
