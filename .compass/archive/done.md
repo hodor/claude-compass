@@ -171,3 +171,15 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 
 ### Per-domain organization initiative
 - [x] TASK-119: measurement empirically proven (runs 2-3: 12/12 recall, 0 hallucination, 0.0000 token error); D-11 binding active
+
+## 2026-08-31
+
+### GitHub issues from live v0.17 use (filed 2026-08-31)
+
+- [x] Fix and test #14 - sync lists depth>0 folder children in the root index (ADR-021 D-01)
+- [x] Fix and test #15 - make-domain refuses unit-internal paths
+- [x] Fix and test #16 - fix-frontmatter cannot add `summary:` although validate warns on it
+- [x] Fix and test #17 - `_sync_index` is append-only, never prunes relocated entries
+- [x] Fix and test #18 - no link-preserving move for domain grouping in make-domain
+- [x] Fix and test #19 - validate flags abbreviated bare-stem wikilinks that rules/wikilinks.md sanctions
+- [x] Fix and test #20 - consolidate skill states a false premise that destroys information (Step 7)
