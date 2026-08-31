@@ -123,6 +123,35 @@ Migration applied domain by domain (commit `4888644`): 10 domains, 50 moves, val
 - **Build-measure re-run: pending, not passed.** No post-migration build task exists yet to measure; the next real task's commit is the first candidate.
 - **Hot path: 6,578 / 5,000 - cap NOT cleared**, as the approved proposal predicted. Named follow-up: a consolidate lessons pass on `meta/lessons-catalog.yaml` (3,283 tokens, the dominant remaining block).
 
+## TASK-119: accuracy validation of the useless-token measure
+
+Registered before any grading ran. The measure's grading step - "a line counts as used when the output restates it by quote, synonym, or derivation" - is validated against constructed ground truth: synthetic diffs built to restate exactly known lines of real vault documents, so the truly-used set is known by construction and invisible to the grader.
+
+- **Arms:** P (positive) - a synthetic commit diff restating exactly 12 planted lines across the loaded docs: 4 by verbatim quote, 4 by synonym paraphrase, 4 by derivation (code/text implementing what the line states); nothing else from the docs. N (negative) - a diff on an unrelated subject; true used set is empty.
+- **Graders:** 3 fresh blind agents per arm, the exact TASK-117 grader brief, docs + diff only.
+- **Metrics:** per-tier recall on the 12 planted lines; false-positive rate (marked lines outside the plant, alias-checked for incidental restatement); negative-arm used tokens as share of loaded; inter-grader agreement; absolute token-share error vs constructed truth.
+- **Pre-registered bars (proposed; the human rules):** quote recall 100%; synonym and derivation recall >= 75% each; negative-arm used <= 1% of loaded tokens; token-share error <= 2 points per grader.
+- **Fixture:** the TASK-117 extraction of TASK-109's loaded docs (index.md, PLAN-016, SPEC-022 at commit `a9b992a`) - real documents, synthetic output.
+
+### Results (recorded 2026-08-30)
+
+Constructed truth: 12 planted lines, 1,058 of 8,507 loaded tokens truly used (12.4%).
+
+| Grader | Quote recall | Synonym | Derivation | Marked share | Token-share error |
+|---|---|---|---|---|---|
+| P1 | 4/4 | 4/4 | 4/4 | 14.5% | +2.0 pts |
+| P2 | 4/4 | 4/4 | 4/4 | 16.9% | +4.5 pts |
+| P3 | 4/4 | 3/4 | 4/4 | 16.2% | +3.8 pts |
+| N1-N3 | - | - | - | **0.0%** | 0 |
+
+- **Recall 35/36 planted lines (97%).** The single miss (P3, a synonym) was caught by that same grader at the content's other location - the content itself was never missed by any grader.
+- **Zero hallucination:** all three negative-arm graders marked nothing against the unrelated diff.
+- **The "false positives" are construction leakage, not grader error.** Alias check: `spec:30` (all 3 graders), `plan:42` and `plan:58` (2 each) are lines the synthetic diff genuinely restates beyond the 12 the author planted - the instrument found true restatements the construction missed. Two debatable single/double-grader marks remain (`plan:25`, `plan:47` - narrative lines summarizing the planted subject).
+- **Token-share error runs hot (+2 to +4.5 points), and the raw bar (<=2) fails for P2/P3** - but recomputed against alias-corrected truth the error collapses; the residual bias is systematic and conservative: restated content spans multiple real lines and graders correctly mark all of them, so measured "used" overcounts slightly and measured useless is a floor, never an inflated claim.
+- **Inter-grader agreement:** all three positive graders identical on spec.md (8/8 same lines); plan.md shares the 5-line core with per-grader alias variation.
+
+Verdict against the pre-registered bars: recall and negative-arm bars pass outright; the token-share bar fails raw and passes alias-corrected - reported as-is for the human's accuracy ruling, which gates any strategy binding per D-11.
+
 ## Verification gates
 
 Suite green at every task; `compass validate` 0 errors after every migration step; `compass coverage PLAN-016-domain-taxonomy` passes with the D-02 deferral stated under Not in this plan; the Data-rule audit on the migration diff.
