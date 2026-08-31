@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 7838 / 5000 tokens (index.md 4175, active.md 380, meta/lessons-catalog.yaml 3283). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 6537 / 5000 tokens (index.md 2862, active.md 392, meta/lessons-catalog.yaml 3283). Run /compass:consolidate before next session. -->
 <!-- WARNING: index.md exceeded hot-path cap. Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
@@ -20,64 +20,24 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 ## Specs
 
 - [[SPEC-001-compass-vision-and-architecture]] — Core vision, principles, architecture, and resolved design decisions
-- [[SPEC-002-lessons-and-index-subsystem]] - Lessons capture, dedup, anti-list, and index freshness mechanism (approved)
-- [[SPEC-003-hierarchical-vault-organization]] - hierarchical folders + faceted tags + 3-tier memory (approved)
-- [[SPEC-005-index-auto-maintained-and-mirrored-per-folder]] - Index Auto-Maintained on Add and Remove, Mirrored Per Folder
-- [[SPEC-006-multi-host-agent-cli-support]] - Compass runs on agent CLIs beyond Claude Code (Kimi Code, Codex); problem/need (approved 2026-07-22)
-- [[SPEC-007-decision-coverage-tracing]] - decisions made in specs/ADRs must survive into plans and validation, not silently vanish between stages (approved 2026-07-23)
-- [[SPEC-008-central-model-resolution-table]] - model + effort assignment is one harness-resolved policy table with per-project override, not per-agent prose (approved 2026-07-23)
-- [[SPEC-009-configurable-pipeline-workflows]] - the pipeline is a configurable workflow (shipped default + reorder/subset/extend), not one hardcoded sequence (draft, DEFERRED)
-- [[SPEC-010-universal-hybrid-hierarchy]] - any artifact and unit of work can nest; unit folders (approved 2026-07-23)
-- [[SPEC-011-vault-graph-queries]] - orphans + hub ranking + impact traversal with planner consumer (approved 2026-08-05)
-- [[SPEC-012-learning-loop]] - capture on real events, retrieval at the work, application audited (approved, SHIPPED v0.5.0)
-- [[SPEC-013-test-quality]] - per-test admission bar; suite size an outcome, never a target (approved 2026-08-07)
-- [[SPEC-014-update-safe-customizations]] - Project-Local Workflow Customizations Survive Update
-- [[SPEC-015-rolling-wave-planning]] - plan detail tracks proximity; waves elaborate from completed-task knowledge (draft)
-- [[SPEC-016-sizing-work-beyond-one-spec]] - work too big for one spec gets the bigger shape without the human knowing the machinery (approved 2026-08-23)
 - [[SPEC-017-capabilities-are-reachable-and-measured]] - a capability no skill names is unreachable, and nothing counts usage so dead ones go unnoticed (approved 2026-08-23)
 - [[SPEC-018-scaffolding-invisible-to-the-human]] - the machinery keeps running but none of it occupies the human's conversation (approved 2026-08-24)
-- [[SPEC-019-active-holds-only-active-work]] - completed work accumulates in active.md forever because nothing in the harness moves it out; the hot path pays for history on every turn
-- [[SPEC-020-compass-updates-itself]] (folder, 0 children) - a project's Compass install refreshes itself from the canonical repo at session start - mandatory, zero tokens, silent when current (approved 2026-08-28)
-- [[SPEC-021-capture-in-the-humans-words]] - spec/vision interviews rewrite what the human said into polished agent prose; the human's own sentences must survive into the documents, with agent additions marked (approved 2026-08-28)
-- [[SPEC-022-vault-organized-per-domain]] - similar specs and research group into domain folders, recursively; the root index says one line per broad area instead of dropping every artifact flat (approved 2026-08-30)
+- [[specs/distribution/index|distribution]] (folder, 4 children) - how Compass reaches and stays current in projects - installs, updates, host CLIs, model resolution
+- [[specs/learning/index|learning]] (folder, 3 children) - how knowledge is captured and fed back - lessons, the capture loop, fidelity to the human's words
+- [[specs/pipeline/index|pipeline]] (folder, 4 children) - the development workflow itself - stages, their ordering, what each stage must carry forward
+- [[specs/vault-structure/index|vault-structure]] (folder, 7 children) - how the vault organizes, bounds, and retrieves its own memory - hierarchy, indexes, graph queries, active-set sweeping, sizing shapes, domain taxonomy
 
 ## Research
 
-- [[RESEARCH-lessons-and-index-architecture]] - capture timing, index freshness, dedup, lesson shape across 5 codebases
 - [[RESEARCH-evaluation-benchmarks]] - benchmarks for the methodology layer; A/B pitfalls; field gaps
 - [[RESEARCH-scientific-method-in-compass]] - does Compass embody the scientific method or borrow its vocabulary; 8 gaps
-- [[RESEARCH-hierarchical-knowledge-base-design]] - MemGPT/RAPTOR/faceted-classification synthesis, 11 findings
-- [[RESEARCH-okf-improvements-for-compass]] - adopt resource field + reader tolerance, skip format alignment
-- [[RESEARCH-rag-fit-for-large-vaults]] - RAG net-negative below ~300-500 docs; lexical rung first
-- [[RESEARCH-gsd-core-improvements-for-compass]] - decision coverage, model policy, prior art for SPEC-006
 - [[RESEARCH-decision-coverage-impl]] - format, parser, matcher, gate, migration
-- [[RESEARCH-hybrid-hierarchy-impl]] - CLI, skills, wikilinks, migration impact
-- [[RESEARCH-model-resolution-impl]] - current state, mechanism, implementation options
-- [[RESEARCH-hermes-agent-capabilities]] - hermes capabilities and extension surface, source-verified
-- [[RESEARCH-hermes-vs-compass-fit]] - fit, feasibility, strategic options
-- [[RESEARCH-graph-engineering-for-compass]] - landscape, prior art, gap analysis
-- [[RESEARCH-lesson-capture-failure]] - why capture almost never happens (40-vault diagnosis)
-- [[RESEARCH-hermes-memory-mechanics]] - memory update and retrieval mechanics, deep-dive
-- [[RESEARCH-grep-vs-graph-experiment]] - SPEC-011 gate: 2 classes solved, 2 marginal, health analytics grep-insufficient
-- [[RESEARCH-test-quality-literature]] - suite-quality measurement and LLM test-generation literature
-- [[RESEARCH-test-quality-empirical]] - the CLI's own suite graded against the D-01 bar
-- [[RESEARCH-test-quality-tooling]] - mutation testing, cheaper signals, Windows/stdlib fit
-- [[RESEARCH-test-quality-synthesis]] - three instruments reconciled; station model recommendation
-- [[RESEARCH-test-quality-craft-and-practice]] - test craft and AI testing practice, the missing axis
-- [[RESEARCH-fleet-test-census]] - locating and grading the 841-test project
-- [[RESEARCH-test-quality-bar-validation]] - paired seeded-defect validation of the admission bar
-- [[RESEARCH-rolling-wave-agent-planning]] - receding-horizon planning when planner and executor are LLMs
-- [[RESEARCH-rolling-wave-software-practice]] - how methodologies operationalize the detail gradient
-- [[RESEARCH-rolling-wave-flow-theory]] - flow and lean product-development theory behind it
-- [[RESEARCH-rolling-wave-synthesis]] - cross-axis synthesis and recommended mechanism
-- [[RESEARCH-cache-theory-for-context-tiers]] - tag/data split, inclusion cost, and why a hardware miss cannot cost correctness
-- [[RESEARCH-decomposition-criteria-for-sizing]] - no sizing metric exists; cheap reversal licenses acting early; the surviving risk is lock-in
-- [[RESEARCH-invisible-scaffolding]] - detached hook-spawned workers survive (verified live); additionalContext wakes the model without rendering
-- [[RESEARCH-active-set-prior-art]] - every mature system bounds its active set mechanically - flag-then-sweep dominates, atomic moves are rare, and Compass already owns the zero-token trigger (PostToolUse compass sync)
-- [[RESEARCH-self-update-surfaces]] - the whole update flow is already mechanical (clone, copy, settings merge, apply-models, plugin.yaml record); SessionStart startup-matcher is the right trigger; a stored commit sha makes the current-check one ls-remote
-- [[RESEARCH-humans-words-fidelity]] - verbosity and paraphrase infidelity are documented, mechanistic LLM failures; every source-word discipline shares one grammar (verbatim layer + bracketed insertions + speaker sign-off); positive extract-and-quote instructions beat do-not-paraphrase prohibitions
-- [[RESEARCH-update-safe-customization]] - overlay mechanisms are well-charted (drop-in dirs dominate, patches fail loudest, markers fail silently), but SPEC-014's benchmark corpus does not exist: zero content customizations survive and models.yaml is adopted nowhere
-- [[RESEARCH-taxonomy-for-unambiguous-placement]] - filers inherently disagree (10-60% consistency), so unambiguity is engineered on the finder's side: few broad human-curated top levels, scope notes, one primary home plus facet cross-refs, corpus-warranted categories; five named codebase gaps
+- [[research/distribution/index|distribution]] (folder, 4 children) - evidence on shipping and updating Compass across projects and hosts
+- [[research/hermes/index|hermes]] (folder, 3 children) - the hermes host - capabilities, memory mechanics, fit with Compass
+- [[research/learning/index|learning]] (folder, 4 children) - evidence on capturing knowledge - lesson mechanics, capture failure, detached workers, source-word fidelity
+- [[research/rolling-wave/index|rolling-wave]] (folder, 4 children) - plan detail tracking proximity - receding horizons, flow theory, practice
+- [[research/test-quality/index|test-quality]] (folder, 7 children) - what makes a test suite good and how to measure it
+- [[research/vault-structure/index|vault-structure]] (folder, 10 children) - evidence on organizing and retrieving vault memory - hierarchy, tiers, RAG, graphs, taxonomy
 
 ## Plans
 

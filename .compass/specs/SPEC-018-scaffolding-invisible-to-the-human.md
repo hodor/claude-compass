@@ -6,6 +6,7 @@ approved: 2026-08-24
 confidence: high
 area: methodology
 tags: [conversation-surface, hooks, capture, noise, autonomy, human-attention]
+taxonomy_hint: "learning holds its capture half, but it governs every machinery surface"
 created: 2026-08-24
 updated: 2026-08-24
 summary: "the machinery keeps running - capture passes, checks, agent relays - but none of it occupies the human's conversation"

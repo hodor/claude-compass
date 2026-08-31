@@ -6,6 +6,7 @@ approved: 2026-08-23
 confidence: high
 area: architecture
 tags: [discoverability, progressive-disclosure, usage-measurement, cli, dead-code]
+taxonomy_hint: "pipeline or a tooling domain; capability surface fits neither cleanly"
 created: 2026-08-23
 updated: 2026-08-23
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]", "[[SPEC-016-sizing-work-beyond-one-spec]]"]
