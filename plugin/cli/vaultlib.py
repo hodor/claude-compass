@@ -327,6 +327,29 @@ def resolvable_names_map(vault_root):
     return mapping
 
 
+def resolve_link(mapping, target):
+    """Resolve one wikilink target against `resolvable_names_map` output.
+
+    An exact name match wins outright. Failing that, the target is treated
+    as the abbreviated stem `rules/wikilinks.md` resolves by hand with the
+    glob `<linkname>*.md`: every slash-free name extending the target is a
+    candidate, so `[[R-NAV-1]]` reaches the unique
+    `R-NAV-1-uassetuserdata-....md`. Returns the sorted list of matching
+    vault-relative paths - empty for a broken link, several for an
+    ambiguous one (`R-NAV-1` against both `R-NAV-1-*` and `R-NAV-10-*`).
+    """
+    paths = mapping.get(target)
+    if paths:
+        return paths
+    if "/" in target:
+        return []
+    matches = set()
+    for name, name_paths in mapping.items():
+        if "/" not in name and name.startswith(target):
+            matches.update(name_paths)
+    return sorted(matches)
+
+
 def count_tokens(text):
     """Approximate token count at ~4 characters per token.
 

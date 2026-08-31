@@ -193,6 +193,62 @@ class ValidateTests(unittest.TestCase):
         self.assertTrue(any("cap_exceeded" in w and "lines" in w for w in warnings))
 
 
+class ValidateAbbreviatedLinkTests(unittest.TestCase):
+    """rules/wikilinks.md resolves a link by globbing `<linkname>*.md`; an
+    abbreviated stem that matches exactly one file is a valid link and must
+    not be reported broken (issue #19)."""
+
+    def _vault(self):
+        root = make_vault(self)
+        (root / "index.md").write_text("# Index\n", encoding="utf-8")
+        write(root, "specs/SPEC-001-target.md", ValidateTests.SPEC_OK)
+        return root
+
+    def test_unique_prefix_link_resolves(self):
+        root = self._vault()
+        write(root, "research/R-NAV-1-uassetuserdata-for-level-association.md",
+              "---\ntitle: R\ntype: research\nstatus: done\narea: x\ntags: [a]\n"
+              "created: 2026-08-30\nupdated: 2026-08-30\nsummary: \"s\"\n---\nbody\n")
+        write(root, "specs/SPEC-002-ref.md",
+              ValidateTests.SPEC_OK.replace("[[SPEC-001-target]]", "[[R-NAV-1]]"))
+        errors, warnings = validate.check_vault(root)
+        self.assertFalse(any("R-NAV-1" in f for f in errors + warnings))
+
+    def test_prefix_matching_several_files_is_ambiguous_not_broken(self):
+        root = self._vault()
+        for stem in ("R-NAV-1-uassets", "R-NAV-10-levels"):
+            write(root, f"research/{stem}.md",
+                  "---\ntitle: R\ntype: research\nstatus: done\narea: x\ntags: [a]\n"
+                  "created: 2026-08-30\nupdated: 2026-08-30\nsummary: \"s\"\n---\nbody\n")
+        write(root, "specs/SPEC-002-ref.md",
+              ValidateTests.SPEC_OK.replace("[[SPEC-001-target]]", "[[R-NAV-1]]"))
+        errors, warnings = validate.check_vault(root)
+        ambiguous = [w for w in warnings if w.startswith("ambiguous_wikilink")]
+        self.assertEqual(len(ambiguous), 1)
+        self.assertIn("R-NAV-1-uassets", ambiguous[0])
+        self.assertIn("R-NAV-10-levels", ambiguous[0])
+        self.assertFalse(any(w.startswith("broken_wikilink") and "R-NAV-1" in w
+                             for w in warnings))
+
+    def test_prefix_matching_nothing_is_still_broken(self):
+        root = self._vault()
+        write(root, "specs/SPEC-002-ref.md",
+              ValidateTests.SPEC_OK.replace("[[SPEC-001-target]]", "[[R-NAV-9]]"))
+        errors, warnings = validate.check_vault(root)
+        self.assertTrue(any(w.startswith("broken_wikilink") and "R-NAV-9" in w
+                            for w in warnings))
+
+    def test_abbreviated_folder_link_resolves(self):
+        root = self._vault()
+        write(root, "specs/SPEC-003-big-topic/index.md",
+              ValidateTests.SPEC_OK.replace("[[SPEC-001-target]]", "body"))
+        write(root, "specs/SPEC-002-ref.md",
+              ValidateTests.SPEC_OK.replace("[[SPEC-001-target]]", "[[SPEC-003]]"))
+        errors, warnings = validate.check_vault(root)
+        self.assertFalse(any("wikilink" in f and "SPEC-003" in f
+                             for f in errors + warnings))
+
+
 class ValidateUnitLinkTests(unittest.TestCase):
     UNIT_INDEX = "---\ntitle: U\ntype: unit\n---\n"
 
