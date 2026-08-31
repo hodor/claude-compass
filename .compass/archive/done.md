@@ -147,3 +147,6 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 
 ### Per-domain organization initiative
 - [x] TASK-116: compass tree
+
+### Per-domain organization initiative
+- [x] TASK-117: useless-token baseline

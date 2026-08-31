@@ -56,7 +56,7 @@ Implement [[SPEC-022-vault-organized-per-domain]] and [[ADR-022-domains-scope-no
 
 This wave tests one hypothesis: domains plus scope notes plus hints let a filer place documents where a finder looks for them, and cut the share of loaded-but-unused vault tokens. A scope note is a short section in a folder's index.md: `Class here:` names what belongs, `Class elsewhere: X -> [[domain]]` redirects, `See also:` points sideways. The judges are TASK-114's drill bars and TASK-117's measure; a mechanism that proves itself gets its ADR then, one that does not is dropped.
 
-- [ ] TASK-117: define and baseline the useless-token measure - per task, vault tokens loaded into context versus tokens the task's output used; instrumented over the 5 most recent real tasks (real work loads the vault as synthetic probes cannot; 5 bounds the cost) before any file moves, re-measured on equivalent tasks after TASK-114 - complexity: M, after 112
+- [x] TASK-117: define and baseline the useless-token measure - per task, vault tokens loaded into context versus tokens the task's output used; instrumented over the 5 most recent real tasks (real work loads the vault as synthetic probes cannot; 5 bounds the cost) before any file moves, re-measured on equivalent tasks after TASK-114 - complexity: M, after 112
   - Automated: definition and per-task numbers recorded in this plan; baseline complete before 114 begins.
   - Manual: the definition survives one adversarial read - a token counts as used when the output restates its content (quote, synonym, or derivation); a token merely loaded for context is unused.
 - [ ] TASK-113: build the domain proposal by running the atomic rule - place each artifact under the deepest folder whose fixed values apply; factor on the second value; one characteristic per level - with scope notes per domain (class-here digests as the summaries) and expected useless-token and root-index deltas. Score against Wikipedia: for each artifact's nearest subject, compare our chain of divisions to the dominant chain in that subject's category path; register the prediction before scoring (dimension-set agreement high, citation-order agreement partial). Present proposal plus score as a diff - complexity: M, after 117, decisions: [SPEC-022-vault-organized-per-domain/D-06, SPEC-022-vault-organized-per-domain/D-09]
@@ -68,6 +68,27 @@ This wave tests one hypothesis: domains plus scope notes plus hints let a filer 
 - [ ] TASK-115: version bump, push, fleet self-update verified on one vault; handoff naming the drill and token numbers - complexity: S, after 114
   - Automated: a fleet vault pulls the release; doctor 0 FAIL there.
   - Manual: handoff read-through.
+
+## TASK-117: the useless-token measure
+
+Registered before any grading ran.
+
+- **Loaded:** per task, the vault files its session's protocol and plan citations put in context - `index.md`, `active.md`, `meta/lessons-catalog.yaml`, this plan, and the spec/ADR the task's `decisions:` field cites - as committed at the task's parent commit, token-counted by `vaultlib.count_tokens`.
+- **Used:** the tokens of exactly those lines whose content the task's commit diff restates - by quote, synonym, or derivation; a line the diff itself edits inside a loaded document counts. Graded line-by-line by a fresh agent holding only the documents and the diff, never the session that produced them.
+- **Useless share:** `1 - used/loaded`. The output is the commit diff; conversation text is not measured.
+- **Baseline tasks** (5 most recent real commits): TASK-109 `aef3868`, TASK-110 `377ce87`, TASK-111 `c4d2a27`, TASK-112+118 `4de7996`, TASK-116 `0e95258`.
+
+### Baseline (recorded 2026-08-30)
+
+| Task | Commit | Loaded | Used | Useless share |
+|---|---|---|---|---|
+| TASK-109 | `aef3868` | 12,687 | 1,165 | 90.8% |
+| TASK-110 | `377ce87` | 12,156 | 1,091 | 91.0% |
+| TASK-111 | `c4d2a27` | 11,236 | 615 | 94.5% |
+| TASK-112+118 | `4de7996` | 12,156 | 1,163 | 90.4% |
+| TASK-116 | `0e95258` | 12,376 | 2,258 | 81.8% |
+
+Mean useless share: **89.7%**. Per-doc pattern, stable across all five tasks: `index.md` loads ~4,150 tokens and at most 3 lines (38-174 tokens) are ever used; `lessons-catalog.yaml` loads 3,205 with 0-127 used; the plan itself is the most-used document (207-1,904). TASK-114's re-measure passes when the mean useless share on equivalent tasks drops below this baseline.
 
 ## Verification gates
 
