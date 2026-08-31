@@ -481,6 +481,20 @@ class ResolutionMatchingTests(SyncFixture):
         self.assertEqual(self.index_text().count("[[SPEC-001-inner]]"), 1)
         self.assertIn("noted by hand", self.index_text())
 
+    def test_abbreviated_stem_entry_recognized_not_reappended(self):
+        # rules/wikilinks.md resolves [[SPEC-042]] by glob to the unique
+        # SPEC-042-*.md file; sync must recognize the hand-authored
+        # abbreviation as that artifact's entry instead of appending a
+        # second line (issue #19).
+        self.write("specs/SPEC-042-long-descriptive-name.md", spec("Long"))
+        seeded = INDEX_TEMPLATE.replace(
+            "## Plans", "- [[SPEC-042]] - noted by hand\n\n## Plans"
+        )
+        (self.root / "index.md").write_text(seeded, encoding="utf-8")
+        sync_cmd.sync(self.root)
+        self.assertNotIn("[[SPEC-042-long-descriptive-name]]", self.index_text())
+        self.assertEqual(self.index_text().count("SPEC-042"), 1)
+
     def test_root_folder_children_get_bare_stem_links(self):
         self.write("specs/SPEC-004-pack/index.md", folder_spec("Pack", "the pack folder"))
         self.write("specs/SPEC-004-pack/SPEC-001-inner.md", spec("Inner"))

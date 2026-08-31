@@ -70,13 +70,15 @@ def _check_links(rel, text, resolve, warnings):
     """Append a warning for each wikilink in `text` that does not resolve to
     exactly one file: `broken_wikilink` when the name maps to nothing,
     `ambiguous_wikilink` (with every matching path listed) when it maps to
-    more than one. `resolve` is `vaultlib.resolvable_names_map` output, the
-    same resolution `sync` emits links against."""
+    more than one. Resolution goes through `vaultlib.resolve_link` - exact
+    name first, then the unique-prefix glob `rules/wikilinks.md` documents -
+    over `vaultlib.resolvable_names_map` output, the same resolution `sync`
+    emits links against."""
     for lineno, target in _wikilinks_in(text):
         if target in SPECIAL_TARGETS:
             continue
-        paths = resolve.get(target)
-        if paths is None:
+        paths = vaultlib.resolve_link(resolve, target)
+        if not paths:
             warnings.append(f"broken_wikilink: {rel}:{lineno}: [[{target}]]")
         elif len(paths) > 1:
             listed = ", ".join(sorted(paths))

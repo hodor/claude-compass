@@ -244,7 +244,7 @@ def _sync_index(vault_root, records):
             for raw in WIKILINK.findall(line):
                 split_at = next((i for i, c in enumerate(raw) if c in "#|"), len(raw))
                 target = raw[:split_at].strip()
-                resolved = resolve.get(target)
+                resolved = vaultlib.resolve_link(resolve, target)
                 if resolved:
                     indexed_paths.update(resolved)
                     if len(resolved) == 1 and "(folder," in updated:
