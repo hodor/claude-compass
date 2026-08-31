@@ -157,7 +157,12 @@ def _taxonomy_checks(vault_root, records, warnings):
         base = vault_root / root_name
         if not base.is_dir():
             continue
-        candidates = [base] + [p.parent for p in base.rglob("index.md")]
+        # The type-dir root appears both as `base` and as its own
+        # index.md's parent once it carries one; dedupe so each folder
+        # warns at most once.
+        candidates = list(dict.fromkeys(
+            [base] + [p.parent for p in base.rglob("index.md")]
+        ))
         for folder in candidates:
             children = [
                 e for e in folder.iterdir()

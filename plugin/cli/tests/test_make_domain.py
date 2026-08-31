@@ -161,8 +161,18 @@ class ValidateTaxonomyTests(DomainFixture):
                 f"area: w\ntags: [x]\nscore: 5\nsummary: \"s\"\n"
                 f"created: 2026-08-30\nupdated: 2026-08-30\n---\n\nbody\n",
             )
+        self.write(
+            "lessons/index.md",
+            "---\ntitle: lessons\ntype: domain\nstatus: active\ntags: [lessons]\n"
+            "summary: \"s\"\ncreated: 2026-08-30\nupdated: 2026-08-30\n---\n\n"
+            "## Scope\n\nClass here: lessons.\n",
+        )
         _, warnings = self._warnings()
-        self.assertTrue(any(w.startswith("folder_over_ceiling: lessons") for w in warnings))
+        hits = [w for w in warnings if w.startswith("folder_over_ceiling: lessons")]
+        self.assertEqual(
+            len(hits), 1,
+            f"one warning per folder, even when the folder has its own index.md: {hits}",
+        )
 
     def test_ceiling_never_fires_on_exempt_dirs(self):
         for n in range(14):
