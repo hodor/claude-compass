@@ -4,7 +4,7 @@ description: The long-horizon consolidation pass, textual and structural in one 
 version: 1.0.0
 allowed-tools: [Read, Glob, Grep, Write, Edit]
 argument-hint: "(no arguments; uses warning state)"
-when_to_use: "Run /compass:consolidate when the next session's hot path surfaces a cap-exceeded warning. Do not run on a fixed cadence - the bloat trigger is the contract."
+when_to_use: "Run /compass:consolidate on any standing bloat trigger: a hot-path or catalog cap warning, a folder_over_ceiling or taxonomy_hints warning from compass validate, or the human asking for a grouping proposal outright. Do not run on a fixed cadence - a trigger is the contract."
 ---
 
 # /compass:consolidate - Lessons Consolidation
@@ -13,15 +13,22 @@ Long-horizon cleanup. Runs only when needed. Never archives lessons silently.
 
 ## Pre-check
 
-Read `.compass/index.md` and `.compass/meta/lessons-catalog.yaml`. Look for any of these warning markers:
+Read `.compass/index.md` and `.compass/meta/lessons-catalog.yaml`, and run `compass validate`. Any ONE of these is a live trigger:
 
-- `<!-- WARNING: index.md exceeded hot-path cap.`
-- `<!-- WARNING: hot path `
-- `# WARNING: catalog exceeded cap.`
+- `<!-- WARNING: index.md exceeded hot-path cap.` (in index.md)
+- `<!-- WARNING: hot path ` (in index.md)
+- `# WARNING: catalog exceeded cap.` (in the catalog)
+- a `folder_over_ceiling` warning from validate
+- a `taxonomy_hints: N pending` warning from validate
+- the human explicitly asking for a grouping proposal
 
-If none present, exit: `no consolidation needed (no cap warning)`. The bloat trigger is the contract; do not run unprompted.
+If none present, exit: `no consolidation needed (no trigger standing)`. A trigger is the contract; do not run unprompted.
 
-The hot-path marker is the aggregate one: `index.md`, `active.md`, and the lessons catalog together exceed the cap even though each component cap passes. It carries a per-file token breakdown. Read it before starting, because the lessons pass only reaches the catalog and the index's Lessons section. If the breakdown names `active.md` as the dominant contributor, the sweep owns that file; report it. If it names the index and the lines are non-redundant, that is structural weight: run the lessons half for its share, then run the Structure pass below - consolidation is also taxonomy (SPEC-022 D-01), and grouping, never trimming, is the remedy for an index of flat lines.
+Route by trigger - each names its half, and several triggers run both:
+
+- **Hot-path marker** (the aggregate: `index.md` + `active.md` + `lessons/index.md` over cap, with a per-file breakdown): if the breakdown names `active.md` as dominant, the sweep owns that file - report it. If it names the index and the lines are non-redundant, that is structural weight: run the lessons half for its share, then the Structure pass - consolidation is also taxonomy (SPEC-022 D-01), and grouping, never trimming, is the remedy for flat lines.
+- **Catalog cap**: run the lessons half (merge, rewrite, archive). And when the lesson corpus is large yet ungrouped - dozens of files flat at `lessons/` root, no domain folders - run the Structure pass too: lessons taxonomize like everything else (D-12), and the flatness is the weight.
+- **folder_over_ceiling, taxonomy_hints, or the human's ask**: straight to the Structure pass.
 
 ## Protocol
 
