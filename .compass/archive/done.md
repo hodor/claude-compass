@@ -156,3 +156,6 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 
 ### Per-domain organization initiative
 - [x] TASK-114: migrate this vault, drills, re-measure (finder 9/10, filer 4/5 unanimous, probes -30%; cap shortfall -> consolidate lessons pass)
+
+### Per-domain organization initiative
+- [x] TASK-115: ship + fleet verify + handoff (v0.16.0, doctor 0 FAIL on knowledge-curation)
