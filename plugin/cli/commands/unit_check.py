@@ -63,9 +63,12 @@ def _reachable_specs(rel, edges, by_path):
 
 
 def _suggested_name(spec_path):
-    """Unit-folder name suggestion: the spec's descriptive slug (stem with
-    the `SPEC-NNN-` prefix dropped), falling back to the full stem."""
+    """Unit-folder name suggestion: the spec's descriptive slug (the
+    `SPEC-NNN-` prefix dropped), falling back to the full stem. A folder
+    spec's document is its own `index.md`, so the folder carries the name."""
     stem = spec_path.stem
+    if stem == "index":
+        stem = spec_path.parent.name
     match = re.match(r"^SPEC-\d+-(.+)$", stem)
     return match.group(1) if match else stem
 
@@ -130,6 +133,23 @@ def format_report(vault_root, candidates):
         for member in members:
             lines.append(f"    - {member}")
         lines.append(f"  suggested: compass make-unit {name} " + " ".join(members))
+    claimed = {}
+    for spec_rel, members, _ in candidates:
+        for member in members:
+            claimed.setdefault(member, []).append(spec_rel)
+    conflicts = {m: owners for m, owners in claimed.items() if len(owners) > 1}
+    if conflicts:
+        lines.append("")
+        lines.append(
+            "conflict: members claimed by more than one candidate - the "
+            "suggested commands cannot all run; promote at most one, or "
+            "settle the shared dependency first"
+        )
+        for member in sorted(conflicts):
+            owners = ", ".join(
+                _suggested_name(vault_root / rel) for rel in conflicts[member]
+            )
+            lines.append(f"  - {member}: {owners}")
     return "\n".join(lines)
 
 
