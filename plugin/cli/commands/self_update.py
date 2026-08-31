@@ -43,7 +43,7 @@ NETWORK_TIMEOUT = 15
 # Compass skills that no longer exist; their installed dirs are removed on
 # update so a stale command does not linger. User-authored skills are never
 # touched - only these exact names.
-RETIRED_SKILLS = ["bootstrap", "taxonomize"]
+RETIRED_SKILLS = ["bootstrap", "taxonomize", "tree"]
 
 
 def _read_plugin_yaml(vault_root):
@@ -225,6 +225,12 @@ def _apply(src, project_root, apply_models):
     rules.mkdir(parents=True, exist_ok=True)
     for f in (src / "templates" / "rules").glob("*.md"):
         shutil.copy2(f, rules / f.name)
+    commands_src = src / "templates" / "commands"
+    if commands_src.is_dir():
+        commands = claude / "commands"
+        commands.mkdir(parents=True, exist_ok=True)
+        for f in commands_src.glob("*.md"):
+            shutil.copy2(f, commands / f.name)
     for skill_dir in (src / "skills").iterdir():
         if not skill_dir.is_dir():
             continue

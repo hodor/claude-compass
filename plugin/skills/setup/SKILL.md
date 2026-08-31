@@ -66,6 +66,11 @@ mkdir -p .claude/rules
 cp "$PLUGIN_ROOT/templates/rules/"*.md .claude/rules/
 echo "Rules copied: $(ls .claude/rules/*.md | wc -l) files"
 
+# Slash commands (direct-execution wrappers, e.g. /tree)
+mkdir -p .claude/commands
+cp "$PLUGIN_ROOT/templates/commands/"*.md .claude/commands/
+echo "Commands copied: $(ls .claude/commands/*.md | wc -l) files"
+
 # Skills (makes project self-contained)
 for skill_dir in "$PLUGIN_ROOT/skills/"*/; do
   skill_name=$(basename "$skill_dir")

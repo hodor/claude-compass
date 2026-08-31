@@ -36,18 +36,20 @@ Read `$SRC/.claude-plugin/plugin.json` `version` and the project's `.compass/met
 ### 4. Copy everything from the clone (one Bash call)
 
 ```bash
-# Agents, rules, skills
-mkdir -p .claude/agents .claude/rules
+# Agents, rules, skills, slash commands
+mkdir -p .claude/agents .claude/rules .claude/commands
 cp "$SRC/templates/agents/"*.md .claude/agents/
 cp "$SRC/templates/rules/"*.md  .claude/rules/
+cp "$SRC/templates/commands/"*.md .claude/commands/ 2>/dev/null
 for d in "$SRC/skills/"*/; do
   n=$(basename "$d"); mkdir -p ".claude/skills/$n"; cp "$d"*.md ".claude/skills/$n/"
 done
 # Remove skills Compass has renamed or retired, so their stale command does not
 # linger. ONLY these named Compass skills are removed - user-authored project
 # skills in .claude/skills/ are never touched. Add a name here when a Compass
-# skill is renamed or deleted (e.g. bootstrap -> setup).
-for retired in bootstrap taxonomize; do
+# skill is renamed or deleted (e.g. bootstrap -> setup; tree became the /tree
+# command file).
+for retired in bootstrap taxonomize tree; do
   [ -d ".claude/skills/$retired" ] && rm -rf ".claude/skills/$retired" && echo "removed retired Compass skill: $retired"
 done
 
