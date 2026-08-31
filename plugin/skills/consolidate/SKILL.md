@@ -101,7 +101,7 @@ lessons:
     summary: "YAML values with colons must be quoted"
 ```
 
-Active lessons only, sorted by score descending, then alpha by filename. An archived lesson has no row: its file in `.compass/archive/lessons/` carries every field the row would copy, the row is derived and regenerable, and the catalog loads on the hot path - dropping the row is tiering, not loss. (The orphaned-row rule below covers only rows whose FILE is missing.)
+Active lessons only, sorted by score descending, then alpha by filename. An archived lesson keeps no row - but only after its file provably carries every field the row holds. Before dropping a row, compare it against the archived file's frontmatter and copy any field the file lacks (summary, score, category, area, tags, status) into the file. Only then is dropping the row tiering rather than loss; a row dropped while it is the only copy of its summary destroys information. (The orphaned-row rule below covers only rows whose FILE is missing.)
 
 A catalog row pointing to a file that no longer exists signals corruption (nothing in Compass deletes lesson files); move such rows under a trailing `# Orphaned rows (file missing)` comment block rather than removing them, and name each in the report - the row's summary may be the only surviving trace of the lesson.
 
@@ -166,11 +166,11 @@ While proposing, also flag tag-vocabulary repairs (synonyms to one canonical for
 
 ### S3. Present the proposal as a diff, and stop
 
-One block per proposed domain: the folder to create, the files that move into it (exact `git mv` paths), the one index line that replaces their N lines, and the rationale. Domains are the human's knowledge's shape - only his approval moves files. Without approval this pass is read-only.
+One block per proposed domain: the folder to create, the files that move into it (exact `compass move` invocations), the one index line that replaces their N lines, and the rationale. Domains are the human's knowledge's shape - only his approval moves files. Without approval this pass is read-only.
 
 ### S4. Apply after approval
 
-Execute with the existing commands - `compass make-domain --apply` (with `--reason` and `--class-here`), `compass promote --apply`, `compass make-unit --apply`, `git mv` into the created folders - so every shape change lands in the sizing log where those commands write it. Wikilinks keep resolving (bare stems stay unique or become path-qualified per the linking rule); run `compass validate` after each domain and stop on any broken link. Nothing is deleted, ever: grouping moves files.
+Execute with the existing commands - `compass make-domain --apply` (with `--reason` and `--class-here`) creates each folder, `compass move --apply` carries the members in, `compass promote --apply` and `compass make-unit --apply` handle the other shapes - so every shape change lands in the sizing log where those commands write it. `compass move` rewrites inbound path-qualified wikilinks vault-wide and prunes the moved artifacts' old index lines through sync; a plain `git mv` does neither and leaves every path-qualified inbound link broken. Run `compass validate` after each domain and stop on any broken link. Nothing is deleted, ever: grouping moves files.
 
 ### S5. Report
 
