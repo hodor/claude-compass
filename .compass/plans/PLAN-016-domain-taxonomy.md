@@ -154,7 +154,22 @@ Verdict against the pre-registered bars: recall and negative-arm bars pass outri
 
 Run 1 is therefore inconclusive on the token-share bar: the alias reclassification is the author judging his own construction's leaks, which is not empirical proof. Run 2 repeats the validation on a leak-proof fixture - plants chosen so their subject appears on exactly one line across all loaded docs, verified by a mechanical checker (no unplanted line may share distinctive vocabulary with the diff) - so the truth set is exhaustive by construction and no post-hoc judgment enters the score.
 
-### Run 2 (leak-proof fixture)
+### Run 2 (leak-proof fixture, recorded 2026-08-30)
+
+Constructed truth: 12 plants (4 quote / 4 synonym / 4 derivation), 465 of 8,507 loaded tokens truly used (5.5%); the checker proved no unplanted line shares 3+ distinctive stems with the diff, so the truth is exhaustive and no post-hoc judgment enters the score.
+
+| Grader | Recall | False positives | Token-share error |
+|---|---|---|---|
+| P1 | 12/12 | 0 | **0.0000** |
+| P2 | 11/12 | 1 (the line adjacent to the missed plant - an off-by-one) | 0.0006 |
+| P3 | 12/12 | 0 | **0.0000** |
+| N1, N2 | - | 0 marks | 0 |
+
+All pre-registered bars pass with no correction applied. Run 2 also explains run 1 empirically: with construction leaks removed, the token overcount vanishes - run 1's +2-4.5 points were fixture leakage, not measure error.
+
+Replication status: recall and hallucination bars are replicated across both fixtures (11 graders); the token-share bar has one clean measurement, so run 3 repeats it on a third fixture with fresh plants and a fresh negative diff before the measure is declared proven.
+
+### Run 3 (replication fixture)
 
 (recorded when grading completes)
 
