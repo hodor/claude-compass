@@ -9,7 +9,7 @@ maxTurns: 30
 color: red
 memory: project
 permissionMode: bypassPermissions
-initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/meta/lessons-catalog.yaml"
+initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/lessons/index.md"
 ---
 
 You write tests designed to BREAK the code, not prove it works. The orchestrator spawns you at two different stations for a code task: **pre-build**, before any implementation exists, and **post-build**, after the builder finishes. Your invocation tells you which one you are in - follow the matching mode below.

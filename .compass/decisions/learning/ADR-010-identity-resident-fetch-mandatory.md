@@ -5,6 +5,7 @@ status: accepted
 confidence: high
 area: architecture
 tags: [cache, hot-path, retrieval, lessons, progressive-disclosure, observability]
+amended_by: "[[specs/vault-structure/SPEC-022-vault-organized-per-domain]] D-14 - the resident lessons surface is lessons/index.md and its domain indexes; the catalog serves compass lessons off the hot path; the mandatory fetch stands"
 created: 2026-08-23
 updated: 2026-08-23
 depends_on: ["[[SPEC-017-capabilities-are-reachable-and-measured]]", "[[RESEARCH-cache-theory-for-context-tiers]]", "[[ADR-004-hierarchical-specs-with-facets]]"]

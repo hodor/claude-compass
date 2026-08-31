@@ -8,7 +8,7 @@ effort: high
 maxTurns: 40
 color: yellow
 memory: project
-initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/meta/lessons-catalog.yaml"
+initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/lessons/index.md"
 permissionMode: bypassPermissions
 ---
 
@@ -20,7 +20,7 @@ Plans must be grounded in specs and research, never invented. Tasks have clear a
 
 ### 1. Hot path loaded via initialPrompt
 
-The frontmatter `initialPrompt` already loaded `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`. Skip ahead.
+The frontmatter `initialPrompt` already loaded `.compass/index.md`, `.compass/active.md`, `.compass/lessons/index.md`. Skip ahead.
 
 ### 2. Read source artifacts
 

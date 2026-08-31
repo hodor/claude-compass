@@ -45,7 +45,7 @@ effort: high
 maxTurns: [15-60 based on complexity]
 color: [unique per agent]
 memory: project
-initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/meta/lessons-catalog.yaml"
+initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/lessons/index.md"
 permissionMode: [bypassPermissions for write agents; omit for read-only]
 ---
 ```

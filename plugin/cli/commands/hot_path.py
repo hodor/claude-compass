@@ -1,14 +1,17 @@
 """`compass hot-path` - report the hot-path token count against the cap.
 
 The hot path is what every agent turn loads: the root index, the active-tasks
-file, and the lessons catalog. Read-only; `validate` is what fails on a breach.
+file, and the lessons surface `lessons/index.md` - the high-level index whose
+domain indexes agents grep and descend into. The full catalog stays the
+machine index behind `compass lessons`, off the hot path. Read-only;
+`validate` is what fails on a breach.
 """
 
 import sys
 
 import vaultlib
 
-HOT_PATH_FILES = ["index.md", "active.md", "meta/lessons-catalog.yaml"]
+HOT_PATH_FILES = ["index.md", "active.md", "lessons/index.md"]
 HOT_PATH_CAP = 5000
 
 

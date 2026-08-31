@@ -972,8 +972,15 @@ if __name__ == "__main__":
 
 
 class HotPathCapTests(SyncFixture):
-    """The aggregate hot-path cap: index.md, active.md and the lessons catalog
-    together against `hot_path.HOT_PATH_CAP`, independent of the per-file caps."""
+    """The aggregate hot-path cap: index.md, active.md and the lessons surface
+    `lessons/index.md` together against `hot_path.HOT_PATH_CAP`, independent
+    of the per-file caps."""
+
+    def setUp(self):
+        super().setUp()
+        path = self.root / "lessons" / "index.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("# lessons\n\n## Scope\n\nClass here: lessons.\n", encoding="utf-8")
 
     def _fill_over_cap(self, rel):
         """Write `rel` with enough filler to carry the hot path over the cap
@@ -1031,7 +1038,7 @@ class HotPathCapTests(SyncFixture):
             if not line.startswith(sync_cmd.HOT_PATH_WARNING_PREFIX)
         )
         expected = vaultlib.count_tokens(stripped)
-        for rel in ("active.md", "meta/lessons-catalog.yaml"):
+        for rel in ("active.md", "lessons/index.md"):
             expected += vaultlib.count_tokens((self.root / rel).read_text(encoding="utf-8"))
         self.assertEqual(reported, expected)
 

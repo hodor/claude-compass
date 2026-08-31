@@ -29,7 +29,8 @@ Standard vault layout:
 ├── active.md                         - current tasks
 ├── backlog.md                        - future tasks
 ├── vision.md                         - project vision (optional)
-├── meta/lessons-catalog.yaml         - O(1) tag lookup for lessons
+├── meta/lessons-catalog.yaml         - machine index behind `compass lessons`
+├── lessons/index.md                  - lessons surface: domains + root lessons (grep first)
 ├── specs/                            - SPEC-NNN-*.md
 ├── research/                         - RESEARCH-*.md
 ├── plans/                            - PLAN-NNN-*.md
@@ -44,7 +45,7 @@ Standard vault layout:
 
 Start with the cheapest signal:
 
-1. **`lessons-catalog.yaml`** - has structured `tags`, `area`, `summary` per lesson. Grep this first when the topic might match a lesson.
+1. **`lessons/index.md` and `lessons/<domain>/index.md`** - every lesson listed with its summary, by domain. Grep these first when the topic might match a lesson; `meta/lessons-catalog.yaml` is the machine index behind `compass lessons`.
 2. **Frontmatter Grep** - every vault doc has YAML frontmatter with `tags:`, `area:`, `title:`. Grep these fields:
    - `Grep pattern: "tags:.*\\bauthentication\\b" in .compass/ glob: "*.md"`
    - `Grep pattern: "area: backend" in .compass/ glob: "*.md"`

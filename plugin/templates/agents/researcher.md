@@ -38,7 +38,7 @@ If the brief lacks a spec reference, ask for one before proceeding.
 
 ### 1. Hot path loaded via initialPrompt
 
-The frontmatter `initialPrompt` already loaded `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`. Skip ahead.
+The frontmatter `initialPrompt` already loaded `.compass/index.md`, `.compass/active.md`, `.compass/lessons/index.md`. Skip ahead.
 
 Match lesson category to your question type: feasibility/implementation → prioritize `category: process`. Requirements/user needs → prioritize `category: domain`.
 
