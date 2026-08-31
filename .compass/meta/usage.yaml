@@ -5,19 +5,19 @@ usage:
     count: 29
     last: 2026-08-31
   capture-check:
-    count: 132
+    count: 138
     last: 2026-08-31
   capture-close:
-    count: 15
+    count: 18
     last: 2026-08-31
   capture-note:
-    count: 9
+    count: 10
     last: 2026-08-31
   capture-signal:
-    count: 135
+    count: 136
     last: 2026-08-31
   capture-worker:
-    count: 46
+    count: 58
     last: 2026-08-31
   coverage:
     count: 17
@@ -29,13 +29,13 @@ usage:
     count: 4
     last: 2026-08-30
   doctor:
-    count: 1
-    last: 2026-08-30
+    count: 2
+    last: 2026-08-31
   hot-path:
     count: 3
     last: 2026-08-30
   lesson-coverage:
-    count: 60
+    count: 80
     last: 2026-08-31
   lessons:
     count: 1
@@ -50,14 +50,14 @@ usage:
     count: 1
     last: 2026-08-30
   self-update:
-    count: 41
+    count: 42
     last: 2026-08-31
   sync:
-    count: 377
+    count: 425
     last: 2026-08-31
   tree:
     count: 5
     last: 2026-08-30
   validate:
-    count: 21
+    count: 23
     last: 2026-08-31
