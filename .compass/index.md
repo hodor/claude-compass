@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 6645 / 5000 tokens (index.md 2972, active.md 390, meta/lessons-catalog.yaml 3283). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 6028 / 5000 tokens (index.md 2340, active.md 405, meta/lessons-catalog.yaml 3283). Run /compass:consolidate before next session. -->
 <!-- WARNING: index.md exceeded hot-path cap. Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
@@ -60,26 +60,11 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 ## Decisions
 
 - [[ADR-001-methodology-as-skill-with-vault]] - Methodology lives in a skill; project state in per-project `.compass/` Obsidian-compatible vault
-- [[ADR-002-retrospective-lessons-subsystem]] - Retrospective lesson capture at phase boundary with binary triggers, anti-list, and single writer
-- [[ADR-003-drop-counter-file-jit-compute]] - Drop `meta/config.yaml` counter file; compute next artifact number JIT from filesystem
-- [[ADR-004-hierarchical-specs-with-facets]] - 3-tier MemGPT memory + folder hierarchy + faceted tags + admission control; hot path at prompt start
-- [[ADR-006-hybrid-hierarchy-implementation]] - Unit Folders at the Vault Root, Classified by Reserved Names Plus a Marker
-- [[ADR-007-decision-coverage-mechanism]] - Decision Coverage via D-NN Bullets, a Three-Outcome Parser, and an Exit-Code Gate the Planner Honors
-- [[ADR-008-model-resolution-table]] - Abstract Model Tiers Resolved at Install Time by compass apply-models
-- [[ADR-009-rolling-wave-mechanism]] - frontier waves, grounded elaboration at the merge gate, three-state coverage (detailed/scoped/uncovered)
-- [[ADR-010-identity-resident-fetch-mandatory]] - identity stays resident, the lessons fetch stops being optional, every miss is counted
-- [[ADR-011-sizing-is-a-procedure-not-a-score]] - the changeability walk, harness-triggered and recorded; no sizing metric ships
-- [[ADR-012-test-checkpoint-py-membership-git-authoritative]] - `.py` membership in `test-checkpoint verify` stays git-authoritative; a bundled non-`.py` file is classified only when recorded
-- [[ADR-013-detached-worker-quiet-fallback]] - capture runs in a detached worker; additionalContext is the fallback; every run recorded
-- [[ADR-014-active-sweep-on-sync]] - sync gains a sweep step: done task lines leave active.md mechanically on every sync, whole sections move when fully done, records land verbatim in archive/done.md, validate warns on drift
-- [[ADR-015-self-update-on-session-start]] - SessionStart(startup) runs compass self-update: ls-remote sha gate, clone-and-apply replicating the update skill mechanically, dev repos copy from local plugin/, one context line on update, silence and exit 0 on every failure
-- [[ADR-016-capture-by-extraction]] - interview skills switch from synthesize-a-draft to extract-and-arrange: the human's sentences carry the capture sections, agent additions bracketed, uncertain words flagged never substituted, brevity binds only agent prose
 - [[ADR-017-capability-index-and-usage-record]] - bare compass is the progressive-disclosure index made reachable by one rule line; dispatch records every invocation; compass usage lists never-used commands explicitly; clean-tmp and tree retire; admission control's fate decided by data
-- [[ADR-018-graph-queries-jit-over-markdown]] - no derived store: compass graph parses edges at query time so staleness cannot exist; orphans/hubs/impact ship wired into vault-health, checkup, unit-check's hub guard, and a planner ripple step
-- [[ADR-019-subagentstop-redelivery-and-teammate-typing]] - live payload observation falsifies the dead-code claim (inline spawns are typed, teammates are not) and reveals SubagentStop double-delivery, now deduped on agent_id
-- [[ADR-020-local-overlays-appended-after-refresh]] - concatenation over splicing: update copies the shipped file pristine then appends the project's local addendum, so no anchor can drift; CLAUDE.md stays untouched and is proven so by test
-- [[ADR-021-index-speaks-in-domains]] - sync stops listing folder children in the root index - the folder line with its child count is the pointer; taxonomize retires into consolidate as its Structure pass; the migration itself is a proposal the human approves
-- [[ADR-022-domains-scope-notes-shallow-when-unsure]] - every folder's doc is index.md, type dirs included; generated surfaces emit piped full-path links so they click through in Obsidian
+- [[decisions/distribution/index|distribution]] (folder, 3 children) - rulings on installing, updating, and configuring Compass across projects
+- [[decisions/learning/index|learning]] (folder, 5 children) - rulings on capture and feedback - lessons, workers, signal handling, source-word fidelity
+- [[decisions/pipeline/index|pipeline]] (folder, 3 children) - rulings on the development workflow stages and gates
+- [[decisions/vault-structure/index|vault-structure]] (folder, 8 children) - rulings on how the vault organizes, bounds, and retrieves its own memory
 
 ## Active Work
 

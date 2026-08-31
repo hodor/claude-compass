@@ -5,6 +5,7 @@ status: active
 category: process
 area: methodology
 tags: [context-size, rules, prose, harness, token-efficiency]
+taxonomy_hint: "vault-structure or a context domain; governs every surface"
 created: 2026-08-09
 updated: 2026-08-09
 score: 5

@@ -5,6 +5,7 @@ status: active
 category: process
 area: methodology
 tags: [install, update, cleanup, data-loss, user-files]
+taxonomy_hint: "distribution"
 created: 2026-06-15
 updated: 2026-08-23
 score: 5
