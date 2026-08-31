@@ -136,6 +136,51 @@ class CreateTests(DomainFixture):
         self.assertTrue((self.root / "specs" / "network" / "SPEC-001-a.md").is_file())
 
 
+class UnitInternalCreateTests(DomainFixture):
+    """Domains inside a unit's own type dirs (issue #15): the scanner and
+    link rules already handle unit-internal domain members, so make-domain
+    accepts <unit>/<type-dir>/<path> too."""
+
+    def setUp(self):
+        super().setUp()
+        self.write("halon/index.md",
+                   "---\ntitle: Halon\ntype: unit\nstatus: active\n---\n")
+        self.write("halon/specs/SPEC-001-a.md", spec_body("A"))
+
+    def test_unit_internal_domain_created_with_sizing_row(self):
+        code, _, _ = self.make("halon/specs/analytics", "metrics pipelines")
+        self.assertEqual(code, 0)
+        doc = (self.root / "halon" / "specs" / "analytics" / "index.md").read_text(
+            encoding="utf-8")
+        self.assertIn("type: domain", doc)
+        self.assertIn("Class here: metrics pipelines", doc)
+        log = (self.root / "meta" / "sizing-log.yaml").read_text(encoding="utf-8")
+        self.assertIn("halon/specs/analytics", log)
+
+    def test_nested_unit_internal_domain_grows_one_level_at_a_time(self):
+        code, _, err = self.make("halon/specs/analytics/ingest")
+        self.assertEqual(code, 1)
+        self.assertIn("parent", err)
+        self.make("halon/specs/analytics")
+        code, _, _ = self.make("halon/specs/analytics/ingest", "ingest stages")
+        self.assertEqual(code, 0)
+
+    def test_unit_dir_that_is_no_type_dir_refuses(self):
+        code, _, err = self.make("halon/gadgets/x")
+        self.assertEqual(code, 1)
+        self.assertFalse((self.root / "halon" / "gadgets").exists())
+
+    def test_type_dir_itself_is_not_a_domain_target(self):
+        code, _, err = self.make("halon/specs")
+        self.assertEqual(code, 1)
+        self.assertTrue((self.root / "halon" / "specs" / "SPEC-001-a.md").is_file())
+
+    def test_unclassified_root_folder_still_refuses(self):
+        self.write("randomdir/notes.md", "no frontmatter")
+        code, _, err = self.make("randomdir/topic")
+        self.assertEqual(code, 1)
+
+
 class ValidateTaxonomyTests(DomainFixture):
     def _warnings(self):
         errors, warnings = validate_cmd.check_vault(self.root)

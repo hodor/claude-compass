@@ -1,7 +1,9 @@
 """`compass make-domain <type-dir>/<path>` - create a domain folder.
 
 A domain is a topic folder inside a type dir (`specs/network`, at any
-depth), holding the artifacts that share its subject. Its `index.md`
+depth), holding the artifacts that share its subject. The type dir may
+itself sit inside a unit (`<unit>/specs/analytics`); unit-internal domain
+members scan and link like root ones. Its `index.md`
 carries identity and a `## Scope` section only - the folder itself is the
 listing. Creation demands the scope's first `Class here:` line up front
 (`--class-here`), because a domain born without one greets every future
@@ -123,19 +125,38 @@ def run(args):
 
     if not positional:
         sys.stderr.write(
-            "usage: compass make-domain <type-dir>/<path> --class-here <line> "
+            "usage: compass make-domain <[unit/]type-dir/path> --class-here <line> "
             "[--reason <text>] [--apply]\n"
         )
         return 1
     rel = positional[0].strip("/")
     parts = rel.split("/")
     if len(parts) < 2:
-        sys.stderr.write("compass make-domain: target must be <type-dir>/<path>\n")
+        sys.stderr.write(
+            "compass make-domain: target must be <type-dir>/<path> or "
+            "<unit>/<type-dir>/<path>\n"
+        )
         return 1
 
-    type_dirs = set(vaultlib.classify_root_dirs(vault_root)["type_dirs"])
-    if parts[0] not in type_dirs:
-        sys.stderr.write(f"compass make-domain: {parts[0]} is not a type dir of this vault\n")
+    # The path segments that form the domain's type-dir root: one for a root
+    # type dir, two for a type dir inside a unit. Everything below the root
+    # is domain territory and grows one level at a time.
+    layout = vaultlib.classify_root_dirs(vault_root)
+    if parts[0] in layout["type_dirs"]:
+        root_segments = 1
+    elif parts[0] in layout["units"]:
+        unit_type_dirs = vaultlib.classify_root_dirs(vault_root / parts[0])["type_dirs"]
+        if len(parts) < 3 or parts[1] not in unit_type_dirs:
+            sys.stderr.write(
+                f"compass make-domain: target inside unit {parts[0]} must be "
+                f"{parts[0]}/<type-dir>/<path>\n"
+            )
+            return 1
+        root_segments = 2
+    else:
+        sys.stderr.write(
+            f"compass make-domain: {parts[0]} is not a type dir or unit of this vault\n"
+        )
         return 1
 
     target = vault_root / rel
@@ -144,7 +165,9 @@ def run(args):
         return 1
     parent = target.parent
     parent_rel = "/".join(parts[:-1])
-    if not parent.is_dir() or (len(parts) > 2 and not (parent / "index.md").is_file()):
+    if not parent.is_dir() or (
+        len(parts) > root_segments + 1 and not (parent / "index.md").is_file()
+    ):
         sys.stderr.write(
             f"compass make-domain: parent {parent_rel} does not exist as a domain; "
             "domains grow one level at a time\n"
