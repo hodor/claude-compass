@@ -27,7 +27,7 @@ The hot-path marker is the aggregate one: `index.md`, `active.md`, and the lesso
 
 ### 1. Load every lesson
 
-Glob `.compass/lessons/*.md`. Read each file's full frontmatter and body. Build an in-memory list with: filename, category, area, tags, score, summary, body, created, updated, seen, escalated.
+Glob `.compass/lessons/**/*.md` (lessons group into domain folders; skip each folder's own `index.md`). Read each file's full frontmatter and body. Build an in-memory list with: filename, category, area, tags, score, summary, body, created, updated, seen, escalated.
 
 ### 2. Surface escalated lessons FIRST
 

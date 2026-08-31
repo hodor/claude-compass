@@ -5,6 +5,7 @@ status: accepted
 confidence: high
 area: architecture
 tags: [discoverability, progressive-disclosure, usage-measurement, cli, dead-code]
+taxonomy_hint: "pipeline or a tooling domain; same straddle as SPEC-017"
 created: 2026-08-29
 updated: 2026-08-29
 author: "orchestrator"

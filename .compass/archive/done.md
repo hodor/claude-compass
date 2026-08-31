@@ -159,3 +159,9 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 
 ### Per-domain organization initiative
 - [x] TASK-115: ship + fleet verify + handoff (v0.16.0, doctor 0 FAIL on knowledge-curation)
+
+### Per-domain organization initiative
+- [x] TASK-120: taxonomize decisions/ and lessons/ (SPEC-022 D-12) - applied; 52 moves, 0 errors, catalog untouched
+
+### Per-domain organization initiative
+- [x] TASK-120: taxonomize decisions/ and lessons/ (SPEC-022 D-12) - applied; 52 moves, 0 errors, catalog untouched

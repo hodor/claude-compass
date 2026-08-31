@@ -111,3 +111,83 @@ log:
     by: agent
     at: 2026-08-30
     volatile: []
+  - id: sz-2026-08-30-15
+    action: decision
+    shape: domain
+    subject: "decisions/vault-structure"
+    reason: "TASK-120 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-16
+    action: decision
+    shape: domain
+    subject: "decisions/learning"
+    reason: "TASK-120 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-17
+    action: decision
+    shape: domain
+    subject: "decisions/pipeline"
+    reason: "TASK-120 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-18
+    action: decision
+    shape: domain
+    subject: "decisions/distribution"
+    reason: "TASK-120 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-19
+    action: decision
+    shape: domain
+    subject: "lessons/vault-structure"
+    reason: "TASK-120 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-20
+    action: decision
+    shape: domain
+    subject: "lessons/subagents"
+    reason: "TASK-120 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-21
+    action: decision
+    shape: domain
+    subject: "lessons/hooks"
+    reason: "TASK-120 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-22
+    action: decision
+    shape: domain
+    subject: "lessons/experiments"
+    reason: "TASK-120 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-23
+    action: decision
+    shape: domain
+    subject: "lessons/test-quality"
+    reason: "TASK-120 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-24
+    action: decision
+    shape: domain
+    subject: "lessons/platform"
+    reason: "TASK-120 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []

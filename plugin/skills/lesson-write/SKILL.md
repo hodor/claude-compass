@@ -104,7 +104,7 @@ ONE write: the lesson file. The catalog row and index entry are added automatica
 
 **Write: the lesson file.**
 
-Filename: `LESSON-<descriptive-kebab-slug>.md` derived from the summary. Path: `.compass/lessons/`.
+Filename: `LESSON-<descriptive-kebab-slug>.md` derived from the summary. Path: the `.compass/lessons/<domain>/` whose scope note fits the lesson's craft; `.compass/lessons/` itself when no domain fits or none exist. To update an existing lesson, resolve the catalog's `file:` (a bare filename) by glob `.compass/lessons/**/<file>` - never assume a flat path.
 
 Frontmatter:
 

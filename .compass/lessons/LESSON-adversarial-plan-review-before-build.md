@@ -5,6 +5,7 @@ status: active
 category: process
 area: methodology
 tags: [review, plans, specs, adversarial, multi-lens, measurement]
+taxonomy_hint: "pipeline once a second workflow-review lesson arrives"
 created: 2026-08-08
 updated: 2026-08-30
 score: 9
