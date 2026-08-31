@@ -1,4 +1,3 @@
-# WARNING: catalog exceeded cap. Run /compass:consolidate before next session.
 lessons:
   - file: "LESSON-adversarial-plan-review-before-build.md"
     status: active
@@ -287,3 +286,10 @@ lessons:
     tags: [self-update, cli, versioning, migration, bootstrap]
     score: 5
     summary: "Self-update correction logic shipped in version N runs under the N-1 updater; it first fires on the following update"
+  - file: "LESSON-threshold-in-prose-becomes-the-criterion.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [goodhart, thresholds, agent-instructions, trigger-vs-criterion]
+    score: 5
+    summary: "A numeric threshold named in prose becomes the criterion agents optimize toward, not just the trigger it names"

@@ -20,6 +20,8 @@ tags:
   adversarial:
   - lessons/LESSON-adversarial-plan-review-before-build.md
   - specs/pipeline/SPEC-013-test-quality.md
+  agent-instructions:
+  - lessons/LESSON-threshold-in-prose-becomes-the-criterion.md
   agent-methodology:
   - lessons/experiments/LESSON-human-practice-rationing-assumes-human-scarcity.md
   agent-protocol:
@@ -419,6 +421,7 @@ tags:
   - lessons/experiments/LESSON-deterministic-fixtures-survive-scratch-wipes.md
   fleet:
   - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
+  - handoffs/2026-08-31_12-04-15_v0.17.x-hardening.md
   - research/test-quality/RESEARCH-fleet-test-census.md
   - specs/distribution/SPEC-020-compass-updates-itself.md
   fleet-audit:
@@ -449,6 +452,8 @@ tags:
   - lessons/platform/LESSON-windows-heredoc-backslash-escapes.md
   gitattributes:
   - lessons/platform/LESSON-autocrlf-churns-lf-writers.md
+  goodhart:
+  - lessons/LESSON-threshold-in-prose-becomes-the-criterion.md
   graph:
   - decisions/vault-structure/ADR-018-graph-queries-jit-over-markdown.md
   - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
@@ -470,6 +475,7 @@ tags:
   - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
   - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
   - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
+  - handoffs/2026-08-31_12-04-15_v0.17.x-hardening.md
   - handoffs/PLAN-006-learning-loop/2026-08-06_06-02-00_phase2-live-hooks-first-firing.md
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_16-47-06_wave1-tree-uncommitted.md
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated.md
@@ -718,6 +724,7 @@ tags:
   - compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work.md
   measurement:
   - compass-cli/research/RESEARCH-cli-token-reduction-measurement.md
+  - handoffs/2026-08-31_12-04-15_v0.17.x-hardening.md
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated.md
   - lessons/LESSON-adversarial-plan-review-before-build.md
   - lessons/experiments/LESSON-blind-the-author-in-self-validation.md
@@ -962,6 +969,8 @@ tags:
   release:
   - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
   - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
+  releases:
+  - handoffs/2026-08-31_12-04-15_v0.17.x-hardening.md
   replanning:
   - research/rolling-wave/RESEARCH-rolling-wave-agent-planning.md
   replication:
@@ -1145,6 +1154,7 @@ tags:
   - decisions/vault-structure/ADR-021-index-speaks-in-domains.md
   - decisions/vault-structure/ADR-022-domains-scope-notes-shallow-when-unsure.md
   - decisions/vault-structure/index.md
+  - handoffs/2026-08-31_12-04-15_v0.17.x-hardening.md
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_16-47-06_wave1-tree-uncommitted.md
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated.md
   - lessons/vault-structure/LESSON-hierarchical-placement-tolerate-disagreement.md
@@ -1204,6 +1214,8 @@ tags:
   - research/test-quality/RESEARCH-test-quality-tooling.md
   - research/test-quality/index.md
   - specs/pipeline/SPEC-013-test-quality.md
+  thresholds:
+  - lessons/LESSON-threshold-in-prose-becomes-the-criterion.md
   tiers:
   - decisions/distribution/ADR-008-model-resolution-table.md
   - plans/PLAN-005-model-table.md
@@ -1236,6 +1248,8 @@ tags:
   - specs/pipeline/SPEC-007-decision-coverage-tracing.md
   transcription:
   - research/learning/RESEARCH-humans-words-fidelity.md
+  trigger-vs-criterion:
+  - lessons/LESSON-threshold-in-prose-becomes-the-criterion.md
   triggers:
   - plans/PLAN-006-learning-loop.md
   - research/learning/RESEARCH-lesson-capture-failure.md
