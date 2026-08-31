@@ -11,10 +11,10 @@ usage:
     count: 9
     last: 2026-08-30
   capture-note:
-    count: 5
+    count: 6
     last: 2026-08-30
   capture-signal:
-    count: 90
+    count: 93
     last: 2026-08-30
   capture-worker:
     count: 19
@@ -44,7 +44,7 @@ usage:
     count: 21
     last: 2026-08-30
   sync:
-    count: 179
+    count: 202
     last: 2026-08-30
   tree:
     count: 2

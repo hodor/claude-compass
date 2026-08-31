@@ -55,6 +55,8 @@ Held under [[PLAN-009-sizing-mechanism]]'s `## Later` region. Promoted into a de
 
 ## Candidate specs
 
+- [ ] **Domain-name alignment as a per-repo KPI (the human, 2026-08-30).** His words: "there's redundancy in the folder names - I'm not sure what that redundancy will mean but I think it might be something we could use as a KPI for each repo. like if we have the same folder names on all places." The migrated vault already shows it: distribution, learning, and vault-structure exist in both specs/ and research/. [Related: the taxonomy research's package-by-feature tension - identical domain names across type dirs are the feature axis showing through the type-first layout.] Needs a definition before it can be a KPI; feeds [[specs/vault-structure/SPEC-022-vault-organized-per-domain]] D-11's measurement-first strategy.
+
 - [ ] **Surface-or-automate UX (flagged by SPEC-022's Problem).** The root issue behind unused capability: the user will not remember to use functionality unless it is presented or runs automatically. A high-level UX spec would define, for every capability, whether it surfaces as a suggestion, runs automatically, or is callable-only - one policy instead of per-feature judgment.
 
 ## Other

@@ -13,8 +13,8 @@ Triggered by a live failure in another project: a vision session produced seven 
 
 ## Per-domain organization initiative
 
-- [ ] TASK-114: migrate this vault, drills, re-measure
 - [ ] TASK-115: ship + fleet verify + handoff
+- [ ] TASK-120: taxonomize decisions/ and lessons/ (SPEC-022 D-12), diff gated by the human
 - [ ] TASK-119: measurement proven accurate, then taxonomy optimized by measured efficiency (SPEC-022 D-11)
 - [ ] v0.15.0's premature skill/sync edits were reverted; index depth-0 rule stays (shipped); everything further waits on the plan.
 
