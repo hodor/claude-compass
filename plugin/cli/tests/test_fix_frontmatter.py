@@ -117,5 +117,104 @@ class FixFrontmatterTests(unittest.TestCase):
         self.assertEqual(errors_after, [])
 
 
+SPEC_NO_SUMMARY = (
+    "---\ntitle: Caching\ntype: spec\nstatus: approved\narea: w\n"
+    "tags: [x]\ncreated: 2026-08-30\nupdated: 2026-08-30\n---\nbody\n"
+)
+
+
+class LiftSummariesTests(unittest.TestCase):
+    """`--lift-summaries` copies the root index's one-line description into
+    the artifact's own `summary:` frontmatter (issue #16) - the text already
+    exists, just in the wrong place, and lifting it is the precondition for
+    ever shortening the index."""
+
+    def _vault(self):
+        root = make_vault(self)
+        write(root, "specs/SPEC-001-caching.md", SPEC_NO_SUMMARY)
+        return root
+
+    def _run(self, args):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = fix_frontmatter.run(args)
+        return code, out.getvalue()
+
+    def test_lifts_description_into_missing_summary(self):
+        root = self._vault()
+        (root / "index.md").write_text(
+            "# Index\n\n## Specs\n\n- [[SPEC-001-caching]] - evict cold entries fast\n",
+            encoding="utf-8")
+        self._run(["--lift-summaries", "--apply"])
+        data, _ = vaultlib.parse_frontmatter(root / "specs" / "SPEC-001-caching.md")
+        self.assertEqual(data["summary"], "evict cold entries fast")
+
+    def test_em_dash_separator_and_abbreviated_link_lift(self):
+        root = self._vault()
+        (root / "index.md").write_text(
+            "# Index\n\n## Specs\n\n- [[SPEC-001]] — evict cold entries fast\n",
+            encoding="utf-8")
+        self._run(["--lift-summaries", "--apply"])
+        data, _ = vaultlib.parse_frontmatter(root / "specs" / "SPEC-001-caching.md")
+        self.assertEqual(data["summary"], "evict cold entries fast")
+
+    def test_existing_summary_never_overwritten(self):
+        root = make_vault(self)
+        write(root, "specs/SPEC-001-caching.md",
+              SPEC_NO_SUMMARY.replace("---\nbody",
+                                      'summary: "original text"\n---\nbody'))
+        (root / "index.md").write_text(
+            "# Index\n\n- [[SPEC-001-caching]] - different text\n", encoding="utf-8")
+        self._run(["--lift-summaries", "--apply"])
+        data, _ = vaultlib.parse_frontmatter(root / "specs" / "SPEC-001-caching.md")
+        self.assertEqual(data["summary"], "original text")
+
+    def test_folder_entry_lifts_into_folder_index(self):
+        root = self._vault()
+        write(root, "specs/SPEC-002-pack/index.md", SPEC_NO_SUMMARY)
+        write(root, "specs/SPEC-002-pack/SPEC-001-inner.md",
+              SPEC_NO_SUMMARY.replace("---\nbody", 'summary: "inner"\n---\nbody'))
+        (root / "index.md").write_text(
+            "# Index\n\n- [[SPEC-001-caching]] - evict cold entries fast\n"
+            "- [[specs/SPEC-002-pack/index|SPEC-002-pack]] (folder, 1 children)"
+            " - all about packs\n",
+            encoding="utf-8")
+        self._run(["--lift-summaries", "--apply"])
+        data, _ = vaultlib.parse_frontmatter(root / "specs" / "SPEC-002-pack" / "index.md")
+        self.assertEqual(data["summary"], "all about packs")
+
+    def test_dry_run_reports_without_writing(self):
+        root = self._vault()
+        (root / "index.md").write_text(
+            "# Index\n\n- [[SPEC-001-caching]] - evict cold entries fast\n",
+            encoding="utf-8")
+        p = root / "specs" / "SPEC-001-caching.md"
+        before = p.read_text(encoding="utf-8")
+        code, out = self._run(["--lift-summaries"])
+        self.assertEqual(code, 0)
+        self.assertIn("summary", out)
+        self.assertEqual(p.read_text(encoding="utf-8"), before)
+
+    def test_conflicting_descriptions_not_lifted_and_reported(self):
+        root = self._vault()
+        (root / "index.md").write_text(
+            "# Index\n\n- [[SPEC-001-caching]] - one description\n"
+            "- [[SPEC-001-caching]] - another description\n",
+            encoding="utf-8")
+        code, out = self._run(["--lift-summaries", "--apply"])
+        data, _ = vaultlib.parse_frontmatter(root / "specs" / "SPEC-001-caching.md")
+        self.assertNotIn("summary", data)
+        self.assertIn("SPEC-001-caching", out)
+
+    def test_without_flag_summaries_stay_untouched(self):
+        root = self._vault()
+        (root / "index.md").write_text(
+            "# Index\n\n- [[SPEC-001-caching]] - evict cold entries fast\n",
+            encoding="utf-8")
+        self._run(["--apply"])
+        data, _ = vaultlib.parse_frontmatter(root / "specs" / "SPEC-001-caching.md")
+        self.assertNotIn("summary", data)
+
+
 if __name__ == "__main__":
     unittest.main()
