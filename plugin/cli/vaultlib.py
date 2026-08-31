@@ -135,11 +135,25 @@ def find_vault_root(start=None):
 
 
 def _scalar(value):
-    """Strip a single layer of matching quotes from a scalar value."""
+    """Strip a matching quote layer and undo the YAML escapes that layer
+    carries: a doubled apostrophe inside single quotes, a backslash-escaped
+    quote or backslash inside double quotes. Other escape sequences pass
+    through verbatim."""
     value = value.strip()
     if len(value) >= 2 and value[0] in "\"'" and value[-1] == value[0]:
-        return value[1:-1]
+        inner = value[1:-1]
+        if value[0] == "'":
+            return inner.replace("''", "'")
+        return re.sub(r'\\(["\\])', r"\1", inner)
     return value
+
+
+def yaml_double_quote(value):
+    """Serialize a value as a YAML double-quoted scalar - backslash and
+    quote escaped, everything else verbatim. The one form `_scalar` and a
+    real YAML parser (Obsidian's included) read identically, so every
+    writer of quoted frontmatter and catalog values routes through it."""
+    return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
 def _split_inline_list(inner):

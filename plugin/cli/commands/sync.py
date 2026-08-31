@@ -425,7 +425,7 @@ def _catalog_row(filename, data):
         f'    area: {data["area"]}\n'
         f'    tags: [{tags}]\n'
         f'    score: {data["score"]}\n'
-        f'    summary: "{data["summary"]}"'
+        f'    summary: {vaultlib.yaml_double_quote(data["summary"])}'
     )
     if data.get("escalated") not in (None, ""):
         row += f'\n    escalated: {data["escalated"]}'
