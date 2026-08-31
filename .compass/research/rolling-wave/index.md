@@ -14,3 +14,5 @@ sizing_id: sz-2026-08-30-11
 ## Scope
 
 Class here: plan detail tracking proximity - receding horizons, flow theory, practice. Start at [[research/rolling-wave/RESEARCH-rolling-wave-synthesis|the synthesis]]
+
+Class elsewhere: the specification for rolling-wave planning -> [[specs/pipeline/index|pipeline]]

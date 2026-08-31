@@ -62,12 +62,15 @@ This wave tests one hypothesis: domains plus scope notes plus hints let a filer 
 - [x] TASK-113 (diff approved by the human 2026-08-30): build the domain proposal by running the atomic rule - place each artifact under the deepest folder whose fixed values apply; factor on the second value; one characteristic per level - with scope notes per domain (class-here digests as the summaries) and expected useless-token and root-index deltas. Score against Wikipedia: for each artifact's nearest subject, compare our chain of divisions to the dominant chain in that subject's category path; register the prediction before scoring (dimension-set agreement high, citation-order agreement partial). Present proposal plus score as a diff - complexity: M, after 117, decisions: [SPEC-022-vault-organized-per-domain/D-06, SPEC-022-vault-organized-per-domain/D-09]
   - Automated: proposal names pass make-domain's collision check in dry-run.
   - Manual: the human approves the diff; nothing further proceeds without it.
-- [ ] TASK-114: apply the approved migration domain-by-domain (make-domain / promote / git mv), create `specs/index.md` and `research/index.md` (identity plus cross-domain scope pointers), replace each migrated member line in the root index with its domain line, `compass validate` 0 errors after each domain, sizing rows for every shape change - complexity: L, after 113
+- [x] TASK-114 (bars in the TASK-114 record; cap shortfall reported with named follow-up): apply the approved migration domain-by-domain (make-domain / promote / git mv), create `specs/index.md` and `research/index.md` (identity plus cross-domain scope pointers), replace each migrated member line in the root index with its domain line, `compass validate` 0 errors after each domain, sizing rows for every shape change - complexity: L, after 113
   - Automated: the useless-token measure re-run against baseline - pass when the useless share drops and the hot path clears its cap; a shortfall is reported with the named follow-up decision, never declared passed. Data audit: every removed root-index line's artifact present at its new path with `summary:` intact.
   - Manual (pre-registered, blind): finder drill - 10 moved documents sampled mechanically, each to a fresh subagent holding only the root index and the doc's summary line, first-click domain recorded, bar >= 8/10; filer drill - the Problem paragraphs of the 5 most recent specs, each to 3 fresh agents with only root index + scope notes, bar unanimous on >= 4/5. Every miss produces a Class-here or Class-elsewhere line; the failing item re-runs once. Results recorded here.
 - [ ] TASK-115: version bump, push, fleet self-update verified on one vault; handoff naming the drill and token numbers - complexity: S, after 114
   - Automated: a fleet vault pulls the release; doctor 0 FAIL there.
   - Manual: handoff read-through.
+- [ ] TASK-120: taxonomize decisions/ and lessons/ per SPEC-022 D-12 ("lessons and ADRs should also be taxonomized the same way") - same atomic rule, same proposal-diff shape; lessons need one design decision first (the catalog stays the hot-path index; what folding lesson files into domains means for capture, dedup, and the 5-line cap) - complexity: M, after 114
+  - Automated: proposal passes make-domain collision dry-run; validate 0 errors after each move.
+  - Manual: the human approves the diff before any file moves - same gate as TASK-113.
 - [ ] TASK-119: taxonomy optimized by measured efficiency (SPEC-022 D-11) - "optimize our taxonomy/categorization by measuring against the unrelated token consumption of subagents"; first "ensure our measurement is 100% accurate" and "figure out ways to empirically prove that it is"; after that "the strategy we use to organize will be 100% dependent on the efficiency of it" - complexity: L, after 115
   - Automated: an accuracy validation of the useless-token measure runs against constructed ground truth (probes whose truly-relevant token set is known by construction); accuracy numbers recorded in this plan before any strategy binds to the measure.
   - Manual: the human rules the measurement accurate; only then does measured efficiency start driving organization moves.
@@ -99,13 +102,23 @@ The build-task measure above catches what a working session drags in; this catch
 
 | Probe question | Target doc | Pre-migration read / useless | Post-migration read / useless |
 |---|---|---|---|
-| What did the GSD research recommend Compass adopt? | RESEARCH-gsd-core-improvements-for-compass | 7,010 / 4,214 | |
-| Do detached hook-spawned workers survive; which channel wakes the model silently? | RESEARCH-invisible-scaffolding | 6,053 / 4,214 | |
-| Why can a hardware cache miss never cost correctness; implication for context tiers? | RESEARCH-cache-theory-for-context-tiers | 8,735 / 4,214 | |
-| Which agent CLIs beyond Claude Code; what problem does that spec capture? | SPEC-006-multi-host-agent-cli-support | 6,025 / 4,214 | |
-| How was the test admission bar validated; what did it show? | RESEARCH-test-quality-bar-validation | 8,168 / 4,214 | |
+| What did the GSD research recommend Compass adopt? | RESEARCH-gsd-core-improvements-for-compass | 7,010 / 4,214 | 19,696 / 16,900; re-run after scope repair: 5,767 / 2,971 |
+| Do detached hook-spawned workers survive; which channel wakes the model silently? | RESEARCH-invisible-scaffolding | 6,053 / 4,214 | 4,807 / 2,968 |
+| Why can a hardware cache miss never cost correctness; implication for context tiers? | RESEARCH-cache-theory-for-context-tiers | 8,735 / 4,214 | 6,603 / 2,862 (answered from ADR-010/ADR-004 instead) |
+| Which agent CLIs beyond Claude Code; what problem does that spec capture? | SPEC-006-multi-host-agent-cli-support | 6,025 / 4,214 | 4,779 / 2,968 |
+| How was the test admission bar validated; what did it show? | RESEARCH-test-quality-bar-validation | 8,168 / 4,214 | 25,266 / 2,862 (routed via the 18,450-token PLAN-007, counted an answer source) |
 
 Pre-migration (2026-08-30): every probe answered in exactly two reads - root index, then target - first click 5/5. The useless load is the whole root index (4,214 tokens), identical across probes. The detached-workers probe's subagent tripped a harness security classifier mid-run; its answer was verified against the target doc and kept.
+
+### TASK-114 record (2026-08-30)
+
+Migration applied domain by domain (commit `4888644`): 10 domains, 50 moves, validate 0 errors throughout, data audit 50/50 present with summaries intact. Root index 4,214 -> ~2,880 tokens.
+
+- **Finder drill: 8/10 first run - bar met.** Misses: RESEARCH-hermes-vs-compass-fit (its summary named no subject; summary repaired) and SPEC-015-rolling-wave-planning (sent to research/rolling-wave, a research domain, for a spec). Re-run: hermes hit; SPEC-015 missed again - same-name-across-type-dirs confusion, the live datum behind the domain-name-alignment KPI idea in [[backlog]]. Final 9/10.
+- **Filer drill: unanimous on 4/5 - bar met.** SPEC-018 split 2-1 in both runs (pipeline/root); its root-plus-hint placement stands and specs/pipeline's scope note now redirects.
+- **Retrieval probes: pass.** 4/5 dropped ~30% useless immediately; the GSD probe wandered (its subject was named in no scope note; 16,900 useless), one Class-here line repaired it to 2,971. All 5 finish at 2,862-2,971 useless vs the uniform 4,214 pre-migration. Two caveats feed TASK-119: the cache-theory probe answered from ADRs without reaching the target doc, and the test-bar probe routed through the 18,450-token PLAN-007 that the doc-granular rule counts as fully used.
+- **Build-measure re-run: pending, not passed.** No post-migration build task exists yet to measure; the next real task's commit is the first candidate.
+- **Hot path: 6,578 / 5,000 - cap NOT cleared**, as the approved proposal predicted. Named follow-up: a consolidate lessons pass on `meta/lessons-catalog.yaml` (3,283 tokens, the dominant remaining block).
 
 ## Verification gates
 

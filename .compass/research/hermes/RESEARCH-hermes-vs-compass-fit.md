@@ -11,7 +11,7 @@ git_branch: "master"
 git_commit: "42c9e59"
 author: "claude (researcher)"
 depends_on: ["[[SPEC-006-multi-host-agent-cli-support]]", "[[SPEC-001-compass-vision-and-architecture]]"]
-summary: "fit, feasibility, strategic options"
+summary: "hermes vs Compass: fit, feasibility, strategic options"
 ---
 
 # Hermes Agent vs Compass: Fit, Feasibility, and Strategic Options

@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 6537 / 5000 tokens (index.md 2862, active.md 392, meta/lessons-catalog.yaml 3283). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 6564 / 5000 tokens (index.md 2880, active.md 401, meta/lessons-catalog.yaml 3283). Run /compass:consolidate before next session. -->
 <!-- WARNING: index.md exceeded hot-path cap. Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
@@ -24,7 +24,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[SPEC-018-scaffolding-invisible-to-the-human]] - the machinery keeps running but none of it occupies the human's conversation (approved 2026-08-24)
 - [[specs/distribution/index|distribution]] (folder, 4 children) - how Compass reaches and stays current in projects - installs, updates, host CLIs, model resolution
 - [[specs/learning/index|learning]] (folder, 3 children) - how knowledge is captured and fed back - lessons, the capture loop, fidelity to the human's words
-- [[specs/pipeline/index|pipeline]] (folder, 4 children) - the development workflow itself - stages, their ordering, what each stage must carry forward
+- [[specs/pipeline/index|pipeline]] (folder, 4 children) - the development workflow itself - stages, their ordering, how plans elaborate, what each stage must carry forward
 - [[specs/vault-structure/index|vault-structure]] (folder, 7 children) - how the vault organizes, bounds, and retrieves its own memory - hierarchy, indexes, graph queries, active-set sweeping, sizing shapes, domain taxonomy
 
 ## Research
@@ -32,7 +32,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-evaluation-benchmarks]] - benchmarks for the methodology layer; A/B pitfalls; field gaps
 - [[RESEARCH-scientific-method-in-compass]] - does Compass embody the scientific method or borrow its vocabulary; 8 gaps
 - [[RESEARCH-decision-coverage-impl]] - format, parser, matcher, gate, migration
-- [[research/distribution/index|distribution]] (folder, 4 children) - evidence on shipping and updating Compass across projects and hosts
+- [[research/distribution/index|distribution]] (folder, 4 children) - evidence on shipping and updating Compass across projects and hosts, and prior-art reviews of rival frameworks (GSD)
 - [[research/hermes/index|hermes]] (folder, 3 children) - the hermes host - capabilities, memory mechanics, fit with Compass
 - [[research/learning/index|learning]] (folder, 4 children) - evidence on capturing knowledge - lesson mechanics, capture failure, detached workers, source-word fidelity
 - [[research/rolling-wave/index|rolling-wave]] (folder, 4 children) - plan detail tracking proximity - receding horizons, flow theory, practice
