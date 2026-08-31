@@ -190,14 +190,16 @@ def _text_preserved(desc, record):
 def _drop_reason(line, infos, covered, listed, section_paths, indexed_paths):
     """Why this section line should be pruned, or None to keep it.
 
-    Only a single-link entry line resolving to exactly one file can drop,
-    and only when `_text_preserved` proves the prune loses nothing:
-    `covered` - a listed folder's line now points at the artifact's subtree;
-    `duplicate` - this section already indexed the artifact on an earlier
-    line; `mislocated` - the artifact is listed, but its home is another
-    section, which holds or will receive its entry."""
+    The bullet's leading wikilink is the entry's subject, and it alone
+    decides the drop - it must resolve to exactly one file. Links cited
+    inside the description travel with the description text, which
+    `_text_preserved` proves loses nothing: `covered` - a listed folder's
+    line now points at the artifact's subtree; `duplicate` - this section
+    already indexed the artifact on an earlier line; `mislocated` - the
+    artifact is listed, but its home is another section, which holds or
+    will receive its entry."""
     match = ENTRY_PATTERN.match(line)
-    if not match or len(infos) != 1:
+    if not match or not infos:
         return None
     resolved = infos[0][3]
     if len(resolved) != 1:
