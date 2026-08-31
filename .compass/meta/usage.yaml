@@ -14,7 +14,7 @@ usage:
     count: 5
     last: 2026-08-30
   capture-signal:
-    count: 59
+    count: 80
     last: 2026-08-30
   capture-worker:
     count: 19
@@ -31,6 +31,9 @@ usage:
   lesson-coverage:
     count: 18
     last: 2026-08-30
+  make-domain:
+    count: 8
+    last: 2026-08-30
   next-num:
     count: 2
     last: 2026-08-30
@@ -41,7 +44,7 @@ usage:
     count: 21
     last: 2026-08-30
   sync:
-    count: 114
+    count: 129
     last: 2026-08-30
   tree:
     count: 2
