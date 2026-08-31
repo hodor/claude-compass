@@ -29,5 +29,6 @@ Archived lessons live in `archive/lessons/`.
 - [[LESSON-adversarial-plan-review-before-build]] - Review specs/plans with 3 adversarial lenses before approval, and have reviewers measure against the real corpus, not opine
 - [[LESSON-installer-removes-only-what-it-installed]] - Delete only what you installed or planned, by name; 'everything else here' always holds files that are not yours
 - [[LESSON-remove-context-before-adding]] - Fix a behavior bug by removing the prose that trains it or adding a harness gate; added prose is the last resort and must be net-negative
+- [[LESSON-self-update-corrections-lag-one-version]] - Self-update correction logic shipped in version N runs under the N-1 updater; it first fires on the following update
 - [[LESSON-verify-the-inverse-not-the-forward-path]] - Cheap reversal licenses acting without asking; verify it on the inverse command, never by reading the forward one
 - [[LESSON-walkthroughs-in-the-humans-words]] - Jargon in walkthroughs and paraphrase in specs both erase the human's own words where they must recognize themselves

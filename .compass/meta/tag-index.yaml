@@ -93,6 +93,8 @@ tags:
   - research/vault-structure/RESEARCH-rag-fit-for-large-vaults.md
   bookkeeping:
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
+  bootstrap:
+  - lessons/LESSON-self-update-corrections-lag-one-version.md
   born-folder:
   - lessons/vault-structure/LESSON-obsidian-bare-link-creates-stray-note.md
   - lessons/vault-structure/LESSON-sizing-unrecorded-blind-to-born-folder.md
@@ -158,6 +160,7 @@ tags:
   - decisions/distribution/ADR-015-self-update-on-session-start.md
   - decisions/pipeline/ADR-007-decision-coverage-mechanism.md
   - decisions/vault-structure/ADR-018-graph-queries-jit-over-markdown.md
+  - lessons/LESSON-self-update-corrections-lag-one-version.md
   - lessons/hooks/LESSON-hook-cli-gate-stdin-on-flag.md
   - lessons/vault-structure/LESSON-scratch-vaults-need-compass-dir.md
   - lessons/vault-structure/LESSON-type-dir-discovery-needs-content-signal.md
@@ -300,6 +303,7 @@ tags:
   derived-index:
   - lessons/vault-structure/LESSON-append-only-index-misses-mutations.md
   determinism:
+  - lessons/experiments/LESSON-deterministic-fixtures-survive-scratch-wipes.md
   - specs/distribution/SPEC-008-central-model-resolution-table.md
   diagnosis:
   - research/learning/RESEARCH-lesson-capture-failure.md
@@ -382,6 +386,7 @@ tags:
   - research/vault-structure/RESEARCH-grep-vs-graph-experiment.md
   experiments:
   - lessons/experiments/LESSON-blind-the-author-in-self-validation.md
+  - lessons/experiments/LESSON-deterministic-fixtures-survive-scratch-wipes.md
   - lessons/experiments/LESSON-measure-the-procedures-intermediates.md
   - lessons/experiments/index.md
   extension-surface:
@@ -410,6 +415,8 @@ tags:
   - research/test-quality/RESEARCH-test-quality-literature.md
   feedback-loop:
   - specs/pipeline/SPEC-015-rolling-wave-planning.md
+  fixtures:
+  - lessons/experiments/LESSON-deterministic-fixtures-survive-scratch-wipes.md
   fleet:
   - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
   - research/test-quality/RESEARCH-fleet-test-census.md
@@ -741,6 +748,7 @@ tags:
   migration:
   - decisions/vault-structure/ADR-006-hybrid-hierarchy-implementation.md
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated.md
+  - lessons/LESSON-self-update-corrections-lag-one-version.md
   - plans/PLAN-003-hybrid-hierarchy.md
   - plans/PLAN-016-domain-taxonomy.md
   - research/vault-structure/RESEARCH-hybrid-hierarchy-impl.md
@@ -1012,6 +1020,7 @@ tags:
   - plans/PLAN-016-domain-taxonomy.md
   - research/vault-structure/RESEARCH-taxonomy-for-unambiguous-placement.md
   scratchpad:
+  - lessons/experiments/LESSON-deterministic-fixtures-survive-scratch-wipes.md
   - lessons/platform/LESSON-windows-heredoc-backslash-escapes.md
   scrum:
   - research/rolling-wave/RESEARCH-rolling-wave-software-practice.md
@@ -1022,6 +1031,7 @@ tags:
   - lessons/vault-structure/LESSON-wikilink-validator-skip-code.md
   self-update:
   - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
+  - lessons/LESSON-self-update-corrections-lag-one-version.md
   sendmessage:
   - lessons/subagents/LESSON-subagent-reports-need-sendmessage.md
   session-start:
@@ -1314,6 +1324,8 @@ tags:
   - specs/pipeline/SPEC-013-test-quality.md
   verify:
   - decisions/pipeline/ADR-012-test-checkpoint-py-membership-git-authoritative.md
+  versioning:
+  - lessons/LESSON-self-update-corrections-lag-one-version.md
   vision:
   - decisions/learning/ADR-016-capture-by-extraction.md
   - decisions/vault-structure/ADR-011-sizing-is-a-procedure-not-a-score.md

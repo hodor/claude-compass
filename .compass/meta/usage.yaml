@@ -5,7 +5,7 @@ usage:
     count: 26
     last: 2026-08-30
   capture-check:
-    count: 125
+    count: 126
     last: 2026-08-30
   capture-close:
     count: 14
