@@ -309,6 +309,32 @@ class ClassificationTests(unittest.TestCase):
         self.assertIn("modified", out)
         self.assertIn("__init__.py", out)
 
+    def test_verify_recorded_non_python_file_compares_bytes_not_ast(self):
+        """GitHub #7: a recorded .js harness is not Python; AST-parsing it
+        folds a tokenizer error into 'modified' even when the file is
+        byte-identical to its checkpoint. Recorded non-.py files compare
+        byte-wise: identical is clean, an edit is modified."""
+        js = 'const s = "harness";\nmodule.exports = s;\n'
+        repo_root = make_repo_vault(self)
+        write_file(repo_root, "tests/__init__.py", INIT_SRC)
+        write_file(repo_root, "tests/test_foo.py", BASELINE_SRC)
+        write_file(repo_root, "scripts/_test_node_harness.js", js)
+        sha = git_commit_all(repo_root, "test(TASK-111): checkpoint with js harness")
+        with_vault_env(self, repo_root)
+        code, out, err = run_cli(
+            ["record", "TASK-111", "tests/test_foo.py",
+             "scripts/_test_node_harness.js", "--commit", sha]
+        )
+        self.assertEqual(code, 0, out + err)
+
+        code, out, err = self._verify(task="TASK-111")
+        self.assertEqual(code, 0, out + err)
+
+        write_file(repo_root, "scripts/_test_node_harness.js", js + "// edited\n")
+        code, out, err = self._verify(task="TASK-111")
+        self.assertEqual(code, 1)
+        self.assertIn("_test_node_harness.js", out)
+
     def test_verify_unrelated_non_python_file_in_commit_reports_clean_exits_0(self):
         """Adversarial where a checkpoint commit also carries a bundled
         markdown file - a plan updated in the same commit as the tests it

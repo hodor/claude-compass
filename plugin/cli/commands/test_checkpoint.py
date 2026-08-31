@@ -509,15 +509,21 @@ def _run_record(args):
         if content is None:
             sys.stderr.write(f"compass test-checkpoint record: could not read {rel} at {commit}\n")
             return 1
-        tree, parse_error = _parse_source(content)
-        if parse_error:
-            sys.stderr.write(f"compass test-checkpoint record: {rel} does not parse: {parse_error}\n")
-            return 1
-        ids = sorted(
-            [class_name, func_name]
-            for (class_name, func_name) in _function_occurrences(tree)
-            if func_name.startswith("test")
-        )
+        if rel.endswith(".py"):
+            tree, parse_error = _parse_source(content)
+            if parse_error:
+                sys.stderr.write(f"compass test-checkpoint record: {rel} does not parse: {parse_error}\n")
+                return 1
+            ids = sorted(
+                [class_name, func_name]
+                for (class_name, func_name) in _function_occurrences(tree)
+                if func_name.startswith("test")
+            )
+        else:
+            # A recorded non-Python file (a JS harness, a data fixture)
+            # carries no test ids; its hash is its whole identity and
+            # verify compares it byte-wise.
+            ids = []
         file_records.append({"path": rel, "sha256": _sha256_text(content), "ids": ids})
         dirs.add(str(PurePosixPath(rel).parent))
 
@@ -689,7 +695,14 @@ def _run_verify(args):
             ok = False
             continue
         current_src = current_path.read_text(encoding="utf-8")
-        result = _classify_file(baseline, current_src)
+        if rel.endswith(".py"):
+            result = _classify_file(baseline, current_src)
+        elif current_src == baseline:
+            # A recorded non-Python file (a JS harness, a data fixture) is
+            # not AST material; byte equality is its whole verdict.
+            result = {"status": "unchanged", "detail": None}
+        else:
+            result = {"status": "modified", "detail": "recorded non-Python file changed"}
         findings.append({"file": rel, **result})
         if result["status"] not in ("unchanged", "added-only"):
             ok = False
