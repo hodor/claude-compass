@@ -445,7 +445,7 @@ def _sync_catalog(vault_root, records):
     removed is returned so the repair is reported rather than silent."""
     catalog_path = vault_root / "meta" / "lessons-catalog.yaml"
     if not catalog_path.is_file():
-        return 0, [], 0
+        return 0, [], 0, 0
     text = vaultlib.read_vault_text(catalog_path)
     text, duplicates_removed = _collapse_duplicate_rows(text)
     existing = set(re.findall(r'file:\s*"?([^"\n]+)"?', text))
@@ -456,6 +456,7 @@ def _sync_catalog(vault_root, records):
             # index.md is a scope note, not a lesson.
             continue
         by_filename.setdefault(record["path"].name, []).append(record)
+    text, healed = _heal_misparsed_rows(text, by_filename)
     rows, collisions = [], []
     for filename in sorted(by_filename):
         recs = sorted(by_filename[filename], key=lambda r: _rel_path(vault_root, r))
@@ -469,15 +470,45 @@ def _sync_catalog(vault_root, records):
             rows.append(row)
 
     corrupted = bool(existing) and bool(LESSONS_EMPTY_MARKER.search(text))
-    if rows or corrupted or duplicates_removed:
+    if rows or corrupted or duplicates_removed or healed:
         text = LESSONS_EMPTY_MARKER.sub("lessons:", text, count=1)
         if rows:
             text = text.rstrip("\n") + "\n" + "\n".join(rows) + "\n"
         vaultlib.write_text_lf(catalog_path, text)
-    return len(rows), collisions, duplicates_removed
+    return len(rows), collisions, duplicates_removed, healed
 
 
 CATALOG_ROW_START = re.compile(r"(?m)^(?=  - file: )")
+
+# The residue a pre-block-scalar parser left in catalog rows: a summary
+# holding just the `>` / `|` indicator it read as the whole value.
+MISPARSED_SUMMARY = re.compile(r'(?m)^    summary: "?[>|][+-]?"?\s*$')
+
+
+def _heal_misparsed_rows(text, by_filename):
+    """Regenerate rows whose summary is a bare block-scalar indicator. The
+    row is derived state and the lesson file's frontmatter (now parsed with
+    block-scalar support) is the source; a row for a file that no longer
+    exists or still lacks fields stays as it is. Returns (text, healed)."""
+    blocks = CATALOG_ROW_START.split(text)
+    if len(blocks) < 2:
+        return text, 0
+    head, rows = blocks[0], blocks[1:]
+    healed = 0
+    kept = []
+    for block in rows:
+        if MISPARSED_SUMMARY.search(block):
+            match = re.match(r'  - file:\s*"?([^"\n]+)"?', block)
+            recs = by_filename.get(match.group(1)) if match else None
+            row = _catalog_row(match.group(1), recs[0]["_data"]) if recs else None
+            if row:
+                kept.append(row + ("\n" if block.endswith("\n") else ""))
+                healed += 1
+                continue
+        kept.append(block)
+    if not healed:
+        return text, 0
+    return head + "".join(kept), healed
 
 
 def _collapse_duplicate_rows(text):
@@ -818,7 +849,8 @@ def sync(vault_root):
     records = vaultlib.scan_artifacts(vault_root)
     _load_data(records)
     index_added, index_pruned, index_sections_merged = _sync_index(vault_root, records)
-    catalog_added, catalog_collisions, catalog_duplicates = _sync_catalog(vault_root, records)
+    catalog_added, catalog_collisions, catalog_duplicates, catalog_healed = (
+        _sync_catalog(vault_root, records))
     lessons_indexes = _sync_lessons_indexes(vault_root, records)
     logs_deleted, capture_log_pruned = _clean_logs(vault_root)
     return {
@@ -829,6 +861,7 @@ def sync(vault_root):
         "catalog_added": catalog_added,
         "catalog_collisions": catalog_collisions,
         "catalog_duplicates_removed": catalog_duplicates,
+        "catalog_rows_healed": catalog_healed,
         "lessons_indexes": lessons_indexes,
         "tags": _sync_tag_index(vault_root, records),
         "caps": _check_caps(vault_root, records),
@@ -859,6 +892,10 @@ def format_report(report):
         parts.append(f"catalog filename collision: {collision}")
     if report.get("catalog_duplicates_removed"):
         parts.append(f"catalog duplicate rows removed: {report['catalog_duplicates_removed']}")
+    if report.get("catalog_rows_healed"):
+        parts.append(
+            f"catalog rows healed (block-scalar summary): {report['catalog_rows_healed']}"
+        )
     if report.get("lessons_indexes"):
         parts.append(f"lessons indexes refreshed: {report['lessons_indexes']}")
     parts.append(f"tags indexed: {report['tags']}")

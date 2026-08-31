@@ -66,6 +66,46 @@ class ParseFrontmatterTests(unittest.TestCase):
         self.assertEqual(data["git_branch"], "master")
 
 
+class BlockScalarTests(unittest.TestCase):
+    """`summary: >` block scalars are valid YAML the vault's authors use;
+    parsing them as the literal indicator character corrupts every consumer
+    of the field - catalog rows, index descriptions, the D-01 prune guard
+    (issue #22)."""
+
+    def test_folded_scalar_joins_lines_with_spaces(self):
+        data, error = vaultlib.parse_frontmatter_text(
+            "---\ntitle: T\nsummary: >\n  evict cold\n  entries fast\nscore: 5\n---\n"
+        )
+        self.assertIsNone(error)
+        self.assertEqual(data["summary"], "evict cold entries fast")
+        self.assertEqual(data["score"], "5")  # the key after the block still parses
+
+    def test_literal_scalar_keeps_line_breaks(self):
+        data, _ = vaultlib.parse_frontmatter_text(
+            "---\nsummary: |\n  line one\n  line two\n---\n"
+        )
+        self.assertEqual(data["summary"], "line one\nline two")
+
+    def test_chomping_indicators_accepted(self):
+        for indicator in (">-", ">+", "|-", "|+"):
+            data, _ = vaultlib.parse_frontmatter_text(
+                f"---\nsummary: {indicator}\n  folded text\n---\n"
+            )
+            self.assertEqual(data["summary"], "folded text", indicator)
+
+    def test_folded_blank_line_is_a_paragraph_break(self):
+        data, _ = vaultlib.parse_frontmatter_text(
+            "---\nsummary: >\n  para one\n\n  para two\n---\n"
+        )
+        self.assertEqual(data["summary"], "para one\npara two")
+
+    def test_greater_than_inside_plain_value_untouched(self):
+        data, _ = vaultlib.parse_frontmatter_text(
+            "---\nsummary: a > b\n---\n"
+        )
+        self.assertEqual(data["summary"], "a > b")
+
+
 class ScanArtifactsTests(unittest.TestCase):
     def setUp(self):
         self.tmp = make_tempdir(self)
