@@ -273,3 +273,17 @@ lessons:
     tags: [taxonomy, scope-notes, class-here, probe, useless-tokens]
     score: 5
     summary: "A missing Class-here scope line cost a probe 16,900 useless tokens; repair cut it to 2,971"
+  - file: "LESSON-deterministic-fixtures-survive-scratch-wipes.md"
+    status: archived
+    category: process
+    area: methodology
+    tags: [experiments, scratchpad, determinism, fixtures]
+    score: 5
+    summary: "Build experiment fixtures deterministically so a wiped scratchpad can be rebuilt identically mid-session"
+  - file: "LESSON-self-update-corrections-lag-one-version.md"
+    status: active
+    category: process
+    area: architecture
+    tags: [self-update, cli, versioning, migration, bootstrap]
+    score: 5
+    summary: "Self-update correction logic shipped in version N runs under the N-1 updater; it first fires on the following update"
