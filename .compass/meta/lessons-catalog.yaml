@@ -259,3 +259,10 @@ lessons:
     tags: [obsidian, wikilinks, folder-spec, born-folder, click-through]
     score: 5
     summary: "Obsidian does not resolve a bare folder-spec wikilink to its index.md; click-through creates a zero-byte stray note"
+  - file: "LESSON-windows-heredoc-backslash-escapes.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [windows, git-bash, heredoc, escaping, scratchpad]
+    score: 5
+    summary: "Git Bash heredocs on Windows collapse backslash escapes; scratchpad script files carry code patches instead"
