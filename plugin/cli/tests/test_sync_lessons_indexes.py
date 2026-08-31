@@ -97,6 +97,22 @@ class LessonsIndexSyncTests(unittest.TestCase):
         sync.sync(self.root)
         self.assertNotIn("LESSON-old", self.read("lessons/hooks/index.md"))
 
+    def test_missing_type_root_index_is_created_when_lessons_exist(self):
+        (self.root / "lessons" / "index.md").unlink()
+        sync.sync(self.root)
+        text = self.read("lessons/index.md")
+        self.assertIn("## Lessons", text)
+        self.assertIn("LESSON-loose", text)
+        self.assertIn("hooks", text)
+
+    def test_no_index_created_for_a_vault_without_lessons(self):
+        import shutil as _sh
+
+        _sh.rmtree(self.root / "lessons")
+        (self.root / "lessons").mkdir()
+        sync.sync(self.root)
+        self.assertFalse((self.root / "lessons" / "index.md").exists())
+
     def test_second_sync_is_idempotent(self):
         sync.sync(self.root)
         first = self.read("lessons/hooks/index.md")

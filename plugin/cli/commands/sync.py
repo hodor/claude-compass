@@ -516,6 +516,28 @@ def _sync_lessons_indexes(vault_root, records):
             rewritten += 1
 
     root_index = lessons_dir / "index.md"
+    if not root_index.is_file() and (active or folders):
+        # A vault with lessons but no lessons surface (an install that
+        # predates the index hierarchy) gets a minimal one, so the hot
+        # path's lessons file exists everywhere lessons do.
+        today = datetime.date.today().isoformat()
+        vaultlib.write_text_lf(root_index, (
+            "---\n"
+            'title: "lessons"\n'
+            "type: domain\n"
+            "status: active\n"
+            "tags: [lessons]\n"
+            'summary: "lessons learned - the surface agents grep first; '
+            'compass lessons ranks via meta/lessons-catalog.yaml"\n'
+            f"created: {today}\n"
+            f"updated: {today}\n"
+            "---\n\n"
+            "# lessons\n\n"
+            "## Scope\n\n"
+            "Class here: lessons learned - 5-line bodies, listed below "
+            "with their summaries.\n"
+        ))
+        rewritten += 1
     if root_index.is_file():
         body = []
         for folder in folders:
