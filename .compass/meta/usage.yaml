@@ -32,7 +32,7 @@ usage:
     count: 18
     last: 2026-08-30
   make-domain:
-    count: 8
+    count: 18
     last: 2026-08-30
   next-num:
     count: 2
@@ -44,11 +44,11 @@ usage:
     count: 21
     last: 2026-08-30
   sync:
-    count: 147
+    count: 179
     last: 2026-08-30
   tree:
     count: 2
     last: 2026-08-30
   validate:
-    count: 6
+    count: 15
     last: 2026-08-30

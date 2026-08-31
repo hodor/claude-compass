@@ -31,3 +31,83 @@ log:
     by: agent
     at: 2026-08-30
     volatile: []
+  - id: sz-2026-08-30-5
+    action: decision
+    shape: domain
+    subject: "specs/vault-structure"
+    reason: "TASK-114 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-6
+    action: decision
+    shape: domain
+    subject: "specs/learning"
+    reason: "TASK-114 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-7
+    action: decision
+    shape: domain
+    subject: "specs/pipeline"
+    reason: "TASK-114 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-8
+    action: decision
+    shape: domain
+    subject: "specs/distribution"
+    reason: "TASK-114 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-9
+    action: decision
+    shape: domain
+    subject: "research/vault-structure"
+    reason: "TASK-114 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-10
+    action: decision
+    shape: domain
+    subject: "research/test-quality"
+    reason: "TASK-114 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-11
+    action: decision
+    shape: domain
+    subject: "research/rolling-wave"
+    reason: "TASK-114 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-12
+    action: decision
+    shape: domain
+    subject: "research/learning"
+    reason: "TASK-114 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-13
+    action: decision
+    shape: domain
+    subject: "research/distribution"
+    reason: "TASK-114 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []
+  - id: sz-2026-08-30-14
+    action: decision
+    shape: domain
+    subject: "research/hermes"
+    reason: "TASK-114 approved migration"
+    by: agent
+    at: 2026-08-30
+    volatile: []

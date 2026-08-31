@@ -5,6 +5,7 @@ status: complete
 confidence: high
 area: methodology
 tags: [decision-coverage, traceability, cli, parser, gates, validation, gsd, prior-art]
+taxonomy_hint: "pipeline"
 created: 2026-07-23
 updated: 2026-07-23
 git_branch: "master"
