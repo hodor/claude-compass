@@ -173,7 +173,8 @@ def _taxonomy_checks(vault_root, records, warnings):
                 rel = folder.relative_to(vault_root).as_posix()
                 warnings.append(
                     f"folder_over_ceiling: {rel}: {len(children)} direct children "
-                    f"(ceiling {FOLDER_CEILING}) - a split is worth proposing"
+                    f"(ceiling {FOLDER_CEILING}) - propose the grouping; the ceiling "
+                    f"only triggers the proposal, domains form at their second member"
                 )
 
     hints = []
