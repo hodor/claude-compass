@@ -8,7 +8,7 @@ effort: high
 maxTurns: 15
 color: green
 memory: project
-initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/meta/lessons-catalog.yaml"
+initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/lessons/index.md"
 permissionMode: bypassPermissions
 ---
 
@@ -31,7 +31,7 @@ Read all outputs completely before starting analysis. Premature conclusions bias
 
 ### 1. Skim overlapping research
 
-Hot path (`.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`) is already loaded via initialPrompt. Skim any existing research that overlaps with the topic - this lets you flag when a consolidated finding contradicts an existing vault document.
+Hot path (`.compass/index.md`, `.compass/active.md`, `.compass/lessons/index.md`) is already loaded via initialPrompt. Skim any existing research that overlaps with the topic - this lets you flag when a consolidated finding contradicts an existing vault document.
 
 ### 2. Extract claims
 

@@ -36,7 +36,7 @@ Every agent reads first, before anything else:
 
 1. `.compass/index.md` - master map (the tree, pointers only, never spec bodies).
 2. `.compass/active.md` - current tasks.
-3. `.compass/meta/lessons-catalog.yaml` - scan for relevant lessons.
+3. `.compass/lessons/index.md` - grep for relevant lessons; descend into the domain index that matches.
 
 This is the cache line - minimum context to orient. Load specific specs/research/plans only after.
 
@@ -262,7 +262,7 @@ Agents depending on external tools (MCP, `gh`, specific runtimes) verify availab
 ├── active.md             - HOT: open tasks only; `compass sync` sweeps checked lines out
 ├── backlog.md            - Cold: future tasks
 ├── meta/
-│   ├── lessons-catalog.yaml - O(1) lesson tag lookup (numbering is JIT, no counter file)
+│   ├── lessons-catalog.yaml - machine index behind `compass lessons` (numbering is JIT, no counter file)
 │   ├── sizing-log.yaml      - shape-change decisions/corrections (`compass sizing stats`)
 │   └── plugin.yaml          - Plugin source path + installed version (written by setup)
 ├── specs/               - one file per spec; a folder only once it holds 2+ specs
@@ -270,7 +270,7 @@ Agents depending on external tools (MCP, `gh`, specific runtimes) verify availab
 ├── <unit-name>/          - Unit folder: one large unit of work (index.md has `type: unit`)
 │   ├── index.md          - Unit marker, title, children listing
 │   ├── specs/ plans/ ... - Own type subdirs, unit-local numbering
-│   └── lessons/          - Aggregated into meta/lessons-catalog.yaml by sync
+│   └── lessons/          - Domain folders; index.md per level lists lessons with summaries, synced mechanically
 └── archive/              - Completed/retired; done.md holds tasks swept from active.md
 ```
 

@@ -29,7 +29,7 @@ Every session MUST begin by reading the hot path:
 
 1. `.compass/index.md` - master map (tree, pointers, never spec bodies). Hard cap 5,000 tokens per [[SPEC-003-hierarchical-vault-organization]].
 2. `.compass/active.md` - current tasks, blockers, next up.
-3. `.compass/meta/lessons-catalog.yaml` - scan for relevant lessons.
+3. `.compass/lessons/index.md` - grep for relevant lessons; descend into the matching domain index.
 
 Place these at the START of your reasoning, never in the middle of a long prompt. Lost-in-the-middle costs 20-30 points of accuracy across frontier models (ADR-004).
 
@@ -91,7 +91,7 @@ When proposing a `plugin/` change, ask which goal it serves.
 ├── active.md                 - HOT: current tasks
 ├── backlog.md                - cold: future tasks
 ├── meta/
-│   ├── lessons-catalog.yaml  - lesson tag index (loaded with hot path)
+│   ├── lessons-catalog.yaml  - machine index behind `compass lessons` (off the hot path)
 │   ├── tag-index.yaml        - facet index (loaded on demand for multi-tag queries)
 │   └── plugin.yaml           - plugin source path + installed version (for /compass:update)
 ├── specs/                    - specifications (every spec is a folder; index.md is the artifact)

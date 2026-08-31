@@ -165,3 +165,6 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 
 ### Per-domain organization initiative
 - [x] TASK-120: taxonomize decisions/ and lessons/ (SPEC-022 D-12) - applied; 52 moves, 0 errors, catalog untouched
+
+### Per-domain organization initiative
+- [x] TASK-121: lessons load like everything else (D-14) - hot path 3,332/5,000, under cap for the first time

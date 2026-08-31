@@ -23,7 +23,7 @@ Not appropriate for L+ tasks, ambiguous requirements (run `/compass:spec` first)
 
 ### 1. Orient
 
-Read `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`. Read the parent plan and source spec. If complexity is L+, exit:
+Read `.compass/index.md`, `.compass/active.md`, `.compass/lessons/index.md`. Read the parent plan and source spec. If complexity is L+, exit:
 
 > "This task is too large for autopilot (complexity: [L/XL]). Use the full pipeline with human approval at each stage."
 

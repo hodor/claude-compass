@@ -9,7 +9,7 @@ effort: high
 maxTurns: 25
 color: red
 memory: project
-initialPrompt: "Read these files now: .compass/index.md, .compass/meta/lessons-catalog.yaml"
+initialPrompt: "Read these files now: .compass/index.md, .compass/lessons/index.md"
 permissionMode: bypassPermissions
 ---
 
@@ -21,7 +21,7 @@ Running commands is investigation. Reading code is not.
 
 ### 1. Check for matching lessons
 
-Hot path (`.compass/index.md`, `.compass/meta/lessons-catalog.yaml`) is already loaded via initialPrompt. Load any matching lessons by tag - the fix may already be documented.
+Hot path (`.compass/index.md`, `.compass/lessons/index.md`) is already loaded via initialPrompt. Load any matching lessons by tag - the fix may already be documented.
 
 If a task, plan, or spec was referenced when you were invoked, read it first. The spec's Desired Outcome is the ground truth for "expected behavior."
 

@@ -10,7 +10,7 @@ color: orange
 memory: project
 isolation: worktree
 permissionMode: bypassPermissions
-initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/meta/lessons-catalog.yaml"
+initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/lessons/index.md"
 ---
 
 You execute one task from an approved plan: read context, write code, format, review, update vault state. You do not run tests of any kind - not smoke checks, not the existing suite, not your own tests. The orchestrator spawns the `tester` agent both before you (pre-build, authoring failing tests from the task's spec) and after you (post-build, running the full suite); it handles every form of test execution. Your job stops when the code is written, formatted, and reviewed.
@@ -19,7 +19,7 @@ You execute one task from an approved plan: read context, write code, format, re
 
 ### 1. Hot path loaded via initialPrompt
 
-The frontmatter `initialPrompt` already loaded `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`. Skip ahead unless you need additional files for this specific task.
+The frontmatter `initialPrompt` already loaded `.compass/index.md`, `.compass/active.md`, `.compass/lessons/index.md`. Skip ahead unless you need additional files for this specific task.
 
 ### 2. Identify the task
 

@@ -327,7 +327,9 @@ def _sync_catalog(vault_root, records):
     existing = set(re.findall(r'file:\s*"?([^"\n]+)"?', text))
     by_filename = {}
     for record in records:
-        if record["type_dir"] != "lessons":
+        if record["type_dir"] != "lessons" or record["kind"] == "folder-index":
+            # Only lesson files belong in the catalog; a domain folder's own
+            # index.md is a scope note, not a lesson.
             continue
         by_filename.setdefault(record["path"].name, []).append(record)
     rows, collisions = [], []
@@ -445,15 +447,117 @@ def _check_hot_path_cap(vault_root, index_path):
     return over
 
 
+def _replace_section(text, heading, body_lines):
+    """Replace `heading`'s section (through the next `## ` heading or EOF)
+    with `body_lines`, appending the section when the heading is absent.
+    Everything outside the section - frontmatter, Scope prose - is untouched.
+    """
+    lines = text.splitlines()
+    block = [heading, ""] + body_lines
+    start = next((i for i, line in enumerate(lines) if line.strip() == heading), None)
+    if start is None:
+        while lines and not lines[-1].strip():
+            lines.pop()
+        merged = lines + [""] + block
+    else:
+        end = next(
+            (i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")),
+            len(lines),
+        )
+        merged = lines[:start] + block + [""] + lines[end:]
+    return "\n".join(merged).rstrip("\n") + "\n"
+
+
+def _lesson_listing_line(record):
+    summary = (record["_data"] or {}).get("summary") or ""
+    name = record["name"]
+    link = f"[[{name}|{record['path'].stem}]]" if "/" in name else f"[[{name}]]"
+    return f"- {link} - {summary}" if summary else f"- {link}"
+
+
+def _sync_lessons_indexes(vault_root, records):
+    """Regenerate the `## Lessons` listing of `lessons/index.md` and of every
+    lessons domain's `index.md` from lesson frontmatter, so lessons load like
+    every other type dir: the type-root index carries the high-level surface
+    (domains with counts, loose root lessons), each domain index lists its own
+    members with summaries, and agents grep these instead of a monolithic
+    catalog. Hand-written Scope prose is never touched. Returns the number of
+    index files rewritten."""
+    lessons_dir = vault_root / "lessons"
+    if not lessons_dir.is_dir():
+        return 0
+    active = [
+        r for r in records
+        if r["type_dir"] == "lessons" and r["kind"] != "folder-index"
+        and (r["_data"] or {}).get("status") != "archived"
+    ]
+    folders = sorted(
+        (r for r in records
+         if r["type_dir"] == "lessons" and r["kind"] == "folder-index"),
+        key=lambda r: r["name"],
+    )
+
+    def direct_members(folder_name):
+        prefix = folder_name + "/"
+        return sorted(
+            (r for r in active
+             if r["name"].startswith(prefix) and "/" not in r["name"][len(prefix):]),
+            key=lambda r: r["name"],
+        )
+
+    rewritten = 0
+    for folder in folders:
+        body = [_lesson_listing_line(r) for r in direct_members(folder["name"])]
+        path = folder["path"]
+        text = path.read_text(encoding="utf-8")
+        desired = _replace_section(text, "## Lessons", body)
+        if desired != text:
+            vaultlib.write_text_lf(path, desired)
+            rewritten += 1
+
+    root_index = lessons_dir / "index.md"
+    if root_index.is_file():
+        body = []
+        for folder in folders:
+            count = len(direct_members(folder["name"]))
+            summary = (folder["_data"] or {}).get("summary") or ""
+            label = folder["path"].parent.name
+            line = f"- [[{folder['name']}/index|{label}]] ({count} lessons)"
+            body.append(f"{line} - {summary}" if summary else line)
+        body.extend(
+            _lesson_listing_line(r)
+            for r in sorted(
+                (r for r in active if "/" not in r["name"]),
+                key=lambda r: r["name"],
+            )
+        )
+        text = root_index.read_text(encoding="utf-8")
+        desired = _replace_section(text, "## Lessons", body)
+        if desired != text:
+            vaultlib.write_text_lf(root_index, desired)
+            rewritten += 1
+    return rewritten
+
+
 def _check_caps(vault_root, records):
     warnings = []
     index_path = vault_root / "index.md"
     if index_path.is_file():
         text = index_path.read_text(encoding="utf-8")
-        over = vaultlib.count_tokens(text) > INDEX_TOKEN_CAP or len(text.splitlines()) > INDEX_LINE_CAP
+        # Measure without the warning line itself, so its own tokens can
+        # neither trip the cap nor keep the warning alive at the boundary.
+        stripped = "\n".join(
+            line for line in text.split("\n") if line != INDEX_WARNING
+        )
+        over = (
+            vaultlib.count_tokens(stripped) > INDEX_TOKEN_CAP
+            or len(stripped.splitlines()) > INDEX_LINE_CAP
+        )
         if over and INDEX_WARNING not in text:
             vaultlib.write_text_lf(index_path, INDEX_WARNING + "\n" + text)
             warnings.append("index.md")
+        elif not over and INDEX_WARNING in text:
+            vaultlib.write_text_lf(index_path, stripped)
 
     catalog_path = vault_root / "meta" / "lessons-catalog.yaml"
     if catalog_path.is_file():
@@ -560,6 +664,7 @@ def sync(vault_root):
     _load_data(records)
     index_added = _sync_index(vault_root, records)
     catalog_added, catalog_collisions, catalog_duplicates = _sync_catalog(vault_root, records)
+    lessons_indexes = _sync_lessons_indexes(vault_root, records)
     logs_deleted, capture_log_pruned = _clean_logs(vault_root)
     return {
         "active_swept": active_swept,
@@ -567,6 +672,7 @@ def sync(vault_root):
         "catalog_added": catalog_added,
         "catalog_collisions": catalog_collisions,
         "catalog_duplicates_removed": catalog_duplicates,
+        "lessons_indexes": lessons_indexes,
         "tags": _sync_tag_index(vault_root, records),
         "caps": _check_caps(vault_root, records),
         "logs_deleted": logs_deleted,
@@ -590,6 +696,8 @@ def format_report(report):
         parts.append(f"catalog filename collision: {collision}")
     if report.get("catalog_duplicates_removed"):
         parts.append(f"catalog duplicate rows removed: {report['catalog_duplicates_removed']}")
+    if report.get("lessons_indexes"):
+        parts.append(f"lessons indexes refreshed: {report['lessons_indexes']}")
     parts.append(f"tags indexed: {report['tags']}")
     if report["caps"]:
         parts.append(f"caps exceeded (warning written): {', '.join(report['caps'])}")

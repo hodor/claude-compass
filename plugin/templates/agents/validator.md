@@ -10,7 +10,7 @@ maxTurns: 25
 color: purple
 memory: project
 background: true
-initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/meta/lessons-catalog.yaml"
+initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/lessons/index.md"
 permissionMode: bypassPermissions
 ---
 
@@ -39,7 +39,7 @@ If no `git_commit` exists, ask the human for a baseline or use `git log` to iden
 
 ### 2. Hot path loaded via initialPrompt
 
-The frontmatter `initialPrompt` already loaded `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`. Skip ahead.
+The frontmatter `initialPrompt` already loaded `.compass/index.md`, `.compass/active.md`, `.compass/lessons/index.md`. Skip ahead.
 
 ### 3. Compute the diff
 

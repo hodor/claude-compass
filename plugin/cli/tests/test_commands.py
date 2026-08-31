@@ -108,10 +108,10 @@ class NextNumTests(unittest.TestCase):
 class HotPathTests(unittest.TestCase):
     def test_token_sum(self):
         root = make_vault(self)
-        (root / "meta").mkdir()
+        (root / "lessons").mkdir()
         (root / "index.md").write_text("a" * 400, encoding="utf-8")
         (root / "active.md").write_text("b" * 400, encoding="utf-8")
-        (root / "meta" / "lessons-catalog.yaml").write_text("c" * 400, encoding="utf-8")
+        (root / "lessons" / "index.md").write_text("c" * 400, encoding="utf-8")
         self.assertEqual(hot_path.measure(root), 300)  # 1200 chars / 4
 
 

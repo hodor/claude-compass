@@ -138,6 +138,8 @@ tags:
   - research/test-quality/RESEARCH-fleet-test-census.md
   churn:
   - lessons/platform/LESSON-autocrlf-churns-lf-writers.md
+  class-here:
+  - lessons/vault-structure/LESSON-scope-notes-are-load-bearing.md
   classification:
   - decisions/vault-structure/ADR-006-hybrid-hierarchy-implementation.md
   - lessons/vault-structure/LESSON-hierarchical-placement-tolerate-disagreement.md
@@ -889,6 +891,8 @@ tags:
   - research/vault-structure/RESEARCH-active-set-prior-art.md
   - research/vault-structure/RESEARCH-graph-engineering-for-compass.md
   - research/vault-structure/RESEARCH-okf-improvements-for-compass.md
+  probe:
+  - lessons/vault-structure/LESSON-scope-notes-are-load-bearing.md
   probes:
   - lessons/vault-structure/LESSON-scratch-vaults-need-compass-dir.md
   procedure-evaluation:
@@ -1004,6 +1008,7 @@ tags:
   scientific-method:
   - research/RESEARCH-scientific-method-in-compass.md
   scope-notes:
+  - lessons/vault-structure/LESSON-scope-notes-are-load-bearing.md
   - plans/PLAN-016-domain-taxonomy.md
   - research/vault-structure/RESEARCH-taxonomy-for-unambiguous-placement.md
   scratchpad:
@@ -1133,6 +1138,7 @@ tags:
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_16-47-06_wave1-tree-uncommitted.md
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated.md
   - lessons/vault-structure/LESSON-hierarchical-placement-tolerate-disagreement.md
+  - lessons/vault-structure/LESSON-scope-notes-are-load-bearing.md
   - lessons/vault-structure/LESSON-template-shape-vs-template-precondition.md
   - plans/PLAN-016-domain-taxonomy.md
   - research/vault-structure/RESEARCH-hierarchical-knowledge-base-design.md
@@ -1260,6 +1266,8 @@ tags:
   - decisions/ADR-017-capability-index-and-usage-record.md
   - plans/PLAN-014-capability-usage.md
   - specs/SPEC-017-capabilities-are-reachable-and-measured.md
+  useless-tokens:
+  - lessons/vault-structure/LESSON-scope-notes-are-load-bearing.md
   user-files:
   - lessons/LESSON-installer-removes-only-what-it-installed.md
   validate:

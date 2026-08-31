@@ -266,3 +266,10 @@ lessons:
     tags: [windows, git-bash, heredoc, escaping, scratchpad]
     score: 5
     summary: "Git Bash heredocs on Windows collapse backslash escapes; scratchpad script files carry code patches instead"
+  - file: "LESSON-scope-notes-are-load-bearing.md"
+    status: active
+    category: domain
+    area: methodology
+    tags: [taxonomy, scope-notes, class-here, probe, useless-tokens]
+    score: 5
+    summary: "A missing Class-here scope line cost a probe 16,900 useless tokens; repair cut it to 2,971"
