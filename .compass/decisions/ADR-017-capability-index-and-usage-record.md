@@ -9,7 +9,8 @@ taxonomy_hint: "pipeline or a tooling domain; same straddle as SPEC-017"
 created: 2026-08-29
 updated: 2026-08-29
 author: "orchestrator"
-summary: "the existing help listing is the progressive-disclosure index, made reachable by one resident rule line; maincli dispatch records every invocation to meta/usage.yaml; compass usage lists never-used commands explicitly; clean-tmp and tree retire; the admission-control pair's fate is decided by the usage record"
+summary: "the existing help listing is the progressive-disclosure index, made reachable by one resident rule line; maincli dispatch records every invocation to meta/usage.yaml; compass usage lists never-used commands explicitly; clean-tmp retires; the admission-control pair's fate is decided by the usage record"
+amended_by: "[[specs/vault-structure/SPEC-022-vault-organized-per-domain]] D-08 - tree's retirement is undone: once the root index speaks in domains, no single file lists every artifact, and tree becomes the whole-vault view (PLAN-016 TASK-116)"
 depends_on: ["[[SPEC-017-capabilities-are-reachable-and-measured]]", "[[RESEARCH-hermes-agent-capabilities]]", "[[compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work]]"]
 ---
 
