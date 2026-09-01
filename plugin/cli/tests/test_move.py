@@ -131,6 +131,49 @@ class FlatMoveTests(MoveFixture):
         self.assertIn("[[specs/net/index|net]]", index)
 
 
+class IndexHealTests(MoveFixture):
+    """move owns its root-index residue (issue #23): a moved artifact's
+    hand-written description lifts into its summary: so sync's covered-line
+    prune can fire, and the outcome is reported."""
+
+    def spec_no_summary(self, name):
+        return (
+            f"---\ntitle: {name}\ntype: spec\nstatus: approved\narea: w\n"
+            f"tags: [x]\ncreated: 2026-08-30\nupdated: 2026-08-30\n---\n\nbody\n"
+        )
+
+    def setUp(self):
+        super().setUp()
+        self.write("specs/net/index.md", domain_body("net"))
+
+    def test_hand_description_lifted_then_line_pruned(self):
+        self.write("specs/SPEC-002-cache.md", self.spec_no_summary("Cache"))
+        (self.root / "index.md").write_text(
+            "# Index\n\n## Specs\n\n- [[SPEC-002-cache]] - hand-written note\n",
+            encoding="utf-8")
+        code, out, err = self.run_cmd(["SPEC-002-cache", "specs/net", "--apply"])
+        self.assertEqual(code, 0, err)
+        data, _ = vaultlib.parse_frontmatter(
+            self.root / "specs" / "net" / "SPEC-002-cache.md")
+        self.assertEqual(data["summary"], "hand-written note")
+        index = self.read("index.md")
+        self.assertNotIn("- [[SPEC-002-cache]]", index)
+        self.assertIn("pruned", out)
+
+    def test_conflicting_description_kept_and_reported(self):
+        self.write("specs/SPEC-002-cache.md", spec_body("Cache", "official summary"))
+        (self.root / "index.md").write_text(
+            "# Index\n\n## Specs\n\n- [[SPEC-002-cache]] - a different note\n",
+            encoding="utf-8")
+        code, out, err = self.run_cmd(["SPEC-002-cache", "specs/net", "--apply"])
+        self.assertEqual(code, 0, err)
+        data, _ = vaultlib.parse_frontmatter(
+            self.root / "specs" / "net" / "SPEC-002-cache.md")
+        self.assertEqual(data["summary"], "official summary")
+        self.assertIn("a different note", self.read("index.md"))
+        self.assertIn("kept", out)
+
+
 class FolderMoveTests(MoveFixture):
     def setUp(self):
         super().setUp()

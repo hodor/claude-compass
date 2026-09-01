@@ -6,8 +6,11 @@ Bare-stem links keep resolving on their own, since filenames never change;
 path-qualified links carry the path as identity, so a domain move without
 the rewrite silently breaks each one. Mentions quoted in inline code or
 fenced blocks are documentation, never rewritten. Dry-run by default;
-`--apply` executes, then re-syncs derived state (which prunes the old
-root-index lines) and reports vault health.
+`--apply` executes, then heals the root index: each moved artifact's
+entry-line description lifts into its missing `summary:`, sync prunes the
+lines now provably covered by the destination's folder pointer, and any
+line whose description conflicts with the artifact's own fields is kept
+and reported. Vault health is reported last.
 
 The destination must already exist inside the same type dir as each
 artifact: the type dir itself, or a domain folder (its own `index.md`
@@ -155,6 +158,80 @@ def _rewrite_links(text, renames):
     return "\n".join(out), changed
 
 
+def _lift_summary(path, desc):
+    """Copy `desc` into the artifact's missing `summary:`. False when the
+    frontmatter cannot take it or already carries one - an existing summary
+    is never overwritten."""
+    text = vaultlib.read_vault_text(path)
+    data, error = vaultlib.parse_frontmatter_text(text)
+    if error or data.get("summary"):
+        return False
+    lines = text.split("\n")
+    closing = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+    if closing is None:
+        return False
+    lines.insert(closing, f"summary: {vaultlib.yaml_double_quote(desc)}")
+    vaultlib.write_text_lf(path, "\n".join(lines))
+    return True
+
+
+def _index_descriptions_of(vault_root, moved_rel):
+    """(path, description) for each root-index entry line whose subject
+    link resolves to a moved file. Fenced lines are skipped."""
+    index_path = vault_root / "index.md"
+    if not index_path.is_file():
+        return []
+    resolve = vaultlib.resolvable_names_map(vault_root)
+    found = []
+    in_fence = False
+    for line in index_path.read_text(encoding="utf-8").split("\n"):
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        entry = sync_command.ENTRY_PATTERN.match(line)
+        raws = WIKILINK.findall(line)
+        if not entry or not raws:
+            continue
+        split_at = next((i for i, c in enumerate(raws[0]) if c in "#|"), len(raws[0]))
+        paths = vaultlib.resolve_link(resolve, raws[0][:split_at].strip())
+        if len(paths) == 1 and paths[0] in moved_rel:
+            found.append((paths[0], entry.group("desc")))
+    return found
+
+
+def _heal_index(vault_root, moves):
+    """The moved artifacts' index residue: lift each entry line's
+    description into its artifact's missing `summary:` (so sync's
+    covered-line prune can prove the text survives), run sync, and count
+    the lines whose description still conflicts with the artifact's own
+    fields. Returns (lifted, pruned, kept)."""
+    moved_rel = set()
+    for _, dest_node in moves:
+        files = sorted(dest_node.rglob("*.md")) if dest_node.is_dir() else [dest_node]
+        moved_rel.update(f.relative_to(vault_root).as_posix() for f in files)
+    lifted = 0
+    for rel, desc in _index_descriptions_of(vault_root, moved_rel):
+        if desc and _lift_summary(vault_root / rel, desc):
+            lifted += 1
+    # sync's tag-index write assumes meta/ already exists; ensure it here so
+    # a vault that has never had a shape-changing command run against it
+    # does not crash on the very first one.
+    (vault_root / "meta").mkdir(exist_ok=True)
+    pruned = 0
+    if (vault_root / "index.md").is_file():
+        pruned = sync_command.sync(vault_root).get("index_pruned", 0)
+    kept = 0
+    for rel, desc in _index_descriptions_of(vault_root, moved_rel):
+        data, error = vaultlib.parse_frontmatter(vault_root / rel)
+        if not error and desc is not None and desc not in (
+            data.get("summary"), data.get("title")
+        ):
+            kept += 1
+    return lifted, pruned, kept
+
+
 def _sweep_rewrites(vault_root, renames, apply):
     """Apply (or count, when `apply` is false) the link rewrites across
     every markdown file in the vault. Returns (links, files_touched)."""
@@ -230,11 +307,16 @@ def run(args):
     sys.stdout.write(
         f"  wikilinks rewritten: {links} across {files} file(s)\n"
     )
-    # sync's tag-index write assumes meta/ already exists; ensure it here so
-    # a vault that has never had a shape-changing command run against it
-    # does not crash on the very first one.
-    (vault_root / "meta").mkdir(exist_ok=True)
-    if (vault_root / "index.md").is_file():
-        sync_command.sync(vault_root)
+    lifted, pruned, kept = _heal_index(vault_root, moves)
+    if lifted:
+        sys.stdout.write(
+            f"  summaries lifted from index descriptions: {lifted}\n"
+        )
+    sys.stdout.write(f"  index.md: {pruned} entry line(s) pruned\n")
+    if kept:
+        sys.stdout.write(
+            f"  index.md: {kept} line(s) kept - description differs from "
+            "the artifact's own summary\n"
+        )
     _report_vault_health(vault_root)
     return 0

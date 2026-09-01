@@ -365,6 +365,23 @@ def _sync_index(vault_root, records):
                 pruned += 1
                 continue
             updated = line
+            # A plain-artifact line for a listed folder (promote keeps the
+            # stem resolving but never re-renders the line) upgrades to the
+            # folder pointer form, keeping the line's own description.
+            entry = ENTRY_PATTERN.match(line)
+            if entry and infos and "(folder," not in line and len(infos[0][3]) == 1:
+                folder_rec = folder_by_path.get(infos[0][3][0])
+                if folder_rec is not None:
+                    data = folder_rec["_data"] or {}
+                    desc = (entry.group("desc") or data.get("summary")
+                            or data.get("title") or folder_rec["name"])
+                    updated = (
+                        f"{'  ' * folder_rec['depth']}- [[{_link_name(folder_rec)}]] "
+                        f"(folder, {_child_count(folder_rec, records)} children)"
+                        f" - {desc}"
+                    )
+                    if updated != line:
+                        rewrites += 1
             for raw, split_at, target, resolved in infos:
                 if resolved:
                     indexed_paths.update(resolved)
