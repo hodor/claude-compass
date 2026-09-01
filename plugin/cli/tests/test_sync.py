@@ -690,6 +690,27 @@ class IndexPruneTests(SyncFixture):
         sync_cmd.sync(self.root)
         self.assertNotIn("DOC-scratch", self.index_text())
 
+    def test_plain_line_for_listed_folder_upgraded_to_pointer_form(self):
+        # After promote, the folder keeps resolving under its old stem but
+        # its index line stays in plain-artifact form; sync re-renders it
+        # as the folder pointer, keeping the line's own description
+        # (issue #23).
+        self.write("specs/SPEC-004-pack/index.md",
+                   folder_spec("Pack", "the pack folder"))
+        self.write("specs/SPEC-004-pack/SPEC-001-inner.md", spec("Inner"))
+        seeded = INDEX_TEMPLATE.replace(
+            "## Plans", "- [[SPEC-004-pack]] - hand description\n\n## Plans"
+        )
+        (self.root / "index.md").write_text(seeded, encoding="utf-8")
+        sync_cmd.sync(self.root)
+        text = self.index_text()
+        self.assertIn(
+            "- [[specs/SPEC-004-pack/index|SPEC-004-pack]] (folder, 1 children)"
+            " - hand description", text)
+        self.assertNotIn("- [[SPEC-004-pack]] -", text)
+        sync_cmd.sync(self.root)
+        self.assertEqual(self.index_text(), text)
+
     def test_second_sync_after_prune_is_stable(self):
         self.write("specs/net/index.md", folder_spec("net", "network topics"))
         self.write("specs/net/SPEC-002-new.md",
