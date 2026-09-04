@@ -19,7 +19,7 @@ Triggered by a live failure in another project: a vision session produced seven 
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].
-- [ ] [[SPEC-006-multi-host-agent-cli-support]] hosts: hermes first, then Kimi Code / Codex.
+- [ ] [[SPEC-006-multi-host-agent-cli-support]] hosts: hermes first, then deepseek-harness (dsh; fit assessed in [[research/distribution/RESEARCH-deepseek-harness-fit]], 2026-09-04), then Kimi Code / Codex.
 - [ ] Blinded rerun of the test-bar experiment ([[LESSON-blind-the-author-in-self-validation]]).
 - [ ] Review and approve all plugin files - 3/21 approved, paused since 2026-03-12; largely superseded by the per-file reviews every later plan performed.
 
