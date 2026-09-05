@@ -1,16 +1,15 @@
 ---
 title: "DeepSeek Harness as a Compass Host"
 type: plan
-status: done
+status: approved
 approved: 2026-09-05
-completed: 2026-09-05
 confidence: medium
 area: distribution
 tags: [multi-host, dsh, deepseek, materializers, hooks, bundles, dual-host, distribution]
 created: 2026-09-05
 updated: 2026-09-05
 author: "planner"
-summary: "dsh is a native Compass host from the one canonical plugin source (done 2026-09-05, v0.19-0.21): host roster + per-host apply, generated hooks/skills/bundle/rules materializers, model routes, host-aware doctor, dsh capture worker, dual-host acceptance at 0 errors"
+summary: "dsh is a native Compass host from the one canonical plugin source (v0.19-0.22: materializers, model routes, doctor, capture worker, global auto-installed bundle, dual-host acceptance at 0 errors); reopened for Wave 6 - SPEC-006 D-05 zero-decision: no roster question, dsh-first bootstrap, both-direction acceptance"
 depends_on: ["[[specs/distribution/SPEC-006-multi-host-agent-cli-support]]", "[[research/distribution/RESEARCH-deepseek-harness-fit]]", "[[specs/distribution/SPEC-008-central-model-resolution-table]]"]
 lessons: ["[[LESSON-hook-payloads-observe-before-coding]]", "[[LESSON-self-update-corrections-lag-one-version]]", "[[LESSON-installer-removes-only-what-it-installed]]", "[[LESSON-revert-to-prove-a-regression-test]]", "[[LESSON-hook-if-clause-no-or]]", "[[LESSON-autocrlf-churns-lf-writers]]", "[[LESSON-hooks-load-only-from-settings]]", "[[LESSON-hook-cli-gate-stdin-on-flag]]"]
 ---
@@ -117,6 +116,14 @@ Ruling for TASK-012, delegated by the human ("do what will be the best for all c
 - [ ] TASK-013: live dual-host acceptance - one project, both CLIs, the pipeline exercised from each, vault correct afterwards - complexity: M, depends_on: TASK-009, TASK-010, TASK-011, TASK-012, files: [.compass/research/distribution/RESEARCH-dsh-live-probes.md], decisions: [SPEC-006-multi-host-agent-cli-support/D-01, SPEC-006-multi-host-agent-cli-support/D-04]
   - Automated verification: after both drives, `compass validate` reports 0 errors in the rig and sync's index matches the artifacts on disk.
   - Manual verification: the human reviews the acceptance transcript summary at the plan's close.
+
+## Later (intent only) - Wave 6: zero-decision (SPEC-006 D-05)
+
+The plan reopens for D-05: the user must not know or be forced to decide anything - either host, either order, no setup question. Known gaps against that bar: the `hosts:` roster is opt-in and setup asks for it; a project never opened in Claude Code cannot bootstrap its dsh materializations. Intent lines for the next session to elaborate:
+
+- [ ] TASK-015: automatic host detection replaces the roster question - dsh presence on the machine (binary on PATH, or the harness home existing) triggers materialization at every apply with no question asked and no plugin.yaml field required; machines without dsh see zero dsh-shaped writes; the setup skill's "ask the human which hosts" instruction is removed - files: [plugin/cli/hostlib.py, plugin/cli/commands/self_update.py, plugin/skills/setup/SKILL.md, plugin/skills/update/SKILL.md], decisions: [SPEC-006-multi-host-agent-cli-support/D-05], lessons: [LESSON-installer-removes-only-what-it-installed]
+- [ ] TASK-016: dsh-first bootstrap - a Compass project whose first-ever session is dsh materializes itself: probe a second bridge mount in the global bundle pointed at a machine-level bootstrap hooks file (under the harness home, absolute path) whose SessionStart command runs a bootstrap from a CLI copy the bundle itself carries, materializing the launch-cwd project when it holds `.compass/` and doing nothing otherwise - files: [plugin/cli/hostlib.py, plugin/cli/commands/self_update.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-05], lessons: [LESSON-hook-payloads-observe-before-coding, LESSON-scratch-vaults-need-compass-dir]
+- [ ] TASK-017: zero-decision acceptance both directions - two fresh projects on the rig, one driven dsh-first and one Claude-Code-first, no prompts, no manual steps, both hosts working in both projects afterwards, validate 0 errors - files: [.compass/research/distribution/RESEARCH-dsh-live-probes.md], decisions: [SPEC-006-multi-host-agent-cli-support/D-05]
 
 ## Wave 5 elaborated (2026-09-05) - the cold-start bar
 

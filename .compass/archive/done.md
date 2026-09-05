@@ -212,3 +212,10 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 - [x] TASK-011: host-aware doctor - materializations, skew, capture posture
 - [x] TASK-012: host-aware capture worker - dsh headless completed a real extract pass, claude masked
 - [x] TASK-013: dual-host acceptance - both CLIs drove the pipeline, validate 0 errors; PLAN-017 COMPLETE
+
+### PLAN-017 Wave 5 - cold start (human: "I just start deepseek on the same folder and it should just work")
+
+- [x] Global project-agnostic bundle under the harness home, auto-installed into every profile on apply - no manual dsh plugin add, ever
+- [x] Per-project hooks file bakes absolute paths; the mount is inert in non-Compass folders (empty-folder boot clean)
+- [x] Cold-start proven: fresh project + one apply -> one dsh session does write/sync, delegation, skills; claude -p works in the same project
+- [x] Fourth unwidened matcher copy found in the update skill and fixed
