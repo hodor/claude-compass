@@ -176,7 +176,7 @@ if posttool:
     # The manifest splits PostToolUse three ways (Write/Edit/MultiEdit) because its
     # "if" field cannot express boolean OR. The settings schema carries no "if"
     # field, so the three collapse into one matcher group.
-    translated["PostToolUse"] = [clean_group(posttool[0], "Write|Edit|MultiEdit")]
+    translated["PostToolUse"] = [clean_group(posttool[0], "Write|Edit|MultiEdit|write|edit")]
 for event in manifest:
     if event != "PostToolUse":
         translated[event] = [clean_group(g) for g in manifest[event]]

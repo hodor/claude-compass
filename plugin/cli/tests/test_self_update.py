@@ -328,7 +328,9 @@ class SettingsMergeTests(SelfUpdateFixture):
             if any("compass" in h["command"] for h in g["hooks"])
         ]
         self.assertEqual(len(compass_groups), 1)
-        self.assertEqual(compass_groups[0]["matcher"], "Write|Edit|MultiEdit")
+        # dsh matches on its lowercase tool names; the extra alternatives are
+        # inert under Claude Code, so one manifest stays legal on both hosts.
+        self.assertEqual(compass_groups[0]["matcher"], "Write|Edit|MultiEdit|write|edit")
         for g in post:
             for h in g["hooks"]:
                 self.assertNotIn("if", h)
