@@ -54,7 +54,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-014-capability-usage]] - implement ADR-017: usage recording in dispatch, usage report, doctor advisory, retirements, reachability line; ship v0.12.0
 - [[PLAN-015-graph-queries]] - implement ADR-018: graphlib, compass graph, consumer wiring, ripple step; live validation; v0.13.0
 - [[PLAN-016-domain-taxonomy]] - implement ADR-022 in two waves: mechanism first (Contents sync + loop-guard fix, make-domain, validate ceiling + link rules, skill contracts), then the human-approved migration of this vault; live acceptance is a filer drill and a finder drill on the migrated vault
-- [[PLAN-017-dsh-host-support]] - make dsh a native Compass host from the one canonical plugin source - Wave 1 probes the three unverified dsh mechanics live, later waves build the host-adapter seam, the materializers, and a dual-host acceptance
+- [[PLAN-017-dsh-host-support]] - dsh is a native Compass host from the one canonical plugin source (done 2026-09-05, v0.19-0.21): host roster + per-host apply, generated hooks/skills/bundle/rules materializers, model routes, host-aware doctor, dsh capture worker, dual-host acceptance at 0 errors
 
 ## Decisions
 

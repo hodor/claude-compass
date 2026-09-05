@@ -171,14 +171,28 @@ def _release_lock(vault_root):
         pass
 
 
-def _resolve_binary(config):
+def _resolve_binary(config, vault_root=None):
+    """`(binary, host_kind)` for the headless child. `claude` wherever an
+    override or the PATH provides it; a dsh-rostered project without
+    `claude` falls back to `dsh --profile headless`; a project with neither
+    resolves to `claude` and the launch failure latches no-headless as
+    before - the posture `compass doctor` names either way."""
     env_bin = os.environ.get("COMPASS_CLAUDE_BIN")
     if env_bin:
-        return env_bin
+        return env_bin, "claude"
     cfg_bin = config.get("claude_bin")
     if cfg_bin:
-        return cfg_bin
-    return shutil.which("claude") or "claude"
+        return cfg_bin, "claude"
+    found = shutil.which("claude")
+    if found:
+        return found, "claude"
+    if vault_root is not None:
+        import hostlib
+        if "dsh" in hostlib.read_hosts(vault_root):
+            dsh = shutil.which("dsh")
+            if dsh:
+                return dsh, "dsh"
+    return "claude", "claude"
 
 
 def _worker_prompt(opp_dir):
@@ -271,13 +285,19 @@ def _grace_seconds(config):
 
 
 def _run_child(vault_root, opp_id, opp_dir, opp_path, config):
-    binary = _resolve_binary(config)
-    model, _effort, _source = modelslib.resolve("capture-worker")
+    binary, host_kind = _resolve_binary(config, vault_root)
     prompt = _worker_prompt(opp_dir)
-    argv = [
-        binary, "-p", prompt, "--model", model, "--output-format", "json",
-        "--allowedTools", WORKER_ALLOWED_TOOLS,
-    ]
+    if host_kind == "dsh":
+        # The dsh headless profile governs the child's tools and model
+        # route; the prompt is the whole contract, and the final answer
+        # arrives as plain text, which `_extracted_line` already reads.
+        argv = [binary, "--profile", "headless", prompt]
+    else:
+        model, _effort, _source = modelslib.resolve("capture-worker")
+        argv = [
+            binary, "-p", prompt, "--model", model, "--output-format", "json",
+            "--allowedTools", WORKER_ALLOWED_TOOLS,
+        ]
 
     env = dict(os.environ)
     env["COMPASS_WORKER_SESSION"] = "1"

@@ -69,6 +69,82 @@ class Check:
         return row
 
 
+def _host_checks(vault_root, project_root):
+    """Per-host install rows (SPEC-006 D-04). A claude-code-only roster gets
+    one OK line. A dsh roster is checked for every materialization the apply
+    writes, for version skew between the generated bundle and plugin.yaml,
+    and the project's capture posture is named so no degradation is silent:
+    `claude` worker where present, `dsh` headless worker where rostered,
+    else the rendered-block fallback."""
+    import shutil as _shutil
+    from pathlib import Path as _Path
+
+    import hostlib
+
+    hosts = hostlib.read_hosts(vault_root)
+    if "dsh" not in hosts:
+        return [Check("host roster", OK, f"hosts: {', '.join(hosts)}")]
+
+    checks = []
+    project = _Path(project_root)
+    fix = "run: python .claude/cli/compass self-update --hook (or /compass:update)"
+    problems = []
+    if not (project / ".dsh" / "hooks.json").is_file():
+        problems.append(".dsh/hooks.json missing")
+    skills = project / ".dsh" / "skills"
+    if not skills.is_dir() or not any(
+        d.name.startswith("compass-") for d in skills.iterdir() if d.is_dir()
+    ):
+        problems.append(".dsh/skills has no compass-* skills")
+    agents_md = project / "AGENTS.md"
+    if not agents_md.is_file() or hostlib.RULES_BEGIN not in agents_md.read_text(
+        encoding="utf-8"
+    ):
+        problems.append("AGENTS.md lacks the compass rules section")
+
+    plugin_version = None
+    plugin_yaml = _Path(vault_root) / "meta" / "plugin.yaml"
+    if plugin_yaml.is_file():
+        match = re.search(r"^\s*version:\s*(.+)$",
+                          plugin_yaml.read_text(encoding="utf-8"), re.MULTILINE)
+        plugin_version = match.group(1).strip() if match else None
+    bundle_pkg = project / ".dsh" / "compass-bundle" / "package.json"
+    if not bundle_pkg.is_file():
+        problems.append(".dsh/compass-bundle missing")
+    else:
+        try:
+            bundle_version = json.loads(
+                bundle_pkg.read_text(encoding="utf-8")).get("version")
+        except ValueError:
+            bundle_version = None
+        if plugin_version and bundle_version and bundle_version != plugin_version:
+            problems.append(
+                f"version skew: bundle {bundle_version} vs plugin {plugin_version} - "
+                "the profile's pnpm snapshot is also stale until `dsh plugin add` reruns"
+            )
+
+    if problems:
+        checks.append(Check("host materializations", FAIL, "; ".join(problems), fix))
+    else:
+        checks.append(Check(
+            "host materializations", OK,
+            f"hosts: {', '.join(hosts)}; dsh hooks, skills, bundle "
+            f"({plugin_version}), rules section all present"))
+
+    if _shutil.which("claude"):
+        checks.append(Check("capture posture", OK,
+                            "claude on PATH - detached worker via claude"))
+    elif _shutil.which("dsh"):
+        checks.append(Check("capture posture", OK,
+                            "dsh on PATH - detached worker via dsh headless"))
+    else:
+        checks.append(Check(
+            "capture posture", WARN,
+            "no headless host on PATH - capture falls back to the rendered "
+            "block at the stop boundary"))
+    return checks
+
+
 def _plugin_yaml_check(vault_root):
     path = vault_root / "meta" / "plugin.yaml"
     fix = "run /compass:setup to install a versioned plugin.yaml"
@@ -451,6 +527,7 @@ def _run_checks():
     checks.append(_usage_check(vault_root))
     checks.append(_overlay_check(vault_root))
     checks.append(_worker_ledger_check(vault_root))
+    checks.extend(_host_checks(vault_root, project_root))
     return checks
 
 

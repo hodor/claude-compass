@@ -1,15 +1,16 @@
 ---
 title: "DeepSeek Harness as a Compass Host"
 type: plan
-status: approved
+status: done
 approved: 2026-09-05
+completed: 2026-09-05
 confidence: medium
 area: distribution
 tags: [multi-host, dsh, deepseek, materializers, hooks, bundles, dual-host, distribution]
 created: 2026-09-05
 updated: 2026-09-05
 author: "planner"
-summary: "make dsh a native Compass host from the one canonical plugin source - Wave 1 probes the three unverified dsh mechanics live, later waves build the host-adapter seam, the materializers, and a dual-host acceptance"
+summary: "dsh is a native Compass host from the one canonical plugin source (done 2026-09-05, v0.19-0.21): host roster + per-host apply, generated hooks/skills/bundle/rules materializers, model routes, host-aware doctor, dsh capture worker, dual-host acceptance at 0 errors"
 depends_on: ["[[specs/distribution/SPEC-006-multi-host-agent-cli-support]]", "[[research/distribution/RESEARCH-deepseek-harness-fit]]", "[[specs/distribution/SPEC-008-central-model-resolution-table]]"]
 lessons: ["[[LESSON-hook-payloads-observe-before-coding]]", "[[LESSON-self-update-corrections-lag-one-version]]", "[[LESSON-installer-removes-only-what-it-installed]]", "[[LESSON-revert-to-prove-a-regression-test]]", "[[LESSON-hook-if-clause-no-or]]", "[[LESSON-autocrlf-churns-lf-writers]]", "[[LESSON-hooks-load-only-from-settings]]", "[[LESSON-hook-cli-gate-stdin-on-flag]]"]
 ---
@@ -97,6 +98,30 @@ Every task in this and later waves verifies two ways, by the human's ruling at t
 
 **Wave 3 pause point:** same contract - suite green, both hosts live, before Wave 4 (model column, rules folding, doctor, capture worker, acceptance).
 
+### Wave 4 (detailed): rules, models, doctor, capture, acceptance
+
+Ruling for TASK-012, delegated by the human ("do what will be the best for all compass users"): `claude` remains the preferred worker binary wherever present; a dsh-rostered project without `claude` spawns a dsh headless worker instead; a project with neither headless host relies on the proven steer fallback - and doctor names the project's capture posture so no path is silent.
+
+- [ ] TASK-010: rules folded into a fenced managed section of `AGENTS.md` per the Wave 1 matrix - existing user content never touched, section regenerated in place on every apply - complexity: M, depends_on: none, files: [plugin/cli/hostlib.py, plugin/cli/tests/test_hostlib.py, plugin/cli/commands/self_update.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-03, SPEC-006-multi-host-agent-cli-support/D-04], lessons: [LESSON-installer-removes-only-what-it-installed]
+  - Automated verification: fold into an existing AGENTS.md preserves user text byte-for-byte outside the markers; refold is idempotent; suite green.
+  - Manual verification: a dsh session quotes a rules sentence; a Claude Code session in the same project sees the rules exactly once (via .claude/rules, not AGENTS.md).
+- [ ] TASK-009: a dsh column in the model policy - tiers resolve to DeepSeek routes written into the generated bundle's delegation rows as `agentOptions`, never into agent frontmatter - complexity: M, depends_on: none, files: [plugin/cli/modelslib.py, plugin/cli/hostlib.py, plugin/cli/tests/test_hostlib.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-02, SPEC-006-multi-host-agent-cli-support/D-03]
+  - Automated verification: bundle rows carry per-agent model routes from the table; overrides in meta/models.yaml respected; suite green.
+  - Manual verification: a delegation in the rig runs the child on the routed model (visible in the child's declared model).
+- [ ] TASK-011: host-aware doctor - per-host checks: dsh materializations present and current, bundle snapshot in the profile not stale against the generated bundle version, version skew between hosts, capture posture named - complexity: M, depends_on: TASK-010, files: [plugin/cli/commands/doctor.py, plugin/cli/tests/test_doctor.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-04]
+  - Automated verification: fixture projects with skew/stale/missing artifacts each produce the named FAIL/WARN; clean dual-host fixture passes; suite green.
+  - Manual verification: doctor in the rig reports the real install truthfully.
+- [ ] TASK-012: host-aware capture worker - worker resolution tries `claude`, then (dsh rostered) `dsh --profile headless`, else latches no-headless as today; the dsh invocation shape verified end-to-end by a standalone worker run producing a worker-finished row - complexity: M, depends_on: none, files: [plugin/cli/commands/capture_worker.py, plugin/cli/tests/test_capture_worker.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-02], lessons: [LESSON-headless-worker-denies-tools-silently, LESSON-hook-payloads-observe-before-coding]
+  - Automated verification: resolution order unit-tested; suite green.
+  - Manual verification: in the rig with `claude` masked, a forced opportunity's worker completes through dsh and writes its ledger row; the one-shot reap remains documented, not "fixed".
+- [ ] TASK-013: live dual-host acceptance - one project, both CLIs, the pipeline exercised from each, vault correct afterwards - complexity: M, depends_on: TASK-009, TASK-010, TASK-011, TASK-012, files: [.compass/research/distribution/RESEARCH-dsh-live-probes.md], decisions: [SPEC-006-multi-host-agent-cli-support/D-01, SPEC-006-multi-host-agent-cli-support/D-04]
+  - Automated verification: after both drives, `compass validate` reports 0 errors in the rig and sync's index matches the artifacts on disk.
+  - Manual verification: the human reviews the acceptance transcript summary at the plan's close.
+
+## Wave 4 elaborated (2026-09-05) - plan complete
+
+All five tasks landed (927 tests green) and every live bar passed; per-task evidence in [[research/distribution/RESEARCH-dsh-live-probes]]. The TASK-012 ruling held its shape in practice: `claude` first, a dsh-rostered claude-less environment completed a real extract pass through `dsh --profile headless` (worker-finished, correct anti-list judgment), and doctor names every project's capture posture. The acceptance closed the plan: one rig project, a spec written and a delegation run from dsh, a dependent plan written from Claude Code, both indexed by their own host's hooks, `compass validate` at 0 errors.
+
 ## Wave 3 elaborated (2026-09-05)
 
 All three tasks landed (916 tests green) and every live bar passed in the rig: 32 `compass-*` skills in a dsh session's catalog and one loaded verbatim on request; a dsh session delegated to `compass_debug` natively and relayed the child's report; the hook loop ran through the generated bundle with a RELATIVE `configPath` - launch-cwd resolution works, so one global profile can serve every project. Claude Code is untouched by construction (materializers run only on a dsh roster, proven by test) and its hooks fired throughout the session. What the wave learned:
@@ -117,11 +142,6 @@ Both tasks landed and both live bars passed: 904 tests green, and in one rig pro
 
 These carry intent, not instructions: each is written out in full only once the wave before it has landed and its outcome is known.
 
-- [ ] TASK-009: a dsh column in the model resolution table - tiers resolve to provider routes rather than bare model names, applied into the generated bundle instead of agent frontmatter, per [[specs/distribution/SPEC-008-central-model-resolution-table]] - files: [plugin/cli/modelslib.py, plugin/cli/commands/apply_models.py, plugin/cli/tests/test_modelslib.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-02, SPEC-006-multi-host-agent-cli-support/D-03]
-- [ ] TASK-010: rules folded into the host instruction surface, per the TASK-004 matrix - files: [plugin/cli/commands/materialize.py, plugin/templates/rules/], decisions: [SPEC-006-multi-host-agent-cli-support/D-03, SPEC-006-multi-host-agent-cli-support/D-04]
-- [ ] TASK-011: `compass doctor` becomes host-aware - it checks each detected host's own install and reports version skew between them as a failure - files: [plugin/cli/commands/doctor.py, plugin/cli/tests/test_doctor.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-04]
-- [ ] TASK-012: the dsh capture worker - `compass capture-worker` spawns a headless `claude -p` child, which a dsh-only project has no binary for; either route it to a dsh headless equivalent or ship the gap as a documented degradation the install reports - files: [plugin/cli/commands/capture_worker.py, plugin/cli/commands/doctor.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-02]
-- [ ] TASK-013: live dual-host acceptance - one project, both CLIs, the full pipeline exercised from each, vault correct afterwards - files: [.compass/research/distribution/RESEARCH-dsh-live-probes.md], decisions: [SPEC-006-multi-host-agent-cli-support/D-01, SPEC-006-multi-host-agent-cli-support/D-04]
   - Automated verification: `pytest plugin/cli/tests/test_self_update.py` passes with a new case asserting the registered matcher; reverting the `merge_settings` change alone makes that case fail.
   - Manual verification: `.claude/settings.json` in this repo shows the widened matcher after a self-update run, and a vault write from Claude Code still triggers sync.
 

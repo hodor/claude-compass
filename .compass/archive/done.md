@@ -197,3 +197,9 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 ### PLAN-017 dsh host support - Wave 2 (human ruling at the Wave 1 gate: every wave verifies suite-green plus live under both hosts)
 - [x] TASK-014: PostToolUse matcher legal on both hosts - manifest, setup translation, merge_settings moved together
 - [x] TASK-005: host seam - plugin.yaml roster, per-host _apply loop, generated .dsh/hooks.json; dual-host live bar passed
+
+### PLAN-017 dsh host support - Wave 2 (human ruling at the Wave 1 gate: every wave verifies suite-green plus live under both hosts)
+- [x] Wave 2 pause point confirmed; human: "feel free to go"
+- [x] TASK-007: tool-name map, platform-resolved shell (pwsh on win32)
+- [x] TASK-006: skill materializer - 32 skills in dsh dialect, catalog + load proven live
+- [x] TASK-008: bundle generator - delegation to compass_debug proven live; relative configPath works
