@@ -216,8 +216,12 @@ def merge_settings(project_root, manifest_path):
 
 
 def _apply(src, project_root, apply_models):
-    """Copy the plugin file set from `src` into `.claude/`. Mirrors
-    /compass:update step 4-5."""
+    """Refresh every rostered host's materialization from `src` in one run
+    (SPEC-006 D-03/D-04): the Claude Code file set into `.claude/`
+    (mirroring /compass:update step 4-5), and for a project whose
+    plugin.yaml roster lists `dsh`, the generated `.dsh/hooks.json`. One
+    run, every host - two hosts of one project can never sit on different
+    Compass versions."""
     src = Path(src)
     claude = Path(project_root) / ".claude"
     agents = claude / "agents"
@@ -250,6 +254,9 @@ def _apply(src, project_root, apply_models):
     hooks_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src / "hooks" / "hooks.json", hooks_dir / "hooks.json")
     merge_settings(project_root, hooks_dir / "hooks.json")
+    import hostlib
+    if "dsh" in hostlib.read_hosts(Path(project_root) / ".compass"):
+        hostlib.materialize_dsh_hooks(project_root, src / "hooks" / "hooks.json")
     # The shipped files above were just replaced wholesale; re-apply the
     # project's own additions on top of them (ADR-020).
     try:

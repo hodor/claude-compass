@@ -69,11 +69,30 @@ A project can hold a Compass install for Claude Code, for dsh, or for both. One 
 
 **Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before the next wave. The three probes may amend the materializer design; the later waves are written against the design as drafted.
 
+### Wave 2 (detailed): the host seam and the shared manifest
+
+Every task in this and later waves verifies two ways, by the human's ruling at the Wave 1 gate: the full CLI test suite passes (no regressions), and the change is exercised live under BOTH Claude Code and dsh before the wave closes.
+
+  - Automated verification: `pytest plugin/cli/tests/test_self_update.py` passes with a new case asserting the registered matcher; reverting the `merge_settings` change alone makes that case fail.
+  - Manual verification: `.claude/settings.json` in this repo shows the widened matcher after a self-update run, and a vault write from Claude Code still triggers sync.
+
+- [ ] TASK-005: the host seam - `hostlib.py` reads the project's host roster from `.compass/meta/plugin.yaml` (`hosts:`, defaulting to `[claude-code]` when absent so every existing install behaves exactly as today), and `self_update._apply` becomes a per-host loop: the claude-code manifest is today's copy unchanged; the dsh manifest generates `.dsh/hooks.json` from `plugin/hooks/hooks.json` by the Wave 1 transform (dialect-neutral `python "${CLAUDE_PROJECT_DIR}/..."` commands, lowercase-widened matchers) so one run refreshes every listed host and no two can sit on different versions - complexity: M, depends_on: TASK-014, files: [plugin/cli/hostlib.py, plugin/cli/commands/self_update.py, plugin/cli/tests/test_hostlib.py, plugin/cli/tests/test_self_update.py, plugin/skills/setup/SKILL.md, plugin/skills/update/SKILL.md], decisions: [SPEC-006-multi-host-agent-cli-support/D-03, SPEC-006-multi-host-agent-cli-support/D-04], lessons: [LESSON-self-update-corrections-lag-one-version, LESSON-installer-removes-only-what-it-installed]
+  - Automated verification: new tests prove a `hosts: [claude-code, dsh]` project gets both materializations from one `_apply` and a hostless plugin.yaml gets only today's behavior; the generated `.dsh/hooks.json` parses, carries no sh-dialect syntax, and its matchers include the lowercase names; full suite green.
+  - Manual verification: in the rig, repoint the bundle's `configPath` at the generated `.dsh/hooks.json`, then a vault write inside a dsh session updates the index AND a `claude -p` write in the same rig updates it too - both hosts, one project, one install.
+
+**Wave 2 pause point:** same contract as Wave 1 - suite green and both live checks pass before Wave 3 elaborates.
+
+## Wave 2 elaborated (2026-09-05)
+
+Both tasks landed and both live bars passed: 904 tests green, and in one rig project a dsh vault write synced through the generated `.dsh/hooks.json` while a `claude -p` vault write synced through the widened settings matcher - one install, both hosts, one index. What the wave adds downstream:
+
+- The roster lives at `plugin.hosts:` in plugin.yaml (nested under the `plugin:` mapping setup actually writes); absent means `[claude-code]`, and unknown names pass through so an older CLI never narrows a newer roster.
+- pnpm `file:` bundle installs are snapshots: a bundle content change reaches the profile only through a fresh `dsh plugin add`. TASK-008's generated bundle must re-add on refresh; TASK-011's doctor learns stale-bundle detection.
+
 ## Later (intent only)
 
-These carry intent, not instructions: each is written out in full only once the wave before it has landed and its outcome is known. TASK-014 is the exception, detailed now because its content is already settled and the three places it touches have to move together.
+These carry intent, not instructions: each is written out in full only once the wave before it has landed and its outcome is known.
 
-- [ ] TASK-005: host detection and per-host install manifests in setup, update, and self-update - one probe decides which hosts a project uses, one manifest per host drives the copy, and a single run refreshes every detected host so no two can sit on different Compass versions - files: [plugin/cli/commands/self_update.py, plugin/skills/setup/SKILL.md, plugin/skills/update/SKILL.md, plugin/cli/hostlib.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-03, SPEC-006-multi-host-agent-cli-support/D-04], lessons: [LESSON-self-update-corrections-lag-one-version, LESSON-installer-removes-only-what-it-installed]
 - [ ] TASK-006: the skill materializer - Compass skills written into dsh's frontmatter dialect (`whenToUse` alongside `when_to_use`), named `compass-<name>` to avoid colliding with a user's own skills, installed into `.dsh/skills` - files: [plugin/cli/commands/materialize.py, plugin/cli/tests/test_materialize.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-03]
 - [ ] TASK-007: the dsh tool-name mapping table - Compass's `tools:` frontmatter names translated to dsh tool names, derived from dsh's own tool catalog, so an agent's tool filter means the same thing on both hosts - files: [plugin/cli/hostlib.py, plugin/cli/tests/test_hostlib.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-02]
 - [ ] TASK-008: the agent-to-bundle compiler - each of the thirteen agent definitions becomes one `tool-subagent` instance in the generated bundle, its persona from the markdown body, its tool filter from the mapping table, its model route from the model policy - files: [plugin/cli/commands/materialize.py, plugin/cli/tests/test_materialize.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-02, SPEC-006-multi-host-agent-cli-support/D-03]
@@ -82,7 +101,6 @@ These carry intent, not instructions: each is written out in full only once the 
 - [ ] TASK-011: `compass doctor` becomes host-aware - it checks each detected host's own install and reports version skew between them as a failure - files: [plugin/cli/commands/doctor.py, plugin/cli/tests/test_doctor.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-04]
 - [ ] TASK-012: the dsh capture worker - `compass capture-worker` spawns a headless `claude -p` child, which a dsh-only project has no binary for; either route it to a dsh headless equivalent or ship the gap as a documented degradation the install reports - files: [plugin/cli/commands/capture_worker.py, plugin/cli/commands/doctor.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-02]
 - [ ] TASK-013: live dual-host acceptance - one project, both CLIs, the full pipeline exercised from each, vault correct afterwards - files: [.compass/research/distribution/RESEARCH-dsh-live-probes.md], decisions: [SPEC-006-multi-host-agent-cli-support/D-01, SPEC-006-multi-host-agent-cli-support/D-04]
-- [ ] TASK-014: widen the PostToolUse matcher to `Write|Edit|MultiEdit|write|edit` so one hooks manifest is legal on both hosts - dsh tool names are lowercase and its bridge matches on them, while the extra alternatives are inert under Claude Code - complexity: S, depends_on: none, files: [plugin/hooks/hooks.json, plugin/skills/setup/SKILL.md, plugin/cli/commands/self_update.py, plugin/cli/tests/test_self_update.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-03], lessons: [LESSON-revert-to-prove-a-regression-test, LESSON-hook-if-clause-no-or], commit-upfront: the matcher string is already known from the research and appears in three places that must move together - the manifest, the setup skill's translation script, and `merge_settings`; discovering the third one late is what makes this expensive rather than trivial
   - Automated verification: `pytest plugin/cli/tests/test_self_update.py` passes with a new case asserting the registered matcher; reverting the `merge_settings` change alone makes that case fail.
   - Manual verification: `.claude/settings.json` in this repo shows the widened matcher after a self-update run, and a vault write from Claude Code still triggers sync.
 

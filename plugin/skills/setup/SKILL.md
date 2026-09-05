@@ -118,7 +118,10 @@ plugin:
   repository: <plugin.json repository>
   installed_at: <today YYYY-MM-DD>
   installed_mode: new | migrate | update
+  hosts: [claude-code]
 ```
+
+`hosts:` is the project's host roster - every agent CLI this project uses Compass from. `[claude-code]` is the default (and what an absent field means). A project also using DeepSeek Harness lists `[claude-code, dsh]`: every update then regenerates the dsh materialization (`.dsh/hooks.json`, in dsh's PowerShell-safe command dialect) in the same run that refreshes `.claude/`, so the two hosts can never sit on different Compass versions. Ask the human which hosts the project uses rather than probing for it.
 
 The install keeps itself current from here: the SessionStart hook runs `compass self-update` at every session start (sha-gated against `repository`, silent when current, mandatory - no opt-out). It records a `commit:` field in this file on its first update.
 

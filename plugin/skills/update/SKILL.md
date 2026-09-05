@@ -80,6 +80,17 @@ elif command -v python >/dev/null 2>&1; then
 fi
 ```
 
+### 4a. Regenerate host materializations
+
+A project whose `.compass/meta/plugin.yaml` roster lists `dsh` also gets its dsh materialization regenerated from the manifest just copied - same run, same version, so the hosts never skew:
+
+```bash
+if command -v python3 >/dev/null 2>&1; then PYBIN=python3; else PYBIN=python; fi
+"$PYBIN" -c "import sys; sys.path.insert(0,'.claude/cli'); import hostlib; 'dsh' in hostlib.read_hosts('.compass') and hostlib.materialize_dsh_hooks('.', '.claude/hooks/hooks.json')"
+```
+
+A roster without `dsh` (or an absent field) makes this a no-op.
+
 ### 4b. Re-apply project-local overlays
 
 ```bash

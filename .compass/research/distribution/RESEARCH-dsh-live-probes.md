@@ -83,6 +83,13 @@ Verified from both transcripts: the rules sentinel appeared exactly once per hos
 - A keyless run dies at `MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official"` and leaves zero hook evidence (`.compass/tmp/` never created). Whether SessionStart fires cannot be distinguished from a boot that never reached the session - all hook probes wait on a credential.
 - Watch item for the first live run: the hook commands are POSIX sh (`command -v python3 ...`); dsh executes hooks through its shell seam, which on Windows compositions may be pwsh. If the commands fail shell-parse, the manifest needs a host-neutral command form - record the observed executor either way.
 
+## Wave 2 live verification (the host seam)
+
+- With the rig's plugin.yaml rostered `hosts: [claude-code, dsh]`, one `self_update._apply` run produced both materializations: the `.claude/` refresh and a generated `.dsh/hooks.json` (dialect-neutral commands, lowercase-widened matchers, unsupported events dropped).
+- Dual-host proof in one project: a dsh session's vault write ran sync through the generated file (bundle -> bridge -> `.dsh/hooks.json`), and a `claude -p --allowed-tools Write` session's vault write ran sync through `.claude/settings.json`'s widened matcher. Both artifacts landed in the same index.
+- Operational finding for the bundle waves: pnpm `file:` bundle installs are snapshots - editing the bundle source dir does not reach the profile's `node_modules` copy; a content change requires `dsh plugin add` again (a version bump forces it). The generated-bundle materializer (TASK-008) must re-add on every refresh, and stale-bundle detection belongs in doctor's host checks (TASK-011).
+- Also reconfirmed from the lesson catalog the hard way: headless `claude -p` denies Write silently - the CC live check needs `--allowed-tools Write` ([[LESSON-headless-worker-denies-tools-silently]]).
+
 ## Blocker (resolved 2026-09-05)
 
 A provider credential was required for every live probe; the human supplied a `DEEPSEEK_API_KEY` (exported in the launching environment, never written to disk) and the default `deepseek-official` headless route worked unchanged.
