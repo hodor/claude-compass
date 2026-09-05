@@ -86,6 +86,18 @@ These carry intent, not instructions: each is written out in full only once the 
   - Automated verification: `pytest plugin/cli/tests/test_self_update.py` passes with a new case asserting the registered matcher; reverting the `merge_settings` change alone makes that case fail.
   - Manual verification: `.claude/settings.json` in this repo shows the widened matcher after a self-update run, and a vault write from Claude Code still triggers sync.
 
+## Wave 1 elaborated (2026-09-05)
+
+All four probes ran against a live dsh 0.1.2-rc.1 (portable Node 24, everything scratchpad-isolated); full evidence in [[research/distribution/RESEARCH-dsh-live-probes]]. What the wave learned, and what it changes downstream:
+
+- The bundle mechanics hold: a 2-file installable bundle mounts the bridge and the vault-write -> `compass sync` -> index loop runs end to end. TASK-002's fallback risk (per-project profile generation) was not needed.
+- New fact the research missed: dsh executes hooks through PowerShell on Windows, so the materializer emits a generated dsh hooks file in a dialect-neutral command form (`python "${CLAUDE_PROJECT_DIR}/..."` - parse-time substitution on dsh, env expansion under Claude Code) with lowercase-widened matchers, and `configPath` points at that file rather than `.claude/settings.json`. This folds into TASK-005/TASK-014's scope.
+- SessionStart `source` is literally `"startup"`; the self-update hook needs no matcher change at all.
+- The steer contract works: a Stop block's reason reaches the model as a real turn. But one-shot headless sessions reap the detached capture worker at process exit (dsh tree-kills hook children); the ladder's grace/respawn behavior was observed working as designed. TASK-012 inherits "headless dsh never completes a detached worker" as a design fact.
+- The instruction matrix has a clean exactly-once assignment (rules -> `.claude/rules/` for CC and a managed `AGENTS.md` section for dsh; `CLAUDE.md` the only shared surface), measured by sentinel codewords from both hosts' own transcripts. D-04 needs no amendment. TASK-010 must fold into existing user `AGENTS.md` files, never overwrite.
+
+Two written bars were met in substance rather than letter: TASK-003's "worker-finished or worker-failed row" could not exist on one-shot headless (the finding is precisely that the worker dies rowless), and TASK-004's "check script" became the sentinel measurement itself, which asserts the same invariant against reality instead of against a data file.
+
 ## Risks
 
 - **dsh's bundle mechanism cannot point at a per-project hooks file.** Their source carries an open `TODO(per-session-hook-config)` and the bridge reads `configPath` once at launch. TASK-002 is the probe; if it fails, the fallback is a per-project profile generated at install time, which costs one more materializer.
