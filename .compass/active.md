@@ -7,7 +7,11 @@ updated: 2026-08-24
 
 ## PLAN-017 dsh host support - Wave 2 (human ruling at the Wave 1 gate: every wave verifies suite-green plus live under both hosts)
 
-- [ ] Wave 2 pause point: human confirms before Wave 3 elaborates (skills/agents/bundle materializers next).
+- [x] Wave 2 pause point confirmed; human: "feel free to go"
+- [x] TASK-007: tool-name map, platform-resolved shell (pwsh on win32)
+- [x] TASK-006: skill materializer - 32 skills in dsh dialect, catalog + load proven live
+- [x] TASK-008: bundle generator - delegation to compass_debug proven live; relative configPath works
+- [ ] Wave 3 pause point: human confirms before Wave 4 (model column, rules folding, doctor, capture worker, acceptance).
 
 ## Sizing + discoverability initiative
 

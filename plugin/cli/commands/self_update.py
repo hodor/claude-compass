@@ -257,6 +257,8 @@ def _apply(src, project_root, apply_models):
     import hostlib
     if "dsh" in hostlib.read_hosts(Path(project_root) / ".compass"):
         hostlib.materialize_dsh_hooks(project_root, src / "hooks" / "hooks.json")
+        hostlib.materialize_dsh_skills(project_root, src / "skills")
+        hostlib.materialize_dsh_bundle(project_root, src)
     # The shipped files above were just replaced wholesale; re-apply the
     # project's own additions on top of them (ADR-020).
     try:

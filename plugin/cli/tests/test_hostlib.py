@@ -113,12 +113,191 @@ class MaterializeDshHooksTests(unittest.TestCase):
         self.assertEqual(data, again)
 
 
+class ToolNameMapTests(unittest.TestCase):
+    """Claude tool names from agent `tools:` frontmatter translate to dsh
+    tool names; a name with no dsh equivalent is reported, never guessed."""
+
+    AGENTS_DIR = Path(__file__).resolve().parents[2] / "templates" / "agents"
+
+    def test_core_names_map_to_dsh_catalog_names(self):
+        mapped, unmapped = hostlib.map_tools(
+            ["Read", "Write", "Edit", "Bash", "Grep", "Glob",
+             "WebSearch", "WebFetch", "Agent"], platform="linux")
+        self.assertEqual(
+            mapped,
+            ["read", "write", "edit", "bash", "grep", "glob",
+             "web_search", "web_fetch", "subagent"])
+        self.assertEqual(unmapped, [])
+
+    def test_bash_resolves_to_pwsh_on_windows_compositions(self):
+        # A win32 composition registers pwsh and no bash; a filter naming
+        # an unregistered tool fails the child's start loudly.
+        mapped, _ = hostlib.map_tools(["Bash"], platform="win32")
+        self.assertEqual(mapped, ["pwsh"])
+
+    def test_unknown_name_lands_in_unmapped_not_guessed(self):
+        mapped, unmapped = hostlib.map_tools(["Read", "LS", "AskUserQuestion"])
+        self.assertEqual(mapped, ["read"])
+        self.assertEqual(unmapped, ["LS", "AskUserQuestion"])
+
+    def test_every_shipped_agent_tool_is_mapped_or_known_unmapped(self):
+        # The table must consciously cover the whole shipped roster: every
+        # name either maps or is a documented gap - nothing falls through.
+        names = set()
+        for f in self.AGENTS_DIR.glob("*.md"):
+            for line in f.read_text(encoding="utf-8").splitlines():
+                if line.startswith("tools:"):
+                    inner = line.split(":", 1)[1].strip().strip("[]")
+                    names.update(n.strip() for n in inner.split(",") if n.strip())
+        mapped, unmapped = hostlib.map_tools(sorted(names))
+        self.assertTrue(names)
+        for name in unmapped:
+            self.assertIn(name, hostlib.KNOWN_UNMAPPED_TOOLS, name)
+
+
+class MaterializeDshSkillsTests(unittest.TestCase):
+    """Shipped skills rewritten into dsh's frontmatter dialect under
+    `.dsh/skills/compass-<name>/`, never touching anything else there."""
+
+    def _src_skills(self):
+        src = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, src, True)
+        d = src / "skills" / "lessons"
+        d.mkdir(parents=True)
+        (d / "SKILL.md").write_text(
+            "---\n"
+            "name: lessons\n"
+            "description: How to search lessons.\n"
+            "version: 1.0.0\n"
+            "allowed-tools: [Read, Grep]\n"
+            'when_to_use: "Use when searching lessons."\n'
+            "---\n\n# Lessons\n\nBody text.\n",
+            encoding="utf-8")
+        return src
+
+    def test_skill_transposed_into_dsh_dialect(self):
+        project = make_project(self)
+        hostlib.materialize_dsh_skills(project, self._src_skills() / "skills")
+        out = project / ".dsh" / "skills" / "compass-lessons" / "SKILL.md"
+        self.assertTrue(out.is_file())
+        text = out.read_text(encoding="utf-8")
+        self.assertIn("name: compass-lessons\n", text)
+        self.assertIn("description: How to search lessons.\n", text)
+        self.assertIn('whenToUse: "Use when searching lessons."\n', text)
+        self.assertIn("# Lessons\n\nBody text.\n", text)
+
+    def test_user_skills_in_dsh_dir_never_touched(self):
+        project = make_project(self)
+        mine = project / ".dsh" / "skills" / "my-own" / "SKILL.md"
+        mine.parent.mkdir(parents=True)
+        mine.write_text("---\nname: my-own\ndescription: mine\n---\nkeep\n",
+                        encoding="utf-8")
+        hostlib.materialize_dsh_skills(project, self._src_skills() / "skills")
+        self.assertEqual(
+            mine.read_text(encoding="utf-8"),
+            "---\nname: my-own\ndescription: mine\n---\nkeep\n")
+
+    def test_stale_compass_skill_removed_on_rematerialize(self):
+        # A skill retired upstream must not linger; only compass-* dirs are
+        # ours to remove.
+        project = make_project(self)
+        stale = project / ".dsh" / "skills" / "compass-retired" / "SKILL.md"
+        stale.parent.mkdir(parents=True)
+        stale.write_text("---\nname: compass-retired\ndescription: old\n---\n",
+                         encoding="utf-8")
+        hostlib.materialize_dsh_skills(project, self._src_skills() / "skills")
+        self.assertFalse(stale.parent.exists())
+        self.assertTrue(
+            (project / ".dsh" / "skills" / "compass-lessons").is_dir())
+
+
+class MaterializeDshBundleTests(unittest.TestCase):
+    """The generated bundle: dsh's manifest contract, one delegation-tool
+    row per shipped agent (persona from the markdown body, tool filter
+    through the map), version mirroring the plugin so every update forces
+    a pnpm re-add of the snapshot."""
+
+    def _src(self):
+        src = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, src, True)
+        (src / ".claude-plugin").mkdir()
+        (src / ".claude-plugin" / "plugin.json").write_text(
+            '{"name": "compass", "version": "9.9.9"}', encoding="utf-8")
+        agents = src / "templates" / "agents"
+        agents.mkdir(parents=True)
+        (agents / "builder.md").write_text(
+            "---\nname: builder\ndescription: Builds things.\n"
+            "tools: [Read, Grep, Glob, Write, Edit, Bash, Agent]\n---\n\n"
+            "You are the builder. Follow the plan.\n", encoding="utf-8")
+        (agents / "debug.md").write_text(
+            "---\nname: debug\ndescription: Investigates.\n"
+            "tools: [Read, Grep, Glob, Bash, LS]\n---\n\n"
+            "You investigate, read-only.\n", encoding="utf-8")
+        return src
+
+    def _generate(self):
+        project = make_project(self)
+        hostlib.materialize_dsh_bundle(project, self._src())
+        pkg = json.loads(
+            (project / ".dsh" / "compass-bundle" / "package.json").read_text(
+                encoding="utf-8"))
+        patch = (project / ".dsh" / "compass-bundle" / "cordis.patch.yml").read_text(
+            encoding="utf-8")
+        return pkg, patch
+
+    def test_manifest_contract_and_version_mirror(self):
+        pkg, _ = self._generate()
+        self.assertEqual(pkg["dsh"]["bundle"]["patch"], "./cordis.patch.yml")
+        self.assertEqual(pkg["version"], "9.9.9")
+
+    def test_hooks_mount_relative_config_path_absolute_project_dir(self):
+        _, patch = self._generate()
+        self.assertIn("'@deepseek-ai/dsh-hooks-claude-code'", patch)
+        self.assertIn("configPath: .dsh/hooks.json", patch)
+        # Without projectDir the ${CLAUDE_PROJECT_DIR} token reaches
+        # PowerShell unsubstituted; the generated bundle carries the
+        # absolute path.
+        self.assertIn("projectDir: '", patch)
+
+    def test_one_delegation_row_per_agent_with_persona_and_filter(self):
+        _, patch = self._generate()
+        self.assertIn("toolName: compass_builder", patch)
+        self.assertIn("toolName: compass_debug", patch)
+        self.assertIn("You are the builder. Follow the plan.", patch)
+        self.assertIn("provider: spawn", patch)
+        # debug's filter: mapped names only; LS has no dsh equivalent, and
+        # the shell resolves per the generating machine's platform.
+        shell = "pwsh" if sys.platform == "win32" else "bash"
+        self.assertIn(f"allow: [read, grep, glob, {shell}]", patch)
+
+    def test_agent_tool_grants_the_other_delegation_instances(self):
+        _, patch = self._generate()
+        # builder carries Agent: its allow list names the compass_* tools,
+        # never a bare `subagent` (no tool of that name exists here, and an
+        # unknown name fails the mount).
+        self.assertNotIn("subagent]", patch.replace("compass_debug]", ""))
+        builder_allow = [l for l in patch.splitlines()
+                        if "allow:" in l and "compass_debug" in l]
+        self.assertTrue(builder_allow, patch)
+
+    def test_no_service_rows_the_base_bundle_already_registers(self):
+        # dsh-base mounts the subagents service and the `spawn` provider;
+        # re-mounting either fails the boot loudly ("service ... has been
+        # registered"). The bundle only adds delegation-tool instances.
+        _, patch = self._generate()
+        self.assertNotIn("'@deepseek-ai/dsh-subagent'", patch)
+        self.assertNotIn("'@deepseek-ai/dsh-subagent-spawn-in-process'", patch)
+
+
 class ApplyHostLoopTests(unittest.TestCase):
     """`self_update._apply` refreshes every rostered host in one run."""
 
     def _src(self):
         src = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, src, True)
+        (src / ".claude-plugin").mkdir()
+        (src / ".claude-plugin" / "plugin.json").write_text(
+            '{"name": "compass", "version": "9.9.9"}', encoding="utf-8")
         (src / "templates" / "agents").mkdir(parents=True)
         (src / "templates" / "agents" / "builder.md").write_text("agent", encoding="utf-8")
         (src / "templates" / "rules").mkdir(parents=True)

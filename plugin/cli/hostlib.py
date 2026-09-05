@@ -18,6 +18,8 @@ permission-pattern syntax) are dropped from the generated file.
 
 import json
 import re
+import shutil
+import sys
 from pathlib import Path
 
 import vaultlib
@@ -59,6 +61,82 @@ def read_hosts(vault_root):
     return [h for h in hosts if h] or list(DEFAULT_HOSTS)
 
 
+# Claude tool name -> dsh tool name, from dsh's generated tool catalog
+# (deepseek-harness docs/tool-catalog.md). `Agent` maps to the delegation
+# tool's default registered name. `Bash` is resolved per platform in
+# `map_tools`: a Windows composition registers `pwsh` and no `bash`, and a
+# tool filter naming an unregistered tool fails the child's start loudly.
+TOOL_NAME_MAP = {
+    "Read": "read",
+    "Write": "write",
+    "Edit": "edit",
+    "MultiEdit": "edit",
+    "Grep": "grep",
+    "Glob": "glob",
+    "WebSearch": "web_search",
+    "WebFetch": "web_fetch",
+    "Agent": "subagent",
+}
+
+# Claude tool names with no dsh equivalent: dsh has no standalone directory
+# lister, and interactive question tools are host-specific. An agent whose
+# filter names one of these simply lacks that tool on dsh.
+KNOWN_UNMAPPED_TOOLS = {"LS", "AskUserQuestion", "NotebookEdit", "Task"}
+
+
+def map_tools(names, platform=None):
+    """Translate Claude tool names to dsh tool names for the composition
+    this machine runs. Returns `(mapped, unmapped)`; an unknown name is
+    reported in `unmapped`, never guessed at."""
+    shell = "pwsh" if (platform or sys.platform) == "win32" else "bash"
+    mapped, unmapped = [], []
+    for name in names:
+        target = shell if name == "Bash" else TOOL_NAME_MAP.get(name)
+        if target is None:
+            unmapped.append(name)
+        elif target not in mapped:
+            mapped.append(target)
+    return mapped, unmapped
+
+
+def materialize_dsh_skills(project_root, skills_src):
+    """Write every shipped skill to `.dsh/skills/compass-<name>/SKILL.md`
+    in dsh's frontmatter dialect, body verbatim. Compass-owned dirs
+    (`compass-*`) not shipped anymore are removed; everything else under
+    `.dsh/skills/` belongs to the user and is never touched. Returns the
+    number of skills written."""
+    dest_root = Path(project_root) / ".dsh" / "skills"
+    dest_root.mkdir(parents=True, exist_ok=True)
+    shipped = set()
+    written = 0
+    for skill_dir in sorted(Path(skills_src).iterdir()):
+        source = skill_dir / "SKILL.md"
+        if not source.is_file():
+            continue
+        text = vaultlib.read_vault_text(source)
+        data, error = vaultlib.parse_frontmatter_text(text)
+        if error:
+            continue
+        name = f"compass-{skill_dir.name}"
+        shipped.add(name)
+        body = text.split("---\n", 2)[2] if text.count("---\n") >= 2 else ""
+        lines = ["---", f"name: {name}"]
+        if data.get("description"):
+            lines.append(f"description: {data['description']}")
+        if data.get("when_to_use"):
+            lines.append(f"whenToUse: {vaultlib.yaml_double_quote(data['when_to_use'])}")
+        lines.append("---")
+        dest = dest_root / name
+        dest.mkdir(parents=True, exist_ok=True)
+        vaultlib.write_text_lf(dest / "SKILL.md", "\n".join(lines) + "\n" + body)
+        written += 1
+    for existing in dest_root.iterdir():
+        if existing.is_dir() and existing.name.startswith("compass-") \
+                and existing.name not in shipped:
+            shutil.rmtree(existing, ignore_errors=True)
+    return written
+
+
 def _neutral_command(command):
     """The dialect-neutral form of a manifest hook command: the sh
     python3/python fallback wrapper reduces to a bare `python` invocation
@@ -68,6 +146,96 @@ def _neutral_command(command):
     if match:
         command = "python " + match.group(1)
     return command.replace('"$CLAUDE_PROJECT_DIR', '"${CLAUDE_PROJECT_DIR}')
+
+
+def _yaml_block(text, indent):
+    """`text` as a YAML literal block scalar body, each line indented."""
+    pad = " " * indent
+    lines = [pad + line if line.strip() else "" for line in text.split("\n")]
+    return "\n".join(lines).rstrip("\n")
+
+
+def _agent_rows(agents_src):
+    """One delegation-tool row per agent markdown file: persona from the
+    body, tool filter through the name map. An agent whose `tools:` carry
+    `Agent` is granted the other agents' delegation tools by their real
+    registered names - a bare `subagent` names no tool in this composition
+    and would fail the mount."""
+    agents = []
+    for path in sorted(Path(agents_src).glob("*.md")):
+        text = vaultlib.read_vault_text(path)
+        data, error = vaultlib.parse_frontmatter_text(text)
+        if error:
+            continue
+        body = text.split("---\n", 2)[2].strip() if text.count("---\n") >= 2 else ""
+        tools = data.get("tools") or []
+        if isinstance(tools, str):
+            tools = [t.strip() for t in tools.strip("[]").split(",") if t.strip()]
+        agents.append({"stem": path.stem, "body": body, "tools": tools})
+
+    all_tool_names = [f"compass_{a['stem']}" for a in agents]
+    rows = []
+    for agent in agents:
+        mapped, _ = map_tools([t for t in agent["tools"] if t != "Agent"])
+        allow = list(mapped)
+        if "Agent" in agent["tools"]:
+            allow.extend(n for n in all_tool_names
+                         if n != f"compass_{agent['stem']}")
+        rows.append(
+            f"    - id: compass-agent-{agent['stem']}\n"
+            f"      name: '@deepseek-ai/dsh-tool-subagent'\n"
+            f"      config:\n"
+            f"        provider: spawn\n"
+            f"        toolName: compass_{agent['stem']}\n"
+            f"        toolFilter:\n"
+            f"          allow: [{', '.join(allow)}]\n"
+            f"        persona: |\n{_yaml_block(agent['body'], 10)}\n"
+        )
+    return rows
+
+
+def materialize_dsh_bundle(project_root, src):
+    """Generate the installable Compass bundle at `.dsh/compass-bundle/`:
+    the hooks-bridge mount (relative `configPath`, resolved against the
+    launch cwd so one profile serves every project), the subagent service
+    with the in-process spawn provider, and one delegation tool per shipped
+    agent. The bundle version mirrors the plugin version: pnpm `file:`
+    installs are snapshots, and the version change is what makes
+    `dsh plugin add` refresh the profile copy on update. Returns the bundle
+    directory."""
+    src = Path(src)
+    plugin_meta = json.loads(
+        (src / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    dest = Path(project_root) / ".dsh" / "compass-bundle"
+    dest.mkdir(parents=True, exist_ok=True)
+    vaultlib.write_text_lf(dest / "package.json", json.dumps({
+        "name": "compass-dsh-bundle",
+        "version": plugin_meta.get("version", "0.0.0"),
+        "private": True,
+        "dsh": {"bundle": {"patch": "./cordis.patch.yml"}},
+    }, indent=2) + "\n")
+    parts = [
+        "# Generated by compass from the canonical plugin source for the dsh",
+        "# host. Do not hand-edit; self-update regenerates it, and a version",
+        "# bump makes `dsh plugin add` refresh the profile's snapshot copy.",
+        "- insert:",
+        "    - id: compass-hooks",
+        "      name: '@deepseek-ai/dsh-hooks-claude-code'",
+        "      config:",
+        # configPath resolves against the launch cwd; projectDir must be
+        # absolute - without it the ${CLAUDE_PROJECT_DIR} token in commands
+        # stays unsubstituted, and PowerShell reads it as an unset pwsh
+        # variable. The bundle is generated per project, so the absolute
+        # path is available and correct.
+        "        configPath: .dsh/hooks.json",
+        f"        projectDir: '{Path(project_root).resolve().as_posix()}'",
+        # The delegation rows reuse the `spawn` provider dsh-base already
+        # registers; re-mounting the subagents service or the provider
+        # fails the boot loudly ("service ... has been registered").
+    ]
+    parts.extend(_agent_rows(src / "templates" / "agents"))
+    vaultlib.write_text_lf(dest / "cordis.patch.yml", "\n".join(parts) + "\n")
+    return dest
 
 
 def materialize_dsh_hooks(project_root, manifest_path):
