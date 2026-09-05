@@ -2,29 +2,29 @@
 since: 2026-08-30
 usage:
   apply-models:
-    count: 30
-    last: 2026-08-31
+    count: 31
+    last: 2026-09-05
   capture-check:
-    count: 152
-    last: 2026-09-04
+    count: 160
+    last: 2026-09-05
   capture-close:
-    count: 21
-    last: 2026-08-31
+    count: 22
+    last: 2026-09-05
   capture-note:
     count: 11
     last: 2026-08-31
   capture-signal:
-    count: 146
-    last: 2026-09-04
+    count: 157
+    last: 2026-09-05
   capture-worker:
-    count: 68
-    last: 2026-08-31
+    count: 69
+    last: 2026-09-05
   coverage:
-    count: 17
-    last: 2026-08-30
+    count: 24
+    last: 2026-09-05
   decisions:
-    count: 12
-    last: 2026-08-30
+    count: 14
+    last: 2026-09-05
   demote:
     count: 4
     last: 2026-08-30
@@ -34,15 +34,18 @@ usage:
   file-bugs:
     count: 3
     last: 2026-08-31
+  graph:
+    count: 1
+    last: 2026-09-05
   hot-path:
     count: 3
     last: 2026-08-30
   lesson-coverage:
-    count: 96
-    last: 2026-08-31
+    count: 103
+    last: 2026-09-05
   lessons:
-    count: 2
-    last: 2026-08-31
+    count: 3
+    last: 2026-09-05
   make-domain:
     count: 38
     last: 2026-08-30
@@ -53,14 +56,14 @@ usage:
     count: 1
     last: 2026-08-30
   self-update:
-    count: 44
-    last: 2026-08-31
+    count: 45
+    last: 2026-09-05
   sync:
-    count: 467
-    last: 2026-09-04
+    count: 478
+    last: 2026-09-05
   tree:
     count: 5
     last: 2026-08-30
   validate:
-    count: 23
-    last: 2026-08-31
+    count: 24
+    last: 2026-09-05

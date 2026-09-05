@@ -1,0 +1,98 @@
+---
+title: "DeepSeek Harness as a Compass Host"
+type: plan
+status: approved
+approved: 2026-09-05
+confidence: medium
+area: distribution
+tags: [multi-host, dsh, deepseek, materializers, hooks, bundles, dual-host, distribution]
+created: 2026-09-05
+updated: 2026-09-05
+author: "planner"
+summary: "make dsh a native Compass host from the one canonical plugin source - Wave 1 probes the three unverified dsh mechanics live, later waves build the host-adapter seam, the materializers, and a dual-host acceptance"
+depends_on: ["[[specs/distribution/SPEC-006-multi-host-agent-cli-support]]", "[[research/distribution/RESEARCH-deepseek-harness-fit]]", "[[specs/distribution/SPEC-008-central-model-resolution-table]]"]
+lessons: ["[[LESSON-hook-payloads-observe-before-coding]]", "[[LESSON-self-update-corrections-lag-one-version]]", "[[LESSON-installer-removes-only-what-it-installed]]", "[[LESSON-revert-to-prove-a-regression-test]]", "[[LESSON-hook-if-clause-no-or]]", "[[LESSON-autocrlf-churns-lf-writers]]", "[[LESSON-hooks-load-only-from-settings]]", "[[LESSON-hook-cli-gate-stdin-on-flag]]"]
+---
+
+# DeepSeek Harness as a Compass Host
+
+## Goal
+
+Make DeepSeek Harness (`dsh`) a host Compass runs on natively, from the same `plugin/` source that serves Claude Code, so a developer working in either CLI - or both, in one project - gets the full pipeline against one shared `.compass/` vault. This plan implements [[specs/distribution/SPEC-006-multi-host-agent-cli-support]] D-01 through D-04, building on the fit assessment in [[research/distribution/RESEARCH-deepseek-harness-fit]]. The shape of the work is set by what that research found: the vault, the `compass` CLI, the hook loop, and the skill bundles carry over with configuration changes, while agents and rules have no dsh equivalent and must be generated at install time.
+
+## The waves
+
+**Wave 1 answers the three questions that decide whether the design survives contact with a real dsh.** The research read dsh's source but never ran it, and three of its load-bearing claims are inferences. First, nobody has authored a dsh profile bundle, so "ship a generated Compass profile" is an assumption about mechanics we have only read about. Second, Compass's capture loop depends on a Stop hook that can interrupt the agent and hand it a follow-up instruction; dsh implements that interruption differently from Claude Code, and the loop either survives the difference or the capture design needs rethinking on that host. Third, the same self-update hook has to recognise the start of a dsh session, and the value dsh reports there is unconfirmed. Alongside these, Wave 1 settles on paper which instruction file each host reads, so that a project holding both hosts never feeds the same rule text into a session twice. The wave ends when all three probes have produced a written answer and the design is either confirmed or amended.
+
+**Later waves build what those answers license.** An install-time seam teaches setup, update, and self-update which hosts a project actually uses and refreshes every one of them together, so the two materializations can never drift to different Compass versions. On top of that seam sit the translators: skills reworded into dsh's frontmatter dialect and installed where dsh looks for them, the thirteen agent definitions compiled into dsh delegation tools, the rules folded into the instruction file dsh reads, and the model policy extended with a dsh column so an agent's tier resolves to a DeepSeek route instead of a Claude model name. The install doctor learns to check all of it. The final wave is the acceptance: one project, both CLIs, the whole pipeline driven from each, and a vault that is still correct afterwards.
+
+## Prerequisites
+
+- `dsh` installed and runnable wherever this plan is executed. It is absent from the Compass development machine as of 2026-09-05, which has Node v20.13.1. TASK-001 installs it, and every other Wave 1 task depends on that task.
+- A checkout of the dsh source (`github.com/deepseek-ai/deepseek-harness`) for reference, since several tasks cite its internals by path and line. Clone it fresh rather than depending on an existing local copy.
+- [[specs/distribution/SPEC-006-multi-host-agent-cli-support]] is approved and its decisions D-01..D-04 are settled. [[research/distribution/RESEARCH-deepseek-harness-fit]] is complete.
+
+## Desired End State
+
+A project can hold a Compass install for Claude Code, for dsh, or for both. One `compass self-update` run refreshes every host present, so the two can never sit on different versions. On dsh a user invokes Compass skills as slash commands, delegates to Compass agents as native dsh subagent tools, and the vault stays indexed by the same hook-driven `compass sync` that runs under Claude Code. Nothing in `plugin/` is authored twice: the per-host difference lives entirely in materializers that run at install time.
+
+## What We're NOT Doing
+
+- Kimi Code and Codex. Both are named in the spec; both wait until dsh proves the adapter seam.
+- `subagent-claude-code`, dsh's ability to run a real Claude Code child. D-02 rules it out as the mechanism.
+- Any change to the vault format, the pipeline stages, or the artifact schema.
+- Publishing a Compass bundle to a package registry. The install channel stays the file copy that [[SPEC-020-compass-updates-itself]] describes.
+
+## Phases
+
+### Wave 1 (detailed): Probe the three unverified dsh mechanics
+
+- [ ] TASK-001: Stand up a live dsh rig - install `dsh`, create a scratch project holding a `.compass/` vault with a current Compass install, and record the installed dsh version and its resolved harness home in the probe notes that TASK-002..004 append to - complexity: S, depends_on: none, files: [.compass/research/distribution/RESEARCH-dsh-live-probes.md], decisions: [SPEC-006-multi-host-agent-cli-support/D-01]
+  - Automated verification: `dsh --version` prints a version; `python .claude/cli/compass doctor` in the scratch project exits 0.
+  - Manual verification: a `dsh` session starts in the scratch project and responds to one trivial prompt.
+
+- [ ] TASK-002: Author a minimal installable Compass profile bundle for dsh and prove the hook loop runs through it - a `package.json` declaring `dsh.bundle.patch` plus a `cordis.patch.yml` that mounts `hooks-claude-code` with `configPath` pointed at the project's `.claude/settings.json`, installed as a profile whose `dsh.profile.bundles` lists `@deepseek-ai/dsh-base` and the Compass bundle - complexity: M, depends_on: TASK-001, files: [.compass/research/distribution/RESEARCH-dsh-live-probes.md, plugin/hosts/dsh/bundle/package.json, plugin/hosts/dsh/bundle/cordis.patch.yml], decisions: [SPEC-006-multi-host-agent-cli-support/D-01, SPEC-006-multi-host-agent-cli-support/D-03], lessons: [LESSON-hooks-load-only-from-settings, LESSON-hook-cli-gate-stdin-on-flag, LESSON-autocrlf-churns-lf-writers]
+  - The falsifiable claim: a hand-authored bundle of that shape loads under `dsh --profile`, and a vault file written from inside a dsh session fires `compass sync`. The design proceeds as drafted only if it holds; if the bundle mechanism cannot point at a per-project hooks file, the plan needs a different way to reach the hook loop.
+  - Bundle and profile contracts are defined in the dsh source at `packages/boot/app-boot/src/profile.ts:50-61`; resolution runs through `loadProfile` (`profile.ts:805-844`) and `resolveBundleDir` (`profile.ts:778-789`); `packages/bundle/base/` is the in-tree example to copy. The bridge's config schema is at `packages/hooks/hooks-claude-code/src/index.ts:72-78`, where `configPath` is required and read once at launch.
+  - Automated verification: `dsh --profile compass` starts without error; after a write to `.compass/specs/SPEC-001-probe.md` from a dsh session, `.compass/index.md` contains a link to that file and `git diff` shows sync regenerated it.
+  - Manual verification: the bundle's file list is small enough to generate mechanically from a template - confirm no hand-written step would have to be repeated per project.
+
+- [ ] TASK-003: Probe dsh's Stop-hook block contract and its SessionStart source values against a live run, and record whether Compass's capture loop and self-update hook survive unchanged - complexity: M, depends_on: TASK-002, files: [.compass/research/distribution/RESEARCH-dsh-live-probes.md], decisions: [SPEC-006-multi-host-agent-cli-support/D-01, SPEC-006-multi-host-agent-cli-support/D-02], lessons: [LESSON-hook-payloads-observe-before-coding]
+  - Two falsifiable claims. First: `compass capture-check`'s `{"decision": "block", "reason": ...}` on stdout (`plugin/cli/commands/capture_check.py:123`) causes dsh to continue the turn with the reason delivered to the model, the way it does under Claude Code. dsh reaches that outcome by a different route - a blocking result becomes `agent.steer()`, injecting a user message rather than halting the run (`packages/hooks/hooks-claude-code/src/index.ts:270-277`), it parses stdout JSON only on exit code 0 (`packages/hooks/hook-protocol/src/codec.ts:59-89`), it never sets `stop_hook_active` (`index.ts:344-346`), and `continue: false` is recorded but not acted on (`index.ts:189`). Confirm the capture pass actually runs, and confirm nothing in Compass's loop guard depends on `stop_hook_active`. Second: the `source` string dsh passes to SessionStart (`index.ts:206-215`, `index.ts:332-334`) is unenumerated in its own source; capture the literal value so the `startup` matcher on the `compass self-update` hook entry can be widened correctly rather than guessed.
+  - Automated verification: a scripted dsh session with a forced-due capture opportunity produces a `worker-finished` or `worker-failed` row in the capture ledger; a `dsh` session start writes a self-update log line or an observed no-op with the captured `source` value recorded verbatim in the probe notes.
+  - Manual verification: read the transcript of the blocked turn and confirm the model received the capture instruction as a turn, not as discarded output.
+
+- [ ] TASK-004: Build the instruction-surface placement matrix - for each host, name every file it loads as instructions, and assign each Compass instruction surface (the three rules files, the CLAUDE.md Compass section, agent personas, skill bodies) to exactly one slot per host, so no text is delivered twice into one context - complexity: M, depends_on: TASK-001, files: [.compass/research/distribution/RESEARCH-dsh-live-probes.md], decisions: [SPEC-006-multi-host-agent-cli-support/D-04]
+  - The falsifiable claim: a single assignment exists that gives every host every instruction exactly once. dsh's instruction loader takes same-directory filename candidates `['AGENTS.md', 'CLAUDE.md']` walking up to a `.git` root and never loads a directory, so `.claude/rules/*.md` reaches it only by being folded into one of those two files - which means a dual-host project where both hosts read `CLAUDE.md` would double the rules unless the matrix separates the surfaces. If no assignment satisfies every host, D-04's "exactly once" invariant needs an amendment from the human before the materializers are built.
+  - Automated verification: a check script reads the matrix and asserts that no instruction surface maps to two files a single host loads.
+  - Manual verification: start one dsh session and one Claude Code session in the same scratch project and confirm from each transcript that the rules text appears once.
+
+**Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before the next wave. The three probes may amend the materializer design; the later waves are written against the design as drafted.
+
+## Later (intent only)
+
+These carry intent, not instructions: each is written out in full only once the wave before it has landed and its outcome is known. TASK-014 is the exception, detailed now because its content is already settled and the three places it touches have to move together.
+
+- [ ] TASK-005: host detection and per-host install manifests in setup, update, and self-update - one probe decides which hosts a project uses, one manifest per host drives the copy, and a single run refreshes every detected host so no two can sit on different Compass versions - files: [plugin/cli/commands/self_update.py, plugin/skills/setup/SKILL.md, plugin/skills/update/SKILL.md, plugin/cli/hostlib.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-03, SPEC-006-multi-host-agent-cli-support/D-04], lessons: [LESSON-self-update-corrections-lag-one-version, LESSON-installer-removes-only-what-it-installed]
+- [ ] TASK-006: the skill materializer - Compass skills written into dsh's frontmatter dialect (`whenToUse` alongside `when_to_use`), named `compass-<name>` to avoid colliding with a user's own skills, installed into `.dsh/skills` - files: [plugin/cli/commands/materialize.py, plugin/cli/tests/test_materialize.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-03]
+- [ ] TASK-007: the dsh tool-name mapping table - Compass's `tools:` frontmatter names translated to dsh tool names, derived from dsh's own tool catalog, so an agent's tool filter means the same thing on both hosts - files: [plugin/cli/hostlib.py, plugin/cli/tests/test_hostlib.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-02]
+- [ ] TASK-008: the agent-to-bundle compiler - each of the thirteen agent definitions becomes one `tool-subagent` instance in the generated bundle, its persona from the markdown body, its tool filter from the mapping table, its model route from the model policy - files: [plugin/cli/commands/materialize.py, plugin/cli/tests/test_materialize.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-02, SPEC-006-multi-host-agent-cli-support/D-03]
+- [ ] TASK-009: a dsh column in the model resolution table - tiers resolve to provider routes rather than bare model names, applied into the generated bundle instead of agent frontmatter, per [[specs/distribution/SPEC-008-central-model-resolution-table]] - files: [plugin/cli/modelslib.py, plugin/cli/commands/apply_models.py, plugin/cli/tests/test_modelslib.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-02, SPEC-006-multi-host-agent-cli-support/D-03]
+- [ ] TASK-010: rules folded into the host instruction surface, per the TASK-004 matrix - files: [plugin/cli/commands/materialize.py, plugin/templates/rules/], decisions: [SPEC-006-multi-host-agent-cli-support/D-03, SPEC-006-multi-host-agent-cli-support/D-04]
+- [ ] TASK-011: `compass doctor` becomes host-aware - it checks each detected host's own install and reports version skew between them as a failure - files: [plugin/cli/commands/doctor.py, plugin/cli/tests/test_doctor.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-04]
+- [ ] TASK-012: the dsh capture worker - `compass capture-worker` spawns a headless `claude -p` child, which a dsh-only project has no binary for; either route it to a dsh headless equivalent or ship the gap as a documented degradation the install reports - files: [plugin/cli/commands/capture_worker.py, plugin/cli/commands/doctor.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-02]
+- [ ] TASK-013: live dual-host acceptance - one project, both CLIs, the full pipeline exercised from each, vault correct afterwards - files: [.compass/research/distribution/RESEARCH-dsh-live-probes.md], decisions: [SPEC-006-multi-host-agent-cli-support/D-01, SPEC-006-multi-host-agent-cli-support/D-04]
+- [ ] TASK-014: widen the PostToolUse matcher to `Write|Edit|MultiEdit|write|edit` so one hooks manifest is legal on both hosts - dsh tool names are lowercase and its bridge matches on them, while the extra alternatives are inert under Claude Code - complexity: S, depends_on: none, files: [plugin/hooks/hooks.json, plugin/skills/setup/SKILL.md, plugin/cli/commands/self_update.py, plugin/cli/tests/test_self_update.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-03], lessons: [LESSON-revert-to-prove-a-regression-test, LESSON-hook-if-clause-no-or], commit-upfront: the matcher string is already known from the research and appears in three places that must move together - the manifest, the setup skill's translation script, and `merge_settings`; discovering the third one late is what makes this expensive rather than trivial
+  - Automated verification: `pytest plugin/cli/tests/test_self_update.py` passes with a new case asserting the registered matcher; reverting the `merge_settings` change alone makes that case fail.
+  - Manual verification: `.claude/settings.json` in this repo shows the widened matcher after a self-update run, and a vault write from Claude Code still triggers sync.
+
+## Risks
+
+- **dsh's bundle mechanism cannot point at a per-project hooks file.** Their source carries an open `TODO(per-session-hook-config)` and the bridge reads `configPath` once at launch. TASK-002 is the probe; if it fails, the fallback is a per-project profile generated at install time, which costs one more materializer.
+- **The Stop-block difference breaks the capture loop.** dsh steers rather than halts, and never sets `stop_hook_active`. TASK-003 decides it. The degradation, if needed, is that capture on dsh runs at session start instead of at every Stop - explicit and documented, per the spec's requirement that any lost guarantee be visible rather than silent.
+- **Two hosts, one vault, concurrent sessions.** D-04 leans on `compass sync` self-healing rather than locking. The dual-host acceptance is where that assumption meets a real double write.
+- **A correction shipped in the materializer runs under the previous updater first.** Anything that changes how the install applies itself takes effect one version late; the version that introduces per-host manifests will refresh only the Claude Code side on the machines that receive it ([[LESSON-self-update-corrections-lag-one-version]]).
+
+## Inherited Questions (from spec)
+
+The spec's open questions concern Kimi Code and Codex, which this plan does not touch. Its dsh-specific unknowns, carried in from [[research/distribution/RESEARCH-deepseek-harness-fit]], are resolved here rather than deferred: bundle authoring is TASK-002, the Stop and SessionStart semantics are TASK-003, and the headless capture worker is TASK-012, which may land as a documented degradation rather than a port.

@@ -5,6 +5,14 @@ updated: 2026-08-24
 
 # Active Tasks
 
+## PLAN-017 dsh host support - Wave 1 (approved 2026-09-05)
+
+- [ ] TASK-001: stand up a live dsh rig - install dsh, scratch dual-host project, record version + harness home ([[PLAN-017-dsh-host-support]])
+- [ ] TASK-002: hand-author the minimal Compass profile bundle; prove a vault write inside dsh fires compass sync
+- [ ] TASK-003: live probe - Stop-block contract, capture loop survival, SessionStart source literal
+- [ ] TASK-004: instruction-surface placement matrix - each host loads each instruction exactly once
+- Pause point after Wave 1: human confirms manual verification before any Later wave elaborates.
+
 ## Sizing + discoverability initiative
 
 Triggered by a live failure in another project: a vision session produced seven epic-sized needs and Compass proposed seven flat specs with no signal anything was wrong.
