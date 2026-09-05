@@ -5,7 +5,7 @@ usage:
     count: 31
     last: 2026-09-05
   capture-check:
-    count: 161
+    count: 163
     last: 2026-09-05
   capture-close:
     count: 22
@@ -14,13 +14,13 @@ usage:
     count: 11
     last: 2026-08-31
   capture-signal:
-    count: 159
+    count: 161
     last: 2026-09-05
   capture-worker:
-    count: 69
+    count: 72
     last: 2026-09-05
   coverage:
-    count: 24
+    count: 25
     last: 2026-09-05
   decisions:
     count: 14
@@ -41,7 +41,7 @@ usage:
     count: 3
     last: 2026-08-30
   lesson-coverage:
-    count: 103
+    count: 109
     last: 2026-09-05
   lessons:
     count: 3
@@ -59,7 +59,7 @@ usage:
     count: 45
     last: 2026-09-05
   sync:
-    count: 483
+    count: 502
     last: 2026-09-05
   tree:
     count: 5

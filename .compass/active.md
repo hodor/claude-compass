@@ -5,13 +5,9 @@ updated: 2026-08-24
 
 # Active Tasks
 
-## PLAN-017 dsh host support - Wave 1 (approved 2026-09-05)
+## PLAN-017 dsh host support - Wave 2 (human ruling at the Wave 1 gate: every wave verifies suite-green plus live under both hosts)
 
-- [x] TASK-001: stand up a live dsh rig - install dsh, scratch dual-host project, record version + harness home ([[PLAN-017-dsh-host-support]])
-- [x] TASK-002: hand-author the minimal Compass profile bundle; prove a vault write inside dsh fires compass sync
-- [x] TASK-003: live probe - Stop-block contract, capture loop survival, SessionStart source literal
-- [x] TASK-004: instruction-surface placement matrix - each host loads each instruction exactly once
-- Pause point after Wave 1: human confirms manual verification before any Later wave elaborates.
+- [ ] Wave 2 pause point: human confirms before Wave 3 elaborates (skills/agents/bundle materializers next).
 
 ## Sizing + discoverability initiative
 

@@ -183,3 +183,17 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 - [x] Fix and test #18 - no link-preserving move for domain grouping in make-domain
 - [x] Fix and test #19 - validate flags abbreviated bare-stem wikilinks that rules/wikilinks.md sanctions
 - [x] Fix and test #20 - consolidate skill states a false premise that destroys information (Step 7)
+
+## 2026-09-05
+
+### PLAN-017 dsh host support - Wave 1 (approved 2026-09-05)
+
+- [x] TASK-001: stand up a live dsh rig - install dsh, scratch dual-host project, record version + harness home ([[PLAN-017-dsh-host-support]])
+- [x] TASK-002: hand-author the minimal Compass profile bundle; prove a vault write inside dsh fires compass sync
+- [x] TASK-003: live probe - Stop-block contract, capture loop survival, SessionStart source literal
+- [x] TASK-004: instruction-surface placement matrix - each host loads each instruction exactly once
+- Pause point after Wave 1: human confirms manual verification before any Later wave elaborates.
+
+### PLAN-017 dsh host support - Wave 2 (human ruling at the Wave 1 gate: every wave verifies suite-green plus live under both hosts)
+- [x] TASK-014: PostToolUse matcher legal on both hosts - manifest, setup translation, merge_settings moved together
+- [x] TASK-005: host seam - plugin.yaml roster, per-host _apply loop, generated .dsh/hooks.json; dual-host live bar passed
