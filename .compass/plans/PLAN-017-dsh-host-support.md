@@ -82,6 +82,30 @@ Every task in this and later waves verifies two ways, by the human's ruling at t
 
 **Wave 2 pause point:** same contract as Wave 1 - suite green and both live checks pass before Wave 3 elaborates.
 
+### Wave 3 (detailed): dsh sessions speak Compass
+
+- [ ] TASK-007: the tool-name mapping table in `hostlib` - Claude tool names from agent `tools:` frontmatter translated to dsh tool names (Read->read, Write->write, Edit->edit, Bash->bash, Grep->grep, Glob->glob, ...), derived from dsh's generated tool catalog; a name with no dsh equivalent maps to nothing and is reported, never guessed - complexity: S, depends_on: none, files: [plugin/cli/hostlib.py, plugin/cli/tests/test_hostlib.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-02]
+  - Automated verification: table covers every name used across the 13 shipped agents' `tools:` fields or explicitly marks it unmapped; full suite green.
+  - Manual verification: the unmapped set is reviewed - nothing in it should surprise (host-specific tools like AskUserQuestion are expected there).
+
+  - Automated verification: materialized skills parse under dsh's documented frontmatter rules (kebab name, description present); non-Compass files already in `.dsh/skills/` are never touched; full suite green.
+  - Manual verification: a live dsh session lists the `compass-*` skills in its catalog and loads one on request.
+
+- [ ] TASK-008: the bundle generator - `hostlib` emits the installable Compass bundle (hooks mount, the skill capability rows when the profile lacks them, and one delegation-tool row per Compass agent with persona from the agent markdown and tool filter through the TASK-007 map), written to `.dsh/compass-bundle/`; probe whether a relative `configPath` resolving at launch cwd lets ONE global profile serve every project, else the bundle stays per-project - complexity: L, depends_on: TASK-007, files: [plugin/cli/hostlib.py, plugin/cli/tests/test_hostlib.py, plugin/hosts/dsh/], decisions: [SPEC-006-multi-host-agent-cli-support/D-02, SPEC-006-multi-host-agent-cli-support/D-03], lessons: [LESSON-hook-payloads-observe-before-coding]
+  - Automated verification: the generated bundle round-trips dsh's manifest contract (package.json `dsh.bundle.patch` + patch YAML parse); agent rows carry persona text and mapped tool filters; full suite green.
+  - Manual verification: in the rig, `dsh plugin add` of the generated bundle boots; a dsh session delegates to one Compass agent natively and the hook loop still runs.
+
+**Wave 3 pause point:** same contract - suite green, both hosts live, before Wave 4 (model column, rules folding, doctor, capture worker, acceptance).
+
+## Wave 3 elaborated (2026-09-05)
+
+All three tasks landed (916 tests green) and every live bar passed in the rig: 32 `compass-*` skills in a dsh session's catalog and one loaded verbatim on request; a dsh session delegated to `compass_debug` natively and relayed the child's report; the hook loop ran through the generated bundle with a RELATIVE `configPath` - launch-cwd resolution works, so one global profile can serve every project. Claude Code is untouched by construction (materializers run only on a dsh roster, proven by test) and its hooks fired throughout the session. What the wave learned:
+
+- dsh-base already registers the `subagents` service and the `spawn` provider; a bundle re-mounting either fails the boot loudly. The generated bundle carries only delegation-tool rows.
+- Windows compositions register `pwsh` and no `bash`, and a tool filter naming an unregistered tool fails the child's start. `map_tools` resolves `Bash` per the generating machine's platform.
+- `projectDir` must stay absolute in the generated bundle: without it the `${CLAUDE_PROJECT_DIR}` token reaches PowerShell unsubstituted. The bundle is per-project-generated, so the absolute path is correct by construction.
+- Hyphenated delegation tool names (`compass_codebase-analyzer`) register fine.
+
 ## Wave 2 elaborated (2026-09-05)
 
 Both tasks landed and both live bars passed: 904 tests green, and in one rig project a dsh vault write synced through the generated `.dsh/hooks.json` while a `claude -p` vault write synced through the widened settings matcher - one install, both hosts, one index. What the wave adds downstream:
@@ -93,9 +117,6 @@ Both tasks landed and both live bars passed: 904 tests green, and in one rig pro
 
 These carry intent, not instructions: each is written out in full only once the wave before it has landed and its outcome is known.
 
-- [ ] TASK-006: the skill materializer - Compass skills written into dsh's frontmatter dialect (`whenToUse` alongside `when_to_use`), named `compass-<name>` to avoid colliding with a user's own skills, installed into `.dsh/skills` - files: [plugin/cli/commands/materialize.py, plugin/cli/tests/test_materialize.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-03]
-- [ ] TASK-007: the dsh tool-name mapping table - Compass's `tools:` frontmatter names translated to dsh tool names, derived from dsh's own tool catalog, so an agent's tool filter means the same thing on both hosts - files: [plugin/cli/hostlib.py, plugin/cli/tests/test_hostlib.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-02]
-- [ ] TASK-008: the agent-to-bundle compiler - each of the thirteen agent definitions becomes one `tool-subagent` instance in the generated bundle, its persona from the markdown body, its tool filter from the mapping table, its model route from the model policy - files: [plugin/cli/commands/materialize.py, plugin/cli/tests/test_materialize.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-02, SPEC-006-multi-host-agent-cli-support/D-03]
 - [ ] TASK-009: a dsh column in the model resolution table - tiers resolve to provider routes rather than bare model names, applied into the generated bundle instead of agent frontmatter, per [[specs/distribution/SPEC-008-central-model-resolution-table]] - files: [plugin/cli/modelslib.py, plugin/cli/commands/apply_models.py, plugin/cli/tests/test_modelslib.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-02, SPEC-006-multi-host-agent-cli-support/D-03]
 - [ ] TASK-010: rules folded into the host instruction surface, per the TASK-004 matrix - files: [plugin/cli/commands/materialize.py, plugin/templates/rules/], decisions: [SPEC-006-multi-host-agent-cli-support/D-03, SPEC-006-multi-host-agent-cli-support/D-04]
 - [ ] TASK-011: `compass doctor` becomes host-aware - it checks each detected host's own install and reports version skew between them as a failure - files: [plugin/cli/commands/doctor.py, plugin/cli/tests/test_doctor.py], decisions: [SPEC-006-multi-host-agent-cli-support/D-04]
