@@ -7,13 +7,14 @@ roster behaves exactly as before. `self_update._apply` refreshes every
 rostered host in one run - the invariant that no two hosts of one project
 can sit on different Compass versions (SPEC-006 D-04).
 
-The dsh materializer generates `.dsh/hooks.json` from the canonical hook
-manifest. dsh executes hooks through PowerShell on Windows, so the sh
-wrapper (`if command -v python3 ...`) is reduced to the dialect-neutral
-form `python "${CLAUDE_PROJECT_DIR}/..."`: dsh substitutes the `${...}`
-token at parse time, and a POSIX shell reads the same token as an env-var
-expansion. Events dsh's bridge does not parse and `if` fields (Claude Code
-permission-pattern syntax) are dropped from the generated file.
+The dsh materializers split by scope. Per project: `.dsh/hooks.json`
+(dsh executes hooks through PowerShell on Windows, so the sh wrapper is
+reduced to a bare `python` invocation with the project's absolute path
+baked in), `.dsh/skills/`, and the `AGENTS.md` rules section. Global,
+under the harness home: the project-agnostic Compass bundle, copied into
+every profile so starting dsh in any Compass project just works - its
+hooks mount reads the launch cwd's own `.dsh/hooks.json` and is inert
+anywhere else.
 """
 
 import json
@@ -25,6 +26,14 @@ from pathlib import Path
 import vaultlib
 
 DEFAULT_HOSTS = ["claude-code"]
+
+BUNDLE_NAME = "compass-dsh-bundle"
+
+
+def dsh_home():
+    """The harness home dsh itself resolves: `$DSH_HOME` or `~/.dsh`."""
+    import os
+    return Path(os.environ.get("DSH_HOME") or Path.home() / ".dsh")
 
 # The events dsh's hooks-claude-code bridge parses
 # (deepseek-harness packages/hooks/hooks-claude-code/src/config.ts).
@@ -175,13 +184,13 @@ def materialize_dsh_instructions(project_root, rules_src):
 
 def _neutral_command(command):
     """The dialect-neutral form of a manifest hook command: the sh
-    python3/python fallback wrapper reduces to a bare `python` invocation
-    with the `${CLAUDE_PROJECT_DIR}` token kept for parse-time
-    substitution. A command that carries no wrapper passes through."""
+    python3/python fallback wrapper reduces to a bare `python` invocation.
+    A command that carries no wrapper passes through; the caller bakes the
+    project path into the `$CLAUDE_PROJECT_DIR` reference."""
     match = _SH_WRAPPER.match(command.strip())
     if match:
         command = "python " + match.group(1)
-    return command.replace('"$CLAUDE_PROJECT_DIR', '"${CLAUDE_PROJECT_DIR}')
+    return command
 
 
 def _yaml_block(text, indent):
@@ -243,19 +252,18 @@ def _agent_rows(agents_src, vault_root=None):
     return rows
 
 
-def materialize_dsh_bundle(project_root, src):
-    """Generate the installable Compass bundle at `.dsh/compass-bundle/`:
-    the hooks-bridge mount (relative `configPath`, resolved against the
-    launch cwd so one profile serves every project), the subagent service
-    with the in-process spawn provider, and one delegation tool per shipped
-    agent. The bundle version mirrors the plugin version: pnpm `file:`
-    installs are snapshots, and the version change is what makes
-    `dsh plugin add` refresh the profile copy on update. Returns the bundle
-    directory."""
+def materialize_dsh_bundle(home, src):
+    """Generate the project-agnostic Compass bundle at
+    `<dsh-home>/compass-bundle/`: the hooks-bridge mount (relative
+    `configPath` resolving against each launch cwd, so the one global
+    bundle serves every project and is inert in folders without a
+    `.dsh/hooks.json`) and one delegation tool per shipped agent with
+    model routes from the built-in table. The bundle version mirrors the
+    plugin version. Returns the bundle directory."""
     src = Path(src)
     plugin_meta = json.loads(
         (src / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
-    dest = Path(project_root) / ".dsh" / "compass-bundle"
+    dest = Path(home) / "compass-bundle"
     dest.mkdir(parents=True, exist_ok=True)
     vaultlib.write_text_lf(dest / "package.json", json.dumps({
         "name": "compass-dsh-bundle",
@@ -271,26 +279,27 @@ def materialize_dsh_bundle(project_root, src):
         "    - id: compass-hooks",
         "      name: '@deepseek-ai/dsh-hooks-claude-code'",
         "      config:",
-        # configPath resolves against the launch cwd; projectDir must be
-        # absolute - without it the ${CLAUDE_PROJECT_DIR} token in commands
-        # stays unsubstituted, and PowerShell reads it as an unset pwsh
-        # variable. The bundle is generated per project, so the absolute
-        # path is available and correct.
+        # configPath resolves against the launch cwd, and the per-project
+        # hooks file carries absolute commands, so the mount needs no
+        # projectDir and is safe in any folder.
         "        configPath: .dsh/hooks.json",
-        f"        projectDir: '{Path(project_root).resolve().as_posix()}'",
         # The delegation rows reuse the `spawn` provider dsh-base already
         # registers; re-mounting the subagents service or the provider
         # fails the boot loudly ("service ... has been registered").
     ]
-    parts.extend(_agent_rows(src / "templates" / "agents", Path(project_root) / ".compass"))
+    parts.extend(_agent_rows(src / "templates" / "agents"))
     vaultlib.write_text_lf(dest / "cordis.patch.yml", "\n".join(parts) + "\n")
     return dest
 
 
 def materialize_dsh_hooks(project_root, manifest_path):
     """Generate `.dsh/hooks.json` for `project_root` from the canonical
-    manifest. Returns the path written."""
+    manifest, with the project's absolute path baked into every command:
+    the bundle that loads this file is global and sets no `projectDir`,
+    so no substitution token may survive to reach PowerShell unexpanded.
+    Returns the path written."""
     manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+    project_abs = Path(project_root).resolve().as_posix()
     hooks = {}
     for event, groups in manifest.get("hooks", {}).items():
         if event not in DSH_EVENTS:
@@ -300,7 +309,8 @@ def materialize_dsh_hooks(project_root, manifest_path):
             cleaned = {k: v for k, v in group.items() if k != "hooks"}
             cleaned["hooks"] = [
                 {**{k: v for k, v in h.items() if k != "if"},
-                 "command": _neutral_command(h["command"])}
+                 "command": _neutral_command(h["command"]).replace(
+                     '"$CLAUDE_PROJECT_DIR', f'"{project_abs}')}
                 for h in group.get("hooks", [])
             ]
             out_groups.append(cleaned)
@@ -315,3 +325,38 @@ def materialize_dsh_hooks(project_root, manifest_path):
         "hooks": hooks,
     }, indent=2) + "\n")
     return dest
+
+
+def install_dsh_bundle(home):
+    """Copy the generated bundle into every profile under
+    `<home>/profiles/` - into `node_modules/`, recorded as a `file:`
+    dependency so pnpm operations keep it, and listed in
+    `dsh.profile.bundles`. Idempotent; every apply refreshes the copy, so
+    the pnpm-snapshot staleness class cannot occur. Returns the profile
+    names installed into."""
+    home = Path(home)
+    bundle = home / "compass-bundle"
+    profiles_dir = home / "profiles"
+    if not bundle.is_dir() or not profiles_dir.is_dir():
+        return []
+    installed = []
+    for profile in sorted(profiles_dir.iterdir()):
+        manifest = profile / "package.json"
+        if not manifest.is_file():
+            continue
+        try:
+            pkg = json.loads(manifest.read_text(encoding="utf-8"))
+        except ValueError:
+            continue
+        dest = profile / "node_modules" / BUNDLE_NAME
+        if dest.exists():
+            shutil.rmtree(dest, ignore_errors=True)
+        shutil.copytree(bundle, dest)
+        pkg.setdefault("dependencies", {})[BUNDLE_NAME] = "file:../../compass-bundle"
+        bundles = pkg.setdefault("dsh", {}).setdefault("profile", {}).setdefault(
+            "bundles", [])
+        if BUNDLE_NAME not in bundles:
+            bundles.append(BUNDLE_NAME)
+        vaultlib.write_text_lf(manifest, json.dumps(pkg, indent=2) + "\n")
+        installed.append(profile.name)
+    return installed

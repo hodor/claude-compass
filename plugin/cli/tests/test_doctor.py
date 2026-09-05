@@ -29,6 +29,19 @@ def make_project(test_case):
     return tmp
 
 
+def with_env(test_case, name, value):
+    old = os.environ.get(name)
+    os.environ[name] = value
+
+    def restore():
+        if old is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = old
+
+    test_case.addCleanup(restore)
+
+
 def with_project_env(test_case, project_root):
     old = os.environ.get("CLAUDE_PROJECT_DIR")
     os.environ["CLAUDE_PROJECT_DIR"] = str(project_root)
@@ -1080,6 +1093,12 @@ class HostChecksTests(unittest.TestCase):
 
     PLUGIN_SRC = Path(__file__).resolve().parents[2]
 
+    def _dsh_home(self):
+        home = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, home, True)
+        with_env(self, "DSH_HOME", str(home))
+        return home
+
     def _dsh_project(self, version="0.20.0"):
         project = make_project(self)
         write_plugin_yaml(project, version=version)
@@ -1090,6 +1109,7 @@ class HostChecksTests(unittest.TestCase):
         return project
 
     def test_missing_dsh_materializations_fail(self):
+        self._dsh_home()
         project = self._dsh_project()
         checks = doctor._host_checks(project / ".compass", project)
         host = next(c for c in checks if c.name == "host materializations")
@@ -1097,13 +1117,14 @@ class HostChecksTests(unittest.TestCase):
         self.assertIn(".dsh/hooks.json", host.detail)
 
     def test_bundle_version_skew_fails(self):
+        home = self._dsh_home()
         project = self._dsh_project()
         import hostlib
         hostlib.materialize_dsh_hooks(project, self.PLUGIN_SRC / "hooks" / "hooks.json")
         hostlib.materialize_dsh_skills(project, self.PLUGIN_SRC / "skills")
         hostlib.materialize_dsh_instructions(
             project, self.PLUGIN_SRC / "templates" / "rules")
-        bundle = project / ".dsh" / "compass-bundle"
+        bundle = home / "compass-bundle"
         bundle.mkdir(parents=True)
         (bundle / "package.json").write_text(
             '{"name": "compass-dsh-bundle", "version": "0.1.0"}', encoding="utf-8")
@@ -1113,6 +1134,7 @@ class HostChecksTests(unittest.TestCase):
         self.assertIn("skew", host.detail)
 
     def test_clean_dual_host_passes_and_names_capture_posture(self):
+        home = self._dsh_home()
         project = self._dsh_project()
         import hostlib
         from commands import self_update
@@ -1125,7 +1147,7 @@ class HostChecksTests(unittest.TestCase):
             "  hosts: [claude-code, dsh]\n", encoding="utf-8")
         hostlib.materialize_dsh_hooks(project, self.PLUGIN_SRC / "hooks" / "hooks.json")
         hostlib.materialize_dsh_skills(project, self.PLUGIN_SRC / "skills")
-        hostlib.materialize_dsh_bundle(project, self.PLUGIN_SRC)
+        hostlib.materialize_dsh_bundle(home, self.PLUGIN_SRC)
         hostlib.materialize_dsh_instructions(
             project, self.PLUGIN_SRC / "templates" / "rules")
         checks = doctor._host_checks(project / ".compass", project)

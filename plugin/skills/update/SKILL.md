@@ -82,11 +82,18 @@ fi
 
 ### 4a. Regenerate host materializations
 
-A project whose `.compass/meta/plugin.yaml` roster lists `dsh` also gets its dsh materialization regenerated from the manifest just copied - same run, same version, so the hosts never skew:
+A project whose `.compass/meta/plugin.yaml` roster lists `dsh` also gets its dsh materializations regenerated from the source just copied - same run, same version, so the hosts never skew. Per project: `.dsh/hooks.json` (absolute-path commands), `.dsh/skills/`, the `AGENTS.md` rules section. Global: the project-agnostic bundle under the harness home (`$DSH_HOME` or `~/.dsh`), copied into every profile there, so the user starts dsh in any Compass project and it just works:
 
 ```bash
 if command -v python3 >/dev/null 2>&1; then PYBIN=python3; else PYBIN=python; fi
-"$PYBIN" -c "import sys; sys.path.insert(0,'.claude/cli'); import hostlib; 'dsh' in hostlib.read_hosts('.compass') and hostlib.materialize_dsh_hooks('.', '.claude/hooks/hooks.json')"
+"$PYBIN" -c "import sys; sys.path.insert(0,'.claude/cli'); import hostlib
+if 'dsh' in hostlib.read_hosts('.compass'):
+    hostlib.materialize_dsh_hooks('.', '.claude/hooks/hooks.json')
+    hostlib.materialize_dsh_skills('.', '.claude/skills')
+    hostlib.materialize_dsh_instructions('.', '.claude/rules')
+    home = hostlib.dsh_home()
+    hostlib.materialize_dsh_bundle(home, '$SRC')
+    print('bundle installed into profiles:', hostlib.install_dsh_bundle(home))"
 ```
 
 A roster without `dsh` (or an absent field) makes this a no-op.
@@ -134,7 +141,7 @@ if posttool:
     # The manifest splits PostToolUse three ways (Write/Edit/MultiEdit) because its
     # "if" field cannot express boolean OR. The settings schema carries no "if"
     # field, so the three collapse into one matcher group.
-    translated["PostToolUse"] = [clean_group(posttool[0], "Write|Edit|MultiEdit")]
+    translated["PostToolUse"] = [clean_group(posttool[0], "Write|Edit|MultiEdit|write|edit")]
 for event in manifest:
     if event != "PostToolUse":
         translated[event] = [clean_group(g) for g in manifest[event]]

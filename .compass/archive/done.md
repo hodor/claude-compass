@@ -203,3 +203,12 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 - [x] TASK-007: tool-name map, platform-resolved shell (pwsh on win32)
 - [x] TASK-006: skill materializer - 32 skills in dsh dialect, catalog + load proven live
 - [x] TASK-008: bundle generator - delegation to compass_debug proven live; relative configPath works
+
+### PLAN-017 dsh host support - Wave 2 (human ruling at the Wave 1 gate: every wave verifies suite-green plus live under both hosts)
+
+- [x] Wave 3 pause point confirmed; TASK-012 ruling delegated ("do what will be the best for all compass users")
+- [x] TASK-010: rules folded into AGENTS.md managed section; dsh quotes them verbatim
+- [x] TASK-009: dsh model column - delegation routed on deepseek-v4-pro live
+- [x] TASK-011: host-aware doctor - materializations, skew, capture posture
+- [x] TASK-012: host-aware capture worker - dsh headless completed a real extract pass, claude masked
+- [x] TASK-013: dual-host acceptance - both CLIs drove the pipeline, validate 0 errors; PLAN-017 COMPLETE
