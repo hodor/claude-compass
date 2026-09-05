@@ -82,7 +82,11 @@ class MaterializeDshHooksTests(unittest.TestCase):
                     self.assertNotIn("command -v", cmd)
                     self.assertNotIn("; then", cmd)
                     self.assertNotIn("fi", cmd.split()[-1])
-                    self.assertTrue(cmd.startswith('python "${CLAUDE_PROJECT_DIR}'), cmd)
+                    # Absolute project path baked in: the global bundle sets
+                    # no projectDir, so no substitution token may survive.
+                    self.assertNotIn("${CLAUDE_PROJECT_DIR}", cmd)
+                    self.assertTrue(cmd.startswith('python "'), cmd)
+                    self.assertIn("/.claude/cli/compass", cmd)
 
     def test_no_if_fields_and_no_unsupported_events(self):
         data, _ = self._materialize()
@@ -287,12 +291,13 @@ class MaterializeDshBundleTests(unittest.TestCase):
         return src
 
     def _generate(self):
-        project = make_project(self)
-        hostlib.materialize_dsh_bundle(project, self._src())
+        home = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, home, True)
+        hostlib.materialize_dsh_bundle(home, self._src())
         pkg = json.loads(
-            (project / ".dsh" / "compass-bundle" / "package.json").read_text(
+            (home / "compass-bundle" / "package.json").read_text(
                 encoding="utf-8"))
-        patch = (project / ".dsh" / "compass-bundle" / "cordis.patch.yml").read_text(
+        patch = (home / "compass-bundle" / "cordis.patch.yml").read_text(
             encoding="utf-8")
         return pkg, patch
 
@@ -301,14 +306,14 @@ class MaterializeDshBundleTests(unittest.TestCase):
         self.assertEqual(pkg["dsh"]["bundle"]["patch"], "./cordis.patch.yml")
         self.assertEqual(pkg["version"], "9.9.9")
 
-    def test_hooks_mount_relative_config_path_absolute_project_dir(self):
+    def test_hooks_mount_is_project_agnostic(self):
+        # One global bundle serves every folder: configPath resolves against
+        # the launch cwd, and no projectDir ties the mount to one project -
+        # the per-project hooks file carries absolute commands instead.
         _, patch = self._generate()
         self.assertIn("'@deepseek-ai/dsh-hooks-claude-code'", patch)
         self.assertIn("configPath: .dsh/hooks.json", patch)
-        # Without projectDir the ${CLAUDE_PROJECT_DIR} token reaches
-        # PowerShell unsubstituted; the generated bundle carries the
-        # absolute path.
-        self.assertIn("projectDir: '", patch)
+        self.assertNotIn("projectDir", patch)
 
     def test_one_delegation_row_per_agent_with_persona_and_filter(self):
         _, patch = self._generate()
@@ -369,21 +374,92 @@ class ApplyHostLoopTests(unittest.TestCase):
         shutil.copy2(MANIFEST, src / "hooks" / "hooks.json")
         return src
 
+    def _isolate_home(self):
+        home = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, home, True)
+        old = os.environ.get("DSH_HOME")
+        os.environ["DSH_HOME"] = str(home)
+        self.addCleanup(
+            lambda: os.environ.__setitem__("DSH_HOME", old) if old
+            else os.environ.pop("DSH_HOME", None))
+        return home
+
     def test_dual_roster_gets_both_materializations_in_one_apply(self):
         from commands import self_update
+        home = self._isolate_home()
         project = make_project(
             self, "source: F:/x\nversion: 0.18.4\nhosts: [claude-code, dsh]\n")
         self_update._apply(self._src(), project, apply_models=False)
         self.assertTrue((project / ".claude" / "agents" / "builder.md").is_file())
         self.assertTrue((project / ".dsh" / "hooks.json").is_file())
+        self.assertTrue((home / "compass-bundle" / "package.json").is_file())
 
     def test_default_roster_behaves_exactly_as_today(self):
         from commands import self_update
+        home = self._isolate_home()
         project = make_project(self, "source: F:/x\nversion: 0.18.4\n")
         self_update._apply(self._src(), project, apply_models=False)
         self.assertTrue((project / ".claude" / "agents" / "builder.md").is_file())
         self.assertFalse((project / ".dsh").exists())
+        self.assertFalse((home / "compass-bundle").exists())
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class InstallDshBundleTests(unittest.TestCase):
+    """The generated bundle installs itself into every profile under the
+    harness home: copied into node_modules, recorded as a file: dependency
+    so pnpm operations keep it, and listed in dsh.profile.bundles - no
+    manual `dsh plugin add`, refreshed on every apply."""
+
+    def _home_with_profile(self, name="headless"):
+        home = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, home, True)
+        profile = home / "profiles" / name
+        profile.mkdir(parents=True)
+        (profile / "package.json").write_text(json.dumps({
+            "name": f"dsh-profile-{name}", "private": True,
+            "dependencies": {},
+            "dsh": {"profile": {"bundles": ["@deepseek-ai/dsh-base"],
+                                "patchReload": "startup"}},
+        }), encoding="utf-8")
+        return home
+
+    def _src(self):
+        src = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, src, True)
+        (src / ".claude-plugin").mkdir()
+        (src / ".claude-plugin" / "plugin.json").write_text(
+            '{"name": "compass", "version": "9.9.9"}', encoding="utf-8")
+        (src / "templates" / "agents").mkdir(parents=True)
+        return src
+
+    def test_bundle_lands_in_profile_and_manifest(self):
+        home = self._home_with_profile()
+        hostlib.materialize_dsh_bundle(home, self._src())
+        installed = hostlib.install_dsh_bundle(home)
+        self.assertEqual(installed, ["headless"])
+        profile = home / "profiles" / "headless"
+        self.assertTrue(
+            (profile / "node_modules" / "compass-dsh-bundle" / "package.json").is_file())
+        pkg = json.loads((profile / "package.json").read_text(encoding="utf-8"))
+        self.assertIn("compass-dsh-bundle", pkg["dsh"]["profile"]["bundles"])
+        self.assertIn("compass-dsh-bundle", pkg["dependencies"])
+
+    def test_reinstall_refreshes_the_copy(self):
+        home = self._home_with_profile()
+        hostlib.materialize_dsh_bundle(home, self._src())
+        hostlib.install_dsh_bundle(home)
+        stale = (home / "profiles" / "headless" / "node_modules"
+                 / "compass-dsh-bundle" / "cordis.patch.yml")
+        stale.write_text("stale", encoding="utf-8")
+        hostlib.install_dsh_bundle(home)
+        self.assertNotEqual(stale.read_text(encoding="utf-8"), "stale")
+
+    def test_no_profiles_is_a_reported_noop(self):
+        home = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, home, True)
+        hostlib.materialize_dsh_bundle(home, self._src())
+        self.assertEqual(hostlib.install_dsh_bundle(home), [])

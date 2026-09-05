@@ -5,14 +5,12 @@ updated: 2026-08-24
 
 # Active Tasks
 
-## PLAN-017 dsh host support - Wave 2 (human ruling at the Wave 1 gate: every wave verifies suite-green plus live under both hosts)
+## PLAN-017 Wave 5 - cold start (human: "I just start deepseek on the same folder and it should just work")
 
-- [x] Wave 3 pause point confirmed; TASK-012 ruling delegated ("do what will be the best for all compass users")
-- [x] TASK-010: rules folded into AGENTS.md managed section; dsh quotes them verbatim
-- [x] TASK-009: dsh model column - delegation routed on deepseek-v4-pro live
-- [x] TASK-011: host-aware doctor - materializations, skew, capture posture
-- [x] TASK-012: host-aware capture worker - dsh headless completed a real extract pass, claude masked
-- [x] TASK-013: dual-host acceptance - both CLIs drove the pipeline, validate 0 errors; PLAN-017 COMPLETE
+- [x] Global project-agnostic bundle under the harness home, auto-installed into every profile on apply - no manual dsh plugin add, ever
+- [x] Per-project hooks file bakes absolute paths; the mount is inert in non-Compass folders (empty-folder boot clean)
+- [x] Cold-start proven: fresh project + one apply -> one dsh session does write/sync, delegation, skills; claude -p works in the same project
+- [x] Fourth unwidened matcher copy found in the update skill and fixed
 
 ## Sizing + discoverability initiative
 

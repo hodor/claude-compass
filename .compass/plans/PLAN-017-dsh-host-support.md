@@ -118,6 +118,14 @@ Ruling for TASK-012, delegated by the human ("do what will be the best for all c
   - Automated verification: after both drives, `compass validate` reports 0 errors in the rig and sync's index matches the artifacts on disk.
   - Manual verification: the human reviews the acceptance transcript summary at the plan's close.
 
+## Wave 5 elaborated (2026-09-05) - the cold-start bar
+
+The human's closing requirement reopened the plan for one wave: "I just start deepseek on the same folder and it should just work." What stood in the way: the bundle was per-project and manually `dsh plugin add`-ed, re-added by hand after every update, and carried an absolute `projectDir` that would misfire from any other folder.
+
+The shape that ships (v0.22.0): the bundle is global and project-agnostic - generated under the harness home (`$DSH_HOME` or `~/.dsh`) and copied by the installer into every profile there (as a `file:` dependency plus a `dsh.profile.bundles` entry, refreshed on every apply, so the pnpm-snapshot staleness class is gone and no manual step exists). Its hooks mount reads the launch cwd's own `.dsh/hooks.json`, whose commands now carry the project's absolute path baked in (no substitution tokens, no `projectDir`), making the mount inert in non-Compass folders - proven by a clean boot in an empty directory. Presets were investigated first and ruled out: dsh discovers them from global roots only, never per project.
+
+Live bars: a fresh project with one apply answered everything in a single dsh session - vault write indexed by sync, delegation to `compass_vault-locator`, `compass-lessons` in the catalog; `claude -p` in the same project indexed its own write; the empty folder stayed clean; the rig needed exactly one re-apply to shed its token-era hooks file (the drift class doctor's host rows and normal self-update cover). A fourth unwidened copy of the PostToolUse matcher surfaced in the update skill's translation script and is fixed - TASK-014 counted three. 930 tests green.
+
 ## Wave 4 elaborated (2026-09-05) - plan complete
 
 All five tasks landed (927 tests green) and every live bar passed; per-task evidence in [[research/distribution/RESEARCH-dsh-live-probes]]. The TASK-012 ruling held its shape in practice: `claude` first, a dsh-rostered claude-less environment completed a real extract pass through `dsh --profile headless` (worker-finished, correct anti-list judgment), and doctor names every project's capture posture. The acceptance closed the plan: one rig project, a spec written and a delegation run from dsh, a dependent plan written from Claude Code, both indexed by their own host's hooks, `compass validate` at 0 errors.

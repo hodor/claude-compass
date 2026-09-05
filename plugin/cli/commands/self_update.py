@@ -258,9 +258,18 @@ def _apply(src, project_root, apply_models):
     if "dsh" in hostlib.read_hosts(Path(project_root) / ".compass"):
         hostlib.materialize_dsh_hooks(project_root, src / "hooks" / "hooks.json")
         hostlib.materialize_dsh_skills(project_root, src / "skills")
-        hostlib.materialize_dsh_bundle(project_root, src)
         hostlib.materialize_dsh_instructions(
             project_root, src / "templates" / "rules")
+        # The bundle is global and project-agnostic: generated once under
+        # the harness home and copied into every profile there, so the user
+        # starts dsh in any Compass project and it just works. Best-effort:
+        # a missing or odd harness home must never fail the apply.
+        try:
+            home = hostlib.dsh_home()
+            hostlib.materialize_dsh_bundle(home, src)
+            hostlib.install_dsh_bundle(home)
+        except OSError:
+            pass
     # The shipped files above were just replaced wholesale; re-apply the
     # project's own additions on top of them (ADR-020).
     try:

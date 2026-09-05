@@ -108,9 +108,10 @@ def _host_checks(vault_root, project_root):
         match = re.search(r"^\s*version:\s*(.+)$",
                           plugin_yaml.read_text(encoding="utf-8"), re.MULTILINE)
         plugin_version = match.group(1).strip() if match else None
-    bundle_pkg = project / ".dsh" / "compass-bundle" / "package.json"
+    home = hostlib.dsh_home()
+    bundle_pkg = home / "compass-bundle" / "package.json"
     if not bundle_pkg.is_file():
-        problems.append(".dsh/compass-bundle missing")
+        problems.append(f"global bundle missing at {home / 'compass-bundle'}")
     else:
         try:
             bundle_version = json.loads(
@@ -119,9 +120,18 @@ def _host_checks(vault_root, project_root):
             bundle_version = None
         if plugin_version and bundle_version and bundle_version != plugin_version:
             problems.append(
-                f"version skew: bundle {bundle_version} vs plugin {plugin_version} - "
-                "the profile's pnpm snapshot is also stale until `dsh plugin add` reruns"
+                f"version skew: bundle {bundle_version} vs plugin {plugin_version}"
             )
+        profiles = home / "profiles"
+        stale = [
+            p.name for p in sorted(profiles.iterdir())
+            if (p / "package.json").is_file()
+            and not (p / "node_modules" / hostlib.BUNDLE_NAME
+                     / "package.json").is_file()
+        ] if profiles.is_dir() else []
+        if stale:
+            problems.append(
+                f"profile(s) without the bundle installed: {', '.join(stale)}")
 
     if problems:
         checks.append(Check("host materializations", FAIL, "; ".join(problems), fix))
