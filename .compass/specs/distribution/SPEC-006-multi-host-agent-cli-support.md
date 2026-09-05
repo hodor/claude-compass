@@ -4,12 +4,12 @@ type: spec
 status: approved
 confidence: medium
 area: methodology
-tags: [multi-host, portability, kimi, kimi-code, codex, host-adapter, distribution]
+tags: [multi-host, portability, kimi, kimi-code, codex, deepseek, dsh, host-adapter, distribution]
 created: 2026-07-22
-updated: 2026-07-22
+updated: 2026-09-04
 approved: 2026-07-22
 depends_on: ["[[SPEC-001-compass-vision-and-architecture]]", "[[ADR-005-compass-cli-for-mechanical-work]]"]
-summary: "Compass runs on agent CLIs beyond Claude Code (Kimi Code, Codex); problem/need (approved 2026-07-22)"
+summary: "Compass runs on agent CLIs beyond Claude Code (dsh, Kimi Code, Codex); problem/need (approved 2026-07-22); D-01..04 rule dsh in - natively, one distribution with host materializers, dual-host projects first-class"
 ---
 
 # Compass Runs on Agent CLIs Beyond Claude Code
@@ -68,6 +68,13 @@ The spec's premise is wrong if, after investigation, any of these hold:
 - The off-budget bookkeeping guarantee is either preserved on each host or its degradation is explicit and documented.
 - Installing/updating Compass on the new host uses that host's native mechanism.
 - The Kimi-K3-via-endpoint quick win is documented separately as the config trick it is, so users are not confused about which "Kimi support" they have.
+
+## Decisions
+
+- **D-01:** DeepSeek Harness (dsh) is a target host. Fit assessed in [[research/distribution/RESEARCH-deepseek-harness-fit]]: its Claude Code hooks bridge carries the full hook loop, skills and instructions port at config level, agents and rules need materialization.
+- **D-02:** Compass works natively on dsh. Agents materialize as dsh delegation-tool instances (persona from the agent markdown, tool filter and model route translated); running a Claude Code child inside dsh (`subagent-claude-code`) is not the mechanism.
+- **D-03:** No per-host distribution. One canonical `plugin/` source; setup/update/self-update materialize per-host artifacts at install time (skill frontmatter dialects, rules folded into the host's instruction surface, a generated dsh profile bundle, one shared hooks.json whose matchers are legal in every host). This resolves the adapter-architecture fork the Open Questions deferred: materialize-at-install, easy to work for both.
+- **D-04:** A project where the user is using BOTH DeepSeek Harness AND Claude Code must work. Both materializations coexist against the one shared vault. Invariants: one plugin version per project - an update refreshes every detected host's materialization in the same run, never leaving hosts skewed; each host loads each instruction surface exactly once (no rule text doubled into a context a host already reads); concurrent sessions from different hosts rely on sync's self-healing for vault writes.
 
 ## Non-Goals
 

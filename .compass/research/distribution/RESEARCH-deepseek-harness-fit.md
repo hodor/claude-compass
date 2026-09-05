@@ -45,6 +45,8 @@ Source: https://github.com/deepseek-ai/deepseek-harness cloned at depth 1 on 202
 
 ## Open questions
 
+- The detached capture worker spawns a headless `claude -p` session; a dsh-only project has no `claude` binary to spawn. Dual-host projects are covered, but native dsh capture needs a dsh headless equivalent (their SDK or `dsh` CLI) or an explicit degradation.
+
 - Bundle/preset authoring: what a minimal installable Compass profile bundle looks like (`packages/bundle/`, `packages/preset/`) - unexplored beyond READMEs.
 - SessionStart matcher source values (`startup` vs dsh's session sources) for the self-update hook - the bridge passes a `source` as matcher subject; values unverified.
 - Whether dsh's Stop-hook block contract (exit 2 / decision JSON) matches Claude Code's semantics closely enough for the capture loop's block-and-respawn dance - the wire protocol library claims parity where protocols agree; needs a live probe.
