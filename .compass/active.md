@@ -5,12 +5,11 @@ updated: 2026-08-24
 
 # Active Tasks
 
-## PLAN-017 Wave 5 - cold start (human: "I just start deepseek on the same folder and it should just work")
+## PLAN-017 Wave 6 - zero-decision (SPEC-006 D-05; the human's bar, verbatim in the spec)
 
-- [x] Global project-agnostic bundle under the harness home, auto-installed into every profile on apply - no manual dsh plugin add, ever
-- [x] Per-project hooks file bakes absolute paths; the mount is inert in non-Compass folders (empty-folder boot clean)
-- [x] Cold-start proven: fresh project + one apply -> one dsh session does write/sync, delegation, skills; claude -p works in the same project
-- [x] Fourth unwidened matcher copy found in the update skill and fixed
+- [ ] TASK-015: automatic host detection - no roster question, no plugin.yaml field, no setup ask
+- [ ] TASK-016: dsh-first bootstrap - a project whose first session is dsh materializes itself
+- [ ] TASK-017: both-direction zero-decision acceptance on fresh projects
 
 ## Sizing + discoverability initiative
 

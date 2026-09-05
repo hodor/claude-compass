@@ -54,7 +54,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-014-capability-usage]] - implement ADR-017: usage recording in dispatch, usage report, doctor advisory, retirements, reachability line; ship v0.12.0
 - [[PLAN-015-graph-queries]] - implement ADR-018: graphlib, compass graph, consumer wiring, ripple step; live validation; v0.13.0
 - [[PLAN-016-domain-taxonomy]] - implement ADR-022 in two waves: mechanism first (Contents sync + loop-guard fix, make-domain, validate ceiling + link rules, skill contracts), then the human-approved migration of this vault; live acceptance is a filer drill and a finder drill on the migrated vault
-- [[PLAN-017-dsh-host-support]] - dsh is a native Compass host from the one canonical plugin source (done 2026-09-05, v0.19-0.21): host roster + per-host apply, generated hooks/skills/bundle/rules materializers, model routes, host-aware doctor, dsh capture worker, dual-host acceptance at 0 errors
+- [[PLAN-017-dsh-host-support]] - dsh is a native Compass host from the one canonical plugin source (v0.19-0.22: materializers, model routes, doctor, capture worker, global auto-installed bundle, dual-host acceptance at 0 errors); reopened for Wave 6 - SPEC-006 D-05 zero-decision: no roster question, dsh-first bootstrap, both-direction acceptance
 
 ## Decisions
 
@@ -87,6 +87,7 @@ See [[backlog]].
   - [[handoffs/PLAN-016-domain-taxonomy/2026-08-30_16-47-06_wave1-tree-uncommitted]] - PLAN-016 Wave 1 committed through TASK-118; TASK-116 (compass tree) sits on disk with its tests, suite unrun, uncommitted; Wave 2 starts at the useless-token baseline
   - [[handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated]] - PLAN-016 complete plus D-14: the whole vault lives in domains, lessons load through the index hierarchy instead of the catalog, hot path 3,269/5,000 - under cap for the first time (v0.17.0 fleet-verified); open: TASK-119 (prove the measure), D-13 grep-first follow-up
 - [[2026-08-31_12-04-15_v0.17.x-hardening]] - the useless-token measure is empirically proven (runs 2-3 flawless) and D-11 binds strategy to it; twelve releases (v0.17.1-12) hardened the taxonomy against live fleet friction - triggers, wording bias, five GitHub issues; open: 7 new issues (#14-20) from the human's live use await fix + test, a 2-domain lesson grouping at the human's gate, D-13 grep-first capability, SPEC-014
+  - [[handoffs/PLAN-017-dsh-host-support/2026-09-05_21-30-00_wave6-zero-decision-queued]] - PLAN-017 waves 1-5 shipped (v0.19-0.22): dsh is a native host, cold start works after one apply; reopened for Wave 6 - SPEC-006 D-05 demands zero user decisions (no roster question, dsh-first bootstrap); tasks scoped, rig standing in the scratchpad
 
 ## Lessons
 
