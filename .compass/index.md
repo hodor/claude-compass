@@ -30,7 +30,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-evaluation-benchmarks]] - benchmarks for the methodology layer; A/B pitfalls; field gaps
 - [[RESEARCH-scientific-method-in-compass]] - does Compass embody the scientific method or borrow its vocabulary; 8 gaps
 - [[RESEARCH-decision-coverage-impl]] - format, parser, matcher, gate, migration
-- [[research/distribution/index|distribution]] (folder, 5 children) - evidence on shipping and updating Compass across projects and hosts, and prior-art reviews of rival frameworks (GSD)
+- [[research/distribution/index|distribution]] (folder, 6 children) - evidence on shipping and updating Compass across projects and hosts, and prior-art reviews of rival frameworks (GSD)
 - [[research/hermes/index|hermes]] (folder, 3 children) - the hermes host - capabilities, memory mechanics, fit with Compass
 - [[research/learning/index|learning]] (folder, 4 children) - evidence on capturing knowledge - lesson mechanics, capture failure, detached workers, source-word fidelity
 - [[research/rolling-wave/index|rolling-wave]] (folder, 4 children) - plan detail tracking proximity - receding horizons, flow theory, practice
@@ -54,6 +54,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-014-capability-usage]] - implement ADR-017: usage recording in dispatch, usage report, doctor advisory, retirements, reachability line; ship v0.12.0
 - [[PLAN-015-graph-queries]] - implement ADR-018: graphlib, compass graph, consumer wiring, ripple step; live validation; v0.13.0
 - [[PLAN-016-domain-taxonomy]] - implement ADR-022 in two waves: mechanism first (Contents sync + loop-guard fix, make-domain, validate ceiling + link rules, skill contracts), then the human-approved migration of this vault; live acceptance is a filer drill and a finder drill on the migrated vault
+- [[PLAN-017-dsh-host-support]] - make dsh a native Compass host from the one canonical plugin source - Wave 1 probes the three unverified dsh mechanics live, later waves build the host-adapter seam, the materializers, and a dual-host acceptance
 
 ## Decisions
 
