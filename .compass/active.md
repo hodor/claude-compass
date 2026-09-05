@@ -7,11 +7,12 @@ updated: 2026-08-24
 
 ## PLAN-017 dsh host support - Wave 2 (human ruling at the Wave 1 gate: every wave verifies suite-green plus live under both hosts)
 
-- [x] Wave 2 pause point confirmed; human: "feel free to go"
-- [x] TASK-007: tool-name map, platform-resolved shell (pwsh on win32)
-- [x] TASK-006: skill materializer - 32 skills in dsh dialect, catalog + load proven live
-- [x] TASK-008: bundle generator - delegation to compass_debug proven live; relative configPath works
-- [ ] Wave 3 pause point: human confirms before Wave 4 (model column, rules folding, doctor, capture worker, acceptance).
+- [x] Wave 3 pause point confirmed; TASK-012 ruling delegated ("do what will be the best for all compass users")
+- [x] TASK-010: rules folded into AGENTS.md managed section; dsh quotes them verbatim
+- [x] TASK-009: dsh model column - delegation routed on deepseek-v4-pro live
+- [x] TASK-011: host-aware doctor - materializations, skew, capture posture
+- [x] TASK-012: host-aware capture worker - dsh headless completed a real extract pass, claude masked
+- [x] TASK-013: dual-host acceptance - both CLIs drove the pipeline, validate 0 errors; PLAN-017 COMPLETE
 
 ## Sizing + discoverability initiative
 

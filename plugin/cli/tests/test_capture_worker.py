@@ -681,3 +681,50 @@ class ChildInvocationTests(WorkerHarness):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HostAwareBinaryResolutionTests(unittest.TestCase):
+    """Worker binary resolution: claude wherever provided, dsh only for a
+    dsh-rostered project with no claude anywhere, else the claude default
+    whose launch failure latches no-headless."""
+
+    def _vault(self, hosts_line=""):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        meta = tmp / ".compass" / "meta"
+        meta.mkdir(parents=True)
+        (meta / "plugin.yaml").write_text(
+            f"plugin:\n  name: compass\n  version: 1.0.0\n{hosts_line}",
+            encoding="utf-8")
+        return tmp / ".compass"
+
+    def test_env_override_wins_and_is_claude_kind(self):
+        with_env(self, "COMPASS_CLAUDE_BIN", "X:/claude-stub")
+        binary, kind = capture_worker._resolve_binary({}, self._vault())
+        self.assertEqual((binary, kind), ("X:/claude-stub", "claude"))
+
+    def test_dsh_rostered_project_without_claude_falls_back_to_dsh(self):
+        with_env(self, "COMPASS_CLAUDE_BIN", "")
+        vault = self._vault("  hosts: [claude-code, dsh]\n")
+        real_which = shutil.which
+
+        def fake_which(name):
+            return "X:/dsh.cmd" if name == "dsh" else None
+
+        shutil.which = fake_which
+        self.addCleanup(lambda: setattr(shutil, "which", real_which))
+        binary, kind = capture_worker._resolve_binary({}, vault)
+        self.assertEqual((binary, kind), ("X:/dsh.cmd", "dsh"))
+
+    def test_claude_only_roster_never_resolves_dsh(self):
+        with_env(self, "COMPASS_CLAUDE_BIN", "")
+        vault = self._vault()
+        real_which = shutil.which
+
+        def fake_which(name):
+            return "X:/dsh.cmd" if name == "dsh" else None
+
+        shutil.which = fake_which
+        self.addCleanup(lambda: setattr(shutil, "which", real_which))
+        binary, kind = capture_worker._resolve_binary({}, vault)
+        self.assertEqual((binary, kind), ("claude", "claude"))

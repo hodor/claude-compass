@@ -211,6 +211,57 @@ class MaterializeDshSkillsTests(unittest.TestCase):
             (project / ".dsh" / "skills" / "compass-lessons").is_dir())
 
 
+class MaterializeDshInstructionsTests(unittest.TestCase):
+    """Rules folded into a fenced managed section of AGENTS.md - the one
+    instruction surface dsh reads and Claude Code does not (the Wave 1
+    matrix). User text outside the markers is never touched."""
+
+    def _rules_src(self):
+        src = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, src, True)
+        rules = src / "templates" / "rules"
+        rules.mkdir(parents=True)
+        (rules / "pipeline.md").write_text(
+            "# Pipeline Rules\n\nSpecs capture the problem.\n", encoding="utf-8")
+        (rules / "wikilinks.md").write_text(
+            "# Wikilinks\n\nUse wikilinks.\n", encoding="utf-8")
+        return src
+
+    def test_creates_agents_md_with_managed_section(self):
+        project = make_project(self)
+        hostlib.materialize_dsh_instructions(
+            project, self._rules_src() / "templates" / "rules")
+        text = (project / "AGENTS.md").read_text(encoding="utf-8")
+        self.assertIn("compass:rules:begin", text)
+        self.assertIn("Specs capture the problem.", text)
+        self.assertIn("Use wikilinks.", text)
+        self.assertIn("compass:rules:end", text)
+
+    def test_user_content_preserved_byte_for_byte(self):
+        project = make_project(self)
+        user = "# My project\n\nHand-written notes stay.\n"
+        (project / "AGENTS.md").write_text(user, encoding="utf-8")
+        hostlib.materialize_dsh_instructions(
+            project, self._rules_src() / "templates" / "rules")
+        text = (project / "AGENTS.md").read_text(encoding="utf-8")
+        self.assertTrue(text.startswith(user))
+        self.assertIn("Specs capture the problem.", text)
+
+    def test_refold_is_idempotent_and_replaces_in_place(self):
+        project = make_project(self)
+        (project / "AGENTS.md").write_text(
+            "top\n<!-- compass:rules:begin -->\nOLD RULES\n"
+            "<!-- compass:rules:end -->\nbottom\n", encoding="utf-8")
+        src = self._rules_src() / "templates" / "rules"
+        hostlib.materialize_dsh_instructions(project, src)
+        first = (project / "AGENTS.md").read_text(encoding="utf-8")
+        hostlib.materialize_dsh_instructions(project, src)
+        self.assertEqual(first, (project / "AGENTS.md").read_text(encoding="utf-8"))
+        self.assertNotIn("OLD RULES", first)
+        self.assertTrue(first.startswith("top\n"))
+        self.assertTrue(first.rstrip().endswith("bottom"))
+
+
 class MaterializeDshBundleTests(unittest.TestCase):
     """The generated bundle: dsh's manifest contract, one delegation-tool
     row per shipped agent (persona from the markdown body, tool filter
@@ -279,6 +330,15 @@ class MaterializeDshBundleTests(unittest.TestCase):
         builder_allow = [l for l in patch.splitlines()
                         if "allow:" in l and "compass_debug" in l]
         self.assertTrue(builder_allow, patch)
+
+    def test_rows_carry_model_routes_from_the_dsh_catalog(self):
+        # debug is a strong-tier agent, builder balanced; the dsh column
+        # resolves tiers to provider routes written as agentOptions -
+        # never into agent frontmatter.
+        _, patch = self._generate()
+        self.assertIn("provider: deepseek-official", patch)
+        self.assertIn("model: deepseek-v4-pro", patch)
+        self.assertIn("model: deepseek-v4-flash", patch)
 
     def test_no_service_rows_the_base_bundle_already_registers(self):
         # dsh-base mounts the subagents service and the `spawn` provider;

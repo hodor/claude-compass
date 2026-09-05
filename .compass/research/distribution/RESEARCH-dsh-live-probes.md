@@ -90,6 +90,14 @@ Verified from both transcripts: the rules sentinel appeared exactly once per hos
 - Operational finding for the bundle waves: pnpm `file:` bundle installs are snapshots - editing the bundle source dir does not reach the profile's `node_modules` copy; a content change requires `dsh plugin add` again (a version bump forces it). The generated-bundle materializer (TASK-008) must re-add on every refresh, and stale-bundle detection belongs in doctor's host checks (TASK-011).
 - Also reconfirmed from the lesson catalog the hard way: headless `claude -p` denies Write silently - the CC live check needs `--allowed-tools Write` ([[LESSON-headless-worker-denies-tools-silently]]).
 
+## Wave 4 live verification
+
+- **Rules (TASK-010):** folded into AGENTS.md's managed section in the rig, user sentinel preserved above it; a dsh session completed "Specs capture the ..." with the pipeline rule verbatim.
+- **Models (TASK-009):** delegation rows carry `agentOptions` routes from the dsh model column; `compass_debug` answered on `deepseek-official/deepseek-v4-pro` (strong tier).
+- **Doctor (TASK-011):** in the rig reports `host materializations OK (hosts: claude-code, dsh; bundle 0.20.0)` and `capture posture OK`; fixture tests cover skew/missing/claude-only paths.
+- **Worker (TASK-012):** with `claude` stripped from a minimal environment, `compass capture-worker` resolved `dsh --profile headless`, ran the full extract pass against the real Wave 1 opportunity, and wrote `worker-finished` - the child even exercised judgment correctly, rejecting the probe note as ephemeral session state per the anti-list.
+- **Acceptance (TASK-013):** a dsh session wrote SPEC-008-acceptance and delegated to `compass_vault-locator` (8 specs found); a `claude -p` session read that spec and wrote PLAN-001-acceptance depending on it; sync indexed both from their respective hosts; `compass fix-frontmatter --apply` healed the one frontmatter-less Wave 1 stub; `compass validate` exits 0 with 0 errors. One project, both CLIs, one correct vault.
+
 ## Blocker (resolved 2026-09-05)
 
 A provider credential was required for every live probe; the human supplied a `DEEPSEEK_API_KEY` (exported in the launching environment, never written to disk) and the default `deepseek-official` headless route worked unchanged.

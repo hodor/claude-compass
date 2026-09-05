@@ -27,6 +27,14 @@ DEFAULT_HOST = "claude-code"
 # entry here resolves every tier to `inherit`.
 HOST_CATALOGS = {
     "claude-code": {"strong": "opus", "balanced": "sonnet", "cheap": "haiku"},
+    # dsh models are provider routes; the composite `provider/model` splits
+    # at the first slash when written into the generated bundle's
+    # agentOptions (hostlib), never into agent frontmatter.
+    "dsh": {
+        "strong": "deepseek-official/deepseek-v4-pro",
+        "balanced": "deepseek-official/deepseek-v4-flash",
+        "cheap": "deepseek-official/deepseek-v4-flash",
+    },
 }
 
 # Built-in tier per agent. `index-summary` and `capture-worker` are detached

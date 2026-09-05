@@ -439,7 +439,9 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        self.assertEqual(len(payload["checks"]), 10)
+        # 11 rows: the 9 baseline checks, unit-promotion, and the
+        # host-roster row every project emits.
+        self.assertEqual(len(payload["checks"]), 11)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         row = new_rows[0]
@@ -468,7 +470,9 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        self.assertEqual(len(payload["checks"]), 10)
+        # 11 rows: the 9 baseline checks, unit-promotion, and the
+        # host-roster row every project emits.
+        self.assertEqual(len(payload["checks"]), 11)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         self.assertEqual(new_rows[0]["status"], "OK")
@@ -526,7 +530,9 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        self.assertEqual(len(payload["checks"]), 10)
+        # 11 rows: the 9 baseline checks, unit-promotion, and the
+        # host-roster row every project emits.
+        self.assertEqual(len(payload["checks"]), 11)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         self.assertEqual(new_rows[0]["status"], "WARN")
@@ -643,6 +649,11 @@ PRE_TASK_093_CHECKS = KNOWN_BASELINE_CHECKS | {"unit-promotion candidates"}
 # time (test methods run long after import), so it sees the addition and
 # keeps isolating the unit-promotion row as the older class's own row.
 KNOWN_BASELINE_CHECKS.add("worker ledger")
+# The host-roster row (PLAN-017) appears in every run and is baseline;
+# the dsh-only rows appear only in dsh-rostered fixtures, which never
+# use these counting helpers.
+KNOWN_BASELINE_CHECKS.add("host roster")
+PRE_TASK_093_CHECKS.add("host roster")
 
 
 def ledger_rows(payload):
@@ -1060,3 +1071,73 @@ class WorkerLedgerJsonOutputTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HostChecksTests(unittest.TestCase):
+    """Host-aware doctor rows: a dsh-rostered project's materializations
+    exist and match the plugin version; the capture posture is named; a
+    claude-code-only project gets a roster line and nothing dsh-shaped."""
+
+    PLUGIN_SRC = Path(__file__).resolve().parents[2]
+
+    def _dsh_project(self, version="0.20.0"):
+        project = make_project(self)
+        write_plugin_yaml(project, version=version)
+        p = project / ".compass" / "meta" / "plugin.yaml"
+        p.write_text(
+            p.read_text(encoding="utf-8") + "  hosts: [claude-code, dsh]\n",
+            encoding="utf-8")
+        return project
+
+    def test_missing_dsh_materializations_fail(self):
+        project = self._dsh_project()
+        checks = doctor._host_checks(project / ".compass", project)
+        host = next(c for c in checks if c.name == "host materializations")
+        self.assertEqual(host.status, "FAIL")
+        self.assertIn(".dsh/hooks.json", host.detail)
+
+    def test_bundle_version_skew_fails(self):
+        project = self._dsh_project()
+        import hostlib
+        hostlib.materialize_dsh_hooks(project, self.PLUGIN_SRC / "hooks" / "hooks.json")
+        hostlib.materialize_dsh_skills(project, self.PLUGIN_SRC / "skills")
+        hostlib.materialize_dsh_instructions(
+            project, self.PLUGIN_SRC / "templates" / "rules")
+        bundle = project / ".dsh" / "compass-bundle"
+        bundle.mkdir(parents=True)
+        (bundle / "package.json").write_text(
+            '{"name": "compass-dsh-bundle", "version": "0.1.0"}', encoding="utf-8")
+        checks = doctor._host_checks(project / ".compass", project)
+        host = next(c for c in checks if c.name == "host materializations")
+        self.assertEqual(host.status, "FAIL")
+        self.assertIn("skew", host.detail)
+
+    def test_clean_dual_host_passes_and_names_capture_posture(self):
+        project = self._dsh_project()
+        import hostlib
+        from commands import self_update
+        real_version = json.loads(
+            (self.PLUGIN_SRC / ".claude-plugin" / "plugin.json").read_text(
+                encoding="utf-8"))["version"]
+        p = project / ".compass" / "meta" / "plugin.yaml"
+        p.write_text(
+            f"plugin:\n  name: compass\n  version: {real_version}\n"
+            "  hosts: [claude-code, dsh]\n", encoding="utf-8")
+        hostlib.materialize_dsh_hooks(project, self.PLUGIN_SRC / "hooks" / "hooks.json")
+        hostlib.materialize_dsh_skills(project, self.PLUGIN_SRC / "skills")
+        hostlib.materialize_dsh_bundle(project, self.PLUGIN_SRC)
+        hostlib.materialize_dsh_instructions(
+            project, self.PLUGIN_SRC / "templates" / "rules")
+        checks = doctor._host_checks(project / ".compass", project)
+        host = next(c for c in checks if c.name == "host materializations")
+        self.assertEqual(host.status, "OK", host.detail)
+        posture = next(c for c in checks if c.name == "capture posture")
+        self.assertIn(posture.status, ("OK", "WARN"))
+
+    def test_claude_only_project_reports_roster_without_dsh_rows(self):
+        project = make_project(self)
+        write_plugin_yaml(project)
+        checks = doctor._host_checks(project / ".compass", project)
+        self.assertEqual(len(checks), 1)
+        self.assertEqual(checks[0].status, "OK")
+        self.assertIn("claude-code", checks[0].detail)

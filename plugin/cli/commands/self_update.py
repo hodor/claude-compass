@@ -259,6 +259,8 @@ def _apply(src, project_root, apply_models):
         hostlib.materialize_dsh_hooks(project_root, src / "hooks" / "hooks.json")
         hostlib.materialize_dsh_skills(project_root, src / "skills")
         hostlib.materialize_dsh_bundle(project_root, src)
+        hostlib.materialize_dsh_instructions(
+            project_root, src / "templates" / "rules")
     # The shipped files above were just replaced wholesale; re-apply the
     # project's own additions on top of them (ADR-020).
     try:
