@@ -20,17 +20,12 @@ Archived lessons live in `archive/lessons/`.
 
 ## Lessons
 
+- [[lessons/distribution/index|distribution]] (3 lessons) - installing, updating, and shipping Compass surfaces - what update owns, version lag, config copies in shipped prose
 - [[lessons/experiments/index|experiments]] (6 lessons) - designing measurements and experiments that can actually falsify
 - [[lessons/hooks/index|hooks]] (5 lessons) - hook registration, payloads, and firing semantics
+- [[lessons/instructions/index|instructions]] (2 lessons) - writing instructions agents follow - prose economy, thresholds that become Goodhart targets
+- [[lessons/pipeline/index|pipeline]] (3 lessons) - how work passes the human's gates - adversarial review before approval, walkthroughs in his words, verifying reversibility before acting unasked
 - [[lessons/platform/index|platform]] (3 lessons) - host and OS quirks - line endings, shells, Windows
 - [[lessons/subagents/index|subagents]] (6 lessons) - spawning, briefing, and supervising agents
-- [[lessons/test-quality/index|test-quality]] (4 lessons) - what makes tests and their evaluation mean something
+- [[lessons/test-quality/index|test-quality]] (5 lessons) - what makes tests and their evaluation mean something
 - [[lessons/vault-structure/index|vault-structure]] (10 lessons) - vault mechanics - indexes, links, discovery, placement
-- [[LESSON-adversarial-plan-review-before-build]] - Review specs/plans with 3 adversarial lenses before approval, and have reviewers measure against the real corpus, not opine
-- [[LESSON-installer-removes-only-what-it-installed]] - Delete only what you installed or planned, by name; 'everything else here' always holds files that are not yours
-- [[LESSON-remove-context-before-adding]] - Fix a behavior bug by removing the prose that trains it or adding a harness gate; added prose is the last resort and must be net-negative
-- [[LESSON-self-update-corrections-lag-one-version]] - Self-update correction logic shipped in version N runs under the N-1 updater; it first fires on the following update
-- [[LESSON-sweep-misses-config-in-skill-prose]] - A code sweep for a duplicated config value misses copies embedded in skill prose or templates
-- [[LESSON-threshold-in-prose-becomes-the-criterion]] - A numeric threshold named in prose becomes the criterion agents optimize toward, not just the trigger it names
-- [[LESSON-verify-the-inverse-not-the-forward-path]] - Cheap reversal licenses acting without asking; verify it on the inverse command, never by reading the forward one
-- [[LESSON-walkthroughs-in-the-humans-words]] - Jargon in walkthroughs and paraphrase in specs both erase the human's own words where they must recognize themselves

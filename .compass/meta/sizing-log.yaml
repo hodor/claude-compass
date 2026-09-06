@@ -191,3 +191,43 @@ log:
     by: agent
     at: 2026-08-30
     volatile: []
+  - id: sz-2026-09-05-1
+    action: decision
+    shape: domain
+    subject: "lessons/distribution"
+    reason: "ceiling trigger; two lessons hint distribution outright"
+    by: agent
+    at: 2026-09-05
+    volatile: []
+  - id: sz-2026-09-05-2
+    action: decision
+    shape: domain
+    subject: "lessons/pipeline"
+    reason: "adversarial-plan-review's own hint proposed pipeline once siblings arrived; they have"
+    by: agent
+    at: 2026-09-05
+    volatile: []
+  - id: sz-2026-09-05-3
+    action: decision
+    shape: domain
+    subject: "lessons/instructions"
+    reason: "pair by craft; remove-context's hint asked for a context domain"
+    by: agent
+    at: 2026-09-05
+    volatile: []
+  - id: sz-2026-09-05-4
+    action: decision
+    shape: domain
+    subject: "specs/tooling"
+    reason: "SPEC-017 and SPEC-018 hints both name the same straddle; as a pair they are the value"
+    by: agent
+    at: 2026-09-05
+    volatile: []
+  - id: sz-2026-09-05-5
+    action: decision
+    shape: domain
+    subject: "research/pipeline"
+    reason: "RESEARCH-decision-coverage-impl's hint says pipeline; the other two flat research docs share the craft"
+    by: agent
+    at: 2026-09-05
+    volatile: []
