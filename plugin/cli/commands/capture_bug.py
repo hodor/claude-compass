@@ -23,7 +23,14 @@ def _version(vault_root):
     return None
 
 
+USAGE = 'usage: compass capture-bug "<message>" [--command <name>]\n'
+
+
 def run(args):
+    if "-h" in args or "--help" in args:
+        sys.stdout.write(USAGE)
+        return 0
+
     command = "manual"
     if "--command" in args:
         i = args.index("--command")
@@ -33,7 +40,12 @@ def run(args):
         message = " ".join(args).strip()
 
     if not message:
-        sys.stderr.write('usage: compass capture-bug "<message>" [--command <name>]\n')
+        sys.stderr.write(USAGE)
+        return 1
+    if message.startswith("-"):
+        # A flag-shaped message is a mistyped invocation; recording it
+        # would file the typo itself as a bug.
+        sys.stderr.write(f"compass capture-bug: unknown flag {message.split()[0]}\n{USAGE}")
         return 1
 
     vault_root = vaultlib.find_vault_root()
