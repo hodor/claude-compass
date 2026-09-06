@@ -82,7 +82,7 @@ fi
 
 ### 4a. Regenerate host materializations
 
-A machine with DeepSeek Harness on it (detected: `dsh` on PATH, or a harness home directory - no roster field, no question, SPEC-006 D-05) also gets the dsh materializations regenerated from the source just copied - same run, same version, so the hosts never skew. Per project: `.dsh/hooks.json` (absolute-path commands), `.dsh/skills/`, the `AGENTS.md` rules section. Global: the project-agnostic bundle under the harness home (`$DSH_HOME` or `~/.dsh`), copied into every profile there, so the user starts dsh in any Compass project and it just works:
+A machine with DeepSeek Harness on it (detected: `dsh` on PATH, or a harness home directory - no roster field, no question, SPEC-006 D-05) also gets the dsh materializations regenerated from the source just copied - same run, same version, so the hosts never skew. Per project: `.dsh/hooks.json` (absolute-path commands), `.dsh/skills/`, the `AGENTS.md` rules section. Global: the project-agnostic bundle under the harness home (`$DSH_HOME` or `~/.dsh`) plus the dsh-first bootstrap beside it (a plugin snapshot, a bootstrap script, and the hooks file the bundle's second bridge mount reads - a Compass project's first-ever dsh session materializes itself from these), all copied into every profile there, so the user starts dsh in any Compass project and it just works:
 
 ```bash
 if command -v python3 >/dev/null 2>&1; then PYBIN=python3; else PYBIN=python; fi

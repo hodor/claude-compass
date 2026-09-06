@@ -437,6 +437,118 @@ class MaterializeDshBundleTests(unittest.TestCase):
         self.assertNotIn("'@deepseek-ai/dsh-subagent-spawn-in-process'", patch)
 
 
+class BootstrapMaterializerTests(unittest.TestCase):
+    """The dsh-first bootstrap (SPEC-006 D-05): the bundle mounts a second
+    bridge instance at an absolute machine-level hooks file whose one
+    SessionStart command runs the generated bootstrap script against a
+    plugin snapshot beside it. Adversarial classes from the live probes:
+    dsh's hook sandbox silently blocks writes outside the session
+    workspace, so the script must write only into the launch cwd; and a
+    backslash in any generated command or script breaks silently across
+    the nested quoting layers, so every generated string is escape-free."""
+
+    def _src(self):
+        src = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, src, True)
+        (src / ".claude-plugin").mkdir()
+        (src / ".claude-plugin" / "plugin.json").write_text(
+            '{"name": "compass", "version": "9.9.9"}', encoding="utf-8")
+        (src / "templates" / "agents").mkdir(parents=True)
+        (src / "templates" / "agents" / "builder.md").write_text(
+            "---\nname: builder\ndescription: Builds.\ntools: [Read]\n---\n\nBody.\n",
+            encoding="utf-8")
+        (src / "templates" / "rules").mkdir(parents=True)
+        (src / "templates" / "rules" / "r.md").write_text("A rule.\n", encoding="utf-8")
+        (src / "skills" / "s").mkdir(parents=True)
+        (src / "skills" / "s" / "SKILL.md").write_text(
+            "---\nname: s\ndescription: d\n---\n\nbody\n", encoding="utf-8")
+        shutil.copytree(
+            Path(__file__).resolve().parents[1], src / "cli",
+            ignore=shutil.ignore_patterns("__pycache__", "tests"))
+        (src / "hooks").mkdir()
+        shutil.copy2(MANIFEST, src / "hooks" / "hooks.json")
+        return src
+
+    def _home(self):
+        home = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, home, True)
+        with_env(self, "DSH_HOME", str(home))
+        return home
+
+    def test_bundle_mounts_both_bridge_instances(self):
+        home = self._home()
+        hostlib.materialize_dsh_bundle(home, self._src())
+        patch = (home / "compass-bundle" / "cordis.patch.yml").read_text(
+            encoding="utf-8")
+        self.assertEqual(patch.count("'@deepseek-ai/dsh-hooks-claude-code'"), 2)
+        self.assertIn("configPath: .dsh/hooks.json", patch)
+        self.assertIn(
+            f"configPath: {(home / 'compass-bootstrap-hooks.json').as_posix()}",
+            patch)
+
+    def test_bootstrap_artifacts_are_generated_and_escape_free(self):
+        home = self._home()
+        hostlib.materialize_dsh_bundle(home, self._src())
+        hooks = json.loads(
+            (home / "compass-bootstrap-hooks.json").read_text(encoding="utf-8"))
+        row = hooks["hooks"]["SessionStart"][0]["hooks"][0]
+        self.assertIn((home / "compass-bootstrap.py").as_posix(), row["command"])
+        self.assertIn("timeout", row)
+        script = (home / "compass-bootstrap.py").read_text(encoding="utf-8")
+        # The silent-mangling class: a backslash anywhere in a generated
+        # command or script dies in some nested quoting layer.
+        self.assertNotIn(chr(92), row["command"])
+        self.assertNotIn(chr(92), script)
+        self.assertTrue((home / "compass-plugin-src" / "cli").is_dir())
+        self.assertTrue(
+            (home / "compass-plugin-src" / "hooks" / "hooks.json").is_file())
+
+    def _run_bootstrap(self, home, cwd):
+        import subprocess
+        return subprocess.run(
+            [sys.executable, str(home / "compass-bootstrap.py")],
+            capture_output=True, text=True, timeout=120, cwd=str(cwd),
+            env={**os.environ, "DSH_HOME": str(home)})
+
+    def test_bootstrap_ignores_a_folder_without_a_vault(self):
+        home = self._home()
+        hostlib.materialize_dsh_bundle(home, self._src())
+        plain = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, plain, True)
+        result = self._run_bootstrap(home, plain)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(list(plain.iterdir()), [])
+
+    def test_bootstrap_materializes_a_dsh_first_project(self):
+        home = self._home()
+        hostlib.materialize_dsh_bundle(home, self._src())
+        project = make_project(
+            self, "plugin:\n  name: compass\n  version: 9.9.9\n")
+        result = self._run_bootstrap(home, project)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("bootstrapped", result.stdout)
+        self.assertTrue((project / ".claude" / "cli" / "compass").is_file())
+        self.assertTrue((project / ".dsh" / "hooks.json").is_file())
+        self.assertTrue((project / "AGENTS.md").is_file())
+
+    def test_bootstrap_leaves_a_complete_install_untouched(self):
+        home = self._home()
+        hostlib.materialize_dsh_bundle(home, self._src())
+        project = make_project(self)
+        sentinel_hooks = project / ".dsh" / "hooks.json"
+        sentinel_hooks.parent.mkdir(parents=True)
+        sentinel_hooks.write_text("{}", encoding="utf-8")
+        sentinel_cli = project / ".claude" / "cli" / "compass"
+        sentinel_cli.parent.mkdir(parents=True)
+        sentinel_cli.write_text("sentinel", encoding="utf-8")
+        result = self._run_bootstrap(home, project)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(sentinel_cli.read_text(encoding="utf-8"), "sentinel")
+        self.assertEqual(sentinel_hooks.read_text(encoding="utf-8"), "{}")
+
+
 class ApplyHostLoopTests(unittest.TestCase):
     """`self_update._apply` refreshes every effective host in one run;
     which hosts are effective is detected, never read from a question."""

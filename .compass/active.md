@@ -5,11 +5,6 @@ updated: 2026-08-24
 
 # Active Tasks
 
-## PLAN-017 Wave 6 - zero-decision (SPEC-006 D-05; the human's bar, verbatim in the spec)
-
-- [ ] TASK-016: dsh-first bootstrap - a project whose first session is dsh materializes itself
-- [ ] TASK-017: both-direction zero-decision acceptance on fresh projects
-
 ## Sizing + discoverability initiative
 
 Triggered by a live failure in another project: a vision session produced seven epic-sized needs and Compass proposed seven flat specs with no signal anything was wrong.
