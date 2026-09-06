@@ -293,3 +293,10 @@ lessons:
     tags: [goodhart, thresholds, agent-instructions, trigger-vs-criterion]
     score: 5
     summary: "A numeric threshold named in prose becomes the criterion agents optimize toward, not just the trigger it names"
+  - file: "LESSON-sweep-misses-config-in-skill-prose.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [hooks, config-duplication, code-sweep, skill-templates]
+    score: 5
+    summary: "A code sweep for a duplicated config value misses copies embedded in skill prose or templates"
