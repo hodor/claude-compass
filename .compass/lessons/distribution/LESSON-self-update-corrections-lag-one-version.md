@@ -5,7 +5,6 @@ status: active
 category: process
 area: architecture
 tags: [self-update, cli, versioning, migration, bootstrap]
-taxonomy_hint: "distribution"
 created: 2026-08-31
 updated: 2026-08-31
 score: 5

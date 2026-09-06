@@ -6,7 +6,6 @@ approved: 2026-08-24
 confidence: high
 area: methodology
 tags: [conversation-surface, hooks, capture, noise, autonomy, human-attention]
-taxonomy_hint: "learning holds its capture half, but it governs every machinery surface"
 created: 2026-08-24
 updated: 2026-08-24
 summary: "the machinery keeps running - capture passes, checks, agent relays - but none of it occupies the human's conversation"
@@ -55,3 +54,5 @@ Everything Compass does today keeps happening - capture, extraction, checks, rec
 
 - What execution substrates can run a capture pass with zero conversation footprint on this harness, and what does each cost?
 - Which of the noise observed is Compass's to fix versus fixed only by the harness?
+
+> Root-index description preserved when this document moved (2026-09-05): the machinery keeps running but none of it occupies the human's conversation (approved 2026-08-24)

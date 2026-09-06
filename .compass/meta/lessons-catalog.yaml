@@ -300,3 +300,10 @@ lessons:
     tags: [hooks, config-duplication, code-sweep, skill-templates]
     score: 5
     summary: "A code sweep for a duplicated config value misses copies embedded in skill prose or templates"
+  - file: "LESSON-vendored-test-suite-must-be-layout-aware.md"
+    status: active
+    category: process
+    area: test-quality
+    tags: [testing, vendored-install, layout, path-assumptions, host-install]
+    score: 5
+    summary: "A vendored test suite must be layout-aware"

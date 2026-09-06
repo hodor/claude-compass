@@ -2,7 +2,7 @@
 # To merge / rename / retire tags, run /compass:consolidate.
 tags:
   ablation:
-  - research/RESEARCH-evaluation-benchmarks.md
+  - research/pipeline/RESEARCH-evaluation-benchmarks.md
   acceptance-criteria:
   - lessons/test-quality/LESSON-untestable-criterion-is-a-spec-defect.md
   accuracy:
@@ -18,10 +18,10 @@ tags:
   admission-control:
   - decisions/vault-structure/ADR-004-hierarchical-specs-with-facets.md
   adversarial:
-  - lessons/LESSON-adversarial-plan-review-before-build.md
+  - lessons/pipeline/LESSON-adversarial-plan-review-before-build.md
   - specs/pipeline/SPEC-013-test-quality.md
   agent-instructions:
-  - lessons/LESSON-threshold-in-prose-becomes-the-criterion.md
+  - lessons/instructions/LESSON-threshold-in-prose-becomes-the-criterion.md
   agent-methodology:
   - lessons/experiments/LESSON-human-practice-rationing-assumes-human-scarcity.md
   agent-protocol:
@@ -47,7 +47,7 @@ tags:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
-  - lessons/LESSON-walkthroughs-in-the-humans-words.md
+  - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   architecture:
   - specs/SPEC-001-compass-vision-and-architecture.md
   archive:
@@ -67,7 +67,7 @@ tags:
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/vault-structure/ADR-003-drop-counter-file-jit-compute.md
   autonomy:
-  - specs/SPEC-018-scaffolding-invisible-to-the-human.md
+  - specs/tooling/SPEC-018-scaffolding-invisible-to-the-human.md
   background-worker:
   - decisions/learning/ADR-013-detached-worker-quiet-fallback.md
   - lessons/hooks/LESSON-spawned-sessions-inherit-project-hooks.md
@@ -81,12 +81,12 @@ tags:
   batch-size:
   - research/rolling-wave/RESEARCH-rolling-wave-flow-theory.md
   bayesian:
-  - research/RESEARCH-scientific-method-in-compass.md
+  - research/pipeline/RESEARCH-scientific-method-in-compass.md
   bench-design:
   - lessons/test-quality/LESSON-test-driven-tasks-dont-discriminate.md
   benchmarks:
   - lessons/test-quality/LESSON-test-driven-tasks-dont-discriminate.md
-  - research/RESEARCH-evaluation-benchmarks.md
+  - research/pipeline/RESEARCH-evaluation-benchmarks.md
   blinding:
   - lessons/experiments/LESSON-blind-the-author-in-self-validation.md
   bloat:
@@ -96,7 +96,7 @@ tags:
   bookkeeping:
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   bootstrap:
-  - lessons/LESSON-self-update-corrections-lag-one-version.md
+  - lessons/distribution/LESSON-self-update-corrections-lag-one-version.md
   born-folder:
   - lessons/vault-structure/LESSON-obsidian-bare-link-creates-stray-note.md
   - lessons/vault-structure/LESSON-sizing-unrecorded-blind-to-born-folder.md
@@ -132,10 +132,10 @@ tags:
   - research/learning/RESEARCH-invisible-scaffolding.md
   - research/learning/RESEARCH-lesson-capture-failure.md
   - research/learning/index.md
-  - specs/SPEC-018-scaffolding-invisible-to-the-human.md
   - specs/learning/SPEC-012-learning-loop.md
   - specs/learning/SPEC-021-capture-in-the-humans-words.md
   - specs/learning/index.md
+  - specs/tooling/SPEC-018-scaffolding-invisible-to-the-human.md
   catalog:
   - lessons/vault-structure/LESSON-append-only-index-misses-mutations.md
   category-mapping:
@@ -155,7 +155,7 @@ tags:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   - lessons/hooks/LESSON-hooks-load-only-from-settings.md
   cleanup:
-  - lessons/LESSON-installer-removes-only-what-it-installed.md
+  - lessons/distribution/LESSON-installer-removes-only-what-it-installed.md
   cli:
   - compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work.md
   - compass-cli/plans/PLAN-002-compass-cli-implementation.md
@@ -165,7 +165,7 @@ tags:
   - decisions/distribution/ADR-015-self-update-on-session-start.md
   - decisions/pipeline/ADR-007-decision-coverage-mechanism.md
   - decisions/vault-structure/ADR-018-graph-queries-jit-over-markdown.md
-  - lessons/LESSON-self-update-corrections-lag-one-version.md
+  - lessons/distribution/LESSON-self-update-corrections-lag-one-version.md
   - lessons/hooks/LESSON-hook-cli-gate-stdin-on-flag.md
   - lessons/vault-structure/LESSON-scratch-vaults-need-compass-dir.md
   - lessons/vault-structure/LESSON-type-dir-discovery-needs-content-signal.md
@@ -179,13 +179,13 @@ tags:
   - plans/PLAN-012-self-update.md
   - plans/PLAN-014-capability-usage.md
   - plans/PLAN-015-graph-queries.md
-  - research/RESEARCH-decision-coverage-impl.md
   - research/distribution/RESEARCH-model-resolution-impl.md
   - research/distribution/RESEARCH-self-update-surfaces.md
+  - research/pipeline/RESEARCH-decision-coverage-impl.md
   - research/test-quality/RESEARCH-test-quality-bar-validation.md
   - research/test-quality/RESEARCH-test-quality-empirical.md
   - research/vault-structure/RESEARCH-hybrid-hierarchy-impl.md
-  - specs/SPEC-017-capabilities-are-reachable-and-measured.md
+  - specs/tooling/SPEC-017-capabilities-are-reachable-and-measured.md
   click-through:
   - lessons/vault-structure/LESSON-obsidian-bare-link-creates-stray-note.md
   co-location:
@@ -193,7 +193,7 @@ tags:
   code-review:
   - lessons/subagents/LESSON-dont-strip-agent-quality-stations.md
   code-sweep:
-  - lessons/LESSON-sweep-misses-config-in-skill-prose.md
+  - lessons/distribution/LESSON-sweep-misses-config-in-skill-prose.md
   codex:
   - specs/distribution/SPEC-006-multi-host-agent-cli-support.md
   cohesion:
@@ -213,7 +213,7 @@ tags:
   config:
   - decisions/vault-structure/ADR-003-drop-counter-file-jit-compute.md
   config-duplication:
-  - lessons/LESSON-sweep-misses-config-in-skill-prose.md
+  - lessons/distribution/LESSON-sweep-misses-config-in-skill-prose.md
   configurable:
   - specs/pipeline/SPEC-009-configurable-pipeline-workflows.md
   configurable-pipeline:
@@ -229,7 +229,7 @@ tags:
   context-engineering:
   - research/rolling-wave/RESEARCH-rolling-wave-agent-planning.md
   context-size:
-  - lessons/LESSON-remove-context-before-adding.md
+  - lessons/instructions/LESSON-remove-context-before-adding.md
   control-arm:
   - lessons/experiments/LESSON-score-the-do-nothing-baseline-before-running.md
   convergence:
@@ -237,7 +237,7 @@ tags:
   conversation-surface:
   - decisions/learning/ADR-013-detached-worker-quiet-fallback.md
   - research/learning/RESEARCH-invisible-scaffolding.md
-  - specs/SPEC-018-scaffolding-invisible-to-the-human.md
+  - specs/tooling/SPEC-018-scaffolding-invisible-to-the-human.md
   core:
   - specs/SPEC-001-compass-vision-and-architecture.md
   corpus:
@@ -270,23 +270,23 @@ tags:
   - specs/distribution/SPEC-014-update-safe-customizations.md
   - specs/pipeline/SPEC-009-configurable-pipeline-workflows.md
   data-loss:
-  - lessons/LESSON-installer-removes-only-what-it-installed.md
+  - lessons/distribution/LESSON-installer-removes-only-what-it-installed.md
   dead-code:
   - decisions/ADR-017-capability-index-and-usage-record.md
   - plans/PLAN-014-capability-usage.md
-  - specs/SPEC-017-capabilities-are-reachable-and-measured.md
+  - specs/tooling/SPEC-017-capabilities-are-reachable-and-measured.md
   decision-coverage:
   - decisions/pipeline/ADR-007-decision-coverage-mechanism.md
   - plans/PLAN-004-decision-coverage.md
-  - research/RESEARCH-decision-coverage-impl.md
   - research/distribution/RESEARCH-gsd-core-improvements-for-compass.md
+  - research/pipeline/RESEARCH-decision-coverage-impl.md
   - specs/pipeline/SPEC-007-decision-coverage-tracing.md
   decision-lineage:
   - research/vault-structure/RESEARCH-grep-vs-graph-experiment.md
   decision-procedures:
   - lessons/experiments/LESSON-outputs-must-span-the-decision-space.md
   decision-rationale:
-  - lessons/LESSON-verify-the-inverse-not-the-forward-path.md
+  - lessons/pipeline/LESSON-verify-the-inverse-not-the-forward-path.md
   decisions:
   - decisions/distribution/index.md
   - decisions/learning/index.md
@@ -323,13 +323,14 @@ tags:
   discoverability:
   - decisions/ADR-017-capability-index-and-usage-record.md
   - plans/PLAN-014-capability-usage.md
-  - specs/SPEC-017-capabilities-are-reachable-and-measured.md
+  - specs/tooling/SPEC-017-capabilities-are-reachable-and-measured.md
   - specs/vault-structure/SPEC-016-sizing-work-beyond-one-spec.md
   discovery:
   - lessons/vault-structure/LESSON-type-dir-discovery-needs-content-signal.md
   distribution:
   - decisions/distribution/ADR-015-self-update-on-session-start.md
   - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
+  - lessons/distribution/index.md
   - plans/PLAN-012-self-update.md
   - plans/PLAN-017-dsh-host-support.md
   - research/distribution/RESEARCH-self-update-surfaces.md
@@ -400,7 +401,7 @@ tags:
   - lessons/platform/LESSON-windows-heredoc-backslash-escapes.md
   evaluation:
   - lessons/test-quality/LESSON-test-driven-tasks-dont-discriminate.md
-  - research/RESEARCH-evaluation-benchmarks.md
+  - research/pipeline/RESEARCH-evaluation-benchmarks.md
   evidence:
   - lessons/experiments/LESSON-pin-the-motivating-datum.md
   - lessons/hooks/LESSON-hook-payloads-observe-before-coding.md
@@ -430,7 +431,7 @@ tags:
   false-positives:
   - lessons/vault-structure/LESSON-type-dir-discovery-needs-content-signal.md
   falsifiability:
-  - research/RESEARCH-scientific-method-in-compass.md
+  - research/pipeline/RESEARCH-scientific-method-in-compass.md
   falsification:
   - lessons/experiments/LESSON-score-the-do-nothing-baseline-before-running.md
   fault-based-testing:
@@ -461,7 +462,7 @@ tags:
   gates:
   - decisions/pipeline/ADR-007-decision-coverage-mechanism.md
   - plans/PLAN-004-decision-coverage.md
-  - research/RESEARCH-decision-coverage-impl.md
+  - research/pipeline/RESEARCH-decision-coverage-impl.md
   - specs/pipeline/SPEC-007-decision-coverage-tracing.md
   generated-view:
   - research/vault-structure/RESEARCH-active-set-prior-art.md
@@ -473,7 +474,7 @@ tags:
   gitattributes:
   - lessons/platform/LESSON-autocrlf-churns-lf-writers.md
   goodhart:
-  - lessons/LESSON-threshold-in-prose-becomes-the-criterion.md
+  - lessons/instructions/LESSON-threshold-in-prose-becomes-the-criterion.md
   graph:
   - decisions/vault-structure/ADR-018-graph-queries-jit-over-markdown.md
   - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
@@ -487,8 +488,8 @@ tags:
   grep:
   - research/vault-structure/RESEARCH-grep-vs-graph-experiment.md
   gsd:
-  - research/RESEARCH-decision-coverage-impl.md
   - research/distribution/RESEARCH-gsd-core-improvements-for-compass.md
+  - research/pipeline/RESEARCH-decision-coverage-impl.md
   handoff:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
@@ -504,7 +505,7 @@ tags:
   - lessons/hooks/LESSON-hook-cli-gate-stdin-on-flag.md
   harness:
   - decisions/vault-structure/ADR-011-sizing-is-a-procedure-not-a-score.md
-  - lessons/LESSON-remove-context-before-adding.md
+  - lessons/instructions/LESSON-remove-context-before-adding.md
   - plans/PLAN-009-sizing-mechanism.md
   - research/distribution/RESEARCH-model-resolution-impl.md
   - specs/SPEC-001-compass-vision-and-architecture.md
@@ -558,7 +559,7 @@ tags:
   - decisions/learning/ADR-013-detached-worker-quiet-fallback.md
   - decisions/learning/ADR-019-subagentstop-redelivery-and-teammate-typing.md
   - handoffs/PLAN-006-learning-loop/2026-08-06_06-02-00_phase2-live-hooks-first-firing.md
-  - lessons/LESSON-sweep-misses-config-in-skill-prose.md
+  - lessons/distribution/LESSON-sweep-misses-config-in-skill-prose.md
   - lessons/hooks/LESSON-hook-cli-gate-stdin-on-flag.md
   - lessons/hooks/LESSON-hook-if-clause-no-or.md
   - lessons/hooks/LESSON-hook-payloads-observe-before-coding.md
@@ -578,14 +579,16 @@ tags:
   - research/learning/RESEARCH-invisible-scaffolding.md
   - research/learning/RESEARCH-lessons-and-index-architecture.md
   - research/vault-structure/RESEARCH-active-set-prior-art.md
-  - specs/SPEC-018-scaffolding-invisible-to-the-human.md
   - specs/distribution/SPEC-020-compass-updates-itself.md
   - specs/learning/SPEC-002-lessons-and-index-subsystem.md
+  - specs/tooling/SPEC-018-scaffolding-invisible-to-the-human.md
   host-adapter:
   - specs/distribution/SPEC-006-multi-host-agent-cli-support.md
   host-evaluation:
   - research/hermes/RESEARCH-hermes-agent-capabilities.md
   - research/hermes/RESEARCH-hermes-vs-compass-fit.md
+  host-install:
+  - lessons/test-quality/LESSON-vendored-test-suite-must-be-layout-aware.md
   hosts:
   - research/distribution/RESEARCH-deepseek-harness-fit.md
   - research/distribution/index.md
@@ -607,13 +610,13 @@ tags:
   - plans/PLAN-015-graph-queries.md
   - specs/vault-structure/SPEC-011-vault-graph-queries.md
   human-attention:
-  - specs/SPEC-018-scaffolding-invisible-to-the-human.md
+  - specs/tooling/SPEC-018-scaffolding-invisible-to-the-human.md
   human-decision:
-  - lessons/LESSON-walkthroughs-in-the-humans-words.md
+  - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   human-practice:
   - lessons/experiments/LESSON-human-practice-rationing-assumes-human-scarcity.md
   human-voice:
-  - lessons/LESSON-walkthroughs-in-the-humans-words.md
+  - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   humanlayer:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   humans-words:
@@ -622,7 +625,7 @@ tags:
   - research/vault-structure/RESEARCH-hybrid-hierarchy-impl.md
   - specs/vault-structure/SPEC-010-universal-hybrid-hierarchy.md
   hypothesis:
-  - research/RESEARCH-scientific-method-in-compass.md
+  - research/pipeline/RESEARCH-scientific-method-in-compass.md
   hypothesis-confirmed:
   - compass-cli/research/RESEARCH-cli-token-reduction-measurement.md
   hypothesis-falsified:
@@ -652,7 +655,7 @@ tags:
   - lessons/vault-structure/index.md
   install:
   - decisions/distribution/index.md
-  - lessons/LESSON-installer-removes-only-what-it-installed.md
+  - lessons/distribution/LESSON-installer-removes-only-what-it-installed.md
   - research/distribution/index.md
   - specs/distribution/SPEC-014-update-safe-customizations.md
   - specs/distribution/index.md
@@ -661,6 +664,8 @@ tags:
   - plans/PLAN-006-learning-loop.md
   - research/learning/RESEARCH-lesson-capture-failure.md
   - specs/learning/SPEC-012-learning-loop.md
+  instructions:
+  - lessons/instructions/index.md
   inter-indexer:
   - research/vault-structure/RESEARCH-taxonomy-for-unambiguous-placement.md
   interoperability:
@@ -674,7 +679,7 @@ tags:
   - lessons/subagents/LESSON-verify-worktree-isolation-is-real.md
   - lessons/vault-structure/LESSON-scratch-vaults-need-compass-dir.md
   jargon:
-  - lessons/LESSON-walkthroughs-in-the-humans-words.md
+  - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   jit:
   - decisions/vault-structure/ADR-003-drop-counter-file-jit-compute.md
   kanban:
@@ -691,6 +696,8 @@ tags:
   - research/vault-structure/RESEARCH-graph-engineering-for-compass.md
   large-vault:
   - research/vault-structure/RESEARCH-rag-fit-for-large-vaults.md
+  layout:
+  - lessons/test-quality/LESSON-vendored-test-suite-must-be-layout-aware.md
   lean:
   - research/rolling-wave/RESEARCH-rolling-wave-flow-theory.md
   learning:
@@ -756,10 +763,10 @@ tags:
   - compass-cli/research/RESEARCH-cli-token-reduction-measurement.md
   - handoffs/2026-08-31_12-04-15_v0.17.x-hardening.md
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated.md
-  - lessons/LESSON-adversarial-plan-review-before-build.md
   - lessons/experiments/LESSON-blind-the-author-in-self-validation.md
   - lessons/experiments/LESSON-measure-the-procedures-intermediates.md
   - lessons/experiments/index.md
+  - lessons/pipeline/LESSON-adversarial-plan-review-before-build.md
   - plans/PLAN-016-domain-taxonomy.md
   - research/test-quality/index.md
   memgpt:
@@ -781,11 +788,11 @@ tags:
   methodology-eval:
   - lessons/test-quality/LESSON-test-driven-tasks-dont-discriminate.md
   methodology-layer:
-  - research/RESEARCH-evaluation-benchmarks.md
+  - research/pipeline/RESEARCH-evaluation-benchmarks.md
   migration:
   - decisions/vault-structure/ADR-006-hybrid-hierarchy-implementation.md
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated.md
-  - lessons/LESSON-self-update-corrections-lag-one-version.md
+  - lessons/distribution/LESSON-self-update-corrections-lag-one-version.md
   - plans/PLAN-003-hybrid-hierarchy.md
   - plans/PLAN-016-domain-taxonomy.md
   - research/vault-structure/RESEARCH-hybrid-hierarchy-impl.md
@@ -804,7 +811,7 @@ tags:
   - research/distribution/RESEARCH-model-resolution-impl.md
   - specs/distribution/SPEC-006-multi-host-agent-cli-support.md
   multi-lens:
-  - lessons/LESSON-adversarial-plan-review-before-build.md
+  - lessons/pipeline/LESSON-adversarial-plan-review-before-build.md
   multi-runtime:
   - research/distribution/RESEARCH-gsd-core-improvements-for-compass.md
   mutation:
@@ -816,7 +823,7 @@ tags:
   nesting:
   - specs/vault-structure/SPEC-010-universal-hybrid-hierarchy.md
   noise:
-  - specs/SPEC-018-scaffolding-invisible-to-the-human.md
+  - specs/tooling/SPEC-018-scaffolding-invisible-to-the-human.md
   non-interactive:
   - lessons/hooks/LESSON-hook-cli-gate-stdin-on-flag.md
   nudges:
@@ -865,18 +872,20 @@ tags:
   parallel-builders:
   - lessons/subagents/LESSON-subagent-worktrees-fork-stale.md
   paraphrase:
-  - lessons/LESSON-walkthroughs-in-the-humans-words.md
+  - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   parnas:
   - research/vault-structure/RESEARCH-decomposition-criteria-for-sizing.md
   parser:
   - decisions/pipeline/ADR-007-decision-coverage-mechanism.md
   - plans/PLAN-004-decision-coverage.md
-  - research/RESEARCH-decision-coverage-impl.md
+  - research/pipeline/RESEARCH-decision-coverage-impl.md
   parsing:
   - lessons/hooks/LESSON-hook-payloads-observe-before-coding.md
   - lessons/vault-structure/LESSON-wikilink-validator-skip-code.md
   patches:
   - research/distribution/RESEARCH-update-safe-customization.md
+  path-assumptions:
+  - lessons/test-quality/LESSON-vendored-test-suite-must-be-layout-aware.md
   payloads:
   - lessons/hooks/LESSON-hook-payloads-observe-before-coding.md
   per-agent:
@@ -890,10 +899,12 @@ tags:
   phases:
   - specs/pipeline/SPEC-009-configurable-pipeline-workflows.md
   pipeline:
+  - lessons/pipeline/index.md
+  - research/pipeline/index.md
   - specs/pipeline/SPEC-009-configurable-pipeline-workflows.md
   - specs/pipeline/index.md
   plain-language:
-  - lessons/LESSON-walkthroughs-in-the-humans-words.md
+  - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   plan-approval:
   - research/rolling-wave/RESEARCH-rolling-wave-software-practice.md
   - research/rolling-wave/RESEARCH-rolling-wave-synthesis.md
@@ -915,7 +926,7 @@ tags:
   - specs/pipeline/SPEC-007-decision-coverage-tracing.md
   - specs/pipeline/SPEC-015-rolling-wave-planning.md
   plans:
-  - lessons/LESSON-adversarial-plan-review-before-build.md
+  - lessons/pipeline/LESSON-adversarial-plan-review-before-build.md
   platform:
   - lessons/platform/index.md
   plugin-config:
@@ -923,19 +934,19 @@ tags:
   plugin-yaml:
   - research/distribution/RESEARCH-self-update-surfaces.md
   popper:
-  - research/RESEARCH-scientific-method-in-compass.md
+  - research/pipeline/RESEARCH-scientific-method-in-compass.md
   portability:
   - specs/distribution/SPEC-006-multi-host-agent-cli-support.md
   pre-build-station:
   - lessons/test-quality/LESSON-untestable-criterion-is-a-spec-defect.md
   pre-registration:
   - lessons/experiments/LESSON-score-the-do-nothing-baseline-before-running.md
-  - research/RESEARCH-scientific-method-in-compass.md
+  - research/pipeline/RESEARCH-scientific-method-in-compass.md
   premises:
-  - lessons/LESSON-verify-the-inverse-not-the-forward-path.md
+  - lessons/pipeline/LESSON-verify-the-inverse-not-the-forward-path.md
   prior-art:
-  - research/RESEARCH-decision-coverage-impl.md
   - research/distribution/RESEARCH-gsd-core-improvements-for-compass.md
+  - research/pipeline/RESEARCH-decision-coverage-impl.md
   - research/vault-structure/RESEARCH-active-set-prior-art.md
   - research/vault-structure/RESEARCH-graph-engineering-for-compass.md
   - research/vault-structure/RESEARCH-okf-improvements-for-compass.md
@@ -950,7 +961,7 @@ tags:
   - decisions/ADR-017-capability-index-and-usage-record.md
   - decisions/learning/ADR-010-identity-resident-fetch-mandatory.md
   - research/vault-structure/RESEARCH-cache-theory-for-context-tiers.md
-  - specs/SPEC-017-capabilities-are-reachable-and-measured.md
+  - specs/tooling/SPEC-017-capabilities-are-reachable-and-measured.md
   progressive-elaboration:
   - research/rolling-wave/RESEARCH-rolling-wave-agent-planning.md
   - research/rolling-wave/RESEARCH-rolling-wave-flow-theory.md
@@ -961,7 +972,7 @@ tags:
   - decisions/learning/ADR-016-capture-by-extraction.md
   - research/learning/RESEARCH-humans-words-fidelity.md
   prose:
-  - lessons/LESSON-remove-context-before-adding.md
+  - lessons/instructions/LESSON-remove-context-before-adding.md
   prototypes:
   - lessons/experiments/LESSON-score-the-do-nothing-baseline-before-running.md
   provenance:
@@ -1008,7 +1019,7 @@ tags:
   replanning:
   - research/rolling-wave/RESEARCH-rolling-wave-agent-planning.md
   replication:
-  - research/RESEARCH-scientific-method-in-compass.md
+  - research/pipeline/RESEARCH-scientific-method-in-compass.md
   reports:
   - lessons/subagents/LESSON-subagent-reports-need-sendmessage.md
   research-redesign:
@@ -1032,7 +1043,7 @@ tags:
   - research/learning/RESEARCH-lessons-and-index-architecture.md
   - specs/learning/SPEC-002-lessons-and-index-subsystem.md
   reversibility:
-  - lessons/LESSON-verify-the-inverse-not-the-forward-path.md
+  - lessons/pipeline/LESSON-verify-the-inverse-not-the-forward-path.md
   - research/vault-structure/RESEARCH-decomposition-criteria-for-sizing.md
   revert-check:
   - lessons/test-quality/LESSON-revert-to-prove-a-regression-test.md
@@ -1040,7 +1051,7 @@ tags:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
-  - lessons/LESSON-adversarial-plan-review-before-build.md
+  - lessons/pipeline/LESSON-adversarial-plan-review-before-build.md
   ripple:
   - research/vault-structure/RESEARCH-taxonomy-for-unambiguous-placement.md
   rolling-wave:
@@ -1053,11 +1064,11 @@ tags:
   - research/rolling-wave/index.md
   - specs/pipeline/SPEC-015-rolling-wave-planning.md
   rules:
-  - lessons/LESSON-remove-context-before-adding.md
+  - lessons/instructions/LESSON-remove-context-before-adding.md
   scaling:
   - research/vault-structure/RESEARCH-rag-fit-for-large-vaults.md
   scientific-method:
-  - research/RESEARCH-scientific-method-in-compass.md
+  - research/pipeline/RESEARCH-scientific-method-in-compass.md
   scope-notes:
   - lessons/vault-structure/LESSON-scope-notes-are-load-bearing.md
   - plans/PLAN-016-domain-taxonomy.md
@@ -1074,7 +1085,7 @@ tags:
   - lessons/vault-structure/LESSON-wikilink-validator-skip-code.md
   self-update:
   - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
-  - lessons/LESSON-self-update-corrections-lag-one-version.md
+  - lessons/distribution/LESSON-self-update-corrections-lag-one-version.md
   sendmessage:
   - lessons/subagents/LESSON-subagent-reports-need-sendmessage.md
   session-start:
@@ -1104,7 +1115,7 @@ tags:
   skill:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   skill-templates:
-  - lessons/LESSON-sweep-misses-config-in-skill-prose.md
+  - lessons/distribution/LESSON-sweep-misses-config-in-skill-prose.md
   skills:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
   - plans/PLAN-001-lessons-and-index-implementation.md
@@ -1131,9 +1142,9 @@ tags:
   - plans/PLAN-013-capture-by-extraction.md
   - specs/learning/SPEC-021-capture-in-the-humans-words.md
   specs:
-  - lessons/LESSON-adversarial-plan-review-before-build.md
-  - lessons/LESSON-walkthroughs-in-the-humans-words.md
   - lessons/experiments/LESSON-pin-the-motivating-datum.md
+  - lessons/pipeline/LESSON-adversarial-plan-review-before-build.md
+  - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   speculation:
   - research/vault-structure/RESEARCH-cache-theory-for-context-tiers.md
   stale-base:
@@ -1179,7 +1190,7 @@ tags:
   - plans/PLAN-016-domain-taxonomy.md
   - specs/vault-structure/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   synthesis:
-  - lessons/LESSON-walkthroughs-in-the-humans-words.md
+  - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   - research/rolling-wave/RESEARCH-rolling-wave-synthesis.md
   - research/test-quality/RESEARCH-test-quality-synthesis.md
   tag-index:
@@ -1241,6 +1252,7 @@ tags:
   - lessons/test-quality/LESSON-revert-to-prove-a-regression-test.md
   - lessons/test-quality/LESSON-suite-size-is-not-coverage.md
   - lessons/test-quality/LESSON-untestable-criterion-is-a-spec-defect.md
+  - lessons/test-quality/LESSON-vendored-test-suite-must-be-layout-aware.md
   - lessons/test-quality/index.md
   - plans/PLAN-007-test-quality.md
   - research/test-quality/RESEARCH-fleet-test-census.md
@@ -1253,7 +1265,7 @@ tags:
   - research/test-quality/index.md
   - specs/pipeline/SPEC-013-test-quality.md
   thresholds:
-  - lessons/LESSON-threshold-in-prose-becomes-the-criterion.md
+  - lessons/instructions/LESSON-threshold-in-prose-becomes-the-criterion.md
   tiers:
   - decisions/distribution/ADR-008-model-resolution-table.md
   - plans/PLAN-005-model-table.md
@@ -1267,7 +1279,7 @@ tags:
   - compass-cli/research/RESEARCH-cli-token-reduction-measurement.md
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/vault-structure/ADR-003-drop-counter-file-jit-compute.md
-  - lessons/LESSON-remove-context-before-adding.md
+  - lessons/instructions/LESSON-remove-context-before-adding.md
   tokens:
   - decisions/distribution/ADR-008-model-resolution-table.md
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
@@ -1279,15 +1291,16 @@ tags:
   - lessons/subagents/LESSON-headless-worker-denies-tools-silently.md
   tooling:
   - research/test-quality/RESEARCH-test-quality-tooling.md
+  - specs/tooling/index.md
   traceability:
   - lessons/experiments/LESSON-pin-the-motivating-datum.md
   - plans/PLAN-004-decision-coverage.md
-  - research/RESEARCH-decision-coverage-impl.md
+  - research/pipeline/RESEARCH-decision-coverage-impl.md
   - specs/pipeline/SPEC-007-decision-coverage-tracing.md
   transcription:
   - research/learning/RESEARCH-humans-words-fidelity.md
   trigger-vs-criterion:
-  - lessons/LESSON-threshold-in-prose-becomes-the-criterion.md
+  - lessons/instructions/LESSON-threshold-in-prose-becomes-the-criterion.md
   triggers:
   - plans/PLAN-006-learning-loop.md
   - research/learning/RESEARCH-lesson-capture-failure.md
@@ -1295,7 +1308,7 @@ tags:
   turn-limits:
   - lessons/subagents/LESSON-long-agents-stall-resume-them.md
   two-way-door:
-  - lessons/LESSON-verify-the-inverse-not-the-forward-path.md
+  - lessons/pipeline/LESSON-verify-the-inverse-not-the-forward-path.md
   typed-edges:
   - research/vault-structure/RESEARCH-graph-engineering-for-compass.md
   units:
@@ -1313,7 +1326,7 @@ tags:
   - decisions/distribution/ADR-015-self-update-on-session-start.md
   - decisions/distribution/ADR-020-local-overlays-appended-after-refresh.md
   - decisions/distribution/index.md
-  - lessons/LESSON-installer-removes-only-what-it-installed.md
+  - lessons/distribution/LESSON-installer-removes-only-what-it-installed.md
   - plans/PLAN-005-model-table.md
   - plans/PLAN-012-self-update.md
   - research/distribution/RESEARCH-self-update-surfaces.md
@@ -1327,11 +1340,11 @@ tags:
   usage-measurement:
   - decisions/ADR-017-capability-index-and-usage-record.md
   - plans/PLAN-014-capability-usage.md
-  - specs/SPEC-017-capabilities-are-reachable-and-measured.md
+  - specs/tooling/SPEC-017-capabilities-are-reachable-and-measured.md
   useless-tokens:
   - lessons/vault-structure/LESSON-scope-notes-are-load-bearing.md
   user-files:
-  - lessons/LESSON-installer-removes-only-what-it-installed.md
+  - lessons/distribution/LESSON-installer-removes-only-what-it-installed.md
   validate:
   - decisions/vault-structure/ADR-006-hybrid-hierarchy-implementation.md
   - lessons/vault-structure/LESSON-sizing-unrecorded-blind-to-born-folder.md
@@ -1343,7 +1356,7 @@ tags:
   - lessons/experiments/LESSON-blind-the-author-in-self-validation.md
   - lessons/vault-structure/LESSON-type-dir-discovery-needs-content-signal.md
   - lessons/vault-structure/LESSON-wikilink-validator-skip-code.md
-  - research/RESEARCH-decision-coverage-impl.md
+  - research/pipeline/RESEARCH-decision-coverage-impl.md
   - specs/pipeline/SPEC-007-decision-coverage-tracing.md
   validator:
   - decisions/pipeline/ADR-007-decision-coverage-mechanism.md
@@ -1363,6 +1376,8 @@ tags:
   - specs/vault-structure/SPEC-010-universal-hybrid-hierarchy.md
   vector-search:
   - research/vault-structure/RESEARCH-rag-fit-for-large-vaults.md
+  vendored-install:
+  - lessons/test-quality/LESSON-vendored-test-suite-must-be-layout-aware.md
   verbatim:
   - decisions/learning/ADR-016-capture-by-extraction.md
   - plans/PLAN-013-capture-by-extraction.md
@@ -1372,16 +1387,16 @@ tags:
   - research/learning/RESEARCH-humans-words-fidelity.md
   - specs/learning/SPEC-021-capture-in-the-humans-words.md
   verification:
-  - lessons/LESSON-verify-the-inverse-not-the-forward-path.md
+  - lessons/pipeline/LESSON-verify-the-inverse-not-the-forward-path.md
   - specs/pipeline/SPEC-013-test-quality.md
   verify:
   - decisions/pipeline/ADR-012-test-checkpoint-py-membership-git-authoritative.md
   versioning:
-  - lessons/LESSON-self-update-corrections-lag-one-version.md
+  - lessons/distribution/LESSON-self-update-corrections-lag-one-version.md
   vision:
   - decisions/learning/ADR-016-capture-by-extraction.md
   - decisions/vault-structure/ADR-011-sizing-is-a-procedure-not-a-score.md
-  - lessons/LESSON-walkthroughs-in-the-humans-words.md
+  - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   - plans/PLAN-009-sizing-mechanism.md
   - plans/PLAN-013-capture-by-extraction.md
   - specs/SPEC-001-compass-vision-and-architecture.md
@@ -1390,7 +1405,7 @@ tags:
   voice:
   - specs/learning/SPEC-021-capture-in-the-humans-words.md
   walkthroughs:
-  - lessons/LESSON-walkthroughs-in-the-humans-words.md
+  - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   wave-sizing:
   - research/rolling-wave/RESEARCH-rolling-wave-synthesis.md
   wave1:
