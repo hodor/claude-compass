@@ -36,9 +36,11 @@ fixture is as much a change to what the tests assert as editing the test
 itself; `verify` reports a hash mismatch there as `modified` too.
 
 `verify --against-run <evidence>` additionally requires every checkpointed
-test id to appear as `ok` (unittest's verbose-mode marker for a pass) in
-the supplied run output; anything else - skipped, failed, errored, or
-simply absent - is a finding. A `verify --against-run` call that finds
+test id to appear as a pass in the supplied run output - unittest `-v`
+transcripts (`test_name (module.Class) ... ok`) and pytest `-v`
+transcripts (`path.py::Class::test_name PASSED`, one line per
+parametrized case) are both understood; anything else - skipped, failed,
+errored, or simply absent - is a finding. A `verify --against-run` call that finds
 nothing wrong marks the checkpoint `landed`, which is what `open-ids`
 excludes: it prints the checkpointed ids of every task whose checkpoint is
 recorded, not `not_required`, and not yet landed - the mechanical
@@ -77,6 +79,18 @@ USAGE = (
 # ERROR, or "skipped '<reason>'").
 _RUN_LINE_RE = re.compile(
     r"^(?P<name>\w+)\s+\((?P<path>[\w.]+)\)\s+\.\.\.\s+(?P<status>ok|FAIL|ERROR|skipped.*)\s*$"
+)
+
+# pytest -v line: "path/to/test_file.py::Class::test_name PASSED [ 10%]" -
+# class segments optional and nestable, an optional [param] suffix on the
+# name. Short-summary lines (-rA) put the status first instead.
+_PYTEST_NODEID = r"\S+?\.py(?:::\w+)*::\w+(?:\[[^\]]*\])?"
+_PYTEST_STATUS = r"PASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS"
+_PYTEST_LINE_RE = re.compile(
+    rf"^(?P<nodeid>{_PYTEST_NODEID})\s+(?P<status>{_PYTEST_STATUS})\b"
+)
+_PYTEST_SUMMARY_RE = re.compile(
+    rf"^(?P<status>{_PYTEST_STATUS})\s+(?P<nodeid>{_PYTEST_NODEID})\b"
 )
 
 # A test's status is not always on its own line. A docstring prints the
@@ -579,14 +593,25 @@ def _parse_verify(args):
 
 
 def _parse_run_evidence(text):
-    """`{(class_name, test_name): status}` from unittest `-v` output, status
-    one of `ok`, `fail`, `error`, `skipped`. A test id absent from the
-    evidence is simply absent from this map - callers treat that as "not
-    proven passed", the same as any status other than `ok`."""
+    """`{(class_name, test_name): status}` from unittest `-v` or pytest
+    `-v` output, status one of `ok`, `fail`, `error`, `skipped` (plus
+    pytest's `xfail`/`xpass`). A test id absent from the evidence is simply
+    absent from this map - callers treat that as "not proven passed", the
+    same as any status other than `ok`. An id that appears more than once
+    (a parametrized pytest test, one line per case) counts `ok` only when
+    every occurrence passed."""
     statuses = {}
     pending = None  # (name, path) header awaiting its docstring-line trailer
     for line in text.splitlines():
         stripped = line.strip()
+        pytest_match = (_PYTEST_LINE_RE.match(stripped)
+                        or _PYTEST_SUMMARY_RE.match(stripped))
+        if pytest_match:
+            pending = None
+            _record_pytest_status(
+                statuses, pytest_match.group("nodeid"), pytest_match.group("status")
+            )
+            continue
         match = _RUN_LINE_RE.match(stripped)
         if not match:
             header = _RUN_HEADER_RE.match(stripped)
@@ -607,6 +632,20 @@ def _parse_run_evidence(text):
     return statuses
 
 
+def _record_pytest_status(statuses, nodeid, raw_status):
+    """Fold one pytest node id into the status map. The node id's last
+    `::` segment is the test name (a `[param]` suffix identifies one case
+    of a parametrized test and is stripped, since checkpoint ids carry the
+    bare name); the segment before it, when it is not the file path, is
+    the class."""
+    segments = nodeid.split("::")
+    name = segments[-1].split("[", 1)[0]
+    class_name = segments[-2] if len(segments) >= 3 else None
+    status = {"PASSED": "ok", "FAILED": "fail", "ERROR": "error",
+              "SKIPPED": "skipped"}.get(raw_status, raw_status.lower())
+    _fold_status(statuses, class_name, name, status)
+
+
 def _record_run_status(statuses, name, path, raw_status):
     # unittest -v prints the parenthesized path as `pkg.Class` on older
     # Pythons and `pkg.Class.test_name` on newer ones; when the last
@@ -617,8 +656,16 @@ def _record_run_status(statuses, name, path, raw_status):
     else:
         class_name = parts[-1] if "." in path else None
     status = "ok" if raw_status == "ok" else ("skipped" if raw_status.startswith("skipped") else raw_status.lower())
-    statuses[(class_name, name)] = status
-    statuses[(None, name)] = status
+    _fold_status(statuses, class_name, name, status)
+
+
+def _fold_status(statuses, class_name, name, status):
+    """Record `status` under both the class-qualified and bare keys. A key
+    already holding a non-`ok` status keeps it: a test id proven failed
+    once is not laundered by a later passing occurrence of the same id."""
+    for key in ((class_name, name), (None, name)):
+        if statuses.get(key, "ok") == "ok":
+            statuses[key] = status
 
 
 def _print_report(task, record, findings):

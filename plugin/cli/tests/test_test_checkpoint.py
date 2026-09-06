@@ -500,6 +500,72 @@ class ClassificationTests(unittest.TestCase):
         self.assertEqual(code, 0, out + err)
         self.assertNotIn("not-passed", out)
 
+    def test_verify_against_run_accepts_pytest_verbose_format(self):
+        """Adversarial where: the run evidence is a pytest -v transcript
+        (`path.py::Class::test PASSED [ 50%]`); a unittest-only parser reads
+        every checkpointed test as absent, so a pytest-based project's
+        checkpoints can never land (GitHub #33)."""
+        repo_root, _ = build_checkpoint(self, "TASK-110")
+        evidence = repo_root / "evidence.txt"
+        evidence.write_text(
+            "tests/test_foo.py::FooTests::test_a PASSED                 [ 50%]\n"
+            "tests/test_foo.py::FooTests::test_b PASSED                 [100%]\n",
+            encoding="utf-8",
+        )
+        code, out, err = self._verify(task="TASK-110", extra=["--against-run", str(evidence)])
+        self.assertEqual(code, 0, out + err)
+        record = json.loads(checkpoint_path(repo_root, "TASK-110").read_text(encoding="utf-8"))
+        self.assertTrue(record["landed"])
+
+    def test_verify_against_run_pytest_failed_id_exits_1(self):
+        """Adversarial where: a pytest transcript that parses at all could
+        map every recognized line to `ok`; a genuinely FAILED checkpointed
+        test must still surface as not-passed."""
+        repo_root, _ = build_checkpoint(self, "TASK-111")
+        evidence = repo_root / "evidence.txt"
+        evidence.write_text(
+            "tests/test_foo.py::FooTests::test_a FAILED                 [ 50%]\n"
+            "tests/test_foo.py::FooTests::test_b PASSED                 [100%]\n",
+            encoding="utf-8",
+        )
+        code, out, err = self._verify(task="TASK-111", extra=["--against-run", str(evidence)])
+        self.assertEqual(code, 1)
+        self.assertIn("not-passed", out)
+        self.assertIn("test_a", out)
+
+    def test_verify_against_run_pytest_param_failure_not_laundered_by_later_pass(self):
+        """Adversarial where: a parametrized test prints one line per case
+        under the same bare name; a parser that lets the last occurrence win
+        would launder `test_a[mid] FAILED` behind `test_a[late] PASSED`."""
+        repo_root, _ = build_checkpoint(self, "TASK-112")
+        evidence = repo_root / "evidence.txt"
+        evidence.write_text(
+            "tests/test_foo.py::FooTests::test_a[early] PASSED          [ 25%]\n"
+            "tests/test_foo.py::FooTests::test_a[mid] FAILED            [ 50%]\n"
+            "tests/test_foo.py::FooTests::test_a[late] PASSED           [ 75%]\n"
+            "tests/test_foo.py::FooTests::test_b PASSED                 [100%]\n",
+            encoding="utf-8",
+        )
+        code, out, err = self._verify(task="TASK-112", extra=["--against-run", str(evidence)])
+        self.assertEqual(code, 1)
+        self.assertIn("not-passed", out)
+        self.assertIn("test_a", out)
+
+    def test_verify_against_run_accepts_pytest_status_first_summary_lines(self):
+        """Adversarial where: `-rA` short-summary evidence puts the status
+        before the node id (`PASSED path.py::Class::test`); a parser bound
+        to the -v column order reads such evidence as empty."""
+        repo_root, _ = build_checkpoint(self, "TASK-113")
+        evidence = repo_root / "evidence.txt"
+        evidence.write_text(
+            "PASSED tests/test_foo.py::FooTests::test_a\n"
+            "PASSED tests/test_foo.py::FooTests::test_b\n",
+            encoding="utf-8",
+        )
+        code, out, err = self._verify(task="TASK-113", extra=["--against-run", str(evidence)])
+        self.assertEqual(code, 0, out + err)
+        self.assertNotIn("not-passed", out)
+
     def test_verify_supersede_retains_prior_and_names_it(self):
         """Adversarial where a legitimately-corrected pre-build test
         silently replaces the original checkpoint with no trace, so a human

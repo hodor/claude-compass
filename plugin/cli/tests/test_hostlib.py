@@ -202,9 +202,15 @@ class MaterializeDshHooksTests(unittest.TestCase):
 
 class ToolNameMapTests(unittest.TestCase):
     """Claude tool names from agent `tools:` frontmatter translate to dsh
-    tool names; a name with no dsh equivalent is reported, never guessed."""
+    tool names; a name with no dsh equivalent is reported, never guessed.
 
-    AGENTS_DIR = Path(__file__).resolve().parents[2] / "templates" / "agents"
+    The shipped agents live at `templates/agents/` in the plugin source and
+    at `agents/` in a vendored `.claude/` install; both layouts carry the
+    same `tools:` fields, so the whole-roster sweep runs in either."""
+
+    _BASE = Path(__file__).resolve().parents[2]
+    AGENTS_DIR = (_BASE / "templates" / "agents") if (
+        _BASE / "templates" / "agents").is_dir() else (_BASE / "agents")
 
     def test_core_names_map_to_dsh_catalog_names(self):
         mapped, unmapped = hostlib.map_tools(
