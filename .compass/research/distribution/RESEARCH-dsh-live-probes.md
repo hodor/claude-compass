@@ -98,6 +98,20 @@ Verified from both transcripts: the rules sentinel appeared exactly once per hos
 - **Worker (TASK-012):** with `claude` stripped from a minimal environment, `compass capture-worker` resolved `dsh --profile headless`, ran the full extract pass against the real Wave 1 opportunity, and wrote `worker-finished` - the child even exercised judgment correctly, rejecting the probe note as ephemeral session state per the anti-list.
 - **Acceptance (TASK-013):** a dsh session wrote SPEC-008-acceptance and delegated to `compass_vault-locator` (8 specs found); a `claude -p` session read that spec and wrote PLAN-001-acceptance depending on it; sync indexed both from their respective hosts; `compass fix-frontmatter --apply` healed the one frontmatter-less Wave 1 stub; `compass validate` exits 0 with 0 errors. One project, both CLIs, one correct vault.
 
+## Wave 6 live verification (zero-decision, SPEC-006 D-05)
+
+Two new platform facts, each found only after a chain of misleading probes:
+
+- **The hook sandbox blocks writes outside the session workspace, silently.** A hook command whose child writes any path outside the launch cwd looks exactly like a hook that never ran: no error, no log, no marker. Reads of outside paths and outside executables both pass (a script under the harness home runs fine when everything it writes lands inside the project). Differential proof in one Stop group: a row invoking the project CLI fired while sibling rows writing scratchpad-level markers stayed silent; moving the write inside the project made the same rows fire.
+- **dsh boots bundles from the profile's `file:` source directory, while `--dump-config` recomposes from the `node_modules` copy.** Editing only the `node_modules` copy changes the dump and nothing at runtime. The installer keeps both in sync on every apply; hand probes must edit the source dir.
+
+The bootstrap mechanics, live-verified once those two facts were in hand:
+
+- **Two bridge instances coexist** (distinct ids, same plugin name): the relative `.dsh/hooks.json` mount and an absolute machine-level mount both fired their hooks in one session.
+- **An absolute `configPath` works**; the earlier "absolute fails" readings were the sandbox eating outside-writing marker commands.
+- **Bootstrap (TASK-016):** a virgin project holding only `.compass/` and `.git/` got the complete install (`.claude/` with agents, cli, skills, settings; `.dsh/` hooks and skills; `AGENTS.md`) from its first-ever dsh one-shot session - the SessionStart hook ran the generated `<dsh-home>/compass-bootstrap.py` against the plugin snapshot beside it, all writes inside the project. The second session was fully wired: a spec written from dsh landed in the index via sync.
+- **Acceptance both directions (TASK-017):** dsh-first project - Claude Code then edited the same spec and sync fired; `compass validate` 0 errors. CC-first project - one apply with no roster field and no question materialized both hosts (the real `perform` network path proved it too), a `claude -p` spec and a dsh research doc each indexed by their own host's hooks, `compass validate` clean. Doctor reports the detected hosts and every materialization OK in both projects.
+
 ## Blocker (resolved 2026-09-05)
 
 A provider credential was required for every live probe; the human supplied a `DEEPSEEK_API_KEY` (exported in the launching environment, never written to disk) and the default `deepseek-official` headless route worked unchanged.

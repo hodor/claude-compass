@@ -110,6 +110,13 @@ def _host_checks(vault_root, project_root):
                           plugin_yaml.read_text(encoding="utf-8"), re.MULTILINE)
         plugin_version = match.group(1).strip() if match else None
     home = hostlib.dsh_home()
+    for missing in [
+        p for p in (home / "compass-bootstrap-hooks.json",
+                    home / "compass-bootstrap.py",
+                    home / "compass-plugin-src" / "cli")
+        if not p.exists()
+    ]:
+        problems.append(f"dsh-first bootstrap artifact missing: {missing}")
     bundle_pkg = home / "compass-bundle" / "package.json"
     if not bundle_pkg.is_file():
         problems.append(f"global bundle missing at {home / 'compass-bundle'}")

@@ -222,3 +222,8 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 
 ### PLAN-017 Wave 6 - zero-decision (SPEC-006 D-05; the human's bar, verbatim in the spec)
 - [x] TASK-015: automatic host detection - no roster question, no plugin.yaml field, no setup ask
+
+### PLAN-017 Wave 6 - zero-decision (SPEC-006 D-05; the human's bar, verbatim in the spec)
+
+- [x] TASK-016: dsh-first bootstrap - a project whose first session is dsh materializes itself
+- [x] TASK-017: both-direction zero-decision acceptance on fresh projects

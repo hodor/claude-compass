@@ -11,13 +11,13 @@ usage:
     count: 24
     last: 2026-09-05
   capture-note:
-    count: 13
+    count: 15
     last: 2026-09-05
   capture-signal:
     count: 168
     last: 2026-09-05
   capture-worker:
-    count: 98
+    count: 100
     last: 2026-09-05
   coverage:
     count: 28
@@ -41,7 +41,7 @@ usage:
     count: 4
     last: 2026-09-05
   lesson-coverage:
-    count: 157
+    count: 161
     last: 2026-09-05
   lessons:
     count: 3
@@ -59,7 +59,7 @@ usage:
     count: 47
     last: 2026-09-05
   sync:
-    count: 587
+    count: 599
     last: 2026-09-05
   tree:
     count: 5
