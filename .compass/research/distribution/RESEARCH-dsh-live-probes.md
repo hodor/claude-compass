@@ -112,6 +112,16 @@ The bootstrap mechanics, live-verified once those two facts were in hand:
 - **Bootstrap (TASK-016):** a virgin project holding only `.compass/` and `.git/` got the complete install (`.claude/` with agents, cli, skills, settings; `.dsh/` hooks and skills; `AGENTS.md`) from its first-ever dsh one-shot session - the SessionStart hook ran the generated `<dsh-home>/compass-bootstrap.py` against the plugin snapshot beside it, all writes inside the project. The second session was fully wired: a spec written from dsh landed in the index via sync.
 - **Acceptance both directions (TASK-017):** dsh-first project - Claude Code then edited the same spec and sync fired; `compass validate` 0 errors. CC-first project - one apply with no roster field and no question materialized both hosts (the real `perform` network path proved it too), a `claude -p` spec and a dsh research doc each indexed by their own host's hooks, `compass validate` clean. Doctor reports the detected hosts and every materialization OK in both projects.
 
+## Wave 6 addendum: simultaneous sessions (D-04's untested assumption)
+
+Every prior acceptance drove the two hosts sequentially; D-04's "concurrent sessions rely on sync's self-healing" was assumption until now. Three escalating probes on one dual-host rig project, all clean:
+
+- Two full model sessions in parallel (`claude -p` and `dsh --profile headless`), each writing a vault doc: both docs indexed, validate clean.
+- Concurrent bursts (three docs per host, six overlapping PostToolUse sync spawns): all six indexed, validate clean. File mtimes showed the sessions overlapped but their writes serialized by chance, so:
+- A mechanical worst case - six simultaneous processes each writing a spec and running `compass sync` at the same instant: all six sync runs exited 0 with empty stderr (no Windows file-lock failure), the index held all six lines before any reconciling pass, validate clean.
+
+The self-healing model stands as designed: the residual race (a sync scanning before a neighbor's write lands, overwritten a moment later) can leave an index line stale until the next vault write, and never loses a document - the files themselves are the truth sync regenerates from.
+
 ## Blocker (resolved 2026-09-05)
 
 A provider credential was required for every live probe; the human supplied a `DEEPSEEK_API_KEY` (exported in the launching environment, never written to disk) and the default `deepseek-official` headless route worked unchanged.
