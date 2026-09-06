@@ -114,6 +114,46 @@ class HotPathTests(unittest.TestCase):
         (root / "lessons" / "index.md").write_text("c" * 400, encoding="utf-8")
         self.assertEqual(hot_path.measure(root), 300)  # 1200 chars / 4
 
+    def test_session_start_surface_counts_vision_and_newest_handoff(self):
+        """GitHub #29: the session-start rule has the main session read
+        vision.md and the most recent handoff, and neither was counted by
+        anything - the metric measured only what agents load."""
+        root = make_vault(self)
+        (root / "index.md").write_text("a" * 400, encoding="utf-8")
+        (root / "active.md").write_text("b" * 400, encoding="utf-8")
+        (root / "vision.md").write_text("v" * 400, encoding="utf-8")
+        plan_dir = root / "handoffs" / "PLAN-001"
+        plan_dir.mkdir(parents=True)
+        old = root / "handoffs" / "2026-01-01_old.md"
+        old.write_text("o" * 4000, encoding="utf-8")
+        new = plan_dir / "2026-02-02_new.md"
+        new.write_text("n" * 400, encoding="utf-8")
+        os.utime(old, (1, 1))
+        total, files = hot_path.measure_session_start(root)
+        self.assertEqual(total, 400)  # 1600 chars / 4; the old handoff excluded
+        self.assertEqual(
+            files,
+            ["index.md", "active.md", "vision.md",
+             "handoffs/PLAN-001/2026-02-02_new.md"])
+
+    def test_session_start_surface_tolerates_missing_optional_files(self):
+        root = make_vault(self)
+        (root / "index.md").write_text("a" * 400, encoding="utf-8")
+        total, files = hot_path.measure_session_start(root)
+        self.assertEqual(total, 100)
+        self.assertEqual(files, ["index.md"])
+
+    def test_run_reports_both_surfaces(self):
+        root = make_vault(self)
+        (root / "index.md").write_text("a" * 400, encoding="utf-8")
+        with_vault_env(self, root)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(hot_path.run([]), 0)
+        lines = out.getvalue().splitlines()
+        self.assertEqual(lines[0], f"100 / {hot_path.HOT_PATH_CAP}")
+        self.assertTrue(lines[1].startswith("session-start: 100 tokens"))
+
 
 class ValidateTests(unittest.TestCase):
     SPEC_OK = (
