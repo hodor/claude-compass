@@ -7,7 +7,7 @@ import shutil
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -83,6 +83,27 @@ class CaptureBugCommandTests(unittest.TestCase):
     def test_empty_message_errors(self):
         make_vault(self)
         self.assertEqual(capture_bug.run([]), 1)
+
+    def test_help_flag_prints_usage_and_records_nothing(self):
+        """GitHub #32: `compass capture-bug --help` captured a bug titled
+        '--help' instead of printing usage - the mistyped invocation itself
+        became a filed record."""
+        root = make_vault(self)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = capture_bug.run(["--help"])
+        self.assertEqual(code, 0)
+        self.assertIn("usage:", out.getvalue())
+        self.assertEqual(bugs.load_all(root), [])
+
+    def test_flag_shaped_message_refused_and_records_nothing(self):
+        root = make_vault(self)
+        err = io.StringIO()
+        with redirect_stderr(err):
+            code = capture_bug.run(["--comand", "validate", "oops"])
+        self.assertEqual(code, 1)
+        self.assertIn("unknown flag --comand", err.getvalue())
+        self.assertEqual(bugs.load_all(root), [])
 
 
 class FileBugsTests(unittest.TestCase):
