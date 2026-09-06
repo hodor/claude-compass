@@ -10,6 +10,8 @@ when_to_use: "Invoked against a capture opportunity directory - most often the o
 
 Retrospective lesson capture at a capture opportunity. No introspection prompts. The triggers are binary; the anti-list is the filter; `lesson-write` is the writer.
 
+This skill is consumed as a file: the agent reads this document and follows its steps in place. A Skill-tool invocation hangs when the caller is a subagent or a headless worker, so no prompt ever routes here through the Skill tool.
+
 The pass runs in a SPAWNED SUBAGENT, never in the main conversation's context: the evidence reading and candidate judgment cost thousands of tokens that belong in a disposable context, and the durable record is the extraction log plus the capture-log row, not conversation text. The subagent's entire report back is step 9's one `extracted:` line; the orchestrator relays that line and nothing else. Narrating candidates, verdicts, or rationale into the conversation is context pollution - the logs hold all of it.
 
 ## Inputs
@@ -155,7 +157,7 @@ For each candidate, record the anti-list outcome: passed, or matched bucket `<na
 
 ### 6. Hand survivors to lesson-write
 
-For each candidate that passed the anti-list, call `lesson-write` with its payload. Record the return value.
+For each candidate that passed the anti-list, read `.claude/skills/lesson-write/SKILL.md` and follow its steps with the candidate's payload - in place, never through the Skill tool. Record the return value.
 
 ### 7. Write the extraction log
 

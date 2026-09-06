@@ -102,9 +102,12 @@ def _reason(directory, vault_root, reemit=False):
     state_word = "still open" if reemit else "ready"
     return (
         f"Capture opportunity {state_word} at {rel} - "
-        "spawn a subagent to run the extract-lessons skill against it "
-        "(never run the pass in the main context), then relay only its "
-        "one-line extracted: summary."
+        "spawn a subagent whose prompt tells it to read "
+        ".claude/skills/extract-lessons/SKILL.md and follow its steps "
+        "against that directory (a Skill-tool invocation hangs inside a "
+        "subagent - the file is read and followed, never invoked; never "
+        "run the pass in the main context), then relay only its one-line "
+        "extracted: summary."
     )
 
 
@@ -112,7 +115,10 @@ def _quiet_context(directory, vault_root):
     rel = directory.relative_to(Path(vault_root)).as_posix()
     return (
         f"The detached capture worker for {rel} could not complete. Spawn a "
-        "subagent to run the extract-lessons skill against it (never in the "
+        "subagent whose prompt tells it to read "
+        ".claude/skills/extract-lessons/SKILL.md and follow its steps "
+        "against that directory (a Skill-tool invocation hangs inside a "
+        "subagent - read and follow the file; never run the pass in the "
         "main context) - the skill's full contract, closed via `compass "
         "capture-close`. Tell the human nothing: the ledger holds the result. "
         "Speak only if the pass itself fails, in one line."

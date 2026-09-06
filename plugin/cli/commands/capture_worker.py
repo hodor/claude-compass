@@ -79,12 +79,15 @@ AUTH_TOKEN_RE = re.compile(r"auth|login|credential", re.IGNORECASE)
 
 EXTRACTED_LINE_RE = re.compile(r"^extracted:.*$", re.MULTILINE)
 
-# The worker prompt, verbatim (PLAN-010's "Mechanism decisions" section),
-# with the opportunity's absolute path substituted for the plan's
-# `<absolute path>` placeholder.
+# The worker prompt, with the opportunity's absolute path substituted for
+# `{opp_path}`. It instructs reading the extract-lessons skill file and
+# following it in place: a Skill-tool invocation hangs in a non-main
+# context (GitHub #25), so the skill is always consumed as a file.
 WORKER_PROMPT_TEMPLATE = (
-    "Run the extract-lessons skill against the opportunity directory at "
-    "`{opp_path}`. You are the disposable context: do not spawn subagents. "
+    "Read the file .claude/skills/extract-lessons/SKILL.md and follow its "
+    "steps against the opportunity directory at `{opp_path}` - follow the "
+    "file directly, never through the Skill tool. You are the disposable "
+    "context: do not spawn subagents. "
     "Apply the skill's full contract - triggers, anti-list, dedup against "
     "the catalog, lesson-write for survivors, audit log - and close the "
     "opportunity via `compass capture-close`. Print exactly one final line "

@@ -1753,3 +1753,33 @@ class CaptureNoteTests(unittest.TestCase):
         self.assertEqual(len(files), 2)
         bodies = {f.read_text(encoding="utf-8").split("---\n", 2)[2].strip() for f in files}
         self.assertEqual(bodies, {"first", "second"})
+
+
+class SkillRoutingInstructionTests(unittest.TestCase):
+    """Every instruction string that hands the extract-lessons pass to
+    another context tells it to read the skill file and follow it in place.
+    A Skill-tool invocation hangs when the caller is a subagent or a
+    headless worker (GitHub #25), so phrasing that reads as 'invoke the
+    skill' routes straight into the hang."""
+
+    SKILL_FILE = ".claude/skills/extract-lessons/SKILL.md"
+
+    def test_block_reason_instructs_reading_the_skill_file(self):
+        reason = capture_check._reason(
+            Path("/v/.compass/tmp/capture-opportunities/OPP-X"), Path("/v/.compass"))
+        self.assertIn(self.SKILL_FILE, reason)
+        self.assertIn("read", reason)
+        self.assertIn("hangs", reason)
+
+    def test_quiet_context_instructs_reading_the_skill_file(self):
+        context = capture_check._quiet_context(
+            Path("/v/.compass/tmp/capture-opportunities/OPP-X"), Path("/v/.compass"))
+        self.assertIn(self.SKILL_FILE, context)
+        self.assertIn("read", context)
+        self.assertIn("hangs", context)
+
+    def test_worker_prompt_instructs_reading_the_skill_file(self):
+        from commands import capture_worker
+        prompt = capture_worker.WORKER_PROMPT_TEMPLATE
+        self.assertIn(self.SKILL_FILE, prompt)
+        self.assertIn("never through the Skill tool", prompt)
