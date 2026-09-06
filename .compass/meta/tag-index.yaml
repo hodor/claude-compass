@@ -107,6 +107,9 @@ tags:
   - lessons/test-quality/LESSON-revert-to-prove-a-regression-test.md
   build-skill:
   - research/learning/RESEARCH-lesson-capture-failure.md
+  bundles:
+  - plans/PLAN-017-dsh-host-support.md
+  - research/distribution/RESEARCH-dsh-live-probes.md
   busywork:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   cache:
@@ -189,6 +192,8 @@ tags:
   - specs/vault-structure/SPEC-010-universal-hybrid-hierarchy.md
   code-review:
   - lessons/subagents/LESSON-dont-strip-agent-quality-stations.md
+  code-sweep:
+  - lessons/LESSON-sweep-misses-config-in-skill-prose.md
   codex:
   - specs/distribution/SPEC-006-multi-host-agent-cli-support.md
   cohesion:
@@ -207,6 +212,8 @@ tags:
   - lessons/vault-structure/LESSON-hierarchical-placement-tolerate-disagreement.md
   config:
   - decisions/vault-structure/ADR-003-drop-counter-file-jit-compute.md
+  config-duplication:
+  - lessons/LESSON-sweep-misses-config-in-skill-prose.md
   configurable:
   - specs/pipeline/SPEC-009-configurable-pipeline-workflows.md
   configurable-pipeline:
@@ -296,6 +303,10 @@ tags:
   - specs/learning/SPEC-002-lessons-and-index-subsystem.md
   deduplication:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
+  deepseek:
+  - plans/PLAN-017-dsh-host-support.md
+  - research/distribution/RESEARCH-deepseek-harness-fit.md
+  - specs/distribution/SPEC-006-multi-host-agent-cli-support.md
   defaults:
   - specs/vault-structure/SPEC-016-sizing-work-beyond-one-spec.md
   delete:
@@ -320,6 +331,7 @@ tags:
   - decisions/distribution/ADR-015-self-update-on-session-start.md
   - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
   - plans/PLAN-012-self-update.md
+  - plans/PLAN-017-dsh-host-support.md
   - research/distribution/RESEARCH-self-update-surfaces.md
   - research/distribution/index.md
   - specs/distribution/SPEC-006-multi-host-agent-cli-support.md
@@ -358,6 +370,14 @@ tags:
   - specs/distribution/SPEC-014-update-safe-customizations.md
   drop-ins:
   - research/distribution/RESEARCH-update-safe-customization.md
+  dsh:
+  - handoffs/PLAN-017-dsh-host-support/2026-09-05_21-30-00_wave6-zero-decision-queued.md
+  - plans/PLAN-017-dsh-host-support.md
+  - research/distribution/RESEARCH-deepseek-harness-fit.md
+  - research/distribution/RESEARCH-dsh-live-probes.md
+  - specs/distribution/SPEC-006-multi-host-agent-cli-support.md
+  dual-host:
+  - plans/PLAN-017-dsh-host-support.md
   edit-anchors:
   - lessons/vault-structure/LESSON-wikilink-validator-skip-code.md
   elaboration:
@@ -479,6 +499,7 @@ tags:
   - handoffs/PLAN-006-learning-loop/2026-08-06_06-02-00_phase2-live-hooks-first-firing.md
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_16-47-06_wave1-tree-uncommitted.md
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated.md
+  - handoffs/PLAN-017-dsh-host-support/2026-09-05_21-30-00_wave6-zero-decision-queued.md
   hang:
   - lessons/hooks/LESSON-hook-cli-gate-stdin-on-flag.md
   harness:
@@ -537,6 +558,7 @@ tags:
   - decisions/learning/ADR-013-detached-worker-quiet-fallback.md
   - decisions/learning/ADR-019-subagentstop-redelivery-and-teammate-typing.md
   - handoffs/PLAN-006-learning-loop/2026-08-06_06-02-00_phase2-live-hooks-first-firing.md
+  - lessons/LESSON-sweep-misses-config-in-skill-prose.md
   - lessons/hooks/LESSON-hook-cli-gate-stdin-on-flag.md
   - lessons/hooks/LESSON-hook-if-clause-no-or.md
   - lessons/hooks/LESSON-hook-payloads-observe-before-coding.md
@@ -549,6 +571,9 @@ tags:
   - plans/PLAN-006-learning-loop.md
   - plans/PLAN-010-invisible-capture.md
   - plans/PLAN-012-self-update.md
+  - plans/PLAN-017-dsh-host-support.md
+  - research/distribution/RESEARCH-deepseek-harness-fit.md
+  - research/distribution/RESEARCH-dsh-live-probes.md
   - research/distribution/RESEARCH-self-update-surfaces.md
   - research/learning/RESEARCH-invisible-scaffolding.md
   - research/learning/RESEARCH-lessons-and-index-architecture.md
@@ -562,6 +587,7 @@ tags:
   - research/hermes/RESEARCH-hermes-agent-capabilities.md
   - research/hermes/RESEARCH-hermes-vs-compass-fit.md
   hosts:
+  - research/distribution/RESEARCH-deepseek-harness-fit.md
   - research/distribution/index.md
   - research/hermes/index.md
   - specs/distribution/index.md
@@ -710,6 +736,8 @@ tags:
   literature-import:
   - lessons/experiments/LESSON-human-practice-rationing-assumes-human-scarcity.md
   - lessons/vault-structure/LESSON-hierarchical-placement-tolerate-disagreement.md
+  live-verification:
+  - research/distribution/RESEARCH-dsh-live-probes.md
   llm-test-generation:
   - research/test-quality/RESEARCH-test-quality-literature.md
   local:
@@ -718,6 +746,8 @@ tags:
   - research/vault-structure/RESEARCH-hierarchical-knowledge-base-design.md
   markers:
   - research/distribution/RESEARCH-update-safe-customization.md
+  materializers:
+  - plans/PLAN-017-dsh-host-support.md
   mcp:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   mcp-rejected:
@@ -768,6 +798,9 @@ tags:
   monitoring:
   - lessons/subagents/LESSON-long-agents-stall-resume-them.md
   multi-host:
+  - handoffs/PLAN-017-dsh-host-support/2026-09-05_21-30-00_wave6-zero-decision-queued.md
+  - plans/PLAN-017-dsh-host-support.md
+  - research/distribution/RESEARCH-deepseek-harness-fit.md
   - research/distribution/RESEARCH-model-resolution-impl.md
   - specs/distribution/SPEC-006-multi-host-agent-cli-support.md
   multi-lens:
@@ -910,6 +943,7 @@ tags:
   - lessons/vault-structure/LESSON-scope-notes-are-load-bearing.md
   probes:
   - lessons/vault-structure/LESSON-scratch-vaults-need-compass-dir.md
+  - research/distribution/RESEARCH-dsh-live-probes.md
   procedure-evaluation:
   - lessons/experiments/LESSON-measure-the-procedures-intermediates.md
   progressive-disclosure:
@@ -1069,10 +1103,13 @@ tags:
   - specs/vault-structure/SPEC-016-sizing-work-beyond-one-spec.md
   skill:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
+  skill-templates:
+  - lessons/LESSON-sweep-misses-config-in-skill-prose.md
   skills:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
   - plans/PLAN-001-lessons-and-index-implementation.md
   - plans/PLAN-013-capture-by-extraction.md
+  - research/distribution/RESEARCH-deepseek-harness-fit.md
   spawned-sessions:
   - lessons/hooks/LESSON-spawned-sessions-inherit-project-hooks.md
   spec-005:
@@ -1120,6 +1157,7 @@ tags:
   - lessons/subagents/LESSON-subagent-worktrees-fork-stale.md
   - lessons/subagents/LESSON-verify-worktree-isolation-is-real.md
   - lessons/subagents/index.md
+  - research/distribution/RESEARCH-deepseek-harness-fit.md
   subagentstop:
   - decisions/learning/ADR-019-subagentstop-redelivery-and-teammate-typing.md
   suite-size:
@@ -1381,6 +1419,8 @@ tags:
   worktree:
   - lessons/subagents/LESSON-subagent-worktrees-fork-stale.md
   - lessons/subagents/LESSON-verify-worktree-isolation-is-real.md
+  zero-decision:
+  - handoffs/PLAN-017-dsh-host-support/2026-09-05_21-30-00_wave6-zero-decision-queued.md
   zero-touch:
   - decisions/distribution/ADR-015-self-update-on-session-start.md
   - specs/distribution/SPEC-020-compass-updates-itself.md

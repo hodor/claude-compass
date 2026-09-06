@@ -6,10 +6,10 @@ category: process
 area: workflow
 tags: [hooks, payloads, parsing, tool-output, evidence]
 created: 2026-08-08
-updated: 2026-08-30
-score: 5
+updated: 2026-09-05
+score: 6
 summary: "Observe the real emission or code path first; assumed shapes and reported causes ship dead work under a green suite"
-seen: []
+seen: [2026-09-05]
 ---
 
 Code keyed on an assumed emission shape - a hook payload, another tool's stdout - ships silently dead: the branch never fires and nothing reports it. A fix keyed on a bug report's stated root cause fails the same way. The same holds for a skill's prose claim about another command's behavior.
