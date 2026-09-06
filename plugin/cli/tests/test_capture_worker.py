@@ -684,47 +684,50 @@ if __name__ == "__main__":
 
 
 class HostAwareBinaryResolutionTests(unittest.TestCase):
-    """Worker binary resolution: claude wherever provided, dsh only for a
-    dsh-rostered project with no claude anywhere, else the claude default
-    whose launch failure latches no-headless."""
+    """Worker binary resolution: claude wherever provided, dsh on a
+    machine that has dsh but no claude anywhere (detected, no roster
+    field involved - SPEC-006 D-05), else the claude default whose launch
+    failure latches no-headless."""
 
-    def _vault(self, hosts_line=""):
+    def _vault(self):
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp, True)
         meta = tmp / ".compass" / "meta"
         meta.mkdir(parents=True)
         (meta / "plugin.yaml").write_text(
-            f"plugin:\n  name: compass\n  version: 1.0.0\n{hosts_line}",
+            "plugin:\n  name: compass\n  version: 1.0.0\n",
             encoding="utf-8")
         return tmp / ".compass"
+
+    def _pin_which_dsh_only(self):
+        real_which = shutil.which
+
+        def fake_which(name):
+            return "X:/dsh.cmd" if name == "dsh" else None
+
+        shutil.which = fake_which
+        self.addCleanup(lambda: setattr(shutil, "which", real_which))
 
     def test_env_override_wins_and_is_claude_kind(self):
         with_env(self, "COMPASS_CLAUDE_BIN", "X:/claude-stub")
         binary, kind = capture_worker._resolve_binary({}, self._vault())
         self.assertEqual((binary, kind), ("X:/claude-stub", "claude"))
 
-    def test_dsh_rostered_project_without_claude_falls_back_to_dsh(self):
+    def test_machine_with_dsh_and_no_claude_falls_back_to_dsh(self):
         with_env(self, "COMPASS_CLAUDE_BIN", "")
-        vault = self._vault("  hosts: [claude-code, dsh]\n")
-        real_which = shutil.which
-
-        def fake_which(name):
-            return "X:/dsh.cmd" if name == "dsh" else None
-
-        shutil.which = fake_which
-        self.addCleanup(lambda: setattr(shutil, "which", real_which))
+        vault = self._vault()
+        self._pin_which_dsh_only()
         binary, kind = capture_worker._resolve_binary({}, vault)
         self.assertEqual((binary, kind), ("X:/dsh.cmd", "dsh"))
 
-    def test_claude_only_roster_never_resolves_dsh(self):
+    def test_machine_without_dsh_resolves_claude_default(self):
         with_env(self, "COMPASS_CLAUDE_BIN", "")
         vault = self._vault()
         real_which = shutil.which
-
-        def fake_which(name):
-            return "X:/dsh.cmd" if name == "dsh" else None
-
-        shutil.which = fake_which
+        shutil.which = lambda name: None
         self.addCleanup(lambda: setattr(shutil, "which", real_which))
+        import hostlib
+        self.addCleanup(setattr, hostlib, "dsh_available", hostlib.dsh_available)
+        hostlib.dsh_available = lambda: False
         binary, kind = capture_worker._resolve_binary({}, vault)
         self.assertEqual((binary, kind), ("claude", "claude"))

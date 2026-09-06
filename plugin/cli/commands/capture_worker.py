@@ -173,8 +173,8 @@ def _release_lock(vault_root):
 
 def _resolve_binary(config, vault_root=None):
     """`(binary, host_kind)` for the headless child. `claude` wherever an
-    override or the PATH provides it; a dsh-rostered project without
-    `claude` falls back to `dsh --profile headless`; a project with neither
+    override or the PATH provides it; a machine with dsh but no `claude`
+    falls back to `dsh --profile headless`; a machine with neither
     resolves to `claude` and the launch failure latches no-headless as
     before - the posture `compass doctor` names either way."""
     env_bin = os.environ.get("COMPASS_CLAUDE_BIN")
@@ -188,7 +188,7 @@ def _resolve_binary(config, vault_root=None):
         return found, "claude"
     if vault_root is not None:
         import hostlib
-        if "dsh" in hostlib.read_hosts(vault_root):
+        if "dsh" in hostlib.effective_hosts(vault_root):
             dsh = shutil.which("dsh")
             if dsh:
                 return dsh, "dsh"

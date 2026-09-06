@@ -70,18 +70,19 @@ class Check:
 
 
 def _host_checks(vault_root, project_root):
-    """Per-host install rows (SPEC-006 D-04). A claude-code-only roster gets
-    one OK line. A dsh roster is checked for every materialization the apply
-    writes, for version skew between the generated bundle and plugin.yaml,
-    and the project's capture posture is named so no degradation is silent:
-    `claude` worker where present, `dsh` headless worker where rostered,
-    else the rendered-block fallback."""
+    """Per-host install rows (SPEC-006 D-04/D-05). Hosts are detected, not
+    read from a roster question: a machine without dsh gets one OK line. A
+    machine with dsh is checked for every materialization the apply writes,
+    for version skew between the generated bundle and plugin.yaml, and the
+    project's capture posture is named so no degradation is silent:
+    `claude` worker where present, `dsh` headless worker where the machine
+    has dsh, else the rendered-block fallback."""
     import shutil as _shutil
     from pathlib import Path as _Path
 
     import hostlib
 
-    hosts = hostlib.read_hosts(vault_root)
+    hosts = hostlib.effective_hosts(vault_root)
     if "dsh" not in hosts:
         return [Check("host roster", OK, f"hosts: {', '.join(hosts)}")]
 

@@ -18,6 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import hostlib  # noqa: E402
 from commands import self_update  # noqa: E402
 
 
@@ -113,6 +114,11 @@ class SelfUpdateFixture(unittest.TestCase):
         # network tripwires: tests that must not touch the network get these
         self.addCleanup(setattr, self_update, "_ls_remote", self_update._ls_remote)
         self.addCleanup(setattr, self_update, "_clone", self_update._clone)
+        # pin host detection off: these tests exercise the update flow, and
+        # must neither depend on the machine having dsh nor write into its
+        # real harness home
+        self.addCleanup(setattr, hostlib, "dsh_available", hostlib.dsh_available)
+        hostlib.dsh_available = lambda: False
 
     def write_plugin_yaml(self, source, commit=None):
         text = PLUGIN_YAML.format(source=source)

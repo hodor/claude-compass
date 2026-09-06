@@ -7,7 +7,6 @@ updated: 2026-08-24
 
 ## PLAN-017 Wave 6 - zero-decision (SPEC-006 D-05; the human's bar, verbatim in the spec)
 
-- [ ] TASK-015: automatic host detection - no roster question, no plugin.yaml field, no setup ask
 - [ ] TASK-016: dsh-first bootstrap - a project whose first session is dsh materializes itself
 - [ ] TASK-017: both-direction zero-decision acceptance on fresh projects
 

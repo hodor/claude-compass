@@ -1,11 +1,15 @@
-"""Host roster and per-host materializers for multi-host installs.
+"""Host detection and per-host materializers for multi-host installs.
 
-A project's `.compass/meta/plugin.yaml` may carry a `hosts:` list naming
-every agent CLI the project uses (`claude-code`, `dsh`, ...). A plugin.yaml
-without the field means `[claude-code]`, so every install that predates the
-roster behaves exactly as before. `self_update._apply` refreshes every
-rostered host in one run - the invariant that no two hosts of one project
-can sit on different Compass versions (SPEC-006 D-04).
+Which hosts a project gets is detected, never asked (SPEC-006 D-05): a
+machine with dsh on it materializes dsh support at every apply, and a
+machine without dsh sees zero dsh-shaped writes. `effective_hosts` is the
+one gate every consumer reads - the apply loop, doctor's host rows, the
+capture worker's binary resolution. A `hosts:` list in
+`.compass/meta/plugin.yaml` still contributes names (unknown ones pass
+through verbatim for newer hosts this CLI predates), but for dsh the
+machine is the truth in both directions. `self_update._apply` refreshes
+every effective host in one run - the invariant that no two hosts of one
+project can sit on different Compass versions (SPEC-006 D-04).
 
 The dsh materializers split by scope. Per project: `.dsh/hooks.json`
 (dsh executes hooks through PowerShell on Windows, so the sh wrapper is
@@ -68,6 +72,28 @@ def read_hosts(vault_root):
         return list(DEFAULT_HOSTS)
     hosts = vaultlib._split_inline_list(match.group(1)[1:-1])
     return [h for h in hosts if h] or list(DEFAULT_HOSTS)
+
+
+def dsh_available():
+    """Whether this machine has dsh: the binary on PATH, or a harness home
+    directory (`$DSH_HOME` or `~/.dsh`) left by a dsh install."""
+    return shutil.which("dsh") is not None or dsh_home().is_dir()
+
+
+def effective_hosts(vault_root):
+    """The hosts an apply on this machine serves (SPEC-006 D-05): the
+    plugin.yaml roster with `dsh` added when the machine has it and dropped
+    when it does not. Detection replaces the setup question - no field
+    required, no question asked - and a dsh-less machine gets zero
+    dsh-shaped writes regardless of what a committed roster says. Unknown
+    names keep passing through untouched."""
+    hosts = read_hosts(vault_root)
+    if dsh_available():
+        if "dsh" not in hosts:
+            hosts.append("dsh")
+    else:
+        hosts = [h for h in hosts if h != "dsh"]
+    return hosts
 
 
 # Claude tool name -> dsh tool name, from dsh's generated tool catalog

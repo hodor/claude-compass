@@ -1,7 +1,7 @@
 ---
 title: "Handoff: dsh host shipped through v0.22.0; Wave 6 zero-decision queued"
 type: handoff
-status: active
+status: done
 area: distribution
 tags: [handoff, dsh, multi-host, zero-decision]
 summary: "PLAN-017 waves 1-5 shipped (v0.19-0.22): dsh is a native host, cold start works after one apply; reopened for Wave 6 - SPEC-006 D-05 demands zero user decisions (no roster question, dsh-first bootstrap); tasks scoped, rig standing in the scratchpad"

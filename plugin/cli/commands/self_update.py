@@ -216,12 +216,12 @@ def merge_settings(project_root, manifest_path):
 
 
 def _apply(src, project_root, apply_models):
-    """Refresh every rostered host's materialization from `src` in one run
-    (SPEC-006 D-03/D-04): the Claude Code file set into `.claude/`
-    (mirroring /compass:update step 4-5), and for a project whose
-    plugin.yaml roster lists `dsh`, the generated `.dsh/hooks.json`. One
-    run, every host - two hosts of one project can never sit on different
-    Compass versions."""
+    """Refresh every effective host's materialization from `src` in one run
+    (SPEC-006 D-03/D-04/D-05): the Claude Code file set into `.claude/`
+    (mirroring /compass:update step 4-5), and on a machine with dsh, the
+    generated dsh materializations - detected, never asked. One run, every
+    host - two hosts of one project can never sit on different Compass
+    versions."""
     src = Path(src)
     claude = Path(project_root) / ".claude"
     agents = claude / "agents"
@@ -255,7 +255,7 @@ def _apply(src, project_root, apply_models):
     shutil.copy2(src / "hooks" / "hooks.json", hooks_dir / "hooks.json")
     merge_settings(project_root, hooks_dir / "hooks.json")
     import hostlib
-    if "dsh" in hostlib.read_hosts(Path(project_root) / ".compass"):
+    if "dsh" in hostlib.effective_hosts(Path(project_root) / ".compass"):
         hostlib.materialize_dsh_hooks(project_root, src / "hooks" / "hooks.json")
         hostlib.materialize_dsh_skills(project_root, src / "skills")
         hostlib.materialize_dsh_instructions(
