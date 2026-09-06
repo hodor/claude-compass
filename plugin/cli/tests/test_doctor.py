@@ -1143,6 +1143,10 @@ class HostChecksTests(unittest.TestCase):
         self.assertIn("skew", host.detail)
 
     def test_clean_dual_host_passes_and_names_capture_posture(self):
+        if not (self.PLUGIN_SRC / ".claude-plugin" / "plugin.json").is_file():
+            self.skipTest(
+                "plugin source tree absent: bundle generation needs it, and a "
+                "vendored .claude/ install does not carry it")
         home = self._dsh_home()
         project = self._dsh_project()
         import hostlib

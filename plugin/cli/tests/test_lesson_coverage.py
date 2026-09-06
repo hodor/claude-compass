@@ -22,7 +22,7 @@ from commands import lesson_coverage  # noqa: E402
 
 # tests/ -> cli/ -> plugin/ -> repo root, the directory holding .compass.
 REPO_ROOT = Path(__file__).resolve().parents[3]
-CLI_DIR = REPO_ROOT / "plugin" / "cli"
+CLI_DIR = Path(__file__).resolve().parents[1]
 
 
 def make_vault(test_case):
@@ -438,7 +438,15 @@ class LessonCoverageCorpusPinTests(unittest.TestCase):
     leave their row sets exactly as they were. Runs the installed `compass`
     CLI as a subprocess against this repo's own `.compass` vault, with
     `CLAUDE_PROJECT_DIR` pinned explicitly so no fixture vault used by the
-    other tests in this module can leak in through inherited environment."""
+    other tests in this module can leak in through inherited environment.
+    The pinned plans exist only in the Compass repo's own vault, so a
+    vendored copy of this suite running in another project skips them."""
+
+    def setUp(self):
+        plans = REPO_ROOT / ".compass" / "plans"
+        if not (plans / "PLAN-006-learning-loop.md").is_file() \
+                or not (plans / "PLAN-007-test-quality.md").is_file():
+            self.skipTest("corpus plans absent: not running in the Compass repo")
 
     def run_real(self, plan_id):
         env = dict(os.environ)

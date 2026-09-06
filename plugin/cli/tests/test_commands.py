@@ -1569,6 +1569,10 @@ class CoverageCorpusPinTests(unittest.TestCase):
     REPO_ROOT = Path(__file__).resolve().parents[3]
 
     def setUp(self):
+        plans = self.REPO_ROOT / ".compass" / "plans"
+        if not (plans / "PLAN-006-learning-loop.md").is_file() \
+                or not (plans / "PLAN-007-test-quality.md").is_file():
+            self.skipTest("corpus plans absent: not running in the Compass repo")
         old = os.environ.get("CLAUDE_PROJECT_DIR")
         os.environ["CLAUDE_PROJECT_DIR"] = str(self.REPO_ROOT)
 
