@@ -7,10 +7,12 @@ path-qualified links carry the path as identity, so a domain move without
 the rewrite silently breaks each one. Mentions quoted in inline code or
 fenced blocks are documentation, never rewritten. Dry-run by default;
 `--apply` executes, then heals the root index: each moved artifact's
-entry-line description lifts into its missing `summary:`, sync prunes the
-lines now provably covered by the destination's folder pointer, and any
-line whose description conflicts with the artifact's own fields is kept
-and reported. Vault health is reported last.
+entry-line description lifts into its missing `summary:`, a description
+the artifact's summary contradicts is preserved into its body, and sync
+then prunes every line - each is provably covered by the destination's
+folder pointer with its text surviving in the artifact (ADR-021: a
+folder's children are never listed at the root). Vault health is
+reported last.
 
 The destination must already exist inside the same type dir as each
 artifact: the type dir itself, or a domain folder (its own `index.md`
@@ -21,6 +23,7 @@ unresolvable artifact, a cross-type-dir move, a folder moved into its own
 subtree, or an artifact already sitting in the destination.
 """
 
+import datetime
 import re
 import sys
 
@@ -201,20 +204,45 @@ def _index_descriptions_of(vault_root, moved_rel):
     return found
 
 
+def _preserve_description(path, desc):
+    """Append the index line's divergent description to the artifact's own
+    body, so pruning the line takes no text with it (the Data rule). False
+    when the file already holds the text verbatim."""
+    text = vaultlib.read_vault_text(path)
+    if desc in text:
+        return False
+    note = (
+        f"\n> Root-index description preserved when this document moved "
+        f"({datetime.date.today().isoformat()}): {desc}\n"
+    )
+    vaultlib.write_text_lf(path, text.rstrip("\n") + "\n" + note)
+    return True
+
+
 def _heal_index(vault_root, moves):
     """The moved artifacts' index residue: lift each entry line's
-    description into its artifact's missing `summary:` (so sync's
-    covered-line prune can prove the text survives), run sync, and count
-    the lines whose description still conflicts with the artifact's own
-    fields. Returns (lifted, pruned, kept)."""
+    description into its artifact's missing `summary:`, preserve a
+    description the artifact's summary contradicts into its body, then run
+    sync - every line is now provably covered by the destination's folder
+    pointer with its text surviving in the artifact, so the prune clears
+    all of them. Returns (lifted, preserved, pruned, kept); `kept` counts
+    lines the prune still refused, which preservation should have made
+    impossible."""
     moved_rel = set()
     for _, dest_node in moves:
         files = sorted(dest_node.rglob("*.md")) if dest_node.is_dir() else [dest_node]
         moved_rel.update(f.relative_to(vault_root).as_posix() for f in files)
-    lifted = 0
+    lifted = preserved = 0
     for rel, desc in _index_descriptions_of(vault_root, moved_rel):
-        if desc and _lift_summary(vault_root / rel, desc):
+        if not desc:
+            continue
+        if _lift_summary(vault_root / rel, desc):
             lifted += 1
+            continue
+        data, error = vaultlib.parse_frontmatter(vault_root / rel)
+        if not error and desc not in (data.get("summary"), data.get("title")):
+            if _preserve_description(vault_root / rel, desc):
+                preserved += 1
     # sync's tag-index write assumes meta/ already exists; ensure it here so
     # a vault that has never had a shape-changing command run against it
     # does not crash on the very first one.
@@ -222,14 +250,8 @@ def _heal_index(vault_root, moves):
     pruned = 0
     if (vault_root / "index.md").is_file():
         pruned = sync_command.sync(vault_root).get("index_pruned", 0)
-    kept = 0
-    for rel, desc in _index_descriptions_of(vault_root, moved_rel):
-        data, error = vaultlib.parse_frontmatter(vault_root / rel)
-        if not error and desc is not None and desc not in (
-            data.get("summary"), data.get("title")
-        ):
-            kept += 1
-    return lifted, pruned, kept
+    kept = len(_index_descriptions_of(vault_root, moved_rel))
+    return lifted, preserved, pruned, kept
 
 
 def _sweep_rewrites(vault_root, renames, apply):
@@ -307,16 +329,21 @@ def run(args):
     sys.stdout.write(
         f"  wikilinks rewritten: {links} across {files} file(s)\n"
     )
-    lifted, pruned, kept = _heal_index(vault_root, moves)
+    lifted, preserved, pruned, kept = _heal_index(vault_root, moves)
     if lifted:
         sys.stdout.write(
             f"  summaries lifted from index descriptions: {lifted}\n"
         )
+    if preserved:
+        sys.stdout.write(
+            f"  divergent index description(s) preserved into artifact "
+            f"bodies: {preserved}\n"
+        )
     sys.stdout.write(f"  index.md: {pruned} entry line(s) pruned\n")
     if kept:
         sys.stdout.write(
-            f"  index.md: {kept} line(s) kept - description differs from "
-            "the artifact's own summary\n"
+            f"  index.md: {kept} line(s) kept - the prune could not prove "
+            "their text survives\n"
         )
     _report_vault_health(vault_root)
     return 0

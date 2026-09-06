@@ -160,18 +160,55 @@ class IndexHealTests(MoveFixture):
         self.assertNotIn("- [[SPEC-002-cache]]", index)
         self.assertIn("pruned", out)
 
-    def test_conflicting_description_kept_and_reported(self):
+    def test_conflicting_description_preserved_into_body_then_pruned(self):
+        """GitHub #28: a description the artifact's summary contradicts used
+        to keep its root line forever - re-running sync never cleared it, so
+        humans deleted the line by hand, losing the text. The line's text
+        now moves into the artifact's own body and the line prunes, per
+        ADR-021's rule that a folder's children are never listed at root."""
         self.write("specs/SPEC-002-cache.md", spec_body("Cache", "official summary"))
         (self.root / "index.md").write_text(
             "# Index\n\n## Specs\n\n- [[SPEC-002-cache]] - a different note\n",
             encoding="utf-8")
         code, out, err = self.run_cmd(["SPEC-002-cache", "specs/net", "--apply"])
         self.assertEqual(code, 0, err)
-        data, _ = vaultlib.parse_frontmatter(
-            self.root / "specs" / "net" / "SPEC-002-cache.md")
+        moved = self.root / "specs" / "net" / "SPEC-002-cache.md"
+        data, _ = vaultlib.parse_frontmatter(moved)
         self.assertEqual(data["summary"], "official summary")
-        self.assertIn("a different note", self.read("index.md"))
-        self.assertIn("kept", out)
+        self.assertIn("a different note", moved.read_text(encoding="utf-8"))
+        index = self.read("index.md")
+        self.assertNotIn("- [[SPEC-002-cache]]", index)
+        self.assertIn("preserved", out)
+        self.assertNotIn("kept", out)
+
+    def test_multi_artifact_move_clears_every_root_line(self):
+        """GitHub #28's reported shape: three specs moved in one invocation,
+        one line pruned, two left behind. Every root line must clear in one
+        pass whatever mix of matching, missing, and divergent descriptions
+        the index carries."""
+        self.write("specs/SPEC-002-cache.md", spec_body("Cache", "official summary"))
+        self.write("specs/SPEC-004-warm.md", spec_body("Warm", "warm summary"))
+        self.write("specs/SPEC-005-cold.md", self.spec_no_summary("Cold"))
+        (self.root / "index.md").write_text(
+            "# Index\n\n## Specs\n\n"
+            "- [[SPEC-002-cache]] - stale divergent wording\n"
+            "- [[SPEC-004-warm]] - warm summary\n"
+            "- [[SPEC-005-cold]] - hand-written cold note\n",
+            encoding="utf-8")
+        code, out, err = self.run_cmd(
+            ["SPEC-002-cache", "SPEC-004-warm", "SPEC-005-cold",
+             "specs/net", "--apply"])
+        self.assertEqual(code, 0, err)
+        index = self.read("index.md")
+        for stem in ("SPEC-002-cache", "SPEC-004-warm", "SPEC-005-cold"):
+            self.assertNotIn(f"- [[{stem}]]", index)
+        self.assertIn(
+            "stale divergent wording",
+            (self.root / "specs" / "net" / "SPEC-002-cache.md").read_text(
+                encoding="utf-8"))
+        cold, _ = vaultlib.parse_frontmatter(
+            self.root / "specs" / "net" / "SPEC-005-cold.md")
+        self.assertEqual(cold["summary"], "hand-written cold note")
 
 
 class FolderMoveTests(MoveFixture):

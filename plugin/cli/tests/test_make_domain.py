@@ -92,6 +92,22 @@ class CreateTests(DomainFixture):
         self.assertIn("shape: domain", log)
         self.assertIn("action: decision", log)
 
+    def test_generated_index_carries_tags_validate_accepts(self):
+        """GitHub #30: the generated index shipped `tags: []`, so validate
+        flagged every fresh domain with frontmatter_missing_field the moment
+        its own generator finished. The folder name seeds the tag list."""
+        code, _, _ = self.make("specs/network")
+        self.assertEqual(code, 0)
+        data, error = vaultlib.parse_frontmatter(
+            self.root / "specs" / "network" / "index.md")
+        self.assertIsNone(error)
+        self.assertEqual(data.get("tags"), ["network"])
+        from commands import validate as validate_cmd
+        _, warnings = validate_cmd.check_vault(self.root)
+        self.assertFalse(
+            [w for w in warnings
+             if "network/index.md" in w and "tags" in w], warnings)
+
     def test_nested_creation_under_existing_domain(self):
         self.make("specs/network")
         code, _, _ = self.make("specs/network/cache", "hot paths and eviction")
