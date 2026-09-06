@@ -179,12 +179,18 @@ ENTRY_PATTERN = re.compile(
 
 def _text_preserved(desc, record):
     """A dropped line must take no text with it (the Data rule): the line
-    carries no description, or one the artifact's own `summary:` or
-    `title:` already holds."""
+    carries no description, or text the artifact's own file already holds -
+    its `summary:`, its `title:`, or anywhere in its body (where `compass
+    move` preserves a divergent index description before pruning)."""
     if desc is None:
         return True
     data = record["_data"] or {}
-    return desc in (data.get("summary"), data.get("title"))
+    if desc in (data.get("summary"), data.get("title")):
+        return True
+    try:
+        return desc in vaultlib.read_vault_text(record["path"])
+    except OSError:
+        return False
 
 
 def _drop_reason(line, infos, covered, listed, section_paths, indexed_paths):

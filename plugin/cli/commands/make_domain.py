@@ -49,12 +49,14 @@ def _take_value_flag(args, flag):
 
 
 def _template(name, class_here, today):
+    # The folder name is the domain's own topic and seeds its tag list, so
+    # a freshly generated index never draws validate's missing-tags warning.
     return (
         "---\n"
         f'title: "{name}"\n'
         "type: domain\n"
         "status: active\n"
-        "tags: []\n"
+        f"tags: [{name}]\n"
         f'summary: "{class_here}"\n'
         f"created: {today}\n"
         f"updated: {today}\n"
