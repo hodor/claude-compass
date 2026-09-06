@@ -4,6 +4,7 @@ LF preservation, and the inherit omission gate."""
 import io
 import os
 import shutil
+import re
 import sys
 import tempfile
 import unittest
@@ -12,6 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import vaultlib  # noqa: E402
 from commands import apply_models  # noqa: E402
 
 PLANNER = (
@@ -252,3 +254,35 @@ class ApplyModelsRunTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AgentTemplateHotPathClaimTests(unittest.TestCase):
+    """GitHub #31: the researcher template's body said the frontmatter
+    `initialPrompt` had already loaded the hot path while its frontmatter
+    carried none, so every researcher run skipped the vault index, active
+    tasks, and lessons it was told it already had. Any shipped agent whose
+    body makes that claim must carry the matching frontmatter line."""
+
+    TEMPLATES = Path(__file__).resolve().parents[2] / "templates" / "agents"
+
+    def test_every_hot_path_claim_is_backed_by_an_initial_prompt(self):
+        if not self.TEMPLATES.is_dir():
+            self.skipTest("plugin source tree absent (vendored install)")
+        checked = 0
+        for path in sorted(self.TEMPLATES.glob("*.md")):
+            text = path.read_text(encoding="utf-8")
+            claim_lines = [l for l in text.split("\n") if "already loaded" in l]
+            if not claim_lines:
+                continue
+            checked += 1
+            data, error = vaultlib.parse_frontmatter_text(text)
+            self.assertIsNone(error, path.name)
+            prompt = data.get("initialPrompt") or ""
+            claimed = re.findall(r"\.compass/[\w./-]+\.md",
+                                 "\n".join(claim_lines))
+            self.assertTrue(claimed, f"{path.name}: claim names no files")
+            for rel in claimed:
+                self.assertIn(rel, prompt,
+                              f"{path.name} claims {rel} was already loaded "
+                              "but its initialPrompt does not load it")
+        self.assertGreater(checked, 0)
