@@ -10,6 +10,8 @@ when_to_use: "Called programmatically by extract-lessons skill or /compass:learn
 
 Single entry point for creating or updating a lesson. Every write goes through this skill so the catalog and index never drift from the filesystem.
 
+A caller running outside the main conversation (the extract-lessons pass in a subagent or headless worker) consumes this skill as a file - reads this document and follows it in place - because a Skill-tool invocation hangs there.
+
 ## Inputs
 
 The calling skill provides:
