@@ -82,12 +82,12 @@ fi
 
 ### 4a. Regenerate host materializations
 
-A project whose `.compass/meta/plugin.yaml` roster lists `dsh` also gets its dsh materializations regenerated from the source just copied - same run, same version, so the hosts never skew. Per project: `.dsh/hooks.json` (absolute-path commands), `.dsh/skills/`, the `AGENTS.md` rules section. Global: the project-agnostic bundle under the harness home (`$DSH_HOME` or `~/.dsh`), copied into every profile there, so the user starts dsh in any Compass project and it just works:
+A machine with DeepSeek Harness on it (detected: `dsh` on PATH, or a harness home directory - no roster field, no question, SPEC-006 D-05) also gets the dsh materializations regenerated from the source just copied - same run, same version, so the hosts never skew. Per project: `.dsh/hooks.json` (absolute-path commands), `.dsh/skills/`, the `AGENTS.md` rules section. Global: the project-agnostic bundle under the harness home (`$DSH_HOME` or `~/.dsh`), copied into every profile there, so the user starts dsh in any Compass project and it just works:
 
 ```bash
 if command -v python3 >/dev/null 2>&1; then PYBIN=python3; else PYBIN=python; fi
 "$PYBIN" -c "import sys; sys.path.insert(0,'.claude/cli'); import hostlib
-if 'dsh' in hostlib.read_hosts('.compass'):
+if 'dsh' in hostlib.effective_hosts('.compass'):
     hostlib.materialize_dsh_hooks('.', '.claude/hooks/hooks.json')
     hostlib.materialize_dsh_skills('.', '.claude/skills')
     hostlib.materialize_dsh_instructions('.', '.claude/rules')
@@ -96,7 +96,7 @@ if 'dsh' in hostlib.read_hosts('.compass'):
     print('bundle installed into profiles:', hostlib.install_dsh_bundle(home))"
 ```
 
-A roster without `dsh` (or an absent field) makes this a no-op.
+A machine without dsh makes this a no-op - zero dsh-shaped writes.
 
 ### 4b. Re-apply project-local overlays
 

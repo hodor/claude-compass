@@ -16,3 +16,7 @@ __pycache__/
 venv/
 .claude/
 .serena/
+
+# Generated local dsh install (host materializations, machine-specific paths)
+.dsh/
+AGENTS.md

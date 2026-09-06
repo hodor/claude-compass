@@ -28,6 +28,12 @@ class OverlayFixture(unittest.TestCase):
         self.project = tmp / "project"
         self.vault = self.project / ".compass"
         (self.vault / "meta").mkdir(parents=True)
+        # pin host detection off: the self-update apply tests below must
+        # neither depend on the machine having dsh nor write into its real
+        # harness home
+        import hostlib
+        self.addCleanup(setattr, hostlib, "dsh_available", hostlib.dsh_available)
+        hostlib.dsh_available = lambda: False
         self.claude = self.project / ".claude"
         (self.claude / "agents").mkdir(parents=True)
         (self.claude / "rules").mkdir(parents=True)

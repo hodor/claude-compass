@@ -1,11 +1,14 @@
-"""Tests for the host seam: the roster in plugin.yaml and the dsh
-hooks-file materializer.
+"""Tests for the host seam: dsh detection, the roster in plugin.yaml, and
+the dsh hooks-file materializer.
 
-Adversarial classes: a hostless plugin.yaml must behave exactly as today
-(claude-code only, no .dsh/ artifacts created); the generated dsh hooks
-file must carry no sh-dialect syntax dsh's PowerShell executor would choke
-on, no events dsh's bridge does not parse, and no `if` fields; and
-regeneration must be idempotent.
+Adversarial classes: a machine without dsh must see zero dsh-shaped writes
+even when a committed roster names dsh, and a machine with dsh must
+materialize with no plugin.yaml field at all (SPEC-006 D-05); the
+generated dsh hooks file must carry no sh-dialect syntax dsh's PowerShell
+executor would choke on, no events dsh's bridge does not parse, and no
+`if` fields; and regeneration must be idempotent. Every test that reaches
+detection pins it, so the suite passes identically on machines with and
+without dsh.
 """
 
 import json
@@ -32,6 +35,25 @@ def make_project(test_case, plugin_yaml=None):
 
 
 MANIFEST = Path(__file__).resolve().parents[2] / "hooks" / "hooks.json"
+
+
+def pin_dsh(test_case, present):
+    """Pin `hostlib.dsh_available` so the test's outcome does not depend on
+    whether the machine running the suite has dsh."""
+    real = hostlib.dsh_available
+    hostlib.dsh_available = lambda: present
+    test_case.addCleanup(setattr, hostlib, "dsh_available", real)
+
+
+def with_env(test_case, name, value):
+    old = os.environ.get(name)
+    if value is None:
+        os.environ.pop(name, None)
+    else:
+        os.environ[name] = value
+    test_case.addCleanup(
+        lambda: os.environ.__setitem__(name, old) if old is not None
+        else os.environ.pop(name, None))
 
 
 class ReadHostsTests(unittest.TestCase):
@@ -63,6 +85,67 @@ class ReadHostsTests(unittest.TestCase):
         project = make_project(
             self, "hosts: [claude-code, kimi-code]\n")
         self.assertIn("kimi-code", hostlib.read_hosts(project / ".compass"))
+
+
+class DshAvailableTests(unittest.TestCase):
+    """Detection reads the machine: the binary on PATH, or the harness
+    home directory a dsh install leaves behind."""
+
+    def _pin_which(self, result):
+        real = shutil.which
+        shutil.which = lambda name: result if name == "dsh" else None
+        self.addCleanup(setattr, shutil, "which", real)
+
+    def test_binary_on_path_counts(self):
+        self._pin_which("X:/dsh.cmd")
+        with_env(self, "DSH_HOME", str(Path(tempfile.mkdtemp()) / "absent"))
+        self.assertTrue(hostlib.dsh_available())
+
+    def test_harness_home_directory_counts_without_binary(self):
+        self._pin_which(None)
+        home = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, home, True)
+        with_env(self, "DSH_HOME", str(home))
+        self.assertTrue(hostlib.dsh_available())
+
+    def test_neither_means_no_dsh(self):
+        self._pin_which(None)
+        with_env(self, "DSH_HOME", str(Path(tempfile.mkdtemp()) / "absent"))
+        self.assertFalse(hostlib.dsh_available())
+
+
+class EffectiveHostsTests(unittest.TestCase):
+    """The hosts an apply serves: the machine is the truth for dsh, in
+    both directions (SPEC-006 D-05)."""
+
+    def test_machine_with_dsh_adds_it_to_a_hostless_project(self):
+        pin_dsh(self, True)
+        project = make_project(self, "source: F:/x\nversion: 0.22.0\n")
+        self.assertEqual(
+            hostlib.effective_hosts(project / ".compass"),
+            ["claude-code", "dsh"])
+
+    def test_machine_with_dsh_does_not_double_a_rostered_entry(self):
+        pin_dsh(self, True)
+        project = make_project(self, "hosts: [claude-code, dsh]\n")
+        self.assertEqual(
+            hostlib.effective_hosts(project / ".compass"),
+            ["claude-code", "dsh"])
+
+    def test_machine_without_dsh_drops_an_explicit_roster_entry(self):
+        # A committed roster travels with the repo to machines that have no
+        # dsh; those machines must see zero dsh-shaped behavior.
+        pin_dsh(self, False)
+        project = make_project(self, "hosts: [claude-code, dsh]\n")
+        self.assertEqual(
+            hostlib.effective_hosts(project / ".compass"), ["claude-code"])
+
+    def test_unknown_host_names_survive_detection(self):
+        pin_dsh(self, False)
+        project = make_project(self, "hosts: [claude-code, kimi-code]\n")
+        self.assertEqual(
+            hostlib.effective_hosts(project / ".compass"),
+            ["claude-code", "kimi-code"])
 
 
 class MaterializeDshHooksTests(unittest.TestCase):
@@ -355,7 +438,8 @@ class MaterializeDshBundleTests(unittest.TestCase):
 
 
 class ApplyHostLoopTests(unittest.TestCase):
-    """`self_update._apply` refreshes every rostered host in one run."""
+    """`self_update._apply` refreshes every effective host in one run;
+    which hosts are effective is detected, never read from a question."""
 
     def _src(self):
         src = Path(tempfile.mkdtemp())
@@ -384,20 +468,26 @@ class ApplyHostLoopTests(unittest.TestCase):
             else os.environ.pop("DSH_HOME", None))
         return home
 
-    def test_dual_roster_gets_both_materializations_in_one_apply(self):
+    def test_machine_with_dsh_materializes_from_a_hostless_project(self):
+        # No plugin.yaml field, no question: dsh on the machine is the
+        # whole trigger (SPEC-006 D-05).
         from commands import self_update
+        pin_dsh(self, True)
         home = self._isolate_home()
-        project = make_project(
-            self, "source: F:/x\nversion: 0.18.4\nhosts: [claude-code, dsh]\n")
+        project = make_project(self, "source: F:/x\nversion: 0.18.4\n")
         self_update._apply(self._src(), project, apply_models=False)
         self.assertTrue((project / ".claude" / "agents" / "builder.md").is_file())
         self.assertTrue((project / ".dsh" / "hooks.json").is_file())
         self.assertTrue((home / "compass-bundle" / "package.json").is_file())
 
-    def test_default_roster_behaves_exactly_as_today(self):
+    def test_machine_without_dsh_writes_nothing_dsh_shaped(self):
+        # Even an explicit committed roster must not produce dsh writes on
+        # a machine that has no dsh - the no-pollution guard.
         from commands import self_update
+        pin_dsh(self, False)
         home = self._isolate_home()
-        project = make_project(self, "source: F:/x\nversion: 0.18.4\n")
+        project = make_project(
+            self, "source: F:/x\nversion: 0.18.4\nhosts: [claude-code, dsh]\n")
         self_update._apply(self._src(), project, apply_models=False)
         self.assertTrue((project / ".claude" / "agents" / "builder.md").is_file())
         self.assertFalse((project / ".dsh").exists())

@@ -22,7 +22,13 @@ from commands import doctor  # noqa: E402
 
 
 def make_project(test_case):
-    """A bare project dir with an empty `.compass/`, nothing under `.claude/`."""
+    """A bare project dir with an empty `.compass/`, nothing under
+    `.claude/`. Host detection is pinned off so doctor's row set does not
+    depend on whether the machine running the suite has dsh; tests about
+    the dsh rows re-pin it on."""
+    import hostlib
+    test_case.addCleanup(setattr, hostlib, "dsh_available", hostlib.dsh_available)
+    hostlib.dsh_available = lambda: False
     tmp = Path(tempfile.mkdtemp())
     test_case.addCleanup(shutil.rmtree, tmp, True)
     (tmp / ".compass").mkdir()
@@ -1087,11 +1093,17 @@ if __name__ == "__main__":
 
 
 class HostChecksTests(unittest.TestCase):
-    """Host-aware doctor rows: a dsh-rostered project's materializations
-    exist and match the plugin version; the capture posture is named; a
-    claude-code-only project gets a roster line and nothing dsh-shaped."""
+    """Host-aware doctor rows: on a machine with dsh the materializations
+    exist and match the plugin version and the capture posture is named;
+    on a machine without dsh the project gets a roster line and nothing
+    dsh-shaped. Detection is pinned so the suite is machine-independent."""
 
     PLUGIN_SRC = Path(__file__).resolve().parents[2]
+
+    def _pin_dsh(self, present):
+        import hostlib
+        self.addCleanup(setattr, hostlib, "dsh_available", hostlib.dsh_available)
+        hostlib.dsh_available = lambda: present
 
     def _dsh_home(self):
         home = Path(tempfile.mkdtemp())
@@ -1101,11 +1113,8 @@ class HostChecksTests(unittest.TestCase):
 
     def _dsh_project(self, version="0.20.0"):
         project = make_project(self)
+        self._pin_dsh(True)
         write_plugin_yaml(project, version=version)
-        p = project / ".compass" / "meta" / "plugin.yaml"
-        p.write_text(
-            p.read_text(encoding="utf-8") + "  hosts: [claude-code, dsh]\n",
-            encoding="utf-8")
         return project
 
     def test_missing_dsh_materializations_fail(self):
@@ -1143,8 +1152,8 @@ class HostChecksTests(unittest.TestCase):
                 encoding="utf-8"))["version"]
         p = project / ".compass" / "meta" / "plugin.yaml"
         p.write_text(
-            f"plugin:\n  name: compass\n  version: {real_version}\n"
-            "  hosts: [claude-code, dsh]\n", encoding="utf-8")
+            f"plugin:\n  name: compass\n  version: {real_version}\n",
+            encoding="utf-8")
         hostlib.materialize_dsh_hooks(project, self.PLUGIN_SRC / "hooks" / "hooks.json")
         hostlib.materialize_dsh_skills(project, self.PLUGIN_SRC / "skills")
         hostlib.materialize_dsh_bundle(home, self.PLUGIN_SRC)
@@ -1156,7 +1165,8 @@ class HostChecksTests(unittest.TestCase):
         posture = next(c for c in checks if c.name == "capture posture")
         self.assertIn(posture.status, ("OK", "WARN"))
 
-    def test_claude_only_project_reports_roster_without_dsh_rows(self):
+    def test_machine_without_dsh_reports_roster_without_dsh_rows(self):
+        self._pin_dsh(False)
         project = make_project(self)
         write_plugin_yaml(project)
         checks = doctor._host_checks(project / ".compass", project)

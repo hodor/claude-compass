@@ -219,3 +219,6 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 - [x] Per-project hooks file bakes absolute paths; the mount is inert in non-Compass folders (empty-folder boot clean)
 - [x] Cold-start proven: fresh project + one apply -> one dsh session does write/sync, delegation, skills; claude -p works in the same project
 - [x] Fourth unwidened matcher copy found in the update skill and fixed
+
+### PLAN-017 Wave 6 - zero-decision (SPEC-006 D-05; the human's bar, verbatim in the spec)
+- [x] TASK-015: automatic host detection - no roster question, no plugin.yaml field, no setup ask
