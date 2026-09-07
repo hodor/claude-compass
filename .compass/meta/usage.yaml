@@ -8,7 +8,7 @@ usage:
     count: 2
     last: 2026-09-05
   capture-check:
-    count: 187
+    count: 188
     last: 2026-09-05
   capture-close:
     count: 26
