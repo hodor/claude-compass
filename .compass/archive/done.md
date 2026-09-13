@@ -227,3 +227,9 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 
 - [x] TASK-016: dsh-first bootstrap - a project whose first session is dsh materializes itself
 - [x] TASK-017: both-direction zero-decision acceptance on fresh projects
+
+## 2026-09-13
+
+### Research covers the whole spec (SPEC-023)
+- [x] Rulings on [[research/pipeline/REVIEW-spec-023-research-consolidation]] recorded as D-02, D-03, D-08, D-09.
+- [x] [[PLAN-018-research-covers-the-whole-spec]] approved 2026-09-13.

@@ -1,7 +1,8 @@
 ---
 title: "Research Covers the Whole Spec"
 type: plan
-status: draft
+status: approved
+approved: 2026-09-13
 confidence: medium
 area: methodology
 tags: [research, pipeline, scope, sources, methodology, plugins]
