@@ -2,16 +2,16 @@
   "path": "research/pipeline/RESEARCH-scientific-method-in-compass.md",
   "notes": [
     {
-      "text": "Finding 2's 'four named approaches' (obsidian/SKILL.md:222-230) is still accurate for the shipped skill, but SPEC-023's research produced a catalog of eight methodologies plus protocol registration - see [[research/pipeline/RESEARCH-research-methodologies-catalog]]. The four-entry table is now a shortfall against SPEC-023 D-06, not a neutral fact: five of six SPEC-023 researchers chose from the four-item table, and the one they picked (technology landscape) is the one the catalog rates as least grounded.",
+      "text": "Finding 2's 'four named approaches' (obsidian/SKILL.md:222-230) is still accurate for the shipped skill, but SPEC-023's research produced a catalog of eight methodologies plus protocol registration - see [[research/pipeline/RESEARCH-research-methodologies-catalog]]. The four-entry table is a shortfall against SPEC-023 D-06: five of six SPEC-023 researchers chose from it rather than from the catalog. Round two corrected the sharper version of this note: the methodology they picked (technology landscape) does have a canonical peer-reviewed source after all, DESMET (Kitchenham, Linkman & Law 1997), so it is not 'least grounded' - only the ThoughtWorks Radar artifact they modeled their format on is non-systematic by its own publisher's words.",
       "by": "reviewer",
       "date": "2026-09-13",
-      "tags": ["superseded-in-part", "methodology", "SPEC-023"]
+      "tags": ["superseded-in-part", "methodology", "SPEC-023", "round-two"]
     },
     {
-      "text": "Recommendations 1-3 (pre-register a falsifiable hypothesis, freeze it, check it after build) had no source for the format. SPEC-023's methodology catalog supplies three: PROSPERO's field set, OSF's preregistration and systematic-review templates, and the standalone software-engineering protocol document shape (findings 44-47 of [[research/pipeline/RESEARCH-research-methodologies-catalog]]). Findings 46-47 rest on secondary description and an unverified repo owner - re-fetch before citing.",
+      "text": "Recommendations 1-3 (pre-register a falsifiable hypothesis, freeze it, check it after build) had no source for the format. SPEC-023's methodology catalog supplies three: PROSPERO's field set, OSF's preregistration and systematic-review templates, and the standalone software-engineering protocol document shape (findings 44-47 of [[research/pipeline/RESEARCH-research-methodologies-catalog]]). Round two raised findings 46-47 to high confidence: the Zapata protocol was re-fetched in full and the GitHub artifact's owner check passes on identity and affiliation (catalog findings 57-61). Safe to cite.",
       "by": "reviewer",
       "date": "2026-09-13",
-      "tags": ["new-evidence", "pre-registration"]
+      "tags": ["new-evidence", "pre-registration", "round-two"]
     }
   ]
 }

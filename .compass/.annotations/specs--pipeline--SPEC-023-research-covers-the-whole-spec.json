@@ -2,10 +2,10 @@
   "path": "specs/pipeline/SPEC-023-research-covers-the-whole-spec.md",
   "notes": [
     {
-      "text": "D-03 names ACM as the first curated point to look, and the research found no mechanical way to reach it: ACM Digital Library has no public API, none of the four agents surveyed integrates it, and the methodology-catalog pass fell back to Semantic Scholar and open-access mirrors because ACM and Elsevier were unreachable. Converged across three documents. See [[research/pipeline/REVIEW-spec-023-research-consolidation]] claim C6 before planning any ACM-backed source step.",
+      "text": "D-03 names ACM as the first curated point to look, and round-two research established there is no scriptable path to it. No public API; ACM's own policy names scripts, spiders, and metadata harvesting as a Terms-of-Use violation; every acm.org domain returns a Cloudflare challenge to non-browser requests even for already-open-access DOIs. The 2026 move to full open access removed the cost barrier, not the access-mechanism barrier. Aggregators supply ACM metadata and abstracts but no fetchable PDF URL. See [[research/pipeline/REVIEW-spec-023-research-consolidation]] claims C6 and C24 to C26 before planning any ACM-backed source step.",
       "by": "reviewer",
       "date": "2026-09-13",
-      "tags": ["conflict", "D-03", "sources"]
+      "tags": ["conflict", "D-03", "sources", "round-two"]
     },
     {
       "text": "The third success criterion ('every finding names a source whose reliability was checked') can be silently dropped by an agent that follows D-06 correctly: mapping-study methodology instructs reviewers to skip quality assessment by design, while SLRs mandate it. Any methodology chooser shipped for D-06 needs to carry the D-03 check independently of the chosen methodology.",
@@ -14,10 +14,16 @@
       "tags": ["conflict", "D-06", "D-03"]
     },
     {
-      "text": "The Needs line 'the human's own questions weigh more than any question the spec lists' was addressed by no document in the first research round. Closest precedent found is Gemini Deep Research's user-editable plan (RESEARCH-scope-derivation-from-a-spec finding 30).",
+      "text": "The first success criterion ('a planner reading a spec's research finds no need it must go and research itself') has no precedent to copy. Round two found one runnable completeness scorer, AutoNuggetizer from the TREC nugget lineage, but no source anywhere scores a research report against a requirements document; every mechanism found scores against a rubric, a reference report, nuggets from source documents, or an evaluator's ability to answer curated questions. REVIEW claims C28 and C29.",
       "by": "reviewer",
       "date": "2026-09-13",
-      "tags": ["gap", "needs-research"]
+      "tags": ["gap", "success-criteria", "round-two"]
+    },
+    {
+      "text": "The Needs line 'the human's own questions weigh more than any question the spec lists' was unaddressed in round one and is now answered: no system anywhere implements it as a weight or a score. All six mechanisms found are structural - a turn-taking gate, an unconditional bypass, positional recency, queue-and-prepend, an assigned governance role, or disclosure without precedence. Two ready-made code precedents exist (Co-STORM's bypass, GPT-Researcher's bounded plan-review loop). REVIEW claims C19 to C23.",
+      "by": "reviewer",
+      "date": "2026-09-13",
+      "tags": ["D-02", "answered", "round-two"]
     }
   ]
 }

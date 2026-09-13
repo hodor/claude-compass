@@ -342,3 +342,7 @@ Closes the gap "bot-blocked from this sandbox's network; retest from the deploym
    - `curl ... 'https://api.openalex.org/works/doi:10.1145/3597503'` - 200, W4391558518
    - `curl ... 'https://api.unpaywall.org/v2/10.1145/3597503?email=...'` - 200
    - `curl ... 'https://api.semanticscholar.org/graph/v1/paper/arXiv:2512.02038?fields=title'` - 429 "Too Many Requests ... apply for a key"
+
+53. **ACM's browser path passes the bot wall without a login; the Claude in Chrome extension reads the full page** (confidence: high)
+   Navigating the human's own Chrome to an ACM DOI page showed the Cloudflare interstitial ("Performing security verification") on the first read and the full article page on the second, with no interaction: abstract, 49 references with Crossref and DL links, cited-by, index terms, and the "FREE ACCESS" badge. The page was in Basic Edition, not signed in, so the browser alone passed the wall and the membership was not exercised. This is per-page reading under the terms' personal-use grant, not harvesting; finding 49's ban on scripted collection still governs anything bulk.
+   - Claude in Chrome `navigate` + `get_page_text` on `https://dl.acm.org/doi/10.1145/3597503.3639086` - first read: title "Just a moment..."; second read: full article text, "You are using the Basic Edition"
