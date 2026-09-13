@@ -7,7 +7,7 @@ area: methodology
 tags: [research, sources, pipeline, methodology, bibliographic-apis, code-hosts, shadow-libraries]
 depends_on: ["[[specs/pipeline/SPEC-023-research-covers-the-whole-spec]]"]
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-13 (follow-up)
 git_branch: "master"
 git_commit: "50a2896"
 author: "researcher"
@@ -270,3 +270,75 @@ Technology Landscape survey (per-item profiles plus a comparison matrix) - the q
 - crates.io's formal written crawler/data-access policy text could not be retrieved (client-rendered SPA); its access rules in this document are inferred from tested behavior (User-Agent gating) rather than a read policy document.
 - No authenticated live call was made against any key-gated source (IEEE Xplore, Springer, Elsevier, Scopus, GitHub code search) - all authenticated-tier behavior above comes from official docs or client-library source, not a live authenticated test, since no keys were available in this pass.
 - Serena's actual capabilities were not independently tested in this research role (finding 3) - a further pass with access to the tool itself, or a report from an agent that has it, would close this.
+
+## Follow-up Research - 2026-09-13
+
+Closes the [[research/pipeline/REVIEW-spec-023-research-consolidation]] gap C6/"ACM Digital Library access mechanics": every path by which an agent can reach ACM content, tested live where unauthenticated.
+
+40. **ACM Digital Library has no public API today; the one GitHub hit is a catalog entry, not a client** (confidence: high)
+    Northeastern's TDM library guide states ACM no longer provides API access to its collections. The only GitHub repository matching "ACM digital library API" is `api-evangelist/acm` (0 stars, updated 2026-09-12), self-described as "an independent third-party profile of a public API surface" - a documentation/cataloging exercise by a single-author project that profiles thousands of unrelated APIs the same way, not working client code. A separate GitHub code search for "acm dl scraper" returns one zero-star, single-purpose conference-import script (`jviterbo/SOL-to-ACM-DL-Converter`), not a general-purpose or actively maintained client.
+    - https://subjectguides.lib.neu.edu/textdatamining/vendorpolicies; `scratchpad/round2-acm/repo_acm.json`; `scratchpad/round2-acm/gh_scraper.json`
+
+41. **ACM's own Digital Library policy explicitly bans scripts, spiders, and harvesting; a separate TDM clause allows computational analysis case by case** (confidence: high)
+    `libraries.acm.org`'s DL usage policy names "using scripts, spiders or other robotic activity to automatically download articles or harvest metadata" as a serious Terms-of-Use violation carrying temporary or permanent loss of an institution's download rights; posting DL materials on a third-party server is separately banned. A distinct institutional-license clause (cited via Cranfield University's TDM guide) permits downloading and computationally analyzing Licensed Material for research/educational, non-commercial purposes, on condition that copies are deleted promptly after analysis and results don't reproduce a substantial part of the content; the listed contact is dl-team@hq.acm.org, and separately permissions@acm.org handles case-by-case data-mining requests. No self-service enrollment path for the TDM clause was found.
+    - https://libraries.acm.org/digital-library/policies (via WebSearch summary, page itself Cloudflare-blocked - see finding 42); https://library.cranfield.ac.uk/text-and-data-mining/publisher-policies
+
+42. **Every acm.org-family domain uniformly returns a Cloudflare bot challenge to any non-browser request, regardless of path, user agent, or whether the target is open access** (confidence: high, tested)
+    Tested live: `dl.acm.org/doi/10.1145/3411764.3445518` (abstract page of a confirmed gold-OA paper), `dl.acm.org/doi/pdf/10.1145/3411764.3445518`, `dl.acm.org/action/exportCiteProcCitation` (BibTeX export), `libraries.acm.org/acmopen`, `libraries.acm.org/digital-library/policies`, and `authors.acm.org/open-access` all returned HTTP 403 with a Cloudflare "Just a moment..." interstitial (`cf-mitigated: challenge`), with both a plain curl user agent and a spoofed Googlebot user agent. `dl.acm.org/robots.txt` itself does not disallow `/doi/` and explicitly disallows AI crawlers (`GPTBot`, `ChatGPT-User`, `CCBot`, `Google-Extended`) by name - the block observed is active bot-fingerprinting at the CDN layer, not a robots.txt directive, and is documented in the wider literature as generally unsolvable by header/UA spoofing alone since it also checks JavaScript execution and TLS fingerprints.
+    - `scratchpad/round2-acm/abs_test.html`, `pdf_test.html`, `citation_export.txt`, `googlebot_test.html`, `authors_oa.html`, `libraries_acmopen.html`, `dl_policies.html`; `dl.acm.org/robots.txt` (fetched, quoted in full in this pass)
+
+43. **ACM Digital Library became fully open access on January 1, 2026, but "open access" here means free-to-read in a browser, not free-to-script** (confidence: medium-high, primary claim triangulated but ACM's own pages were Cloudflare-blocked to direct fetch)
+    Multiple sources (Northeastern library guide, ACM SIGGRAPH's own explainer, and secondary tech coverage) agree: as of 2026-01-01 all ACM journals, conference proceedings, and magazines in the Digital Library - over 600,000 articles - are open access under the "ACM Open" model, funded by institutional and author-side Article Processing Charges rather than reader subscriptions. The DL now has a free Basic tier (search, PDF download, sharing) and a paid Premium tier (analytics, advanced tools) layered on top, available via institutional ACM Open membership or standalone subscription. This changes the *cost* barrier finding 6 (round one) described but not the *access-mechanism* barrier: finding 42 shows the same Cloudflare wall applies to an already-open-access DOI.
+    - WebSearch summary citing authors.acm.org/open-access, libraries.acm.org/acmopen, siggraph.org/news/acm-open-acm-digital-library-and-publishing-with-acm; corroborated independently by Unpaywall and OpenAlex both reporting `oa_status: gold` for a tested 2021 ACM DOI (finding 46) predating the 2026 policy, i.e. that paper was already open under a per-article CC license before the blanket 2026 change
+
+44. **Crossref indexes essentially all ACM works via the 10.1145 DOI prefix but carries abstracts for only about one in six** (confidence: high, tested)
+    `curl "api.crossref.org/works?filter=prefix:10.1145&rows=0"` -> HTTP 200, 766,416 total ACM-prefix works. Restricting to `has-abstract:true` returns 120,573 - about 15.7% - meaning Crossref is a complete metadata (title/authors/references/dates) index for ACM but not a usable abstract source for the large majority of ACM papers. No full text, consistent with round-one finding 8.
+    - `scratchpad/round2-acm/crossref_count.json` (766,416); `scratchpad/round2-acm/crossref_abstract_count.json` (120,573); tested as above
+
+45. **OpenAlex and Semantic Scholar both carry full metadata and abstracts for ACM works and both label a tested paper "gold" open access, but the URL either resolves to is the same Cloudflare-walled ACM page** (confidence: high, tested)
+    Tested against `10.1145/3411764.3445518` (a 2021 CHI paper): OpenAlex returns full metadata, author affiliations, and `open_access.oa_status: gold` with `oa_url` pointing at `doi.org/10.1145/...`. Semantic Scholar's Graph API returns the same DOI plus abstract and `openAccessPdf.status: GOLD`, but `openAccessPdf.url` is also just the bare DOI link, not a direct PDF. Following that DOI redirect with curl lands on `dl.acm.org/doi/10.1145/3411764.3445518` and receives the same HTTP 403 Cloudflare challenge documented in finding 42 - both aggregators' "open access" flag is accurate as a rights statement but does not translate into a fetchable URL for an unauthenticated script.
+    - `scratchpad/round2-acm/openalex_acm.json`; `scratchpad/round2-acm/s2_acm.json`; `scratchpad/round2-acm/doi_redirect.html` (curl -L trace: final URL `dl.acm.org/doi/...`, HTTP 403)
+
+46. **Unpaywall confirms the same gold-OA/CC-BY-NC-SA status for the tested ACM DOI but likewise has no working direct-PDF link** (confidence: high, tested)
+    `curl "api.unpaywall.org/v2/10.1145/3411764.3445518?email=..."` -> HTTP 200, `is_oa: true`, `oa_status: gold`, `license: cc-by-nc-sa`, but `url_for_pdf: null` - the only URL Unpaywall supplies is `url_for_landing_page: https://doi.org/10.1145/...`, the same DOI redirect that hits ACM's Cloudflare wall (finding 45). Unpaywall's own evidence field for this record reads `"deprecated"`, indicating its OA-location data for this record predates a schema change and was not refreshed with a working PDF pointer.
+    - `scratchpad/round2-acm/unpaywall_acm.json`
+
+47. **DBLP is bot-challenged for ACM venue queries too, consistent with round one's general finding, not something specific to non-ACM queries** (confidence: medium, tested)
+    `curl -A "Mozilla/5.0" "dblp.org/search/publ/api?q=chi+2021&format=json"` returned the same Anubis proof-of-work challenge page documented in round one's finding 10 (there tested with a different query), confirming the block is general to this network/session rather than query-specific. DBLP's own documentation and general knowledge describe it as the most complete CS-only bibliography, and ACM conference proceedings and journals are core DBLP content by design, but this pass could not verify that coverage with a live successful call.
+    - `scratchpad/round2-acm/dblp_acm.json`
+
+48. **Institutional/library proxy access (EZproxy, Shibboleth/SAML) is ACM's own documented sanctioned route to full-text and bulk access, but it authenticates a browser session, not a script** (confidence: medium)
+    ACM publishes a sample EZproxy stanza for librarians (`https://libraries.acm.org/subscriptions-access/authentication`) and supports Shibboleth federated login (InCommon and equivalent federations) so a user's institutional credentials unlock full DL access, including a described "premium" tier permitting bulk citation/full-text downloads 50 at a time per one library's guide (Northeastern). Both mechanisms are designed around a human completing a login flow (IP-recognition or SAML redirect-and-credential-entry) in a browser; neither is described anywhere in ACM's own documentation as issuing a bearer token or API key usable by an unattended script, and the general SAML/Shibboleth session lifetime cited by one university guide is one day.
+    - WebSearch summary citing libraries.acm.org/subscriptions-access/authentication, aus.libguides.com/oca/shibboleth, spaces.at.internet2.edu Shibboleth-EZproxy HOW-TO
+
+49. **No path found in this pass gives an agent unattended, scriptable, full-text access to ACM content; every route bottoms out in either a Cloudflare browser check or a human-mediated credential flow** (confidence: high, synthesis of findings 40-48)
+    Summary of the mechanism inventory: no API (finding 40); ToS bans scripted harvesting outright, with a narrow human-negotiated TDM exception (finding 41); the CDN blocks non-browser requests to every acm.org subdomain regardless of open-access status (finding 42, 43); the three aggregators tested (Crossref, OpenAlex, Semantic Scholar, Unpaywall) supply metadata/abstracts and an open-access rights flag but no aggregator supplies a URL that itself bypasses the wall (findings 44-46); DBLP could not be verified live (finding 47); and the one channel ACM documents as reaching full text at scale, institutional proxy/Shibboleth, is built for a logged-in browser, not a script (finding 48). This is a harder wall than D-03's other two named sources: arXiv and GitHub both have no equivalent CDN challenge on their primary content-serving paths.
+
+## Gaps (follow-up)
+
+- Whether ACM's TDM clause (finding 41) or a direct request to permissions@acm.org / dl-team@hq.acm.org would grant Compass a scriptable exception was not tested - it requires an actual outbound request under a named institution or project, which this pass did not send.
+- ACM's DL usage policy and ACM Open pages (libraries.acm.org, authors.acm.org) could only be read via WebSearch summaries in this pass, not fetched directly - both WebFetch and curl hit the same Cloudflare wall documented in finding 42, so the exact policy wording is once-removed from the primary text.
+- DBLP's and OpenReview's live reachability for ACM-specific queries remains unresolved from this network (same open gap round one flagged generally, finding 47 shows it also holds for an ACM-venue query specifically) - re-test from Compass's actual deployment network.
+- Whether ACM's Basic-tier free PDF download (finding 43) is itself rate-limited or CAPTCHA-gated for a real logged-out browser session (as opposed to curl) was not tested - would need a headless-browser test, out of scope for this pass's tooling.
+
+### Live reachability from the deployment machine - 2026-09-13
+
+Closes the gap "bot-blocked from this sandbox's network; retest from the deployment network". Every call below ran with curl from the human's own workstation, the network Compass actually deploys on, with a plain browser-like user agent and a 20-second timeout.
+
+50. **DBLP and Internet Archive Scholar answer 200 with a bot-challenge page, not data** (confidence: high)
+   Both return HTTP 200 and `text/html` to a JSON API call. DBLP's page title is "Making sure you're not a bot!"; IA Scholar's is "Session Verification" with seven challenge markers. A status-code check alone reports them as reachable; a content-type check exposes them. Fatcat's API never completes a TCP handshake (status 000 after 21 seconds, DNS resolves).
+   - `curl -A "Mozilla/5.0 (compass-research)" 'https://dblp.org/search/publ/api?q=...&format=json'` - 200, text/html, title "Making sure you're not a bot!"
+   - `curl ... 'https://scholar.archive.org/search?q=...&format=json'` - 200, text/html, 7 lines matching "challenge"
+   - `curl ... 'https://api.fatcat.wiki/v0/release/lookup?doi=10.1145/3597503'` - 000 after 21.1 s
+
+51. **OpenReview's v2 API is open; v1 is not** (confidence: high)
+   `api2.openreview.net/notes/search` returns JSON with a count and titles; `api.openreview.net/notes` returns 403. A shipped starting list must name the v2 host.
+   - `curl ... 'https://api2.openreview.net/notes/search?term=deep+research&limit=1'` - 200, application/json, count 10000
+   - `curl ... 'https://api.openreview.net/notes?content.title=deep+research&limit=1'` - 403
+
+52. **Crossref, OpenAlex, and Unpaywall answer without a key; Semantic Scholar rate-limits the anonymous tier on the second call** (confidence: high)
+   Crossref and OpenAlex return the work record for an ACM DOI; Unpaywall returns its OA record given an email. Semantic Scholar answered a first anonymous call and returned "Too Many Requests" on the next, so unattended use needs its free key.
+   - `curl ... 'https://api.crossref.org/works/10.1145/3597503'` - 200
+   - `curl ... 'https://api.openalex.org/works/doi:10.1145/3597503'` - 200, W4391558518
+   - `curl ... 'https://api.unpaywall.org/v2/10.1145/3597503?email=...'` - 200
+   - `curl ... 'https://api.semanticscholar.org/graph/v1/paper/arXiv:2512.02038?fields=title'` - 429 "Too Many Requests ... apply for a key"
