@@ -29,6 +29,7 @@ Nothing in the pipeline says how research axes derive from a spec. The only rese
 - **D-05:** Research completely informs what the plan needs. Research might happen and reveal that more research is needed; that is a normal outcome. Research is a super critical step.
 - **D-06:** Research follows a methodology chosen for the case. The research methodologies themselves are researched now, as this spec's own research: how people do surveys and other types of research, and how research scope is defined. Agents choose from the methodologies that research found and follow the one they chose.
 - **D-07:** Sometimes there are plugins in the system that give access to more research or more source code. Research makes use of them.
+- **D-08 [deferred]:** Shadow libraries (Sci-Hub, LibGen, Anna's Archive, Z-Library) are parked: profiled in [[research/pipeline/RESEARCH-source-inventory]] with their legal position, not on the shipped list, to be revisited.
 
 ## Desired Outcome
 
