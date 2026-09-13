@@ -244,7 +244,77 @@ Five parallel literature passes, one per methodology cluster, each instructed to
     - arXiv:2307.04599; github.com/sraedler/Model-Driven-Engineering4Artificial-Intelligence
     - Caveat: repo owner's activity/reliability was not independently verified beyond the paper's own link (per D-03's "check the owner" rule, this needs a follow-up look before being cited as a curated source).
 
-## Taxonomy
+## Follow-up Research - 2026-09-13
+
+Two gaps from the original pass, closed.
+
+### Gap 1: a canonical peer-reviewed SE methodology for technology landscape / comparative evaluation
+
+48. **DESMET is that canonical source** (confidence: high)
+    Kitchenham, Linkman & Law, "DESMET: a methodology for evaluating software engineering methods and tools," *Computing & Control Engineering Journal* 8(3):120-126 (1997), DOI 10.1049/cce:19970304, IEE/IET peer-reviewed. Semantic Scholar records 258 citations, 35 "highly influential." A predecessor Keele technical report (TR96-09, 1996) and a 12-part ACM SIGSOFT Software Engineering Notes series (1996-1998) carry the detailed procedure. This directly answers the Gap this catalog raised: a canonical, peer-reviewed, well-cited SE methodology for evaluating and comparing methods and tools exists, distinct from ThoughtWorks Radar and from general MCDA theory.
+    - https://digital-library.theiet.org/content/journals/10.1049/cce_19970304
+    - https://www.semanticscholar.org/paper/19026a49483bef1b0a68e53743b6e53f4e7a403c
+
+49. **Nine evaluation-method taxonomy with selection criteria** (confidence: high)
+    DESMET names nine evaluation types and gives criteria for picking among them for a given case: quantitative experiment, quantitative case study, quantitative survey, feature analysis (screening mode), feature analysis (case study), feature analysis (experiment), feature analysis (survey), qualitative effects analysis, benchmarking. The SIGSOFT series' Part 2 covers technical selection criteria; later parts add practical and organizational criteria.
+    - ACM SIGSOFT Software Engineering Notes 21(1), 21(2); DOI 10.1145/227531.227533
+
+50. **Authors' own named fit boundary, found by applying the method** (confidence: medium-high)
+    A documented DESMET application found the elements needed for a formal experiment "could not be identified" (no valid control/treatment) and ruled out a survey as premature for a technology too new; the team fell back to case-study-based feature analysis. DESMET's own most rigorous modes (experiment, survey) don't work for evaluating something novel, organization-specific, or hard to isolate a treatment for.
+    - ACM SIGSOFT SEN, Part 12 (1998); ResearchGate 255678279
+
+51. **Separately named limitation: DESMET assumes a controllable process** (confidence: medium)
+    A 2021 application to railway tooling notes DESMET "only works when a department is able to control the development process to ensure valid results," making it harder to apply where process control is looser (e.g. agile settings). Distinct from finding 50's fit boundary, not the same limitation restated.
+    - arXiv:2101.11303 (secondary characterization of DESMET, not DESMET's own text)
+
+52. **DESMET remains in active use, not archival** (confidence: high)
+    A 2021 systematic tool evaluation for railway system design explicitly adapts DESMET's qualitative feature-analysis guidelines (select relevant features, evaluate via documentation review and tool trials, "a sufficient degree of objectivity"). A 2005 study applied DESMET to compare software-inspection tools. A 24-year span of independent applications is evidence of standing use, not a one-off citation.
+    - arXiv:2101.11303; ResearchGate 4215894 (Hedberg & Lappalainen, 2005)
+
+53. **A second, independent peer-reviewed line: systematic review of software-package evaluation and selection** (confidence: high)
+    Jadhav & Sonar, "Evaluating and selecting software packages: A review," *Information and Software Technology* 51:555-563 (2009): a systematic review (64 papers screened from a 2006-2007 search across four databases) of methodologies, techniques, criteria, and decision-support systems for software-package selection, with AHP named among the recurring evaluation-criteria/selection methodologies; a 2011 follow-up appears in the same journal (84:1394-1407). This answers a narrower question than DESMET (packages specifically, not methods/tools generally) but is itself produced by the most rigorous methodology tier in this catalog, a systematic literature review, applied to the technology-selection question.
+    - https://www.sciencedirect.com/science/article/abs/pii/S0950584908001262 ; Semantic Scholar 16c19cacd01e176023e4e666d8ea029496562a43
+
+54. **AHP/MCDA has real SE-venue citation traction for tool selection, beyond general business theory** (confidence: high)
+    Beyond Jadhav & Sonar's synthesis, direct AHP applications with SE-adjacent citations exist: project-management software selection via AHP; agile-practice prioritization via AHP (42 practices across 4 organizations, 40 professionals); scientific-software package ranking via AHP pairwise comparison (arXiv:2110.11575); effort-estimation-model selection via MCDM (arXiv:1310.5220). AHP's own named limitation is that pairwise-comparison burden scales as k(n²-n)/2, which motivates simplified variants such as AHP-express.
+    - arXiv:2110.11575; arXiv:1310.5220; sciencedirect.com/science/article/pii/S2405844023101563
+
+55. **ThoughtWorks confirms, in its own words, that the Radar is not a systematic survey** (confidence: high; extends A-36)
+    The Radar's official FAQ states the company believes its process "represents a reasonable sample but no attempt is made to be a comprehensive survey of the market at large." Published editions carry the subtitle "An opinionated guide to technology frontiers." A ThoughtWorks blog post on building enterprise radars adds: "It doesn't try to be comprehensive, nor does it claim to describe all that's going on in the industry... it should not be confused with a technology lifecycle assessment tool." The 2022 edition (vol. 27) names a further difficulty: "evaluating technology [is] becoming harder [as the] industry adopts AI," citing semantic diffusion of terminology as a contributing cause.
+    - https://www.thoughtworks.com/en-us/radar/faq
+    - https://www.thoughtworks.com/en-br/insights/blog/technology-strategy/how-to-create-your-enterprise-technology-radar
+    - https://www.thoughtworks.com/content/dam/thoughtworks/documents/radar/2022/10/tr_technology_radar_vol_27_en.pdf
+
+**Confidence change:** finding 37 (MCDA as the formal alternative) rises from medium to **high** - AHP/MCDA now has direct SE-venue citations (finding 54), not just general MCDA-literature synthesis. The Gaps entry stating "no single canonical peer-reviewed SE-specific methodology paper was pinned" for this cluster is **closed**: DESMET (findings 48-52) is that paper, with Jadhav & Sonar (finding 53) as an independent second line for the narrower software-package case. No single source unifies both questions (methods/tools in general vs. software packages specifically) into one methodology; the catalog should list DESMET and Jadhav & Sonar as two related but non-identical peer-reviewed answers, not one.
+
+### Gap 2: protocol-registration findings A-44, A-46, A-47
+
+56. **PROSPERO's scope confirmed, refined from "health-related reviews" to "health-related outcome" across a wider domain list** (confidence: medium-high)
+    The CRD's own FAQ states PROSPERO accepts "prospectively registered systematic reviews in health and social care, welfare, public health, education, crime, justice, international development" where there is a "health related outcome." This refines finding 44: PROSPERO is not literally restricted to reviews badged "health," but every accepted domain still requires a health-related outcome, so a general software-engineering review with no health outcome remains out of scope. Finding 44's core claim holds.
+    - https://www.crd.york.ac.uk/PROSPERO/faq (direct WebFetch returned only a JS shell; content retrieved via search snippet of the same page)
+
+57. **Zapata et al.'s protocol (arXiv:2002.04974) re-fetched in full; confidence raised** (confidence: high; primary PDF downloaded and text-extracted)
+    The full text substantially exceeds the prior secondary summary. It fixes: four research questions plus two publication questions, each mapped to a data-extraction item (Table 1); an automated search across five databases (ScienceDirect, SpringerLink, Scopus, IEEE Xplore, ACM Digital Library) built via an explicit four-step search-string construction method; a manual search of three named conference proceedings (ICGSE, ICSE, ESEM); snowballing per Wohlin (2014), run after the automated and manual search; a three-round selection process (title, abstract, full text) against named inclusion/exclusion criteria (IC1-3/EC1-3) with two-person discrepancy resolution and a fourth author arbitrating, quality-checked via Cohen's Kappa.
+    - Local copy: `C:\Users\rtgasi\AppData\Local\Temp\claude\F--claude-plugins-compass\c0fc3fc7-fc23-4997-ab9e-419caebb5529\scratchpad\round2-methods\zapata.pdf` / `zapata.txt`, pp.2-8
+
+58. **"Bridging MDE and AI" (arXiv:2307.04599) author list confirmed directly from the arXiv abstract page** (confidence: high)
+    Authors: Simon Raedler (submitter), Luca Berardinelli, Karolin Winter, Abbas Rahimi, Stefanie Rinderle-Ma. The abstract confirms the SLR methodology described in finding 47 (five databases, 1,335 candidate studies, 18 primary studies, CRISP-DM mapping). No GitHub link appears on the arXiv page itself; the artifact link is external to the paper's own metadata.
+
+59. **The `sraedler` repository's contents confirm the artifact claim** (confidence: high; direct `gh api` read)
+    The repository root contains `Papers.xlsx`, `README.md`, `LICENSE`, and a `Search` directory - the protocol-execution spreadsheet finding 47 described is real, not inferred from the paper alone.
+
+60. **Owner identity check: passes** (confidence: high; `gh api users/sraedler` plus independent, non-GitHub cross-reference)
+    GitHub account `sraedler` (created 2015, 14 public repos, 8 followers) is confirmed to be Simon Rädler, the paper's own first/submitting author, via sources independent of GitHub: a Google Scholar profile with a verified `tum.de` email, the TU Wien Business Informatics Group personnel page, an ORCID (0000-0003-1491-7170), and a ResearchGate profile listing this exact paper. This satisfies D-03's owner check via the identity-and-affiliation route (source-reliability-criteria finding 10: credentials + affiliation + checkable publication record) rather than the open-source-community route (that same document's finding 9).
+
+61. **Open-source-community health signals are weak, but the wrong axis for this artifact class** (confidence: high; direct `gh api` read)
+    Single contributor (`sraedler`, 2 commits), 0 stars, 0 forks, 0 watchers, no activity since 2024-05-09, 0 open issues. Per the review document's X2 finding, star count is not leaned on here regardless (it is zero either way). Bus-factor and cadence metrics are designed for community-maintained OSS libraries; they don't meaningfully apply to a single-author paper-artifact repository, whose reliability question is "is this really the author," answered by finding 60, not "will this project survive its maintainer leaving."
+
+**Confidence changes:**
+- Finding 44 (PROSPERO): unchanged at high; scope description refined per finding 56 above.
+- Finding 46 (Zapata protocol): raised from medium to **high** - full primary text now read directly rather than reconstructed from a secondary description (finding 57).
+- Finding 47 (MDE/AI protocol-on-GitHub): raised from medium to **high** - the repository owner check that this finding's own caveat called for is now done and the owner passes (findings 59-61). The Gaps entry "Two protocol-document findings (44/46/47) rest on secondary description or an unconfirmed GitHub repo owner" is **closed**.
+
+
 
 Classified by the kind of question each methodology answers:
 
