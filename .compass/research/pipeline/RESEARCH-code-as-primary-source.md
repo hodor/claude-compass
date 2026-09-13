@@ -255,3 +255,19 @@ Technology Landscape survey (per-item profiles + comparison) for the tools and e
 - No source location convention was verified against a live private/internal package (only public-registry behavior was checked) - internal monorepos may follow neither the tag heuristics nor deps.dev's coverage.
 - `claude plugin list --json` was only sampled (piped through `head`), not read in full; a complete enumeration of every plugin available to this session (and which ones expose source-code or paper access) is a five-minute follow-up, not done here.
 - Whether Compass's `pattern-finder` agent (`plugin/templates/agents/pattern-finder.md`, referenced in finding 40 but not itself read in this pass) also implements a locate-then-rank pattern comparable to Aider's was not checked.
+
+## Follow-up Research - 2026-09-13
+
+Closes the gap "full plugin inventory only sampled". Both commands run in full from this repo.
+
+45. **Twelve plugin entries resolve to six distinct plugins; four give research access** (confidence: high)
+   `claude plugin list --json` returns 12 entries because the same plugin registers at user, project, and local scope separately. Distinct: `zoekt-ue5`, `zoekt-ue58`, `zoekt-defold`, `zoekt-fortnite` (code-search indexes over engine source, enabled per scope), `rust-analyzer-lsp` (language server), `superpowers` and `pinecone` (disabled here). An agent enumerating must dedupe on name and read `enabled` per scope.
+   - `claude plugin list --json` - 12 entries, fields `name`, `version`, `scope`, `enabled`
+
+46. **Five MCP servers connected; two are research surfaces** (confidence: high)
+   `claude mcp list` reports health live. `serena` (symbol-level code navigation over the current project) and `headroom` (context compression and retrieval) serve research; the three claude.ai Google connectors do not.
+   - `claude mcp list` - five servers, all `Connected`
+
+47. **Neither command is called by any Compass skill** (confidence: high)
+   Corroborates finding 44: the research and research-codebase skills contain no discovery step, so D-07 has no mechanical hook today.
+   - `grep -rn "claude mcp list\|claude plugin list" plugin/` - no matches

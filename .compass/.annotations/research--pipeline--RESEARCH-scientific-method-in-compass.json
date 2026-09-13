@@ -1,0 +1,17 @@
+{
+  "path": "research/pipeline/RESEARCH-scientific-method-in-compass.md",
+  "notes": [
+    {
+      "text": "Finding 2's 'four named approaches' (obsidian/SKILL.md:222-230) is still accurate for the shipped skill, but SPEC-023's research produced a catalog of eight methodologies plus protocol registration - see [[research/pipeline/RESEARCH-research-methodologies-catalog]]. The four-entry table is now a shortfall against SPEC-023 D-06, not a neutral fact: five of six SPEC-023 researchers chose from the four-item table, and the one they picked (technology landscape) is the one the catalog rates as least grounded.",
+      "by": "reviewer",
+      "date": "2026-09-13",
+      "tags": ["superseded-in-part", "methodology", "SPEC-023"]
+    },
+    {
+      "text": "Recommendations 1-3 (pre-register a falsifiable hypothesis, freeze it, check it after build) had no source for the format. SPEC-023's methodology catalog supplies three: PROSPERO's field set, OSF's preregistration and systematic-review templates, and the standalone software-engineering protocol document shape (findings 44-47 of [[research/pipeline/RESEARCH-research-methodologies-catalog]]). Findings 46-47 rest on secondary description and an unverified repo owner - re-fetch before citing.",
+      "by": "reviewer",
+      "date": "2026-09-13",
+      "tags": ["new-evidence", "pre-registration"]
+    }
+  ]
+}
