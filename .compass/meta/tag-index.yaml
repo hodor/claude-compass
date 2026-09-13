@@ -832,6 +832,7 @@ tags:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   - decisions/pipeline/index.md
   - lessons/LESSON-parallel-research-check-siblings-first.md
+  - plans/PLAN-018-research-covers-the-whole-spec.md
   - research/pipeline/RESEARCH-code-as-primary-source.md
   - research/pipeline/RESEARCH-research-methodologies-catalog.md
   - research/pipeline/RESEARCH-research-spawning-research.md
@@ -967,6 +968,7 @@ tags:
   - specs/pipeline/SPEC-009-configurable-pipeline-workflows.md
   pipeline:
   - lessons/pipeline/index.md
+  - plans/PLAN-018-research-covers-the-whole-spec.md
   - research/pipeline/RESEARCH-research-methodologies-catalog.md
   - research/pipeline/RESEARCH-research-spawning-research.md
   - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
@@ -1008,6 +1010,7 @@ tags:
   plugin-yaml:
   - research/distribution/RESEARCH-self-update-surfaces.md
   plugins:
+  - plans/PLAN-018-research-covers-the-whole-spec.md
   - specs/pipeline/SPEC-024-walled-sources-through-the-browser.md
   popper:
   - research/pipeline/RESEARCH-scientific-method-in-compass.md
@@ -1109,6 +1112,7 @@ tags:
   research:
   - lessons/LESSON-parallel-research-check-siblings-first.md
   - lessons/LESSON-verify-wiring-by-call-site-grep.md
+  - plans/PLAN-018-research-covers-the-whole-spec.md
   - research/pipeline/RESEARCH-code-as-primary-source.md
   - research/pipeline/RESEARCH-research-methodologies-catalog.md
   - research/pipeline/RESEARCH-research-spawning-research.md
@@ -1170,6 +1174,7 @@ tags:
   - research/pipeline/RESEARCH-scientific-method-in-compass.md
   scope:
   - lessons/vault-structure/LESSON-next-num-scope-doubles-type-dir.md
+  - plans/PLAN-018-research-covers-the-whole-spec.md
   - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
   - research/pipeline/REVIEW-spec-023-research-consolidation.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
@@ -1234,6 +1239,7 @@ tags:
   source-code:
   - research/pipeline/RESEARCH-code-as-primary-source.md
   sources:
+  - plans/PLAN-018-research-covers-the-whole-spec.md
   - research/pipeline/RESEARCH-source-inventory.md
   - research/pipeline/RESEARCH-source-reliability-criteria.md
   - research/pipeline/REVIEW-spec-023-research-consolidation.md
