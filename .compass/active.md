@@ -1,6 +1,6 @@
 ---
 title: Active Tasks
-updated: 2026-08-24
+updated: 2026-09-13
 ---
 
 # Active Tasks
@@ -15,6 +15,12 @@ Triggered by a live failure in another project: a vision session produced seven 
 
 - [ ] D-13 follow-up: grep across all indexes made the most obvious first move for agents (capability + rule nudge; folds into TASK-119's strategy work)
 - [ ] v0.15.0's premature skill/sync edits were reverted; index depth-0 rule stays (shipped); everything further waits on the plan.
+
+## Research covers the whole spec (SPEC-023)
+
+- [ ] Rulings pending on [[research/pipeline/REVIEW-spec-023-research-consolidation]]: methodology floor under D-06, the shipped source list under D-03, the mechanism for D-02, shadow libraries in or out.
+- [ ] Plan from [[specs/pipeline/SPEC-023-research-covers-the-whole-spec]] and the review once the rulings land.
+- [ ] Open: a text-and-data-mining request to ACM is the human's to send if wanted.
 
 ## Next Up
 
