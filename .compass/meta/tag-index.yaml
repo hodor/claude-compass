@@ -26,6 +26,8 @@ tags:
   - lessons/experiments/LESSON-human-practice-rationing-assumes-human-scarcity.md
   agent-protocol:
   - lessons/subagents/LESSON-dont-strip-agent-quality-stations.md
+  agent-tool:
+  - lessons/subagents/LESSON-teammate-spawn-omit-name.md
   agentic-testing:
   - research/test-quality/RESEARCH-test-quality-craft-and-practice.md
   agents:
@@ -121,6 +123,8 @@ tags:
   - research/vault-structure/RESEARCH-rag-fit-for-large-vaults.md
   - specs/vault-structure/SPEC-003-hierarchical-vault-organization.md
   - specs/vault-structure/SPEC-019-active-holds-only-active-work.md
+  call-sites:
+  - lessons/LESSON-verify-wiring-by-call-site-grep.md
   capture:
   - decisions/learning/ADR-013-detached-worker-quiet-fallback.md
   - decisions/learning/ADR-016-capture-by-extraction.md
@@ -196,6 +200,7 @@ tags:
   code-hosts:
   - research/pipeline/RESEARCH-source-inventory.md
   code-reading:
+  - lessons/LESSON-verify-wiring-by-call-site-grep.md
   - research/pipeline/RESEARCH-code-as-primary-source.md
   code-review:
   - lessons/subagents/LESSON-dont-strip-agent-quality-stations.md
@@ -215,6 +220,8 @@ tags:
   - research/distribution/RESEARCH-gsd-core-improvements-for-compass.md
   concatenation:
   - decisions/distribution/ADR-020-local-overlays-appended-after-refresh.md
+  confidence:
+  - lessons/LESSON-verify-wiring-by-call-site-grep.md
   confidence-threshold:
   - lessons/vault-structure/LESSON-hierarchical-placement-tolerate-disagreement.md
   config:
@@ -314,6 +321,7 @@ tags:
   - specs/learning/SPEC-002-lessons-and-index-subsystem.md
   deduplication:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
+  - lessons/LESSON-parallel-research-check-siblings-first.md
   deep-research:
   - research/pipeline/RESEARCH-research-spawning-research.md
   deep-research-agents:
@@ -810,6 +818,7 @@ tags:
   methodology:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   - decisions/pipeline/index.md
+  - lessons/LESSON-parallel-research-check-siblings-first.md
   - research/pipeline/RESEARCH-code-as-primary-source.md
   - research/pipeline/RESEARCH-research-methodologies-catalog.md
   - research/pipeline/RESEARCH-research-spawning-research.md
@@ -894,6 +903,7 @@ tags:
   - lessons/subagents/LESSON-long-agents-stall-resume-them.md
   - lessons/subagents/LESSON-subagent-reports-need-sendmessage.md
   - lessons/subagents/LESSON-subagent-worktrees-fork-stale.md
+  - lessons/subagents/LESSON-teammate-spawn-omit-name.md
   - lessons/subagents/LESSON-verify-worktree-isolation-is-real.md
   - lessons/subagents/index.md
   orphans:
@@ -911,6 +921,8 @@ tags:
   - research/test-quality/RESEARCH-test-quality-bar-validation.md
   paired-judge:
   - lessons/experiments/LESSON-score-the-do-nothing-baseline-before-running.md
+  parallel-agents:
+  - lessons/LESSON-parallel-research-check-siblings-first.md
   parallel-builders:
   - lessons/subagents/LESSON-subagent-worktrees-fork-stale.md
   paraphrase:
@@ -1080,6 +1092,8 @@ tags:
   requirements-engineering:
   - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
   research:
+  - lessons/LESSON-parallel-research-check-siblings-first.md
+  - lessons/LESSON-verify-wiring-by-call-site-grep.md
   - research/pipeline/RESEARCH-code-as-primary-source.md
   - research/pipeline/RESEARCH-research-methodologies-catalog.md
   - research/pipeline/RESEARCH-research-spawning-research.md
@@ -1208,6 +1222,8 @@ tags:
   - research/pipeline/RESEARCH-source-reliability-criteria.md
   - research/pipeline/REVIEW-spec-023-research-consolidation.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
+  spawn:
+  - lessons/subagents/LESSON-teammate-spawn-omit-name.md
   spawned-sessions:
   - lessons/hooks/LESSON-spawned-sessions-inherit-project-hooks.md
   spec-005:
@@ -1255,6 +1271,7 @@ tags:
   - lessons/subagents/LESSON-long-agents-stall-resume-them.md
   - lessons/subagents/LESSON-subagent-reports-need-sendmessage.md
   - lessons/subagents/LESSON-subagent-worktrees-fork-stale.md
+  - lessons/subagents/LESSON-teammate-spawn-omit-name.md
   - lessons/subagents/LESSON-verify-worktree-isolation-is-real.md
   - lessons/subagents/index.md
   - research/distribution/RESEARCH-deepseek-harness-fit.md
@@ -1310,6 +1327,8 @@ tags:
   - specs/vault-structure/index.md
   tdd:
   - research/test-quality/RESEARCH-test-quality-craft-and-practice.md
+  teammate:
+  - lessons/subagents/LESSON-teammate-spawn-omit-name.md
   teammates:
   - decisions/learning/ADR-019-subagentstop-redelivery-and-teammate-typing.md
   templates:
@@ -1467,6 +1486,8 @@ tags:
   vault-structure:
   - research/vault-structure/RESEARCH-hybrid-hierarchy-impl.md
   - specs/vault-structure/SPEC-010-universal-hybrid-hierarchy.md
+  vault-writes:
+  - lessons/LESSON-parallel-research-check-siblings-first.md
   vector-search:
   - research/vault-structure/RESEARCH-rag-fit-for-large-vaults.md
   vendored-install:
@@ -1480,6 +1501,7 @@ tags:
   - research/learning/RESEARCH-humans-words-fidelity.md
   - specs/learning/SPEC-021-capture-in-the-humans-words.md
   verification:
+  - lessons/LESSON-verify-wiring-by-call-site-grep.md
   - lessons/pipeline/LESSON-verify-the-inverse-not-the-forward-path.md
   - specs/pipeline/SPEC-013-test-quality.md
   verify:
