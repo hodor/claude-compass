@@ -32,7 +32,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[research/rolling-wave/index|rolling-wave]] (folder, 4 children) - plan detail tracking proximity - receding horizons, flow theory, practice
 - [[research/test-quality/index|test-quality]] (folder, 7 children) - what makes a test suite good and how to measure it
 - [[research/vault-structure/index|vault-structure]] (folder, 10 children) - evidence on organizing and retrieving vault memory - hierarchy, tiers, RAG, graphs, taxonomy
-- [[research/pipeline/index|pipeline]] (folder, 9 children) - evidence on the pipeline as a method - benchmarks, scientific rigor, decision-coverage mechanics
+- [[research/pipeline/index|pipeline]] (folder, 10 children) - evidence on the pipeline as a method - benchmarks, scientific rigor, decision-coverage mechanics
 
 ## Plans
 

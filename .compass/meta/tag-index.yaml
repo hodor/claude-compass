@@ -230,6 +230,7 @@ tags:
   - specs/distribution/SPEC-008-central-model-resolution-table.md
   consolidation:
   - decisions/vault-structure/ADR-021-index-speaks-in-domains.md
+  - research/pipeline/REVIEW-spec-023-research-consolidation.md
   - specs/vault-structure/SPEC-022-vault-organized-per-domain.md
   content-aware:
   - lessons/vault-structure/LESSON-wikilink-validator-skip-code.md
@@ -240,6 +241,7 @@ tags:
   control-arm:
   - lessons/experiments/LESSON-score-the-do-nothing-baseline-before-running.md
   convergence:
+  - research/pipeline/REVIEW-spec-023-research-consolidation.md
   - research/test-quality/RESEARCH-test-quality-synthesis.md
   conversation-surface:
   - decisions/learning/ADR-013-detached-worker-quiet-fallback.md
@@ -814,6 +816,7 @@ tags:
   - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
   - research/pipeline/RESEARCH-source-inventory.md
   - research/pipeline/RESEARCH-source-reliability-criteria.md
+  - research/pipeline/REVIEW-spec-023-research-consolidation.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
   - specs/pipeline/index.md
   methodology-eval:
@@ -944,6 +947,7 @@ tags:
   - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
   - research/pipeline/RESEARCH-source-inventory.md
   - research/pipeline/RESEARCH-source-reliability-criteria.md
+  - research/pipeline/REVIEW-spec-023-research-consolidation.md
   - research/pipeline/index.md
   - specs/pipeline/SPEC-009-configurable-pipeline-workflows.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
@@ -1082,6 +1086,7 @@ tags:
   - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
   - research/pipeline/RESEARCH-source-inventory.md
   - research/pipeline/RESEARCH-source-reliability-criteria.md
+  - research/pipeline/REVIEW-spec-023-research-consolidation.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
   research-redesign:
   - handoffs/2026-03-12_review-all-plugin-files.md
@@ -1113,6 +1118,7 @@ tags:
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   - lessons/pipeline/LESSON-adversarial-plan-review-before-build.md
+  - research/pipeline/REVIEW-spec-023-research-consolidation.md
   ripple:
   - research/vault-structure/RESEARCH-taxonomy-for-unambiguous-placement.md
   rolling-wave:
@@ -1135,6 +1141,7 @@ tags:
   scope:
   - lessons/vault-structure/LESSON-next-num-scope-doubles-type-dir.md
   - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
+  - research/pipeline/REVIEW-spec-023-research-consolidation.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
   scope-notes:
   - lessons/vault-structure/LESSON-scope-notes-are-load-bearing.md
@@ -1199,6 +1206,7 @@ tags:
   sources:
   - research/pipeline/RESEARCH-source-inventory.md
   - research/pipeline/RESEARCH-source-reliability-criteria.md
+  - research/pipeline/REVIEW-spec-023-research-consolidation.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
   spawned-sessions:
   - lessons/hooks/LESSON-spawned-sessions-inherit-project-hooks.md

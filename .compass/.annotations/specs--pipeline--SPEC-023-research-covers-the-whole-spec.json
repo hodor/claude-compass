@@ -1,0 +1,23 @@
+{
+  "path": "specs/pipeline/SPEC-023-research-covers-the-whole-spec.md",
+  "notes": [
+    {
+      "text": "D-03 names ACM as the first curated point to look, and the research found no mechanical way to reach it: ACM Digital Library has no public API, none of the four agents surveyed integrates it, and the methodology-catalog pass fell back to Semantic Scholar and open-access mirrors because ACM and Elsevier were unreachable. Converged across three documents. See [[research/pipeline/REVIEW-spec-023-research-consolidation]] claim C6 before planning any ACM-backed source step.",
+      "by": "reviewer",
+      "date": "2026-09-13",
+      "tags": ["conflict", "D-03", "sources"]
+    },
+    {
+      "text": "The third success criterion ('every finding names a source whose reliability was checked') can be silently dropped by an agent that follows D-06 correctly: mapping-study methodology instructs reviewers to skip quality assessment by design, while SLRs mandate it. Any methodology chooser shipped for D-06 needs to carry the D-03 check independently of the chosen methodology.",
+      "by": "reviewer",
+      "date": "2026-09-13",
+      "tags": ["conflict", "D-06", "D-03"]
+    },
+    {
+      "text": "The Needs line 'the human's own questions weigh more than any question the spec lists' was addressed by no document in the first research round. Closest precedent found is Gemini Deep Research's user-editable plan (RESEARCH-scope-derivation-from-a-spec finding 30).",
+      "by": "reviewer",
+      "date": "2026-09-13",
+      "tags": ["gap", "needs-research"]
+    }
+  ]
+}
