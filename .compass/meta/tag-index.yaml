@@ -9,6 +9,7 @@ tags:
   - specs/pipeline/SPEC-007-decision-coverage-tracing.md
   acm:
   - research/pipeline/REVIEW-spec-023-research-consolidation.md
+  - specs/pipeline/SPEC-024-walled-sources-through-the-browser.md
   active-tasks:
   - decisions/vault-structure/ADR-014-active-sweep-on-sync.md
   - plans/PLAN-011-active-sweep.md
@@ -106,9 +107,13 @@ tags:
   born-folder:
   - lessons/vault-structure/LESSON-obsidian-bare-link-creates-stray-note.md
   - lessons/vault-structure/LESSON-sizing-unrecorded-blind-to-born-folder.md
+  bot-wall:
+  - specs/pipeline/SPEC-024-walled-sources-through-the-browser.md
   briefs:
   - lessons/subagents/LESSON-dont-strip-agent-quality-stations.md
   - lessons/subagents/LESSON-subagent-reports-need-sendmessage.md
+  browser:
+  - specs/pipeline/SPEC-024-walled-sources-through-the-browser.md
   bug-reports:
   - lessons/test-quality/LESSON-revert-to-prove-a-regression-test.md
   build-skill:
@@ -293,6 +298,8 @@ tags:
   - specs/pipeline/SPEC-009-configurable-pipeline-workflows.md
   data-loss:
   - lessons/distribution/LESSON-installer-removes-only-what-it-installed.md
+  dblp:
+  - specs/pipeline/SPEC-024-walled-sources-through-the-browser.md
   dead-code:
   - decisions/ADR-017-capability-index-and-usage-record.md
   - plans/PLAN-014-capability-usage.md
@@ -1000,6 +1007,8 @@ tags:
   - lessons/hooks/LESSON-hook-if-clause-no-or.md
   plugin-yaml:
   - research/distribution/RESEARCH-self-update-surfaces.md
+  plugins:
+  - specs/pipeline/SPEC-024-walled-sources-through-the-browser.md
   popper:
   - research/pipeline/RESEARCH-scientific-method-in-compass.md
   portability:
@@ -1108,6 +1117,7 @@ tags:
   - research/pipeline/RESEARCH-source-reliability-criteria.md
   - research/pipeline/REVIEW-spec-023-research-consolidation.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
+  - specs/pipeline/SPEC-024-walled-sources-through-the-browser.md
   research-redesign:
   - handoffs/2026-03-12_review-all-plugin-files.md
   research-synthesis:
@@ -1228,6 +1238,7 @@ tags:
   - research/pipeline/RESEARCH-source-reliability-criteria.md
   - research/pipeline/REVIEW-spec-023-research-consolidation.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
+  - specs/pipeline/SPEC-024-walled-sources-through-the-browser.md
   spawn:
   - lessons/subagents/LESSON-teammate-spawn-omit-name.md
   spawned-sessions:
