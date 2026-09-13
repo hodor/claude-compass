@@ -7,6 +7,8 @@ tags:
   - lessons/test-quality/LESSON-untestable-criterion-is-a-spec-defect.md
   accuracy:
   - specs/pipeline/SPEC-007-decision-coverage-tracing.md
+  acm:
+  - research/pipeline/REVIEW-spec-023-research-consolidation.md
   active-tasks:
   - decisions/vault-structure/ADR-014-active-sweep-on-sync.md
   - plans/PLAN-011-active-sweep.md
@@ -218,6 +220,8 @@ tags:
   - research/hermes/RESEARCH-hermes-vs-compass-fit.md
   competitive:
   - research/distribution/RESEARCH-gsd-core-improvements-for-compass.md
+  completeness-scoring:
+  - research/pipeline/REVIEW-spec-023-research-consolidation.md
   concatenation:
   - decisions/distribution/ADR-020-local-overlays-appended-after-refresh.md
   confidence:
@@ -644,6 +648,8 @@ tags:
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   human-practice:
   - lessons/experiments/LESSON-human-practice-rationing-assumes-human-scarcity.md
+  human-priority:
+  - research/pipeline/REVIEW-spec-023-research-consolidation.md
   human-voice:
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   humanlayer:
