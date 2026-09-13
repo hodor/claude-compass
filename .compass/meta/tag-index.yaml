@@ -87,6 +87,8 @@ tags:
   benchmarks:
   - lessons/test-quality/LESSON-test-driven-tasks-dont-discriminate.md
   - research/pipeline/RESEARCH-evaluation-benchmarks.md
+  bibliographic-apis:
+  - research/pipeline/RESEARCH-source-inventory.md
   blinding:
   - lessons/experiments/LESSON-blind-the-author-in-self-validation.md
   bloat:
@@ -191,6 +193,10 @@ tags:
   - lessons/vault-structure/LESSON-obsidian-bare-link-creates-stray-note.md
   co-location:
   - specs/vault-structure/SPEC-010-universal-hybrid-hierarchy.md
+  code-hosts:
+  - research/pipeline/RESEARCH-source-inventory.md
+  code-reading:
+  - research/pipeline/RESEARCH-code-as-primary-source.md
   code-review:
   - lessons/subagents/LESSON-dont-strip-agent-quality-stations.md
   code-sweep:
@@ -265,6 +271,8 @@ tags:
   - lessons/platform/LESSON-windows-crlf-breaks-linux-container-scripts.md
   cross-platform:
   - lessons/platform/LESSON-windows-crlf-breaks-linux-container-scripts.md
+  curation:
+  - research/pipeline/RESEARCH-source-reliability-criteria.md
   customization:
   - decisions/distribution/ADR-020-local-overlays-appended-after-refresh.md
   - research/distribution/RESEARCH-update-safe-customization.md
@@ -304,6 +312,10 @@ tags:
   - specs/learning/SPEC-002-lessons-and-index-subsystem.md
   deduplication:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
+  deep-research:
+  - research/pipeline/RESEARCH-research-spawning-research.md
+  deep-research-agents:
+  - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
   deepseek:
   - plans/PLAN-017-dsh-host-support.md
   - research/distribution/RESEARCH-deepseek-harness-fit.md
@@ -343,6 +355,8 @@ tags:
   - lessons/platform/LESSON-windows-crlf-breaks-linux-container-scripts.md
   doctor:
   - decisions/distribution/ADR-020-local-overlays-appended-after-refresh.md
+  documentation-drift:
+  - research/pipeline/RESEARCH-code-as-primary-source.md
   domain:
   - decisions/distribution/index.md
   - decisions/learning/index.md
@@ -490,6 +504,8 @@ tags:
   - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
   grep:
   - research/vault-structure/RESEARCH-grep-vs-graph-experiment.md
+  grey-literature:
+  - research/pipeline/RESEARCH-research-methodologies-catalog.md
   gsd:
   - research/distribution/RESEARCH-gsd-core-improvements-for-compass.md
   - research/pipeline/RESEARCH-decision-coverage-impl.md
@@ -681,6 +697,8 @@ tags:
   isolation:
   - lessons/subagents/LESSON-verify-worktree-isolation-is-real.md
   - lessons/vault-structure/LESSON-scratch-vaults-need-compass-dir.md
+  iteration:
+  - research/pipeline/RESEARCH-research-spawning-research.md
   jargon:
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   jit:
@@ -754,12 +772,15 @@ tags:
   - specs/distribution/SPEC-014-update-safe-customizations.md
   lost-in-the-middle:
   - research/vault-structure/RESEARCH-hierarchical-knowledge-base-design.md
+  mapping-study:
+  - research/pipeline/RESEARCH-research-methodologies-catalog.md
   markers:
   - research/distribution/RESEARCH-update-safe-customization.md
   materializers:
   - plans/PLAN-017-dsh-host-support.md
   mcp:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
+  - research/pipeline/RESEARCH-code-as-primary-source.md
   mcp-rejected:
   - compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work.md
   measurement:
@@ -787,6 +808,12 @@ tags:
   methodology:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   - decisions/pipeline/index.md
+  - research/pipeline/RESEARCH-code-as-primary-source.md
+  - research/pipeline/RESEARCH-research-methodologies-catalog.md
+  - research/pipeline/RESEARCH-research-spawning-research.md
+  - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
+  - research/pipeline/RESEARCH-source-inventory.md
+  - research/pipeline/RESEARCH-source-reliability-criteria.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
   - specs/pipeline/index.md
   methodology-eval:
@@ -808,6 +835,8 @@ tags:
   - specs/distribution/SPEC-008-central-model-resolution-table.md
   monitoring:
   - lessons/subagents/LESSON-long-agents-stall-resume-them.md
+  multi-agent:
+  - research/pipeline/RESEARCH-research-spawning-research.md
   multi-host:
   - handoffs/PLAN-017-dsh-host-support/2026-09-05_21-30-00_wave6-zero-decision-queued.md
   - plans/PLAN-017-dsh-host-support.md
@@ -910,6 +939,11 @@ tags:
   - specs/pipeline/SPEC-009-configurable-pipeline-workflows.md
   pipeline:
   - lessons/pipeline/index.md
+  - research/pipeline/RESEARCH-research-methodologies-catalog.md
+  - research/pipeline/RESEARCH-research-spawning-research.md
+  - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
+  - research/pipeline/RESEARCH-source-inventory.md
+  - research/pipeline/RESEARCH-source-reliability-criteria.md
   - research/pipeline/index.md
   - specs/pipeline/SPEC-009-configurable-pipeline-workflows.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
@@ -984,6 +1018,8 @@ tags:
   - research/learning/RESEARCH-humans-words-fidelity.md
   prose:
   - lessons/instructions/LESSON-remove-context-before-adding.md
+  protocol:
+  - research/pipeline/RESEARCH-research-methodologies-catalog.md
   prototypes:
   - lessons/experiments/LESSON-score-the-do-nothing-baseline-before-running.md
   provenance:
@@ -1027,13 +1063,25 @@ tags:
   - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
   releases:
   - handoffs/2026-08-31_12-04-15_v0.17.x-hardening.md
+  reliability:
+  - research/pipeline/RESEARCH-source-reliability-criteria.md
   replanning:
   - research/rolling-wave/RESEARCH-rolling-wave-agent-planning.md
   replication:
   - research/pipeline/RESEARCH-scientific-method-in-compass.md
   reports:
   - lessons/subagents/LESSON-subagent-reports-need-sendmessage.md
+  repository-mining:
+  - research/pipeline/RESEARCH-research-methodologies-catalog.md
+  requirements-engineering:
+  - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
   research:
+  - research/pipeline/RESEARCH-code-as-primary-source.md
+  - research/pipeline/RESEARCH-research-methodologies-catalog.md
+  - research/pipeline/RESEARCH-research-spawning-research.md
+  - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
+  - research/pipeline/RESEARCH-source-inventory.md
+  - research/pipeline/RESEARCH-source-reliability-criteria.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
   research-redesign:
   - handoffs/2026-03-12_review-all-plugin-files.md
@@ -1078,17 +1126,22 @@ tags:
   - specs/pipeline/SPEC-015-rolling-wave-planning.md
   rules:
   - lessons/instructions/LESSON-remove-context-before-adding.md
+  saturation:
+  - research/pipeline/RESEARCH-research-spawning-research.md
   scaling:
   - research/vault-structure/RESEARCH-rag-fit-for-large-vaults.md
   scientific-method:
   - research/pipeline/RESEARCH-scientific-method-in-compass.md
   scope:
   - lessons/vault-structure/LESSON-next-num-scope-doubles-type-dir.md
+  - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
   scope-notes:
   - lessons/vault-structure/LESSON-scope-notes-are-load-bearing.md
   - plans/PLAN-016-domain-taxonomy.md
   - research/vault-structure/RESEARCH-taxonomy-for-unambiguous-placement.md
+  scoping-review:
+  - research/pipeline/RESEARCH-research-methodologies-catalog.md
   scratchpad:
   - lessons/experiments/LESSON-deterministic-fixtures-survive-scratch-wipes.md
   - lessons/platform/LESSON-windows-heredoc-backslash-escapes.md
@@ -1114,6 +1167,8 @@ tags:
   setup:
   - decisions/distribution/ADR-008-model-resolution-table.md
   - plans/PLAN-005-model-table.md
+  shadow-libraries:
+  - research/pipeline/RESEARCH-source-inventory.md
   shape-up:
   - research/rolling-wave/RESEARCH-rolling-wave-software-practice.md
   signals:
@@ -1137,7 +1192,13 @@ tags:
   - plans/PLAN-001-lessons-and-index-implementation.md
   - plans/PLAN-013-capture-by-extraction.md
   - research/distribution/RESEARCH-deepseek-harness-fit.md
+  snowballing:
+  - research/pipeline/RESEARCH-research-methodologies-catalog.md
+  source-code:
+  - research/pipeline/RESEARCH-code-as-primary-source.md
   sources:
+  - research/pipeline/RESEARCH-source-inventory.md
+  - research/pipeline/RESEARCH-source-reliability-criteria.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
   spawned-sessions:
   - lessons/hooks/LESSON-spawned-sessions-inherit-project-hooks.md
@@ -1177,6 +1238,8 @@ tags:
   - lessons/hooks/LESSON-hook-cli-gate-stdin-on-flag.md
   stdlib:
   - research/test-quality/RESEARCH-test-quality-tooling.md
+  stopping-rules:
+  - research/pipeline/RESEARCH-research-spawning-research.md
   strategy:
   - research/hermes/RESEARCH-hermes-vs-compass-fit.md
   subagents:
@@ -1211,6 +1274,9 @@ tags:
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   - research/rolling-wave/RESEARCH-rolling-wave-synthesis.md
   - research/test-quality/RESEARCH-test-quality-synthesis.md
+  systematic-review:
+  - research/pipeline/RESEARCH-research-methodologies-catalog.md
+  - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
   tag-index:
   - lessons/vault-structure/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   tamper-evidence:
@@ -1308,6 +1374,7 @@ tags:
   tool-scoping:
   - lessons/subagents/LESSON-headless-worker-denies-tools-silently.md
   tooling:
+  - research/pipeline/RESEARCH-code-as-primary-source.md
   - research/test-quality/RESEARCH-test-quality-tooling.md
   - specs/tooling/index.md
   traceability:
