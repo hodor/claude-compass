@@ -83,6 +83,8 @@ tags:
   - research/vault-structure/RESEARCH-grep-vs-graph-experiment.md
   baseline:
   - lessons/experiments/LESSON-score-the-do-nothing-baseline-before-running.md
+  bash-output:
+  - lessons/LESSON-verify-exactness-past-a-compressing-layer.md
   batch-size:
   - research/rolling-wave/RESEARCH-rolling-wave-flow-theory.md
   bayesian:
@@ -227,6 +229,8 @@ tags:
   - research/distribution/RESEARCH-gsd-core-improvements-for-compass.md
   completeness-scoring:
   - research/pipeline/REVIEW-spec-023-research-consolidation.md
+  compression:
+  - lessons/LESSON-verify-exactness-past-a-compressing-layer.md
   concatenation:
   - decisions/distribution/ADR-020-local-overlays-appended-after-refresh.md
   confidence:
@@ -443,6 +447,8 @@ tags:
   evidence:
   - lessons/experiments/LESSON-pin-the-motivating-datum.md
   - lessons/hooks/LESSON-hook-payloads-observe-before-coding.md
+  exactness:
+  - lessons/LESSON-verify-exactness-past-a-compressing-layer.md
   experiment:
   - research/vault-structure/RESEARCH-grep-vs-graph-experiment.md
   experiments:
@@ -559,6 +565,8 @@ tags:
   - lessons/subagents/LESSON-headless-worker-denies-tools-silently.md
   - plans/PLAN-010-invisible-capture.md
   - research/learning/RESEARCH-invisible-scaffolding.md
+  headroom:
+  - lessons/LESSON-verify-exactness-past-a-compressing-layer.md
   heredoc:
   - lessons/platform/LESSON-windows-heredoc-backslash-escapes.md
   hermes:
@@ -1524,6 +1532,7 @@ tags:
   - research/learning/RESEARCH-humans-words-fidelity.md
   - specs/learning/SPEC-021-capture-in-the-humans-words.md
   verification:
+  - lessons/LESSON-verify-exactness-past-a-compressing-layer.md
   - lessons/LESSON-verify-wiring-by-call-site-grep.md
   - lessons/pipeline/LESSON-verify-the-inverse-not-the-forward-path.md
   - specs/pipeline/SPEC-013-test-quality.md
