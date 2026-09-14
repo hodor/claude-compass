@@ -43,6 +43,8 @@ If the question references specific files (tickets, specs, configs), read them F
 
 Break the question into composable areas: components to investigate, patterns to find, data flows to trace. Plan parallel work.
 
+If the question is about how a third-party library or API behaves rather than about this repo, follow External source below instead of spawning locator/analyzer on the local checkout.
+
 ### 4. Spawn parallel sub-agents
 
 Two pairs plus pattern-finder. Brief them lightly - they know their jobs.
@@ -153,6 +155,43 @@ Summarize the findings inline, point to the saved document, ask:
 
 If the user asks more questions on the same topic, append a `## Follow-up Research - YYYY-MM-DD` section to the same document. Update the `updated` frontmatter field. Don't create a new document unless the follow-up is genuinely a different topic.
 
+## External source: a library's own code, not its docs
+
+When the question is about how a third-party library or API behaves, fetch that library's own source and read it instead of trusting its documentation. Documentation goes stale relative to the code it describes; the source is the current, authoritative record.
+
+### 1. Find the installed version
+
+Read the manifest or lockfile that names it: `requirements.txt` or `pyproject.toml` for Python, `package.json` for npm, `Cargo.toml` for Rust, `go.mod` for Go, `pom.xml` for Maven, `.csproj` for NuGet.
+
+### 2. Locate the canonical source
+
+| Ecosystem | Lookup |
+|---|---|
+| PyPI | `GET https://pypi.org/pypi/<pkg>/<version>/json` returns `info.project_urls` and `info.home_page` |
+| npm | `package.json`'s `repository` field, or `npm repo <pkg>` |
+| crates.io | `GET https://crates.io/api/v1/crates/<name>` returns `crate.repository`; docs.rs also serves a `source/` tab with the full published tarball |
+| Go modules | `go list -m -json <module>` - the import path is itself the VCS location |
+| Maven | the POM's `<scm>` tag, or `mvn dependency:sources` to pull a prebuilt sources jar without cloning anything |
+| NuGet | the `.nuspec`'s Source Link `<repository url="..." commit="...">` |
+
+Any ecosystem: `GET https://api.deps.dev/v3/projects/<url-encoded-repo>` (deps.dev) unifies this lookup across all six.
+
+### 3. Match the version to the exact source
+
+Go modules, and NuGet packages built with Source Link, record the exact source. Go's import path resolves natively to the VCS ref, and Source Link embeds the built commit in the `.nuspec`. No other packaging standard ties a published version to a git tag, so match by heuristic there: try `v<version>`, `<version>`, and a monorepo-prefixed tag like `<name>@<version>`.
+
+### 4. Clone into the scratchpad
+
+`git clone --branch <matched-tag-or-commit> --depth 1 <repo-url> <scratchpad>/codesource/<pkg>`. A plain clone is the zero-quota, full-fidelity path to any code host, unlike a registry API call.
+
+### 5. Read it the way you read this repo
+
+Start from the public surface (exported API, `__init__.py`, `index.js`, `pub` items) and entry points before internals, and trace one real call end-to-end rather than reading broadly. Read the test suite as currently-true documentation: a passing test asserts real behavior in a way prose cannot drift from. If a session-available tool exposes symbol-level navigation for the checkout's language (Serena's `find_symbol` and `get_symbols_overview`, or an installed language-server plugin), use it on the cloned checkout the same way it is used on the local one.
+
+### 6. Cite the exact source read
+
+Every finding drawn this way names the file, the line, and the tag or commit cloned, so a later reader can re-fetch the identical source.
+
 ## Failure modes worth naming
 
 - Reading entry-point files in the main context AFTER spawning sub-agents (do it before).
@@ -161,3 +200,4 @@ If the user asks more questions on the same topic, append a `## Follow-up Resear
 - Pasting code instead of `file:line` refs.
 - Skipping the `index.md` update.
 - Treating the question as the full scope. Sub-agents should also surface things the asker didn't think to ask.
+- Answering a library-behavior question from its documentation when the source was fetchable. Clone and read it instead.
