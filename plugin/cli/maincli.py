@@ -54,6 +54,7 @@ COMMAND_SPECS = [
     ("test-checkpoint", "record | verify | open-ids for pre-build failing-test checkpoints, tamper-evident against git. Never exits 2."),
     ("test-smells", "AST-based test-smell checks over test files: empty test, duplicate assert, literal-only assertion (gate), assertion-free (advisory). Exit 1 on any gate finding, never 2."),
     ("sizing", "stats reports the sizing-log.yaml decision/correction record: by shape, by provenance, and a qualified correction rate."),
+    ("sources", "Print the curated research-source catalog; --check classifies each scripted entry by response body shape (--live to probe for real)."),
 ]
 
 
