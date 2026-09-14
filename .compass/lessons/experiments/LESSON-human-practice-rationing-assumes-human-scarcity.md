@@ -6,10 +6,10 @@ category: process
 area: methodology
 tags: [research-synthesis, human-practice, agent-methodology, rationing, literature-import]
 created: 2026-08-11
-updated: 2026-08-30
-score: 6
+updated: 2026-09-13
+score: 7
 summary: "Name the precondition a borrowed mechanism needs before importing it; mark every finding maps or metaphor"
-seen: [2026-08-30]
+seen: [2026-08-30, 2026-09-13]
 ---
 
 A mechanism buys nothing where the condition it serves is absent. Shape Up's per-wave appetite rations scarce human throughput; the human cut it because AI build speed makes that scarcity noise ([[SPEC-015-rolling-wave-planning]] D-03).

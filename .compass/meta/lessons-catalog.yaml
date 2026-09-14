@@ -307,3 +307,38 @@ lessons:
     tags: [testing, vendored-install, layout, path-assumptions, host-install]
     score: 5
     summary: "A vendored test suite must be layout-aware"
+  - file: "LESSON-next-num-scope-doubles-type-dir.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [cli, next-num, numbering, domain-folders, scope]
+    score: 5
+    summary: "compass next-num <type> <domain/path> builds type_dir/scope; a scope that already includes the type dir doubles it and silently answers 001"
+  - file: "LESSON-teammate-spawn-omit-name.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [subagents, orchestration, teammate, agent-tool, spawn]
+    score: 5
+    summary: "A teammate's Agent-tool call with `name` set fails outright; the roster is flat, so spawn plain subagents by omitting `name`"
+  - file: "LESSON-parallel-research-check-siblings-first.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [research, parallel-agents, deduplication, vault-writes, methodology]
+    score: 5
+    summary: "Research agents fanned out onto one spec should read sibling docs in the target domain folder first, and scope around what a sibling already owns"
+  - file: "LESSON-verify-wiring-by-call-site-grep.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [code-reading, verification, call-sites, confidence, research]
+    score: 5
+    summary: "A confident claim that a predicate or flag is wired up can be wrong from reading only its defining module; grep every call site first"
+  - file: "LESSON-verify-exactness-past-a-compressing-layer.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [verification, headroom, compression, bash-output, exactness]
+    score: 5
+    summary: "Headroom-compressed Bash output can drop words; verify exact text via Read or grep before judging it"
