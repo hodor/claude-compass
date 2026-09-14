@@ -19,6 +19,7 @@ Class here: vault mechanics - indexes, links, discovery, placement
 
 - [[lessons/vault-structure/LESSON-append-only-index-misses-mutations|LESSON-append-only-index-misses-mutations]] - Derived-index repair must be active, and every prune gated on provable coverage, or self-healing self-destroys.
 - [[lessons/vault-structure/LESSON-hierarchical-placement-tolerate-disagreement|LESSON-hierarchical-placement-tolerate-disagreement]] - Inter-indexer agreement is inherently low; stop at a correct coarse ancestor rather than force a wrong specific leaf
+- [[lessons/vault-structure/LESSON-next-num-scope-doubles-type-dir|LESSON-next-num-scope-doubles-type-dir]] - compass next-num <type> <domain/path> builds type_dir/scope; a scope that already includes the type dir doubles it and silently answers 001
 - [[lessons/vault-structure/LESSON-obsidian-bare-link-creates-stray-note|LESSON-obsidian-bare-link-creates-stray-note]] - Obsidian does not resolve a bare folder-spec wikilink to its index.md; click-through creates a zero-byte stray note
 - [[lessons/vault-structure/LESSON-scope-notes-are-load-bearing|LESSON-scope-notes-are-load-bearing]] - A missing Class-here scope line cost a probe 16,900 useless tokens; repair cut it to 2,971
 - [[lessons/vault-structure/LESSON-scratch-vaults-need-compass-dir|LESSON-scratch-vaults-need-compass-dir]] - CLAUDE_PROJECT_DIR redirects the compass CLI only when it contains .compass; otherwise cwd-walk silently targets the enclosing vault
