@@ -372,16 +372,9 @@ Explicitly out of scope.
 
 ### Research
 
-Compass research is a survey of what already exists - not original research. Pick the approach that fits the question:
+Compass research is a survey of what already exists - not original research. The `research-methods` skill (`plugin/skills/research-methods/SKILL.md`) catalogs eight conduct methodologies with a chooser that routes a question's shape to one. Load it and pick from there.
 
-| Approach | When to use | Primary output |
-|----------|------------|----------------|
-| **Scoping Review** (Arksey & O'Malley) | Broad, exploratory - "What is the extent and nature of X?" | Narrative synthesis with gap analysis |
-| **Systematic Literature Review** (Kitchenham) | Focused, evidence-based - "What is the evidence for/against X?" | Synthesized evidence with quality ratings |
-| **Systematic Mapping Study** (Petersen et al.) | Structuring a known field - "What approaches exist and how do they relate?" | Classification scheme + visual map |
-| **Technology Landscape** (Gartner/ThoughtWorks) | Evaluating options - "What tools exist and how do they compare?" | Per-item profiles + comparison matrix |
-
-State the chosen approach in Methodology. Only **Question** and **Findings** are required.
+State the chosen methodology in Methodology. Only **Question** and **Findings** are required. Mark a code or blog source by naming its owner check - community signals, or identity and affiliation - and mark a preprint with its [Preprint] version and date, adding the published version once one exists.
 
 ```markdown
 ---
@@ -407,13 +400,15 @@ What are we investigating? What would constitute a complete answer?
 What is included and excluded.
 
 ## Methodology
-How the survey was conducted - search terms, sources, tools, inclusion/exclusion criteria. State the chosen approach (scoping review, systematic mapping, technology landscape) and why.
+How the survey was conducted - search terms, sources, tools, inclusion/exclusion criteria. State the methodology chosen, by name, from the `research-methods` skill, and why it fits the question's shape.
 
 ## Findings
 1. **Finding title** (confidence: high/medium/low)
    Description with specifics.
    - Evidence: `file:line` - what it shows
    - Evidence: [URL] - what it shows
+   - Marks: evidence type, retraction status, preprint status, citation count, convergence, as terse tokens - for example `Marks: peer-reviewed; not retracted; preprint 2024-05, published 2025-02; 120 citations; 3 sources agree`, or for a repository `Marks: code, owner checked; 40 citations; 1 source`
+   - Grade: how much the evidence type mark should weigh for this finding (high, medium, low), separate from the finding's own confidence above. Written whenever grading was disclosed at the gate: `grading: allowed` carries the grade, `grading: refused` carries no grade. The field is absent when no disclosure happened, meaning the findings are marked and ungraded
    - Caveat: [why confidence is not higher, if applicable]
 
 Confidence:
