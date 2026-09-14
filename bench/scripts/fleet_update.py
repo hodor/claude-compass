@@ -63,18 +63,9 @@ def copy_tree_files(src, dst, pattern="*.md"):
 
 
 def refresh_install(project):
-    claude = project / ".claude"
-    copy_tree_files(SOURCE / "templates" / "agents", claude / "agents")
-    copy_tree_files(SOURCE / "templates" / "rules", claude / "rules")
-    for skill_dir in (SOURCE / "skills").iterdir():
-        if skill_dir.is_dir():
-            copy_tree_files(skill_dir, claude / "skills" / skill_dir.name)
-    cli_dst = claude / "cli"
-    if cli_dst.exists():
-        shutil.rmtree(cli_dst)
-    shutil.copytree(SOURCE / "cli", cli_dst, ignore=shutil.ignore_patterns("__pycache__", "tests", "*.pyc"))
-    (claude / "hooks").mkdir(parents=True, exist_ok=True)
-    shutil.copy2(SOURCE / "hooks" / "hooks.json", claude / "hooks" / "hooks.json")
+    """One call refreshes every host the project has: the Claude Code file
+    set into `.claude/`, and the dsh materializations on a machine with dsh."""
+    self_update._apply(SOURCE, project, apply_models=True)
 
 
 def stamp_version(project, version, today, commit_sha):
@@ -82,7 +73,7 @@ def stamp_version(project, version, today, commit_sha):
     text = path.read_text(encoding="utf-8-sig")
     text = re.sub(r"(?m)^(\s*version:\s*)\S+", rf"\g<1>{version}", text, count=1)
     text = re.sub(r"(?m)^(\s*installed_at:\s*)\S+", rf"\g<1>{today}", text, count=1)
-    text = re.sub(r"(?m)^(\s*installed_mode:\s*)\S+", r"\g<1>update", text, count=1)
+    text = re.sub(r"(?m)^(\s*installed_mode:\s*)\S+", r"\g<1>auto-update", text, count=1)
     # commit: is compass self-update's sha gate; stamping the just-pushed HEAD
     # makes each vault's first session-start check a cheap ls-remote no-op.
     if commit_sha:
