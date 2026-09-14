@@ -63,7 +63,11 @@ Conversation output is never the record - logs, reports, and vault files are. On
 
 - Research traces to a spec.
 - Every finding gets a confidence level.
-- Before spawning researchers, present the planned axes - each in one plain line: the question and where the answers will be sought - and invite the human in. When he joins, research runs as a conversation: findings surface as they land and his readings steer the axes. When he passes, run and deliver as usual.
+- Axes span the whole spec.
+- Before spawning researchers, present the planned axes - each in one plain line: the question and where the answers will be sought - and invite the human in. His own questions lead the axis list; the spec's own listed questions are answered wherever an axis touches them, and never lead it. When he joins, research runs as a conversation: findings surface as they land and his readings steer the axes. When he passes, run and deliver as usual.
+- Every finding names a source from the shipped list, carrying its mechanical marks, or a file and line in code that was read.
+- A grade is recorded only after the human is told at the gate that grading will apply, and he may refuse it.
+- A run that finds it needs more research spawns another research pass, never a plan.
 
 ## Decisions (ADRs)
 
