@@ -1,45 +1,78 @@
 ---
 name: research
-description: Router for research. Dispatches to /compass:research-codebase or /compass:research-papers depending on whether the question is about code or about an academic paper / algorithm.
-version: 1.0.0
-allowed-tools: [Read, Bash]
-when_to_use: "Use when the user wants to research something but the type (code vs paper) isn't obvious. Triggers: 'research this', 'investigate', 'find out how X works', 'do some research'. If the user already said 'research the codebase' or 'research this paper', use the specific skill directly."
-argument-hint: "[codebase | papers] <question>"
+description: Research entry point. A plainly code-shaped or paper-shaped question dispatches straight to research-codebase or research-papers. Anything naming a spec runs full scope derivation - the whole spec becomes the axis list, the human's own questions lead, grading is disclosed and gated, and one researcher per axis feeds a reviewer that consolidates.
+version: 2.0.0
+allowed-tools: [Read, Grep, Glob, Bash, Agent]
+when_to_use: "Use to research a spec, or to research anything else. Triggers: 'research this spec', 'research this', 'investigate', 'do some research', 'find out how X works'. A question that plainly names a codebase location or a paper/algorithm dispatches directly; anything naming a spec runs the derivation below."
+argument-hint: "<spec name> | codebase <question> | papers <topic>"
 ---
 
-# Research - Router
+# Research - Scope Derivation and Dispatch
 
-Compass has two research skills with different shapes. Pick the right one.
+Two shapes. A plain code or paper question dispatches straight through. A spec runs the full derivation: the whole spec sets the scope, never its Open Questions list; the human's own questions lead; and every researcher's grading is disclosed and gated before anything runs.
+
+## Direct dispatch
 
 | Skill | When | What it spawns |
 |-------|------|----------------|
-| `/compass:research-codebase` | "How does X work in the codebase?", "Where is Y handled?", "Trace this flow" | codebase-locator, codebase-analyzer, pattern-finder. Synthesizes a code-research doc. |
-| `/compass:research-papers` | "Explain this paper", "What's the prior art for X", "Deep research on this algorithm" | Three researchers (Current / Backward / Forward) + reviewer. Synthesizes a paper-research doc with citation graph. |
+| `research-codebase` | "How does X work in the codebase?", "Where is Y handled?", "Trace this flow" | codebase-locator, codebase-analyzer, pattern-finder |
+| `research-papers` | "Explain this paper", "What's the prior art for X", an arXiv ID or paper title | Three researchers (Current / Backward / Forward) plus a reviewer |
 
-## Protocol
+`codebase <question>` or a plainly code-shaped question (a file path, function name, "where", "trace") dispatches to `research-codebase`. `papers <topic>` or a plainly paper-shaped question (an arXiv ID, paper title, "algorithm", "technique") dispatches to `research-papers`. If neither prefix is given and the question is genuinely ambiguous, ask once whether it is code, papers, or a spec to derive from. Don't reimplement either skill's logic here.
 
-### 1. Parse the argument
+## Deriving scope from a spec
 
-- `codebase <question>` → dispatch to `/compass:research-codebase`.
-- `papers <topic | arXiv ID>` → dispatch to `/compass:research-papers`.
-- No prefix → classify the question.
+### 1. Read the whole spec
 
-### 2. Classify if needed
+Read every section in full, not only Open Questions. An axis answers an Open Question where it happens to touch one; the questions never set the scope.
 
-If the question is ambiguous, ask once:
+### 2. Decompose the spec's own structure
 
-> Codebase or papers?
-> - Codebase: how something in this repo works
-> - Papers: an algorithm, technique, or academic paper
+For each Need, ask how it would be met and write the axis that investigates it. For each Decision, ask why it was made and write the axis that investigates the concern standing above it. This turns the spec's own shape into the first pass of the axis list, per [[research/pipeline/RESEARCH-scope-derivation-from-a-spec]].
 
-If the question clearly maps (e.g., mentions an arXiv ID, paper title, "algorithm", "technique"; or mentions a file path, function name, "where", "trace"), skip the question and dispatch.
+### 3. Audit against completeness facets
 
-### 3. Dispatch
+Check the resulting list against a fixed set of facets, so a whole category does not go unchecked the way an unstructured list tends to: functional behavior, non-functional quality (performance, security, usability, reliability), interfaces and integration points, constraints, and stakeholder context. Add an axis for any facet the decomposition left untouched.
 
-Invoke the chosen skill with the question. Don't reimplement either skill's logic here.
+### 4. Fold in the human's own questions
+
+If the human has questions about this spec, they enter the axis list first, with no judgment on whether to accept them, and the rest of the list regenerates around them. The spec's own Open Questions stay answered-where-touched and never lead.
+
+### 5. Enumerate the session
+
+Run `claude mcp list` and `claude plugin list --json`. Dedupe plugins by name, since the same plugin can register separately at user, project, and local scope, and read `enabled` per scope for whichever entry wins. Run `python .claude/cli/compass sources` and read its rows for the curated source list every axis starts from; run it with `--check --live` to confirm reachability before the run.
+
+### 6. Grading disclosure
+
+State which grading the run intends to apply to evidence and on what basis, and that the human can refuse it without stopping the run. A refusal turns grading off for every researcher spawned below; it never blocks the research itself.
+
+### 7. The gate
+
+Present the axis list, one plain line per axis naming where its answer will be sought, alongside the grading disclosure. Block on the reply.
+
+- Approval, accepting or ignoring the grading disclosure: proceed, every brief below carries `grading: allowed`.
+- Approval with grading explicitly refused: proceed, every brief below carries `grading: refused`.
+- A named change: fold it in, regenerate the axis it touches, and present again.
+
+Cap regeneration at three passes; past that, escalate to the human directly instead of presenting again.
+
+### 8. Spawn one researcher per axis
+
+Each brief carries the axis, the sources to check first (from `plugin/cli/sources.yaml` and anything session enumeration surfaced), the `research-methods` skill to choose a methodology from, and the `grading:` field the gate settled on (`allowed` or `refused`). Spawn every axis in parallel.
+
+### 9. Consolidate with the reviewer
+
+Spawn `reviewer` with every researcher's output. It builds the convergence matrix and writes the consolidated `REVIEW-*.md` to `.compass/research/`.
+
+### 10. A gap becomes another research pass
+
+If the review names a gap it cannot close, spawn another research pass on that gap. An unclosed gap never goes to a plan.
 
 ## Failure modes worth naming
 
-- Reimplementing one of the two research flows inline. This skill is a router.
-- Forcing the user to clarify when the question is clearly one type or the other.
-- Defaulting to codebase research when the user clearly asked about a paper (or vice versa).
+- Letting the spec's Open Questions set the scope instead of the whole spec.
+- Skipping the facet audit and shipping whatever the decomposition happened to produce.
+- Presenting the gate without the grading disclosure, or treating silence on grading as a refusal instead of `allowed`.
+- Reimplementing `research-codebase` or `research-papers` inline instead of dispatching.
+- Spawning researchers before the gate returns approval.
+- Forcing the user to name a spec when the question is clearly a plain code or paper question.
