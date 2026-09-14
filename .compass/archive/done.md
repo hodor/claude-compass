@@ -233,3 +233,29 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 ### Research covers the whole spec (SPEC-023)
 - [x] Rulings on [[research/pipeline/REVIEW-spec-023-research-consolidation]] recorded as D-02, D-03, D-08, D-09.
 - [x] [[PLAN-018-research-covers-the-whole-spec]] approved 2026-09-13.
+
+### PLAN-018 Wave 1: research covers the whole spec
+- [x] TASK-126: Let codebase research reach outside the repository - the same skill that documents this repo also fetches and reads a library's canonical source, matched to the installed version where the ecosystem allows it - complexity: M, depends_on: none, files: [plugin/skills/research-codebase/SKILL.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-04, SPEC-023-research-covers-the-whole-spec/D-07]
+
+### PLAN-018 Wave 1: research covers the whole spec
+- [x] TASK-120: Ship the curated source list with a retriever apiece - a data file holding one entry per source the spec names as shipped, each carrying its coverage, its access route, its key requirement, whether it is reachable by script or only through a browser, and the retrieval call that actually fetches from it; plus the sources tested and found dead or closed, kept as a do-not-try record rather than dropped; and the parser that reads it - complexity: M, depends_on: none, files: [plugin/cli/sources.yaml, plugin/cli/sourceslib.py, plugin/cli/tests/test_sourceslib.py], decisions: [SPEC-023-research-covers-the-whole-spec/D-03, SPEC-023-research-covers-the-whole-spec/D-09]
+- [x] TASK-122: Ship the methodology catalog as a skill - each methodology the research found, with its own steps, inputs, output, the question shape it fits, and the failure modes its own authors name, so an agent picks one and says which - complexity: M, depends_on: none, files: [plugin/skills/research-methods/SKILL.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-06, SPEC-023-research-covers-the-whole-spec/D-03, SPEC-023-research-covers-the-whole-spec/D-09]
+
+### PLAN-018 Wave 1: research covers the whole spec
+- [x] TASK-123: Put the marks and the grade on the findings - amend the research document template so every finding carries its mechanical marks and records whether a grade was applied, and replace both copies of the four-approach list with a pointer at the catalog - complexity: S, depends_on: TASK-122, files: [plugin/skills/obsidian/SKILL.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-09, SPEC-023-research-covers-the-whole-spec/D-03]
+
+### PLAN-018 Wave 1: research covers the whole spec
+- [x] TASK-121: Give the source list a command - `compass sources` prints the list, and `--check` judges a source by the response content type rather than its status code - complexity: M, depends_on: TASK-120, files: [plugin/cli/commands/sources.py, plugin/cli/maincli.py, plugin/cli/tests/test_sources.py], decisions: [SPEC-023-research-covers-the-whole-spec/D-03]
+- [x] TASK-124: Turn the research entry point from a router into a scope derivation - it reads the whole spec, walks its sections into investigation axes, inserts the human's own questions ahead of everything, tells him what grading the run intends to apply and accepts his refusal, blocks on his reply, and enumerates what the session offers before any agent runs - complexity: M, depends_on: TASK-120, files: [plugin/skills/research/SKILL.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-01, SPEC-023-research-covers-the-whole-spec/D-02, SPEC-023-research-covers-the-whole-spec/D-07, SPEC-023-research-covers-the-whole-spec/D-09], lessons: [LESSON-verify-wiring-by-call-site-grep]
+
+### PLAN-018 Wave 1: research covers the whole spec
+- [x] TASK-127: Rewrite the Research section of the shipped pipeline rules so the invariants hold wherever research runs, not only inside one skill - complexity: S, depends_on: TASK-123, TASK-124, files: [plugin/templates/rules/compass-pipeline.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-01, SPEC-023-research-covers-the-whole-spec/D-02, SPEC-023-research-covers-the-whole-spec/D-05, SPEC-023-research-covers-the-whole-spec/D-09]
+
+### PLAN-018 Wave 1: research covers the whole spec
+- [x] TASK-125: Teach the researcher agent the whole-spec habit - it states the methodology it chose, marks and grades every finding under the disclosure the gate made, reads a library's own source rather than its documentation, uses what the session offers, and reports a gap it cannot close as a gap rather than filling it - complexity: M, depends_on: TASK-122, TASK-123, TASK-124, files: [plugin/templates/agents/researcher.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-01, SPEC-023-research-covers-the-whole-spec/D-04, SPEC-023-research-covers-the-whole-spec/D-06, SPEC-023-research-covers-the-whole-spec/D-07, SPEC-023-research-covers-the-whole-spec/D-09], lessons: [LESSON-verify-wiring-by-call-site-grep]
+
+### PLAN-018 Wave 1: research covers the whole spec
+
+Plan: [[PLAN-018-research-covers-the-whole-spec]] (approved 2026-09-13). Pause after wave 1 for the human's manual checks.
+
+- [x] TASK-128: Close the wave by making the changes real in this repo and stamping the release - refresh the local install from `plugin/`, bump the plugin version, and confirm the installed copy reports healthy - complexity: S, depends_on: TASK-120, TASK-121, TASK-122, TASK-123, TASK-124, TASK-125, TASK-126, TASK-127, files: [plugin/.claude-plugin/plugin.json]
