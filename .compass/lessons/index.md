@@ -20,7 +20,7 @@ Archived lessons live in `archive/lessons/`.
 
 ## Lessons
 
-- [[lessons/distribution/index|distribution]] (3 lessons) - installing, updating, and shipping Compass surfaces - what update owns, version lag, config copies in shipped prose
+- [[lessons/distribution/index|distribution]] (4 lessons) - installing, updating, and shipping Compass surfaces - what update owns, version lag, config copies in shipped prose
 - [[lessons/experiments/index|experiments]] (6 lessons) - designing measurements and experiments that can actually falsify
 - [[lessons/hooks/index|hooks]] (5 lessons) - hook registration, payloads, and firing semantics
 - [[lessons/instructions/index|instructions]] (2 lessons) - writing instructions agents follow - prose economy, thresholds that become Goodhart targets

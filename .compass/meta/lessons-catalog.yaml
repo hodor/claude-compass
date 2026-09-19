@@ -342,3 +342,10 @@ lessons:
     tags: [verification, headroom, compression, bash-output, exactness]
     score: 5
     summary: "Headroom-compressed Bash output can drop words; verify exact text via Read or grep before judging it"
+  - file: "LESSON-self-update-silent-on-bad-repository-url.md"
+    status: active
+    category: process
+    area: architecture
+    tags: [self-update, doctor, repository, offline, silent-failure]
+    score: 5
+    summary: "A bad repository URL in plugin.yaml makes self-update look permanently offline; doctor should verify it resolves"
