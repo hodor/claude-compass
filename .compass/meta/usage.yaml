@@ -2,32 +2,32 @@
 since: 2026-09-13
 usage:
   apply-models:
-    count: 2
-    last: 2026-09-13
+    count: 9
+    last: 2026-09-18
   capture-check:
-    count: 65
-    last: 2026-09-13
+    count: 70
+    last: 2026-09-18
   capture-close:
-    count: 5
+    count: 6
     last: 2026-09-13
   capture-note:
-    count: 2
+    count: 3
     last: 2026-09-13
   capture-signal:
-    count: 43
+    count: 44
     last: 2026-09-13
   capture-worker:
-    count: 22
-    last: 2026-09-13
+    count: 26
+    last: 2026-09-18
   coverage:
     count: 1
     last: 2026-09-13
   doctor:
-    count: 2
-    last: 2026-09-13
+    count: 7
+    last: 2026-09-18
   lesson-coverage:
-    count: 36
-    last: 2026-09-13
+    count: 42
+    last: 2026-09-18
   lessons:
     count: 2
     last: 2026-09-13
@@ -35,20 +35,20 @@ usage:
     count: 2
     last: 2026-09-13
   self-update:
-    count: 6
-    last: 2026-09-13
+    count: 9
+    last: 2026-09-18
   sources:
-    count: 22
-    last: 2026-09-13
+    count: 25
+    last: 2026-09-18
   sync:
-    count: 79
-    last: 2026-09-13
+    count: 91
+    last: 2026-09-18
   test-checkpoint:
     count: 20
     last: 2026-09-13
   test-smells:
-    count: 9
-    last: 2026-09-13
+    count: 13
+    last: 2026-09-18
   validate:
     count: 1
     last: 2026-09-13
