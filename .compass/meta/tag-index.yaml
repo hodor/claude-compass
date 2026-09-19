@@ -380,6 +380,7 @@ tags:
   - lessons/platform/LESSON-windows-crlf-breaks-linux-container-scripts.md
   doctor:
   - decisions/distribution/ADR-020-local-overlays-appended-after-refresh.md
+  - lessons/distribution/LESSON-self-update-silent-on-bad-repository-url.md
   documentation-drift:
   - research/pipeline/RESEARCH-code-as-primary-source.md
   domain:
@@ -912,6 +913,8 @@ tags:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   - decisions/vault-structure/ADR-022-domains-scope-notes-shallow-when-unsure.md
   - lessons/vault-structure/LESSON-obsidian-bare-link-creates-stray-note.md
+  offline:
+  - lessons/distribution/LESSON-self-update-silent-on-bad-repository-url.md
   okf:
   - research/vault-structure/RESEARCH-okf-improvements-for-compass.md
   on-hold:
@@ -1113,6 +1116,8 @@ tags:
   - research/pipeline/RESEARCH-scientific-method-in-compass.md
   reports:
   - lessons/subagents/LESSON-subagent-reports-need-sendmessage.md
+  repository:
+  - lessons/distribution/LESSON-self-update-silent-on-bad-repository-url.md
   repository-mining:
   - research/pipeline/RESEARCH-research-methodologies-catalog.md
   requirements-engineering:
@@ -1205,6 +1210,7 @@ tags:
   self-update:
   - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
   - lessons/distribution/LESSON-self-update-corrections-lag-one-version.md
+  - lessons/distribution/LESSON-self-update-silent-on-bad-repository-url.md
   sendmessage:
   - lessons/subagents/LESSON-subagent-reports-need-sendmessage.md
   session-start:
@@ -1224,6 +1230,7 @@ tags:
   signals:
   - decisions/learning/ADR-019-subagentstop-redelivery-and-teammate-typing.md
   silent-failure:
+  - lessons/distribution/LESSON-self-update-silent-on-bad-repository-url.md
   - lessons/subagents/LESSON-headless-worker-denies-tools-silently.md
   - lessons/subagents/LESSON-verify-worktree-isolation-is-real.md
   sizing:

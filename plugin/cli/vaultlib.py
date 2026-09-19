@@ -504,8 +504,34 @@ def write_text_lf(path, text):
     """Write `text` to `path` with LF line endings on every platform.
 
     Normalizes any CRLF or lone CR to LF and disables newline translation so
-    a Windows host cannot emit CRLF that later breaks Linux container scripts.
+    a Windows host cannot emit CRLF that later breaks Linux container
+    scripts. The text lands through a temp file in the same directory and an
+    atomic replace, so a concurrent reader never sees a half-written file.
+    A filesystem that refuses the replace (a cloud-synced or placeholder
+    file can answer EINVAL) gets the same text written straight to `path`.
+    When both refuse, the error names `path` and carries both reasons.
     """
+    path = Path(path)
     normalized = text.replace("\r\n", "\n").replace("\r", "\n")
-    with open(path, "w", encoding="utf-8", newline="") as handle:
-        handle.write(normalized)
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    replace_error = None
+    try:
+        with open(tmp, "w", encoding="utf-8", newline="") as handle:
+            handle.write(normalized)
+        os.replace(tmp, path)
+        return
+    except OSError as exc:
+        replace_error = exc
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+    try:
+        with open(path, "w", encoding="utf-8", newline="") as handle:
+            handle.write(normalized)
+    except OSError as exc:
+        raise OSError(
+            exc.errno,
+            f"{exc.strerror} writing {path} "
+            f"(atomic replace failed first: {replace_error.strerror})",
+        ) from exc

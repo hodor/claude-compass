@@ -5,6 +5,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -565,6 +566,50 @@ class FindVaultRootTests(unittest.TestCase):
         finally:
             if old is not None:
                 os.environ["CLAUDE_PROJECT_DIR"] = old
+
+
+
+class WriteTextLfResilienceTests(unittest.TestCase):
+    """`write_text_lf` lands the text through a temp file and an atomic
+    replace, falling back to a direct write when the replace is refused, so
+    a filesystem that rejects one of the two paths still gets the file."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.path = self.tmp / "tag-index.yaml"
+
+    def test_normal_write_leaves_no_temp_file_behind(self):
+        # Defect class: a stray temp file beside the target after success.
+        vaultlib.write_text_lf(self.path, "a\r\nb\n")
+        self.assertEqual(self.path.read_bytes(), b"a\nb\n")
+        self.assertEqual([p.name for p in self.tmp.iterdir()], ["tag-index.yaml"])
+
+    def test_refused_replace_falls_back_to_a_direct_write(self):
+        # Defect class: EINVAL from the atomic path aborts the whole sync
+        # instead of trying the plain open the file accepted before.
+        self.path.write_text("old\n", encoding="utf-8")
+        with mock.patch("os.replace", side_effect=OSError(22, "Invalid argument")):
+            vaultlib.write_text_lf(self.path, "new\n")
+        self.assertEqual(self.path.read_bytes(), b"new\n")
+        self.assertEqual([p.name for p in self.tmp.iterdir()], ["tag-index.yaml"])
+
+    def test_both_paths_refused_raises_naming_the_target(self):
+        # Defect class: the error that escapes names a temp file, not the
+        # file the caller asked for.
+        real_open = open
+
+        def refuse_target(file, *args, **kwargs):
+            if str(file) == str(self.path):
+                raise OSError(22, "Invalid argument")
+            return real_open(file, *args, **kwargs)
+
+        with mock.patch("os.replace", side_effect=OSError(22, "Invalid argument")):
+            with mock.patch("builtins.open", side_effect=refuse_target):
+                with self.assertRaises(OSError) as ctx:
+                    vaultlib.write_text_lf(self.path, "new\n")
+        self.assertIn("tag-index.yaml", str(ctx.exception))
+        self.assertEqual([p.name for p in self.tmp.iterdir()], [])
 
 
 if __name__ == "__main__":
