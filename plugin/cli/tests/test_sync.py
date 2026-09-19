@@ -1,5 +1,6 @@
 """Tests for `compass sync` in both human and hook modes."""
 
+import contextlib
 import datetime
 import io
 import json
@@ -948,7 +949,7 @@ class HookModeTests(SyncFixture):
         self.assertEqual(code, 0)
         self.assertNotIn("[[SPEC-002-new]]", self.index_text())
 
-    def test_own_output_write_is_noop(self):
+    def test_own_output_write_syncs_but_records_no_signal(self):
         self._set_env()
         self.write("specs/SPEC-002-new.md", spec("New"))
         self._feed_stdin({
@@ -958,8 +959,10 @@ class HookModeTests(SyncFixture):
         })
         code = sync_cmd.run(["--hook"])
         self.assertEqual(code, 0)
-        # loop guard: sync did not run, so the orphan was NOT linked
-        self.assertNotIn("[[SPEC-002-new]]", self.index_text())
+        # an index.md edit syncs like any vault write, so the orphan is
+        # linked; it is bookkeeping, so no capture signal is recorded
+        self.assertIn("[[SPEC-002-new]]", self.index_text())
+        self.assertFalse((self.root / "tmp" / "capture-state.json").exists())
 
     def test_exception_returns_1_not_2(self):
         self._set_env()
@@ -1481,3 +1484,113 @@ class Task109Tests(SyncFixture):
         code = sync_cmd.run(["--hook"])
         self.assertEqual(code, 0)
         self.assertIn("SPEC-009-orphan", self.index_text())
+
+
+class FolderChildrenCountFrontmatterTests(SyncFixture):
+    """`children_count:` in a folder artifact's own index.md is synced from
+    the folder's direct children, matching the root index line's count."""
+
+    def _folder(self, count_in_file, children):
+        body = folder_spec("Thing", "a thing").replace(
+            "children_count: 1", f"children_count: {count_in_file}")
+        self.write("specs/SPEC-002-thing/index.md", body)
+        for n in range(1, children + 1):
+            self.write(f"specs/SPEC-002-thing/SPEC-{n:03d}-child.md", spec(f"Child {n}"))
+
+    def _count_line(self):
+        text = (self.root / "specs" / "SPEC-002-thing" / "index.md").read_text(encoding="utf-8")
+        return [l for l in text.split("\n") if l.startswith("children_count:")]
+
+    def test_stale_zero_after_promote_is_rewritten_to_the_real_count(self):
+        # Defect class: promote writes children_count: 0 and nothing ever
+        # updates it, so the frontmatter contradicts the root index line.
+        self._folder(0, 2)
+        report = sync_cmd.sync(self.root)
+        self.assertEqual(self._count_line(), ["children_count: 2"])
+        self.assertIn("(folder, 2 children)", self.index_text())
+        self.assertEqual(report["children_counts_updated"], 1)
+
+    def test_matching_count_leaves_the_file_untouched(self):
+        # Defect class: an unconditional rewrite would churn every folder
+        # index on every hook fire.
+        self._folder(2, 2)
+        path = self.root / "specs" / "SPEC-002-thing" / "index.md"
+        before = path.read_bytes()
+        report = sync_cmd.sync(self.root)
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(report["children_counts_updated"], 0)
+
+    def test_only_the_count_line_changes_and_key_order_survives(self):
+        # Defect class: a YAML round trip reorders keys or requotes values.
+        self._folder(0, 1)
+        path = self.root / "specs" / "SPEC-002-thing" / "index.md"
+        before = path.read_text(encoding="utf-8").split("\n")
+        sync_cmd.sync(self.root)
+        after = path.read_text(encoding="utf-8").split("\n")
+        self.assertEqual(len(before), len(after))
+        diffs = [(a, b) for a, b in zip(before, after) if a != b]
+        self.assertEqual(diffs, [("children_count: 0", "children_count: 1")])
+
+    def test_grandchildren_are_not_counted(self):
+        # Defect class: a recursive count disagrees with the root index line,
+        # which counts direct children only.
+        self._folder(0, 1)
+        (self.root / "specs" / "SPEC-002-thing" / "SPEC-001-child.md").unlink()
+        self.write("specs/SPEC-002-thing/SPEC-001-child/index.md",
+                   folder_spec("Child folder", "child folder"))
+        self.write("specs/SPEC-002-thing/SPEC-001-child/SPEC-001-grand.md", spec("Grand"))
+        sync_cmd.sync(self.root)
+        self.assertEqual(self._count_line(), ["children_count: 1"])
+
+    def test_domain_index_without_the_key_is_left_alone(self):
+        # Defect class: the key gets forced onto domain folders whose
+        # frontmatter never carried it.
+        self.write("specs/pipeline/index.md",
+                   "---\ntitle: pipeline\ntype: domain\nstatus: active\ntags: [d]\n"
+                   "summary: \"the pipeline\"\n---\n\n# pipeline\n")
+        self.write("specs/pipeline/SPEC-001-a.md", spec("A"))
+        path = self.root / "specs" / "pipeline" / "index.md"
+        before = path.read_bytes()
+        sync_cmd.sync(self.root)
+        self.assertEqual(path.read_bytes(), before)
+
+
+class HookIndexEditStillSyncsTests(SyncFixture):
+    """An agent's own edit of index.md fires the hook like any vault write;
+    sync runs so a line the agent added beside sync's own is deduplicated,
+    while no capture signal is recorded for the edit."""
+
+    def setUp(self):
+        super().setUp()
+        env_backup = dict(os.environ)
+        os.environ["CLAUDE_PROJECT_DIR"] = str(self.root.parent)
+        os.environ.pop("COMPASS_WORKER_SESSION", None)
+        self.addCleanup(lambda: (os.environ.clear(), os.environ.update(env_backup)))
+        cwd = os.getcwd()
+        os.chdir(self.root.parent)
+        self.addCleanup(os.chdir, cwd)
+
+    def _feed(self, obj):
+        sys.stdin = io.StringIO(json.dumps(obj))
+        self.addCleanup(setattr, sys, "stdin", sys.__stdin__)
+
+    def test_duplicate_line_added_by_agent_is_pruned_on_index_edit(self):
+        # Defect class: the loop guard returns before sync on an index.md
+        # edit, so the agent's copy of a line sync already appended survives.
+        self.write("specs/SPEC-002-new.md", spec("New"))
+        sync_cmd.sync(self.root)
+        text = self.index_text()
+        line = next(l for l in text.split("\n") if "[[SPEC-002-new]]" in l)
+        (self.root / "index.md").write_text(
+            text.replace(line, line + "\n" + line, 1), encoding="utf-8")
+        self._feed({
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Edit",
+            "tool_input": {"file_path": str(self.root / "index.md")},
+        })
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = sync_cmd.run(["--hook"])
+        self.assertEqual(code, 0)
+        self.assertEqual(self.index_text().count("[[SPEC-002-new]]"), 1)
+        self.assertFalse((self.root / "tmp" / "capture-state.json").exists())

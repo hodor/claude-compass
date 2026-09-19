@@ -39,9 +39,11 @@ SECTION_OVERRIDES = {"prs": "PRs"}
 def section_for(type_dir):
     return "## " + SECTION_OVERRIDES.get(type_dir, type_dir.capitalize())
 
-# Vault-root-relative paths `sync` itself writes; a hook fire for any of
-# these is its own echo. Exact matches only: a nested folder's index.md is
-# an artifact whose write must sync, not an echo.
+# Vault-root-relative paths `sync` itself writes. An agent's edit of one of
+# these still syncs (the hook fires only on the agent's own tool calls, so
+# sync's writes never re-fire it) but records no capture signal, since the
+# edit is bookkeeping rather than a new artifact. Exact matches only: a
+# nested folder's index.md is an artifact.
 GENERATED_OUTPUTS = {
     "index.md",
     "meta/tag-index.yaml",
@@ -148,6 +150,40 @@ def _child_count(folder_record, records):
         1 for r in records
         if r["name"].startswith(prefix) and "/" not in r["name"][len(prefix):]
     )
+
+
+def _sync_children_counts(records):
+    """Rewrite `children_count:` in each folder artifact's own index.md to
+    the number of its direct children, the count the root index line shows
+    for the same folder. Only a folder that already carries the key is
+    touched, by replacing that one line, so key order, quoting, and blank
+    lines survive; domain and unit indexes never carry the key and are
+    left alone. Returns the number of files rewritten."""
+    updated = 0
+    for record in records:
+        if record["kind"] != "folder-index":
+            continue
+        path = record["path"]
+        try:
+            lines = vaultlib.read_vault_text(path).split("\n")
+        except OSError:
+            continue
+        if not lines or lines[0].strip() != "---":
+            continue
+        closing = next(
+            (i for i in range(1, len(lines)) if lines[i].strip() == "---"), None
+        )
+        if closing is None:
+            continue
+        wanted = f"children_count: {_child_count(record, records)}"
+        for i in range(1, closing):
+            if lines[i].startswith("children_count:"):
+                if lines[i] != wanted:
+                    lines[i] = wanted
+                    vaultlib.write_text_lf(path, "\n".join(lines))
+                    updated += 1
+                break
+    return updated
 
 
 def _covered_by_folder_line(record):
@@ -871,6 +907,7 @@ def sync(vault_root):
     active_swept = sweep.sweep_active(vault_root, apply=True)
     records = vaultlib.scan_artifacts(vault_root)
     _load_data(records)
+    children_counts = _sync_children_counts(records)
     index_added, index_pruned, index_sections_merged = _sync_index(vault_root, records)
     catalog_added, catalog_collisions, catalog_duplicates, catalog_healed = (
         _sync_catalog(vault_root, records))
@@ -881,6 +918,7 @@ def sync(vault_root):
         "index_added": index_added,
         "index_pruned": index_pruned,
         "index_sections_merged": index_sections_merged,
+        "children_counts_updated": children_counts,
         "catalog_added": catalog_added,
         "catalog_collisions": catalog_collisions,
         "catalog_duplicates_removed": catalog_duplicates,
@@ -909,6 +947,8 @@ def format_report(report):
         parts.append(
             f"index: merged {report['index_sections_merged']} duplicate heading(s)"
         )
+    if report.get("children_counts_updated"):
+        parts.append(f"folder children_count synced: {report['children_counts_updated']}")
     if report["catalog_added"]:
         parts.append(f"catalog rows added: {report['catalog_added']}")
     for collision in report["catalog_collisions"]:
@@ -986,9 +1026,8 @@ def run(args):
             norm = str(file_path).replace("\\", "/")
             if "/.compass/" not in norm and not norm.startswith(".compass/"):
                 return 0  # not a vault write
-            if _is_generated_output(file_path):
-                return 0  # loop guard: a fire triggered by our own write
-            if not os.environ.get("COMPASS_WORKER_SESSION"):
+            generated = _is_generated_output(file_path)
+            if not generated and not os.environ.get("COMPASS_WORKER_SESSION"):
                 _record_write_signal(vault_root, norm)
             sync(vault_root)
             sys.stdout.write(json.dumps({"suppressOutput": True}))
