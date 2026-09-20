@@ -102,6 +102,7 @@ def write_hooks_json(project_root):
 
 
 FULL_HOOK_EVENTS = {
+    "PreToolUse": 'python "$CLAUDE_PROJECT_DIR/.claude/cli/compass" guard --hook',
     "PostToolUse": 'python "$CLAUDE_PROJECT_DIR/.claude/cli/compass" sync --hook',
     "Stop": 'python "$CLAUDE_PROJECT_DIR/.claude/cli/compass" capture-check --hook',
     "SubagentStop": 'python "$CLAUDE_PROJECT_DIR/.claude/cli/compass" capture-signal --hook',
@@ -238,6 +239,7 @@ class HookRegistrationTests(unittest.TestCase):
         write_agents(project)
         write_skills(project)
         write_settings(project, {
+            "PreToolUse": FULL_HOOK_EVENTS["PreToolUse"],
             "PostToolUse": FULL_HOOK_EVENTS["PostToolUse"],
             "Stop": FULL_HOOK_EVENTS["Stop"],
         }, filename="settings.json")

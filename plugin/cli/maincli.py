@@ -16,6 +16,8 @@ EXIT_ERROR = 1
 # and expose `run(args)`; a command whose module is absent reports
 # not-implemented rather than crashing.
 COMMAND_SPECS = [
+    ("guard", "PreToolUse hook: deny a tool call that would delete or discard "
+              "(Bash rm/git discard, a Write that empties or guts, a blanking Edit)."),
     ("sync", "Regenerate index.md + tag-index.yaml, sweep done tasks out of active.md, check caps, clean tmp logs. Hook entry point."),
     ("sweep", "Move completed tasks from active.md to archive/done.md, whole sections when fully done (dry-run; --apply to write)."),
     ("self-update", "Refresh this project's Compass install from its recorded source; sha-gated, throttled, silent unless it updated. SessionStart hook entry point."),

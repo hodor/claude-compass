@@ -44,6 +44,7 @@ OK, WARN, FAIL = "OK", "WARN", "FAIL"
 # stripped, so both `"...compass" sync --hook` (the shipped hooks.json shape)
 # and a bare `compass sync --hook` fixture match the same way.
 REQUIRED_HOOK_EVENTS = {
+    "PreToolUse": "compass guard",
     "PostToolUse": "compass sync",
     "Stop": "compass capture-check",
     "SubagentStop": "compass capture-signal",
@@ -256,7 +257,7 @@ def _hooks_checks(project_root):
         parts.append(f"missing registration for: {', '.join(missing)}")
         return [Check("hook registration", FAIL, "; ".join(parts), fix)]
 
-    checks = [Check("hook registration", OK, "PostToolUse, Stop, SubagentStop all registered")]
+    checks = [Check("hook registration", OK, "PreToolUse, PostToolUse, Stop, SubagentStop all registered")]
     teammate_event, teammate_needle = OPTIONAL_HOOK_EVENT
     if not _event_registered(commands_by_event, teammate_event, teammate_needle):
         checks.append(Check(

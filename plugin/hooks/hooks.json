@@ -1,6 +1,19 @@
 {
-  "description": "Compass plugin hooks. Every entry runs a command, never an agent, so no hook costs a turn of the agent's token budget. PostToolUse runs `compass sync` on any vault write to regenerate index.md and the tag index, then records a capture signal for the artifact written (`handoff-written` under handoffs/, `vault-write` otherwise). Stop runs `compass capture-check`, which bumps the main-agent turn counter, evaluates whether a capture opportunity is due, and on due emits the stop-hook block contract naming the opportunity directory so the capture pass runs as a real turn rather than as prose the model can skip. SubagentStop runs `compass capture-signal`, which writes the finishing subagent's final report to a capture file under .compass/tmp/subagent-captures/ and records a typed signal keyed on agent_type (validator-finished, debug-finished, builder-finished, or subagent-finished). TeammateIdle runs the same capture-signal command; that event's payload carries only a teammate name (no agent type, no message), so it records a weak activity signal and writes no capture file. The CLI parses each hook's stdin JSON, self-filters where relevant to avoid a write loop, and never exits 2 (which would block the user's turn). The PostToolUse entry is split three ways (Write, Edit, MultiEdit) because the `if` clause does not support `||` boolean OR; each entry has its own permission-rule pattern. SessionStart additionally runs `compass self-update` (matcher startup only): refreshes the install from its recorded source - sha-gated, throttled, silent unless it updated, never blocking.",
+  "description": "Compass plugin hooks. Every entry runs a command, never an agent, so no hook costs a turn of the agent's token budget. PreToolUse runs `compass guard` on Bash, Write, and Edit: it denies a call that would destroy information (a delete or git discard, a Write that empties a file or guts a vault document, an Edit that blanks a long vault passage) through the JSON permission decision, scratch areas exempt. PostToolUse runs `compass sync` on any vault write to regenerate index.md and the tag index, then records a capture signal for the artifact written (`handoff-written` under handoffs/, `vault-write` otherwise). Stop runs `compass capture-check`, which bumps the main-agent turn counter, evaluates whether a capture opportunity is due, and on due emits the stop-hook block contract naming the opportunity directory so the capture pass runs as a real turn rather than as prose the model can skip. SubagentStop runs `compass capture-signal`, which writes the finishing subagent's final report to a capture file under .compass/tmp/subagent-captures/ and records a typed signal keyed on agent_type (validator-finished, debug-finished, builder-finished, or subagent-finished). TeammateIdle runs the same capture-signal command; that event's payload carries only a teammate name (no agent type, no message), so it records a weak activity signal and writes no capture file. The CLI parses each hook's stdin JSON, self-filters where relevant to avoid a write loop, and never exits 2 (which would block the user's turn). The PostToolUse entry is split three ways (Write, Edit, MultiEdit) because the `if` clause does not support `||` boolean OR; each entry has its own permission-rule pattern. SessionStart additionally runs `compass self-update` (matcher startup only): refreshes the install from its recorded source - sha-gated, throttled, silent unless it updated, never blocking.",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "statusMessage": "Compass guard",
+            "timeout": 15,
+            "command": "if command -v python3 >/dev/null 2>&1; then python3 \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" guard --hook; else python \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" guard --hook; fi"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write|write",
