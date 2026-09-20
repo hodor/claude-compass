@@ -15,6 +15,8 @@ Stop only at the gates the human owns: spec promotion, plan approval, destructiv
 
 Write every document for a reader who has only the document - no memory of the conversation that produced it, no knowledge of where the work stands. Every writing rule below is an instance of this one test.
 
+The test binds everything an agent writes, not only vault documents: code comments, test names and assertion messages, commit bodies, skill and agent text. Each must make sense to a first-time reader who has only the file. State what the thing is, positively; a sentence that only makes sense to someone who watched it get written goes.
+
 Before presenting any document, have fresh eyes read it: a cheap sub-agent holding only the document and these rules, never the conversation. A sentence the fresh reader cannot justify from the document alone is conversation residue; it goes.
 
 Compass documents should be a pleasure to read. Easy to read, short, sweet. Long only when needed. Never verbose.
@@ -82,6 +84,12 @@ Conversation output is never the record - logs, reports, and vault files are. On
 - Tasks have automated AND manual verification criteria.
 - Tasks larger than L get broken into subtasks.
 - Only the human approves a plan. Tasks are not distributed to `active.md`/`backlog.md` before approval.
+
+## Verification
+
+- Verify before acting on any belief about state: check the filesystem, read the code, run the command. An assumption about a path, a version, a configuration, or how something works is confirmed first, never guessed.
+- Diagnose before redesigning. When a fix does not work, confirm it is actually running: add logging, check the init order, grep the call site. Most broken fixes were never reached.
+- "It does not work" is not a diagnosis. A failure is evidence of a bug in the implementation, and the approach is changed only after a confirmed root cause shows it is fundamentally flawed.
 
 ## Build
 
