@@ -1,9 +1,10 @@
 """`compass guard`: the PreToolUse hook that keeps the Data rule mechanical.
 
 Nothing in a Compass project destroys information. This command runs as a
-PreToolUse hook before every tool call, for every agent whatever its
-permission mode: it reads the event on stdin and denies a call that would
-delete or discard: a Bash command that
+PreToolUse hook before every tool call a subagent makes, whatever its
+permission mode; the main agent, working with the human, is never judged.
+It reads the event on stdin and denies a subagent call that would delete
+or discard: a Bash command that
 removes files or discards git state, a Write that empties an existing file
 or guts a vault document, an Edit that blanks a long vault passage. A
 denial is the JSON permission decision on stdout with exit 0 (the CLI never
@@ -372,6 +373,8 @@ def run(args):
     if "--hook" in args:
         try:
             event = _read_stdin()
+            if not (event.get("agent_id") or event.get("agent_type")):
+                return 0  # the main agent's own call
             denied, reason = decide(
                 event.get("tool_name") or "", event.get("tool_input") or {}, _project_root()
             )
@@ -394,7 +397,7 @@ def run(args):
     command = " ".join(args).strip()
     if not command:
         sys.stdout.write(
-            "compass guard: PreToolUse hook. Denies a Bash delete or git discard, a Write "
+            "compass guard: PreToolUse hook on subagent calls. Denies a Bash delete or git discard, a Write "
             "that empties a file or guts a vault document, and an Edit that blanks a long "
             "vault passage. Pass a shell command to see its verdict.\n"
         )

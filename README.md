@@ -46,7 +46,7 @@ compass sources          # the shipped research sources; --check --live probes e
 compass guard "<cmd>"    # the verdict the PreToolUse guard would give a shell command
 ```
 
-A `PreToolUse` hook runs `compass guard` before every Bash, Write, and Edit call, by any agent whatever its permission mode. Nothing in a Compass project destroys information: the guard denies a delete or git discard, a Write that empties a file or guts a vault document, and an Edit that blanks a long vault passage, and hands the agent the reason with the colder home for the text (`.compass/archive/` or a Record section). Scratch stays deletable: `.compass/tmp/`, agent worktrees, the session scratchpad.
+A `PreToolUse` hook runs `compass guard` before every Bash, Write, and Edit call a subagent makes, whatever its permission mode; the main agent, working with you, is never denied. Nothing in a Compass project destroys information: the guard denies a subagent's a delete or git discard, a Write that empties a file or guts a vault document, and an Edit that blanks a long vault passage, and hands the agent the reason with the colder home for the text (`.compass/archive/` or a Record section). Scratch stays deletable: `.compass/tmp/`, agent worktrees, the session scratchpad.
 
 The CLI also captures its own crashes to a local queue; `compass file-bugs` (or `/compass:report-bug`) deduplicates them against existing issues and files them on the Compass repo.
 

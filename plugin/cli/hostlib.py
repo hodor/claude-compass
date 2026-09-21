@@ -55,9 +55,13 @@ DSH_EVENTS = {
 # usually indented; a top-level `hosts:` is accepted too.
 _HOSTS_LINE = re.compile(r"^[ \t]*hosts:\s*(\[.*\])\s*$", re.MULTILINE)
 
-# The manifest's sh wrapper: `if command -v python3 ...; then python3 X; else python X; fi`.
+# The manifest's sh wrapper: an optional `[ -f <cli> ] || exit 0;` guard,
+# then `if command -v python3 ...; then python3 X; else python X; fi`.
 # The python3 branch carries the invocation to keep.
-_SH_WRAPPER = re.compile(r"^if command -v python3.*?then\s+python3\s+(.*?);\s*else.*fi$")
+_SH_WRAPPER = re.compile(
+    r"^(?:\[ -f [^\]]+\] \|\| exit 0; )?"
+    r"if command -v python3.*?then\s+python3\s+(.*?);\s*else.*fi$"
+)
 
 
 def read_hosts(vault_root):

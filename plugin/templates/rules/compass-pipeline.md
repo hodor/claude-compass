@@ -127,7 +127,7 @@ Bare `compass` lists every command with a one-liner - check it before assuming a
 ## Data
 
 - Nothing destroys information, ever. Too big for its tier means break it into smaller pieces or move it colder (archive/, a Record section, a colder file) - never delete, never compress away. Caps bound what LOADS, not what EXISTS.
-- The rule is enforced before the tool runs: `compass guard`, a PreToolUse hook, denies a delete or git discard, a Write that empties a file or guts a vault document, and an Edit that blanks a long vault passage, for every agent regardless of its permission mode. Scratch stays deletable: `.compass/tmp/`, `.claude/worktrees/`, the session scratchpad. A denial names the colder home for the text.
+- The rule is enforced before the tool runs: `compass guard`, a PreToolUse hook, denies a delete or git discard, a Write that empties a file or guts a vault document, and an Edit that blanks a long vault passage, for every subagent regardless of its permission mode; the main agent, working with the human, is never denied. Scratch stays deletable: `.compass/tmp/`, `.claude/worktrees/`, the session scratchpad. A denial names the colder home for the text.
 
 ## Linking
 
