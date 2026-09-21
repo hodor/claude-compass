@@ -35,7 +35,6 @@ Required:
 
 Optional, ask if not covered - read the room, don't force every question:
 4. **Hard constraints:** budget, infrastructure, regulatory, team.
-5. **Non-goals at project level:** what this project is NOT trying to do.
 6. **Existing context:** what exists today, what's been tried, what's in the way.
 
 ### 3. Identify distinct needs
@@ -92,9 +91,6 @@ updated: YYYY-MM-DD
 
 ## Project-Level Constraints
 [Constraints that apply across all specs]
-
-## Non-Goals
-[What this project explicitly is NOT]
 
 ## Spec Roadmap
 The following specs will be created from this vision (one at a time):

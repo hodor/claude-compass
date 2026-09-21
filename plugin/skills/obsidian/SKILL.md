@@ -360,14 +360,11 @@ Explicit rulings made during the interview - a trade-off resolved, an approach c
 ## Assumptions & Dependencies
 What are we betting on? What must be true for this to work?
 
-## Non-Goals
-Explicitly out of scope.
-
 ## Risks
 - Risk 1: [mitigation]
 
 ## Open Questions
-- [ ] Question 1
+- [ ] A question the human left open, in his words; never one the agent minted
 ```
 
 ### Research

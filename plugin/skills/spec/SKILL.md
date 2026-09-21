@@ -45,8 +45,7 @@ Two questions are required. The rest are optional. Read the room - if the human 
 **Optional:**
 3. Who benefits? Walk me through a typical scenario.
 4. What constraints do we need to work within?
-5. What is explicitly NOT in scope?
-6. What could go wrong?
+5. What could go wrong?
 
 Between questions, read the section back as a single block quote (no acknowledgement preamble) and ask the next question.
 
@@ -64,7 +63,7 @@ Before saving, re-read Problem and Desired Outcome. Multiple distinct problems o
 
 ### 5. Create the spec file
 
-Before creating the spec file, resolve its destination per the `obsidian` skill's "Where a new artifact goes" rule - the owning unit's `specs/` dir, or the root. Inside that root, `specs/` is a topic tree: place the spec in the domain folder whose Scope fits it, at whatever depth fits. When it fits a domain but no subdomain cleanly, file it directly in the domain - shallower beats a wrong guess. A vault with no domains files at the root; that is correct, not provisional. When placement is genuinely uncertain, file shallower AND record `taxonomy_hint: "<one line: where this might belong>"` in the frontmatter - validate surfaces pending hints on every run, and consolidate consumes them. A spec is a file: `.compass/specs/SPEC-NNN-descriptive-name.md`, NNN from `compass next-num spec`. The folder shape is earned by the second member: when a spec gains its first child, `compass promote` turns it into `SPEC-NNN-name/index.md` and the child is created inside, numbered locally (`compass next-num spec <parent-path>`). A folder holding only its own index is over-shaped - simple as possible, no simpler. Required sections: Problem and Desired Outcome. Optional: User Scenarios, Constraints, Decisions, Non-Goals, Risks, Open Questions. Omit any optional section if empty - don't include a heading with no content.
+Before creating the spec file, resolve its destination per the `obsidian` skill's "Where a new artifact goes" rule - the owning unit's `specs/` dir, or the root. Inside that root, `specs/` is a topic tree: place the spec in the domain folder whose Scope fits it, at whatever depth fits. When it fits a domain but no subdomain cleanly, file it directly in the domain - shallower beats a wrong guess. A vault with no domains files at the root; that is correct, not provisional. When placement is genuinely uncertain, file shallower AND record `taxonomy_hint: "<one line: where this might belong>"` in the frontmatter - validate surfaces pending hints on every run, and consolidate consumes them. A spec is a file: `.compass/specs/SPEC-NNN-descriptive-name.md`, NNN from `compass next-num spec`. The folder shape is earned by the second member: when a spec gains its first child, `compass promote` turns it into `SPEC-NNN-name/index.md` and the child is created inside, numbered locally (`compass next-num spec <parent-path>`). A folder holding only its own index is over-shaped - simple as possible, no simpler. Required sections: Problem and Desired Outcome. Optional: User Scenarios, Constraints, Decisions, Risks. Open Questions holds only a question the human himself left open, in his words; the agent never mints one. Omit any optional section if empty - don't include a heading with no content.
 
 ```markdown
 ---
@@ -107,7 +106,6 @@ Here's the spec:
 
 **Problem:** [one sentence]
 **Desired Outcome:** [one sentence]
-**Open Questions:** [N remaining, or "none"]
 
 Approve? (approve / needs changes / reject)
 ```
@@ -125,5 +123,6 @@ After approval, offer: "Create another spec, or start research on this one?"
 - Substituting a generic for a word the transcript garbled ("Permis" becoming "any other tool"). Flag `[unclear: heard "X"]` and ask.
 - Describing HOW instead of WHAT ("we need REST/WebSocket" is implementation).
 - Structuring around system components ("Plugin Architecture") instead of user needs.
-- Writing open questions as "[TBD]" instead of asking the human.
+- Minting open questions. A question the human did not leave open is settled by research or dropped; the section carries his questions only.
+- Inventing non-goals. A spec is one problem; its boundary is the problem statement.
 - Forcing every question when the human is disengaged.
