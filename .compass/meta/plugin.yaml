@@ -1,7 +1,7 @@
 plugin:
   name: compass
-  version: 0.25.1
-  commit: de2bcec33d4af2778940bcd759d4e0635acd2eef
+  version: 0.25.2
+  commit: 7ea608ccd5219545eaf4e75866af3795e1d6f913
   source: F:/claude/plugins/compass/plugin
   repository: https://github.com/hodor/claude-compass
   installed_at: 2026-09-20

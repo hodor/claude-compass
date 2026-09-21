@@ -242,6 +242,7 @@ class HookContractTests(GuardFixture):
         # code never reaches the runtime; the JSON contract must carry it.
         code, out, _ = self._run({
             "hook_event_name": "PreToolUse", "tool_name": "Bash",
+            "agent_id": "abc", "agent_type": "builder",
             "tool_input": {"command": "rm -rf src"},
         })
         self.assertEqual(code, 0)
@@ -269,8 +270,17 @@ class HookContractTests(GuardFixture):
             code = guard.run(["--hook"])
         self.assertEqual((code, out.getvalue()), (0, ""))
 
+    def test_main_agent_calls_are_never_judged(self):
+        # Defect class: the guard fences the human's own session, so the
+        # main agent cannot clean up a project file the human asked about.
+        code, out, err = self._run({
+            "hook_event_name": "PreToolUse", "tool_name": "Bash",
+            "tool_input": {"command": "rm -rf src"},
+        })
+        self.assertEqual((code, out, err), (0, "", ""))
+
     def test_subagent_calls_are_judged_the_same(self):
-        # Defect class: a payload carrying agent_id is treated as trusted.
+        # Defect class: a subagent under bypassPermissions is treated as trusted.
         code, out, _ = self._run({
             "hook_event_name": "PreToolUse", "tool_name": "Bash",
             "agent_id": "abc", "agent_type": "builder", "permission_mode": "bypassPermissions",
