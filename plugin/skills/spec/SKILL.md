@@ -1,13 +1,13 @@
 ---
 name: spec
-description: Interactive specification creation. Interviews the human one question at a time to capture the PROBLEM and the NEED, never the solution. Creates a draft spec in .compass/specs/ and gets human approval before marking it approved.
+description: Specification creation. Drafts the spec from what the human already said, asks only where two readings of his words would produce different specs, and reads the draft back in his sentences for approval. Specs capture the PROBLEM and the NEED, never the solution.
 version: 1.0.0
 allowed-tools: [Read, Grep, Glob, Write, Edit, Bash, AskUserQuestion]
 when_to_use: "Use when the user wants to create a specification. Triggers: 'new spec', 'create a spec', 'write a spec', 'spec this', 'I want to spec'."
 argument-hint: "<what to spec>"
 ---
 
-You interview the human one question at a time to capture a single problem and its desired outcome. Specs describe the NEED, not the solution. Implementation decisions belong to research and planning, not here.
+You capture a single problem and its desired outcome in the human's own words. Specs describe the NEED, not the solution. Implementation decisions belong to research and planning, not here.
 
 One spec captures one problem. If the Problem section needs "and also" or the Desired Outcome needs "and" to describe success, that's two specs. Split.
 
@@ -21,33 +21,20 @@ If `vision.md` doesn't exist and the project has no specs yet, run `/compass:vis
 
 If vision exists and the requested spec isn't on the roadmap, note this in your draft and surface it at approval. Don't gate the interview on it.
 
-### 2. Understand the intent
+### 2. Draft from what he already said
 
-Ask the human:
-> "What do you want to specify? Give me the one-sentence version."
+The vision, the roadmap entry, and every sentence he has said about this need are the interview. Draft the spec from them before asking anything. If he named the need in one line and nothing else exists, ask for the one-sentence version and draft from that.
 
-If the answer describes multiple distinct problems ("users can do X and admins can do Y"):
+If the material describes multiple distinct problems ("users can do X and admins can do Y"):
 > "That's two specs: [problem A] and [problem B]. I'll start with [problem A]."
 
 Proceed with one. Don't ask permission; specs are single-problem by rule.
 
-If the topic is genuinely embryonic and not ready to spec:
-> "This sounds early-stage. A spec needs a clear problem. Want to talk it through first, or come back when the problem is clearer?"
+### 3. Ask only at a fork
 
-### 3. Interview, one question at a time
+A question is earned by a fork: two readings of his words that would produce different specs. Show both readings, say which one the draft takes, and what the choice decides downstream (what research looks at, what the planner measures). He answers with a word, or says nothing and the stated reading stands.
 
-Two questions are required. The rest are optional. Read the room - if the human gives short answers, says "whatever" / "continue" / "skip", or seems impatient, wrap up. A thin spec with a clear problem statement beats a thick spec the human didn't care to finish.
-
-**Required:**
-1. What problem does this solve? Why does it matter?
-2. What does success look like?
-
-**Optional:**
-3. Who benefits? Walk me through a typical scenario.
-4. What constraints do we need to work within?
-5. What could go wrong?
-
-Between questions, read the section back as a single block quote (no acknowledgement preamble) and ask the next question.
+Anything else is not asked. What research can settle is left to research; what changes nothing in Problem or Desired Outcome is not a question. Zero questions is the expected case for a need on the roadmap.
 
 **The section is assembled from the human's own sentences.** Extract his words and arrange them; write connective tissue between his sentences, never replacements for them. The test for every line: whose words is this? Cleaning is clean-verbatim only - drop filler, stammer, and false starts, fix obvious speech-to-text errors; his grammar, word choice, and enumerations stay his. When the transcript garbles a word, flag it `[unclear: heard "X"]` and ask - a garbled word is a question for the human, and he will have the real one. Mark anything you added as a guess in brackets: `[guess: ...]`. His framing is often the requirement itself - a phrase like "a simple USD for knowledge" carries more design information than any paraphrase of it.
 
@@ -97,18 +84,7 @@ Before presenting, spawn a reviewer sub-agent on the cheap model tier with exact
 
 ### 7. Present for approval
 
-This read-back is the human validating that the document says what he said - so it shows him his own words, and he holds final say on any departure from them.
-
-Read back the spec (or summarize if long - the summary lines below may compress, the spec body itself keeps his sentences):
-
-```
-Here's the spec:
-
-**Problem:** [one sentence]
-**Desired Outcome:** [one sentence]
-
-Approve? (approve / needs changes / reject)
-```
+Show the Problem and Desired Outcome as they will be saved, his sentences with any guess bracketed inline where it sits, then one line: "Approve?". No summary, no counts, no section list. After "needs changes", show only the lines that changed.
 
 - **Approved:** change `status: draft` to `status: approved`. "Spec approved. Ready for research when you are."
 - **Needs changes:** ask what to change, edit, present again.
@@ -125,4 +101,4 @@ After approval, offer: "Create another spec, or start research on this one?"
 - Structuring around system components ("Plugin Architecture") instead of user needs.
 - Minting open questions. A question the human did not leave open is settled by research or dropped; the section carries his questions only.
 - Inventing non-goals. A spec is one problem; its boundary is the problem statement.
-- Forcing every question when the human is disengaged.
+- Asking from a list. A question that cannot name the two readings it decides between is not asked.
