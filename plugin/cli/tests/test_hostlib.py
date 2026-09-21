@@ -171,6 +171,18 @@ class MaterializeDshHooksTests(unittest.TestCase):
                     self.assertTrue(cmd.startswith('python "'), cmd)
                     self.assertIn("/.claude/cli/compass", cmd)
 
+    def test_guard_prelude_and_stdin_pipe_reduce_to_the_bare_invocation(self):
+        # Defect class: the guard's shell prelude (CLI-exists check, agent-id
+        # pre-filter, printf pipe) survives into the dsh form, where no sh
+        # runs it, or the regex misses and the whole sh wrapper ships.
+        data, _ = self._materialize()
+        cmds = [h["command"] for g in data["hooks"].get("PreToolUse", []) for h in g["hooks"]]
+        self.assertEqual(len(cmds), 1, cmds)
+        cmd = cmds[0]
+        self.assertTrue(cmd.endswith('/.claude/cli/compass" guard --hook'), cmd)
+        for leftover in ("input=", "case ", "printf", "[ -f", "exit 0"):
+            self.assertNotIn(leftover, cmd)
+
     def test_no_if_fields_and_no_unsupported_events(self):
         data, _ = self._materialize()
         self.assertNotIn("TeammateIdle", data["hooks"])

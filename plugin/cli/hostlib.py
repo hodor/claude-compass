@@ -55,12 +55,12 @@ DSH_EVENTS = {
 # usually indented; a top-level `hosts:` is accepted too.
 _HOSTS_LINE = re.compile(r"^[ \t]*hosts:\s*(\[.*\])\s*$", re.MULTILINE)
 
-# The manifest's sh wrapper: an optional `[ -f <cli> ] || exit 0;` guard,
-# then `if command -v python3 ...; then python3 X; else python X; fi`.
-# The python3 branch carries the invocation to keep.
+# The manifest's sh wrapper: an optional shell prelude (the CLI-exists
+# check, the guard's agent-id pre-filter), then `if command -v python3 ...;
+# then [printf ... |] python3 X; else ... python X; fi`. The python3
+# branch's invocation is the part to keep.
 _SH_WRAPPER = re.compile(
-    r"^(?:\[ -f [^\]]+\] \|\| exit 0; )?"
-    r"if command -v python3.*?then\s+python3\s+(.*?);\s*else.*fi$"
+    r"^.*?if command -v python3.*?then\s+(?:printf[^|]*\|\s*)?python3\s+(.*?);\s*else.*fi$"
 )
 
 

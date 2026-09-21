@@ -87,7 +87,19 @@ class HooksJsonTests(unittest.TestCase):
                 continue
             command = hook["command"]
             self.assertIn("command -v python3", command)
-            self.assertIn("else python ", command)
+            self.assertRegex(command, r"else (printf [^|]*\| )?python \"")
+
+    def test_every_command_exits_zero_when_the_cli_is_not_installed(self):
+        # Defect class: the plugin's hooks fire in a project the plugin is
+        # loaded for but not set up in; a command that runs the missing CLI
+        # makes Python exit 2, which blocks the tool call before setup.
+        for hook in _iter_hook_entries(self.data["hooks"]):
+            if hook.get("type") != "command":
+                continue
+            self.assertTrue(
+                hook["command"].startswith('[ -f "$CLAUDE_PROJECT_DIR/.claude/cli/compass" ] || exit 0; '),
+                hook["command"][:80],
+            )
 
 
 if __name__ == "__main__":
