@@ -8,7 +8,6 @@ effort: high
 maxTurns: 50
 color: orange
 memory: project
-isolation: worktree
 permissionMode: bypassPermissions
 initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .compass/lessons/index.md"
 ---
@@ -37,7 +36,7 @@ Read the files you will touch. Note conventions, patterns, and test setup before
 
 ### 5. Write the code
 
-Before writing any code, fast-forward your worktree branch to the working branch and confirm the checkpointed test files for this task are present. A worktree that forked before the checkpoint commit sees a world where the tests do not exist; building in that world silently bypasses the test-first station. If the checkpointed files are absent, halt loudly and report it rather than proceeding.
+You work in the worktree the orchestrator spawned you into (`.claude/worktrees/agent-<id>`, branch `worktree-agent-<id>`); confirm with `git rev-parse --show-toplevel` and halt loudly if it is the main checkout. Before writing any code, fast-forward your worktree branch to the working branch and confirm the checkpointed test files for this task are present. A worktree that forked before the checkpoint commit sees a world where the tests do not exist; building in that world silently bypasses the test-first station. If the checkpointed files are absent, halt loudly and report it rather than proceeding.
 
 A checkpointed failing test suite may already exist when you start. You may not edit any checkpointed test file. If a test appears wrong, STOP and report it as a plan/spec mismatch under the escalation below - `compass test-checkpoint verify` will detect the edit anyway, so working around a wrong-looking test instead of reporting it only costs you the cycle. The spec remains the source of truth for what to build; the tests constrain it, they do not replace it ([[LESSON-test-driven-tasks-dont-discriminate]]).
 
