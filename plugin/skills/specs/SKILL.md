@@ -41,7 +41,6 @@ Iterate until approved.
 > "Shared questions for the whole batch:
 > 1. Who is the user/audience?
 > 2. Shared constraints (deadlines, budget, infrastructure)?
-> 3. Shared non-goals?
 >
 > (Skip any that don't apply.)"
 
