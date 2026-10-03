@@ -27,3 +27,4 @@ KPI: [guess: every session that reaches 80% context usage stops and suggests a h
 ## Decisions
 
 - **D-01:** Stopping means finishing the current step, then stopping before starting the next one; work is never cut off mid-step.
+- **D-02:** 80% means 80% of the whole context window.
