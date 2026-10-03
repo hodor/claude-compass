@@ -258,6 +258,8 @@ tags:
   - research/rolling-wave/RESEARCH-rolling-wave-agent-planning.md
   context-size:
   - lessons/instructions/LESSON-remove-context-before-adding.md
+  context-window:
+  - specs/pipeline/SPEC-025-stop-and-suggest-handoff-at-80-percent-context.md
   control-arm:
   - lessons/experiments/LESSON-score-the-do-nothing-baseline-before-running.md
   convergence:
@@ -548,6 +550,7 @@ tags:
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_16-47-06_wave1-tree-uncommitted.md
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated.md
   - handoffs/PLAN-017-dsh-host-support/2026-09-05_21-30-00_wave6-zero-decision-queued.md
+  - specs/pipeline/SPEC-025-stop-and-suggest-handoff-at-80-percent-context.md
   hang:
   - lessons/hooks/LESSON-hook-cli-gate-stdin-on-flag.md
   harness:
@@ -630,6 +633,7 @@ tags:
   - research/vault-structure/RESEARCH-active-set-prior-art.md
   - specs/distribution/SPEC-020-compass-updates-itself.md
   - specs/learning/SPEC-002-lessons-and-index-subsystem.md
+  - specs/pipeline/SPEC-025-stop-and-suggest-handoff-at-80-percent-context.md
   - specs/tooling/SPEC-018-scaffolding-invisible-to-the-human.md
   host-adapter:
   - specs/distribution/SPEC-006-multi-host-agent-cli-support.md
@@ -1213,6 +1217,8 @@ tags:
   - lessons/distribution/LESSON-self-update-silent-on-bad-repository-url.md
   sendmessage:
   - lessons/subagents/LESSON-subagent-reports-need-sendmessage.md
+  session-continuity:
+  - specs/pipeline/SPEC-025-stop-and-suggest-handoff-at-80-percent-context.md
   session-start:
   - decisions/distribution/ADR-015-self-update-on-session-start.md
   - plans/PLAN-012-self-update.md
