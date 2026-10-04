@@ -70,6 +70,7 @@ Held under [[PLAN-009-sizing-mechanism]]'s `## Later` region. Promoted into a de
 - [ ] Build `/compass` orchestrator skill - single entry point that delegates to agents based on project state
 - [x] Archive workflow - shipped v0.9.0: `compass sync` sweeps done tasks into archive/done.md ([[ADR-014-active-sweep-on-sync]], 2026-08-28)
 - [ ] Plugin marketplace listing - publish to Claude Code plugin marketplace
+- [ ] SPEC-025 on dsh: research a route to the session's token count and a run-level halt (dsh hooks get an empty `transcript_path` and only log `continue:false`), per [[research/pipeline/RESEARCH-context-threshold-stop]].
 
 ## Superseded by [[SPEC-002-lessons-and-index-subsystem]]
 
