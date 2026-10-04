@@ -174,7 +174,8 @@ def merge_settings(project_root, manifest_path):
     """Register the hooks manifest in `.claude/settings.json`: replace only
     hook groups whose commands mention `compass`, preserve every user-owned
     group and unrelated top-level key, collapse the manifest's three
-    PostToolUse entries into one `Write|Edit|MultiEdit|write|edit` matcher
+    per-tool PostToolUse entries (the groups carrying `if`) into one
+    `Write|Edit|MultiEdit|write|edit` matcher
     (the lowercase names are dsh's; inert under Claude Code), and strip
     the `if` field the settings schema does not carry. Idempotent."""
     manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))["hooks"]
@@ -201,9 +202,13 @@ def merge_settings(project_root, manifest_path):
     translated = {}
     posttool = manifest.get("PostToolUse") or []
     if posttool:
-        translated["PostToolUse"] = [
-            clean_group(posttool[0], "Write|Edit|MultiEdit|write|edit")
-        ]
+        # The per-tool split groups are the ones carrying `if`; every other
+        # PostToolUse group registers as it stands.
+        split = [g for g in posttool if any("if" in h for h in g.get("hooks", []))]
+        whole = [clean_group(g) for g in posttool if g not in split]
+        if split:
+            whole.append(clean_group(split[0], "Write|Edit|MultiEdit|write|edit"))
+        translated["PostToolUse"] = whole
     for event in manifest:
         if event != "PostToolUse":
             translated[event] = [clean_group(g) for g in manifest[event]]

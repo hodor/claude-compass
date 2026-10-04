@@ -36,12 +36,12 @@ A Claude Code session whose context reaches 80% of its window stops after the st
 
 ### Wave 1 (detailed)
 
-- [ ] TASK-137: `compass context-check --hook` - reads the PostToolUse event, measures the main session's context as in Design, and emits the halt once per crossing - complexity: M, depends_on: none, files: [plugin/cli/commands/context_check.py, plugin/cli/maincli.py, plugin/cli/tests/test_context_check.py], decisions: [SPEC-025-stop-and-suggest-handoff-at-80-percent-context/D-01, SPEC-025-stop-and-suggest-handoff-at-80-percent-context/D-02]
+- [x] TASK-137: `compass context-check --hook` - reads the PostToolUse event, measures the main session's context as in Design, and emits the halt once per crossing - complexity: M, depends_on: none, files: [plugin/cli/commands/context_check.py, plugin/cli/maincli.py, plugin/cli/tests/test_context_check.py], decisions: [SPEC-025-stop-and-suggest-handoff-at-80-percent-context/D-01, SPEC-025-stop-and-suggest-handoff-at-80-percent-context/D-02]
   - stopReason text: `Context is at NN% of the window. Compass stopped before the next step - run /compass:handoff to carry this session into a fresh one.`
   - `COMPASS_CONTEXT_THRESHOLD` (integer percent, default 80) exists so the live acceptance can cross the line in a cheap session.
   - Automated verification: `python -m pytest plugin/cli/tests/test_context_check.py -q` passes, with fixture transcripts covering 79% pass, 80% halt, `[1m]` window, second call after a halt passes, drop under 80% re-arms, usage line beyond the tail window still found, missing transcript passes, garbage lines pass, event with `agent_id` passes. `python -m pytest plugin/cli/tests -q` shows no regression.
   - Manual verification: the human reads the stopReason text and confirms it is how he wants to be told.
-- [ ] TASK-138: Register the hook - one PostToolUse entry with no matcher, shell prefilter skipping `agent_id` events, manifest description updated, version 0.26.0 - complexity: S, depends_on: TASK-137, files: [plugin/hooks/hooks.json, plugin/cli/tests/test_hooks_config.py, plugin/.claude-plugin/plugin.json], decisions: [SPEC-025-stop-and-suggest-handoff-at-80-percent-context/D-01]
+- [x] TASK-138: Register the hook - one PostToolUse entry with no matcher, shell prefilter skipping `agent_id` events, manifest description updated, version 0.26.0 - complexity: S, depends_on: TASK-137, files: [plugin/hooks/hooks.json, plugin/cli/tests/test_hooks_config.py, plugin/.claude-plugin/plugin.json], decisions: [SPEC-025-stop-and-suggest-handoff-at-80-percent-context/D-01]
   - Automated verification: `test_hooks_config.py` asserts the entry exists, references `context-check`, carries the not-installed exit-0 guard and the `agent_id` prefilter; the existing every-command-is-registered test passes; full suite passes.
   - Manual verification: after `/compass:update` in this repo, `.claude/settings.json` holds the entry.
 - [ ] TASK-139: Live acceptance in an interactive Claude Code session - complexity: S, depends_on: TASK-138, files: [.compass/research/pipeline/RESEARCH-context-threshold-stop.md], decisions: [SPEC-025-stop-and-suggest-handoff-at-80-percent-context/D-01, SPEC-025-stop-and-suggest-handoff-at-80-percent-context/D-02, SPEC-025-stop-and-suggest-handoff-at-80-percent-context/D-03]
@@ -52,10 +52,14 @@ A Claude Code session whose context reaches 80% of its window stops after the st
 ## Risks
 
 - **Transcript fields are undocumented.** The model attachment and the per-message `usage` could change shape in a Claude Code release. The hook passes on anything it cannot read, so a change silences the stop rather than breaking sessions; the TASK-137 tests pin the shape that exists today.
-- **Python start-up on every main-agent tool call.** The guard avoids this for the main agent; this hook cannot, because no usage figure exists in the payload. Expected cost is tens of milliseconds per call.
+- **Python start-up on every main-agent tool call.** The guard avoids this for the main agent; this hook cannot, because no usage figure exists in the payload. Measured on Windows against a 160K-token transcript: about 220 ms wall per call, shell and interpreter start included.
 - **Mid-session `/model` switch** was not probed. Reading the latest model line covers it if Claude Code writes one on switch.
 
 ## Verification
 
 - `python -m pytest plugin/cli/tests -q` passes.
 - TASK-139's live record shows the halt, the message, and a completed handoff.
+
+## Revision Log
+
+- 2026-10-03: TASK-138 widened to `plugin/cli/commands/self_update.py`, `plugin/skills/setup/SKILL.md` and `plugin/cli/hostlib.py`. Both settings installers registered only the manifest's first PostToolUse group under the sync matcher, so a second group replaced vault sync; they now collapse only the `if`-carrying split groups. The dsh materializer leaves context-check out, since dsh hooks get an empty transcript path and only log the halt (D-03).

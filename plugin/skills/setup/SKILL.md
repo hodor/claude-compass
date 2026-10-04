@@ -177,8 +177,13 @@ posttool = manifest.get("PostToolUse") or []
 if posttool:
     # The manifest splits PostToolUse three ways (Write/Edit/MultiEdit) because its
     # "if" field cannot express boolean OR. The settings schema carries no "if"
-    # field, so the three collapse into one matcher group.
-    translated["PostToolUse"] = [clean_group(posttool[0], "Write|Edit|MultiEdit|write|edit")]
+    # field, so the three collapse into one matcher group. Every other PostToolUse
+    # group (no "if") registers as it stands.
+    split = [g for g in posttool if any("if" in h for h in g.get("hooks", []))]
+    whole = [clean_group(g) for g in posttool if g not in split]
+    if split:
+        whole.append(clean_group(split[0], "Write|Edit|MultiEdit|write|edit"))
+    translated["PostToolUse"] = whole
 for event in manifest:
     if event != "PostToolUse":
         translated[event] = [clean_group(g) for g in manifest[event]]

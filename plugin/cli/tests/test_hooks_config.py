@@ -64,6 +64,28 @@ class HooksJsonTests(unittest.TestCase):
         self.assertIn("capture-signal", hook["command"])
         self.assertIn("--hook", hook["command"])
 
+    def test_posttooluse_runs_context_check_on_every_tool(self):
+        # Defect class: the threshold hook is scoped to some tools, so a
+        # session that crosses 80% on any other tool keeps working.
+        groups = [
+            group for group in self.data["hooks"]["PostToolUse"]
+            if any("context-check --hook" in h.get("command", "") for h in group["hooks"])
+        ]
+        self.assertEqual(len(groups), 1)
+        self.assertNotIn("matcher", groups[0])
+        self.assertNotIn("if", groups[0]["hooks"][0])
+
+    def test_context_check_skips_subagent_events_before_python(self):
+        # Defect class: a subagent's tool call starts Python on the main
+        # session's hot path for a check that always passes.
+        command = next(
+            h["command"] for group in self.data["hooks"]["PostToolUse"]
+            for h in group["hooks"] if "context-check" in h["command"]
+        )
+        prefilter = "case \"$input\" in *agent_id*|*agent_type*) exit 0;; esac;"
+        self.assertIn(prefilter, command)
+        self.assertLess(command.index(prefilter), command.index("python"))
+
     def test_subagentstop_matcher_preserved(self):
         group = self.data["hooks"]["SubagentStop"][0]
         self.assertEqual(group["matcher"], ORIGINAL_SUBAGENTSTOP_MATCHER)
