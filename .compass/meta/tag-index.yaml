@@ -261,6 +261,7 @@ tags:
   context-size:
   - lessons/instructions/LESSON-remove-context-before-adding.md
   context-window:
+  - plans/PLAN-019-stop-at-80-percent-context.md
   - research/pipeline/RESEARCH-context-threshold-stop.md
   - specs/pipeline/SPEC-025-stop-and-suggest-handoff-at-80-percent-context.md
   control-arm:
@@ -556,6 +557,7 @@ tags:
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_16-47-06_wave1-tree-uncommitted.md
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated.md
   - handoffs/PLAN-017-dsh-host-support/2026-09-05_21-30-00_wave6-zero-decision-queued.md
+  - plans/PLAN-019-stop-at-80-percent-context.md
   - research/pipeline/RESEARCH-context-threshold-stop.md
   - specs/pipeline/SPEC-025-stop-and-suggest-handoff-at-80-percent-context.md
   hang:
@@ -632,6 +634,7 @@ tags:
   - plans/PLAN-010-invisible-capture.md
   - plans/PLAN-012-self-update.md
   - plans/PLAN-017-dsh-host-support.md
+  - plans/PLAN-019-stop-at-80-percent-context.md
   - research/distribution/RESEARCH-deepseek-harness-fit.md
   - research/distribution/RESEARCH-dsh-live-probes.md
   - research/distribution/RESEARCH-self-update-surfaces.md
@@ -1042,6 +1045,7 @@ tags:
   portability:
   - specs/distribution/SPEC-006-multi-host-agent-cli-support.md
   posttooluse:
+  - plans/PLAN-019-stop-at-80-percent-context.md
   - research/pipeline/RESEARCH-context-threshold-stop.md
   pre-build-station:
   - lessons/test-quality/LESSON-untestable-criterion-is-a-spec-defect.md

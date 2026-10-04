@@ -53,6 +53,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-016-domain-taxonomy]] - implement ADR-022 in two waves: mechanism first (Contents sync + loop-guard fix, make-domain, validate ceiling + link rules, skill contracts), then the human-approved migration of this vault; live acceptance is a filer drill and a finder drill on the migrated vault
 - [[PLAN-017-dsh-host-support]] - dsh is a native Compass host from the one canonical plugin source (v0.19-0.23): materializers, model routes, doctor, capture worker, global auto-installed bundle, and Wave 6 zero-decision (SPEC-006 D-05) - hosts detected never asked, dsh-first bootstrap via a second bridge mount, both-direction acceptance at 0 errors
 - [[PLAN-018-research-covers-the-whole-spec]] - rebuilds Compass's research surfaces so a run scopes to a whole spec instead of its question list, draws from a shipped list of sources whose access was tested, reads code instead of documentation, and reports when it needs another pass
+- [[PLAN-019-stop-at-80-percent-context]] - a PostToolUse hook measures the main session's context from its transcript and, once it reaches 80% of the window, halts after the current tool with a stopReason suggesting /compass:handoff; fires once per crossing so the handoff itself runs; Claude Code only
 
 ## Decisions
 

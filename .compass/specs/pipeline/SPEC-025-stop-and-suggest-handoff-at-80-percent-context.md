@@ -28,3 +28,4 @@ KPI: [guess: every session that reaches 80% context usage stops and suggests a h
 
 - **D-01:** Stopping means finishing the current step, then stopping before starting the next one; work is never cut off mid-step.
 - **D-02:** 80% means 80% of the whole context window.
+- **D-03:** Claude Code is built first; dsh follows once dsh hooks receive a transcript path and honor a halt ([[research/pipeline/RESEARCH-context-threshold-stop]]).
