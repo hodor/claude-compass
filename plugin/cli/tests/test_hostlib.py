@@ -156,6 +156,15 @@ class MaterializeDshHooksTests(unittest.TestCase):
         self.assertTrue(out.is_file())
         return json.loads(out.read_text(encoding="utf-8")), project
 
+    def test_context_check_is_left_out_while_sync_stays(self):
+        # Defect class: dsh pays a Python start on every tool call for a
+        # check that reads an empty transcript path and can never halt.
+        data, _ = self._materialize()
+        commands = [h["command"] for groups in data["hooks"].values()
+                    for g in groups for h in g["hooks"]]
+        self.assertFalse(any("context-check" in c for c in commands))
+        self.assertTrue(any(" sync --hook" in c for c in commands))
+
     def test_commands_are_dialect_neutral(self):
         data, _ = self._materialize()
         for groups in data["hooks"].values():

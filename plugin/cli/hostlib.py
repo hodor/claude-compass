@@ -51,6 +51,11 @@ DSH_EVENTS = {
     "SubagentStop",
 }
 
+# Hook commands left out of `.dsh/hooks.json`: context-check measures from
+# `transcript_path` and halts with `continue: false`, and dsh hooks receive
+# an empty transcript path and only log the halt.
+DSH_SKIPPED_COMMANDS = (" context-check ",)
+
 # plugin.yaml nests its fields under a `plugin:` mapping, so the field is
 # usually indented; a top-level `hosts:` is accepted too.
 _HOSTS_LINE = re.compile(r"^[ \t]*hosts:\s*(\[.*\])\s*$", re.MULTILINE)
@@ -408,6 +413,9 @@ def materialize_dsh_hooks(project_root, manifest_path):
             continue
         out_groups = []
         for group in groups:
+            if any(name in h.get("command", "") for h in group.get("hooks", [])
+                   for name in DSH_SKIPPED_COMMANDS):
+                continue
             cleaned = {k: v for k, v in group.items() if k != "hooks"}
             cleaned["hooks"] = [
                 {**{k: v for k, v in h.items() if k != "if"},

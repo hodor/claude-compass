@@ -28,6 +28,15 @@ MANIFEST = {
     "hooks": {
         "PostToolUse": [
             {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "timeout": 15,
+                        "command": "python compass context-check --hook",
+                    }
+                ],
+            },
+            {
                 "matcher": "Write",
                 "hooks": [
                     {
@@ -333,10 +342,17 @@ class SettingsMergeTests(SelfUpdateFixture):
             for g in post
             if any("compass" in h["command"] for h in g["hooks"])
         ]
-        self.assertEqual(len(compass_groups), 1)
+        # The three per-tool sync groups collapse into one; the context
+        # threshold group registers beside it, matching every tool.
+        self.assertEqual(len(compass_groups), 2)
+        sync = [g for g in compass_groups if any(" sync --hook" in h["command"] for h in g["hooks"])]
+        context = [g for g in compass_groups if any("context-check --hook" in h["command"] for h in g["hooks"])]
+        self.assertEqual(len(sync), 1)
+        self.assertEqual(len(context), 1)
         # dsh matches on its lowercase tool names; the extra alternatives are
         # inert under Claude Code, so one manifest stays legal on both hosts.
-        self.assertEqual(compass_groups[0]["matcher"], "Write|Edit|MultiEdit|write|edit")
+        self.assertEqual(sync[0]["matcher"], "Write|Edit|MultiEdit|write|edit")
+        self.assertNotIn("matcher", context[0])
         for g in post:
             for h in g["hooks"]:
                 self.assertNotIn("if", h)
