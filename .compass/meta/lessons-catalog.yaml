@@ -349,3 +349,10 @@ lessons:
     tags: [self-update, doctor, repository, offline, silent-failure]
     score: 5
     summary: "A bad repository URL in plugin.yaml makes self-update look permanently offline; doctor should verify it resolves"
+  - file: "LESSON-stated-definitions-are-not-research-axes.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [research, axes, human-words, definitions]
+    score: 5
+    summary: "A definition the human stated in the request is settled; turning it into a research axis re-asks what they already said"
