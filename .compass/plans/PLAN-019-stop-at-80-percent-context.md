@@ -26,8 +26,8 @@ A Claude Code session whose context reaches 80% of its window stops after the st
 
 ## Design
 
-- **Measure:** used = `input_tokens + cache_creation_input_tokens + cache_read_input_tokens` of the last `type: assistant` line, the statusline's own formula (`SPEC-025-stop-and-suggest-handoff-at-80-percent-context/D-02`). The window is 1,000,000 when the latest `attachment.type: model` line's `modelId` ends in `[1m]`, otherwise 200,000.
-- **Cost:** the transcript is read from its end, so a long session costs one bounded read per tool call rather than a full parse. The model line sits near the start; its window is cached per `session_id` in `.compass/tmp/context-state.json`.
+- **Measure:** used = `input_tokens + cache_creation_input_tokens + cache_read_input_tokens` of the last `type: assistant` line, the statusline's own formula (`SPEC-025-stop-and-suggest-handoff-at-80-percent-context/D-02`). The window comes from the latest `attachment.type: model` line's `modelId` through Claude Code's model table ([[research/pipeline/RESEARCH-context-threshold-stop]] finding 3): `[1m]` is 1M; Claude 3.x, Opus 4.0-4.6, Sonnet 4.x and Haiku 4.x are 200K; every other model runs 1M natively. `CLAUDE_CODE_DISABLE_1M_CONTEXT` and `CLAUDE_CODE_MAX_CONTEXT_TOKENS` apply as Claude Code applies them, `COMPASS_CONTEXT_WINDOW` overrides all, and an unrecognized model is taken as 1M so a guessed window never halts early.
+- **Cost:** the transcript is read from its end, so a long session costs one bounded read per tool call rather than a full parse. The model line sits near the start; its id is cached per `session_id` in `.compass/tmp/context-state.json` and the window recomputed from it each call. With a cached id the scan runs back to the previous usage line, which catches a `/model` switch at the first call after it.
 - **Once per crossing:** the halt fires the first time a session is at or above 80% and records that in the state file. Later tool calls in the same session pass, so the human's `/compass:handoff` (or a choice to keep going) is never blocked. The record clears when usage drops back under 80%, as after `/compact`, so the next crossing halts again.
 - **Main agent only:** the shell prefilter exits before Python when the event carries `agent_id`. A subagent's halt stops only that subagent (finding 5), and the main context does not grow while a subagent works; the main agent halts at the tool call that returns the subagent's result.
 - **Never blocks on failure:** a missing transcript, an unparseable line, or no usage yet means pass, exit 0.
@@ -53,7 +53,8 @@ A Claude Code session whose context reaches 80% of its window stops after the st
 
 - **Transcript fields are undocumented.** The model attachment and the per-message `usage` could change shape in a Claude Code release. The hook passes on anything it cannot read, so a change silences the stop rather than breaking sessions; the TASK-137 tests pin the shape that exists today.
 - **Python start-up on every main-agent tool call.** The guard avoids this for the main agent; this hook cannot, because no usage figure exists in the payload. Measured on Windows against a 160K-token transcript: about 220 ms wall per call, shell and interpreter start included.
-- **Mid-session `/model` switch** was not probed. Reading the latest model line covers it if Claude Code writes one on switch.
+- **Mid-session `/model` switch** was not probed live. The scan picks up a model line written since the previous API call, which covers it if Claude Code writes one on switch.
+- **A future model the table does not name** is taken as 1M. If it runs 200K, the stop never fires and Claude Code's own auto-compact takes over; `COMPASS_CONTEXT_WINDOW` corrects it.
 
 ## Verification
 
@@ -63,3 +64,4 @@ A Claude Code session whose context reaches 80% of its window stops after the st
 ## Revision Log
 
 - 2026-10-03: TASK-138 widened to `plugin/cli/commands/self_update.py`, `plugin/skills/setup/SKILL.md` and `plugin/cli/hostlib.py`. Both settings installers registered only the manifest's first PostToolUse group under the sync matcher, so a second group replaced vault sync; they now collapse only the `if`-carrying split groups. The dsh materializer leaves context-check out, since dsh hooks get an empty transcript path and only log the halt (D-03).
+- 2026-10-11: The window rule changed from the `[1m]` suffix alone to Claude Code's model table (v0.26.1). Native-1M models carry no suffix, so a session on `claude-opus-5-5` was halted at 16% of its real window (GitHub issue #38). The state file caches the model id, never a computed window, so a session's window follows any correction to the rule.

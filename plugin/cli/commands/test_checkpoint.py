@@ -47,6 +47,13 @@ recorded, not `not_required`, and not yet landed - the mechanical
 definition of "no failures outside the open checkpoint set" that this
 plan's suite-green rule depends on everywhere else.
 
+The git repository is the one holding the checkpointed files, so a workspace
+of nested repositories works: `record` asks git for the top level containing
+the files (all must share one), and the index stores it as `repo`, relative
+to the workspace (`.` for the workspace's own repo). Paths in the index,
+`--commit`, and `verify --tree` are all relative to that repository; an
+index without `repo` means the workspace's own.
+
 Vault root resolution goes through `vaultlib.find_vault_root`
 (LESSON-scratch-vaults-need-compass-dir). Never exits 2; a missing git
 binary, a detached or non-repository working tree, and a corrupt index all
@@ -164,6 +171,42 @@ def _git_ls_dir(repo_root, sha, dirpath):
     if code != 0:
         return []
     return [line.strip() for line in out.splitlines() if line.strip()]
+
+
+def _resolve_arg(workspace, given):
+    """A file argument as an absolute path: absolute as given, else under
+    the workspace when it exists there, else under the cwd, else under the
+    workspace."""
+    path = Path(given)
+    if path.is_absolute():
+        return path
+    for base in (workspace, Path.cwd()):
+        if (base / path).exists():
+            return base / path
+    return workspace / path
+
+
+def _repo_containing(path):
+    """The top level of the git repository holding `path` (the nearest
+    existing directory at or above it), or None outside any repository.
+    A nested repository - one the workspace's own repo ignores - wins over
+    the workspace repo, as git itself resolves it."""
+    directory = path if path.is_dir() else path.parent
+    while not directory.exists() and directory != directory.parent:
+        directory = directory.parent
+    code, out, _ = _run_git(directory, ["rev-parse", "--show-toplevel"])
+    top = out.strip()
+    return Path(top).resolve() if code == 0 and top else None
+
+
+def _repo_label(workspace, repo_root):
+    """How a checkpoint names its repository: POSIX path relative to the
+    workspace (`.` for the workspace's own repo), absolute when outside it."""
+    try:
+        rel = repo_root.resolve().relative_to(workspace.resolve())
+    except ValueError:
+        return repo_root.resolve().as_posix()
+    return rel.as_posix() or "."
 
 
 def _to_posix_rel(repo_root, given):
@@ -469,7 +512,8 @@ def _run_record(args):
 
     task = options["task"]
     vault_root = vaultlib.find_vault_root()
-    repo_root = Path(vault_root).parent
+    workspace = Path(vault_root).parent
+    repo_root = workspace
     path = _checkpoint_path(vault_root, task)
 
     prior = None
@@ -502,6 +546,17 @@ def _run_record(args):
         sys.stdout.write(f"compass test-checkpoint record: {task} not-required\n")
         return 0
 
+    resolved = [_resolve_arg(workspace, given) for given in options["files"]]
+    repos = {_repo_containing(p) for p in resolved}
+    if len(repos) > 1:
+        names = ", ".join(sorted(_repo_label(workspace, r) if r else "(none)" for r in repos))
+        sys.stderr.write(
+            f"compass test-checkpoint record: the files span more than one git repository ({names}); "
+            "record each repository's files as its own checkpoint\n"
+        )
+        return 1
+    repo_root = repos.pop() or workspace
+
     if not _require_git_repo(repo_root):
         sys.stderr.write("compass test-checkpoint record: not a git repository (or git is unavailable)\n")
         return 1
@@ -514,7 +569,7 @@ def _run_record(args):
     commit_files = set(_git_commit_files(repo_root, commit))
     file_records = []
     dirs = set()
-    for given in options["files"]:
+    for given in resolved:
         rel = _to_posix_rel(repo_root, given)
         if rel not in commit_files:
             sys.stderr.write(f"compass test-checkpoint record: {rel} is not part of commit {commit}\n")
@@ -546,7 +601,8 @@ def _run_record(args):
 
     record = {
         "task": task, "version": version, "recorded_at": _iso_now(),
-        "commit": commit, "red_evidence": options["red_evidence"], "not_required": False,
+        "commit": commit, "repo": _repo_label(workspace, repo_root),
+        "red_evidence": options["red_evidence"], "not_required": False,
         "landed": False, "landed_at": None,
         "files": file_records, "support_surface": support_surface, "supersedes": supersedes,
     }
@@ -692,7 +748,7 @@ def _run_verify(args):
 
     task = options["task"]
     vault_root = vaultlib.find_vault_root()
-    repo_root = Path(vault_root).parent
+    workspace = Path(vault_root).parent
     path = _checkpoint_path(vault_root, task)
 
     if not path.is_file():
@@ -709,6 +765,8 @@ def _run_verify(args):
         sys.stdout.write(f"compass test-checkpoint verify: {task} not-required\n")
         return 0
 
+    repo_label = record.get("repo") if isinstance(record.get("repo"), str) else "."
+    repo_root = workspace / repo_label
     if not _require_git_repo(repo_root):
         sys.stderr.write("compass test-checkpoint verify: not a git repository (or git is unavailable)\n")
         return 1

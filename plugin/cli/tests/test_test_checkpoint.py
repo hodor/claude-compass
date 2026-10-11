@@ -187,6 +187,93 @@ class RecordTests(unittest.TestCase):
         self.assertIn("already exists", err)
 
 
+class NestedRepoTests(unittest.TestCase):
+    """A workspace whose code lives in a nested repository the workspace's
+    own repo ignores (`addons/toolkit/`): the checkpoint commit exists only
+    in the nested repo."""
+
+    def make_nested(self, task="TASK-120"):
+        workspace = make_repo_vault(self)
+        write_file(workspace, ".gitignore", ".compass/tmp/\naddons/\n")
+        git_commit_all(workspace, "ignore nested repos")
+        nested = workspace / "addons" / "toolkit"
+        nested.mkdir(parents=True)
+        git_init(nested)
+        write_file(nested, "README.md", "toolkit\n")
+        git_commit_all(nested, "initial")
+        write_file(nested, "tests/__init__.py", INIT_SRC)
+        write_file(nested, "tests/test_foo.py", BASELINE_SRC)
+        sha = git_commit_all(nested, f"test({task}): failing tests")
+        with_vault_env(self, workspace)
+        return workspace, nested, sha
+
+    def test_record_and_verify_against_a_commit_in_a_nested_repo(self):
+        """Adversarial where the checkpoint commit lives only in the nested
+        repo and the workspace repo is asked for it - 'commit not found'."""
+        workspace, nested, sha = self.make_nested()
+        code, out, err = run_cli(["record", "TASK-120", "addons/toolkit/tests/test_foo.py", "--commit", sha])
+        self.assertEqual(code, 0, out + err)
+        record = json.loads(checkpoint_path(workspace, "TASK-120").read_text(encoding="utf-8"))
+        self.assertEqual(record["repo"], "addons/toolkit")
+        self.assertEqual(record["files"][0]["path"], "tests/test_foo.py")
+        self.assertEqual([s["path"] for s in record["support_surface"]], ["tests/__init__.py"])
+        code, out, err = run_cli(["verify", "TASK-120"])
+        self.assertEqual(code, 0, out + err)
+        self.assertIn("unchanged", out)
+
+    def test_verify_catches_a_modification_in_the_nested_repo(self):
+        """Adversarial where verify reads the workspace tree instead of the
+        nested one and reports the edited file as missing or unchanged."""
+        workspace, nested, sha = self.make_nested("TASK-121")
+        run_cli(["record", "TASK-121", "addons/toolkit/tests/test_foo.py", "--commit", sha])
+        write_file(nested, "tests/test_foo.py", BASELINE_SRC.replace("assertEqual(CONST, 1)", "assertEqual(CONST, CONST)"))
+        code, out, err = run_cli(["verify", "TASK-121"])
+        self.assertEqual(code, 1)
+        self.assertIn("modified", out)
+        self.assertIn("tests/test_foo.py", out)
+
+    def test_absolute_file_path_in_a_nested_repo_is_accepted(self):
+        workspace, nested, sha = self.make_nested("TASK-122")
+        code, out, err = run_cli(["record", "TASK-122", str(nested / "tests" / "test_foo.py"), "--commit", sha])
+        self.assertEqual(code, 0, out + err)
+
+    def test_file_path_relative_to_the_cwd_inside_the_nested_repo(self):
+        """Adversarial where a builder working inside the nested repo passes
+        a cwd-relative path and it is resolved against the workspace."""
+        workspace, nested, sha = self.make_nested("TASK-125")
+        cwd = os.getcwd()
+        os.chdir(nested)
+        self.addCleanup(os.chdir, cwd)
+        code, out, err = run_cli(["record", "TASK-125", "tests/test_foo.py", "--commit", sha])
+        self.assertEqual(code, 0, out + err)
+        record = json.loads(checkpoint_path(workspace, "TASK-125").read_text(encoding="utf-8"))
+        self.assertEqual(record["repo"], "addons/toolkit")
+
+    def test_files_spanning_two_repos_are_refused(self):
+        """Adversarial where one checkpoint mixes repos, so one of its files
+        can never be re-read at the recorded commit."""
+        workspace, nested, sha = self.make_nested("TASK-123")
+        write_file(workspace, "tests/test_top.py", BASELINE_SRC)
+        git_commit_all(workspace, "top-level test")
+        code, out, err = run_cli(["record", "TASK-123", "addons/toolkit/tests/test_foo.py",
+                                  "tests/test_top.py", "--commit", sha])
+        self.assertEqual(code, 1)
+        self.assertIn("more than one git repository", err)
+        self.assertFalse(checkpoint_path(workspace, "TASK-123").exists())
+
+    def test_workspace_repo_checkpoint_records_dot_and_old_index_without_repo_still_verifies(self):
+        """Adversarial where an index written before `repo` existed is read
+        as pointing nowhere."""
+        repo_root, sha = build_checkpoint(self, "TASK-124")
+        path = checkpoint_path(repo_root, "TASK-124")
+        record = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(record["repo"], ".")
+        del record["repo"]
+        path.write_text(json.dumps(record), encoding="utf-8")
+        code, out, err = run_cli(["verify", "TASK-124"])
+        self.assertEqual(code, 0, out + err)
+
+
 class ClassificationTests(unittest.TestCase):
     """Every case rewrites `tests/test_foo.py` on disk without committing -
     `verify` reads the current state straight off the working tree - then
