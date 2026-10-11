@@ -9,10 +9,18 @@ suggests `/compass:handoff` (SPEC-025 D-01, D-02).
 
 Used tokens are the statusline's own formula over the latest assistant
 message's usage: `input_tokens + cache_creation_input_tokens +
-cache_read_input_tokens`. The window is 1,000,000 when the latest model
-attachment's `modelId` ends in `[1m]`, otherwise 200,000. The transcript is
-read from its end in growing chunks, so a long session costs one bounded
-read; the window is cached per session in `.compass/tmp/context-state.json`.
+cache_read_input_tokens`. The window follows Claude Code's own model table
+(code.claude.com/docs/en/model-config): a `[1m]` model id is 1,000,000;
+Claude 3.x, Opus 4.0-4.6, Sonnet 4.x and Haiku 4.x are 200,000; every other
+model - Fable, Opus 4.7+, Sonnet 5+, Haiku 5+ - runs 1M natively.
+`CLAUDE_CODE_DISABLE_1M_CONTEXT` holds native-1M models at 200,000, a model
+Claude Code does not recognize takes `CLAUDE_CODE_MAX_CONTEXT_TOKENS` when
+set, and `COMPASS_CONTEXT_WINDOW` overrides everything. An unrecognized model
+with neither variable is taken as 1M, so an unknown window never halts a
+session early. The transcript is read from its end in growing chunks, so a
+long session costs one bounded read; the model id is cached per session in
+`.compass/tmp/context-state.json` and the window recomputed from it on every
+call.
 
 The halt fires once per crossing: the state file records it, later calls in
 the same session pass so the handoff itself can run, and the record clears
@@ -26,6 +34,7 @@ unreadable line, no usage yet - passes with exit 0 and no output.
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -37,6 +46,12 @@ EXTENDED_WINDOW = 1_000_000
 TAIL_CHUNK = 256 * 1024
 STATE_FILE = ("tmp", "context-state.json")
 STATE_SESSIONS_KEPT = 50
+# `claude-opus-4-6`, `us.anthropic.claude-sonnet-4-5-v1`, `claude-sonnet-4-20250514`
+# (a date, not a minor version), `claude-haiku-5-5`.
+_CLAUDE_MODEL = re.compile(r"claude-(?P<family>opus|sonnet|haiku)-(?P<major>\d+)(?:-(?P<minor>\d{1,2})(?!\d))?")
+_FABLE_MODEL = re.compile(r"claude-fable\b")
+# Claude 3.x and earlier name the version first: `claude-3-5-sonnet-20241022`.
+_LEGACY_MODEL = re.compile(r"claude-[1-3](?:-\d)?-(?:opus|sonnet|haiku|instant)|claude-[12](?:\.\d)?(?:$|-)")
 STOP_REASON = (
     "Context is at {pct}% of the window. Compass stopped before the next step - "
     "run /compass:handoff to carry this session into a fresh one."
@@ -51,12 +66,52 @@ def threshold():
     return value if 0 < value <= 100 else DEFAULT_THRESHOLD
 
 
-def _window_of(record):
+def _env_tokens(name):
+    try:
+        value = int(os.environ.get(name, ""))
+    except ValueError:
+        return None
+    return value if value > 0 else None
+
+
+def _standard_window_model(model_id):
+    """True for the Claude models whose window is 200,000 without `[1m]`."""
+    if _LEGACY_MODEL.search(model_id):
+        return True
+    match = _CLAUDE_MODEL.search(model_id)
+    if not match:
+        return False
+    family, major = match.group("family"), int(match.group("major"))
+    minor = int(match.group("minor") or 0)
+    if major < 4:
+        return True
+    if major == 4:
+        return family != "opus" or minor < 7
+    return False
+
+
+def window_for(model_id):
+    override = _env_tokens("COMPASS_CONTEXT_WINDOW")
+    if override:
+        return override
+    model_id = (model_id or "").strip().lower()
+    if model_id.endswith("[1m]"):
+        return EXTENDED_WINDOW
+    if _standard_window_model(model_id):
+        return STANDARD_WINDOW
+    if _CLAUDE_MODEL.search(model_id) or _FABLE_MODEL.search(model_id):
+        if os.environ.get("CLAUDE_CODE_DISABLE_1M_CONTEXT", "").strip() not in ("", "0", "false"):
+            return STANDARD_WINDOW
+        return EXTENDED_WINDOW
+    return _env_tokens("CLAUDE_CODE_MAX_CONTEXT_TOKENS") or EXTENDED_WINDOW
+
+
+def _model_of(record):
     attachment = record.get("attachment")
     if not isinstance(attachment, dict) or attachment.get("type") != "model":
         return None
-    model_id = (attachment.get("identity") or {}).get("modelId") or ""
-    return EXTENDED_WINDOW if model_id.endswith("[1m]") else STANDARD_WINDOW
+    model_id = (attachment.get("identity") or {}).get("modelId")
+    return model_id if isinstance(model_id, str) and model_id else None
 
 
 def _used_of(record):
@@ -111,19 +166,22 @@ def _parse(raw):
     return record if isinstance(record, dict) else None
 
 
-def measure(transcript_path, cached_window=None):
-    """Return (used, window) for a transcript, either None when unknown.
-    The scan stops once both are known; a cached window stops it at the
-    latest usage."""
-    used = window = None
+def measure(transcript_path, cached_model=None):
+    """Return (used, model_id) for a transcript, either None when unknown.
+    The scan stops once both are known. With a cached model id it stops at
+    the usage line before the latest one: a model switch shows as a model
+    line between two API calls, and the hook runs after every call."""
+    used = model = None
     for record in _records_backward(transcript_path):
-        if window is None:
-            window = _window_of(record)
+        if model is None:
+            model = _model_of(record)
+        record_used = _used_of(record)
         if used is None:
-            used = _used_of(record)
-        if used is not None and (window is not None or cached_window is not None):
+            used = record_used
+            continue
+        if model is not None or (cached_model is not None and record_used is not None):
             break
-    return used, window or cached_window
+    return used, model or cached_model
 
 
 def _load_state(path):
@@ -145,7 +203,7 @@ def _save_state(path, state):
 
 def decide(event, state):
     """Return the stopReason to emit, or None to pass. Mutates `state`
-    (keyed by session id) to record the window and the crossing."""
+    (keyed by session id) to record the model and the crossing."""
     if event.get("agent_id") or event.get("agent_type"):
         return None
     transcript = event.get("transcript_path")
@@ -153,10 +211,11 @@ def decide(event, state):
     if not transcript or not Path(transcript).is_file():
         return None
     entry = state.get(session) if isinstance(state.get(session), dict) else {}
-    used, window = measure(transcript, entry.get("window"))
-    if not used or not window:
+    used, model = measure(transcript, entry.get("model"))
+    if not used:
         return None
-    entry = dict(entry, window=window)
+    window = window_for(model)
+    entry = {"model": model, "halted": bool(entry.get("halted"))}
     pct = used * 100 / window
     reason = None
     if pct < threshold():

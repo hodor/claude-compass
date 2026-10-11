@@ -19,6 +19,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from commands import context_check  # noqa: E402
 
 
+# A model whose window is 200,000 (Sonnet 4.6 without `[1m]`).
+STANDARD_MODEL = "claude-sonnet-4-6"
+
+
 def model_line(model_id):
     return {"type": "attachment", "attachment": {"type": "model", "identity": {"modelId": model_id}}}
 
@@ -45,7 +49,9 @@ class ContextCheckFixture(unittest.TestCase):
         self.env_backup = dict(os.environ)
         os.environ["CLAUDE_PROJECT_DIR"] = str(self.project)
         os.environ.pop("COMPASS_CONTEXT_THRESHOLD", None)
-        os.environ.pop("COMPASS_WORKER_SESSION", None)
+        for name in ("COMPASS_WORKER_SESSION", "COMPASS_CONTEXT_WINDOW",
+                     "CLAUDE_CODE_DISABLE_1M_CONTEXT", "CLAUDE_CODE_MAX_CONTEXT_TOKENS"):
+            os.environ.pop(name, None)
         self.addCleanup(lambda: (os.environ.clear(), os.environ.update(self.env_backup)))
 
     def write(self, *records, raw_lines=()):
@@ -75,11 +81,11 @@ class ThresholdTests(ContextCheckFixture):
     def test_just_under_80_percent_passes(self):
         # Defect class: an off-by-one or rounding halts a session that has
         # not reached the line.
-        self.write(model_line("claude-opus-5-5"), assistant_line(input_tokens=10, cache_read=159_989))
+        self.write(model_line(STANDARD_MODEL), assistant_line(input_tokens=10, cache_read=159_989))
         self.assertIsNone(self.hook())
 
     def test_exactly_80_percent_halts_with_continue_false_and_handoff(self):
-        self.write(model_line("claude-opus-5-5"), assistant_line(input_tokens=10, cache_read=159_990))
+        self.write(model_line(STANDARD_MODEL), assistant_line(input_tokens=10, cache_read=159_990))
         out = self.hook()
         self.assertIs(out["continue"], False)
         self.assertIn("80%", out["stopReason"])
@@ -88,11 +94,11 @@ class ThresholdTests(ContextCheckFixture):
     def test_output_tokens_do_not_count_toward_usage(self):
         # Defect class: output tokens are added, so the hook disagrees with
         # the statusline and halts early.
-        self.write(model_line("claude-opus-5-5"), assistant_line(input_tokens=150_000, output=20_000))
+        self.write(model_line(STANDARD_MODEL), assistant_line(input_tokens=150_000, output=20_000))
         self.assertIsNone(self.hook())
 
     def test_cache_creation_counts_toward_usage(self):
-        self.write(model_line("claude-opus-5-5"), assistant_line(input_tokens=5, cache_creation=165_000))
+        self.write(model_line(STANDARD_MODEL), assistant_line(input_tokens=5, cache_creation=165_000))
         self.assertIsNotNone(self.hook())
 
     def test_extended_window_model_uses_one_million(self):
@@ -103,20 +109,20 @@ class ThresholdTests(ContextCheckFixture):
         self.assertIn("85%", self.hook()["stopReason"])
 
     def test_latest_usage_wins_over_earlier_ones(self):
-        self.write(model_line("m"), assistant_line(cache_read=190_000), assistant_line(cache_read=20_000))
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=190_000), assistant_line(cache_read=20_000))
         self.assertIsNone(self.hook())
 
     def test_sidechain_and_zero_usage_lines_are_ignored(self):
         # Defect class: a synthetic all-zero message after a real one reads
         # as 0% and re-arms or hides the crossing.
-        self.write(model_line("m"), assistant_line(cache_read=170_000),
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=170_000),
                    assistant_line(cache_read=1, sidechain=True),
                    {"type": "assistant", "message": {"usage": {"input_tokens": 0}}})
         self.assertIsNotNone(self.hook())
 
     def test_threshold_env_override(self):
         os.environ["COMPASS_CONTEXT_THRESHOLD"] = "10"
-        self.write(model_line("m"), assistant_line(cache_read=25_000))
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=25_000))
         self.assertIn("12%", self.hook()["stopReason"])
 
     def test_invalid_threshold_env_falls_back_to_80(self):
@@ -125,18 +131,85 @@ class ThresholdTests(ContextCheckFixture):
             self.assertEqual(context_check.threshold(), 80, bad)
 
 
+class WindowTests(ContextCheckFixture):
+    def test_native_1m_models_without_suffix_use_one_million(self):
+        # Defect class: the window is read from a `[1m]` suffix only, so a
+        # native-1M model is judged against 200K and halts at 16%.
+        for model_id in ("claude-opus-5-5", "claude-opus-5", "claude-sonnet-5", "claude-sonnet-5-5",
+                         "claude-fable-5-1", "claude-haiku-5-5", "claude-opus-4-7",
+                         "us.anthropic.claude-opus-4-7-v1"):
+            self.assertEqual(context_check.window_for(model_id), 1_000_000, model_id)
+
+    def test_200k_models_use_two_hundred_thousand(self):
+        for model_id in ("claude-sonnet-4-6", "claude-opus-4-6", "claude-opus-4-1-20250805",
+                         "claude-sonnet-4-20250514", "claude-opus-4-20250514", "claude-haiku-4-5-20251001",
+                         "claude-3-5-sonnet-20241022", "claude-3-opus-20240229",
+                         "us.anthropic.claude-sonnet-4-5-20250929-v1:0"):
+            self.assertEqual(context_check.window_for(model_id), 200_000, model_id)
+
+    def test_1m_suffix_lifts_a_200k_model(self):
+        self.assertEqual(context_check.window_for("claude-sonnet-4-6[1m]"), 1_000_000)
+        self.assertEqual(context_check.window_for("claude-opus-4-6[1M]"), 1_000_000)
+
+    def test_disable_1m_holds_native_models_at_200k_but_not_explicit_1m(self):
+        os.environ["CLAUDE_CODE_DISABLE_1M_CONTEXT"] = "1"
+        self.assertEqual(context_check.window_for("claude-opus-5-5"), 200_000)
+        os.environ["CLAUDE_CODE_DISABLE_1M_CONTEXT"] = "0"
+        self.assertEqual(context_check.window_for("claude-opus-5-5"), 1_000_000)
+
+    def test_unknown_model_is_never_judged_against_a_smaller_guessed_window(self):
+        # Defect class: an unrecognized id falls to 200K and halts early.
+        self.assertEqual(context_check.window_for("gpt-6-sol"), 1_000_000)
+        self.assertEqual(context_check.window_for(""), 1_000_000)
+        self.assertEqual(context_check.window_for(None), 1_000_000)
+
+    def test_unknown_model_takes_claude_code_max_context_tokens(self):
+        os.environ["CLAUDE_CODE_MAX_CONTEXT_TOKENS"] = "128000"
+        self.assertEqual(context_check.window_for("gpt-6-sol"), 128_000)
+        self.assertEqual(context_check.window_for("claude-opus-5-5"), 1_000_000)
+
+    def test_compass_window_override_beats_everything(self):
+        os.environ["COMPASS_CONTEXT_WINDOW"] = "300000"
+        self.assertEqual(context_check.window_for("claude-opus-5-5[1m]"), 300_000)
+        self.assertEqual(context_check.window_for("claude-sonnet-4-6"), 300_000)
+        os.environ["COMPASS_CONTEXT_WINDOW"] = "junk"
+        self.assertEqual(context_check.window_for("claude-sonnet-4-6"), 200_000)
+
+    def test_reported_session_passes_at_16_percent(self):
+        # The reported session: Opus 5.5 with no suffix, 160.9k used.
+        self.write(model_line("claude-opus-5-5"), assistant_line(input_tokens=6, cache_read=160_900))
+        self.assertIsNone(self.hook())
+
+    def test_stale_200k_window_in_state_from_an_older_version_is_ignored(self):
+        # Defect class: a wrong window cached per session stays wrong for the
+        # session's whole life.
+        state_path = self.project / ".compass" / "tmp" / "context-state.json"
+        state_path.write_text(json.dumps({"s1": {"window": 200000, "halted": True}}), encoding="utf-8")
+        self.write(model_line("claude-opus-5-5"), assistant_line(cache_read=160_900))
+        self.assertIsNone(self.hook())
+        self.assertEqual(json.loads(state_path.read_text())["s1"],
+                         {"model": "claude-opus-5-5", "halted": False})
+
+    def test_model_line_after_the_latest_usage_updates_the_cached_model(self):
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=100_000))
+        self.assertIsNone(self.hook())
+        self.append(model_line("claude-opus-5-5"), {"type": "user", "message": {"content": "next"}},
+                    assistant_line(cache_read=170_000))
+        self.assertIsNone(self.hook())  # 17% of 1M, not 85% of 200K
+
+
 class OncePerCrossingTests(ContextCheckFixture):
     def test_second_call_after_a_halt_passes_so_the_handoff_can_run(self):
         # Defect class: every tool call halts, so /compass:handoff is stopped
         # at its first step and the session is stuck.
-        self.write(model_line("m"), assistant_line(cache_read=170_000))
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=170_000))
         self.assertIsNotNone(self.hook())
         self.append(assistant_line(cache_read=175_000))
         self.assertIsNone(self.hook())
         self.assertIsNone(self.hook())
 
     def test_dropping_under_the_line_rearms_the_next_crossing(self):
-        self.write(model_line("m"), assistant_line(cache_read=170_000))
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=170_000))
         self.assertIsNotNone(self.hook())
         self.append(assistant_line(cache_read=30_000))  # after /compact
         self.assertIsNone(self.hook())
@@ -144,17 +217,17 @@ class OncePerCrossingTests(ContextCheckFixture):
         self.assertIsNotNone(self.hook())
 
     def test_crossing_is_tracked_per_session(self):
-        self.write(model_line("m"), assistant_line(cache_read=170_000))
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=170_000))
         self.assertIsNotNone(self.hook(self.event(session_id="a")))
         self.assertIsNotNone(self.hook(self.event(session_id="b")))
 
     def test_corrupt_state_file_is_treated_as_empty(self):
         (self.project / ".compass" / "tmp" / "context-state.json").write_text("{not json", encoding="utf-8")
-        self.write(model_line("m"), assistant_line(cache_read=170_000))
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=170_000))
         self.assertIsNotNone(self.hook())
 
     def test_state_keeps_a_bounded_number_of_sessions(self):
-        self.write(model_line("m"), assistant_line(cache_read=10))
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=10))
         for i in range(context_check.STATE_SESSIONS_KEPT + 10):
             self.hook(self.event(session_id=f"s{i}"))
         state = json.loads((self.project / ".compass" / "tmp" / "context-state.json").read_text())
@@ -167,35 +240,35 @@ class TranscriptReadingTests(ContextCheckFixture):
         # Defect class: the backward read stops at its first chunk and
         # misses usage when the tail is one huge tool result.
         filler = {"type": "user", "message": {"content": "x" * (context_check.TAIL_CHUNK * 3)}}
-        self.write(model_line("m"), assistant_line(cache_read=170_000), filler)
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=170_000), filler)
         self.assertIsNotNone(self.hook())
 
     def test_line_split_across_chunk_boundary_parses(self):
         # Defect class: a record straddling two chunks is dropped as garbage.
         pad = {"type": "user", "message": {"content": "y" * (context_check.TAIL_CHUNK - 40)}}
-        self.write(model_line("m"), assistant_line(cache_read=170_000), pad)
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=170_000), pad)
         self.assertEqual(context_check.measure(self.transcript)[0], 170_000)
 
-    def test_window_cached_from_an_earlier_call_is_used_when_the_model_line_is_not_reached(self):
+    def test_model_cached_from_an_earlier_call_is_used_when_the_model_line_is_not_reached(self):
         self.write(model_line("m[1m]"), assistant_line(cache_read=10))
         self.hook()
         self.write(assistant_line(cache_read=500_000))  # model line gone from this file
         self.assertIsNone(self.hook())  # 50% of the cached 1M window
 
     def test_garbage_lines_are_skipped(self):
-        self.write(model_line("m"), assistant_line(cache_read=170_000),
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=170_000),
                    raw_lines=["{broken", "[1,2]", "\x00\x01", "null"])
         self.assertIsNotNone(self.hook())
 
 
 class PassTests(ContextCheckFixture):
     def test_subagent_event_passes(self):
-        self.write(model_line("m"), assistant_line(cache_read=190_000))
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=190_000))
         self.assertIsNone(self.hook(self.event(agent_id="abc", agent_type="builder")))
 
     def test_worker_session_passes(self):
         os.environ["COMPASS_WORKER_SESSION"] = "1"
-        self.write(model_line("m"), assistant_line(cache_read=190_000))
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=190_000))
         self.assertIsNone(self.hook())
 
     def test_missing_transcript_passes(self):
@@ -203,7 +276,7 @@ class PassTests(ContextCheckFixture):
         self.assertIsNone(self.hook(self.event(transcript_path="")))
 
     def test_no_usage_yet_passes(self):
-        self.write(model_line("m"))
+        self.write(model_line(STANDARD_MODEL))
         self.assertIsNone(self.hook())
 
     def test_empty_and_malformed_stdin_pass(self):
@@ -216,7 +289,7 @@ class PassTests(ContextCheckFixture):
     def test_no_vault_passes(self):
         shutil.rmtree(self.project / ".compass")
         os.environ["CLAUDE_PROJECT_DIR"] = str(self.project)
-        self.write(model_line("m"), assistant_line(cache_read=190_000))
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=190_000))
         cwd = os.getcwd()
         os.chdir(self.project)
         self.addCleanup(os.chdir, cwd)

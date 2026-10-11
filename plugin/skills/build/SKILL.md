@@ -27,8 +27,8 @@ Spawn builder agents to execute tasks. The main conversation orchestrates; it do
 
 3. **Test-first station.** For each selected task whose `files:` include executable source:
    - Spawn the `tester` in pre-build mode, handing it exactly the task body, the plan's acceptance criteria, and the task's automated-verification bullets. No diff exists yet and none is given.
-   - Commit the test files it wrote on the working branch: `git commit -m "test(TASK-NNN): failing tests before implementation"`.
-   - Run `compass test-checkpoint record TASK-NNN <files> --commit <sha> --red-evidence <path>`, pointing `--red-evidence` at the tester's recorded red-run output.
+   - Commit the test files it wrote on the working branch: `git commit -m "test(TASK-NNN): failing tests before implementation"`. In a workspace of nested repositories, commit in the repository that holds the test files.
+   - Run `compass test-checkpoint record TASK-NNN <files> --commit <sha> --red-evidence <path>`, pointing `--red-evidence` at the tester's recorded red-run output. The checkpoint binds to the repository holding the files, so `<sha>` is that repository's commit; files from two repositories are two checkpoints.
    - Only then spawn the builder for that task. The checkpoint commit must exist on the working branch before the builder's worktree forks from it, or the fork will not contain it ([[LESSON-subagent-worktrees-fork-stale]]).
 
    A task whose `files:` carry no executable source runs `compass test-checkpoint record TASK-NNN --not-required` instead of skipping the command outright, so "the station correctly did not apply" and "the station never ran" stay distinguishable later.
