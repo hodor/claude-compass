@@ -49,7 +49,7 @@ class ContextCheckFixture(unittest.TestCase):
         self.env_backup = dict(os.environ)
         os.environ["CLAUDE_PROJECT_DIR"] = str(self.project)
         os.environ.pop("COMPASS_CONTEXT_THRESHOLD", None)
-        for name in ("COMPASS_WORKER_SESSION", "COMPASS_CONTEXT_WINDOW",
+        for name in ("COMPASS_WORKER_SESSION", "COMPASS_CONTEXT_WINDOW", "COMPASS_CONTEXT_FINAL_THRESHOLD",
                      "CLAUDE_CODE_DISABLE_1M_CONTEXT", "CLAUDE_CODE_MAX_CONTEXT_TOKENS"):
             os.environ.pop(name, None)
         self.addCleanup(lambda: (os.environ.clear(), os.environ.update(self.env_backup)))
@@ -188,7 +188,7 @@ class WindowTests(ContextCheckFixture):
         self.write(model_line("claude-opus-5-5"), assistant_line(cache_read=160_900))
         self.assertIsNone(self.hook())
         self.assertEqual(json.loads(state_path.read_text())["s1"],
-                         {"model": "claude-opus-5-5", "halted": False})
+                         {"model": "claude-opus-5-5", "offered": 0})
 
     def test_model_line_after_the_latest_usage_updates_the_cached_model(self):
         self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=100_000))
@@ -196,6 +196,93 @@ class WindowTests(ContextCheckFixture):
         self.append(model_line("claude-opus-5-5"), {"type": "user", "message": {"content": "next"}},
                     assistant_line(cache_read=170_000))
         self.assertIsNone(self.hook())  # 17% of 1M, not 85% of 200K
+
+
+class SecondOfferTests(ContextCheckFixture):
+    """SPEC-025 D-04: suggested once at 80%; if declined, work continues and
+    the handoff is suggested one more time at 95%."""
+
+    def test_declined_at_80_continues_until_95_then_offers_once_more(self):
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=161_000))
+        self.assertIn("80%", self.hook()["stopReason"])
+        for used in (165_000, 175_000, 185_000, 189_000):  # the human said no; work goes on
+            self.append(assistant_line(cache_read=used))
+            self.assertIsNone(self.hook(), used)
+        self.append(assistant_line(cache_read=190_500))
+        out = self.hook()
+        self.assertIs(out["continue"], False)
+        self.assertIn("95%", out["stopReason"])
+        self.assertIn("/compass:handoff", out["stopReason"])
+
+    def test_no_third_offer_after_95(self):
+        # Defect class: every call past 95% halts, so a declined session
+        # can never finish its work.
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=161_000))
+        self.hook()
+        self.append(assistant_line(cache_read=191_000))
+        self.assertIsNotNone(self.hook())
+        for used in (193_000, 196_000, 199_000):
+            self.append(assistant_line(cache_read=used))
+            self.assertIsNone(self.hook(), used)
+
+    def test_dip_between_levels_after_95_does_not_rearm_95(self):
+        # Defect class: usage falling from 96% to 85% (a partial trim) and
+        # back re-arms 95%, giving a third offer.
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=161_000))
+        self.hook()
+        self.append(assistant_line(cache_read=192_000))
+        self.assertIsNotNone(self.hook())
+        self.append(assistant_line(cache_read=170_000))
+        self.assertIsNone(self.hook())
+        self.append(assistant_line(cache_read=192_000))
+        self.assertIsNone(self.hook())
+
+    def test_jump_past_both_levels_offers_once(self):
+        # Defect class: a session that crosses 80 and 95 between two calls
+        # is stopped twice in a row.
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=100_000))
+        self.assertIsNone(self.hook())
+        self.append(assistant_line(cache_read=192_000))
+        self.assertIn("96%", self.hook()["stopReason"])
+        self.append(assistant_line(cache_read=193_000))
+        self.assertIsNone(self.hook())
+
+    def test_first_and_final_messages_differ(self):
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=161_000))
+        first = self.hook()["stopReason"]
+        self.append(assistant_line(cache_read=191_000))
+        final = self.hook()["stopReason"]
+        self.assertNotEqual(first.replace("80%", "N"), final.replace("95%", "N"))
+
+    def test_compaction_rearms_both_levels(self):
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=161_000))
+        self.hook()
+        self.append(assistant_line(cache_read=191_000))
+        self.hook()
+        self.append(assistant_line(cache_read=30_000))  # after /compact
+        self.assertIsNone(self.hook())
+        self.append(assistant_line(cache_read=161_000))
+        self.assertIn("80%", self.hook()["stopReason"])
+
+    def test_state_from_the_single_level_version_counts_as_offered_at_80(self):
+        # Defect class: an older `halted: true` entry is read as never
+        # offered, so a session that already declined is stopped again.
+        state_path = self.project / ".compass" / "tmp" / "context-state.json"
+        state_path.write_text(json.dumps({"s1": {"model": STANDARD_MODEL, "halted": True}}), encoding="utf-8")
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=170_000))
+        self.assertIsNone(self.hook())
+        self.append(assistant_line(cache_read=191_000))
+        self.assertIsNotNone(self.hook())
+
+    def test_final_level_env_and_degenerate_values(self):
+        os.environ["COMPASS_CONTEXT_FINAL_THRESHOLD"] = "90"
+        self.assertEqual(context_check.levels(), [80, 90])
+        os.environ["COMPASS_CONTEXT_FINAL_THRESHOLD"] = "70"
+        self.assertEqual(context_check.levels(), [80])
+        os.environ["COMPASS_CONTEXT_FINAL_THRESHOLD"] = "junk"
+        self.assertEqual(context_check.levels(), [80, 95])
+        os.environ["COMPASS_CONTEXT_THRESHOLD"] = "95"
+        self.assertEqual(context_check.levels(), [95])
 
 
 class OncePerCrossingTests(ContextCheckFixture):
