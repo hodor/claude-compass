@@ -22,10 +22,13 @@ long session costs one bounded read; the model id is cached per session in
 `.compass/tmp/context-state.json` and the window recomputed from it on every
 call.
 
-The halt fires once per crossing: the state file records it, later calls in
-the same session pass so the handoff itself can run, and the record clears
-when usage falls back under the threshold (as after `/compact`), which arms
-the next crossing.
+The suggestion is made at two levels, once each: the threshold (80%) and a
+final one (95%, SPEC-025 D-04). The state file records the highest level
+already suggested, so later calls in the same session pass - the handoff can
+run, or the human can decline and keep working - until usage reaches the
+next level. A session that jumps past both at once is told once. The record
+clears when usage falls back under the threshold (as after `/compact`), which
+arms both levels again.
 
 Subagent events (carrying `agent_id`) and capture-worker sessions
 (`COMPASS_WORKER_SESSION`) pass. Every failure - no transcript, an
@@ -41,6 +44,7 @@ from pathlib import Path
 import vaultlib
 
 DEFAULT_THRESHOLD = 80
+DEFAULT_FINAL_THRESHOLD = 95
 STANDARD_WINDOW = 200_000
 EXTENDED_WINDOW = 1_000_000
 TAIL_CHUNK = 256 * 1024
@@ -54,16 +58,32 @@ _FABLE_MODEL = re.compile(r"claude-fable\b")
 _LEGACY_MODEL = re.compile(r"claude-[1-3](?:-\d)?-(?:opus|sonnet|haiku|instant)|claude-[12](?:\.\d)?(?:$|-)")
 STOP_REASON = (
     "Context is at {pct}% of the window. Compass stopped before the next step - "
-    "run /compass:handoff to carry this session into a fresh one."
+    "run /compass:handoff to carry this session into a fresh one, or say so to keep working."
+)
+FINAL_STOP_REASON = (
+    "Context is at {pct}% of the window, close to full. Compass stopped before the next step - "
+    "run /compass:handoff now to carry this session into a fresh one."
 )
 
 
-def threshold():
+def _percent_env(name, default):
     try:
-        value = int(os.environ.get("COMPASS_CONTEXT_THRESHOLD", DEFAULT_THRESHOLD))
+        value = int(os.environ.get(name, default))
     except ValueError:
-        return DEFAULT_THRESHOLD
-    return value if 0 < value <= 100 else DEFAULT_THRESHOLD
+        return default
+    return value if 0 < value <= 100 else default
+
+
+def threshold():
+    return _percent_env("COMPASS_CONTEXT_THRESHOLD", DEFAULT_THRESHOLD)
+
+
+def levels():
+    """The percentages at which the handoff is suggested, ascending: the
+    threshold, then the final level when it lies above the threshold."""
+    first = threshold()
+    final = _percent_env("COMPASS_CONTEXT_FINAL_THRESHOLD", DEFAULT_FINAL_THRESHOLD)
+    return [first, final] if final > first else [first]
 
 
 def _env_tokens(name):
@@ -201,6 +221,15 @@ def _save_state(path, state):
     os.replace(tmp, path)
 
 
+def _offered_level(entry, first_level):
+    """The highest level already suggested in this session; a state entry
+    holding only the older `halted` flag counts as the first level."""
+    offered = entry.get("offered")
+    if isinstance(offered, (int, float)) and not isinstance(offered, bool):
+        return offered
+    return first_level if entry.get("halted") else 0
+
+
 def decide(event, state):
     """Return the stopReason to emit, or None to pass. Mutates `state`
     (keyed by session id) to record the model and the crossing."""
@@ -215,14 +244,14 @@ def decide(event, state):
     if not used:
         return None
     window = window_for(model)
-    entry = {"model": model, "halted": bool(entry.get("halted"))}
+    marks = levels()
+    offered = _offered_level(entry, marks[0])
     pct = used * 100 / window
+    reached = max((level for level in marks if pct >= level), default=0)
     reason = None
-    if pct < threshold():
-        entry["halted"] = False
-    elif not entry.get("halted"):
-        entry["halted"] = True
-        reason = STOP_REASON.format(pct=int(pct))
+    if reached > offered:
+        reason = (FINAL_STOP_REASON if reached == marks[-1] and len(marks) > 1 else STOP_REASON).format(pct=int(pct))
+    entry = {"model": model, "offered": reached if reason or reached == 0 else offered}
     state.pop(session, None)
     state[session] = entry
     return reason
@@ -232,7 +261,7 @@ def run(args):
     if "--hook" not in args:
         sys.stdout.write(
             "compass context-check --hook: PostToolUse hook. Reads the event on stdin and halts the "
-            f"main agent once per crossing of {threshold()}% context usage.\n"
+            f"main agent once at each of {', '.join(f'{p}%' for p in levels())} context usage.\n"
         )
         return 0
     if os.environ.get("COMPASS_WORKER_SESSION"):
