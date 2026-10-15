@@ -125,7 +125,18 @@ def dispatch(name, args):
     return module.run(args)
 
 
+def _escape_unencodable_output():
+    """Print a character the console's encoding lacks as a backslash escape.
+    A Windows console runs cp1252, which has no box-drawing or arrow glyph."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="backslashreplace")
+        except (AttributeError, ValueError):
+            pass
+
+
 def main(argv=None):
+    _escape_unencodable_output()
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv:
         build_parser().print_help()

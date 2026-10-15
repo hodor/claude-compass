@@ -61,6 +61,7 @@ report a message on stderr and exit 1 rather than raising.
 """
 
 import ast
+import codecs
 import datetime
 import hashlib
 import json
@@ -648,6 +649,19 @@ def _parse_verify(args):
     }, None
 
 
+def _read_evidence(path):
+    """The text of a saved test run. A PowerShell `>` redirect writes UTF-16
+    with a byte-order mark, and a Windows console saves its own code page,
+    so bytes outside UTF-8 decode as cp1252; test ids are ASCII either way."""
+    data = path.read_bytes()
+    if data.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
+        return data.decode("utf-16")
+    try:
+        return data.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return data.decode("cp1252", errors="replace")
+
+
 def _parse_run_evidence(text):
     """`{(class_name, test_name): status}` from unittest `-v` or pytest
     `-v` output, status one of `ok`, `fail`, `error`, `skipped` (plus
@@ -689,13 +703,13 @@ def _parse_run_evidence(text):
 
 
 def _record_pytest_status(statuses, nodeid, raw_status):
-    """Fold one pytest node id into the status map. The node id's last
-    `::` segment is the test name (a `[param]` suffix identifies one case
-    of a parametrized test and is stripped, since checkpoint ids carry the
-    bare name); the segment before it, when it is not the file path, is
-    the class."""
-    segments = nodeid.split("::")
-    name = segments[-1].split("[", 1)[0]
+    """Fold one pytest node id into the status map. A `[param]` suffix
+    identifies one case of a parametrized test and is stripped first, since
+    checkpoint ids carry the bare name and a param id may itself hold `::`.
+    The remaining id's last `::` segment is the test name; the segment
+    before it, when it is not the file path, is the class."""
+    segments = nodeid.split("[", 1)[0].split("::")
+    name = segments[-1]
     class_name = segments[-2] if len(segments) >= 3 else None
     status = {"PASSED": "ok", "FAILED": "fail", "ERROR": "error",
               "SKIPPED": "skipped"}.get(raw_status, raw_status.lower())
@@ -830,7 +844,7 @@ def _run_verify(args):
                 f"compass test-checkpoint verify: --against-run evidence not found: {options['against_run']}\n"
             )
             return 1
-        statuses = _parse_run_evidence(evidence_path.read_text(encoding="utf-8"))
+        statuses = _parse_run_evidence(_read_evidence(evidence_path))
         for file_record in record.get("files", []):
             for class_name, test_name in file_record.get("ids", []):
                 status = statuses.get((class_name, test_name))
