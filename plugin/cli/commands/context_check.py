@@ -39,6 +39,7 @@ import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 
 import vaultlib
@@ -50,6 +51,10 @@ EXTENDED_WINDOW = 1_000_000
 TAIL_CHUNK = 256 * 1024
 STATE_FILE = ("tmp", "context-state.json")
 STATE_SESSIONS_KEPT = 50
+# Parallel tool calls run one hook process each against the same state file;
+# Windows refuses a read or a replace while another process holds it.
+STATE_ATTEMPTS = 20
+STATE_RETRY_SECONDS = 0.01
 # `claude-opus-4-6`, `us.anthropic.claude-sonnet-4-5-v1`, `claude-sonnet-4-20250514`
 # (a date, not a minor version), `claude-haiku-5-5`.
 _CLAUDE_MODEL = re.compile(r"claude-(?P<family>opus|sonnet|haiku)-(?P<major>\d+)(?:-(?P<minor>\d{1,2})(?!\d))?")
@@ -204,21 +209,38 @@ def measure(transcript_path, cached_model=None):
     return used, model or cached_model
 
 
+def _retrying(action):
+    """Run `action`, retrying while another process holds the file."""
+    for attempt in range(STATE_ATTEMPTS):
+        try:
+            return action()
+        except PermissionError:
+            if attempt == STATE_ATTEMPTS - 1:
+                raise
+            time.sleep(STATE_RETRY_SECONDS)
+
+
 def _load_state(path):
     try:
-        state = json.loads(path.read_text(encoding="utf-8"))
+        state = json.loads(_retrying(lambda: path.read_text(encoding="utf-8")))
     except (OSError, ValueError):
         return {}
     return state if isinstance(state, dict) else {}
 
 
 def _save_state(path, state):
+    """Write the state through a temp file named for this process and an
+    atomic replace. A replace still refused after the retries leaves the
+    previous state in place."""
     if len(state) > STATE_SESSIONS_KEPT:
         state = dict(list(state.items())[-STATE_SESSIONS_KEPT:])
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
     tmp.write_text(json.dumps(state), encoding="utf-8")
-    os.replace(tmp, path)
+    try:
+        _retrying(lambda: os.replace(tmp, path))
+    except PermissionError:
+        tmp.unlink(missing_ok=True)
 
 
 def _offered_level(entry, first_level):

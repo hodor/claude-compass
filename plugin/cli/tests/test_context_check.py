@@ -8,6 +8,7 @@ import io
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -320,6 +321,79 @@ class OncePerCrossingTests(ContextCheckFixture):
         state = json.loads((self.project / ".compass" / "tmp" / "context-state.json").read_text())
         self.assertEqual(len(state), context_check.STATE_SESSIONS_KEPT)
         self.assertIn(f"s{context_check.STATE_SESSIONS_KEPT + 9}", state)
+
+
+class ConcurrentStateTests(ContextCheckFixture):
+    """Parallel tool calls fire one PostToolUse hook process each, all
+    saving the same state file at once."""
+
+    def bugs_captured(self):
+        return sorted(p.name for p in (self.project / ".compass" / "tmp" / "compass-bugs").glob("*.json"))
+
+    def test_concurrent_processes_save_without_a_fault(self):
+        # Defect class: processes share one temp name, so one replace moves
+        # another's temp away (FileNotFoundError), or Windows refuses the
+        # replace while another process holds the file (PermissionError).
+        state_path = self.project / ".compass" / "tmp" / "context-state.json"
+        script = (
+            "import sys; sys.path.insert(0, sys.argv[1]); from pathlib import Path;"
+            "from commands import context_check as c; p = Path(sys.argv[2]);"
+            "[c._save_state(p, dict(c._load_state(p), **{sys.argv[3]: {'offered': i}})) for i in range(150)]"
+        )
+        cli_dir = str(Path(__file__).resolve().parents[1])
+        procs = [subprocess.Popen([sys.executable, "-c", script, cli_dir, str(state_path), f"s{n}"],
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                 for n in range(8)]
+        for proc in procs:
+            _, err = proc.communicate(timeout=120)
+            self.assertEqual(proc.returncode, 0, err.decode(errors="replace"))
+        self.assertIsInstance(json.loads(state_path.read_text()), dict)
+        self.assertEqual(list(state_path.parent.glob("*.tmp")), [])
+
+    def test_a_replace_refused_briefly_still_saves(self):
+        # Windows refuses the replace while another process holds the file open.
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=170_000))
+        real_replace = os.replace
+        refusals = iter([PermissionError(32, "in use")] * 2)
+
+        def flaky_replace(src, dst):
+            error = next(refusals, None)
+            if error:
+                raise error
+            real_replace(src, dst)
+
+        with unittest.mock.patch.object(context_check.os, "replace", flaky_replace), \
+                unittest.mock.patch.object(context_check.time, "sleep"):
+            self.assertIsNotNone(self.hook())
+        self.assertIsNone(self.hook())  # the crossing was recorded
+        self.assertEqual(self.bugs_captured(), [])
+
+    def test_a_read_refused_briefly_still_sees_the_recorded_crossing(self):
+        # Defect class: a refused read is taken as an empty state, the
+        # crossing is forgotten, and the session is halted a second time.
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=170_000))
+        self.assertIsNotNone(self.hook())
+        real_read = Path.read_text
+        refusals = iter([PermissionError(32, "in use")] * 2)
+
+        def flaky_read(path, *args, **kwargs):
+            if path.name == "context-state.json":
+                error = next(refusals, None)
+                if error:
+                    raise error
+            return real_read(path, *args, **kwargs)
+
+        with unittest.mock.patch.object(Path, "read_text", flaky_read), \
+                unittest.mock.patch.object(context_check.time, "sleep"):
+            self.assertIsNone(self.hook())
+
+    def test_a_replace_refused_throughout_passes_and_leaves_no_temp(self):
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=170_000))
+        with unittest.mock.patch.object(context_check.os, "replace", side_effect=PermissionError(32, "in use")), \
+                unittest.mock.patch.object(context_check.time, "sleep"):
+            self.assertIsNotNone(self.hook())
+        self.assertEqual(list((self.project / ".compass" / "tmp").glob("*.tmp")), [])
+        self.assertEqual(self.bugs_captured(), [])
 
 
 class TranscriptReadingTests(ContextCheckFixture):
