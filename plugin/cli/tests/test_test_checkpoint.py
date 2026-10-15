@@ -653,6 +653,38 @@ class ClassificationTests(unittest.TestCase):
         self.assertEqual(code, 0, out + err)
         self.assertNotIn("not-passed", out)
 
+    def test_verify_against_run_param_id_holding_double_colon_reads_the_test_name(self):
+        """Adversarial where: a parametrize id carries `::` inside its
+        brackets; splitting the node id before stripping the bracket names
+        the test after the id's tail, so every passing case reads as
+        not-passed (GitHub #42)."""
+        repo_root, _ = build_checkpoint(self, "TASK-116")
+        evidence = repo_root / "evidence.txt"
+        evidence.write_text(
+            "tests/test_foo.py::FooTests::test_a[mod::_entry] PASSED   [ 50%]\n"
+            "tests/test_foo.py::FooTests::test_b[a::b::c] PASSED       [100%]\n",
+            encoding="utf-8",
+        )
+        code, out, err = self._verify(task="TASK-116", extra=["--against-run", str(evidence)])
+        self.assertEqual(code, 0, out + err)
+        self.assertNotIn("not-passed", out)
+
+    def test_verify_against_run_reads_evidence_in_a_windows_encoding(self):
+        """Adversarial where: a Windows shell saves the run as cp1252 (a
+        dash printed by a test is byte 0x97) or, from a PowerShell `>`
+        redirect, as UTF-16; a strict UTF-8 read crashes on the first and
+        finds no test lines in the second (GitHub #39)."""
+        lines = ("tests/test_foo.py::FooTests::test_a PASSED  — note [ 50%]\n"
+                 "tests/test_foo.py::FooTests::test_b PASSED               [100%]\n")
+        for n, encoding in enumerate(("cp1252", "utf-16")):
+            task = f"TASK-12{n}"
+            repo_root, _ = build_checkpoint(self, task)
+            evidence = repo_root / "evidence.txt"
+            evidence.write_bytes(lines.encode(encoding))
+            code, out, err = self._verify(task=task, extra=["--against-run", str(evidence)])
+            self.assertEqual(code, 0, f"{encoding}: {out}{err}")
+            self.assertNotIn("not-passed", out)
+
     def test_verify_supersede_retains_prior_and_names_it(self):
         """Adversarial where a legitimately-corrected pre-build test
         silently replaces the original checkpoint with no trace, so a human

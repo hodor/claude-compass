@@ -61,6 +61,19 @@ class ExitCodePolicyTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("not implemented", err.getvalue())
 
+    def test_output_a_console_cannot_encode_is_escaped_not_a_crash(self):
+        # A cp1252 console has no box-drawing glyph; a command printing one
+        # raised UnicodeEncodeError and lost its whole report (GitHub #45).
+        import subprocess
+        cli_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = dict(os.environ, PYTHONIOENCODING="cp1252", PYTHONUTF8="0")
+        script = ("import sys; sys.path.insert(0, sys.argv[1]); import maincli;"
+                  "maincli.dispatch = lambda name, args: maincli.cli_ok('report \u2500 end');"
+                  "sys.exit(maincli.main(['sync']))")
+        proc = subprocess.run([sys.executable, "-c", script, cli_dir], env=env, capture_output=True, timeout=60)
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode("cp1252"))
+        self.assertEqual(proc.stdout.decode("cp1252").strip(), "report \\u2500 end")
+
     def test_cli_err_clamps_code_2_to_1(self):
         self.assertEqual(maincli.cli_err("boom", code=2), 1)
 
