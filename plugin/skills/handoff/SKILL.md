@@ -1,16 +1,16 @@
 ---
 name: handoff
-description: Create a handoff at end of session, or resume from one at start. Create compresses context into a portable document. Resume verifies state and presents a situational report.
+description: Create a handoff when the human asks for one, or resume from one at start. Create compresses context into a portable document. Resume verifies state and presents a situational report.
 version: 1.0.0
 allowed-tools: [Read, Grep, Glob, Write, Edit, Bash, AskUserQuestion]
-when_to_use: "Use at session boundaries. Triggers: 'create handoff', 'end session', 'resume from handoff', 'continue from where we left off', 'what was I doing'."
+when_to_use: "Create only when the human asks for a handoff, including in answer to Compass's context stop. Triggers: 'create handoff', 'hand off', 'end session', 'resume from handoff', 'continue from where we left off', 'what was I doing'."
 argument-hint: "[create | resume <path | PLAN-NNN>]"
 ---
 
 # Handoff
 
 Two modes:
-- `create` (or no argument when ending work): save context for next session.
+- `create` (or no argument): save context for the next session. Runs only on the human's request; a finished task, a merged plan, or a step waiting on the human is reported in conversation, never handed off.
 - `resume <path>` or `resume <PLAN-NNN>` (or no arg to pick most recent): verify state and continue.
 
 ---

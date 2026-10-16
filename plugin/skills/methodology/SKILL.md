@@ -119,7 +119,7 @@ Phase 4: RE-REVIEW (max 3 iterations)
 Phase 5: MERGE BACK - orchestrator (`/compass:build`) merges each task
          branch into the working branch in depends_on order,
          spawning the tester after each merge to catch integration issues
-Phase 6: HANDOFF TO HUMAN
+Phase 6: REPORT TO HUMAN
 ```
 
 Rules: file exclusivity (planner assigns `files:` per task); validator runs AFTER all builders, not during; fix builders get the specific FAIL, not the full task; loop cap 3, then escalate; merge-back is the orchestrator's job (builders never merge their own branch); a merge conflict halts and escalates - it means file ownership was wrong.
@@ -207,7 +207,7 @@ Setting up a new project applies the same methodology - Setup creates `SPEC-001`
 
 ## Handoffs
 
-When a session ends with work in progress, create a handoff via `/compass:handoff create`:
+A handoff is written when the human asks for one, via `/compass:handoff create`. Compass's context stop suggests it at 80% and 95% of the window; below that, a session continues where it is. Creating one:
 - Compress session state into a portable document.
 - Capture git state (branch, commit), task progress, file references, decisions, blockers.
 - Use `file:line` references, never copy large code blocks.
