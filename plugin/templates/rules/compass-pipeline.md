@@ -121,6 +121,7 @@ Bare `compass` lists every command with a one-liner - check it before assuming a
 ## Vault State
 
 - After completing a task, update `.compass/active.md`.
+- A handoff is written only when the human asks for one. A finished task, a merged plan, or a step waiting on the human is reported in conversation; `active.md` already carries the state.
 - After creating ANY vault document (spec, plan, research, ADR, lesson, vision, handoff, review), add a link to it in `.compass/index.md` under the appropriate section. This is mandatory in the same step that creates the document, not a follow-up. Documents not in index.md are invisible to the next session.
 - The index is an index. Its one-line description is a copy of the document's own `summary:` frontmatter, never the only place that text exists. Write `summary:` when you create the document; `compass validate` warns when it is missing. An index that stores what it should point at cannot be shortened without losing it.
 
