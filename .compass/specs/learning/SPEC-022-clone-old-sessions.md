@@ -7,7 +7,7 @@ area: learning
 tags: [sessions, lessons, context-window, fork, harvest]
 summary: "find a project's past Claude sessions, run temporary copies of them to advise or do work until their context runs out, and keep the originals untouched"
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 approved: 2026-10-16
 ---
 
@@ -33,5 +33,5 @@ KPI: [guess: one command takes the human from the request to the aggregated resu
 
 - **D-01:** The main sessions are preserved. Only temporary copies do the work.
 - **D-02:** The copies go as far as they can with no autocompact.
-- **D-03:** When the work is done, the temp sessions are deleted, or kept as different sessions INSIDE COMPASS for the project so that we can review them when needed.
-- **D-04:** Compass copies the project's sessions into the project for storage, so a session can still be cloned after Claude Code's own cleanup deletes its transcript. The copies stay out of git, since a transcript holds everything said and read in the session.
+- **D-03:** When the work is done, the temp sessions are deleted, or kept as different sessions INSIDE COMPASS for the project so that we can review them when needed. Kept sessions live in a central Compass folder outside every repository, one folder per project, so session data with keys or other secrets can never be pushed; the project's vault records only which sessions were kept and what they produced.
+- **D-04:** Session data never lives inside a repository. Sessions stay cloneable because Claude Code keeps them longer: Compass checks the `cleanupPeriodDays` setting and offers to raise it from its 30-day default, instead of keeping copies of its own.
