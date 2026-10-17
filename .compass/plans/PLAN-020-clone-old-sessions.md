@@ -1,12 +1,13 @@
 ---
 title: "Clone Old Sessions to Harvest Their Lessons"
 type: plan
-status: draft
+status: approved
 confidence: medium
 area: learning
 tags: [sessions, lessons, fork, headless, transcript, retention]
 created: 2026-10-17
 updated: 2026-10-17
+approved: 2026-10-17
 git_branch: master
 git_commit: 38b1935
 author: planner

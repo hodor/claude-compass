@@ -35,6 +35,18 @@ Plan: [[PLAN-019-stop-at-80-percent-context]]. TASK-137 and TASK-138 shipped as 
 
 - [ ] TASK-139: Live acceptance in an interactive Claude Code session - the human watches the stop and the handoff (`COMPASS_CONTEXT_THRESHOLD` lowers the line).
 
+## PLAN-020: clone old sessions to harvest their lessons
+
+Plan: [[PLAN-020-clone-old-sessions]].
+
+- [ ] TASK-140: The transcript reader and the central folder
+- [ ] TASK-141: `compass retention` and the doctor row
+- [ ] TASK-142: `compass sessions list`, `show` and `record`
+- [ ] TASK-143: `compass clone`
+- [ ] TASK-144: Setup offers longer session retention
+- [ ] TASK-145: `/compass:clone-old` skill and version 0.27.0
+- [ ] TASK-146: Live acceptance on this repo
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].
