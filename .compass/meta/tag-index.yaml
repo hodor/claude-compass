@@ -64,6 +64,8 @@ tags:
   - plans/PLAN-007-test-quality.md
   auto-maintenance:
   - specs/vault-structure/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
+  autocompact:
+  - research/learning/RESEARCH-clone-old-sessions.md
   autocrlf:
   - lessons/platform/LESSON-autocrlf-churns-lf-writers.md
   automation:
@@ -262,7 +264,9 @@ tags:
   - lessons/instructions/LESSON-remove-context-before-adding.md
   context-window:
   - plans/PLAN-019-stop-at-80-percent-context.md
+  - research/learning/RESEARCH-clone-old-sessions.md
   - research/pipeline/RESEARCH-context-threshold-stop.md
+  - specs/learning/SPEC-022-clone-old-sessions.md
   - specs/pipeline/SPEC-025-stop-and-suggest-handoff-at-80-percent-context.md
   control-arm:
   - lessons/experiments/LESSON-score-the-do-nothing-baseline-before-running.md
@@ -507,6 +511,9 @@ tags:
   folder-spec:
   - lessons/vault-structure/LESSON-obsidian-bare-link-creates-stray-note.md
   - lessons/vault-structure/LESSON-template-shape-vs-template-precondition.md
+  fork:
+  - research/learning/RESEARCH-clone-old-sessions.md
+  - specs/learning/SPEC-022-clone-old-sessions.md
   foundational:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   frontier-models:
@@ -572,11 +579,14 @@ tags:
   - specs/pipeline/SPEC-009-configurable-pipeline-workflows.md
   - specs/vault-structure/SPEC-011-vault-graph-queries.md
   - specs/vault-structure/SPEC-019-active-holds-only-active-work.md
+  harvest:
+  - specs/learning/SPEC-022-clone-old-sessions.md
   headless:
   - decisions/learning/ADR-013-detached-worker-quiet-fallback.md
   - lessons/hooks/LESSON-spawned-sessions-inherit-project-hooks.md
   - lessons/subagents/LESSON-headless-worker-denies-tools-silently.md
   - plans/PLAN-010-invisible-capture.md
+  - research/learning/RESEARCH-clone-old-sessions.md
   - research/learning/RESEARCH-invisible-scaffolding.md
   headroom:
   - lessons/LESSON-verify-exactness-past-a-compressing-layer.md
@@ -799,11 +809,13 @@ tags:
   - plans/PLAN-001-lessons-and-index-implementation.md
   - plans/PLAN-003-hybrid-hierarchy.md
   - plans/PLAN-006-learning-loop.md
+  - research/learning/RESEARCH-clone-old-sessions.md
   - research/learning/RESEARCH-lesson-capture-failure.md
   - research/learning/RESEARCH-lessons-and-index-architecture.md
   - research/learning/index.md
   - specs/learning/SPEC-002-lessons-and-index-subsystem.md
   - specs/learning/SPEC-012-learning-loop.md
+  - specs/learning/SPEC-022-clone-old-sessions.md
   - specs/learning/index.md
   line-endings:
   - lessons/platform/LESSON-autocrlf-churns-lf-writers.md
@@ -1241,6 +1253,9 @@ tags:
   - plans/PLAN-012-self-update.md
   - research/distribution/RESEARCH-self-update-surfaces.md
   - specs/distribution/SPEC-020-compass-updates-itself.md
+  sessions:
+  - research/learning/RESEARCH-clone-old-sessions.md
+  - specs/learning/SPEC-022-clone-old-sessions.md
   settings:
   - lessons/hooks/LESSON-hooks-load-only-from-settings.md
   setup:
@@ -1472,6 +1487,7 @@ tags:
   - research/pipeline/RESEARCH-decision-coverage-impl.md
   - specs/pipeline/SPEC-007-decision-coverage-tracing.md
   transcript:
+  - research/learning/RESEARCH-clone-old-sessions.md
   - research/pipeline/RESEARCH-context-threshold-stop.md
   transcription:
   - research/learning/RESEARCH-humans-words-fidelity.md

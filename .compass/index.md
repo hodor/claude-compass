@@ -19,7 +19,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 
 - [[SPEC-001-compass-vision-and-architecture]] — Core vision, principles, architecture, and resolved design decisions
 - [[specs/distribution/index|distribution]] (folder, 4 children) - how Compass reaches and stays current in projects - installs, updates, host CLIs, model resolution
-- [[specs/learning/index|learning]] (folder, 3 children) - how knowledge is captured and fed back - lessons, the capture loop, fidelity to the human's words
+- [[specs/learning/index|learning]] (folder, 4 children) - how knowledge is captured and fed back - lessons, the capture loop, fidelity to the human's words
 - [[specs/pipeline/index|pipeline]] (folder, 7 children) - the development workflow itself - stages, their ordering, how plans elaborate, what each stage must carry forward
 - [[specs/vault-structure/index|vault-structure]] (folder, 7 children) - how the vault organizes, bounds, and retrieves its own memory - hierarchy, indexes, graph queries, active-set sweeping, sizing shapes, domain taxonomy
 - [[specs/tooling/index|tooling]] (folder, 2 children) - Compass's own machinery as a surface - capabilities reachable and measured, scaffolding invisible to the human
@@ -28,7 +28,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 
 - [[research/distribution/index|distribution]] (folder, 6 children) - evidence on shipping and updating Compass across projects and hosts, and prior-art reviews of rival frameworks (GSD)
 - [[research/hermes/index|hermes]] (folder, 3 children) - the hermes host - capabilities, memory mechanics, fit with Compass
-- [[research/learning/index|learning]] (folder, 4 children) - evidence on capturing knowledge - lesson mechanics, capture failure, detached workers, source-word fidelity
+- [[research/learning/index|learning]] (folder, 5 children) - evidence on capturing knowledge - lesson mechanics, capture failure, detached workers, source-word fidelity
 - [[research/rolling-wave/index|rolling-wave]] (folder, 4 children) - plan detail tracking proximity - receding horizons, flow theory, practice
 - [[research/test-quality/index|test-quality]] (folder, 7 children) - what makes a test suite good and how to measure it
 - [[research/vault-structure/index|vault-structure]] (folder, 10 children) - evidence on organizing and retrieving vault memory - hierarchy, tiers, RAG, graphs, taxonomy
