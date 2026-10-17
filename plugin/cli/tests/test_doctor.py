@@ -32,7 +32,27 @@ def make_project(test_case):
     tmp = Path(tempfile.mkdtemp())
     test_case.addCleanup(shutil.rmtree, tmp, True)
     (tmp / ".compass").mkdir()
+    isolate_user_settings(test_case)
     return tmp
+
+
+def isolate_user_settings(test_case):
+    """Point HOME, USERPROFILE and CLAUDE_CONFIG_DIR at temp dirs so no test
+    reads the real ~/.claude/settings.json, and seed the isolated user
+    settings with a long retention so the session-retention row is OK unless
+    a test overrides it."""
+    base = Path(tempfile.mkdtemp())
+    test_case.addCleanup(shutil.rmtree, base, True)
+    home = base / "home"
+    config = base / "cfg"
+    home.mkdir()
+    config.mkdir()
+    with_env(test_case, "HOME", str(home))
+    with_env(test_case, "USERPROFILE", str(home))
+    with_env(test_case, "CLAUDE_CONFIG_DIR", str(config))
+    (config / "settings.json").write_text(
+        json.dumps({"cleanupPeriodDays": 3650}), encoding="utf-8")
+    return config
 
 
 def with_env(test_case, name, value):
@@ -460,9 +480,9 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        # 11 rows: the 9 baseline checks, unit-promotion, and the
-        # host-roster row every project emits.
-        self.assertEqual(len(payload["checks"]), 11)
+        # 12 rows: the baseline checks (session retention and the
+        # host-roster row included) plus unit-promotion.
+        self.assertEqual(len(payload["checks"]), 12)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         row = new_rows[0]
@@ -491,9 +511,9 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        # 11 rows: the 9 baseline checks, unit-promotion, and the
-        # host-roster row every project emits.
-        self.assertEqual(len(payload["checks"]), 11)
+        # 12 rows: the baseline checks (session retention and the
+        # host-roster row included) plus unit-promotion.
+        self.assertEqual(len(payload["checks"]), 12)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         self.assertEqual(new_rows[0]["status"], "OK")
@@ -551,9 +571,9 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        # 11 rows: the 9 baseline checks, unit-promotion, and the
-        # host-roster row every project emits.
-        self.assertEqual(len(payload["checks"]), 11)
+        # 12 rows: the baseline checks (session retention and the
+        # host-roster row included) plus unit-promotion.
+        self.assertEqual(len(payload["checks"]), 12)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         self.assertEqual(new_rows[0]["status"], "WARN")
@@ -675,6 +695,9 @@ KNOWN_BASELINE_CHECKS.add("worker ledger")
 # use these counting helpers.
 KNOWN_BASELINE_CHECKS.add("host roster")
 PRE_TASK_093_CHECKS.add("host roster")
+# The session-retention row also appears in every run.
+KNOWN_BASELINE_CHECKS.add("session retention")
+PRE_TASK_093_CHECKS.add("session retention")
 
 
 def ledger_rows(payload):
@@ -1179,3 +1202,153 @@ class HostChecksTests(unittest.TestCase):
         self.assertEqual(len(checks), 1)
         self.assertEqual(checks[0].status, "OK")
         self.assertIn("claude-code", checks[0].detail)
+
+
+# ---------------------------------------------------------------------------
+# Session retention row (PLAN-020 TASK-141)
+# ---------------------------------------------------------------------------
+
+RETENTION_KEY = "cleanupPeriodDays"
+RETENTION_FIX = 'add "cleanupPeriodDays": 3650 to ~/.claude/settings.json'
+RETENTION_FIX_COMMAND = "compass retention --set 3650"
+
+
+def set_user_retention(content):
+    """Rewrite the isolated user settings. `None` removes the file; a dict is
+    written as JSON; a string is written verbatim."""
+    path = Path(os.environ["CLAUDE_CONFIG_DIR"]) / "settings.json"
+    if content is None:
+        if path.exists():
+            path.unlink()
+        return path
+    text = content if isinstance(content, str) else json.dumps(content)
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def retention_row(payload):
+    rows = [row for row in payload["checks"] if row["check"] == "session retention"]
+    assert len(rows) == 1, f"expected one session retention row, got {len(rows)}"
+    return rows[0]
+
+
+class SessionRetentionRowTests(unittest.TestCase):
+    def setUp(self):
+        self.project = make_project(self)
+        with_project_env(self, self.project)
+        build_complete_install(self.project)
+
+    def row(self):
+        code, out = run_doctor(["--json"])
+        return code, retention_row(json.loads(out))
+
+    def test_status_follows_the_thirty_day_boundary(self):
+        """Adversarial where: the row WARNs on unset and on 30 or less, and is
+        OK only above 30. 30 and 31 are the exact boundary; an `< 30` instead
+        of `<= 30` check passes 30 as safe, and a reader that treats a
+        missing key or a user file holding only other keys as a default
+        'long enough' value reports OK for an unset setting."""
+        rows = [
+            ("no user settings file", None, "WARN"),
+            ("user file without the key", {"model": "opus"}, "WARN"),
+            ("1", {RETENTION_KEY: 1}, "WARN"),
+            ("29", {RETENTION_KEY: 29}, "WARN"),
+            ("30", {RETENTION_KEY: 30}, "WARN"),
+            ("31", {RETENTION_KEY: 31}, "OK"),
+            ("90", {RETENTION_KEY: 90}, "OK"),
+            ("3650", {RETENTION_KEY: 3650}, "OK"),
+        ]
+        for name, content, expected in rows:
+            with self.subTest(name=name):
+                set_user_retention(content)
+                code, row = self.row()
+                self.assertEqual(row["status"], expected, row["detail"])
+                self.assertEqual(code, 0)
+                self.assertNotIn("\n", row["detail"])
+
+    def test_effective_value_comes_from_the_layer_that_wins(self):
+        """Adversarial where: the row judges the effective setting (local,
+        then project, then user), not the user file alone. A short project or
+        local value must WARN even over a long user value, and a long project
+        value must make the row OK even over a user value of 30."""
+        rows = [
+            ("user 30, project 3650", {RETENTION_KEY: 30}, {RETENTION_KEY: 3650}, None, "OK"),
+            ("user 3650, project 7", {RETENTION_KEY: 3650}, {RETENTION_KEY: 7}, None, "WARN"),
+            ("user 3650, local 7", {RETENTION_KEY: 3650}, None, {RETENTION_KEY: 7}, "WARN"),
+            ("user 3650, project 7, local 90", {RETENTION_KEY: 3650}, {RETENTION_KEY: 7},
+             {RETENTION_KEY: 90}, "OK"),
+            ("user 30, project file without the key", {RETENTION_KEY: 30}, {"model": "x"}, None, "WARN"),
+            ("user unset, local 3650", None, None, {RETENTION_KEY: 3650}, "OK"),
+        ]
+        claude_dir = self.project / ".claude"
+        for name, user, project, local, expected in rows:
+            with self.subTest(name=name):
+                for f in (claude_dir / "settings.local.json",):
+                    if f.exists():
+                        f.unlink()
+                set_user_retention(user)
+                # settings.json also carries the installed hooks; merge the key in.
+                project_path = claude_dir / "settings.json"
+                base = json.loads(project_path.read_text(encoding="utf-8"))
+                base.pop(RETENTION_KEY, None)
+                base.update(project or {})
+                project_path.write_text(json.dumps(base), encoding="utf-8")
+                if local is not None:
+                    (claude_dir / "settings.local.json").write_text(
+                        json.dumps(local), encoding="utf-8")
+                _code, row = self.row()
+                self.assertEqual(row["status"], expected, row["detail"])
+
+    def test_warn_names_the_fix_and_ok_does_not(self):
+        """Adversarial where: a WARN row must carry the concrete fix, both the
+        settings line to add and the command that does it, in the JSON `fix`
+        field and in the table's `fixes:` section. An OK row carries no fix,
+        so a healthy install shows no stray remediation."""
+        for name, content in (("unset", None), ("exactly 30", {RETENTION_KEY: 30})):
+            with self.subTest(name=name):
+                set_user_retention(content)
+                _code, row = self.row()
+                self.assertEqual(row["status"], "WARN")
+                self.assertIn(RETENTION_FIX, row["fix"])
+                self.assertIn(RETENTION_FIX_COMMAND, row["fix"])
+                _code, table = run_doctor()
+                self.assertIn("fixes:", table)
+                self.assertIn(RETENTION_FIX, table)
+        set_user_retention({RETENTION_KEY: 31})
+        _code, row = self.row()
+        self.assertEqual(row["status"], "OK")
+        self.assertNotIn("fix", row)
+
+    def test_warn_is_advisory_and_doctor_writes_no_settings(self):
+        """Adversarial where: an unset retention is a warning, never a
+        failure: a complete install still exits 0. Doctor is read-only, so the
+        user's settings file must not be created or changed by the check, and
+        the isolated config dir must stay exactly as the test left it."""
+        path = set_user_retention(None)
+        config = path.parent
+        code, row = self.row()
+        self.assertEqual(row["status"], "WARN")
+        self.assertEqual(code, 0)
+        self.assertEqual(list(config.iterdir()), [])
+        path = set_user_retention({"model": "opus", RETENTION_KEY: 30})
+        before = path.read_bytes()
+        run_doctor(["--json"])
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_unparseable_user_settings_degrade_to_a_row_not_a_crash(self):
+        """Adversarial where: a user settings file that does not parse must
+        not collapse doctor into its one generic 'internal error' FAIL row.
+        Every other row is still produced (12 in total), the retention row is
+        present on a single line and is not a FAIL, and the exit code stays
+        0 for an otherwise complete install."""
+        for name, content in (("not json", "{oops"), ("array", "[1, 2]"), ("empty", "")):
+            with self.subTest(name=name):
+                set_user_retention(content)
+                code, out = run_doctor(["--json"])
+                payload = json.loads(out)
+                self.assertEqual(len(payload["checks"]), 12)
+                row = retention_row(payload)
+                self.assertNotEqual(row["status"], "FAIL")
+                self.assertNotIn("\n", row["detail"])
+                self.assertTrue(row["detail"])
+                self.assertEqual(code, 0)
