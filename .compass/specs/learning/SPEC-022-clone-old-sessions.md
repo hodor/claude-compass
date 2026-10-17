@@ -34,3 +34,4 @@ KPI: [guess: one command takes the human from the request to the aggregated resu
 - **D-01:** The main sessions are preserved. Only temporary copies do the work.
 - **D-02:** The copies go as far as they can with no autocompact.
 - **D-03:** When the work is done, the temp sessions are deleted, or kept as different sessions INSIDE COMPASS for the project so that we can review them when needed.
+- **D-04:** Compass copies the project's sessions into the project for storage, so a session can still be cloned after Claude Code's own cleanup deletes its transcript. The copies stay out of git, since a transcript holds everything said and read in the session.
