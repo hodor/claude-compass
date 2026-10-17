@@ -11,6 +11,8 @@ but nothing else prompts a human to run it, and reconciles the detached
 capture worker's ledger (ADR-013 D-10): spawn/finish/failure counts, a
 started worker with no end row past its grace period, fallback-channel
 firings, the last failure reason, and the no-headless latch's date when set.
+It also reports the effective session retention (`cleanupPeriodDays`), warning
+when Claude Code would delete sessions after 30 days or fewer.
 
 Claude Code loads hooks only from a settings file's `hooks` key
 (`.claude/settings.json`, `.claude/settings.local.json`, `~/.claude/settings.json`)
@@ -35,7 +37,7 @@ import sys
 
 import capturelib
 import vaultlib
-from commands import unit_check
+from commands import retention, unit_check
 
 OK, WARN, FAIL = "OK", "WARN", "FAIL"
 
@@ -523,6 +525,42 @@ def _worker_ledger_check(vault_root):
         return Check("worker ledger", WARN, f"ledger reconciliation failed: {_flatten(exc)}")
 
 
+RETENTION_FIX = (
+    'add "cleanupPeriodDays": 3650 to ~/.claude/settings.json '
+    "(or run `compass retention --set 3650`)"
+)
+
+
+def _retention_check():
+    """Row for the effective `cleanupPeriodDays`. Claude Code deletes
+    sessions older than that many days (30 when unset), so unset or 30 or
+    less WARNs with the fix and anything longer is OK. A settings file that
+    does not parse degrades to a WARN naming it, never a FAIL. Read-only."""
+    try:
+        days, label, _path, problems = retention.effective()
+    except Exception as exc:
+        return Check("session retention", WARN, f"retention scan failed: {_flatten(exc)}")
+    if problems:
+        return Check(
+            "session retention", WARN,
+            f"cannot read settings: {_flatten(problems[0][1])}",
+            "repair the settings file so its cleanupPeriodDays can be read; " + RETENTION_FIX,
+        )
+    if days is None:
+        return Check(
+            "session retention", WARN,
+            "cleanupPeriodDays is unset; Claude Code deletes sessions after 30 days",
+            RETENTION_FIX,
+        )
+    if days <= retention.SHORT_RETENTION_DAYS:
+        return Check(
+            "session retention", WARN,
+            f"cleanupPeriodDays is {days} ({label} settings); sessions older than that are deleted",
+            RETENTION_FIX,
+        )
+    return Check("session retention", OK, f"cleanupPeriodDays is {days} ({label} settings)")
+
+
 def _run_checks():
     try:
         vault_root = vaultlib.find_vault_root()
@@ -546,6 +584,7 @@ def _run_checks():
     checks.append(_usage_check(vault_root))
     checks.append(_overlay_check(vault_root))
     checks.append(_worker_ledger_check(vault_root))
+    checks.append(_retention_check())
     checks.extend(_host_checks(vault_root, project_root))
     return checks
 
