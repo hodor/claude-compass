@@ -62,6 +62,8 @@ tags:
   - lessons/hooks/LESSON-hook-cli-gate-stdin-on-flag.md
   ast:
   - plans/PLAN-007-test-quality.md
+  ast-grep:
+  - research/pipeline/RESEARCH-loop-ast-grep-rule-experiment.md
   auto-maintenance:
   - specs/vault-structure/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
   autocompact:
@@ -120,6 +122,9 @@ tags:
   - lessons/subagents/LESSON-subagent-reports-need-sendmessage.md
   browser:
   - specs/pipeline/SPEC-024-walled-sources-through-the-browser.md
+  budgets:
+  - plans/PLAN-021-control-loops.md
+  - research/pipeline/RESEARCH-control-theory-for-loops.md
   bug-reports:
   - lessons/test-quality/LESSON-revert-to-prove-a-regression-test.md
   build-skill:
@@ -164,6 +169,8 @@ tags:
   - research/test-quality/RESEARCH-fleet-test-census.md
   churn:
   - lessons/platform/LESSON-autocrlf-churns-lf-writers.md
+  ci:
+  - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
   class-here:
   - lessons/vault-structure/LESSON-scope-notes-are-load-bearing.md
   classification:
@@ -173,6 +180,7 @@ tags:
   claude-code:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   - lessons/hooks/LESSON-hooks-load-only-from-settings.md
+  - research/pipeline/RESEARCH-loop-caps-experiment.md
   cleanup:
   - lessons/distribution/LESSON-installer-removes-only-what-it-installed.md
   cli:
@@ -270,7 +278,12 @@ tags:
   - specs/pipeline/SPEC-025-stop-and-suggest-handoff-at-80-percent-context.md
   control-arm:
   - lessons/experiments/LESSON-score-the-do-nothing-baseline-before-running.md
+  control-theory:
+  - plans/PLAN-021-control-loops.md
+  - research/pipeline/RESEARCH-control-theory-for-loops.md
+  - specs/pipeline/SPEC-026-control-theory-for-loops.md
   convergence:
+  - research/pipeline/RESEARCH-control-theory-for-loops.md
   - research/pipeline/REVIEW-spec-023-research-consolidation.md
   - research/test-quality/RESEARCH-test-quality-synthesis.md
   conversation-surface:
@@ -464,6 +477,9 @@ tags:
   exactness:
   - lessons/LESSON-verify-exactness-past-a-compressing-layer.md
   experiment:
+  - research/pipeline/RESEARCH-loop-ast-grep-rule-experiment.md
+  - research/pipeline/RESEARCH-loop-caps-experiment.md
+  - research/pipeline/RESEARCH-loop-judge-sensor-experiment.md
   - research/vault-structure/RESEARCH-grep-vs-graph-experiment.md
   experiments:
   - lessons/experiments/LESSON-blind-the-author-in-self-validation.md
@@ -494,6 +510,10 @@ tags:
   - lessons/experiments/LESSON-score-the-do-nothing-baseline-before-running.md
   fault-based-testing:
   - research/test-quality/RESEARCH-test-quality-literature.md
+  feedback:
+  - plans/PLAN-021-control-loops.md
+  - research/pipeline/RESEARCH-control-theory-for-loops.md
+  - specs/pipeline/SPEC-026-control-theory-for-loops.md
   feedback-loop:
   - specs/pipeline/SPEC-015-rolling-wave-planning.md
   fixtures:
@@ -508,6 +528,9 @@ tags:
   flow:
   - research/rolling-wave/RESEARCH-rolling-wave-flow-theory.md
   - research/rolling-wave/index.md
+  flow-control:
+  - plans/PLAN-021-control-loops.md
+  - research/pipeline/RESEARCH-control-theory-for-loops.md
   folder-spec:
   - lessons/vault-structure/LESSON-obsidian-bare-link-creates-stray-note.md
   - lessons/vault-structure/LESSON-template-shape-vs-template-precondition.md
@@ -517,10 +540,15 @@ tags:
   - specs/learning/SPEC-022-clone-old-sessions.md
   foundational:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
+  fresh-checkout:
+  - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
   frontier-models:
   - lessons/test-quality/LESSON-test-driven-tasks-dont-discriminate.md
   frontmatter:
   - research/vault-structure/RESEARCH-okf-improvements-for-compass.md
+  fsm:
+  - plans/PLAN-021-control-loops.md
+  - research/pipeline/RESEARCH-control-theory-for-loops.md
   gates:
   - decisions/pipeline/ADR-007-decision-coverage-mechanism.md
   - plans/PLAN-004-decision-coverage.md
@@ -535,6 +563,8 @@ tags:
   - lessons/platform/LESSON-windows-heredoc-backslash-escapes.md
   gitattributes:
   - lessons/platform/LESSON-autocrlf-churns-lf-writers.md
+  github-actions:
+  - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
   goodhart:
   - lessons/instructions/LESSON-threshold-in-prose-becomes-the-criterion.md
   graph:
@@ -554,6 +584,9 @@ tags:
   gsd:
   - research/distribution/RESEARCH-gsd-core-improvements-for-compass.md
   - research/pipeline/RESEARCH-decision-coverage-impl.md
+  guard:
+  - research/pipeline/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
   handoff:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
@@ -653,6 +686,7 @@ tags:
   - research/learning/RESEARCH-invisible-scaffolding.md
   - research/learning/RESEARCH-lessons-and-index-architecture.md
   - research/pipeline/RESEARCH-context-threshold-stop.md
+  - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
   - research/vault-structure/RESEARCH-active-set-prior-art.md
   - specs/distribution/SPEC-020-compass-updates-itself.md
   - specs/learning/SPEC-002-lessons-and-index-subsystem.md
@@ -699,6 +733,7 @@ tags:
   - lessons/pipeline/LESSON-stated-definitions-are-not-research-axes.md
   humanlayer:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
+  - research/pipeline/RESEARCH-control-theory-for-loops.md
   humans-words:
   - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
   hybrid:
@@ -721,6 +756,8 @@ tags:
   - research/learning/RESEARCH-humans-words-fidelity.md
   inclusion:
   - research/vault-structure/RESEARCH-cache-theory-for-context-tiers.md
+  incremental-change:
+  - specs/pipeline/SPEC-026-control-theory-for-loops.md
   index:
   - decisions/vault-structure/ADR-021-index-speaks-in-domains.md
   - decisions/vault-structure/ADR-022-domains-scope-notes-shallow-when-unsure.md
@@ -764,6 +801,8 @@ tags:
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   jit:
   - decisions/vault-structure/ADR-003-drop-counter-file-jit-compute.md
+  judge:
+  - research/pipeline/RESEARCH-loop-judge-sensor-experiment.md
   kanban:
   - research/rolling-wave/RESEARCH-rolling-wave-software-practice.md
   kernel:
@@ -830,18 +869,37 @@ tags:
   - lessons/vault-structure/LESSON-hierarchical-placement-tolerate-disagreement.md
   live-verification:
   - research/distribution/RESEARCH-dsh-live-probes.md
+  llm-judge:
+  - research/pipeline/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/RESEARCH-loop-judge-sensor-experiment.md
   llm-test-generation:
   - research/test-quality/RESEARCH-test-quality-literature.md
   local:
   - specs/distribution/SPEC-014-update-safe-customizations.md
+  loops:
+  - plans/PLAN-021-control-loops.md
+  - research/pipeline/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/RESEARCH-loop-ast-grep-rule-experiment.md
+  - research/pipeline/RESEARCH-loop-caps-experiment.md
+  - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
+  - research/pipeline/RESEARCH-loop-judge-sensor-experiment.md
+  - specs/pipeline/SPEC-026-control-theory-for-loops.md
   lost-in-the-middle:
   - research/vault-structure/RESEARCH-hierarchical-knowledge-base-design.md
+  majority-vote:
+  - research/pipeline/RESEARCH-loop-judge-sensor-experiment.md
   mapping-study:
   - research/pipeline/RESEARCH-research-methodologies-catalog.md
   markers:
   - research/distribution/RESEARCH-update-safe-customization.md
   materializers:
   - plans/PLAN-017-dsh-host-support.md
+  max-budget-usd:
+  - research/pipeline/RESEARCH-loop-caps-experiment.md
+  max-turns:
+  - research/pipeline/RESEARCH-loop-caps-experiment.md
+  maya:
+  - research/pipeline/RESEARCH-control-theory-for-loops.md
   mcp:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   - research/pipeline/RESEARCH-code-as-primary-source.md
@@ -1067,6 +1125,9 @@ tags:
   pre-registration:
   - lessons/experiments/LESSON-score-the-do-nothing-baseline-before-running.md
   - research/pipeline/RESEARCH-scientific-method-in-compass.md
+  precision:
+  - research/pipeline/RESEARCH-loop-ast-grep-rule-experiment.md
+  - research/pipeline/RESEARCH-loop-judge-sensor-experiment.md
   premises:
   - lessons/pipeline/LESSON-verify-the-inverse-not-the-forward-path.md
   prior-art:
@@ -1100,6 +1161,8 @@ tags:
   - lessons/instructions/LESSON-remove-context-before-adding.md
   protocol:
   - research/pipeline/RESEARCH-research-methodologies-catalog.md
+  prototype:
+  - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
   prototypes:
   - lessons/experiments/LESSON-score-the-do-nothing-baseline-before-running.md
   provenance:
@@ -1123,8 +1186,13 @@ tags:
   - lessons/experiments/LESSON-outputs-must-span-the-decision-space.md
   rationing:
   - lessons/experiments/LESSON-human-practice-rationing-assumes-human-scarcity.md
+  react-doctor:
+  - research/pipeline/RESEARCH-control-theory-for-loops.md
   real-options:
   - research/vault-structure/RESEARCH-decomposition-criteria-for-sizing.md
+  recall:
+  - research/pipeline/RESEARCH-loop-ast-grep-rule-experiment.md
+  - research/pipeline/RESEARCH-loop-judge-sensor-experiment.md
   reconciliation:
   - lessons/vault-structure/LESSON-sizing-unrecorded-blind-to-born-folder.md
   recursion:
@@ -1177,6 +1245,7 @@ tags:
   - lessons/experiments/LESSON-human-practice-rationing-assumes-human-scarcity.md
   resume:
   - lessons/subagents/LESSON-long-agents-stall-resume-them.md
+  - research/pipeline/RESEARCH-loop-caps-experiment.md
   retention:
   - plans/PLAN-020-clone-old-sessions.md
   retrieval:
@@ -1215,6 +1284,10 @@ tags:
   - research/rolling-wave/RESEARCH-rolling-wave-synthesis.md
   - research/rolling-wave/index.md
   - specs/pipeline/SPEC-015-rolling-wave-planning.md
+  rule-compilation:
+  - research/pipeline/RESEARCH-control-theory-for-loops.md
+  rule-synthesis:
+  - research/pipeline/RESEARCH-loop-ast-grep-rule-experiment.md
   rules:
   - lessons/instructions/LESSON-remove-context-before-adding.md
   saturation:
@@ -1249,8 +1322,15 @@ tags:
   - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
   - lessons/distribution/LESSON-self-update-corrections-lag-one-version.md
   - lessons/distribution/LESSON-self-update-silent-on-bad-repository-url.md
+  - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
   sendmessage:
   - lessons/subagents/LESSON-subagent-reports-need-sendmessage.md
+  sensors:
+  - plans/PLAN-021-control-loops.md
+  - research/pipeline/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/RESEARCH-loop-ast-grep-rule-experiment.md
+  - research/pipeline/RESEARCH-loop-judge-sensor-experiment.md
+  - specs/pipeline/SPEC-026-control-theory-for-loops.md
   session-continuity:
   - specs/pipeline/SPEC-025-stop-and-suggest-handoff-at-80-percent-context.md
   session-start:

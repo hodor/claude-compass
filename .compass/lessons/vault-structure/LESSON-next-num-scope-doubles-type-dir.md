@@ -6,11 +6,11 @@ category: process
 area: methodology
 tags: [cli, next-num, numbering, domain-folders, scope]
 created: 2026-09-13
-updated: 2026-09-13
-score: 5
+updated: 2026-10-17
+score: 6
 summary: "compass next-num <type> <domain/path> builds type_dir/scope; a scope that already includes the type dir doubles it and silently answers 001"
 source: extract-lessons:signal-OPP-20260913T193036373302Z
-seen: []
+seen: [2026-10-17]
 ---
 
 `compass next-num spec specs/pipeline` resolves to `specs/specs/pipeline`, which doesn't exist, so it silently returns `001` instead of erroring or scanning `specs/pipeline`'s real max (`SPEC-015`).
