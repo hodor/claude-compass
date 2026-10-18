@@ -124,6 +124,8 @@ _DEFINITION_FIELDS = {
 _OPTIONAL_FIELDS = frozenset({"controller_command", "wip_command"})
 _COMMAND_FIELDS = frozenset({"sensor_command", "controller_command", "wip_command"})
 _CHOICES = {"direction": ("down", "up"), "controller": ("first", "command")}
+# A run is bounded by these; zero would mean no turns, no budget or no time.
+_POSITIVE_FIELDS = frozenset({"max_turns", "max_budget_usd", "timeout_s", "sensor_timeout_s"})
 
 
 class TransitionError(ValueError):
@@ -214,6 +216,8 @@ def _field_problem(key, value):
         return "must be a finite number"
     elif key != "target" and value < 0:
         return "must not be negative"
+    if kind in (_INT, _NUMBER) and key in _POSITIVE_FIELDS and value == 0:
+        return "must be greater than zero"
     return None
 
 

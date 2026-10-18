@@ -280,7 +280,7 @@ class _Run:
         self.loop_id = _loop_id(self.dir)
         self.defn = definition
         self.dry = dry_run
-        self.now = now
+        self.started = _utc(now) if now is not None else datetime.now(timezone.utc)
         self.run_id = _new_run_id()
         self.lock_path = self.vault / "tmp" / "loops" / f"{self.loop_id}.lock"
         self.locked = False
@@ -347,8 +347,7 @@ class _Run:
             to = looplib.transition(self.state, event)
             _say(f"dry run: {self.loop_id} would end {to} ({event}): {reason}")
             return code
-        if self.now is not None:
-            row["ts"] = _utc(self.now).isoformat(timespec="seconds")
+        row["ts"] = self.started.isoformat(timespec="seconds")
         looplib.append_ledger(self.dir, row)
         self.step(event, reason)
         state = looplib.read_state(self.dir)
@@ -417,7 +416,7 @@ class _Run:
                 f"lifetime spend {lifetime:.4f} plus the run budget {run_budget:g} "
                 f"exceeds the total budget {defn['total_budget_usd']:g}", 1,
             )
-        today = sensorlib.spend_today(rows, self.now or datetime.now(timezone.utc))
+        today = sensorlib.spend_today(rows, self.started)
         if today + run_budget > defn["daily_budget_usd"] + BUDGET_EPSILON:
             return (
                 "throttled", "daily-budget-spent",
@@ -487,8 +486,8 @@ class _Run:
             cost = event.cost_usd
             if proc.returncode != 0 or event.is_error or event.subtype != "success":
                 failure = (
-                    f"actuator ended {event.subtype or 'without success'} "
-                    f"(exit {proc.returncode})"
+                    f"actuator ended with subtype {event.subtype or 'none'}, "
+                    f"is_error {str(event.is_error).lower()} (exit {proc.returncode})"
                 )
         else:
             cost = defn["max_budget_usd"]
@@ -525,15 +524,17 @@ class _Run:
         self.step("finished", f"actuator finished {self.run_id}")
 
         after = _sense(defn, self.project)
-        if not after.valid:
+        if after.valid:
+            self.row["reading_after"] = _reading_summary(after)
+            outcome = sensorlib.judge(before, after, defn["direction"])
+            reason = f"{before.value:g} -> {after.value:g}"
+        else:
             # The transition table has no event for an invalid reading while
-            # verifying. The run is recorded as neutral with the reason and
-            # ends idle; the next run's first sense halts on the invalid
-            # reading before any spend.
-            return self.end("neutral", "neutral", f"re-sense invalid: {after.reason}", 0, **fields)
-        self.row["reading_after"] = _reading_summary(after)
-        outcome = sensorlib.judge(before, after, defn["direction"])
-        reason = f"{before.value:g} -> {after.value:g}"
+            # verifying. The run counts as a neutral one, with the reason
+            # recorded, and ends through the same limit checks; the next run's
+            # first sense halts on the invalid reading before any spend.
+            outcome = "neutral"
+            reason = f"re-sense invalid: {after.reason}"
         row = {**self.row, **fields, "outcome": outcome}
         counters = looplib.fold(self.ledger_rows() + [row])
         event_name, code = outcome, 0
