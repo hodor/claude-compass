@@ -815,5 +815,45 @@ class SubagentDirectoryEntryTests(SessionsFixture):
         self.assertEqual(sessionslib.commit_count(self.transcript), 1)
 
 
+class CommitBoundaryAndOptionTests(SessionsFixture):
+    def test_backtick_quoted_binary_and_arbitrary_global_options(self):
+        """Adversarial where: a commit inside backtick command substitution or
+        behind a quoted `"git"` is missed, only a fixed list of global options
+        is accepted (`--no-optional-locks`, `-p`, `--bare`, `--exec-path=/x`),
+        or a plain word before `commit` (`git help commit`, `git -C a log
+        commit`, an alias value naming commit) is read as a commit."""
+        rows = {
+            "backtick substitution": ("x=`git commit -m a`", 1),
+            "quoted binary": ('"git" commit -m a', 1),
+            "single-quoted binary": ("'git' commit -m a", 1),
+            "--no-optional-locks": ("git --no-optional-locks commit -m a", 1),
+            "short flag -p": ("git -p commit -m a", 1),
+            "--bare": ("git --bare commit -m a", 1),
+            "--exec-path=value": ("git --exec-path=/x commit -m a", 1),
+            "--namespace separate value": ("git --namespace ns commit -m a", 1),
+            "flag after value option": ("git -C a -p commit -m a", 1),
+            "help is a plain word": ("git help commit", 0),
+            "-C path then another subcommand": ("git -C a log commit", 0),
+            "alias value naming commit": ("git -c alias.x=commit status", 0),
+            "-C without a following subcommand": ("git -C commit", 0),
+        }
+        for name, (command, expected) in rows.items():
+            with self.subTest(name):
+                self.write(bash_line(command))
+                self.assertEqual(sessionslib.commit_count(self.transcript), expected)
+
+    def test_boolean_usage_values_are_not_token_counts(self):
+        """Adversarial where: `"input_tokens": true` is read as 1 token because
+        bool is an int, so a corrupt usage block reports a size."""
+        rows = {
+            "all booleans": (assistant_line(input_tokens=True, cache_creation=True, cache_read=True), None),
+            "boolean beside a real count": (assistant_line(input_tokens=True, cache_read=7), 7),
+        }
+        for name, (record, expected) in rows.items():
+            with self.subTest(name):
+                self.write(record)
+                self.assertEqual(sessionslib.used_tokens(self.transcript), expected)
+
+
 if __name__ == "__main__":
     unittest.main()

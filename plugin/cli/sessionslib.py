@@ -29,16 +29,21 @@ from commands import context_check
 ACTIVE_WINDOW_SECONDS = 600
 EXTENDED_SUFFIX = "[1m]"
 _ARG = r"(?:\"[^\"]*\"|'[^']*'|\S+)"
-# `git commit` with any global options before the subcommand (`-C <path>`,
-# `-c <k=v>`, `--no-pager`, `--git-dir`, `--work-tree`), the binary written as
-# `git`, `git.exe`, or a path to either (quoted when it holds spaces); not
-# `git commit-tree` or a word that merely ends in "git".
+# `git commit` with any global options before the subcommand, the binary
+# written as `git`, `git.exe`, or a path to either (quoted when it holds
+# spaces), after a command boundary or a backtick. Options taking a value
+# (`-C`, `-c`, `--git-dir`, `--work-tree`, `--namespace`) consume it in
+# `=value` or separate form; every other `-x` / `--word[=value]` is a flag. A
+# plain word before `commit` ends the match, so `git help commit` and
+# `git -C a log commit` do not count, nor does `git commit-tree`.
 _GIT_COMMAND = (
-    r"(?:\"[^\"\n]*[/\\]git(?:\.exe)?\"|'[^'\n]*[/\\]git(?:\.exe)?'"
-    r"|(?:^|[\s;&|(])(?:[^\s;&|()]*[/\\])?git(?:\.exe)?)"
+    r"(?:[\"'](?:[^\"'\n]*[/\\])?git(?:\.exe)?[\"']"
+    r"|(?:^|[\s;&|(`])(?:[^\s;&|()`]*[/\\])?git(?:\.exe)?)"
 )
+_VALUE_OPTION = r"(?:-C|-c|--git-dir|--work-tree|--namespace)"
 _GIT_GLOBAL_OPTION = (
-    rf"\s+(?:-C\s+{_ARG}|-c\s+{_ARG}|--no-pager|--git-dir(?:=|\s+){_ARG}|--work-tree(?:=|\s+){_ARG})"
+    rf"\s+(?:{_VALUE_OPTION}(?:=|\s+){_ARG}"
+    rf"|(?!{_VALUE_OPTION}(?![\w-]))--?[A-Za-z][\w-]*(?:={_ARG})?)"
 )
 _GIT_COMMIT = re.compile(rf"{_GIT_COMMAND}(?:{_GIT_GLOBAL_OPTION})*\s+commit(?![\w-])")
 _PLAN_ID = re.compile(r"\bPLAN-(\d+)\b")
