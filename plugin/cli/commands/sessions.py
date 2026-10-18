@@ -24,7 +24,7 @@ import json
 import re
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 import sessionslib
 import vaultlib
@@ -69,7 +69,12 @@ def _project_root():
 
 
 def _iso(epoch):
-    return datetime.fromtimestamp(epoch, timezone.utc).isoformat(timespec="seconds")
+    """The ISO-8601 UTC time of `epoch`, or "-" when the platform cannot
+    represent it."""
+    try:
+        return datetime.fromtimestamp(epoch, timezone.utc).isoformat(timespec="seconds")
+    except (OSError, OverflowError, ValueError):
+        return "-"
 
 
 def _cell(value):
@@ -176,6 +181,13 @@ def _list(args):
 
 # show ------------------------------------------------------------------
 
+def _unsafe_component(part):
+    """True for a run or session id that is empty, climbs, holds a path
+    separator, or carries a drive (a `:` re-roots a Windows join)."""
+    return (part in ("", ".", "..") or "\\" in part or ":" in part
+            or bool(PureWindowsPath(part).drive))
+
+
 def _resolve_transcript(target):
     """The transcript path named by `target`: an existing file, else
     `<run-id>/<session-id>` under the central run folder."""
@@ -185,11 +197,16 @@ def _resolve_transcript(target):
     if direct.exists():
         raise UsageError(f"{target} is not a file")
     parts = target.split("/")
-    if len(parts) != 2 or any(p in ("", ".", "..") or "\\" in p for p in parts):
+    if len(parts) != 2 or any(_unsafe_component(p) for p in parts):
         raise UsageError(f"{target} is neither a file nor a <run-id>/<session-id>")
     run_id, session_id = parts
-    path = sessionslib.run_dir(_project_root(), run_id) / f"{session_id}.jsonl"
-    if not path.is_file():
+    folder = sessionslib.run_dir(_project_root(), run_id)
+    path = folder / f"{session_id}.jsonl"
+    try:
+        inside = path.resolve().is_relative_to(folder.resolve())
+    except (OSError, ValueError):
+        inside = False
+    if not inside or not path.is_file():
         raise UsageError(f"no kept clone transcript at {path}")
     return path
 
@@ -227,7 +244,7 @@ def _show(args):
         raise UsageError("show needs exactly one <path | run-id/session-id>")
     path = _resolve_transcript(args[0])
     try:
-        lines = [line for record in sessionslib._records(path) for line in _render_record(record)]
+        lines = [line for record in sessionslib.records(path) for line in _render_record(record)]
     except OSError as exc:
         raise UsageError(f"could not read {path}: {exc}") from exc
     if lines:
@@ -292,8 +309,13 @@ def _record(args):
         "merged_count": len(merged),
         "rejected": rejected,
     }
+    for text in [run_id, *written, *merged]:
+        try:
+            text.encode("utf-8")
+        except UnicodeEncodeError:
+            raise UsageError("record names must be valid text (an argument holds an undecodable byte)")
     try:
-        _append_line(vaultlib.find_vault_root() / CLONE_LOG, json.dumps(row, ensure_ascii=False))
+        _append_line(vaultlib.find_vault_root() / CLONE_LOG, json.dumps(row))
     except OSError as exc:
         raise UsageError(f"could not write the clone log: {exc}") from exc
     return 0
@@ -303,9 +325,10 @@ COMMANDS = {"list": _list, "show": _show, "record": _record}
 
 
 def run(args):
-    reconfigure = getattr(sys.stdout, "reconfigure", None)
-    if reconfigure is not None:
-        reconfigure(encoding="utf-8")
+    for stream, errors in ((sys.stdout, "replace"), (sys.stderr, "backslashreplace")):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors=errors)
     if not args or args[0] not in COMMANDS:
         sys.stderr.write(USAGE)
         return 1
