@@ -347,6 +347,24 @@ This is the install's acceptance check: `plugin.yaml`, hook registration, CLI co
 
 Two checks doctor doesn't cover, also worth confirming: `.claude/rules/` has 4 rule files, and `.compass/index.md` / `.compass/active.md` exist.
 
+### 5b. Offer longer session retention
+
+Claude Code deletes session transcripts older than `cleanupPeriodDays` (30 days when unset). Check the effective value:
+
+```bash
+if command -v python3 >/dev/null 2>&1; then
+  python3 .claude/cli/compass retention
+else
+  python .claude/cli/compass retention
+fi
+```
+
+The first line is the number of days or `unset`. When it is `unset` or 30 or less, ask once:
+
+> "Claude Code deletes old sessions after 30 days by default. Keep them longer, so `/compass:clone-old` can use them?"
+
+On a yes, run `compass retention --set 3650` (same `python3` / `python` fallback). On a no, move on; setup does not ask again. When the value is already above 30, say nothing.
+
 ### 6. Run vision capture
 
 For NEW projects, immediately invoke `/compass:vision` - don't stop and ask. Skipping vision is the #1 cause of bloated first specs.
