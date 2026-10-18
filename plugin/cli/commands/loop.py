@@ -88,10 +88,19 @@ WORKFLOW_TEMPLATE = "github-workflow.yml"
 OUTSIDE_FOLDER = frozenset({WORKFLOW_TEMPLATE})
 DEFAULT_CRON = "0 6 * * *"
 LOCAL_START = "06:00"  # the time of day DEFAULT_CRON names
-CRON_CHARACTERS = re.compile(r"[0-9*,/ -]+")
+CRON_CHARACTERS = re.compile(r"[0-9A-Za-z*,/ -]+")
 CRON_ITEM = re.compile(r"(?:\*|([0-9]+)(?:-([0-9]+))?)(?:/([0-9]+))?")
 # (low, high) of the minute, hour, day of month, month and weekday fields.
 CRON_RANGES = ((0, 59), (0, 23), (1, 31), (1, 12), (0, 6))
+# Names the month field (4th) and the weekday field (5th) accept, any case.
+CRON_NAMES = (
+    {},
+    {},
+    {},
+    {name: number for number, name in enumerate(
+        ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"), start=1)},
+    {name: number for number, name in enumerate(("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"))},
+)
 RUN_TOKEN = re.compile(r"[A-Za-z0-9._:-]+")
 UNION_LINE = ".compass/loops/*/ledger.jsonl merge=union"
 PLACEHOLDER = re.compile(r"(?<!\$)\{\{[^}]*\}\}")
@@ -826,7 +835,8 @@ def _parse_schedule(args):
 def _cron_expression(expression):
     """`expression` as five single-space-separated cron fields, or a
     UsageError. Each field is a comma list of `*`, a number or a range, with an
-    optional `/step`, every number inside the field's range. Only digits and
+    optional `/step`, every number inside the field's range; the month and
+    weekday fields also take their three-letter names. Only letters, digits and
     `*,/-` pass, so the value is safe inside a quoted YAML scalar."""
     message = f"{expression[:60]!r} is not a cron expression of five fields like '0 6 * * *'"
     if not CRON_CHARACTERS.fullmatch(expression):
@@ -834,7 +844,8 @@ def _cron_expression(expression):
     fields = expression.split()
     if len(fields) != 5:
         raise UsageError(message)
-    for field, (low, high) in zip(fields, CRON_RANGES):
+    for field, (low, high), names in zip(fields, CRON_RANGES, CRON_NAMES):
+        field = re.sub(r"[A-Za-z]+", lambda m: str(names.get(m.group().upper(), m.group())), field)
         for item in field.split(","):
             match = CRON_ITEM.fullmatch(item)
             if not match:

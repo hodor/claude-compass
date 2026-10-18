@@ -126,6 +126,34 @@ class CronValueTests(ScheduleCase):
                 self.assertTrue(err.strip())
                 self.assertEqual(snapshot(self.project), before)
 
+    def test_month_and_weekday_names_are_accepted_only_in_their_own_fields(self):
+        """Adversarial where: GitHub's `MON-FRI` or `JAN,JUL` is refused as
+        a foreign character, or the names are accepted in the wrong field,
+        misspelt, past a range end, or as a name that only looks like one."""
+        accepted = ["30 4 1,15 * MON", "0 6 * * MON-FRI", "0 0 1 JAN,JUL *", "0 6 * * sun",
+                    "0 6 * * Sat", "0 0 1 dec *", "0 0 1 Jan-Mar *", "0 6 * * MON,3-5", "0 6 * * MON-FRI/2"]
+        for expression in accepted:
+            with self.subTest(accepted=expression):
+                self.clear_github()
+                code, _out, err = self.schedule("--github", "--cron", expression)
+                self.assertEqual(code, 0, err)
+                text = (self.project / WORKFLOW_PATH).read_text(encoding="utf-8")
+                self.assertIn(f'cron: "{expression}"', text)
+        self.clear_github()
+        (self.project / ".gitattributes").unlink(missing_ok=True)
+        before = snapshot(self.project)
+        refused = ["0 6 * * FOO", "0 6 * * MONDAY", "0 6 JAN * *", "0 0 1 MON *", "MON 6 * * *",
+                   "0 6 * * FRI-MON", "0 0 1 DEC-JAN *", "0 6 * * MON-", "0 6 * * MO", "0 6 * * M0N",
+                   "0 6 * * *MON"]
+        for expression in refused:
+            with self.subTest(refused=expression):
+                self.clear_github()
+                (self.project / ".gitattributes").unlink(missing_ok=True)
+                code, _out, err = self.schedule("--github", "--cron", expression)
+                self.assertEqual(code, 1, f"{expression!r} was accepted")
+                self.assertTrue(err.strip())
+                self.assertEqual(snapshot(self.project), before)
+
     def test_an_accepted_cron_value_stays_on_one_line_of_the_workflow(self):
         """Adversarial where: hostile text in `--cron` (quotes, a comment, a
         newline plus a new YAML key, template placeholders, shell
