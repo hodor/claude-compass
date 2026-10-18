@@ -1078,3 +1078,23 @@ Closed by the gap passes: daily budgets as a research question (G1: no product o
 - **Automated post-merge revert for agent loops.** None found (finding 57).
 - **Primary texts unread.** Hellerstein et al. 2004, Kephart and Chess 2003, Filieri et al. 2015, Lehman's laws of software evolution, Ashby's law, Little 1961, Reinertsen 2009, Wonham and Cai 2019.
 - **Citation counts.** Missing for most 2026 preprints (Semantic Scholar rate-limited; OpenAlex near zero for new preprints), for every paper on axes A5, A6, A10, and for G1's preprints (arXiv:2606.30560, 2410.06992, 2607.21832, 2605.22534).
+
+### Live record (2026-10-18)
+
+One loop run to its own stop with Compass 0.28.0, in a scratch git project outside this repo. The loop `LOOP-001-remove-prints` removes `print(` calls from three seeded Python files holding four calls. Sensor: a 10-line `python sensor.py` listing each call as `file:line text`; target 0, direction down, controller `first`, actuator `claude-haiku-4-5-20251001` with Read, Edit, Glob and Grep, `max_turns` 30, `max_budget_usd` 0.30, `daily_budget_usd` 0.80, `total_budget_usd` 2.00, `wip_limit` 2. Every run was a separate `compass loop run LOOP-001`.
+
+| Run | Ending transition | Outcome | Item | Cost (USD) |
+|---|---|---|---|---|
+| 1 | verifying - helpful -> idle | helpful, 4 -> 3 | `src/alpha.py:print("hello", name)` | 0.0527927 |
+| 2 | verifying - helpful -> idle | helpful, 3 -> 2 | `src/beta.py:print("sub called")` | 0.0282162 |
+| 3 | gating - wip-full -> throttled | throttled, 2 unreviewed reach the limit 2; no actuator launched | none | 0.0 |
+| - | `loop review ... accept` for runs 1 and 2; review rows only, no transition | | | |
+| 4 | throttled - start -> sensing, then verifying - helpful -> idle | helpful, 2 -> 1 | `src/beta.py:print("sum is", total)` | 0.0278661 |
+| 5 | verifying - helpful -> idle | helpful, 1 -> 0 | `src/gamma.py:print(text)` | 0.0280252 |
+| 6 | sensing - at-set-point -> done | done, reading 0 at set point 0; no actuator launched | none | 0.0 |
+
+Summed spend: 0.1369002 USD over four actuator runs, each 3 turns with subtype `success`. `compass loop status LOOP-001` printed `spend today: 0.1369 of 0.8 usd` and `spend lifetime: 0.1369 of 2 usd`, matching the ledger's own `cost_usd` sum computed in Python. Each increment removed exactly its selected line and nothing else; run 1's diff is the single line `-    print("hello", name)` in `src/alpha.py`.
+
+Observed alongside: `status` after the `done` run printed `last reading: none`, because it reads `reading_after` of the last run row and a run that ends at the gate records only `reading_before`. The actuator session also created a `.serena/` folder in the project, so user-level MCP servers start inside a loop's headless worker.
+
+`python -m pytest plugin/cli/tests -q` on the 0.28.0 tree: `1539 passed, 1 skipped, 1461 subtests passed`.

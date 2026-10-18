@@ -41,12 +41,6 @@ Plan: [[PLAN-020-clone-old-sessions]].
 
 - [ ] TASK-146: Live acceptance on this repo
 
-## PLAN-021 Wave 1: control loops
-
-Plan: [[PLAN-021-control-loops]].
-
-- [ ] TASK-157: Ship 0.28.0 and run a loop live in a scratch project
-
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].
