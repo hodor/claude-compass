@@ -13,6 +13,12 @@ A domain sensor is an argv list run from the project root. It prints
 else, including a hung or missing command, is an invalid `Reading` carrying a
 reason; `run_sensor` never raises.
 
+A judge is an agent that reads plain-language rules and answers with one JSON
+line per violation, `{"rule", "file", "line"}`. `parse_judge_lines` keeps the
+well-formed lines of one answer and counts the rest; `vote_findings` keeps the
+findings that more than half of the configured runs report. The reading is
+advisory and reaches no transition.
+
 Ledger rows are dicts. A row may carry `ts` (ISO-8601) and `cost_usd`; rows
 without `cost_usd` contribute nothing to a spend sum. Days are UTC calendar
 days.
@@ -130,6 +136,89 @@ def parse_result(text):
         result=result if isinstance(result, str) else None,
         **totals,
     )
+
+
+class JudgeParse:
+    """The lines of one judge answer: `findings` as (rule, file, line) tuples
+    in input order, `discarded` the count of lines that were not kept."""
+
+    def __init__(self, findings, discarded):
+        self.findings = list(findings)
+        self.discarded = discarded
+
+
+def _is_int(value):
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def parse_judge_lines(text, rule_ids):
+    """Parse a judge's final answer. A non-blank line is kept when it is a
+    JSON object naming a rule of `rule_ids`, a string `file` and an integer
+    `line`; every other non-blank line is discarded and counted. Never
+    raises."""
+    known = set(rule_ids)
+    findings, discarded = [], 0
+    for raw in (text if isinstance(text, str) else "").splitlines():
+        if not raw.strip():
+            continue
+        try:
+            data = json.loads(raw)
+        except (ValueError, RecursionError):
+            data = None
+        if (
+            isinstance(data, dict)
+            and isinstance(data.get("rule"), str)
+            and data["rule"] in known
+            and isinstance(data.get("file"), str)
+            and data["file"]
+            and _is_int(data.get("line"))
+        ):
+            findings.append((data["rule"], data["file"], data["line"]))
+        else:
+            discarded += 1
+    return JudgeParse(findings, discarded)
+
+
+# Findings of one rule and file whose lines sit this close to a neighbour are
+# one finding.
+CLUSTER_GAP = 2
+
+
+def _rule_order(rule):
+    digits = rule[1:]
+    return (0, int(digits), rule) if digits.isdigit() else (1, 0, rule)
+
+
+def vote_findings(runs, configured):
+    """Cluster the findings of the valid judge `runs` (each a list of
+    (rule, file, line) tuples) and keep the clusters that more than half of
+    `configured` runs report. Findings of one rule and file chain into a
+    cluster while neighbouring lines sit within CLUSTER_GAP. A kept cluster
+    is `{"rule", "file", "line", "votes"}`: `line` the lowest line, `votes`
+    the number of distinct runs that reported into it."""
+    grouped = {}
+    for index, found in enumerate(runs):
+        for rule, file, line in found:
+            grouped.setdefault((rule, file), []).append((line, index))
+    kept = []
+    for (rule, file), points in grouped.items():
+        points.sort()
+        clusters, current, previous = [], [], None
+        for line, index in points:
+            if previous is not None and line - previous > CLUSTER_GAP:
+                clusters.append(current)
+                current = []
+            current.append((line, index))
+            previous = line
+        clusters.append(current)
+        for cluster in clusters:
+            votes = len({index for _line, index in cluster})
+            if votes * 2 > configured:
+                kept.append(
+                    {"rule": rule, "file": file, "line": cluster[0][0], "votes": votes}
+                )
+    kept.sort(key=lambda k: (_rule_order(k["rule"]), k["file"], k["line"]))
+    return kept
 
 
 def _invalid(reason):
