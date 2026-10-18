@@ -1,5 +1,5 @@
-"""`compass test-checkpoint record | verify | open-ids` - tamper-evident
-checkpoints for pre-build failing tests.
+"""`compass test-checkpoint record | verify | open-ids | cycle` - tamper-evident
+checkpoints for pre-build failing tests, and the fix loop's cycle ledger.
 
 A checkpoint records that a set of test files, in a specific state, existed
 and failed before the implementation they test was written. `record` stores
@@ -54,6 +54,23 @@ to the workspace (`.` for the workspace's own repo). Paths in the index,
 `--commit`, and `verify --tree` are all relative to that repository; an
 index without `repo` means the workspace's own.
 
+`cycle TASK-NNN --evidence PATH` judges one fix-loop cycle. It parses the
+run evidence, keys every test by class and name, drops the tests of open
+checkpoints, and compares the remaining failing set with the previous cycle
+recorded in `.compass/tmp/test-checkpoints/TASK-NNN.cycles.jsonl`. The first
+call for a task is cycle 0, the state at fix-loop entry. Later cycles are
+`helpful` (something fixed, nothing new, nothing gone), `harmful` (a new
+failure, or a previously failing test that is no longer present and passing,
+since a vanished or skipped test proves nothing fixed), or `neutral`. The
+command prints the verdict line and `escalate: yes|no`, yes at cycle 3 or on
+a harmful cycle. An unreadable or testless evidence file exits 1 and appends
+nothing.
+
+`record --commit` is resolved to a full SHA, so a symbolic name such as
+`HEAD` never drifts. A first record names only files the commit touched; a
+`--supersede` record may also name a file tracked in that commit's tree that
+the commit left unchanged, and `verify` classifies every recorded file.
+
 Vault root resolution goes through `vaultlib.find_vault_root`
 (LESSON-scratch-vaults-need-compass-dir). Never exits 2; a missing git
 binary, a detached or non-repository working tree, and a corrupt index all
@@ -65,13 +82,22 @@ import codecs
 import datetime
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
+import time
 from collections import Counter
+from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
 
 import vaultlib
+
+try:
+    import msvcrt
+except ImportError:
+    msvcrt = None
+    import fcntl
 
 CHECKPOINTS_DIR = ("tmp", "test-checkpoints")
 
@@ -80,7 +106,8 @@ USAGE = (
     "[--red-evidence PATH] [--supersede TASK-NNN --reason \"...\"] [--not-required]\n"
     "       compass test-checkpoint verify TASK-NNN [--tree PATH] "
     "[--against-run EVIDENCE] [--expect-checkpoint]\n"
-    "       compass test-checkpoint open-ids"
+    "       compass test-checkpoint open-ids\n"
+    "       compass test-checkpoint cycle TASK-NNN --evidence PATH"
 )
 
 # unittest -v line: "test_name (module.path.ClassName) ... ok" (also FAIL,
@@ -91,14 +118,17 @@ _RUN_LINE_RE = re.compile(
 
 # pytest -v line: "path/to/test_file.py::Class::test_name PASSED [ 10%]" -
 # class segments optional and nestable, an optional [param] suffix on the
-# name. Short-summary lines (-rA) put the status first instead.
-_PYTEST_NODEID = r"\S+?\.py(?:::\w+)*::\w+(?:\[[^\]]*\])?"
+# name. Short-summary lines (-rA) put the status first instead. A param id
+# may hold spaces, `]` and `::`: in a `-v` line it runs to the last `]`
+# that precedes the status; in a summary line, to the first `]` followed by
+# whitespace or the end, since a failure message trails it.
+_PYTEST_NODE_BASE = r"\S+?\.py(?:::\w+)*::\w+"
 _PYTEST_STATUS = r"PASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS"
 _PYTEST_LINE_RE = re.compile(
-    rf"^(?P<nodeid>{_PYTEST_NODEID})\s+(?P<status>{_PYTEST_STATUS})\b"
+    rf"^(?P<nodeid>{_PYTEST_NODE_BASE}(?:\[.*\])?)\s+(?P<status>{_PYTEST_STATUS})\b"
 )
 _PYTEST_SUMMARY_RE = re.compile(
-    rf"^(?P<status>{_PYTEST_STATUS})\s+(?P<nodeid>{_PYTEST_NODEID})\b"
+    rf"^(?P<status>{_PYTEST_STATUS})\s+(?P<nodeid>{_PYTEST_NODE_BASE}(?:\[.*?\](?=\s|$))?)(?=\s|$)"
 )
 
 # A test's status is not always on its own line. A docstring prints the
@@ -143,6 +173,15 @@ def _git_commit_exists(repo_root, sha):
         return False
     code, _, _ = _run_git(repo_root, ["cat-file", "-e", f"{sha}^{{commit}}"])
     return code == 0
+
+
+def _git_resolve_commit(repo_root, name):
+    """The full SHA that `name` (a SHA, a branch, `HEAD`) names, or None."""
+    if not name or name.startswith("-"):
+        return None
+    code, out, _ = _run_git(repo_root, ["rev-parse", "--verify", f"{name}^{{commit}}"])
+    sha = out.strip()
+    return sha if code == 0 and sha else None
 
 
 def _git_commit_files(repo_root, sha):
@@ -562,9 +601,9 @@ def _run_record(args):
         sys.stderr.write("compass test-checkpoint record: not a git repository (or git is unavailable)\n")
         return 1
 
-    commit = options["commit"]
-    if not _git_commit_exists(repo_root, commit):
-        sys.stderr.write(f"compass test-checkpoint record: commit {commit} not found in git log\n")
+    commit = _git_resolve_commit(repo_root, options["commit"])
+    if commit is None:
+        sys.stderr.write(f"compass test-checkpoint record: commit {options['commit']} not found in git log\n")
         return 1
 
     commit_files = set(_git_commit_files(repo_root, commit))
@@ -572,7 +611,10 @@ def _run_record(args):
     dirs = set()
     for given in resolved:
         rel = _to_posix_rel(repo_root, given)
-        if rel not in commit_files:
+        in_commit = rel in commit_files
+        if not in_commit and options["supersede"] and _git_show(repo_root, commit, rel) is not None:
+            in_commit = True  # a superseding record may carry a file tracked in the commit's tree
+        if not in_commit:
             sys.stderr.write(f"compass test-checkpoint record: {rel} is not part of commit {commit}\n")
             return 1
         content = _git_show(repo_root, commit, rel)
@@ -754,6 +796,27 @@ def _print_report(task, record, findings):
     sys.stdout.write("\n".join(lines) + "\n")
 
 
+def _recorded_paths_across_versions(record):
+    """Every file path named by `record` or by any prior version in its
+    `supersedes` chain. A superseding record can carry a file its commit left
+    unchanged, which no commit diff names; the union with the earlier versions
+    keeps that file under verification when its entry is dropped from the
+    current index."""
+    paths = set()
+    seen = 0
+    while isinstance(record, dict) and seen < 1000:
+        files = record.get("files")
+        if isinstance(files, list):
+            paths |= {
+                entry["path"] for entry in files
+                if isinstance(entry, dict) and isinstance(entry.get("path"), str)
+            }
+        supersedes = record.get("supersedes")
+        record = supersedes.get("prior") if isinstance(supersedes, dict) else None
+        seen += 1
+    return paths
+
+
 def _run_verify(args):
     options, error = _parse_verify(args)
     if error:
@@ -792,17 +855,11 @@ def _run_verify(args):
 
     tree_root = Path(options["tree"]) if options["tree"] else repo_root
     commit_files = _git_commit_files(repo_root, sha)
-    recorded_files = record.get("files")
-    if not isinstance(recorded_files, list):
-        recorded_files = []
-    recorded_paths = {
-        entry["path"] for entry in recorded_files
-        if isinstance(entry, dict) and isinstance(entry.get("path"), str)
-    }
+    recorded_paths = _recorded_paths_across_versions(record)
 
     findings = []
     ok = True
-    for rel in commit_files:
+    for rel in commit_files + sorted(recorded_paths - set(commit_files)):
         if not rel.endswith(".py") and rel not in recorded_paths:
             continue
         baseline = _git_show(repo_root, sha, rel)
@@ -874,30 +931,231 @@ def _dotted_module(path):
     return str(PurePosixPath(path).with_suffix("")).replace("/", ".")
 
 
+def _open_test_ids(vault_root, label="open-ids", exclude_task=None):
+    """`[(module, class_name_or_None, test_name)]` for every checkpointed test
+    of a task whose checkpoint is recorded, not `not_required`, and not yet
+    landed, leaving out the checkpoint of `exclude_task`. An unreadable index
+    is reported on stderr and skipped."""
+    checkpoints_dir = Path(vault_root).joinpath(*CHECKPOINTS_DIR)
+    found = []
+    if not checkpoints_dir.is_dir():
+        return found
+    for entry in sorted(checkpoints_dir.glob("TASK-*.json")):
+        if entry.stem == exclude_task:
+            continue
+        record, load_error = _load_record(entry)
+        if load_error:
+            sys.stderr.write(f"compass test-checkpoint {label}: skipping {entry.name}: {load_error}\n")
+            continue
+        if record.get("landed") or record.get("not_required"):
+            continue
+        for file_record in record.get("files", []):
+            module = _dotted_module(file_record["path"])
+            for class_name, test_name in file_record.get("ids", []):
+                found.append((module, class_name, test_name))
+    return found
+
+
 def _run_open_ids(args):
     if args:
         sys.stderr.write(f"compass test-checkpoint open-ids: unexpected argument(s): {' '.join(args)}\n")
         return 1
 
-    vault_root = vaultlib.find_vault_root()
-    checkpoints_dir = Path(vault_root).joinpath(*CHECKPOINTS_DIR)
-    ids = []
-    if checkpoints_dir.is_dir():
-        for entry in sorted(checkpoints_dir.glob("TASK-*.json")):
-            record, load_error = _load_record(entry)
-            if load_error:
-                sys.stderr.write(f"compass test-checkpoint open-ids: skipping {entry.name}: {load_error}\n")
-                continue
-            if record.get("landed") or record.get("not_required"):
-                continue
-            for file_record in record.get("files", []):
-                module = _dotted_module(file_record["path"])
-                for class_name, test_name in file_record.get("ids", []):
-                    ids.append(f"{module}.{class_name}.{test_name}" if class_name else f"{module}.{test_name}")
-
+    ids = [
+        f"{module}.{class_name}.{test_name}" if class_name else f"{module}.{test_name}"
+        for module, class_name, test_name in _open_test_ids(vaultlib.find_vault_root())
+    ]
     if ids:
         sys.stdout.write("\n".join(ids) + "\n")
     return 0
+
+
+# --------------------------------------------------------------------------
+# cycle
+# --------------------------------------------------------------------------
+
+CYCLE_ESCALATION = 3
+_FAILING_STATUSES = ("fail", "error")
+
+
+def _parse_cycle(args):
+    """Returns `(task, evidence_path, error)`."""
+    if not args or args[0].startswith("--"):
+        return None, None, "a task id is required"
+    task, rest = args[0], args[1:]
+    if not re.fullmatch(r"TASK-[0-9]+", task):
+        return None, None, f"{task!r} is not a task id (TASK-NNN)"
+    evidence = None
+    i = 0
+    while i < len(rest):
+        if rest[i] != "--evidence":
+            return None, None, f"unknown argument {rest[i]}"
+        if i + 1 >= len(rest) or rest[i + 1].startswith("--"):
+            return None, None, "--evidence expects a value"
+        evidence = rest[i + 1]
+        i += 2
+    if evidence is None:
+        return None, None, "--evidence is required"
+    return task, evidence, None
+
+
+def _tests_by_class_and_name(statuses):
+    """`{(class_name, test_name): status}` with one entry per test.
+    `_parse_run_evidence` also files every test under a bare-name key; that
+    alias is dropped whenever a class-qualified test of the same name exists,
+    so a name shared by two classes counts as two tests."""
+    qualified_names = {name for (class_name, name) in statuses if class_name is not None}
+    return {
+        key: status for key, status in statuses.items()
+        if key[0] is not None or key[1] not in qualified_names
+    }
+
+
+def _load_cycle_log(path):
+    """Returns `(rows, error)`: every logged cycle in order."""
+    if not path.is_file():
+        return [], None
+    rows = []
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                rows.append(json.loads(line))
+    except (OSError, ValueError) as exc:
+        return None, f"unreadable cycle log {path.name}: {exc}"
+    if not all(isinstance(row, dict) and _is_test_pair_list(row.get("failing")) for row in rows):
+        return None, f"unreadable cycle log {path.name}: a row is not a cycle record"
+    return rows, None
+
+
+def _is_test_pair_list(value):
+    """A cycle row's `failing` entry: a list of `[class_or_null, name]` pairs."""
+    return isinstance(value, list) and all(
+        isinstance(item, list) and len(item) == 2
+        and (item[0] is None or isinstance(item[0], str)) and isinstance(item[1], str)
+        for item in value
+    )
+
+
+CYCLE_LOCK_ATTEMPTS = 2000
+CYCLE_LOCK_RETRY_SECONDS = 0.005
+
+
+@contextmanager
+def _cycle_log_lock(log_path):
+    """Hold an exclusive OS lock on a sidecar file of `log_path`, retrying
+    briefly while another process holds it. The OS drops the lock when the
+    holder dies. TimeoutError when it stays held."""
+    lock_path = log_path.with_suffix(".lock")
+    fd = os.open(lock_path, os.O_RDWR | os.O_CREAT | getattr(os, "O_BINARY", 0), 0o666)
+    try:
+        for attempt in range(CYCLE_LOCK_ATTEMPTS):
+            try:
+                if msvcrt:
+                    os.lseek(fd, 0, os.SEEK_SET)
+                    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                else:
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError:
+                if attempt == CYCLE_LOCK_ATTEMPTS - 1:
+                    raise TimeoutError(f"cycle log lock {lock_path.name} stayed held") from None
+                time.sleep(CYCLE_LOCK_RETRY_SECONDS)
+        try:
+            yield
+        finally:
+            if msvcrt:
+                os.lseek(fd, 0, os.SEEK_SET)
+                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        os.close(fd)
+
+
+def _format_tests(tests):
+    ordered = sorted(tests, key=lambda test: (test[0] or "", test[1]))
+    return ", ".join(f"{class_name}.{name}" if class_name else name for class_name, name in ordered)
+
+
+def _run_cycle(args):
+    task, evidence, error = _parse_cycle(args)
+    if error:
+        sys.stderr.write(f"compass test-checkpoint cycle: {error}\n{USAGE}\n")
+        return 1
+
+    evidence_path = Path(evidence)
+    if not evidence_path.is_file():
+        sys.stderr.write(f"compass test-checkpoint cycle: evidence not found: {evidence}\n")
+        return 1
+    try:
+        statuses = _tests_by_class_and_name(_parse_run_evidence(_read_evidence(evidence_path)))
+    except OSError as exc:
+        sys.stderr.write(f"compass test-checkpoint cycle: cannot read evidence {evidence}: {exc}\n")
+        return 1
+    if not statuses:
+        sys.stderr.write(f"compass test-checkpoint cycle: no test results found in {evidence}\n")
+        return 1
+
+    vault_root = vaultlib.find_vault_root()
+    log_path = Path(vault_root).joinpath(*CHECKPOINTS_DIR) / f"{task}.cycles.jsonl"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with _cycle_log_lock(log_path):
+            result = _append_cycle(task, statuses, vault_root, log_path)
+    except TimeoutError as exc:
+        sys.stderr.write(f"compass test-checkpoint cycle: {exc}\n")
+        return 1
+    report, problem = result
+    if problem:
+        sys.stderr.write(f"compass test-checkpoint cycle: {problem}\n")
+        return 1
+    sys.stdout.write(report)
+    return 0
+
+
+def _append_cycle(task, statuses, vault_root, log_path):
+    """Judge `statuses` against the task's last logged cycle and append the
+    new cycle. Returns `(report, None)`, or `(None, error)` with the log left
+    untouched. Runs under the log's lock, so reading the count and writing the
+    row are one step."""
+    rows, load_error = _load_cycle_log(log_path)
+    if load_error:
+        return None, load_error
+
+    open_pairs = {(class_name, test) for _, class_name, test in _open_test_ids(vault_root, "cycle", exclude_task=task)}
+    failing = {
+        key for key, status in statuses.items()
+        if status in _FAILING_STATUSES and key not in open_pairs
+    }
+
+    number = len(rows)
+    previous = {tuple(item) for item in rows[-1]["failing"]} - open_pairs if rows else set()
+    fixed = {key for key in previous if statuses.get(key) == "ok"}
+    gone = {key for key in previous if statuses.get(key) not in ("ok", *_FAILING_STATUSES)}
+    new = failing - previous if rows else set()
+    still = failing & previous if rows else failing
+
+    if new or gone:
+        verdict = "harmful"
+    elif fixed:
+        verdict = "helpful"
+    else:
+        verdict = "neutral"
+    escalate = number >= CYCLE_ESCALATION or verdict == "harmful"
+
+    rows.append({
+        "cycle": number, "recorded_at": _iso_now(), "verdict": verdict,
+        "failing": [list(key) for key in sorted(failing, key=lambda test: (test[0] or "", test[1]))],
+    })
+    vaultlib.write_text_lf(log_path, "".join(json.dumps(row) + "\n" for row in rows))
+
+    lines = [f"cycle {number}: {verdict} - fixed {len(fixed)}, new {len(new)}, still failing {len(still)}"]
+    if new:
+        lines.append(f"  new failures: {_format_tests(new)}")
+    if gone:
+        lines.append(f"  failing tests no longer passing or present: {_format_tests(gone)}")
+    lines.append(f"escalate: {'yes' if escalate else 'no'}")
+    return "\n".join(lines) + "\n", None
 
 
 # --------------------------------------------------------------------------
@@ -915,5 +1173,7 @@ def run(args):
         return _run_verify(rest)
     if sub == "open-ids":
         return _run_open_ids(rest)
+    if sub == "cycle":
+        return _run_cycle(rest)
     sys.stderr.write(f"compass test-checkpoint: unknown subcommand {sub}\n{USAGE}\n")
     return 1
