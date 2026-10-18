@@ -155,16 +155,21 @@ def _stage_template(stage, name, number):
 
 
 @contextmanager
-def _new_lock():
+def _new_lock(created):
     """Hold the vault-wide lock that serialises numbering and the rename of a
     new loop folder. An exclusive-create lock file under `tmp/loops/`, retried
-    briefly; one older than NEW_LOCK_STALE_SECONDS is removed."""
-    lock = vaultlib.find_vault_root() / "tmp" / "loops" / "new.lock"
-    lock.parent.mkdir(parents=True, exist_ok=True)
+    briefly; one older than NEW_LOCK_STALE_SECONDS is removed. The
+    directories the lock had to create are appended to `created`."""
+    lock_dir = vaultlib.find_vault_root() / "tmp" / "loops"
+    lock = lock_dir / "new.lock"
+    created.extend(d for d in (lock_dir, lock_dir.parent) if not d.exists())
+    lock_dir.mkdir(parents=True, exist_ok=True)
     for _attempt in range(NEW_LOCK_ATTEMPTS):
         try:
             os.close(os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
             break
+        except FileNotFoundError:
+            lock_dir.mkdir(parents=True, exist_ok=True)
         except (FileExistsError, PermissionError):
             try:
                 age = time.time() - lock.stat().st_mtime
@@ -184,6 +189,25 @@ def _new_lock():
         lock.unlink(missing_ok=True)
 
 
+def _require_name_free(loops_dir, name):
+    """The existing loop folders as (number, name, path), when none is named
+    `name`; otherwise a UsageError. Reads the disk and writes nothing."""
+    existing = _loop_folders(loops_dir)
+    for _number, existing_name, path in existing:
+        if existing_name == name:
+            raise UsageError(f"a loop named {name} already exists: {path.name}")
+    return existing
+
+
+def _remove_empty_dirs(directories):
+    """Remove each directory in `directories` that is empty, deepest first."""
+    for directory in sorted(directories, key=lambda d: len(d.parts), reverse=True):
+        try:
+            directory.rmdir()
+        except OSError:
+            pass
+
+
 def _new(args):
     if len(args) != 1:
         raise UsageError("new needs exactly one <name>")
@@ -196,19 +220,22 @@ def _new(args):
     if not TEMPLATE_DIR.is_dir():
         raise UsageError(f"loop templates missing at {TEMPLATE_DIR}")
     loops_dir = _loops_dir()
+    _require_name_free(loops_dir, name)
     stage = loops_dir / f".new-{os.getpid()}-{secrets.token_hex(4)}.tmp"
+    created = []
     try:
-        with _new_lock():
-            existing = _loop_folders(loops_dir)
-            for _number, existing_name, path in existing:
-                if existing_name == name:
-                    raise UsageError(f"a loop named {name} already exists: {path.name}")
+        with _new_lock(created):
+            existing = _require_name_free(loops_dir, name)
             number = max((num for num, _n, _p in existing), default=0) + 1
             folder = loops_dir / f"LOOP-{number:03d}-{name}"
             _stage_template(stage, name, number)
             stage.rename(folder)
     except OSError as exc:
+        _remove_empty_dirs(created)
         raise UsageError(f"could not create loop {name}: {exc}") from exc
+    except UsageError:
+        _remove_empty_dirs(created)
+        raise
     finally:
         if stage.exists():
             _remove_tree(stage)
@@ -399,16 +426,33 @@ def _loop_lock(folder):
             looplib.acquire_lock(lock, timeout)
             break
         except (looplib.LockHeld, PermissionError):
-            if looplib.is_stale(lock, timeout):
-                looplib.release_lock(lock)
-                continue
-            time.sleep(RUN_LOCK_RETRY_SECONDS)
+            try:
+                stale = looplib.is_stale(lock, timeout)
+                if stale:
+                    looplib.release_lock(lock)
+            except PermissionError:
+                stale = False
+            if not stale:
+                time.sleep(RUN_LOCK_RETRY_SECONDS)
     else:
         raise UsageError(f"{_loop_label(folder)}: a run is in progress")
     try:
         yield
     finally:
-        looplib.release_lock(lock)
+        _release_run_lock(lock)
+
+
+def _release_run_lock(lock):
+    """Remove the run lock, retrying while Windows reports the file busy
+    because another process is reading it."""
+    for attempt in range(RUN_LOCK_ATTEMPTS):
+        try:
+            looplib.release_lock(lock)
+            return
+        except PermissionError:
+            if attempt == RUN_LOCK_ATTEMPTS - 1:
+                raise
+            time.sleep(RUN_LOCK_RETRY_SECONDS)
 
 
 def _advance(args, command, reason):
