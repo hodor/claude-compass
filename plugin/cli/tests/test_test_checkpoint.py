@@ -951,7 +951,7 @@ class CycleTests(unittest.TestCase):
         the ignore matches on the bare test name so a same-named test in
         another class slips through, or a landed checkpoint keeps hiding
         its tests."""
-        build_checkpoint(self, "TASK-200")
+        checkpoint_root, _ = build_checkpoint(self, "TASK-200")
         rows = [
             ("open-checkpoint test starts failing",
              [("WidgetTests", "t", False)],
@@ -970,7 +970,7 @@ class CycleTests(unittest.TestCase):
                 )[2]
                 self.assertEqual(got, verdict)
 
-        index_path = checkpoint_path(self.repo_root, "TASK-200")
+        index_path = checkpoint_path(checkpoint_root, "TASK-200")
         record = json.loads(index_path.read_text(encoding="utf-8"))
         record["landed"] = True
         index_path.write_text(json.dumps(record), encoding="utf-8")
