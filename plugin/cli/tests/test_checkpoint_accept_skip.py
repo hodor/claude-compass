@@ -86,7 +86,7 @@ class AcceptSkipTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("not-passed", out)
         self.assertIn("FooTests.test_b", out)
-        self.assertNotIn("landed", self.record())
+        self.assertFalse(self.record()["landed"])
 
     def test_failed_test_is_never_accepted(self):
         """Adversarial where --accept-skip launders a FAIL."""
@@ -120,7 +120,7 @@ class AcceptSkipTests(unittest.TestCase):
         code, out, _ = self.verify("--accept-skip", "FooTests.test_zzz", "--reason", REASON)
         self.assertEqual(code, 1)
         self.assertIn("test_zzz", out)
-        self.assertNotIn("landed", self.record())
+        self.assertFalse(self.record()["landed"])
 
     def test_accepted_skip_does_not_land_when_another_test_failed(self):
         """Adversarial where an acceptance is recorded for a checkpoint that
@@ -129,7 +129,7 @@ class AcceptSkipTests(unittest.TestCase):
         code, _, _ = self.verify("--accept-skip", "FooTests.test_a", "--reason", REASON)
         self.assertEqual(code, 1)
         record = self.record()
-        self.assertNotIn("landed", record)
+        self.assertFalse(record["landed"])
         self.assertNotIn("accepted_skips", record)
 
     def test_malformed_invocations_exit_1_never_2(self):

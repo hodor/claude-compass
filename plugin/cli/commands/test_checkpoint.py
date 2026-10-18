@@ -811,10 +811,38 @@ def _record_run_status(statuses, name, path, raw_status):
 def _fold_status(statuses, class_name, name, status):
     """Record `status` under both the class-qualified and bare keys. A key
     already holding a non-`ok` status keeps it: a test id proven failed
-    once is not laundered by a later passing occurrence of the same id."""
+    once is not laundered by a later passing occurrence of the same id.
+    `fail` and `error` outrank every other status, so a skipped case that
+    precedes a failed case of the same id still folds to the failure."""
     for key in ((class_name, name), (None, name)):
-        if statuses.get(key, "ok") == "ok":
+        held = statuses.get(key, "ok")
+        if held == "ok" or (status in _FAILING_STATUSES and held not in _FAILING_STATUSES):
             statuses[key] = status
+
+
+def _one_line(value):
+    """`value` as text with every non-printable character (newlines, control
+    characters, line separators) written as its escape sequence."""
+    return "".join(
+        ch if ch.isprintable() else ch.encode("unicode_escape").decode("ascii")
+        for ch in str(value)
+    )
+
+
+def _stored_accepted_skips(record):
+    """`(entries, problem)` for the record's `accepted_skips`. An absent key
+    is no acceptances; a value that is not a list of objects carrying a text
+    `id` and `reason` is reported as `problem` and yields no acceptances."""
+    if "accepted_skips" not in record:
+        return [], None
+    stored = record["accepted_skips"]
+    if not isinstance(stored, list):
+        return [], "accepted_skips is not a list"
+    for entry in stored:
+        if not (isinstance(entry, dict) and isinstance(entry.get("id"), str)
+                and isinstance(entry.get("reason"), str)):
+            return [], "accepted_skips holds an entry without a text id and reason"
+    return stored, None
 
 
 def _print_report(task, record, findings, accepted_skips=()):
@@ -832,8 +860,9 @@ def _print_report(task, record, findings, accepted_skips=()):
         lines.append(f"  {finding['status']:<12} {finding['file']}{detail}")
     for skip in accepted_skips:
         lines.append(
-            f"  {'accepted-skip':<12} {skip['id']} - {skip['reason']} "
-            f"(evidence {skip['evidence']}, {skip['accepted_at']})"
+            f"  {'accepted-skip':<12} {_one_line(skip['id'])} - {_one_line(skip['reason'])} "
+            f"(evidence {_one_line(skip.get('evidence', '?'))}, "
+            f"{_one_line(skip.get('accepted_at', '?'))})"
         )
     sys.stdout.write("\n".join(lines) + "\n")
 
@@ -975,10 +1004,13 @@ def _run_verify(args):
                     })
                     ok = False
 
-    accepted = {
-        skip["id"]: skip for skip in record.get("accepted_skips", [])
-        if isinstance(skip, dict) and isinstance(skip.get("id"), str)
-    }
+    stored_skips, stored_problem = _stored_accepted_skips(record)
+    if stored_problem:
+        findings.append({
+            "file": "accepted_skips", "status": "malformed", "detail": stored_problem,
+        })
+        ok = False
+    accepted = {skip["id"]: skip for skip in stored_skips}
     accepted.update({skip["id"]: skip for skip in accepted_now})
     _print_report(task, record, findings, list(accepted.values()))
 
