@@ -107,8 +107,8 @@ def parse_result(text):
     if not isinstance(data, dict) or data.get("type") != "result":
         raise NoResultEvent("no result event in the output")
     cost = data.get("total_cost_usd")
-    if not _is_number(cost):
-        raise NoResultEvent("no result event with a numeric total_cost_usd")
+    if not _is_number(cost) or cost < 0:
+        raise NoResultEvent("no result event with a non-negative numeric total_cost_usd")
 
     totals = dict.fromkeys((name for name, _ in TOKEN_FIELDS), 0)
     model_usage = data.get("modelUsage")
@@ -249,7 +249,7 @@ def _row_day(row):
         return None
     try:
         return _utc(datetime.fromisoformat(ts.replace("Z", "+00:00"))).strftime("%Y-%m-%d")
-    except ValueError:
+    except (ValueError, OverflowError):
         return None
 
 
@@ -261,22 +261,29 @@ def _row_cost(row):
 
 
 def spend_by_day(rows):
-    """Sum `cost_usd` per UTC day ("YYYY-MM-DD"). A costed row whose `ts` is
-    absent or unreadable is summed under UNKNOWN_DAY, so a corrupt timestamp
-    never hides spend. Rows without a readable cost are skipped."""
+    """Sum `cost_usd` per UTC day ("YYYY-MM-DD"). The ledger is append-only
+    and chronological, so a costed row whose `ts` is absent or unreadable
+    takes the day of the nearest preceding row with a readable `ts`; with no
+    such row it is summed under UNKNOWN_DAY. Rows without a readable cost are
+    skipped."""
     days = {}
+    last_day = None
     for row in rows:
+        day = _row_day(row)
+        if day is not None:
+            last_day = day
         cost = _row_cost(row)
         if cost is None:
             continue
-        day = _row_day(row) or UNKNOWN_DAY
-        days[day] = days.get(day, 0.0) + cost
+        key = day or last_day or UNKNOWN_DAY
+        days[key] = days.get(key, 0.0) + cost
     return days
 
 
 def spend_today(rows, now):
     """Spend on the UTC day that contains `now` (a naive `now` counts as UTC),
-    including costed rows whose `ts` is unreadable."""
+    plus any spend under UNKNOWN_DAY, which cannot be placed on a day and so
+    counts against every day."""
     days = spend_by_day(rows)
     return days.get(_utc(now).strftime("%Y-%m-%d"), 0.0) + days.get(UNKNOWN_DAY, 0.0)
 

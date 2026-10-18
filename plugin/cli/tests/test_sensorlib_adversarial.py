@@ -317,13 +317,35 @@ class SpendEdgeTests(unittest.TestCase):
         for name, ts in {"garbage": "yesterday", "none": None, "number": 17}.items():
             with self.subTest(name=name):
                 rows = [
+                    {"ts": ts, "cost_usd": 2.0},
                     {"ts": "2026-03-01T01:00:00Z", "cost_usd": 1.0},
                     {"ts": "2026-02-28T01:00:00Z", "cost_usd": 8.0},
-                    {"ts": ts, "cost_usd": 2.0},
                 ]
                 self.assertEqual(sensorlib.spend_today(rows, now), 3.0)
                 self.assertEqual(sensorlib.spend_by_day(rows)[sensorlib.UNKNOWN_DAY], 2.0)
                 self.assertEqual(sensorlib.spend_lifetime(rows), 11.0)
+
+    def test_unreadable_ts_inherits_the_preceding_rows_day(self):
+        """Adversarial where: a costed row with a corrupt ts is counted
+        against every day forever, so one damaged line throttles the loop
+        permanently; or it is attached to the following row's day, or to the
+        wrong day when an unreadable row follows another unreadable one."""
+        now = datetime(2026, 3, 2, 12, 0, tzinfo=timezone.utc)
+        rows = [
+            {"ts": "2026-03-01T10:00:00Z", "cost_usd": 1.0},
+            {"ts": "yesterday", "cost_usd": 2.0},
+            {"cost_usd": 4.0},
+            {"ts": "2026-03-02T01:00:00Z", "cost_usd": 8.0},
+        ]
+        self.assertEqual(sensorlib.spend_by_day(rows), {"2026-03-01": 7.0, "2026-03-02": 8.0})
+        self.assertEqual(sensorlib.spend_today(rows, now), 8.0)
+        self.assertEqual(sensorlib.spend_lifetime(rows), 15.0)
+
+    def test_negative_total_cost_in_a_result_event_is_rejected(self):
+        """Adversarial where: a negative total_cost_usd is accepted as a
+        result event and reduces the spend charged for the run."""
+        with self.assertRaises(sensorlib.NoResultEvent):
+            sensorlib.parse_result(envelope(total_cost_usd=-0.01))
 
     def test_timestamps_at_the_datetime_range_edge_do_not_raise(self):
         """Adversarial where: a ts at year 9999 or year 1 whose UTC conversion
