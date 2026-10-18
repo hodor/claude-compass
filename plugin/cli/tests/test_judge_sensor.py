@@ -783,7 +783,7 @@ class JudgeSpendTests(JudgeHarness):
                 self.assertEqual(self.state(), "halted" if ending.startswith("total") else "throttled")
                 self.assertEqual(self.events(), ["start", "off-set-point", ending])
                 (row,) = self.new_run_rows()
-                self.assertEqual(row["outcome"], "throttled")
+                self.assertEqual(row["outcome"], "halted" if ending.startswith("total") else "throttled")
                 self.assertEqual(row.get("cost_usd", 0), 0)
                 self.assert_no_lock()
 
