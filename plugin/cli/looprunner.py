@@ -671,9 +671,7 @@ class _Run:
                         if judged_tree.get(n) != tree_after.get(n)
                     )
             if touched:
-                # The judge may read and nothing else; the state is put back
-                # to the one the halting transition applies to.
-                looplib.write_state(self.dir, state_in_memory)
+                # The judge may read and nothing else.
                 return self.end(
                     "failed", "controls-changed",
                     "the judge changed " + ", ".join(touched[:20]), 1, **fields,
