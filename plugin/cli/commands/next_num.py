@@ -21,6 +21,7 @@ PREFIX = {
     "decision": "ADR",
     "lesson": "LESSON",
     "pr": "PR",
+    "loop": "LOOP",
 }
 
 

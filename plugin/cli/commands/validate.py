@@ -43,6 +43,7 @@ EXPECTED_FIELDS = {
     "decision": ["title", "type", "status", "confidence", "area", "tags", "created", "updated", "summary"],
     "lesson": ["title", "type", "status", "category", "area", "tags", "created", "updated", "score", "summary"],
     "handoff": ["title", "type", "status", "area", "tags", "created", "updated", "summary"],
+    "loop": ["title", "type", "status", "area", "tags", "created", "updated", "summary"],
     "domain": ["title", "type", "status", "tags", "created", "updated", "summary"],
 }
 
@@ -148,6 +149,29 @@ def _reconcile_sizing(vault_root, layout, records, warnings):
             _check_sizing_id(record["name"], record["path"], known_ids, warnings)
 
 
+def _check_loops_shape(vault_root, layout, warnings):
+    """Warn about every entry under a `loops/` dir that is not a
+    `LOOP-NNN-name/` folder holding an `index.md`: the scanner reads only
+    those, so anything else under `loops/` is invisible to the vault."""
+    bases = [vault_root / "loops"]
+    for unit in layout["units"]:
+        bases.append(vault_root / unit / "loops")
+    for base in bases:
+        if not base.is_dir():
+            continue
+        for entry in sorted(base.iterdir()):
+            if entry.name.startswith("."):
+                continue
+            if (entry.is_dir() and vaultlib.LOOP_FOLDER.match(entry.name)
+                    and (entry / "index.md").is_file()):
+                continue
+            rel = entry.relative_to(vault_root).as_posix()
+            warnings.append(
+                f"loop_misshapen: {rel}: not a LOOP-NNN-name/ folder holding "
+                f"index.md - not scanned"
+            )
+
+
 def _taxonomy_checks(vault_root, records, warnings):
     """The taxonomy's standing suggestions: `folder_over_ceiling` when a
     governed folder's direct children pass the ceiling, `empty_scope` when
@@ -248,6 +272,7 @@ def check_vault(vault_root):
         warnings.append(f"cap_exceeded: hot path over {HOT_PATH_CAP} tokens")
 
     _reconcile_sizing(vault_root, layout, records, warnings)
+    _check_loops_shape(vault_root, layout, warnings)
     _taxonomy_checks(vault_root, records, warnings)
 
     _, active_sections = sweep.collect(vault_root)

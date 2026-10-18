@@ -37,6 +37,7 @@ Public contract these tests pin (module `plugin/cli/sensorlib.py`):
     spend_lifetime(rows) -> float              sum over every row
 """
 
+import json
 import os
 import sys
 import tempfile
@@ -50,6 +51,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import sensorlib  # noqa: E402
 
 FIXTURES = Path(__file__).parent / "fixtures" / "result_events"
+
+
+def fixture_json(name):
+    return json.loads(fixture_text(name))
 
 
 def fixture_text(name):
@@ -94,7 +99,7 @@ class ParseResultTests(unittest.TestCase):
             "capture_worker_two_models": ("capture_worker.json", dict(
                 cost_usd=0.8262580000000002, num_turns=28, duration_ms=227857,
                 subtype="success", is_error=False,
-                result="Both lessons synced into the catalog. Extraction complete.",
+                result=fixture_json("capture_worker.json")["result"],
                 input_tokens=1013 + 48, output_tokens=25 + 19100,
                 cache_read_tokens=0 + 1829360,
                 cache_creation_tokens=0 + 67038)),

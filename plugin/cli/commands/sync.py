@@ -118,6 +118,10 @@ def _link_name(record):
         # open in Obsidian; the piped full path to its index.md can, and
         # displays as the plain folder name.
         return f"{record['name']}/index|{record['path'].parent.name}"
+    if record["kind"] == "loop-index":
+        # A loop's document is its folder's `index.md`; the folder name
+        # resolves to it.
+        return record["name"]
     if record["unit"] is None:
         if vaultlib.is_loose_nested(record["path"], record["kind"]):
             return record["name"]

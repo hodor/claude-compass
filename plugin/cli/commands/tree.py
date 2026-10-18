@@ -15,6 +15,8 @@ import vaultlib
 
 
 def _label(record):
+    if record["kind"] == "loop-index":
+        return record["path"].parent.name
     if record["kind"] == "folder-index":
         return record["path"].parent.name + "/"
     return record["path"].stem
@@ -47,6 +49,9 @@ def render(vault_root):
         emitted = set()
         for record in sorted(groups[top], key=lambda r: r["name"]):
             parts = record["rel"].split("/")
+            if record["kind"] == "loop-index":
+                lines.append(_line(record))
+                continue
             end = -2 if record["kind"] == "folder-index" else -1
             for i, part in enumerate(parts[:end]):
                 folder = (record["type_dir"], "/".join(parts[: i + 1]))

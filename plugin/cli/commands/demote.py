@@ -100,6 +100,14 @@ def run(args):
         sys.stderr.write(f"compass demote: folder spec not found: {target}\n")
         return 1
 
+    if vaultlib.in_loops_dir(vault_root, folder):
+        sys.stderr.write(
+            "compass demote: refused, no changes made\n"
+            f"  {folder.relative_to(vault_root).as_posix()} is a loop, "
+            "a loop is always a folder\n"
+        )
+        return 1
+
     children = [p for p in folder.iterdir() if p.name != "index.md"]
     if children:
         sys.stderr.write(

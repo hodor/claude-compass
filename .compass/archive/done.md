@@ -275,3 +275,17 @@ Plan: [[PLAN-018-research-covers-the-whole-spec]] (approved 2026-09-13). Pause a
 
 ### PLAN-020: clone old sessions to harvest their lessons
 - [x] TASK-143: `compass clone`
+
+## 2026-10-18
+
+### PLAN-021 Wave 1: control loops
+- [x] TASK-153: prototype - how do the turn and budget caps behave past one turn and across resume?
+
+### PLAN-021 Wave 1: control loops
+- [x] TASK-156: prototype - what does a fresh CI-style checkout of a Compass project run?
+
+### PLAN-021 Wave 1: control loops
+- [x] TASK-154: prototype - how accurate is an agent judging natural-language rules, against planted violations?
+
+### PLAN-021 Wave 1: control loops
+- [x] TASK-155: prototype - can an agent draft accurate ast-grep rules from natural-language rules?

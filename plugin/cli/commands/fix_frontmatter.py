@@ -34,6 +34,7 @@ SINGULAR = {
     "lessons": "lesson",
     "handoffs": "handoff",
     "prs": "pr",
+    "loops": "loop",
 }
 
 HEADING = re.compile(r"^#\s+(.+)$", re.MULTILINE)
