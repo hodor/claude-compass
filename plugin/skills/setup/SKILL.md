@@ -150,51 +150,10 @@ The PostToolUse hook runs the CLI as `python3 "$CLAUDE_PROJECT_DIR/.claude/cli/c
 
 ```bash
 if command -v python3 >/dev/null 2>&1; then PYBIN=python3; else PYBIN=python; fi
-"$PYBIN" - <<'PY'
-import json
-from pathlib import Path
-
-manifest = json.loads(Path(".claude/hooks/hooks.json").read_text(encoding="utf-8"))["hooks"]
-settings_path = Path(".claude/settings.json")
-settings = json.loads(settings_path.read_text(encoding="utf-8")) if settings_path.is_file() else {}
-hooks = settings.setdefault("hooks", {})
-
-def is_compass_command(text):
-    return "compass" in (text or "")
-
-def is_compass_group(group):
-    return any(is_compass_command(h.get("command")) for h in group.get("hooks", []))
-
-def clean_group(group, matcher_override=None):
-    cleaned = dict(group)
-    if matcher_override is not None:
-        cleaned["matcher"] = matcher_override
-    cleaned["hooks"] = [{k: v for k, v in h.items() if k != "if"} for h in group.get("hooks", [])]
-    return cleaned
-
-translated = {}
-posttool = manifest.get("PostToolUse") or []
-if posttool:
-    # The manifest splits PostToolUse three ways (Write/Edit/MultiEdit) because its
-    # "if" field cannot express boolean OR. The settings schema carries no "if"
-    # field, so the three collapse into one matcher group. Every other PostToolUse
-    # group (no "if") registers as it stands.
-    split = [g for g in posttool if any("if" in h for h in g.get("hooks", []))]
-    whole = [clean_group(g) for g in posttool if g not in split]
-    if split:
-        whole.append(clean_group(split[0], "Write|Edit|MultiEdit|write|edit"))
-    translated["PostToolUse"] = whole
-for event in manifest:
-    if event != "PostToolUse":
-        translated[event] = [clean_group(g) for g in manifest[event]]
-
-for event, new_groups in translated.items():
-    kept = [g for g in hooks.get(event, []) if not is_compass_group(g)]
-    hooks[event] = kept + new_groups
-
-settings_path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
-print("Hooks registered in .claude/settings.json:", ", ".join(sorted(translated)))
-PY
+"$PYBIN" -c "import sys; sys.path.insert(0, '.claude/cli')
+from commands import self_update
+self_update.merge_settings('.', '.claude/hooks/hooks.json')
+print('Hooks registered in .claude/settings.json')"
 ```
 
 Then write the permission allowlist into the same `.claude/settings.json` (or `.claude/settings.local.json`), merging alongside the `hooks` key the script above just wrote:
