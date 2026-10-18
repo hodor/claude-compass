@@ -1,0 +1,29 @@
+ACTUATOR-MARKER-ONE: fix the selected item.
+
+Rules:
+- keep the edit small
+- explique a ação, não só o código
+
+## Golden patterns
+
+GOLDEN-MARKER-A
+
+Before:
+    except:
+After:
+    except ValueError:
+
+GOLDEN-MARKER-B
+
+Anti-pattern: swallowing every error.
+
+## Selected work (controller output)
+
+alpha.py::bare-except
+
+## Feedback
+
+FEEDBACK-MARKER-ONE
+
+## Guidance
+- never touch the tests folder
