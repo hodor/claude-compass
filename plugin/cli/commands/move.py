@@ -56,6 +56,11 @@ def _check_dest(vault_root, dest_rel, layout):
     root_segments = _type_root(vault_root, parts, layout)
     if root_segments == 0:
         return None, None, f"destination {dest_rel} is not under a type dir"
+    if len(parts) > root_segments and parts[root_segments - 1] == "loops":
+        return None, None, (
+            f"destination {dest_rel} is inside loops/, loops are never "
+            "domain-grouped"
+        )
     dest = vault_root / dest_rel
     if not dest.is_dir():
         return None, None, f"destination {dest_rel} does not exist"

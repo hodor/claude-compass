@@ -33,6 +33,16 @@ TYPE_TO_DIR = {
 LOOP_FOLDER = re.compile(r"^LOOP-\d+-")
 
 
+def in_loops_dir(vault_root, path):
+    """True when `path` sits at or below a `loops/` type dir, at the vault
+    root or inside a unit folder."""
+    parts = Path(path).relative_to(vault_root).parts
+    return bool(parts) and (
+        parts[0] == "loops"
+        or (len(parts) > 1 and parts[1] == "loops" and parts[0] not in CORE_TYPE_DIRS)
+    )
+
+
 def _has_typed_artifact(directory):
     """True if the directory holds at least one markdown file with a `type:`
     frontmatter field - the signal that it is an artifact directory rather than

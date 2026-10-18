@@ -320,6 +320,68 @@ class LoopReshapingCommandTests(Vault):
             f"move exit {code} buried the loop where the scanner cannot see it",
         )
 
+    def test_reshaping_refusals_exit_one_with_a_reason_and_change_nothing(self):
+        """Adversarial where: a refusal exiting 2 or 0, printing no reason,
+        or leaving a half-made folder; and the same commands still working
+        on a `specs/loops` domain, so the refusal is keyed to the `loops`
+        type dir and not to the word."""
+        self.write("loops/LOOP-001-x/index.md", LOOP_INDEX)
+        self.write(
+            "loops/grp/index.md",
+            "---\ntitle: grp\ntype: domain\nstatus: active\ntags: [d]\n"
+            'created: 2026-10-18\nupdated: 2026-10-18\nsummary: "d"\n---\n',
+        )
+        cases = {
+            "demote": (demote, ["loops/LOOP-001-x", "--reason", "r", "--apply"]),
+            "make-domain": (
+                make_domain,
+                ["loops/new", "--class-here", "x", "--reason", "r", "--apply"],
+            ),
+            "move": (move, ["LOOP-001-x", "loops/grp", "--apply"]),
+        }
+        for name, (module, args) in cases.items():
+            with self.subTest(name):
+                code, _, err = self.run_cmd(module, args)
+                self.assertEqual(code, 1)
+                self.assertTrue(err.strip(), "refusal printed no reason")
+        self.assertTrue((self.root / "loops" / "LOOP-001-x" / "index.md").is_file())
+        self.assertFalse((self.root / "loops" / "new").exists())
+        self.write("specs/SPEC-001-s.md", spec_linking())
+        code, _, _ = self.run_cmd(
+            make_domain,
+            ["specs/loops", "--class-here", "x", "--reason", "r", "--apply"],
+        )
+        self.assertEqual(code, 0)
+
+
+class LoopMisshapenWarningTests(Vault):
+    def test_validate_warns_about_each_entry_the_scanner_cannot_see(self):
+        """Adversarial where: a flat `loops/LOOP-004-w.md`, a wrongly named
+        folder, a loop folder lacking `index.md`, or a unit's misshapen loop
+        entry vanishing silently from validate; and a well-formed loop plus
+        its parts drawing no such warning."""
+        self.write("u/index.md", UNIT_INDEX)
+        self.write("loops/LOOP-001-ok/index.md", LOOP_INDEX)
+        self.write("loops/LOOP-001-ok/feedback.md", "# f\n")
+        self.write("loops/LOOP-004-w.md", LOOP_INDEX)
+        self.write("loops/loop-005-x/index.md", LOOP_INDEX)
+        self.write("loops/LOOP-006-noindex/feedback.md", "# f\n")
+        self.write("u/loops/LOOP-002-u.md", LOOP_INDEX)
+        errors, warnings = validate.check_vault(self.root)
+        self.assertEqual(errors, [])
+        flagged = sorted(
+            w.split(": ")[1] for w in warnings if w.startswith("loop_misshapen")
+        )
+        self.assertEqual(
+            flagged,
+            [
+                "loops/LOOP-004-w.md",
+                "loops/LOOP-006-noindex",
+                "loops/loop-005-x",
+                "u/loops/LOOP-002-u.md",
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
