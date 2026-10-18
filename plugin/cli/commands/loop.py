@@ -31,6 +31,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import looplib
+import sensorlib
 import vaultlib
 
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "loop_templates"
@@ -196,41 +197,6 @@ def _read_json_object(path):
     return data if isinstance(data, dict) else {}
 
 
-def _row_cost(row):
-    cost = row.get("cost_usd")
-    if isinstance(cost, bool) or not isinstance(cost, (int, float)):
-        return None
-    return float(cost)
-
-
-def _row_day(row):
-    """The UTC date of a row's `ts`, or None when it has no readable one."""
-    ts = row.get("ts")
-    if not isinstance(ts, str):
-        return None
-    try:
-        moment = datetime.fromisoformat(ts.strip().replace("Z", "+00:00"))
-    except ValueError:
-        return None
-    if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=timezone.utc)
-    return moment.astimezone(timezone.utc).date()
-
-
-# Spend is the sum of `cost_usd` over ledger rows: over all of them for the
-# lifetime total, over those stamped on the current UTC day for today's.
-def _spend_lifetime(rows):
-    return sum(cost for cost in map(_row_cost, rows) if cost is not None)
-
-
-def _spend_today(rows, now):
-    today = now.astimezone(timezone.utc).date()
-    return sum(
-        cost for row in rows
-        if (cost := _row_cost(row)) is not None and _row_day(row) == today
-    )
-
-
 def _last_halt_reason(rows):
     for row in reversed(rows):
         if row.get("type") == "transition" and row.get("to") == "halted":
@@ -240,14 +206,18 @@ def _last_halt_reason(rows):
 
 
 def _last_reading(rows):
-    """The sensor reading carried by the most recent run row, or None."""
+    """The `reading_after` of the most recent run row, or None."""
     for row in reversed(rows):
-        if row.get("type") != "run":
-            continue
-        for key in ("reading_after", "after", "reading"):
-            if row.get(key) is not None:
-                return row[key]
+        if row.get("type") == "run":
+            return row.get("reading_after")
     return None
+
+
+def _reading_text(reading):
+    """A reading as `value V, N items`, or `none` when the run took none."""
+    if not isinstance(reading, dict):
+        return "none"
+    return f"value {reading.get('value')}, {reading.get('items_count')} items"
 
 
 def _budget(definition, key):
@@ -275,10 +245,10 @@ def _status_lines(folder, now):
     halt = _last_halt_reason(rows)
     lines = [
         f"{_loop_label(folder)}  state: {state['state']}  index status: {index_status}",
-        f"  last reading: {json.dumps(reading) if reading is not None else 'none'}",
+        f"  last reading: {_reading_text(reading)}",
         f"  wip: {counters['wip']} of {_budget(definition, 'wip_limit')} unreviewed increments",
-        f"  spend today: {_money(_spend_today(rows, now))} of {_budget(definition, 'daily_budget_usd')} usd",
-        f"  spend lifetime: {_money(_spend_lifetime(rows))} of {_budget(definition, 'total_budget_usd')} usd",
+        f"  spend today: {_money(sensorlib.spend_today(rows, now))} of {_budget(definition, 'daily_budget_usd')} usd",
+        f"  spend lifetime: {_money(sensorlib.spend_lifetime(rows))} of {_budget(definition, 'total_budget_usd')} usd",
         f"  last halt: {halt if halt is not None else 'none'}",
     ]
     if state_error:
@@ -383,6 +353,12 @@ def _parse_review(args):
     return loop_id, run_id, decision, reason
 
 
+def _require_unreviewed(rows, run_id):
+    """Raise a UsageError when a review row already names `run_id`."""
+    if any(r.get("type") == "review" and r.get("run_id") == run_id for r in rows):
+        raise UsageError(f"run {run_id!r} is already reviewed")
+
+
 def _require_verified_run(rows, run_id):
     """Return when `run_id` names a run that reached `verifying`; otherwise
     raise a UsageError saying why not."""
@@ -417,6 +393,7 @@ def _review(args):
     folder = _resolve(loop_id)
     rows, _skipped = looplib.read_ledger(folder)
     _require_verified_run(rows, run_id)
+    _require_unreviewed(rows, run_id)
     row = {"type": "review", "run_id": run_id, "decision": decision}
     if reason is not None and reason.strip():
         row["reason"] = " ".join(reason.split())
