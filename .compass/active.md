@@ -53,7 +53,6 @@ Plan: [[PLAN-021-control-loops]].
 - [ ] TASK-152: The fix loop tells a helpful cycle from a harmful one
 - [ ] TASK-154: prototype - how accurate is an agent judging natural-language rules, against planted violations?
 - [ ] TASK-155: prototype - can an agent draft accurate ast-grep rules from natural-language rules?
-- [ ] TASK-156: prototype - what does a fresh CI-style checkout of a Compass project run?
 - [ ] TASK-157: Ship 0.28.0 and run a loop live in a scratch project
 
 ## Next Up
