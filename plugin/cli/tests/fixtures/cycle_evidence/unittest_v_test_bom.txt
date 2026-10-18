@@ -1,0 +1,16 @@
+test_bom_catalog_does_not_become_unparseable (tests.test_bom.BomCatalogTests.test_bom_catalog_does_not_become_unparseable)
+Adversarial where: the empty-catalog marker carries a BOM and a ... ok
+test_plain_catalog_is_unaffected (tests.test_bom.BomCatalogTests.test_plain_catalog_is_unaffected) ... ok
+test_bom_alone_is_not_read_as_content (tests.test_bom.BomFrontmatterTests.test_bom_alone_is_not_read_as_content)
+A BOM-only file has no frontmatter for an honest reason, and must ... ok
+test_bom_artifact_still_parses_its_frontmatter (tests.test_bom.BomFrontmatterTests.test_bom_artifact_still_parses_its_frontmatter)
+Adversarial where: the file is byte-identical to a good artifact ... ok
+test_plain_artifact_is_unaffected (tests.test_bom.BomFrontmatterTests.test_plain_artifact_is_unaffected) ... ok
+test_every_known_type_expects_summary (tests.test_bom.SummaryExpectedOnEveryTypeTests.test_every_known_type_expects_summary) ... ok
+test_missing_summary_is_a_warning_not_an_error (tests.test_bom.SummaryExpectedOnEveryTypeTests.test_missing_summary_is_a_warning_not_an_error)
+Adversarial where: existing vaults predate the field. Making it an ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.039s
+
+OK

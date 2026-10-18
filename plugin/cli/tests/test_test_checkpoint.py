@@ -11,6 +11,7 @@ hoping `verify` calls it `unchanged` or `added-only` instead of `modified`.
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -804,6 +805,273 @@ class NeverExitsTwoTests(unittest.TestCase):
             with self.subTest(argv=argv):
                 code, out, err = run_cli(argv)
                 self.assertIn(code, (0, 1))
+
+
+
+CYCLE_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "cycle_evidence"
+CYCLE_LINE = re.compile(r"^cycle (\d+): (\w+)", re.MULTILINE)
+ESCALATE_LINE = re.compile(r"^escalate: (yes|no)\s*$", re.MULTILINE)
+CYCLE_FORMAT = re.compile(
+    r"^cycle \d+: (helpful|neutral|harmful) - fixed .*, new .*, still failing .*$",
+    re.MULTILINE,
+)
+
+
+def pytest_evidence(*rows):
+    """pytest `-v` text for `(class, test, passed)` rows."""
+    lines = []
+    for class_name, test, passed in rows:
+        status = "PASSED" if passed else "FAILED"
+        lines.append(f"tests/test_widget.py::{class_name}::{test} {status} [ 50%]")
+    return "\n".join(lines) + "\n"
+
+
+def cycle_log(repo_root, task):
+    path = repo_root / ".compass" / "tmp" / "test-checkpoints" / f"{task}.cycles.jsonl"
+    if not path.is_file():
+        return []
+    return [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+class CycleTests(unittest.TestCase):
+    def setUp(self):
+        self.repo_root = make_repo_vault(self)
+        with_vault_env(self, self.repo_root)
+        self.counter = 0
+
+    def evidence_file(self, text):
+        self.counter += 1
+        rel = f"ev/run{self.counter}.txt"
+        return write_file(self.repo_root, rel, text)
+
+    def cycle(self, task, text):
+        """Run `cycle` against `text` as evidence. Returns
+        `(code, number, verdict, escalate, stdout)`."""
+        code, out, err = run_cli(["cycle", task, "--evidence", str(self.evidence_file(text))])
+        self.assertEqual(code, 0, out + err)
+        found = CYCLE_LINE.search(out)
+        self.assertIsNotNone(found, f"no 'cycle N:' line in {out!r}")
+        esc = ESCALATE_LINE.search(out)
+        self.assertIsNotNone(esc, f"no 'escalate:' line in {out!r}")
+        return code, int(found.group(1)), found.group(2), esc.group(1), out
+
+    def run_pair(self, task, before, after):
+        """Cycle 0 on `before`, cycle 1 on `after`; returns the cycle 1 result."""
+        number0 = self.cycle(task, before)[1]
+        self.assertEqual(number0, 0)
+        result = self.cycle(task, after)
+        self.assertEqual(result[1], 1)
+        return result
+
+    def test_verdict_classifies_the_change_between_two_cycles(self):
+        """Adversarial where: the verdict keys tests by bare name instead of
+        class plus name, treats a failing test that vanished from the next
+        run as fixed, or counts a fix that is paid for by a new break as
+        helpful."""
+        rows = [
+            ("fixes two breaks none",
+             [("A", "t1", False), ("A", "t2", False)],
+             [("A", "t1", True), ("A", "t2", True)], "helpful", "no"),
+            ("fixes one breaks one",
+             [("A", "t1", False), ("A", "t2", True)],
+             [("A", "t1", True), ("A", "t2", False)], "harmful", "yes"),
+            ("fixes one, a test absent before now fails",
+             [("A", "t1", False)],
+             [("A", "t1", True), ("A", "t3", False)], "harmful", "yes"),
+            ("failing test missing from next run among others still failing",
+             [("A", "t1", False), ("A", "t2", False)],
+             [("A", "t2", False)], "harmful", "yes"),
+            ("failing test missing, everything present passes",
+             [("A", "t1", False)],
+             [("A", "t9", True)], "harmful", "yes"),
+            ("name shared by two classes, one of the two fixed",
+             [("A", "t", False), ("B", "t", False)],
+             [("A", "t", True), ("B", "t", False)], "helpful", "no"),
+            ("name shared by two classes, one fixed while the twin breaks",
+             [("A", "t", False)],
+             [("A", "t", True), ("B", "t", False)], "harmful", "yes"),
+            ("same failing set, passing set grew",
+             [("A", "t1", False), ("A", "t2", True)],
+             [("A", "t1", False), ("A", "t2", True), ("A", "t3", True)], "neutral", "no"),
+            ("nothing failing in either run",
+             [("A", "t1", True)],
+             [("A", "t1", True)], "neutral", "no"),
+        ]
+        for index, (label, before, after, verdict, escalate) in enumerate(rows):
+            with self.subTest(row=label):
+                result = self.run_pair(
+                    f"TASK-{300 + index}", pytest_evidence(*before), pytest_evidence(*after)
+                )
+                _, _, got, esc, out = result
+                self.assertEqual((got, esc), (verdict, escalate), out)
+                self.assertRegex(out, CYCLE_FORMAT)
+
+    def test_each_cycle_is_compared_with_the_one_before_it_and_logged_once(self):
+        """Adversarial where: the comparison anchors on cycle 0 instead of
+        the previous cycle (a test fixed in cycle 1 and broken again in
+        cycle 2 reads as unchanged), or an appended cycle line is lost or
+        doubled."""
+        task = "TASK-320"
+        runs = [
+            [("A", "x", False)],
+            [("A", "x", True)],
+            [("A", "x", False)],
+        ]
+        verdicts = []
+        for expected_number, rows in enumerate(runs):
+            _, number, verdict, _, out = self.cycle(task, pytest_evidence(*rows))
+            self.assertEqual(number, expected_number, out)
+            verdicts.append(verdict)
+            self.assertEqual(len(cycle_log(self.repo_root, task)), expected_number + 1)
+        self.assertEqual(verdicts[1:], ["helpful", "harmful"])
+
+    def test_cycle_three_escalates_and_cycle_two_does_not(self):
+        """Adversarial where: the escalation threshold is off by one, firing
+        at cycle 2 or never firing at cycle 3, or fires only when the third
+        cycle is harmful."""
+        failing = [("A", name, False) for name in "abcd"]
+        helpful = [
+            failing,
+            [("A", "a", True)] + failing[1:],
+            [("A", "a", True), ("A", "b", True)] + failing[2:],
+            [("A", "a", True), ("A", "b", True), ("A", "c", True), ("A", "d", False)],
+        ]
+        neutral_third = helpful[:3] + [helpful[2]]
+        for label, run, task in (
+            ("helpful third cycle", helpful, "TASK-330"),
+            ("neutral third cycle", neutral_third, "TASK-331"),
+        ):
+            with self.subTest(run=label):
+                escalations = [self.cycle(task, pytest_evidence(*rows))[3] for rows in run]
+                self.assertEqual(escalations, ["no", "no", "no", "yes"])
+
+    def test_checkpointed_tests_of_unlanded_tasks_are_not_failures(self):
+        """Adversarial where: an expected red from an open pre-build
+        checkpoint is counted as a break (or as vanishing coverage), or
+        the ignore matches on the bare test name so a same-named test in
+        another class slips through, or a landed checkpoint keeps hiding
+        its tests."""
+        build_checkpoint(self, "TASK-200")
+        rows = [
+            ("open-checkpoint test starts failing",
+             [("WidgetTests", "t", False)],
+             [("WidgetTests", "t", False), ("FooTests", "test_a", False)], "neutral"),
+            ("open-checkpoint test disappears from the run",
+             [("FooTests", "test_a", False), ("WidgetTests", "t", True)],
+             [("WidgetTests", "t", True)], "neutral"),
+            ("same test name in a class the checkpoint does not name",
+             [("WidgetTests", "t", True)],
+             [("OtherTests", "test_a", False)], "harmful"),
+        ]
+        for index, (label, before, after, verdict) in enumerate(rows):
+            with self.subTest(row=label):
+                got = self.run_pair(
+                    f"TASK-{340 + index}", pytest_evidence(*before), pytest_evidence(*after)
+                )[2]
+                self.assertEqual(got, verdict)
+
+        index_path = checkpoint_path(self.repo_root, "TASK-200")
+        record = json.loads(index_path.read_text(encoding="utf-8"))
+        record["landed"] = True
+        index_path.write_text(json.dumps(record), encoding="utf-8")
+        with self.subTest(row="landed checkpoint no longer hides its tests"):
+            got = self.run_pair(
+                "TASK-350",
+                pytest_evidence(("WidgetTests", "t", True)),
+                pytest_evidence(("WidgetTests", "t", True), ("FooTests", "test_a", False)),
+            )[2]
+            self.assertEqual(got, "harmful")
+
+    def test_real_pytest_and_unittest_evidence_both_parse(self):
+        """Adversarial where: the parser only handles synthetic one-line
+        evidence and misses a failure in real `-v` output, whose unittest
+        form splits a docstring test across two lines, so the flipped test
+        reads as absent or unchanged."""
+        pytest_real = (CYCLE_FIXTURES / "pytest_v_test_bom.txt").read_text(encoding="utf-8")
+        unittest_real = (CYCLE_FIXTURES / "unittest_v_test_bom.txt").read_text(encoding="utf-8")
+
+        def flip(text, old, new):
+            self.assertIn(old, text)
+            return text.replace(old, new)
+
+        py_single = flip(
+            pytest_real,
+            "BomFrontmatterTests::test_plain_artifact_is_unaffected PASSED",
+            "BomFrontmatterTests::test_plain_artifact_is_unaffected FAILED",
+        )
+        py_doc = flip(
+            pytest_real,
+            "BomFrontmatterTests::test_bom_artifact_still_parses_its_frontmatter PASSED",
+            "BomFrontmatterTests::test_bom_artifact_still_parses_its_frontmatter FAILED",
+        )
+        single_line = (
+            "test_plain_artifact_is_unaffected "
+            "(tests.test_bom.BomFrontmatterTests.test_plain_artifact_is_unaffected) ... "
+        )
+        ut_single = flip(unittest_real, single_line + "ok", single_line + "FAIL")
+        split_line = "Adversarial where: the file is byte-identical to a good artifact ... "
+        ut_doc = flip(unittest_real, split_line + "ok", split_line + "FAIL")
+        rows = [
+            ("pytest, test newly fails", pytest_real, py_single, "harmful"),
+            ("pytest, failure repaired", py_single, pytest_real, "helpful"),
+            ("pytest, unchanged real run", pytest_real, pytest_real, "neutral"),
+            ("unittest single-line, test newly fails", unittest_real, ut_single, "harmful"),
+            ("unittest single-line, failure repaired", ut_single, unittest_real, "helpful"),
+            ("unittest docstring-split, test newly fails", unittest_real, ut_doc, "harmful"),
+            ("unittest docstring-split, failure repaired", ut_doc, unittest_real, "helpful"),
+            ("failure in pytest run repaired in unittest run", py_doc, unittest_real, "helpful"),
+            ("failure in unittest run repaired in pytest run", ut_single, pytest_real, "helpful"),
+        ]
+        for index, (label, before, after, verdict) in enumerate(rows):
+            with self.subTest(row=label):
+                got = self.run_pair(f"TASK-{360 + index}", before, after)[2]
+                self.assertEqual(got, verdict)
+
+    def test_missing_evidence_file_exits_1_and_appends_nothing(self):
+        """Adversarial where: a typo in the evidence path records an empty
+        cycle (all failures read as vanished, or the cycle counter advances
+        with no data), or the failing call still leaves a log line behind."""
+        task = "TASK-380"
+        self.cycle(task, pytest_evidence(("A", "t", False)))
+        missing = self.repo_root / "ev" / "does-not-exist.txt"
+        code, out, err = run_cli(["cycle", task, "--evidence", str(missing)])
+        self.assertEqual(code, 1, out + err)
+        self.assertNotRegex(out, CYCLE_LINE)
+        self.assertEqual(len(cycle_log(self.repo_root, task)), 1)
+        number = self.cycle(task, pytest_evidence(("A", "t", False)))[1]
+        self.assertEqual(number, 1)
+
+        untouched = "TASK-381"
+        code, out, err = run_cli(["cycle", untouched, "--evidence", str(missing)])
+        self.assertEqual(code, 1, out + err)
+        self.assertEqual(cycle_log(self.repo_root, untouched), [])
+
+    def test_malformed_cycle_arguments_exit_1_and_append_nothing(self):
+        """Adversarial where: a cycle call missing its task id, its
+        `--evidence` flag, or the flag's value raises or exits 2 instead of
+        reporting a usage error naming the `cycle` form."""
+        evidence = str(self.evidence_file(pytest_evidence(("A", "t", False))))
+        for argv in (
+            ["cycle"],
+            ["cycle", "TASK-390"],
+            ["cycle", "TASK-390", "--evidence"],
+            ["cycle", "--evidence", evidence],
+        ):
+            with self.subTest(argv=argv):
+                code, _, err = run_cli(argv)
+                self.assertEqual(code, 1)
+                self.assertIn("cycle TASK-NNN --evidence", err)
+        self.assertEqual(cycle_log(self.repo_root, "TASK-390"), [])
+
+    def test_cycle_logs_are_kept_per_task(self):
+        """Adversarial where: cycles of two tasks share one log, so the
+        second task's first call is compared against the first task's
+        failures instead of starting at cycle 0."""
+        self.cycle("TASK-395", pytest_evidence(("A", "t", False)))
+        number = self.cycle("TASK-396", pytest_evidence(("A", "t", False)))[1]
+        self.assertEqual(number, 0)
+        self.assertEqual(len(cycle_log(self.repo_root, "TASK-395")), 1)
+        self.assertEqual(len(cycle_log(self.repo_root, "TASK-396")), 1)
 
 
 if __name__ == "__main__":
