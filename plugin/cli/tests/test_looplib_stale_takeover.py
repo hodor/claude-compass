@@ -141,6 +141,21 @@ class StaleTakeoverTests(unittest.TestCase):
         self.assertEqual(self.lock.read_text(encoding="utf-8"), FRESH_LOCK)
         self.assertEqual(self.tombstones(), [])
 
+    def test_recover_by_the_lock_holder_neither_judges_nor_removes_the_lock(self):
+        """Adversarial where: the process that holds the run lock is refused
+        by its own live lock, or its recovery deletes the lock it is running
+        under, letting a second runner in."""
+        self.crash_left_state()
+        looplib.acquire_lock(self.lock, TIMEOUT_S)
+        held = self.lock.read_bytes()
+        self.assertTrue(
+            looplib.recover(self.loop_dir, self.lock, self.definition, lock_held=True)
+        )
+        self.assertEqual(self.lock.read_bytes(), held)
+        self.assertEqual(looplib.read_state(self.loop_dir)["state"], "idle")
+        rows, _skipped = looplib.read_ledger(self.loop_dir)
+        self.assertEqual([r["outcome"] for r in rows if r.get("type") == "run"], ["crashed"])
+
     def test_recover_does_not_remove_a_lock_that_appeared_after_it_started(self):
         """Adversarial where: recovery began with no lock file, and a lock
         created by another runner meanwhile is deleted at the end."""

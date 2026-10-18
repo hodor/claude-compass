@@ -40,6 +40,7 @@ import re
 import shlex
 import subprocess
 import sys
+import time
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -55,8 +56,9 @@ CONTROL_FILES = ("loop.json", "state.json", "ledger.jsonl", BASELINE_FILE)
 STARTABLE = ("idle", "throttled")
 NOT_RUNNABLE = ("paused", "halted", "done")
 
-# Tries at taking a lock whose previous holder is gone before the run refuses.
-STALE_LOCK_ATTEMPTS = 3
+# Tries at taking the run lock, a short pause apart, before the run refuses.
+LOCK_ATTEMPTS = 5
+LOCK_RETRY_SECONDS = 0.05
 
 # Spend sums are floats; a budget met exactly must still fit.
 BUDGET_EPSILON = 1e-9
@@ -298,23 +300,29 @@ class _Run:
     # ---- lock and recovery ------------------------------------------------
 
     def acquire(self):
-        """Recover a crash-left loop, then take the run lock. A live lock, or
-        a state another command moved on in the meantime, is a refusal."""
+        """Take the run lock, then recover a loop a crashed run left in a
+        working state. The lock comes first so that exactly one process
+        recovers. A lock held by a live run, or a state another command moved
+        on in the meantime, is a refusal.
+
+        A lock found stale is taken over; when the takeover loses to another
+        process the acquire is retried a few times, so the loser meets the
+        winner's live lock and refuses on it."""
         timeout_s = self.defn["timeout_s"]
-        try:
-            looplib.recover(self.dir, self.lock_path, self.defn)
-        except looplib.LockHeld as exc:
-            raise _Refusal(str(exc)) from None
-        for _attempt in range(STALE_LOCK_ATTEMPTS):
+        for attempt in range(LOCK_ATTEMPTS):
             try:
                 looplib.acquire_lock(self.lock_path, timeout_s)
                 break
             except looplib.LockHeld as exc:
-                if not looplib.take_stale_lock(self.lock_path, timeout_s):
+                if looplib.take_stale_lock(self.lock_path, timeout_s):
+                    continue
+                if attempt == LOCK_ATTEMPTS - 1:
                     raise _Refusal(str(exc)) from None
+                time.sleep(LOCK_RETRY_SECONDS)
         else:
             raise _Refusal(f"run lock {self.lock_path} stays contended")
         self.locked = True
+        looplib.recover(self.dir, self.lock_path, self.defn, lock_held=True)
         self.state = looplib.read_state(self.dir)["state"]
         if self.state not in STARTABLE:
             raise _Refusal(f"loop is {self.state}, not idle or throttled")

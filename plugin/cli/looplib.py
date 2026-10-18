@@ -598,7 +598,7 @@ def _already_recorded_crash(loop_dir, run_id):
     )
 
 
-def recover(loop_dir, lock_path, definition, now=None):
+def recover(loop_dir, lock_path, definition, now=None, lock_held=False):
     """Return a loop left in a working state by a crashed run to `idle`.
 
     A resting state is left alone (False). A working state whose lock is
@@ -607,13 +607,18 @@ def recover(loop_dir, lock_path, definition, now=None):
     lock is removed. A run already recorded as crashed is not charged again,
     which makes a recovery that failed partway safe to retry. A live lock
     raises LockHeld and changes nothing.
+
+    `lock_held` says the caller already holds the run lock, which makes it
+    the only process that can be recovering: the lock is neither judged nor
+    removed here. Two callers that each judge the lock themselves can both
+    pass the check and then overwrite one another's state.
     """
     lock_path = Path(lock_path)
     state = read_state(loop_dir)
     if state["state"] in RESTING:
         return False
     timeout_s = definition["timeout_s"]
-    lock_present = lock_path.exists()
+    lock_present = not lock_held and lock_path.exists()
     if lock_present and not is_stale(lock_path, timeout_s, now):
         raise LockHeld(f"run lock {lock_path} belongs to a live run")
     new = transition(state["state"], "crash-recovered")
@@ -638,7 +643,10 @@ def recover(loop_dir, lock_path, definition, now=None):
             "from": state["state"],
             "event": "crash-recovered",
             "to": new,
-            "reason": "stale run lock" if lock_present else "no run lock",
+            "reason": (
+                "run left in a working state" if lock_held
+                else "stale run lock" if lock_present else "no run lock"
+            ),
         },
     )
     if lock_present:
