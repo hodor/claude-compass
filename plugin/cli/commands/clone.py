@@ -50,6 +50,7 @@ import threading
 import time
 from pathlib import Path
 
+import proctree
 import sessionslib
 import vaultlib
 from commands import capture_worker
@@ -240,31 +241,6 @@ def _append_log_row(log_path, row):
         fh.write(prefix + line.encode("utf-8", errors="replace"))
 
 
-def _kill_tree(proc):
-    """Kill the child and everything it started. The child leads its own
-    process group (created at launch), so a group kill on POSIX and
-    `taskkill /T` on Windows reach the launcher's descendants too."""
-    try:
-        if sys.platform == "win32":
-            subprocess.run(
-                ["taskkill", "/T", "/F", "/PID", str(proc.pid)],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=30,
-            )
-        else:
-            import signal
-
-            os.killpg(proc.pid, signal.SIGKILL)
-    except (OSError, subprocess.SubprocessError):
-        pass
-    try:
-        proc.kill()
-    except OSError:
-        pass
-
-
 class _StreamReader(threading.Thread):
     """Copies the child's stdout to the transcript one line at a time as the
     lines arrive, and remembers the last `result` record."""
@@ -409,7 +385,7 @@ class _Run:
         self.state_lock = threading.Lock()
         self.print_lock = threading.Lock()
         self.procs_lock = threading.Lock()
-        self.live = set()
+        self.live = {}
         self.stop = threading.Event()
 
     def _record_json(self, finished_at):
@@ -526,9 +502,9 @@ class _Run:
         """Stop launching and kill every live child's process tree."""
         with self.procs_lock:
             self.stop.set()
-            live = list(self.live)
-        for proc in live:
-            _kill_tree(proc)
+            live = list(self.live.items())
+        for proc, job in live:
+            proctree.kill(proc, job)
 
     def _clone(self, sid):
         original = sessionslib.transcripts_dir(self.project) / f"{sid}.jsonl"
@@ -552,11 +528,6 @@ class _Run:
         env = dict(os.environ)
         env["DISABLE_AUTO_COMPACT"] = "1"
         env["COMPASS_WORKER_SESSION"] = "1"
-        popen_kwargs = {}
-        if sys.platform == "win32":
-            popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
-        else:
-            popen_kwargs["start_new_session"] = True
 
         try:
             with self.procs_lock:
@@ -569,9 +540,10 @@ class _Run:
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    **popen_kwargs,
+                    **proctree.popen_kwargs(),
                 )
-                self.live.add(proc)
+                job = proctree.assign(proc)
+                self.live[proc] = job
         except OSError as exc:
             return self._row(
                 sid, "failed", f"could not start {self.binary}: {exc}",
@@ -586,13 +558,14 @@ class _Run:
 
         outcome = _wait_for_child(proc, self.opts["timeout"], self.stop)
         if outcome != "exited":
-            _kill_tree(proc)
+            proctree.kill(proc, job)
         try:
             proc.wait(timeout=30)
         except subprocess.TimeoutExpired:
             pass
         with self.procs_lock:
-            self.live.discard(proc)
+            self.live.pop(proc, None)
+        proctree.release(job)
         reader.join(READER_GRACE_SECONDS)
         drain.join(READER_GRACE_SECONDS)
         for stream, thread in ((proc.stdout, reader), (proc.stderr, drain)):
