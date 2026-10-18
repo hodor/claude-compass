@@ -1352,3 +1352,73 @@ class SessionRetentionRowTests(unittest.TestCase):
                 self.assertNotIn("\n", row["detail"])
                 self.assertTrue(row["detail"])
                 self.assertEqual(code, 0)
+
+
+class SessionRetentionPostBuildTests(unittest.TestCase):
+    def setUp(self):
+        self.project = make_project(self)
+        with_project_env(self, self.project)
+        build_complete_install(self.project)
+
+    def row(self):
+        code, out = run_doctor(["--json"])
+        return code, retention_row(json.loads(out))
+
+    def test_bom_and_crlf_user_settings_are_read(self):
+        """Adversarial where: a user settings file saved with a UTF-8 BOM and
+        CRLF line endings that sets a long retention must read as OK. A
+        reader decoding with plain `utf-8` fails on the BOM and reports a
+        parse WARN, telling the user to repair a file that is fine."""
+        path = set_user_retention(None)
+        path.write_bytes(b'\xef\xbb\xbf{\r\n  "cleanupPeriodDays": 3650\r\n}\r\n')
+        code, row = self.row()
+        self.assertEqual(row["status"], "OK", row["detail"])
+        self.assertEqual(code, 0)
+
+    def test_non_integer_values_count_as_unset(self):
+        """Adversarial where: a string, bool, float or null `cleanupPeriodDays`
+        is not a day count. `true` read as the int 1, or the string "3650"
+        read as long enough, would turn a misconfigured setting into an OK
+        or a '1 day' message; each must be the unset WARN."""
+        rows = [
+            ("string", '{"cleanupPeriodDays": "3650"}'),
+            ("bool true", '{"cleanupPeriodDays": true}'),
+            ("float", '{"cleanupPeriodDays": 3650.5}'),
+            ("null", '{"cleanupPeriodDays": null}'),
+        ]
+        for name, content in rows:
+            with self.subTest(name=name):
+                set_user_retention(content)
+                code, row = self.row()
+                self.assertEqual(row["status"], "WARN")
+                self.assertIn("unset", row["detail"])
+                self.assertEqual(code, 0)
+
+    def test_zero_and_negative_values_warn(self):
+        """Adversarial where: 0 and negative day counts are integers at or
+        below 30 and must WARN with the value named. A truthiness check
+        (`if days`) would treat 0 as unset or skip the layer."""
+        for value in (0, -1):
+            with self.subTest(value=value):
+                set_user_retention({RETENTION_KEY: value})
+                _code, row = self.row()
+                self.assertEqual(row["status"], "WARN")
+                self.assertIn(str(value), row["detail"])
+
+    def test_broken_project_or_local_settings_never_fail_the_row(self):
+        """Adversarial where: a malformed project or local settings file
+        beside a valid user file must degrade the row to a single-line
+        non-FAIL result, never crash doctor into its generic internal-error
+        row. Asymmetric: only one of three layers is broken."""
+        set_user_retention({RETENTION_KEY: 3650})
+        local = self.project / ".claude" / "settings.local.json"
+        for name, content in (("not json", "{oops"), ("empty", "")):
+            with self.subTest(name=name):
+                local.write_text(content, encoding="utf-8")
+                code, out = run_doctor(["--json"])
+                payload = json.loads(out)
+                self.assertEqual(len(payload["checks"]), 12)
+                row = retention_row(payload)
+                self.assertNotEqual(row["status"], "FAIL")
+                self.assertNotIn("\n", row["detail"])
+                self.assertEqual(code, 0)
