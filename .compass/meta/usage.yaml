@@ -2,31 +2,31 @@
 since: 2026-09-13
 usage:
   apply-models:
-    count: 55
+    count: 56
     last: 2026-10-18
   capture-check:
-    count: 401
+    count: 437
     last: 2026-10-18
   capture-close:
-    count: 31
+    count: 34
     last: 2026-10-18
   capture-note:
-    count: 7
+    count: 8
     last: 2026-10-18
   capture-signal:
-    count: 234
+    count: 247
     last: 2026-10-18
   capture-stats:
     count: 1
     last: 2026-10-17
   capture-worker:
-    count: 90
+    count: 93
     last: 2026-10-18
   clone:
     count: 2
     last: 2026-10-17
   context-check:
-    count: 867
+    count: 946
     last: 2026-10-18
   coverage:
     count: 28
@@ -44,7 +44,7 @@ usage:
     count: 2
     last: 2026-10-18
   guard:
-    count: 2788
+    count: 3145
     last: 2026-10-18
   lesson-coverage:
     count: 136
@@ -65,7 +65,7 @@ usage:
     count: 1
     last: 2026-10-17
   self-update:
-    count: 52
+    count: 55
     last: 2026-10-18
   sessions:
     count: 3
@@ -77,13 +77,13 @@ usage:
     count: 78
     last: 2026-10-18
   sync:
-    count: 540
+    count: 596
     last: 2026-10-18
   test-checkpoint:
-    count: 202
+    count: 209
     last: 2026-10-18
   test-smells:
-    count: 34
+    count: 38
     last: 2026-10-18
   validate:
     count: 19
