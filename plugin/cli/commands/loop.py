@@ -9,7 +9,9 @@ pattern template and a `state.json` at `idle`. A loop is addressed as
 
 `status [LOOP-NNN]` prints the state, last reading, unreviewed increments,
 today's and lifetime spend against their budgets and the last halt reason.
-`activate` sets the index `status` to `active`. `pause` and `resume` apply the
+`activate` sets the index `status` to `active`, after printing one `warning:`
+line on stderr for each part of the loop still unfilled (see `_unfilled_parts`)
+and the sensor's reading; warnings never block and change no file. `pause` and `resume` apply the
 transition table through `looplib.advance`. `review <LOOP-NNN> <run-id>
 accept|reject [--reason TEXT]` appends one ledger row and moves no state; a
 reject reason becomes one line of `feedback.md`.
@@ -386,6 +388,90 @@ def _with_status(text, status):
     return None
 
 
+STEP_HEADINGS = (
+    ("end state", re.compile(r"^##[ \t]+Step[ \t]+0\b")),
+    ("sensor", re.compile(r"^##[ \t]+Step[ \t]+1\b")),
+)
+DEFAULT_SENSOR_TIMEOUT_S = 120
+
+
+def _one_line(text):
+    return " ".join(str(text).split())
+
+
+def _section_body(text, heading):
+    """The whitespace-normalised body under the first `## ` heading matching
+    the `heading` pattern, up to the next `## ` heading, or None when no
+    heading matches."""
+    lines = text.splitlines()
+    for start, line in enumerate(lines):
+        if heading.match(line):
+            break
+    else:
+        return None
+    body = []
+    for line in lines[start + 1:]:
+        if line.startswith("## "):
+            break
+        body.append(line)
+    return " ".join(" ".join(body).split())
+
+
+def _template_text(relative, folder):
+    """The template file `relative` rendered for the loop in `folder`, with
+    LF line endings."""
+    match = LOOP_FOLDER_NAME.match(folder.name)
+    text = (TEMPLATE_DIR / relative).read_bytes().decode("utf-8")
+    return _render(match.group(2), int(match.group(1)), text).replace("\r\n", "\n")
+
+
+def _unfilled_parts(folder, index_text):
+    """One message for each part of the loop still holding template text: a
+    `loop.json` that fails `looplib.load_definition`, an `actuator.md` equal to
+    the template, and a missing, empty or template-text end state (step 0) or
+    sensor (step 1) section."""
+    problems = []
+    try:
+        looplib.load_definition(folder)
+    except looplib.DefinitionError as exc:
+        problems.append(_one_line(exc))
+    try:
+        actuator = (folder / "actuator.md").read_bytes().decode("utf-8-sig")
+    except OSError:
+        problems.append("actuator.md is missing")
+    else:
+        if actuator.replace("\r\n", "\n") == _template_text("actuator.md", folder):
+            problems.append("actuator.md is still the template")
+    template_index = _template_text("index.md", folder)
+    for label, heading in STEP_HEADINGS:
+        body = _section_body(index_text, heading)
+        if body is None:
+            problems.append(f"index.md has no {label} section")
+        elif not body or body == _section_body(template_index, heading):
+            problems.append(f"index.md {label} section is still the template text")
+    return problems
+
+
+def _sensor_notes(folder):
+    """A (warning, line) pair from running the loop's sensor command once: the
+    warning when the reading is invalid, the reading line when valid, both
+    None when `loop.json` names no sensor command or no `looprunner` exists."""
+    definition = _read_json_object(folder / looplib.DEFINITION_FILE)
+    command = definition.get("sensor_command")
+    if not isinstance(command, str) or not command.strip():
+        return None, None
+    sense = _runner_function("_sense")
+    if sense is None:
+        return None, None
+    timeout = definition.get("sensor_timeout_s")
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
+        definition["sensor_timeout_s"] = DEFAULT_SENSOR_TIMEOUT_S
+    reading = sense(definition, folder.parents[2])
+    if not reading.valid:
+        return f"sensor reading is invalid: {_one_line(reading.reason)}", None
+    return None, f"sensor reading: value {_money(reading.value)}, {len(reading.items)} items"
+
+
 def _activate(args):
     folder = _resolve(_single_id(args, "activate"))
     index = folder / "index.md"
@@ -396,12 +482,16 @@ def _activate(args):
     updated = _with_status(text, ACTIVE)
     if updated is None:
         raise UsageError(f"{index} has no closed frontmatter with a status field")
+    warnings = _unfilled_parts(folder, text)
+    warning, reading_line = _sensor_notes(folder)
+    if warning:
+        warnings.append(warning)
+    for message in warnings:
+        sys.stderr.write(f"compass loop: warning: {message}\n")
+    if reading_line:
+        print(reading_line)
     if updated != text:
         vaultlib.write_text_lf(index, updated)
-    try:
-        looplib.load_definition(folder)
-    except looplib.DefinitionError as exc:
-        sys.stderr.write(f"compass loop: note: {exc}\n")
     print(f"{_loop_label(folder)} is active")
     return 0
 
