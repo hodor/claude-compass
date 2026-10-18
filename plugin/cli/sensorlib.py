@@ -132,10 +132,117 @@ def parse_result(text):
     )
 
 
-def _kill_tree(proc):
+_JOB_OBJECT_EXTENDED_LIMIT_INFORMATION_CLASS = 9
+_JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000
+_PROCESS_SET_QUOTA = 0x0100
+_PROCESS_TERMINATE = 0x0001
+
+
+class _WindowsJob:
+    """A Windows Job Object that owns a process and every descendant it
+    starts. Terminating the job, or closing its handle, ends them all, which
+    `taskkill /T` cannot guarantee for a descendant spawned while the kill
+    runs. `create()` returns None when the job cannot be set up."""
+
+    def __init__(self, handle):
+        self._handle = handle
+
+    @classmethod
+    def create(cls):
+        if sys.platform != "win32":
+            return None
+        import ctypes
+        from ctypes import wintypes
+
+        class BasicLimits(ctypes.Structure):
+            _fields_ = [
+                ("PerProcessUserTimeLimit", ctypes.c_int64),
+                ("PerJobUserTimeLimit", ctypes.c_int64),
+                ("LimitFlags", wintypes.DWORD),
+                ("MinimumWorkingSetSize", ctypes.c_size_t),
+                ("MaximumWorkingSetSize", ctypes.c_size_t),
+                ("ActiveProcessLimit", wintypes.DWORD),
+                ("Affinity", ctypes.c_size_t),
+                ("PriorityClass", wintypes.DWORD),
+                ("SchedulingClass", wintypes.DWORD),
+            ]
+
+        class IoCounters(ctypes.Structure):
+            _fields_ = [(name, ctypes.c_uint64) for name in (
+                "ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
+                "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
+
+        class ExtendedLimits(ctypes.Structure):
+            _fields_ = [
+                ("BasicLimitInformation", BasicLimits),
+                ("IoInfo", IoCounters),
+                ("ProcessMemoryLimit", ctypes.c_size_t),
+                ("JobMemoryLimit", ctypes.c_size_t),
+                ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                ("PeakJobMemoryUsed", ctypes.c_size_t),
+            ]
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+        kernel32.CreateJobObjectW.argtypes = [wintypes.LPVOID, wintypes.LPCWSTR]
+        kernel32.SetInformationJobObject.restype = wintypes.BOOL
+        kernel32.SetInformationJobObject.argtypes = [
+            wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD]
+        kernel32.AssignProcessToJobObject.restype = wintypes.BOOL
+        kernel32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        kernel32.TerminateJobObject.restype = wintypes.BOOL
+        kernel32.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        kernel32.CloseHandle.restype = wintypes.BOOL
+        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+
+        handle = kernel32.CreateJobObjectW(None, None)
+        if not handle:
+            return None
+        limits = ExtendedLimits()
+        limits.BasicLimitInformation.LimitFlags = _JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        if not kernel32.SetInformationJobObject(
+            handle,
+            _JOB_OBJECT_EXTENDED_LIMIT_INFORMATION_CLASS,
+            ctypes.byref(limits),
+            ctypes.sizeof(limits),
+        ):
+            kernel32.CloseHandle(handle)
+            return None
+        job = cls(handle)
+        job._kernel32 = kernel32
+        return job
+
+    def assign(self, pid):
+        """Put the process `pid` in the job. Returns False when it cannot."""
+        process = self._kernel32.OpenProcess(
+            _PROCESS_SET_QUOTA | _PROCESS_TERMINATE, False, pid)
+        if not process:
+            return False
+        try:
+            return bool(self._kernel32.AssignProcessToJobObject(self._handle, process))
+        finally:
+            self._kernel32.CloseHandle(process)
+
+    def terminate(self):
+        self._kernel32.TerminateJobObject(self._handle, 1)
+
+    def close(self):
+        """Close the handle; the job's remaining processes are killed."""
+        if self._handle:
+            self._kernel32.CloseHandle(self._handle)
+            self._handle = None
+
+
+def _kill_tree(proc, job=None):
     """Kill the child and everything it started. The child leads its own
     process group (created at launch), so a group kill on POSIX and
-    `taskkill /T` on Windows reach its descendants too."""
+    `taskkill /T` on Windows reach its descendants too. A Windows `job`
+    holding the child is terminated first, which also ends descendants that
+    `taskkill` misses."""
+    if job is not None:
+        job.terminate()
     try:
         if sys.platform == "win32":
             subprocess.run(
@@ -200,18 +307,25 @@ def run_sensor(command, cwd, timeout):
         )
     except (OSError, ValueError, TypeError, IndexError) as exc:
         return _invalid(f"could not start the sensor: {exc}")
+    job = _WindowsJob.create()
+    if job is not None and not job.assign(proc.pid):
+        job.close()
+        job = None
     try:
         stdout, _ = proc.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
-        _kill_tree(proc)
+        _kill_tree(proc, job)
         try:
             proc.communicate(timeout=_KILL_WAIT_SECONDS)
         except (subprocess.TimeoutExpired, OSError, ValueError):
             pass
         return _invalid(f"sensor timed out after {timeout:g} seconds")
     except (OSError, ValueError) as exc:
-        _kill_tree(proc)
+        _kill_tree(proc, job)
         return _invalid(f"could not read the sensor output: {exc}")
+    finally:
+        if job is not None:
+            job.close()
     return _reading_from_stdout(stdout.decode("utf-8", errors="replace"), proc.returncode)
 
 
