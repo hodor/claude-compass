@@ -1461,3 +1461,27 @@ class NonObjectSettingsTests(unittest.TestCase):
         self.assertEqual(hook_row["status"], "FAIL")
         self.assertIn("settings.json", hook_row["detail"])
         self.assertEqual(code, 1)
+
+
+class WrongShapedHooksEntryTests(unittest.TestCase):
+    def test_non_iterable_hook_entries_do_not_collapse_doctor(self):
+        """Adversarial where: a settings file that is a JSON object but whose
+        `hooks.<Event>` value (or a group's inner `hooks`) is a number or a
+        boolean instead of a list must be reported on the hook row, not crash
+        the whole run into a single 'internal error' FAIL row that hides every
+        other check. Rows are the wrong-shaped values at each nesting level."""
+        rows = {
+            "event value is an int": '{"hooks": {"Stop": 5}}',
+            "event value is a bool": '{"hooks": {"PreToolUse": true}}',
+            "group hooks is an int": '{"hooks": {"Stop": [{"hooks": 5}]}}',
+        }
+        for name, content in rows.items():
+            with self.subTest(name=name):
+                project = make_project(self)
+                with_project_env(self, project)
+                build_complete_install(project)
+                (project / ".claude" / "settings.local.json").write_text(content, encoding="utf-8")
+                code, out = run_doctor(["--json"])
+                checks = json.loads(out)["checks"]
+                self.assertFalse([c for c in checks if c["check"] == "doctor"], out[:300])
+                self.assertEqual(len([c for c in checks if c["check"] == "hook registration"]), 1)
