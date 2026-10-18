@@ -279,7 +279,9 @@ class SpendEdgeTests(unittest.TestCase):
                       "empty": "", "month_13": "2026-13-01T00:00:00Z"}
         for name, ts in unreadable.items():
             with self.subTest(name="unreadable_" + name):
-                self.assertEqual(sensorlib.spend_by_day([{"ts": ts, "cost_usd": 1.5}]), {})
+                self.assertEqual(
+                    sensorlib.spend_by_day([{"ts": ts, "cost_usd": 1.5}]),
+                    {sensorlib.UNKNOWN_DAY: 1.5})
 
     def test_spend_today_converts_an_aware_now_to_utc(self):
         """Adversarial where: spend_today takes the calendar date of `now` in
@@ -306,6 +308,22 @@ class SpendEdgeTests(unittest.TestCase):
         rows += [{"ts": ts}, {"kind": "review"}]
         self.assertEqual(sensorlib.spend_lifetime(rows), 3.0)
         self.assertEqual(sensorlib.spend_by_day(rows), {"2026-03-01": 3.0})
+
+    def test_unreadable_ts_still_counts_toward_todays_spend(self):
+        """Adversarial where: a costed row whose ts is corrupt, missing or
+        not a string is dropped from the day sums, so a damaged ledger
+        undercounts today's spend and the loop overspends its daily budget."""
+        now = datetime(2026, 3, 1, 12, 0, tzinfo=timezone.utc)
+        for name, ts in {"garbage": "yesterday", "none": None, "number": 17}.items():
+            with self.subTest(name=name):
+                rows = [
+                    {"ts": "2026-03-01T01:00:00Z", "cost_usd": 1.0},
+                    {"ts": "2026-02-28T01:00:00Z", "cost_usd": 8.0},
+                    {"ts": ts, "cost_usd": 2.0},
+                ]
+                self.assertEqual(sensorlib.spend_today(rows, now), 3.0)
+                self.assertEqual(sensorlib.spend_by_day(rows)[sensorlib.UNKNOWN_DAY], 2.0)
+                self.assertEqual(sensorlib.spend_lifetime(rows), 11.0)
 
     def test_negative_cost_cannot_erase_recorded_spend(self):
         """Adversarial where: a corrupt row with a negative cost_usd is

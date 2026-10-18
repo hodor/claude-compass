@@ -33,6 +33,7 @@ TOKEN_FIELDS = (
     ("cache_creation_tokens", "cacheCreationInputTokens"),
 )
 _KILL_WAIT_SECONDS = 30
+UNKNOWN_DAY = "unknown"
 
 
 class NoResultEvent(ValueError):
@@ -80,12 +81,19 @@ class Reading:
 
 
 def _is_number(value):
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+    """True for a real int or float that float() can hold: not a bool, not
+    NaN or infinite, and not an integer beyond the float range."""
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
 
 
 def _int_field(obj, key):
     value = obj.get(key)
-    return int(value) if _is_number(value) and math.isfinite(value) else 0
+    return int(value) if _is_number(value) else 0
 
 
 def parse_result(text):
@@ -94,12 +102,12 @@ def parse_result(text):
     with a numeric `total_cost_usd`."""
     try:
         data = json.loads(text)
-    except (TypeError, ValueError) as exc:
+    except (TypeError, ValueError, RecursionError) as exc:
         raise NoResultEvent(f"no result event in the output ({exc})") from None
     if not isinstance(data, dict) or data.get("type") != "result":
         raise NoResultEvent("no result event in the output")
     cost = data.get("total_cost_usd")
-    if not _is_number(cost) or not math.isfinite(cost):
+    if not _is_number(cost):
         raise NoResultEvent("no result event with a numeric total_cost_usd")
 
     totals = dict.fromkeys((name for name, _ in TOKEN_FIELDS), 0)
@@ -156,7 +164,7 @@ def _invalid(reason):
 def _reading_from_stdout(text, returncode):
     try:
         data = json.loads(text)
-    except ValueError:
+    except (ValueError, RecursionError):
         shown = text.strip()[:200] or "empty output"
         return _invalid(f"sensor output is not JSON (exit {returncode}): {shown}")
     if not isinstance(data, dict):
@@ -164,7 +172,7 @@ def _reading_from_stdout(text, returncode):
     if data.get("valid") is not True:
         return _invalid("sensor reported valid: false")
     value = data.get("value")
-    if not _is_number(value) or not math.isfinite(value):
+    if not _is_number(value):
         return _invalid(f"sensor value is not a finite number: {value!r}")
     items = data.get("items")
     if not isinstance(items, list) or not all(isinstance(i, str) for i in items):
@@ -190,7 +198,7 @@ def run_sensor(command, cwd, timeout):
             stderr=subprocess.PIPE,
             **popen_kwargs,
         )
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, TypeError, IndexError) as exc:
         return _invalid(f"could not start the sensor: {exc}")
     try:
         stdout, _ = proc.communicate(timeout=timeout)
@@ -234,6 +242,8 @@ def _utc(moment):
 
 
 def _row_day(row):
+    """The row's UTC day as "YYYY-MM-DD", or None when `ts` is absent or
+    unreadable."""
     ts = row.get("ts")
     if not isinstance(ts, str):
         return None
@@ -244,27 +254,33 @@ def _row_day(row):
 
 
 def _row_cost(row):
+    """The row's spend, or None when it carries no readable non-negative
+    `cost_usd`. A negative cost is skipped so it can never cancel real spend."""
     cost = row.get("cost_usd")
-    return float(cost) if _is_number(cost) and math.isfinite(cost) else None
+    return float(cost) if _is_number(cost) and cost >= 0 else None
 
 
 def spend_by_day(rows):
-    """Sum `cost_usd` per UTC day ("YYYY-MM-DD"). Rows without a cost or a
-    readable `ts` are skipped."""
+    """Sum `cost_usd` per UTC day ("YYYY-MM-DD"). A costed row whose `ts` is
+    absent or unreadable is summed under UNKNOWN_DAY, so a corrupt timestamp
+    never hides spend. Rows without a readable cost are skipped."""
     days = {}
     for row in rows:
         cost = _row_cost(row)
-        day = _row_day(row)
-        if cost is not None and day is not None:
-            days[day] = days.get(day, 0.0) + cost
+        if cost is None:
+            continue
+        day = _row_day(row) or UNKNOWN_DAY
+        days[day] = days.get(day, 0.0) + cost
     return days
 
 
 def spend_today(rows, now):
-    """Spend on the UTC day that contains `now` (a naive `now` counts as UTC)."""
-    return spend_by_day(rows).get(_utc(now).strftime("%Y-%m-%d"), 0.0)
+    """Spend on the UTC day that contains `now` (a naive `now` counts as UTC),
+    including costed rows whose `ts` is unreadable."""
+    days = spend_by_day(rows)
+    return days.get(_utc(now).strftime("%Y-%m-%d"), 0.0) + days.get(UNKNOWN_DAY, 0.0)
 
 
 def spend_lifetime(rows):
-    """Sum `cost_usd` over every row that carries one."""
+    """Sum `cost_usd` over every row that carries a readable one."""
     return sum(cost for cost in map(_row_cost, rows) if cost is not None)
