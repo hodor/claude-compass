@@ -1422,3 +1422,42 @@ class SessionRetentionPostBuildTests(unittest.TestCase):
                 self.assertNotEqual(row["status"], "FAIL")
                 self.assertNotIn("\n", row["detail"])
                 self.assertEqual(code, 0)
+
+
+class NonObjectSettingsTests(unittest.TestCase):
+    def test_array_settings_file_is_unreadable_for_the_hook_row_only(self):
+        """Adversarial where: a settings file whose JSON is an array has no
+        `hooks` key to read. The hook row must name the file and keep every
+        other row (12 in total) instead of collapsing doctor into one
+        'internal error' FAIL row. Asymmetric: the project settings.json is
+        valid and registers the hooks; only settings.local.json is bad."""
+        project = make_project(self)
+        with_project_env(self, project)
+        build_complete_install(project)
+        (project / ".claude" / "settings.local.json").write_text("[1]", encoding="utf-8")
+        code, out = run_doctor(["--json"])
+        payload = json.loads(out)
+        checks = payload["checks"]
+        self.assertEqual(len(checks), 12)
+        self.assertFalse([c for c in checks if c["check"] == "doctor"])
+        self.assertNotIn("internal error", out)
+        hook_row = [c for c in checks if c["check"] == "hook registration"][0]
+        self.assertIn("settings.local.json", hook_row["detail"])
+        self.assertEqual(code, 0)
+
+    def test_array_settings_file_naming_survives_when_hooks_are_missing(self):
+        """Adversarial where: when the only settings file is an array, the
+        hook row FAILs (nothing registered) and still names the bad file, so
+        the reader learns why instead of seeing a bare missing-registration
+        message."""
+        project = make_project(self)
+        with_project_env(self, project)
+        build_complete_install(project)
+        (project / ".claude" / "settings.json").write_text("[1]", encoding="utf-8")
+        code, out = run_doctor(["--json"])
+        checks = json.loads(out)["checks"]
+        self.assertFalse([c for c in checks if c["check"] == "doctor"])
+        hook_row = [c for c in checks if c["check"] == "hook registration"][0]
+        self.assertEqual(hook_row["status"], "FAIL")
+        self.assertIn("settings.json", hook_row["detail"])
+        self.assertEqual(code, 1)

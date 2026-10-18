@@ -181,14 +181,17 @@ def _plugin_yaml_check(vault_root):
 def _load_json_best_effort(path):
     """`(data, error)`. `error` is None on success; a missing file is success
     with an empty dict, since a project running without settings.local.json is
-    a normal state. A present-but-unparseable file reports the error string
-    rather than raising."""
+    a normal state. A present file that does not parse, or whose JSON is not
+    an object, reports an error string rather than raising."""
     if not path.is_file():
         return {}, None
     try:
-        return json.loads(path.read_text(encoding="utf-8")), None
+        data = json.loads(path.read_text(encoding="utf-8"))
     except ValueError as exc:
-        return {}, str(exc)
+        return {}, f"not valid JSON: {exc}"
+    if not isinstance(data, dict):
+        return {}, "not a JSON object"
+    return data, None
 
 
 def _collect_commands(hooks_by_event, event_name):
@@ -224,7 +227,7 @@ def _hooks_checks(project_root):
             continue
         data, error = _load_json_best_effort(path)
         if error:
-            malformed.append(filename)
+            malformed.append(f"{filename} is {error.split(':')[0]}")
             continue
         hooks = data.get("hooks")
         if not isinstance(hooks, dict):
@@ -250,7 +253,7 @@ def _hooks_checks(project_root):
     if missing:
         parts = []
         if malformed:
-            parts.append(f"{', '.join(malformed)} is not valid JSON")
+            parts.append("; ".join(malformed))
         if hooks_json_exists and not any_hooks_key:
             parts.append(
                 f"{hooks_json_path} exists but no settings file registers its hooks; "
@@ -259,7 +262,10 @@ def _hooks_checks(project_root):
         parts.append(f"missing registration for: {', '.join(missing)}")
         return [Check("hook registration", FAIL, "; ".join(parts), fix)]
 
-    checks = [Check("hook registration", OK, "PreToolUse, PostToolUse, Stop, SubagentStop all registered")]
+    detail = "PreToolUse, PostToolUse, Stop, SubagentStop all registered"
+    if malformed:
+        detail += f" (unreadable settings skipped: {'; '.join(malformed)})"
+    checks = [Check("hook registration", OK, detail)]
     teammate_event, teammate_needle = OPTIONAL_HOOK_EVENT
     if not _event_registered(commands_by_event, teammate_event, teammate_needle):
         checks.append(Check(

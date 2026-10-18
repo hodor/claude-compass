@@ -20,7 +20,6 @@ Exit 0 on success, 1 on any refusal or failure, never 2.
 import json
 import os
 import re
-import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -29,6 +28,10 @@ import vaultlib
 
 KEY = "cleanupPeriodDays"
 SHORT_RETENTION_DAYS = 30
+
+# A day count longer than this is refused before int() sees it, which
+# raises on very long digit strings.
+MAX_DIGITS = 9
 
 USAGE = "usage: compass retention [--set N]   (N: integer, 1 or more)\n"
 
@@ -110,7 +113,7 @@ def _report():
 
 
 def _parse_days(raw):
-    if raw is None or not re.fullmatch(r"[0-9]+", raw):
+    if raw is None or not re.fullmatch(r"[0-9]{1,%d}" % MAX_DIGITS, raw):
         return None
     value = int(raw)
     return value if value >= 1 else None
@@ -123,15 +126,26 @@ def _indent_of(text):
 
 
 def _write_atomic(path, text):
+    """Write `text` to `path` through a temp file in the same directory and an
+    atomic replace. The temp file keeps its own writable mode until the
+    replace succeeds, so a failed attempt can always delete it; the target's
+    previous mode is applied afterwards."""
     path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        mode = path.stat().st_mode
+    except OSError:
+        mode = None
     fd, tmp_name = tempfile.mkstemp(dir=str(path.parent), prefix=".settings-", suffix=".tmp")
     tmp = Path(tmp_name)
     try:
         with os.fdopen(fd, "wb") as handle:
             handle.write(text.encode("utf-8"))
-        if path.exists():
-            shutil.copymode(path, tmp)
         os.replace(tmp, path)
+        if mode is not None:
+            try:
+                os.chmod(path, mode)
+            except OSError:
+                pass
     except BaseException:
         try:
             tmp.unlink()
