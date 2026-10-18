@@ -9,6 +9,7 @@ here restates it.
 
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import threading
@@ -246,6 +247,31 @@ class TestLedgerReading(LoopDirTestCase):
             t.join()
         parsed, skipped = looplib.read_ledger(self.loop_dir)
         self.assertEqual((len(parsed), skipped), (240, []))
+
+    def test_appends_from_separate_processes_each_land_as_their_own_line(self):
+        """Adversarial where: an in-process lock serialises threads but not
+        processes, so appenders in different processes (a run and a human's
+        review) overwrite or interleave each other's rows on a platform whose
+        append is not atomic."""
+        script = (
+            "import sys; sys.path.insert(0, sys.argv[1]); import looplib; "
+            "[looplib.append_ledger(sys.argv[2], {'tag': int(sys.argv[3]), 'i': i}) "
+            "for i in range(50)]"
+        )
+        cli_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        procs = [
+            subprocess.Popen(
+                [sys.executable, "-c", script, cli_dir, str(self.loop_dir), str(t)]
+            )
+            for t in range(4)
+        ]
+        self.assertEqual([p.wait(timeout=120) for p in procs], [0, 0, 0, 0])
+        parsed, skipped = looplib.read_ledger(self.loop_dir)
+        self.assertEqual((len(parsed), skipped), (200, []))
+        self.assertEqual(
+            sorted((r["tag"], r["i"]) for r in parsed),
+            [(t, i) for t in range(4) for i in range(50)],
+        )
 
 
 def run(run_id, outcome, item=None):
