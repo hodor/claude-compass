@@ -259,3 +259,9 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 Plan: [[PLAN-018-research-covers-the-whole-spec]] (approved 2026-09-13). Pause after wave 1 for the human's manual checks.
 
 - [x] TASK-128: Close the wave by making the changes real in this repo and stamping the release - refresh the local install from `plugin/`, bump the plugin version, and confirm the installed copy reports healthy - complexity: S, depends_on: TASK-120, TASK-121, TASK-122, TASK-123, TASK-124, TASK-125, TASK-126, TASK-127, files: [plugin/.claude-plugin/plugin.json]
+
+## 2026-10-17
+
+### PLAN-020: clone old sessions to harvest their lessons
+- [x] TASK-140: The transcript reader and the central folder
+- [x] TASK-141: `compass retention` and the doctor row
