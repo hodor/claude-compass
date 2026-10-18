@@ -304,6 +304,34 @@ def judge_rules_file(judge):
     return judge.get("rules_file", JUDGE_RULES_DEFAULT)
 
 
+def judge_rules_path(loop_dir, judge):
+    """The judge's rules file inside `loop_dir`; DefinitionError when its name
+    is rooted, climbs out with `..`, or resolves (through a link) outside the
+    loop folder."""
+    name = judge_rules_file(judge)
+    relative = Path(name)
+    rooted = (
+        relative.is_absolute()
+        or PurePosixPath(name).is_absolute()
+        or PureWindowsPath(name).drive
+        or PureWindowsPath(name).root
+    )
+    climbs = ".." in relative.parts or ".." in name.replace("\\", "/").split("/")
+    inside = False
+    if not rooted and not climbs:
+        root = os.path.realpath(loop_dir)
+        target = os.path.realpath(Path(loop_dir) / relative)
+        try:
+            inside = os.path.commonpath([root, target]) == root
+        except ValueError:
+            inside = False
+    if not inside:
+        raise DefinitionError(
+            f"'{JUDGE_KEY}.rules_file' {name!r} must stay inside the loop folder"
+        )
+    return Path(loop_dir) / relative
+
+
 def parse_rules(text):
     """The rules of a judge rules file as `(id, text)` pairs in file order. A
     rule is one bullet, `- R<n>: text`."""
@@ -337,29 +365,23 @@ def _check_judge(judge, loop_dir, path):
         problem = _judge_problem(key, judge[key])
         if problem:
             raise DefinitionError(f"'{JUDGE_KEY}.{key}' {problem} in {path}")
-    name = judge_rules_file(judge)
-    relative = Path(name)
-    rooted = (
-        relative.is_absolute()
-        or PurePosixPath(name).is_absolute()
-        or PureWindowsPath(name).drive
-        or PureWindowsPath(name).root
-    )
-    if rooted or ".." in relative.parts:
-        raise DefinitionError(
-            f"'{JUDGE_KEY}.rules_file' must stay inside the loop folder in {path}"
-        )
-    rules_path = loop_dir / relative
+    rules_path = judge_rules_path(loop_dir, judge)
     try:
         text = read_rules_text(rules_path)
     except OSError as exc:
         raise DefinitionError(
             f"'{JUDGE_KEY}.rules_file' cannot be read: {rules_path}: {exc}"
         ) from None
-    if not parse_rules(text):
+    rules = parse_rules(text)
+    if not rules:
         raise DefinitionError(
             f"'{JUDGE_KEY}.rules_file' {rules_path} holds no rule "
             f"(a rule is one bullet, '- R<n>: text')"
+        )
+    anchor = judge.get("anchor_rule")
+    if anchor is not None and anchor not in {rule_id for rule_id, _text in rules}:
+        raise DefinitionError(
+            f"'{JUDGE_KEY}.anchor_rule' {anchor!r} names no rule of {rules_path} in {path}"
         )
 
 

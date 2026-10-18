@@ -71,6 +71,14 @@ NOT_RUNNABLE = ("paused", "halted", "done")
 LOCK_ATTEMPTS = 5
 LOCK_RETRY_SECONDS = 0.05
 
+# A judge answer keeps at most this many findings in the ledger and the next
+# prompt.
+MAX_KEPT_FINDINGS = 200
+
+# Seconds allowed to `git ls-files` when the project is snapshotted around
+# the judge.
+SNAPSHOT_SECONDS = 120
+
 # Spend sums are floats; a budget met exactly must still fit.
 BUDGET_EPSILON = 1e-9
 
@@ -223,11 +231,38 @@ def _control_files(definition):
 def _fingerprints(loop_dir, definition):
     prints = {}
     for name in _control_files(definition):
+        path = Path(loop_dir) / name
         try:
-            prints[name] = hashlib.sha256((Path(loop_dir) / name).read_bytes()).hexdigest()
+            if path.is_dir():
+                prints[name] = "<directory>"
+            else:
+                prints[name] = hashlib.sha256(path.read_bytes()).hexdigest()
         except FileNotFoundError:
             prints[name] = None
+        except OSError:
+            prints[name] = "<unreadable>"
     return prints
+
+
+def _project_snapshot(project):
+    """`{path: (size, mtime_ns) or None}` for every file of the project git
+    reports modified or untracked, outside `.compass/tmp`; None when the
+    project is not a git work tree or git cannot be run."""
+    proc = _run_process(
+        ["git", "ls-files", "-m", "-o", "--exclude-standard", "-z"], project, SNAPSHOT_SECONDS
+    )
+    if proc.error or proc.timed_out or proc.returncode != 0:
+        return None
+    snapshot = {}
+    for name in _text(proc.stdout).split("\0"):
+        if not name or name.startswith(".compass/tmp/"):
+            continue
+        try:
+            stat = (Path(project) / name).stat()
+            snapshot[name] = (stat.st_size, stat.st_mtime_ns)
+        except OSError:
+            snapshot[name] = None
+    return snapshot
 
 
 def _new_run_id():
@@ -296,22 +331,34 @@ def _judge_prompt(rules_text):
 
 
 def _kept_findings(rows):
-    """The kept findings of the last run row that carries a `judge` record."""
+    """`(findings, total)`: the kept findings, at most MAX_KEPT_FINDINGS, of
+    the last run row that carries a `judge` record, and how many the judge
+    kept in all."""
     for row in reversed(rows):
         record = row.get("judge") if row.get("type") == "run" else None
         if isinstance(record, dict):
             kept = record.get("kept")
-            return [k for k in kept if isinstance(k, dict)] if isinstance(kept, list) else []
-    return []
+            kept = [k for k in kept if isinstance(k, dict)] if isinstance(kept, list) else []
+            total = record.get("kept_total")
+            if not isinstance(total, int) or isinstance(total, bool) or total < len(kept):
+                total = len(kept)
+            return kept[:MAX_KEPT_FINDINGS], total
+    return [], 0
 
 
-def _findings_block(findings):
-    lines = ["Judge findings from the last run (advisory):"]
-    lines += [f"- {k.get('rule')} {k.get('file')}:{k.get('line')}" for k in findings]
-    return "\n".join(lines)
+def _findings_block(findings, total):
+    """The findings as a fenced block, one ASCII-escaped JSON object per line,
+    so no file name can open a heading or a section of the prompt."""
+    heading = "Judge findings from the last run (advisory)"
+    if total > len(findings):
+        heading += f", {len(findings)} of {total}"
+    lines = [json.dumps(
+        {"rule": k.get("rule"), "file": k.get("file"), "line": k.get("line")}, ensure_ascii=True
+    ) for k in findings]
+    return f"{heading}:\n\n```\n" + "\n".join(lines) + "\n```"
 
 
-def _assemble_prompt(loop_dir, item, findings=()):
+def _assemble_prompt(loop_dir, item, findings=(), total=0):
     """The actuator prompt: instructions, golden patterns, selected work
     (followed by the judge's kept findings, when there are any), feedback."""
     loop_dir = Path(loop_dir)
@@ -325,7 +372,7 @@ def _assemble_prompt(loop_dir, item, findings=()):
         _section("Golden patterns", "\n\n".join(g for g in golden if g)),
         _section(
             "Selected work (controller output)",
-            f"{item}\n\n{_findings_block(findings)}" if findings else item,
+            f"{item}\n\n{_findings_block(findings, total)}" if findings else item,
         ),
         _section("Feedback", _read_text(loop_dir / "feedback.md").strip()),
     ]
@@ -461,8 +508,8 @@ class _Run:
         if item is None:
             return self.end("halted", "nothing-selected", why, 1)
         self.row["item"] = item
-        findings = _kept_findings(rows) if defn.get(looplib.JUDGE_KEY) else []
-        prompt = _assemble_prompt(self.dir, item, findings)
+        findings, total = _kept_findings(rows) if defn.get(looplib.JUDGE_KEY) else ([], 0)
+        prompt = _assemble_prompt(self.dir, item, findings, total)
         if self.dry:
             self.step("selected", f"selected {item}")
             _write(sys.stdout, prompt)
@@ -535,7 +582,7 @@ class _Run:
         state_in_memory = looplib.read_state(self.dir)
         judge = defn.get(looplib.JUDGE_KEY)
         rules_text = (
-            looplib.read_rules_text(self.dir / looplib.judge_rules_file(judge)) if judge else None
+            looplib.read_rules_text(looplib.judge_rules_path(self.dir, judge)) if judge else None
         )
         prints = _fingerprints(self.dir, defn)
         proc = self.launch(prompt)
@@ -607,9 +654,30 @@ class _Run:
             outcome = "neutral"
             reason = f"re-sense invalid: {after.reason}"
         if defn.get(looplib.JUDGE_KEY):
+            judged_prints = _fingerprints(self.dir, defn)
+            judged_tree = _project_snapshot(self.project)
             record = self.run_judge(scratch, after, rules_text)
             fields["judge"] = record
             fields["cost_usd"] = fields["cost_usd"] + record["cost_usd"]
+            touched = [
+                n for n, digest in _fingerprints(self.dir, defn).items()
+                if digest != judged_prints[n]
+            ]
+            if judged_tree is not None:
+                tree_after = _project_snapshot(self.project)
+                if tree_after is not None:
+                    touched += sorted(
+                        n for n in judged_tree.keys() | tree_after.keys()
+                        if judged_tree.get(n) != tree_after.get(n)
+                    )
+            if touched:
+                # The judge may read and nothing else; the state is put back
+                # to the one the halting transition applies to.
+                looplib.write_state(self.dir, state_in_memory)
+                return self.end(
+                    "failed", "controls-changed",
+                    "the judge changed " + ", ".join(touched[:20]), 1, **fields,
+                )
         row = {**self.row, **fields, "outcome": outcome}
         counters = looplib.fold(self.ledger_rows() + [row])
         event_name, code = outcome, 0
@@ -675,7 +743,8 @@ class _Run:
             voting.append(parsed.findings)
         kept = sensorlib.vote_findings(voting, judge["runs"])
         record = {
-            "kept": kept,
+            "kept": kept[:MAX_KEPT_FINDINGS],
+            "kept_total": len(kept),
             "valid_runs": len(voting),
             "invalid_runs": invalid,
             "discarded": discarded,

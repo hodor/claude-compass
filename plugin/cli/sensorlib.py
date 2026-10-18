@@ -27,6 +27,7 @@ days.
 import json
 import math
 import subprocess
+import unicodedata
 from collections import Counter
 from datetime import datetime, timezone
 
@@ -151,14 +152,36 @@ def _is_int(value):
     return isinstance(value, int) and not isinstance(value, bool)
 
 
+# A finding's file name is shorter than this many characters.
+MAX_FILE_NAME = 300
+_UNSAFE_CATEGORIES = frozenset({"Cc", "Cs", "Zl", "Zp"})
+
+
+def safe_file_name(name):
+    """True when `name` can ride in the ledger and a prompt: a non-empty
+    relative path inside the project (no root, drive or `..` component), under
+    MAX_FILE_NAME characters, free of control characters, line and paragraph
+    separators and lone surrogates."""
+    if not isinstance(name, str) or not name or len(name) >= MAX_FILE_NAME:
+        return False
+    if any(unicodedata.category(c) in _UNSAFE_CATEGORIES for c in name):
+        return False
+    if name[0] in "/\\" or (len(name) > 1 and name[1] == ":"):
+        return False
+    return ".." not in name.replace("\\", "/").split("/")
+
+
 def parse_judge_lines(text, rule_ids):
     """Parse a judge's final answer. A non-blank line is kept when it is a
-    JSON object naming a rule of `rule_ids`, a string `file` and an integer
-    `line`; every other non-blank line is discarded and counted. Never
-    raises."""
+    JSON object naming a rule of `rule_ids`, a `file` that passes
+    `safe_file_name` and an integer `line`; every other non-blank line is
+    discarded and counted. Lines end at `\n` after `\r\n` is normalised, and a
+    leading byte order mark is dropped. Never raises."""
     known = set(rule_ids)
     findings, discarded = [], 0
-    for raw in (text if isinstance(text, str) else "").splitlines():
+    text = text if isinstance(text, str) else ""
+    text = text.removeprefix("\ufeff").replace("\r\n", "\n")
+    for raw in text.split("\n"):
         if not raw.strip():
             continue
         try:
@@ -169,8 +192,7 @@ def parse_judge_lines(text, rule_ids):
             isinstance(data, dict)
             and isinstance(data.get("rule"), str)
             and data["rule"] in known
-            and isinstance(data.get("file"), str)
-            and data["file"]
+            and safe_file_name(data.get("file"))
             and _is_int(data.get("line"))
         ):
             findings.append((data["rule"], data["file"], data["line"]))
