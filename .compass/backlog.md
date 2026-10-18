@@ -81,9 +81,4 @@ Held under [[PLAN-009-sizing-mechanism]]'s `## Later` region. Promoted into a de
 
 Plan: [[PLAN-021-control-loops]].
 
-- [ ] TASK-158: Judge sensors: a loop's sensor may be an agent, a skill and natural-language rules, run with a checklist, repeated and voted, its output checked against the rule list, gating or advisory per TASK-154's verdict, and anchored to a deterministic count where one exists
-- [ ] TASK-159: The schedule: `compass loop schedule` writes a GitHub Actions workflow (one iteration per run, a concurrency group, the install step TASK-156 named, the ledger kept across runs) or prints the local-lane line for an OS scheduler or a Desktop scheduled task
-- [ ] TASK-160: `/compass:loop`: guided creation through steps 0 to 7, each with a completion criterion, reading the repository before asking, running every part standalone and dry before activating; the sensor step drafts or asks for rules per TASK-155's verdict and may run research to find what can measure the gap
-- [ ] TASK-161: A code loop end to end: an ast-grep sensor adapter pinned to TASK-155's saved output, then a loop that removes a bad pattern from a real repository the human names, run to its stop
-- [ ] TASK-162: The Maya recipe: each step mapped to an animation task on the local lane (mayapy batch or commandPort, keyframe and file checks as sensors, one unreviewed shot version as the WIP limit), marked untested on this machine
-- [ ] TASK-163: Teach the vault conventions about loops (the obsidian skill's naming table, the methodology's file layout, the setup skill's vault tree) and ship the release
+- [ ] TASK-164: A harder judge corpus decides whether a judge reading may move the state machine: subtler violations among dense near-misses, longer files, rules without a crisp definition, and cross-file rules with thresholds of their own; on GATE, a judge reading may decide `done` and harmful

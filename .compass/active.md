@@ -41,6 +41,17 @@ Plan: [[PLAN-020-clone-old-sessions]].
 
 - [ ] TASK-146: Live acceptance on this repo
 
+## PLAN-021 Wave 2: judge, schedule, ast-grep sensor, skill, release
+
+Plan: [[PLAN-021-control-loops]].
+
+- [ ] TASK-158: Judge sensors: an agent reading plain-language rules reports voted findings beside the deterministic sensor, advisory only - complexity: L, depends_on: none
+- [ ] TASK-159: The schedule: `compass loop schedule` writes a GitHub Actions workflow that installs Compass with `compass self-update`, or prints the local-lane line - complexity: L, depends_on: none
+- [ ] TASK-161: A code loop end to end: an ast-grep sensor adapter, then a loop that removes a bad pattern from a real repository the human names, run to its stop - complexity: L, depends_on: TASK-158, TASK-159
+- [ ] TASK-160: `/compass:loop`: guided creation through steps 0 to 7 - complexity: M, depends_on: TASK-158, TASK-159, TASK-161
+- [ ] TASK-162: The Maya recipe on the local lane, marked untested on this machine - complexity: S, depends_on: TASK-160
+- [ ] TASK-163: Teach the vault conventions about loops and ship 0.29.0 - complexity: M, depends_on: TASK-158, TASK-159, TASK-160, TASK-161, TASK-162
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].
