@@ -149,10 +149,13 @@ def _used_of(record):
     if not isinstance(usage, dict):
         return None
     try:
-        used = (int(usage.get("input_tokens") or 0)
-                + int(usage.get("cache_creation_input_tokens") or 0)
-                + int(usage.get("cache_read_input_tokens") or 0))
-    except (TypeError, ValueError):
+        used = sum(
+            int(value or 0)
+            for value in (usage.get(key) for key in
+                          ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
+            if not isinstance(value, bool)
+        )
+    except (TypeError, ValueError, OverflowError):
         return None
     return used or None  # synthetic messages carry all-zero usage
 
@@ -185,7 +188,7 @@ def _parse(raw):
     if not raw:
         return None
     try:
-        record = json.loads(raw.decode("utf-8"))
+        record = json.loads(raw.decode("utf-8-sig"))
     except (ValueError, UnicodeDecodeError):
         return None
     return record if isinstance(record, dict) else None

@@ -522,5 +522,338 @@ class CommandRegistrationTests(unittest.TestCase):
                 self.assertIn(name, maincli.VALID_COMMANDS)
 
 
+class LargeTranscriptTests(SessionsFixture):
+    """Transcripts larger than the backward reader's chunk size."""
+
+    CHUNK = 256 * 1024
+
+    def write_padded(self, head, padding_lines, tail=(), partial_tail=b""):
+        with open(self.transcript, "wb") as fh:
+            for rec in head:
+                fh.write(json.dumps(rec).encode() + b"\n")
+            for line in padding_lines:
+                fh.write(line + b"\n")
+            for rec in tail:
+                fh.write(json.dumps(rec).encode() + b"\n")
+            fh.write(partial_tail)
+
+    def test_model_attachment_many_chunks_from_the_end_is_found_in_bounded_time(self):
+        """Adversarial where: the backward scan gives up after one tail chunk,
+        loses a record straddling a chunk boundary (multi-byte characters
+        split across it), or degrades badly on a long file; a model attachment
+        written at the head of a multi-megabyte transcript, with a cut-off
+        final line, must still be found, and `[1m]` still follows from usage."""
+        import time
+        filler = json.dumps(assistant_line(input_tokens=1, content=[{"type": "text", "text": "\u00e9\u65e5" * 40}])).encode()
+        padding = [filler] * (12 * 1024 * 1024 // len(filler))
+        self.write_padded([model_line(STANDARD_MODEL)], padding,
+                          tail=[assistant_line(input_tokens=1, cache_read=250_000)],
+                          partial_tail=b'{"type":"assistant","message":{"usage":{"input_tok')
+        self.assertGreater(self.transcript.stat().st_size, 40 * self.CHUNK)
+        started = time.monotonic()
+        model = sessionslib.model_id(self.transcript)
+        elapsed = time.monotonic() - started
+        self.assertEqual(model, STANDARD_MODEL + "[1m]")
+        self.assertLess(elapsed, 30)
+
+    def test_single_line_longer_than_one_chunk_does_not_hide_older_records(self):
+        """Adversarial where: a record longer than the tail chunk (a big tool
+        result) is mis-stitched across chunks, so it either vanishes or
+        corrupts the neighbouring older record carrying the model."""
+        huge = json.dumps({"type": "user", "message": {"role": "user", "content": [
+            {"type": "tool_result", "tool_use_id": "t", "content": "x" * (3 * self.CHUNK + 17)}]}}).encode()
+        self.write_padded([model_line("claude-haiku-4-5"), assistant_line(input_tokens=7)], [huge],
+                          tail=[assistant_line(input_tokens=9)])
+        self.assertEqual(sessionslib.model_id(self.transcript), "claude-haiku-4-5")
+        self.assertEqual(sessionslib.used_tokens(self.transcript), 9)
+
+    def test_chunk_boundary_landing_exactly_on_a_line_start_loses_no_line(self):
+        """Adversarial where: the file size is an exact multiple of the chunk
+        size so the chunk boundary falls on a newline or on the first byte of
+        a record; the line cut there is dropped or merged with its neighbour."""
+        base = [model_line("claude-opus-4-6"), assistant_line(input_tokens=3)]
+        encoded = [json.dumps(r).encode() + b"\n" for r in base]
+        pad_len = 2 * self.CHUNK - sum(len(e) for e in encoded) - 1
+        padding = json.dumps({"type": "user", "message": {"role": "user", "content": "p" * (pad_len - 60)}}).encode()
+        padding = padding + b" " * (pad_len - len(padding))
+        self.transcript.write_bytes(encoded[0] + encoded[1] + padding + b"\n")
+        self.assertEqual(self.transcript.stat().st_size, 2 * self.CHUNK)
+        self.assertEqual(sessionslib.model_id(self.transcript), "claude-opus-4-6")
+        self.assertEqual(sessionslib.used_tokens(self.transcript), 3)
+
+
+class LineFormatTests(SessionsFixture):
+    def test_crlf_line_endings_are_read_like_lf(self):
+        """Adversarial where: a transcript written with CRLF line endings
+        (Windows tooling) leaves a trailing carriage return that makes every
+        line fail to parse, so every reader returns empty."""
+        records = [dict(text_line("user", "TASK-140 of PLAN-020"), entrypoint="cli"), model_line(STANDARD_MODEL),
+                   assistant_line(input_tokens=2, cache_read=5), bash_line("git commit -m a")]
+        self.transcript.write_bytes(b"\r\n".join(json.dumps(r).encode() for r in records) + b"\r\n")
+        self.assertEqual(sessionslib.entrypoint(self.transcript), "cli")
+        self.assertEqual(sessionslib.model_id(self.transcript), STANDARD_MODEL)
+        self.assertEqual(sessionslib.used_tokens(self.transcript), 7)
+        self.assertEqual(sessionslib.commit_count(self.transcript), 1)
+        self.assertEqual(sessionslib.plan_ids(self.transcript), ["PLAN-020"])
+        self.assertEqual(sessionslib.task_ids(self.transcript), ["TASK-140"])
+
+    def test_utf8_bom_at_file_start_does_not_drop_the_first_record(self):
+        """Adversarial where: a byte-order mark before the first line makes
+        the first record unparseable, so the entrypoint (which lives on the
+        first record) and a first-line mention are silently lost."""
+        first = dict(text_line("user", "start TASK-140"), entrypoint="sdk-cli")
+        self.transcript.write_bytes(b"\xef\xbb\xbf" + json.dumps(first).encode() + b"\n"
+                                    + json.dumps(model_line(STANDARD_MODEL)).encode() + b"\n")
+        self.assertEqual(sessionslib.entrypoint(self.transcript), "sdk-cli")
+        self.assertEqual(sessionslib.task_ids(self.transcript), ["TASK-140"])
+
+    def test_last_line_without_a_newline_is_still_read(self):
+        """Adversarial where: only newline-terminated lines are read, so a
+        complete final record lacking its trailing newline (the session is
+        mid-write) is dropped by the forward and the backward reader alike."""
+        lines = [json.dumps(model_line(STANDARD_MODEL)).encode(),
+                 json.dumps(bash_line("git commit -m a")).encode(),
+                 json.dumps(assistant_line(input_tokens=11)).encode()]
+        self.transcript.write_bytes(b"\n".join(lines))
+        self.assertEqual(sessionslib.used_tokens(self.transcript), 11)
+        self.assertEqual(sessionslib.commit_count(self.transcript), 1)
+
+    def test_infinite_usage_value_gives_none_not_an_exception(self):
+        """Adversarial where: a usage count of `Infinity` (accepted by the
+        JSON parser) escapes as OverflowError from the integer conversion
+        instead of being treated as a field the reader cannot make sense of."""
+        self.transcript.write_bytes(
+            b'{"type":"assistant","message":{"usage":{"input_tokens":Infinity}}}\n'
+            + json.dumps(model_line(STANDARD_MODEL)).encode() + b"\n")
+        self.assertIsNone(sessionslib.used_tokens(self.transcript))
+        self.assertEqual(sessionslib.model_id(self.transcript), STANDARD_MODEL)
+
+    def test_malformed_newest_attachment_falls_back_to_the_older_valid_one(self):
+        """Adversarial where: a model attachment whose `identity` is a list, a
+        string or has a non-string `modelId` stops the scan (or raises) rather
+        than being skipped in favour of the older valid attachment."""
+        for name, identity in {"list": ["x"], "string": "claude-x", "int modelId": {"modelId": 5},
+                               "empty modelId": {"modelId": ""}}.items():
+            with self.subTest(name):
+                self.write(model_line("claude-opus-4-6"),
+                           {"type": "attachment", "attachment": {"type": "model", "identity": identity}})
+                self.assertEqual(sessionslib.model_id(self.transcript), "claude-opus-4-6")
+
+
+class CommitCommandShapeTests(SessionsFixture):
+    def test_commit_recognised_in_realistic_shell_command_shapes(self):
+        """Adversarial where: the pattern only matches a commit at the start
+        of a command, so commits behind `cd x &&`, `;`, a pipe, a subshell,
+        env-var prefixes, a newline, extra whitespace, a Windows `-C` path
+        or a heredoc message are missed; or a heredoc message that itself
+        mentions `git commit` makes one call count twice."""
+        heredoc = ("git commit -m \"$(cat <<'EOF'\nfix: stop running git commit by hand\n"
+                   "and never git commit twice\nEOF\n)\"")
+        rows = {
+            "after cd and &&": ("cd repo && git commit -m x", 1),
+            "after semicolon": ("git add a; git commit -m x", 1),
+            "after a pipe": ("echo msg | git commit -F -", 1),
+            "inside a subshell": ("(git commit -m x)", 1),
+            "env var prefix": ("GIT_AUTHOR_NAME=bob git commit -m x", 1),
+            "on its own line": ("git add .\ngit commit -m x\ngit log", 1),
+            "tab between words": ("git\tcommit -m x", 1),
+            "two spaces between words": ("git  commit -m x", 1),
+            "no arguments at end of command": ("git commit", 1),
+            "unquoted windows -C path": ("git -C F:\\proj\\sub commit -m x", 1),
+            "single-quoted -C path": ("git -C 'F:\\my dir' commit -m x", 1),
+            "heredoc message mentioning the phrase counts once": (heredoc, 1),
+            "amend": ("git commit --amend --no-edit", 1),
+            "commit-graph is another subcommand": ("git commit-graph write", 0),
+            "underscore suffix is another word": ("git commit_all", 0),
+            "word ending in git": ("legit commit", 0),
+            "status chained before a commit-tree": ("git status && git commit-tree HEAD^{tree}", 0),
+            "commit as an argument of another subcommand": ("git log --grep commit", 0),
+        }
+        for name, (command, expected) in rows.items():
+            with self.subTest(name):
+                self.write(bash_line(command))
+                self.assertEqual(sessionslib.commit_count(self.transcript), expected)
+
+    def test_commit_with_git_config_override_before_the_subcommand_counts(self):
+        """Adversarial where: only `-C <path>` is accepted between `git` and
+        `commit`, so `git -c user.name=x commit` (the usual way an agent
+        commits without touching config) is missed and the count under-reports."""
+        rows = {
+            "-c key=value": "git -c user.name=bot -c user.email=b@x.io commit -m x",
+            "-C then -c": "git -C repo -c commit.gpgsign=false commit -m x",
+        }
+        for name, command in rows.items():
+            with self.subTest(name):
+                self.write(bash_line(command))
+                self.assertEqual(sessionslib.commit_count(self.transcript), 1)
+
+    def test_commit_with_other_global_options_and_path_prefixed_binary_counts(self):
+        """Adversarial where: the global options `--no-pager`, `--git-dir` and
+        `--work-tree` stop the match, or a `git.exe` / path-prefixed git binary
+        (quoted when its path holds spaces) is not recognised; a path that only
+        ends in `git` as a word part must still not count."""
+        rows = {
+            "--no-pager": ("git --no-pager commit -m x", 1),
+            "--git-dir equals": ("git --git-dir=.git --work-tree=. commit -m x", 1),
+            "--git-dir separate": ("git --git-dir .git commit -m x", 1),
+            "all options mixed": ("git -C a -c k=v --no-pager commit -m x", 1),
+            "git.exe": ("git.exe commit -m x", 1),
+            "git.exe with -c": ("git.exe -c k=v commit -m x", 1),
+            "posix path": ("/usr/bin/git commit -m x", 1),
+            "quoted windows path with spaces": (r'"C:\Program Files\Git\bin\git.exe" commit -m x', 1),
+            "path after &&": ("cd r && /usr/bin/git -c k=v commit -m x", 1),
+            "path prefixed word ending in git": ("/usr/bin/legit commit -m x", 0),
+            "option then another subcommand": ("git -c k=v log --grep commit", 0),
+            "path prefixed commit-tree": ("/usr/bin/git commit-tree HEAD", 0),
+        }
+        for name, (command, expected) in rows.items():
+            with self.subTest(name):
+                self.write(bash_line(command))
+                self.assertEqual(sessionslib.commit_count(self.transcript), expected)
+
+
+class SubagentFolderShapeTests(SessionsFixture):
+    def test_only_top_level_agent_jsonl_files_are_listed_in_name_order(self):
+        """Adversarial where: the listing recurses into nested folders, picks
+        up sidecar files (`.meta.json`, `.jsonl.tmp`, non-`agent-` names), or
+        sorts by something other than file name; the commit count then reads
+        the wrong files."""
+        self.write(text_line("user", "hi"))
+        side = self.root / self.session_id / "subagents"
+        keep = [self.write_subagent("agent-b.jsonl", bash_line("git commit -m b", sidechain=True)),
+                self.write_subagent("agent-a.jsonl", bash_line("git commit -m a", sidechain=True)),
+                self.write_subagent("agent-10.jsonl", bash_line("ls", sidechain=True))]
+        self.write(bash_line("git commit -m nested"), path=side / "nested" / "agent-n.jsonl")
+        self.write(bash_line("git commit -m meta"), path=side / "agent-a.meta.jsonl.tmp")
+        self.write(bash_line("git commit -m other"), path=side / "other-a.jsonl")
+        listed = sessionslib.subagent_transcripts(self.transcript)
+        self.assertEqual([p.name for p in listed], ["agent-10.jsonl", "agent-a.jsonl", "agent-b.jsonl"])
+        self.assertEqual(sorted(listed), sorted(keep))
+        self.assertEqual(sessionslib.commit_count(self.transcript), 2)
+
+    def test_dotted_session_id_finds_its_own_side_folder(self):
+        """Adversarial where: the side folder is derived by stripping the
+        last dot-suffix naively, so a session id containing a dot resolves to
+        the wrong folder and its subagent commits disappear."""
+        transcript = self.root / "run.1.jsonl"
+        self.write(text_line("user", "hi"), path=transcript)
+        self.write(bash_line("git commit -m a", sidechain=True), path=self.root / "run.1" / "subagents" / "agent-a.jsonl")
+        self.write(bash_line("git commit -m z", sidechain=True), path=self.root / "run" / "subagents" / "agent-z.jsonl")
+        self.assertEqual(sessionslib.commit_count(transcript), 1)
+
+
+class IdMentionShapeTests(SessionsFixture):
+    def test_ids_are_matched_only_as_whole_tokens_in_message_text(self):
+        """Adversarial where: ids embedded in longer tokens (`XPLAN-001`,
+        `PLAN-001a`), lowercase forms or tool-use input are counted, an id in
+        a vault file name (`PLAN-020-clone-old-sessions`) is not, or text
+        blocks of list-form content are ignored."""
+        self.write(
+            text_line("user", "see XPLAN-001 and PLAN-002a and plan-003 and TASK-004x"),
+            text_line("user", "open .compass/plans/PLAN-020-clone-old-sessions.md for TASK-140."),
+            {"type": "user", "message": {"role": "user", "content": [
+                {"type": "text", "text": "list form TASK-141"}, {"type": "text", "text": None}, {"type": "text"}]}},
+            tool_use_line("Write", file_path="a.md", content="PLAN-099 TASK-099"),
+            text_line("assistant", "done: PLAN-020, TASK-9 and TASK-140"),
+            text_line("assistant", "wide PLAN-12345678901234567890 id"),
+        )
+        self.assertEqual(sessionslib.plan_ids(self.transcript), ["PLAN-020", "PLAN-12345678901234567890"])
+        self.assertEqual(sessionslib.task_ids(self.transcript), ["TASK-9", "TASK-140", "TASK-141"])
+
+
+class ProjectKeyPathShapeTests(SessionsFixture):
+    def test_drive_letter_and_unicode_paths_encode_one_dash_per_character(self):
+        """Adversarial where: the key keeps a drive colon, a backslash or a
+        non-ASCII letter (the ASCII-only alphanumeric rule makes `\u00e7` a
+        separator), or collapses runs of separators, so the folder derived
+        for a Windows or accented project path differs from the one Claude
+        Code created."""
+        rows = {
+            "drive letter and backslashes": ("F:\\claude\\plugins", "F--claude-plugins"),
+            "forward slashes on a drive": ("F:/claude/plugins", "F--claude-plugins"),
+            "accented letters": ("F:\\proj\\a\u00e7\u00e3o", "F--proj-a--o"),
+            "cjk and space": ("C:\\Users\\\u65e5\u672c\u8a9e x\\p", "C--Users-----x-p"),
+            "trailing separator is kept as a dash": ("F:\\proj\\", "F--proj-"),
+            "dots and underscores": ("/home/a.b/c_d", "-home-a-b-c-d"),
+            "digits are kept": ("/v2/x9", "-v2-x9"),
+        }
+        for name, (path, expected) in rows.items():
+            with self.subTest(name):
+                self.assertEqual(sessionslib.project_key(path), expected)
+
+    def test_unicode_project_key_makes_a_usable_transcripts_dir(self):
+        """Adversarial where: a project path with non-ASCII characters yields a
+        folder name that cannot be created or listed on this filesystem."""
+        os.environ["CLAUDE_CONFIG_DIR"] = str(self.root / "cfg")
+        folder = sessionslib.transcripts_dir("F:\\proj\\a\u00e7\u00e3o")
+        folder.mkdir(parents=True)
+        self.assertEqual(folder.name, "F--proj-a--o")
+        self.assertTrue(folder.is_dir())
+
+    def test_character_outside_the_bmp_becomes_two_dashes(self):
+        """Adversarial where: an emoji in a project path becomes one dash, but
+        Claude Code's JavaScript regex counts UTF-16 code units and writes two,
+        so the derived folder differs from the one it created."""
+        rows = {
+            "emoji directory": ("/home/a/\U0001F600x", "-home-a---x"),
+            "emoji next to bmp non-ascii": ("/p/\U0001F680ç", "-p----"),
+        }
+        for name, (path, expected) in rows.items():
+            with self.subTest(name):
+                self.assertEqual(sessionslib.project_key(path), expected)
+
+
+class SubagentDirectoryEntryTests(SessionsFixture):
+    def test_a_directory_named_like_a_subagent_transcript_is_not_listed(self):
+        """Adversarial where: a folder called `agent-x.jsonl` in the side folder
+        is listed as a transcript, and reading it raises PermissionError out of
+        commit_count."""
+        self.write(text_line("user", "hi"))
+        real = self.write_subagent("agent-a.jsonl", bash_line("git commit -m a", sidechain=True))
+        (real.parent / "agent-x.jsonl").mkdir()
+        self.assertEqual(sessionslib.subagent_transcripts(self.transcript), [real])
+        self.assertEqual(sessionslib.commit_count(self.transcript), 1)
+
+
+class CommitBoundaryAndOptionTests(SessionsFixture):
+    def test_backtick_quoted_binary_and_arbitrary_global_options(self):
+        """Adversarial where: a commit inside backtick command substitution or
+        behind a quoted `"git"` is missed, only a fixed list of global options
+        is accepted (`--no-optional-locks`, `-p`, `--bare`, `--exec-path=/x`),
+        or a plain word before `commit` (`git help commit`, `git -C a log
+        commit`, an alias value naming commit) is read as a commit."""
+        rows = {
+            "backtick substitution": ("x=`git commit -m a`", 1),
+            "quoted binary": ('"git" commit -m a', 1),
+            "single-quoted binary": ("'git' commit -m a", 1),
+            "--no-optional-locks": ("git --no-optional-locks commit -m a", 1),
+            "short flag -p": ("git -p commit -m a", 1),
+            "--bare": ("git --bare commit -m a", 1),
+            "--exec-path=value": ("git --exec-path=/x commit -m a", 1),
+            "--namespace separate value": ("git --namespace ns commit -m a", 1),
+            "flag after value option": ("git -C a -p commit -m a", 1),
+            "help is a plain word": ("git help commit", 0),
+            "-C path then another subcommand": ("git -C a log commit", 0),
+            "alias value naming commit": ("git -c alias.x=commit status", 0),
+            "-C without a following subcommand": ("git -C commit", 0),
+        }
+        for name, (command, expected) in rows.items():
+            with self.subTest(name):
+                self.write(bash_line(command))
+                self.assertEqual(sessionslib.commit_count(self.transcript), expected)
+
+    def test_boolean_usage_values_are_not_token_counts(self):
+        """Adversarial where: `"input_tokens": true` is read as 1 token because
+        bool is an int, so a corrupt usage block reports a size."""
+        rows = {
+            "all booleans": (assistant_line(input_tokens=True, cache_creation=True, cache_read=True), None),
+            "boolean beside a real count": (assistant_line(input_tokens=True, cache_read=7), 7),
+        }
+        for name, (record, expected) in rows.items():
+            with self.subTest(name):
+                self.write(record)
+                self.assertEqual(sessionslib.used_tokens(self.transcript), expected)
+
+
 if __name__ == "__main__":
     unittest.main()
