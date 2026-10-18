@@ -273,6 +273,33 @@ class TestLedgerReading(LoopDirTestCase):
             [(t, i) for t in range(4) for i in range(50)],
         )
 
+    def test_ledger_lock_dies_with_a_process_killed_while_holding_it(self):
+        """Adversarial where: a process killed in the middle of an append
+        leaves the ledger's cross-process lock behind, so every later append
+        stalls or raises forever and the loop can never record another row."""
+        script = (
+            "import os, sys, time; sys.path.insert(0, sys.argv[1]); import looplib; "
+            "os.write = lambda fd, data: (print('holding', flush=True), time.sleep(120)); "
+            "looplib.append_ledger(sys.argv[2], {'tag': 'victim'})"
+        )
+        cli_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        proc = subprocess.Popen(
+            [sys.executable, "-c", script, cli_dir, str(self.loop_dir)],
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        self.addCleanup(proc.stdout.close)
+        try:
+            self.assertEqual(proc.stdout.readline().strip(), "holding")
+        finally:
+            proc.kill()
+            proc.wait(timeout=30)
+        started = time.monotonic()
+        looplib.append_ledger(self.loop_dir, {"tag": "survivor"})
+        self.assertLess(time.monotonic() - started, 10)
+        parsed, _skipped = looplib.read_ledger(self.loop_dir)
+        self.assertEqual([r["tag"] for r in parsed], ["survivor"])
+
 
 def run(run_id, outcome, item=None):
     return {"type": "run", "run_id": run_id, "outcome": outcome, "item": item}
