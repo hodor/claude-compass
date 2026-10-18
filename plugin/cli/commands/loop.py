@@ -1,5 +1,5 @@
-"""`compass loop new | status | activate | pause | resume | review | run | check | baseline`
-- the project's control loops.
+"""`compass loop new | status | activate | pause | resume | review | run | check | baseline |
+schedule | reconcile` - the project's control loops.
 
 A loop is a folder `.compass/loops/LOOP-NNN-name/` (see `looplib`). `new <name>`
 writes one from `loop_templates/`: a draft index, a `loop.json` with safe caps
@@ -14,15 +14,34 @@ line on stderr for each part of the loop still unfilled (see `_unfilled_parts`)
 and the sensor's reading; warnings never block and change no file. `pause` and `resume` apply the
 transition table through `looplib.advance`. `review <LOOP-NNN> <run-id>
 accept|reject [--reason TEXT]` appends one ledger row and moves no state; a
-reject reason becomes one line of `feedback.md`.
+reject reason becomes one line of `feedback.md`. `status <LOOP-NNN> --last-run`
+prints `<run-id> <outcome>` of the last run row in the ledger and exits 1 when
+there is none.
+
+`schedule <LOOP-NNN> --github [--cron EXPR]` renders
+`loop_templates/github-workflow.yml` to `.github/workflows/compass-loop-LOOP-NNN.yml`
+under the project root (the parent of the vault) and appends the union-merge
+line for the ledger to `.gitattributes`. It needs the `repository:` line of
+`.compass/meta/plugin.yaml`, refuses a different existing workflow, reports an
+identical one as unchanged, and prints the secrets the workflow reads.
+`schedule <LOOP-NNN> --local` writes nothing and prints a `schtasks /Create`
+line on Windows or a crontab line elsewhere, then the same command phrased for a
+Desktop scheduled task.
+
+`reconcile <LOOP-NNN> --prs <file|->` reads `gh pr list --json
+number,headRefName,state,mergedAt` output and records a review for each run
+whose pull request sits on the branch `compass-loop/LOOP-NNN/<run-id>`: a merged
+one is accepted, a closed unmerged one rejected. Open pull requests, unknown
+runs, runs that reached no verdict and runs already reviewed are skipped and
+reported.
 
 `run [--dry-run]`, `check [--blocking]` and `baseline` belong to `looprunner`,
 imported when one of them is used. It provides `run_iteration(loop_dir,
 dry_run)`, `check(loop_dir, blocking)` and `write_baseline(loop_dir)`, each
 returning the exit code (None reads as 0).
 
-`new` serialises on a vault-wide lock. `pause`, `resume` and `review` hold the
-loop's run lock while they read and write, and refuse with "a run is in
+`new` serialises on a vault-wide lock. `pause`, `resume`, `review` and `reconcile`
+hold the loop's run lock while they read and write, and refuse with "a run is in
 progress" when a live run holds it.
 
 Every failure prints a message on stderr and returns 1; the command never
@@ -34,6 +53,7 @@ import json
 import os
 import re
 import secrets
+import shlex
 import sys
 import time
 from contextlib import contextmanager
@@ -63,6 +83,35 @@ RUN_LOCK_ATTEMPTS = 30
 RUN_LOCK_RETRY_SECONDS = 0.05
 DEFAULT_RUN_TIMEOUT_S = 1800
 
+WORKFLOW_TEMPLATE = "github-workflow.yml"
+# Templates rendered somewhere other than the loop folder.
+OUTSIDE_FOLDER = frozenset({WORKFLOW_TEMPLATE})
+DEFAULT_CRON = "0 6 * * *"
+LOCAL_START = "06:00"  # the time of day DEFAULT_CRON names
+CRON_CHARACTERS = re.compile(r"[0-9A-Za-z*,/ -]+")
+CRON_ITEM = re.compile(r"(?:\*|([0-9]+)(?:-([0-9]+))?)(?:/([0-9]+))?")
+# (low, high) of the minute, hour, day of month, month and weekday fields.
+CRON_RANGES = ((0, 59), (0, 23), (1, 31), (1, 12), (0, 6))
+# Names the month field (4th) and the weekday field (5th) accept, any case.
+CRON_NAMES = (
+    {},
+    {},
+    {},
+    {name: number for number, name in enumerate(
+        ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"), start=1)},
+    {name: number for number, name in enumerate(("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"))},
+)
+RUN_TOKEN = re.compile(r"[A-Za-z0-9._:-]+")
+UNION_LINE = ".compass/loops/*/ledger.jsonl merge=union"
+PLACEHOLDER = re.compile(r"(?<!\$)\{\{[^}]*\}\}")
+REPOSITORY_LINE = re.compile(r"^\s*repository:[ \t]*(\S.*?)\s*$")
+SECRET_NAME = re.compile(r"secrets\.([A-Z][A-Z0-9_]*)")
+BRANCH_ROOT = "compass-loop"
+PR_STATES = ("OPEN", "CLOSED", "MERGED")
+VERIFIED_OUTCOMES = ("helpful", "neutral", "harmful")
+# `schtasks /TR` accepts at most this many characters.
+SCHTASKS_TR_LIMIT = 261
+
 ACTIVE = "active"
 DECISIONS = ("accept", "reject")
 RUNNER_COMMANDS = ("run", "check", "baseline")
@@ -77,6 +126,9 @@ USAGE = (
     "       compass loop run <LOOP-NNN> [--dry-run]\n"
     "       compass loop check <LOOP-NNN> [--blocking]\n"
     "       compass loop baseline <LOOP-NNN>\n"
+    "       compass loop schedule <LOOP-NNN> --github [--cron EXPR] | --local\n"
+    "       compass loop reconcile <LOOP-NNN> --prs <file|->\n"
+    "       compass loop status <LOOP-NNN> --last-run\n"
 )
 
 
@@ -146,9 +198,10 @@ def _render(name, number, text):
 
 
 def _stage_template(stage, name, number):
-    """Write every file of the template tree under `stage`, LF-terminated."""
+    """Write every file of the template tree that belongs in a loop folder
+    under `stage`, LF-terminated."""
     for source in sorted(TEMPLATE_DIR.rglob("*")):
-        if not source.is_file():
+        if not source.is_file() or source.relative_to(TEMPLATE_DIR).as_posix() in OUTSIDE_FOLDER:
             continue
         target = stage / source.relative_to(TEMPLATE_DIR)
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -344,7 +397,27 @@ def _status_lines(folder, now):
     return lines
 
 
+def _last_run(args):
+    """Print `<run-id> <outcome>` of the last run row of the ledger."""
+    rest = [arg for arg in args if arg != "--last-run"]
+    if len(rest) != 1 or rest[0].startswith("--"):
+        raise UsageError("status --last-run needs exactly one <LOOP-NNN>")
+    folder = _resolve(rest[0])
+    rows, _skipped = looplib.read_ledger(folder)
+    last = next((row for row in reversed(rows) if row.get("type") == "run"), None)
+    if last is None:
+        raise UsageError(f"{_loop_label(folder)} has no run row")
+    run_id, outcome = last.get("run_id"), last.get("outcome")
+    for value in (run_id, outcome):
+        if not isinstance(value, str) or not RUN_TOKEN.fullmatch(value):
+            raise UsageError(f"the last run row of {_loop_label(folder)} has no usable run_id and outcome")
+    print(f"{run_id} {outcome}")
+    return 0
+
+
 def _status(args):
+    if "--last-run" in args:
+        return _last_run(args)
     if len(args) > 1:
         raise UsageError("status takes at most one <LOOP-NNN>")
     if args:
@@ -610,7 +683,7 @@ def _require_verified_run(rows, run_id):
     if not matches or not run_id:
         raise UsageError(f"no run {run_id!r} in the ledger")
     outcome = matches[-1].get("outcome")
-    if outcome not in ("helpful", "neutral", "harmful"):
+    if outcome not in VERIFIED_OUTCOMES:
         raise UsageError(
             f"run {run_id!r} ended {outcome!r} and left no increment to review"
         )
@@ -640,6 +713,21 @@ def _restore_guidance(folder, earlier):
         vaultlib.write_text_lf(path, earlier)
 
 
+def _record_review(folder, row, guidance):
+    """Append the review `row` to the ledger. A reject with `guidance` text
+    first adds it to `feedback.md`, which is put back when the append fails.
+    The caller holds the loop's run lock."""
+    earlier, guided = None, False
+    if row["decision"] == "reject" and guidance:
+        earlier, guided = _append_guidance(folder, guidance), True
+    try:
+        looplib.append_ledger(folder, row)
+    except BaseException:
+        if guided:
+            _restore_guidance(folder, earlier)
+        raise
+
+
 def _review(args):
     loop_id, run_id, decision, reason = _parse_review(args)
     folder = _resolve(loop_id)
@@ -651,15 +739,7 @@ def _review(args):
         rows, _skipped = looplib.read_ledger(folder)
         _require_verified_run(rows, run_id)
         _require_unreviewed(rows, run_id)
-        earlier, guided = None, False
-        if decision == "reject" and line:
-            earlier, guided = _append_guidance(folder, line), True
-        try:
-            looplib.append_ledger(folder, row)
-        except BaseException:
-            if guided:
-                _restore_guidance(folder, earlier)
-            raise
+        _record_review(folder, row, line)
     print(f"{_loop_label(folder)}: run {run_id} {decision}ed")
     return 0
 
@@ -715,7 +795,357 @@ def _run_runner(command, args):
     return _exit_code(function(folder))
 
 
+# --- schedule ----------------------------------------------------------
+
+
+def _parse_schedule(args):
+    """(loop id, lane, cron) from the arguments; the cron is None when not given."""
+    positional, lane, cron = [], None, None
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg in ("--github", "--local"):
+            if lane is not None:
+                raise UsageError("schedule takes exactly one of --github and --local")
+            lane = arg[2:]
+        elif arg == "--cron" or arg.startswith("--cron="):
+            if cron is not None:
+                raise UsageError("--cron given twice")
+            if arg == "--cron":
+                index += 1
+                if index >= len(args):
+                    raise UsageError("--cron needs a value")
+                cron = args[index]
+            else:
+                cron = arg[len("--cron="):]
+        elif arg.startswith("--"):
+            raise UsageError(f"unknown option {arg[:40]!r}")
+        else:
+            positional.append(arg)
+        index += 1
+    if len(positional) != 1:
+        raise UsageError("schedule needs exactly one <LOOP-NNN>")
+    if lane is None:
+        raise UsageError("schedule needs --github or --local")
+    if cron is not None and lane != "github":
+        raise UsageError("--cron applies to --github")
+    return positional[0], lane, cron
+
+
+def _cron_expression(expression):
+    """`expression` as five single-space-separated cron fields, or a
+    UsageError. Each field is a comma list of `*`, a number or a range, with an
+    optional `/step`, every number inside the field's range; the month and
+    weekday fields also take their three-letter names. Only letters, digits and
+    `*,/-` pass, so the value is safe inside a quoted YAML scalar."""
+    message = f"{expression[:60]!r} is not a cron expression of five fields like '0 6 * * *'"
+    if not CRON_CHARACTERS.fullmatch(expression):
+        raise UsageError(message)
+    fields = expression.split()
+    if len(fields) != 5:
+        raise UsageError(message)
+    for field, (low, high), names in zip(fields, CRON_RANGES, CRON_NAMES):
+        field = re.sub(r"[A-Za-z]+", lambda m: str(names.get(m.group().upper(), m.group())), field)
+        for item in field.split(","):
+            match = CRON_ITEM.fullmatch(item)
+            if not match:
+                raise UsageError(message)
+            start, end, step = match.groups()
+            numbers = [int(n) for n in (start, end) if n is not None]
+            if any(not low <= n <= high for n in numbers) or numbers != sorted(numbers):
+                raise UsageError(message)
+            if step is not None and not 1 <= int(step) <= high:
+                raise UsageError(message)
+    return " ".join(fields)
+
+
+def _require_repository(vault):
+    """The `repository:` value of `meta/plugin.yaml`, or a UsageError."""
+    path = vault / "meta" / "plugin.yaml"
+    try:
+        text = vaultlib.read_vault_text(path)
+    except FileNotFoundError as exc:
+        raise UsageError(f"{path} is missing; the workflow installs Compass from its repository: line") from exc
+    for line in text.split("\n"):
+        match = REPOSITORY_LINE.match(line)
+        if match:
+            return match.group(1)
+    raise UsageError(f"{path} has no repository: line; the workflow installs Compass from it")
+
+
+def _loop_number(folder):
+    """The loop's number as `_render` writes it into `{{id}}`: at least three digits."""
+    return f"{int(LOOP_FOLDER_NAME.match(folder.name).group(1)):03d}"
+
+
+def _render_workflow(folder, cron):
+    """The workflow template filled in for the loop in `folder`, LF-terminated."""
+    try:
+        template = (TEMPLATE_DIR / WORKFLOW_TEMPLATE).read_bytes().decode("utf-8")
+    except OSError as exc:
+        raise UsageError(f"workflow template missing: {exc}") from exc
+    match = LOOP_FOLDER_NAME.match(folder.name)
+    text = _render(match.group(2), int(match.group(1)), template.replace("\r\n", "\n"))
+    text = text.replace("{{folder}}", folder.name).replace("{{cron}}", cron)
+    left = PLACEHOLDER.search(text)
+    if left:
+        raise UsageError(f"workflow template has an unfilled placeholder {left.group(0)}")
+    return text
+
+
+def _ensure_union_line(project):
+    """Append the ledger's union-merge line to `.gitattributes` unless a line
+    already holds it. Every existing byte stays as it was. True when the file
+    changed."""
+    path = project / ".gitattributes"
+    wanted = UNION_LINE.encode("utf-8")
+    try:
+        current = path.read_bytes()
+    except FileNotFoundError:
+        current = None
+    if current is None:
+        data = wanted + b"\n"
+    else:
+        if any(line.strip() == wanted for line in current.split(b"\n")):
+            return False
+        eol = b"\r\n" if b"\r\n" in current else b"\n"
+        separator = b"" if not current or current.endswith(b"\n") else eol
+        data = current + separator + wanted + eol
+    temp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        temp.write_bytes(data)
+        os.replace(temp, path)
+    finally:
+        temp.unlink(missing_ok=True)
+    return True
+
+
+def _wip_command_empty(folder):
+    value = _read_json_object(folder / looplib.DEFINITION_FILE).get("wip_command")
+    return not isinstance(value, str) or not value.strip()
+
+
+def _schedule_github(folder, cron):
+    loop_id = f"LOOP-{_loop_number(folder)}"
+    vault = vaultlib.find_vault_root()
+    project = vault.parent
+    _require_repository(vault)
+    text = _render_workflow(folder, _cron_expression(cron if cron is not None else DEFAULT_CRON))
+    workflow = project / ".github" / "workflows" / f"compass-loop-{loop_id}.yml"
+    relative = workflow.relative_to(project).as_posix()
+    data = text.encode("utf-8")
+    try:
+        existing = workflow.read_bytes()
+    except FileNotFoundError:
+        existing = None
+    if existing is not None and existing != data:
+        raise UsageError(f"{relative} exists and differs from the rendered workflow; remove it to render again")
+    if existing is None:
+        workflow.parent.mkdir(parents=True, exist_ok=True)
+        vaultlib.write_text_lf(workflow, text)
+        print(f"wrote {relative}")
+    else:
+        print(f"{relative} is unchanged")
+    if _ensure_union_line(project):
+        print(f"added '{UNION_LINE}' to .gitattributes")
+    secrets = sorted(set(SECRET_NAME.findall(text)) - {"GITHUB_TOKEN"})
+    for name in secrets:
+        print(f"secret: the workflow reads {name}; add it under Settings > Secrets and variables > Actions")
+    print(
+        "setting: allow Settings > Actions > General > Workflow permissions > "
+        "Allow GitHub Actions to create and approve pull requests"
+    )
+    print("commit the workflow, .gitattributes and .compass/meta/plugin.yaml so the runner has them")
+    if _wip_command_empty(folder):
+        print(
+            "wip: loop.json has no wip_command; to count open pull requests as the WIP, set wip_command to:\n"
+            f"  gh pr list --label compass-loop-{loop_id} --state open --json number --jq length"
+        )
+    return 0
+
+
+def _schedule_local(folder):
+    loop_id = f"LOOP-{_loop_number(folder)}"
+    project = vaultlib.find_vault_root().parent.resolve()
+    compass = Path(__file__).resolve().parent.parent / "compass"
+    python = Path(sys.executable or "python")
+    log_dir = project / ".compass" / "tmp" / "loops" / loop_id
+    log = log_dir / "schedule.log"
+    run = f"loop run {loop_id}"
+    windows = sys.platform == "win32"
+
+    def shown(path):
+        """`path` quoted for the shell of the platform being scheduled."""
+        return f'"{path}"' if windows else shlex.quote(Path(path).as_posix())
+
+    if windows:
+        def quoted(path):
+            return f'\\"{path}\\"'
+
+        action = (
+            f"cmd /c cd /d {quoted(project)} && if not exist {quoted(log_dir)} md {quoted(log_dir)} "
+            f"&& {quoted(python)} {quoted(compass)} {run} >> {quoted(log)} 2>&1"
+        )
+        print(f"Schedule {loop_id} daily at {LOCAL_START} with Task Scheduler:")
+        print(f'schtasks /Create /SC DAILY /ST {LOCAL_START} /TN "Compass {loop_id}" /TR "{action}"')
+        if "%" in action:
+            print("note: cmd.exe expands %name% even inside quotes; run the loop from a .cmd file for a path holding %")
+        if len(action) > SCHTASKS_TR_LIMIT:
+            print(f"note: the /TR text is {len(action)} characters and schtasks accepts {SCHTASKS_TR_LIMIT}; use a task XML or a .cmd file")
+    else:
+        def quoted(path):
+            return shlex.quote(Path(path).as_posix())
+
+        command = (
+            f"cd {quoted(project)} && mkdir -p {quoted(log_dir)} && "
+            f"{quoted(python)} {quoted(compass)} {run} >> {quoted(log)} 2>&1"
+        )
+        print(f"Schedule {loop_id} daily at {LOCAL_START} with crontab (crontab -e):")
+        print(f"{DEFAULT_CRON} {command.replace('%', chr(92) + '%')}")
+    print()
+    print("Desktop scheduled task (the Claude Desktop app, Schedule page):")
+    print(f"  folder: {shown(project)}")
+    print(f"  frequency: daily at {LOCAL_START}")
+    print(f"  prompt: Run `{shown(python)} {shown(compass)} {run}` in the project folder and report its output.")
+    return 0
+
+
+def _schedule(args):
+    loop_id, lane, cron = _parse_schedule(args)
+    folder = _resolve(loop_id)
+    if lane == "github":
+        return _schedule_github(folder, cron)
+    return _schedule_local(folder)
+
+
+# --- reconcile ---------------------------------------------------------
+
+
+def _parse_reconcile(args):
+    """(loop id, source) from `<LOOP-NNN> --prs <file|->`."""
+    positional, source = [], None
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg == "--prs":
+            index += 1
+            if index >= len(args):
+                raise UsageError("--prs needs a file or -")
+            source = args[index]
+        elif arg.startswith("--prs="):
+            source = arg[len("--prs="):]
+        elif arg.startswith("--"):
+            raise UsageError(f"unknown option {arg[:40]!r}")
+        else:
+            positional.append(arg)
+        index += 1
+    if len(positional) != 1:
+        raise UsageError("reconcile needs exactly one <LOOP-NNN>")
+    if source is None:
+        raise UsageError("reconcile needs --prs <file|->")
+    return positional[0], source
+
+
+def _read_pull_requests(source):
+    """[(number, branch, state)] from the `gh pr list --json` output in the
+    file `source`, or on standard input for `-`. The whole list is checked
+    before any entry is returned."""
+    try:
+        raw = sys.stdin.buffer.read() if source == "-" else Path(source).read_bytes()
+    except OSError as exc:
+        raise UsageError(f"cannot read the pull request list {source!r}: {exc}") from exc
+    try:
+        data = json.loads(raw.decode("utf-8-sig"))
+    except (ValueError, RecursionError) as exc:
+        raise UsageError(f"the pull request list is not readable JSON: {type(exc).__name__}") from exc
+    if not isinstance(data, list):
+        raise UsageError("the pull request list must be a JSON array")
+    found = []
+    for position, entry in enumerate(data, start=1):
+        number = entry.get("number") if isinstance(entry, dict) else None
+        branch = entry.get("headRefName") if isinstance(entry, dict) else None
+        state = entry.get("state") if isinstance(entry, dict) else None
+        if (
+            isinstance(number, bool)
+            or not isinstance(number, int)
+            or not isinstance(branch, str)
+            or state not in PR_STATES
+        ):
+            raise UsageError(
+                f"pull request entry {position} needs an integer number, a string headRefName "
+                f"and a state of {', '.join(PR_STATES)}"
+            )
+        found.append((number, branch, state))
+    return found
+
+
+def _deciding(group):
+    """The pull request that settles a run among those on its branch: a merged
+    one, else an open one, else the first closed."""
+    for wanted in ("MERGED", "OPEN", "CLOSED"):
+        for pull in group:
+            if pull[2] == wanted:
+                return pull
+
+
+def _reconcile_plan(rows, pulls):
+    """(report lines in input order, [(run id, decision, reason)] to record)
+    for the pull requests `pulls` = [(number, run id, state)] against the
+    ledger `rows`."""
+    by_run = {}
+    for pull in pulls:
+        by_run.setdefault(pull[1], []).append(pull)
+    reviewed = {r.get("run_id") for r in rows if r.get("type") == "review"}
+    outcomes = {r.get("run_id"): r.get("outcome") for r in rows if r.get("type") == "run"}
+    settled = {run_id: _deciding(group) for run_id, group in by_run.items()}
+    report, decisions = [], []
+    for number, run_id, state in pulls:
+        if run_id not in outcomes:
+            report.append(f"skip #{number}: no run {run_id} in the ledger")
+        elif outcomes[run_id] not in VERIFIED_OUTCOMES:
+            report.append(f"skip #{number}: run {run_id} ended {outcomes[run_id]} and left no increment to review")
+        elif run_id in reviewed:
+            report.append(f"skip #{number}: run {run_id} is already reviewed")
+        elif (number, run_id, state) != settled[run_id]:
+            report.append(f"skip #{number}: run {run_id} is settled by #{settled[run_id][0]}")
+        elif state == "OPEN":
+            report.append(f"skip #{number}: still open")
+        elif state == "MERGED":
+            report.append(f"accept #{number}: run {run_id}")
+            decisions.append((run_id, "accept", None))
+        else:
+            report.append(f"reject #{number}: run {run_id}, closed without merge")
+            decisions.append((run_id, "reject", f"pull request #{number} closed without merge"))
+    return report, decisions
+
+
+def _reconcile(args):
+    loop_id, source = _parse_reconcile(args)
+    folder = _resolve(loop_id)
+    canonical = f"LOOP-{_loop_number(folder)}"
+    pulls = []
+    for number, branch, state in _read_pull_requests(source):
+        parts = branch.split("/")
+        if len(parts) == 3 and parts[0] == BRANCH_ROOT and parts[1] == canonical:
+            pulls.append((number, parts[2], state))
+    if not pulls:
+        print(f"no pull requests on {canonical} run branches")
+        return 0
+    with _loop_lock(folder):
+        rows, _skipped = looplib.read_ledger(folder)
+        report, decisions = _reconcile_plan(rows, pulls)
+        for run_id, decision, reason in decisions:
+            row = {"type": "review", "run_id": run_id, "decision": decision}
+            if reason:
+                row["reason"] = reason
+            _record_review(folder, row, reason)
+    print("\n".join(report))
+    return 0
+
+
 COMMANDS = {
+    "schedule": _schedule,
+    "reconcile": _reconcile,
     "new": _new,
     "status": _status,
     "activate": _activate,

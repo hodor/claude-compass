@@ -60,7 +60,7 @@ COMMAND_SPECS = [
     ("sources", "Print the curated research-source catalog; --check classifies each scripted entry by response body shape (--live to probe for real)."),
     ("sessions", "list | show | record - rank the project's past sessions that finished a feature (read from Claude Code's transcripts in place), print a kept clone as text, log a clone run's outcome."),
     ("clone", "Run a headless, non-persisted fork of old sessions that writes the lessons each learned to a lesson file in ~/.compass/sessions; --discard keeps no transcript."),
-    ("loop", "new | status | activate | pause | resume | review | run | check | baseline - control loops: a sensor, a controller and an actuator that move the project toward an end state under a budget."),
+    ("loop", "new | status | activate | pause | resume | review | run | check | baseline | schedule | reconcile - control loops: a sensor, a controller and an actuator that move the project toward an end state under a budget."),
     ("retention", "Report the effective cleanupPeriodDays (how long Claude Code keeps sessions); --set N writes it to the user's settings.json."),
 ]
 
