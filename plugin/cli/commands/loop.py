@@ -19,14 +19,22 @@ imported when one of them is used. It provides `run_iteration(loop_dir,
 dry_run)`, `check(loop_dir, blocking)` and `write_baseline(loop_dir)`, each
 returning the exit code (None reads as 0).
 
+`new` serialises on a vault-wide lock. `pause`, `resume` and `review` hold the
+loop's run lock while they read and write, and refuse with "a run is in
+progress" when a live run holds it.
+
 Every failure prints a message on stderr and returns 1; the command never
 exits 2.
 """
 
 import importlib
 import json
+import os
 import re
+import secrets
 import sys
+import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -38,7 +46,20 @@ TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "loop_templates"
 
 LOOP_ID = re.compile(r"^LOOP-(\d+)$")
 LOOP_FOLDER_NAME = re.compile(r"^LOOP-(\d+)-(.+)$")
-LOOP_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+LOOP_NAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+MAX_NAME_LENGTH = 100
+
+# `new` serialises on one vault-wide lock file; a lock older than this is
+# taken to be left behind by a killed process.
+NEW_LOCK_STALE_SECONDS = 60
+NEW_LOCK_ATTEMPTS = 200
+NEW_LOCK_RETRY_SECONDS = 0.05
+
+# A command that changes a loop takes the loop's run lock and waits this
+# long for a run (or another command) to release it.
+RUN_LOCK_ATTEMPTS = 30
+RUN_LOCK_RETRY_SECONDS = 0.05
+DEFAULT_RUN_TIMEOUT_S = 1800
 
 ACTIVE = "active"
 DECISIONS = ("accept", "reject")
@@ -133,32 +154,61 @@ def _stage_template(stage, name, number):
         vaultlib.write_text_lf(target, _render(name, number, text))
 
 
+@contextmanager
+def _new_lock():
+    """Hold the vault-wide lock that serialises numbering and the rename of a
+    new loop folder. An exclusive-create lock file under `tmp/loops/`, retried
+    briefly; one older than NEW_LOCK_STALE_SECONDS is removed."""
+    lock = vaultlib.find_vault_root() / "tmp" / "loops" / "new.lock"
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    for _attempt in range(NEW_LOCK_ATTEMPTS):
+        try:
+            os.close(os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+            break
+        except (FileExistsError, PermissionError):
+            try:
+                age = time.time() - lock.stat().st_mtime
+            except FileNotFoundError:
+                continue
+            except OSError:
+                age = 0
+            if age > NEW_LOCK_STALE_SECONDS:
+                lock.unlink(missing_ok=True)
+                continue
+            time.sleep(NEW_LOCK_RETRY_SECONDS)
+    else:
+        raise UsageError("another `compass loop new` is running; try again")
+    try:
+        yield
+    finally:
+        lock.unlink(missing_ok=True)
+
+
 def _new(args):
     if len(args) != 1:
         raise UsageError("new needs exactly one <name>")
     name = args[0]
-    if not LOOP_NAME.match(name):
+    if not LOOP_NAME.fullmatch(name) or len(name) > MAX_NAME_LENGTH:
         raise UsageError(
-            f"{name!r} is not a loop name: use lowercase letters, digits and single hyphens"
+            f"{name[:40]!r} is not a loop name: use lowercase letters, digits and "
+            f"single hyphens, at most {MAX_NAME_LENGTH} characters"
         )
     if not TEMPLATE_DIR.is_dir():
         raise UsageError(f"loop templates missing at {TEMPLATE_DIR}")
     loops_dir = _loops_dir()
-    existing = _loop_folders(loops_dir)
-    for number, existing_name, path in existing:
-        if existing_name == name:
-            raise UsageError(f"a loop named {name} already exists: {path.name}")
-    number = max((num for num, _n, _p in existing), default=0) + 1
-    folder = loops_dir / f"LOOP-{number:03d}-{name}"
-    stage = loops_dir / f".new-{folder.name}.tmp"
-    loops_dir.mkdir(parents=True, exist_ok=True)
-    if stage.exists():
-        _remove_tree(stage)
+    stage = loops_dir / f".new-{os.getpid()}-{secrets.token_hex(4)}.tmp"
     try:
-        _stage_template(stage, name, number)
-        stage.rename(folder)
+        with _new_lock():
+            existing = _loop_folders(loops_dir)
+            for _number, existing_name, path in existing:
+                if existing_name == name:
+                    raise UsageError(f"a loop named {name} already exists: {path.name}")
+            number = max((num for num, _n, _p in existing), default=0) + 1
+            folder = loops_dir / f"LOOP-{number:03d}-{name}"
+            _stage_template(stage, name, number)
+            stage.rename(folder)
     except OSError as exc:
-        raise UsageError(f"could not write {folder}: {exc}") from exc
+        raise UsageError(f"could not create loop {name}: {exc}") from exc
     finally:
         if stage.exists():
             _remove_tree(stage)
@@ -184,7 +234,12 @@ def _remove_tree(directory):
 
 
 def _money(value):
-    text = f"{round(value, 6):.6f}".rstrip("0").rstrip(".")
+    """`value` with up to six decimals and no trailing zeros, or `?` when it
+    cannot be shown as a number."""
+    try:
+        text = f"{round(value, 6):.6f}".rstrip("0").rstrip(".")
+    except (OverflowError, ValueError, TypeError):
+        return "?"
     return text or "0"
 
 
@@ -232,7 +287,7 @@ def _status_lines(folder, now):
     try:
         state = looplib.read_state(folder)
     except looplib.StateError as exc:
-        state, state_error = {"state": "unreadable"}, str(exc)
+        state, state_error = {"state": "damaged"}, str(exc)
     rows, skipped = looplib.read_ledger(folder)
     definition = _read_json_object(folder / looplib.DEFINITION_FILE)
     try:
@@ -272,11 +327,34 @@ def _status(args):
     for index, folder in enumerate(folders):
         if index:
             print()
-        print("\n".join(_status_lines(folder, now)))
+        try:
+            print("\n".join(_status_lines(folder, now)))
+        except (OSError, ValueError) as exc:
+            print(f"{_loop_label(folder)}  damaged: {exc}")
     return 0
 
 
 # --- activate, pause, resume -------------------------------------------
+
+
+def _with_status(text, status):
+    """`text` with the frontmatter `status` field set to `status`, or None
+    when the text has no closed frontmatter block or no `status` field. Lines
+    outside the field are untouched."""
+    lines = text.splitlines(keepends=True)
+    if not lines or lines[0].strip() != "---":
+        return None
+    for end in range(1, len(lines)):
+        if lines[end].strip() == "---":
+            break
+    else:
+        return None
+    for position in range(1, end):
+        if lines[position].startswith("status:"):
+            ending = lines[position][len(lines[position].rstrip("\r\n")):]
+            lines[position] = f"status: {status}{ending}"
+            return "".join(lines)
+    return None
 
 
 def _activate(args):
@@ -286,16 +364,11 @@ def _activate(args):
         text = vaultlib.read_vault_text(index)
     except OSError as exc:
         raise UsageError(f"cannot read {index}: {exc}") from exc
-    match = re.match(r"---\n(.*?)\n---\n", text, re.DOTALL)
-    if not match:
-        raise UsageError(f"{index} has no frontmatter")
-    head = match.group(1)
-    status_line = re.search(r"^status:.*$", head, re.MULTILINE)
-    if not status_line:
-        raise UsageError(f"{index} frontmatter has no status field")
-    new_head = head[: status_line.start()] + f"status: {ACTIVE}" + head[status_line.end():]
-    if new_head != head:
-        vaultlib.write_text_lf(index, text[: match.start(1)] + new_head + text[match.end(1):])
+    updated = _with_status(text, ACTIVE)
+    if updated is None:
+        raise UsageError(f"{index} has no closed frontmatter with a status field")
+    if updated != text:
+        vaultlib.write_text_lf(index, updated)
     try:
         looplib.load_definition(folder)
     except looplib.DefinitionError as exc:
@@ -304,10 +377,45 @@ def _activate(args):
     return 0
 
 
+def _run_timeout(folder):
+    """The loop's wall-clock run limit from `loop.json`, or the default when
+    the file does not give a usable one."""
+    value = _read_json_object(folder / looplib.DEFINITION_FILE).get("timeout_s")
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not value > 0:
+        return DEFAULT_RUN_TIMEOUT_S
+    return value
+
+
+@contextmanager
+def _loop_lock(folder):
+    """Hold the loop's run lock while a command changes its state, ledger or
+    feedback, so a runner and the command never interleave. A lock left by a
+    dead run is cleared; a live one is waited for briefly, then refused."""
+    match = LOOP_FOLDER_NAME.match(folder.name)
+    lock = vaultlib.find_vault_root() / "tmp" / "loops" / f"LOOP-{match.group(1)}.lock"
+    timeout = _run_timeout(folder)
+    for _attempt in range(RUN_LOCK_ATTEMPTS):
+        try:
+            looplib.acquire_lock(lock, timeout)
+            break
+        except (looplib.LockHeld, PermissionError):
+            if looplib.is_stale(lock, timeout):
+                looplib.release_lock(lock)
+                continue
+            time.sleep(RUN_LOCK_RETRY_SECONDS)
+    else:
+        raise UsageError(f"{_loop_label(folder)}: a run is in progress")
+    try:
+        yield
+    finally:
+        looplib.release_lock(lock)
+
+
 def _advance(args, command, reason):
     folder = _resolve(_single_id(args, command))
     try:
-        new = looplib.advance(folder, command, reason)
+        with _loop_lock(folder):
+            new = looplib.advance(folder, command, reason)
     except looplib.TransitionError as exc:
         raise UsageError(f"{_loop_label(folder)}: {exc}") from exc
     except looplib.StateError as exc:
@@ -372,34 +480,50 @@ def _require_verified_run(rows, run_id):
         )
 
 
-def _append_guidance(folder, reason):
-    """Add `reason`, squeezed to one line, as a bullet at the end of
-    `feedback.md`."""
-    line = " ".join(reason.split())
-    if not line:
-        return
+def _append_guidance(folder, line):
+    """Add `line` as a bullet at the end of `feedback.md`. Returns the file's
+    earlier text, or None when the file did not exist, for `_restore_guidance`."""
     path = folder / "feedback.md"
     try:
-        text = vaultlib.read_vault_text(path)
+        earlier = vaultlib.read_vault_text(path)
     except FileNotFoundError:
-        text = "# Feedback\n\n## Guidance\n"
+        earlier = None
+    text = "# Feedback\n\n## Guidance\n" if earlier is None else earlier
     if not text.endswith("\n"):
         text += "\n"
     vaultlib.write_text_lf(path, f"{text}- {line}\n")
+    return earlier
+
+
+def _restore_guidance(folder, earlier):
+    """Put `feedback.md` back as `_append_guidance` found it."""
+    path = folder / "feedback.md"
+    if earlier is None:
+        path.unlink(missing_ok=True)
+    else:
+        vaultlib.write_text_lf(path, earlier)
 
 
 def _review(args):
     loop_id, run_id, decision, reason = _parse_review(args)
     folder = _resolve(loop_id)
-    rows, _skipped = looplib.read_ledger(folder)
-    _require_verified_run(rows, run_id)
-    _require_unreviewed(rows, run_id)
+    line = " ".join(reason.split()) if reason is not None else ""
     row = {"type": "review", "run_id": run_id, "decision": decision}
-    if reason is not None and reason.strip():
-        row["reason"] = " ".join(reason.split())
-    looplib.append_ledger(folder, row)
-    if decision == "reject" and "reason" in row:
-        _append_guidance(folder, row["reason"])
+    if line:
+        row["reason"] = line
+    with _loop_lock(folder):
+        rows, _skipped = looplib.read_ledger(folder)
+        _require_verified_run(rows, run_id)
+        _require_unreviewed(rows, run_id)
+        earlier, guided = None, False
+        if decision == "reject" and line:
+            earlier, guided = _append_guidance(folder, line), True
+        try:
+            looplib.append_ledger(folder, row)
+        except BaseException:
+            if guided:
+                _restore_guidance(folder, earlier)
+            raise
     print(f"{_loop_label(folder)}: run {run_id} {decision}ed")
     return 0
 
@@ -466,10 +590,6 @@ COMMANDS = {
 
 
 def run(args):
-    for stream, errors in ((sys.stdout, "replace"), (sys.stderr, "backslashreplace")):
-        reconfigure = getattr(stream, "reconfigure", None)
-        if reconfigure is not None:
-            reconfigure(encoding="utf-8", errors=errors)
     if not args or (args[0] not in COMMANDS and args[0] not in RUNNER_COMMANDS):
         sys.stderr.write(USAGE)
         return 1
