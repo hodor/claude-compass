@@ -888,6 +888,8 @@ tags:
   - research/vault-structure/RESEARCH-hierarchical-knowledge-base-design.md
   majority-vote:
   - research/pipeline/RESEARCH-loop-judge-sensor-experiment.md
+  manual-verification:
+  - lessons/pipeline/LESSON-manual-verification-is-judgment-only.md
   mapping-study:
   - research/pipeline/RESEARCH-research-methodologies-catalog.md
   markers:
@@ -1091,6 +1093,7 @@ tags:
   - plans/PLAN-008-rolling-wave.md
   planner:
   - decisions/pipeline/ADR-007-decision-coverage-mechanism.md
+  - lessons/pipeline/LESSON-manual-verification-is-judgment-only.md
   - plans/PLAN-004-decision-coverage.md
   planning:
   - decisions/pipeline/ADR-009-rolling-wave-mechanism.md
@@ -1104,6 +1107,7 @@ tags:
   - specs/pipeline/SPEC-015-rolling-wave-planning.md
   plans:
   - lessons/pipeline/LESSON-adversarial-plan-review-before-build.md
+  - lessons/pipeline/LESSON-manual-verification-is-judgment-only.md
   platform:
   - lessons/platform/index.md
   plugin-config:
@@ -1670,6 +1674,7 @@ tags:
   verification:
   - lessons/LESSON-verify-exactness-past-a-compressing-layer.md
   - lessons/LESSON-verify-wiring-by-call-site-grep.md
+  - lessons/pipeline/LESSON-manual-verification-is-judgment-only.md
   - lessons/pipeline/LESSON-verify-the-inverse-not-the-forward-path.md
   - specs/pipeline/SPEC-013-test-quality.md
   verify:

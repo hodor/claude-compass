@@ -1,3 +1,4 @@
+# WARNING: catalog exceeded cap. Run /compass:consolidate before next session.
 lessons:
   - file: "LESSON-adversarial-plan-review-before-build.md"
     status: active
@@ -356,3 +357,10 @@ lessons:
     tags: [research, axes, human-words, definitions]
     score: 5
     summary: "A definition the human stated in the request is settled; turning it into a research axis re-asks what they already said"
+  - file: "LESSON-manual-verification-is-judgment-only.md"
+    status: active
+    category: process
+    area: methodology
+    tags: [plans, verification, planner, manual-verification]
+    score: 5
+    summary: "Plan manual verification holds only judgment calls; mechanical checks go in automated verification or the orchestrator's own check"
