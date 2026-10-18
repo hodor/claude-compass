@@ -320,7 +320,10 @@ class SettingsMergeTests(SelfUpdateFixture):
                             {
                                 "matcher": "Write",
                                 "hooks": [
-                                    {"type": "command", "command": "old compass sync"}
+                                    {
+                                        "type": "command",
+                                        "command": 'python3 "$CLAUDE_PLUGIN_ROOT/cli/compass" sync',
+                                    }
                                 ],
                             },
                         ]
@@ -336,7 +339,7 @@ class SettingsMergeTests(SelfUpdateFixture):
         post = settings["hooks"]["PostToolUse"]
         commands = [h["command"] for g in post for h in g["hooks"]]
         self.assertIn("my-own-hook", commands)
-        self.assertNotIn("old compass sync", commands)
+        self.assertNotIn('python3 "$CLAUDE_PLUGIN_ROOT/cli/compass" sync', commands)
         compass_groups = [
             g
             for g in post
@@ -356,6 +359,40 @@ class SettingsMergeTests(SelfUpdateFixture):
         for g in post:
             for h in g["hooks"]:
                 self.assertNotIn("if", h)
+
+    def test_merge_keeps_user_hooks_that_only_mention_compass(self):
+        # A user's own hook can live under a path or call a tool named
+        # compass; only commands that run Compass's CLI are Compass's.
+        user_commands = [
+            "bash /home/me/compass-app/lint.sh",
+            "node F:\work\compass\check.js",
+            "echo compass",
+            "python3 tools/compass_report.py",
+        ]
+        stale = [
+            'python3 "$CLAUDE_PLUGIN_ROOT/cli/compass" sync',
+            'python3 "${CLAUDE_PLUGIN_ROOT}/cli/compass" sync',
+            'python "$CLAUDE_PROJECT_DIR\.claude\cli\compass" sync --hook',
+            "python .claude/cli/compass capture-check --hook",
+        ]
+        groups = [
+            {"matcher": "Write", "hooks": [{"type": "command", "command": c}]}
+            for c in user_commands + stale
+        ]
+        (self.project / ".claude" / "settings.json").write_text(
+            json.dumps({"hooks": {"PostToolUse": groups}}), encoding="utf-8"
+        )
+        self.fake_remote()
+        self.perform()
+        commands = [
+            h["command"]
+            for g in self.settings()["hooks"]["PostToolUse"]
+            for h in g["hooks"]
+        ]
+        for c in user_commands:
+            self.assertIn(c, commands)
+        for c in stale:
+            self.assertNotIn(c, commands)
 
     def test_merge_is_idempotent(self):
         self.fake_remote()

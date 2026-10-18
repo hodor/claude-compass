@@ -26,6 +26,7 @@ session exactly when its tooling changed. Updates and failures append to
 import datetime
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -170,10 +171,18 @@ def _copy_tree_best_effort(src, dest):
             pass
 
 
+# A hook command that runs Compass's CLI, installed in the project
+# (`.claude/cli/compass`) or run from the plugin (`$CLAUDE_PLUGIN_ROOT/cli/compass`).
+COMPASS_HOOK_COMMAND = re.compile(
+    r"(?:\.claude|CLAUDE_PLUGIN_ROOT\}?)[/\\]+cli[/\\]+compass(?![\w.-])"
+)
+
+
 def merge_settings(project_root, manifest_path):
     """Register the hooks manifest in `.claude/settings.json`: replace only
-    hook groups whose commands mention `compass`, preserve every user-owned
-    group and unrelated top-level key, collapse the manifest's three
+    hook groups whose commands the manifest ships or that run Compass's CLI,
+    preserve every user-owned group and unrelated top-level key, collapse
+    the manifest's three
     per-tool PostToolUse entries (the groups carrying `if`) into one
     `Write|Edit|MultiEdit|write|edit` matcher
     (the lowercase names are dsh's; inert under Claude Code), and strip
@@ -187,8 +196,19 @@ def merge_settings(project_root, manifest_path):
     )
     hooks = settings.setdefault("hooks", {})
 
+    shipped = {
+        h.get("command")
+        for groups in manifest.values()
+        for g in groups
+        for h in g.get("hooks", [])
+    }
+
     def is_compass_group(group):
-        return any("compass" in (h.get("command") or "") for h in group.get("hooks", []))
+        return any(
+            (h.get("command") or "") in shipped
+            or COMPASS_HOOK_COMMAND.search(h.get("command") or "")
+            for h in group.get("hooks", [])
+        )
 
     def clean_group(group, matcher_override=None):
         cleaned = dict(group)
