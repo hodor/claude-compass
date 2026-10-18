@@ -4,14 +4,14 @@ type: research
 status: done
 confidence: medium
 area: pipeline
-tags: [loops, control-theory, feedback, sensors, llm-judge, fsm, flow-control, humanlayer, react-doctor, maya, convergence]
+tags: [loops, control-theory, feedback, sensors, llm-judge, fsm, flow-control, humanlayer, react-doctor, maya, convergence, budgets, rule-compilation, guard]
 created: 2026-10-17
 updated: 2026-10-17
 git_branch: "master"
-git_commit: "b4220fd"
+git_commit: "eadad7f"
 author: "reviewer"
 depends_on: ["[[specs/pipeline/SPEC-026-control-theory-for-loops]]"]
-summary: "Eleven research axes on agent control loops consolidated: HumanLayer's loop (Kyle Mistele's talk plus its shipped skill) converges on every axis that read it; control theory gives vocabulary but no tested guarantee for agent loops; Compass's own loops are capped by counts and timers, never cost, with no scheduler and no steering file; budgets, judge drift, Maya and the FSM claim stay open"
+summary: "Eleven axes plus three gap passes on agent control loops: HumanLayer's loop converges on every axis that read it; control theory gives vocabulary, no tested guarantee; no product offers a per-day or per-loop dollar cap, so a loop sums per-run cost itself; a skill-plus-rules judge is untested anywhere; loop files survive update in user skill dirs and .compass/meta, never .claude/cli; Maya, the FSM claim and judge precision stay open"
 ---
 
 # Control Theory for Compass Loops: Consolidated Research
@@ -30,6 +30,8 @@ Excluded: design recommendations. This document holds evidence; a plan decides.
 
 Consolidation of eleven parallel research axes, each run under its own methodology from the research-methods skill, with grading allowed for every axis (each finding carries a grade for how much its evidence-type mark should weigh). This document builds a convergence matrix over the claims more than one axis could address, then organizes all findings by the spec's structure.
 
+Three gap passes (G1 to G3) followed, each aimed at a gap the eleven axes left open. Their findings are numbered 87 onward and sit in the section they inform; the claims they touch are scored in the gap-pass rows below the main matrix.
+
 Agreement is computed over the axes that addressed a claim, never over all eleven: each axis covered a different slice of the spec, so silence is not dissent. Classes: **converged** at 80% or more of addressing axes with at least two axes; **partial** at 50 to 79%; **divergent** below 50% or an even split with no majority. A claim only one axis could address is tagged "single axis" in its finding.
 
 | Handle | Axis | Methodology | Main evidence base |
@@ -45,14 +47,17 @@ Agreement is computed over the axes that addressed a claim, never over all eleve
 | A9 | The seven steps as a Compass pipeline | Systematic mapping study | Compass source, HumanLayer skill, Renovate and LangGraph source, Temporal and GitHub docs |
 | A10 | Controller and control signal | Technology landscape (DESMET feature analysis) | ast-grep source, HumanLayer skill, Google FSE 2025 paper (PDF), Sentry and PostHog docs |
 | A11 | FSMs | Systematic mapping study plus repository mining | LangGraph and XState source, Compass source; theory and LLM-FSM papers mostly at abstract level |
+| G1 | Budgets and cost per accepted change | DESMET feature analysis plus a live run of Claude Code 2.1.302 | Three `claude -p` runs on this machine (JSON and transcript saved), vendor docs of seven agent products, blogs and preprints on cost per change |
+| G2 | Skill or natural-language rules as judge sensor; rule compilation | Systematic mapping study | arXiv abstracts and HTML via a fetch summarizer, OpenAlex counts, Uber, G-Research and ast-grep engineering blogs |
+| G3 | Where a loop's files live in a Compass project | Repository mining plus two experiments in a scratch project | `self_update._apply` and `guard.decide` run against the real `plugin/`; update, overlay, guard, vault and SPEC-009 sources read |
 
 ## Convergence Summary
 
 | Category | Count | Claims |
 |---|---|---|
-| Converged | 31 | C1 to C5, C7, C8, C10, C12 to C21, C23 to C28, C32 to C34, C36, C38 to C40 |
-| Partial | 2 | C6 (what the baseline commits), C22 (ratchets exist) |
-| Divergent | 3 | C9 (talk names a telemetry vendor), C29 (explicit FSM structure helps), C31 (where the LLM sits) |
+| Converged | 35 | C1 to C5, C7, C8, C10, C12 to C21, C23 to C28, C32 to C34, C36, C38 to C40, C45 to C48 |
+| Partial | 4 | C6 (what the baseline commits), C22 (ratchets exist), C41 (update empties the skills dir), C42 (cost per accepted change unreported) |
+| Divergent | 5 | C9 (talk names a telemetry vendor), C29 (explicit FSM structure helps), C31 (where the LLM sits), C43 (judge drift unstudied), C44 (judge-score filtering absent) |
 | Single axis, gap | 4 | C11 (golden patterns tested), C30 (FSM claim formalized), C35 (agent fork upkeep), C37 (react-doctor score formula) |
 
 ## Convergence Matrix
@@ -77,9 +82,9 @@ Cells: Y or N with the axis's own confidence (h, m, l); `-` means the axis did n
 | C14 | Flow control = at most one open PR per loop, checked before checkout; manual dispatch bypasses | Y(h) | - | - | Y(h) | Y(h) | Y(h) | - | Y(h) | Y(h) | Y(h) | - | 7/7 |
 | C15 | HumanLayer's skill has no stop condition, budget, rollback, deadband or oscillation concept | Y(h) | - | - | - | - | - | - | Y(h) | - | - | - | 2/2 |
 | C16 | Human review capacity is the binding limit on loop throughput | - | - | - | Y(h) | - | Y(h) | - | Y(m) | - | - | - | 3/3 |
-| C17 | Claude Code's result carries cost, turns and duration; caps are print-mode only; cost is a client estimate; resume resets the budget | - | Y(h) | - | - | - | - | - | Y(h) | - | - | - | 2/2 |
+| C17 | Claude Code's result carries cost, turns and duration; caps are print-mode only; cost is a client estimate; resume resets the budget | - | Y(h) | - | - | - | - | - | Y(h) | - | - | - | 2/2, 3/3 with G1 |
 | C18 | Domain counts are not exposed by Claude Code; the loop's own command computes them | - | Y(h) | Y(h) | Y(h) | - | - | - | - | - | - | - | 3/3 |
-| C19 | A judge without an external signal is an unreliable sensor; grounding it in measured evidence helps | - | Y(h) | - | - | Y(m) | - | - | - | - | - | - | 2/2 |
+| C19 | A judge without an external signal is an unreliable sensor; grounding it in measured evidence helps | - | Y(h) | - | - | Y(m) | - | - | - | - | - | - | 2/2, 3/3 with G2 |
 | C20 | A sensor reading needs a validity or completeness check separate from its value | - | Y(h) | Y(h) | - | Y(m) | Y(m) | - | - | - | - | - | 4/4 |
 | C21 | No source measures stability, oscillation or settling of a coding-agent loop over a real repository | Y(h) | - | - | - | - | Y(h) | Y(m) | - | - | - | - | 3/3 |
 | C22 | Ratchet mechanisms exist and are usable as dampeners | N(m) | - | - | - | - | Y(m) | - | Y(h) | - | - | - | 2/3 |
@@ -101,6 +106,23 @@ Cells: Y or N with the axis's own confidence (h, m, l); `-` means the axis did n
 | C38 | Revert-on-break is used as a stability device in agent loops | - | - | - | - | - | Y(m) | - | Y(m) | - | - | - | 2/2 |
 | C39 | Trajectory structure (repetition, FSM-state features) predicts agent failure | - | - | - | - | - | - | - | Y(l) | - | - | Y(l) | 2/2 |
 | C40 | Steering state lives outside the model, persisted in files | - | - | - | Y(h) | - | - | - | Y(h) | Y(h) | - | - | 3/3 |
+
+### Gap-pass rows
+
+Claims a gap pass addressed. "Prior" lists the original axes' cells for the claim.
+
+| # | Claim | Prior | G1 | G2 | G3 | Agreement |
+|---|---|---|---|---|---|---|
+| C17 | Caps are per invocation and resume does not count restored spend | A2 Y(h), A8 Y(h) | Y(h), live run | - | - | 3/3 |
+| C19 | A judge without an external signal is unreliable; grounding helps | A2 Y(h), A5 Y(m) | - | Y(m) | - | 3/3 |
+| C41 | Self-update empties the installed skills directory before copying, so a user skill there may be lost | A9 Y(m), A7 Y(m), both read code only and marked survival unverified | - | - | N(h), run experiment | 2/3 |
+| C42 | No source reports dollar cost per accepted change | A4 Y(h), A6 Y(h) | N(m) for agent PRs in general, Y(m) for migration PRs | - | - | 2/3 |
+| C43 | Judge-score drift across model versions has no direct study | A2 Y(l) | - | N(m), essay-scoring and anchor-set studies | - | 1/2 |
+| C44 | No temporal filter or noise gate has been applied to judge-score series | A2 Y(l) | - | N(l), noise-band, EWMA and SPRT gates as CI tools | - | 1/2 |
+| C45 | No study tests a skill or natural-language rule set as the judge against labelled data | A2 Y(l) | - | Y(m) | - | 2/2 |
+| C46 | Repeated identical judge calls disagree even at temperature 0; voting reduces variance with diminishing returns | A2 Y(m) | - | Y(m) | - | 2/2 |
+| C47 | Rubrics and yes/no checklists reduce judge disagreement | A2 Y(m) | - | Y(m) | - | 2/2 |
+| C48 | Uber's LLM drafts deterministic AST rules for Java-to-Kotlin, never code | A6 Y(l-m) | - | Y(l) | - | 2/2 |
 
 ## Findings
 
@@ -165,7 +187,7 @@ Cells: Y or N with the axis's own confidence (h, m, l); `-` means the axis did n
    | Gain, step size | Regulatory-control prompt curation (7); HumanLayer expresses step size as prose (31) |
    | Sampling rate | Regulatory control only, 5 min vs 2 s (7) |
    | Ratchet | None in the LLM-agent literature (A1); exists as CI tooling: Betterer, ESLint bulk suppressions (finding 28) |
-   | Deadband, hysteresis | None found (A1); temporal filtering (Kalman, EMA) of judge scores none found (A2) |
+   | Deadband, hysteresis | None found in agent loops (A1); temporal filtering (Kalman, EMA) of judge scores none found (A2); noise-band, EWMA and sequential-test gates on judge scores exist as CI tools, none called hysteresis, none tested in a loop (G2, finding 101; C44) |
    | Flow control, WIP limit | HumanLayer one open PR (finding 51); not a control-theory term in the sources |
    - Marks: synthesis over cited findings; "none found" means none in the sources each axis read
    - Grade: medium
@@ -192,7 +214,7 @@ Cells: Y or N with the axis's own confidence (h, m, l); `-` means the axis did n
 12. **Cost is a client-side estimate, budget caps are per invocation, and resume resets them** (confidence: high; axes A2, A8; C17)
     Docs: "Do not bill end users or trigger financial decisions from these fields." `--max-budget-usd` and `--max-turns` are print-mode only; spend can pass the budget cap by up to one response plus still-running subagents; totals restored by `--resume`/`--continue` do not count toward the cap, while a resumed result reports the session's cumulative spend. A crashed session may report zeroed cost. `--max-turns` is documented but missing from `claude --help` v2.1.302 on this machine.
     - Evidence: https://code.claude.com/docs/en/cli-reference; cost-tracking doc; agent-loop doc "Budget headroom"
-    - Marks: vendor docs, 3 pages agree; local help partial confirmation
+    - Marks: vendor docs, 3 pages agree; local help partial confirmation; confirmed by a live run on 2.1.302 (G1, findings 87 to 89)
     - Grade: high
 
 13. **Hooks can halt a run but carry no cost; domain counts must come from the loop's own command** (confidence: high; axes A2, A3, A4; C18)
@@ -213,6 +235,39 @@ Cells: Y or N with the axis's own confidence (h, m, l); `-` means the axis did n
     - Marks: code and docs for A2, A3; single-source skill for A5; search summaries for A6; 4 axes agree
     - Grade: high (grouping of independently cited instances)
 
+87. **`--max-turns 1` is honored: the run ends with exit 1 and `subtype: error_max_turns` after the first tool has run, and `num_turns` reports 2** (confidence: high; single axis G1)
+    Live run, haiku-4-5, Claude Code 2.1.302: `claude -p --max-turns 1 --output-format json "say hi then list files with a tool"`. Verbatim: `"terminal_reason":"max_turns"`, `"stop_reason":"tool_use"`, `"is_error":true`, `"num_turns":2`, `"errors":["Reached maximum number of turns (1)"]`, `"total_cost_usd":0.041615`; the JSON has no `result` key. The transcript holds the `tool_use` and its `tool_result` and no assistant message after it: the model turn ran, its tool executed, and the run stopped before the next model call. The flag works while still absent from `claude --help`.
+    - Evidence: `.compass/tmp/research-control-loops/gap-01-evidence/r1.json`; session transcript `25441f85-ede7-4bc2-a5bf-949a899a07af.jsonl`
+    - Marks: live run on the installed product, 1 run; agrees with vendor docs
+    - Grade: high
+    - Caveat: one observation at N=1; the reading "cap N allows N tool rounds" is untested at N greater than 1.
+
+88. **On resume, `total_cost_usd` and `modelUsage` are cumulative, `num_turns` and `usage` are per invocation, and `--max-budget-usd` counts only new spend** (confidence: high; single axis G1)
+    Run 2 resumed run 1's session with `--max-budget-usd 0.02`. The restored total (\$0.041615) already exceeded the cap; the run still returned `success` at cumulative \$0.0463805, of which \$0.0047655 was new. `modelUsage` summed both runs (`outputTokens` 219 = 171 + 48); top-level `usage` showed only the new call. A loop that resumes one session per iteration gets a fresh cap each time.
+    - Evidence: `gap-01-evidence/r2.json`
+    - Marks: live run, 1 run; confirms the docs claim in finding 12
+    - Grade: high
+    - Caveat: not tested: a resume whose new spend alone exceeds the cap.
+
+89. **A hit budget ends the run with `subtype: error_max_budget_usd`, exit 1, `terminal_reason: budget_exhausted`, checked after the first response; `usage` is zeroed on that stop** (confidence: high; single axis G1)
+    Run 3, fresh session, `--max-budget-usd 0.001`: `"errors":["Reached maximum budget ($0.001)"]`, `"num_turns":1`, `"total_cost_usd":0.0174133`, 17 times the cap, so the cap is checked after a response, not before the request. Top-level `usage` is empty (`"iterations":[]`) while `modelUsage` carries the real tokens, so a parser reads `total_cost_usd` or `modelUsage` on a budget stop, never `usage`.
+    - Evidence: `gap-01-evidence/r3.json`
+    - Marks: live run, 1 run; agrees with the docs ("Spend can therefore pass the cap")
+    - Grade: high
+    - Caveat: a \$0.001 cap is below one response's cost on any model; the overshoot ratio reflects that choice.
+
+90. **The session transcript holds `cost-state` records, a per-session spend ledger a script can read without the CLI** (confidence: high for presence, low for format stability; single axis G1)
+    After each invocation the JSONL gains `{"type":"cost-state","totalCostUSD":...,"modelUsage":{...},"totalAPIDuration":...,"totalLinesAdded":...,"hasUnknownModelCost":false}`: 0.041615 after run 1, 0.0463805 after run 2. It is the record resume restores, and a wrapper can sum it per session independently of `--max-budget-usd`. Finding 15 notes it is written only on normal exit.
+    - Evidence: run 1 transcript, two `cost-state` records
+    - Marks: live run, file read; schema absent from the public docs read
+    - Grade: high for presence on 2.1.302, low for stability across versions
+
+91. **Per-iteration cost depends on cache hits: a cold first call cost \$0.042, a warm resume \$0.005, a fresh second session \$0.017** (confidence: medium; single axis G1)
+    Run 1 wrote 20,375 tokens to the 1-hour cache; run 2 read them back and wrote 1,239; run 3 read 13,053 and wrote 7,349. Resume iterations inside the cache lifetime cost less than fresh sessions.
+    - Evidence: `gap-01-evidence/r1.json`, `r2.json`, `r3.json`
+    - Marks: live run, 3 runs, haiku only; local list-price estimates (`"costBasis":"list"`), not the bill
+    - Grade: medium
+
 ### Sensors: judges
 
 16. **Judge biases are large, systematic and judge-specific** (confidence: high; single axis A2)
@@ -222,7 +277,7 @@ Cells: Y or N with the axis's own confidence (h, m, l); `-` means the axis did n
 
 17. **Repeated identical judge calls disagree, even at temperature 0** (confidence: medium; single axis A2)
     Pairwise preference flips 13.6% on average across trials; neutral rewording changes the majority outcome in 25% of cases; about 11 trials match the 50-trial verdict at 95% (arXiv:2606.13685). Scores vary substantially at temperature 0 across 5 judges, completeness most (arXiv:2603.04417). Pointwise and pairwise outputs are mutually inconsistent; expected-value scoring over rating probabilities plus both-order aggregation cut transitivity inconsistency from 15.22% to 4.40% (arXiv:2509.21117, preprint); the mean of the judgment-token distribution beats the mode (arXiv:2503.03064, EMNLP 2025 Findings).
-    - Marks: 2026 single-author preprints for the noise figures (0 and 7 citations); mixed for consistency fixes; all via a fetch summarizer
+    - Marks: 2026 single-author preprints for the noise figures (0 and 7 citations); mixed for consistency fixes; all via a fetch summarizer; G2 reaches the same direction on code review (findings 97, 98; C46)
     - Grade: low for the noise numbers, medium for the consistency fixes
 
 18. **Judge-human agreement is not accuracy: on hard items judges approach chance** (confidence: high; single axis A2)
@@ -231,19 +286,121 @@ Cells: Y or N with the axis's own confidence (h, m, l); `-` means the axis did n
     - Grade: high
 
 19. **Rubrics and checklists reduce judge variance; panels and calibration help with caveats** (confidence: medium; single axis A2)
-    Yes/no checklists raised inter-evaluator agreement by 0.45 (CheckEval, arXiv:2403.18771, EMNLP 2025); a 13B rubric-conditioned judge reached Pearson 0.897 with humans (Prometheus, arXiv:2310.08491, ICLR 2024); grading changes the criteria users hold ("criteria drift", arXiv:2404.12272). Diverse-family panels beat one large judge and were 7x cheaper (PoLL, arXiv:2404.18796), but plain averaging of five judges did not beat the best single judge in a days-old preprint (arXiv:2610.21179). A small human-labeled set lets a measurement-error correction control Type-I error (arXiv:2601.20913, ICLR 2026); with 5% annotator overlap, deployment decisions are wrong 25% of the time (arXiv:2609.31857).
-    - Marks: mixed peer-reviewed and preprint; calibration papers all 2026 and nearly uncited
+    Yes/no checklists raised inter-evaluator agreement by 0.45 (CheckEval, arXiv:2403.18771, EMNLP 2025); a 13B rubric-conditioned judge reached Pearson 0.897 with humans (Prometheus, arXiv:2310.08491, ICLR 2024); grading changes the criteria users hold ("criteria drift", arXiv:2404.12272). Diverse-family panels beat one large judge and were 7x cheaper (PoLL, arXiv:2404.18796), but plain averaging of five judges did not beat the best single judge in a days-old preprint (arXiv:2610.21179). A small human-labeled set lets a measurement-error correction control Type-I error (arXiv:2601.20913, ICLR 2026); with 5% annotator overlap, deployment decisions are wrong 25% of the time (arXiv:2609.31857). On rubric-item verification for agentic coding and deep research (RuVerBench, 2,458 human-labelled instances, arXiv:2606.29920, EMNLP 2026 accepted per its abstract page), top models still show "substantial noise", weaker models are more prompt-sensitive, majority voting gives diminishing returns, and batching several items per call trades accuracy for cost (G2; C47).
+    - Marks: mixed peer-reviewed and preprint; calibration papers all 2026 and nearly uncited; RuVerBench abstract only, 0 citations; 2 axes agree on rubrics
     - Grade: medium for rubrics, low for panels' contested part and for calibration
 
 20. **A judge without an external signal is a weak feedback path; tool-grounded critics help** (confidence: high; axes A2, A5; C19)
     Without external feedback LLMs "struggle to self-correct" reasoning (arXiv:2310.01798, ICLR 2024, 1,341 cites); self-critique degrades GPT-4 on planning while a sound external verifier improves it (arXiv:2402.08115); CRITIC stresses tools as external feedback (arXiv:2305.11738). Agent-as-a-Judge with tools matches a human-evaluation baseline on DevAI (arXiv:2410.10934, ICML 2025, confidence medium). A vision-model judge agrees with experts at Cohen's kappa 0.70 on coarse animation criteria and 0.10 on fine-grained part-level ones, and one paper recommends feeding it measured evidence such as optical flow (arXiv:2606.04773, abstract; A5).
-    - Marks: 4 peer-reviewed for the external-signal claim; VLM figure from one preprint abstract, direction consistent with several unfetched abstracts
+    - Marks: 4 peer-reviewed for the external-signal claim; VLM figure from one preprint abstract, direction consistent with several unfetched abstracts; G2 agrees from the rule-generation side, where every system reporting results anchors on an executed test (finding 106)
     - Grade: high for external signal, medium for the VLM figure
 
 21. **Judge-score drift and temporal filtering of judge scores have no direct study** (confidence: low; single axis A2)
     GPT-4 accuracy on one task dropped 84% to 51% between March and June 2023 versions (arXiv:2307.09009), but that measures generation, not judging. One arXiv search found no Kalman, EMA, low-pass or hysteresis filtering of judge-score series. No study tests a skill or a set of natural-language rules as the judge, which is the non-deterministic sensor the spec names; rubric and checklist papers are the nearest.
     - Marks: bounded negative from one search per topic
     - Grade: medium for "model behavior drifts", low for "judge scores drift"
+    - Later evidence: G2 searched these topics directly. It agrees no study tests a skill or rule set as the judge (finding 92; C45), but found judge-version drift studied in essay scoring and anchor-set drift monitoring (finding 100; C43), and noise-band, EWMA and sequential-test gates on judge scores (finding 101; C44). Both disagreements are listed under Divergent.
+
+92. **No benchmark scores an LLM against an arbitrary written style guide with ground-truth labels, and no study tests a skill plus natural-language rules as the judge** (confidence: medium; axes G2, A2; C45)
+    Searches found only pieces: PEP-8 detection, Checkstyle-style rules, MISRA C, architectural decision records, project-specific review; a 2026 search summary concluded no public multi-language benchmark of this shape exists. The nearest design to borrow is CompliBench, which plants known violations for exact labels, but it targets dialogue, not code.
+    - Evidence: arXiv:2604.12312 (CompliBench); arXiv:2602.07609; arXiv:2510.23068; search summaries 2026-10
+    - Marks: preprints; not retracted; absence from several searches, not an exhaustive review; 0 to few citations; 3 searches agree
+    - Grade: low (negative finding)
+
+93. **Rule-compliance judging splits by rule type: explicit, locally visible rules do well; implicit, cross-file or organizational rules do not** (confidence: medium; single axis G2)
+    Over 980 architectural decision records in 109 repositories, four LLMs agreed substantially and were accurate on decisions explicit in code, less so on infrastructure, implicit-intent and multi-module decisions (arXiv:2602.07609). A Python study found LLMs better on documentation and type-hint violations than on stylistic consistency (Koya University PEP-8 study, search summary). LASIK (KAIST, MISRA C, ASE 2026 per listing) decomposes functions into suspicious sites, checks each against a rule, found 1.3 to 2.7 times more true violations than static analyzers on 10 embedded projects, with a 26.7% false-alarm ratio (search summary only; confidence low).
+    - Marks: preprints plus one unverified journal listing and one conference paper not fetched; 0 citations (2602.07609); 3 sources agree on direction
+    - Grade: medium for the split, low for LASIK
+
+94. **An industrial two-agent pattern turns requirements into rules, then audits code against them; the rule-mining step is itself non-deterministic at temperature 0** (confidence: medium for the mechanism, low for results; single axis G2)
+    At NIO (Claude Opus 4.6 for both agents), ruleMiner extracted verifiable rules and logged 75 issues out of 222 items (ambiguous, contradictory, unverifiable); codeAuditor broke each rule into concrete checks (limits, thresholds, uniqueness, triggers) and returned 8 Fail or Unknown findings, none judged false positive in the inspected set. Recall was not evaluated; the authors call results preliminary. ruleMiner produced different rule sets across runs at minimum temperature; the authors merged up to three runs rather than measuring the difference. Both stages stay LLM-based.
+    - Evidence: arXiv:2605.17926 (2026-05-18)
+    - Marks: industrial experience report, preprint; not retracted; 0 citations; 1 source
+    - Grade: low
+
+95. **Uber uReview splits generating from filtering: a grader model with per-category thresholds, and a five-run reproduction check for "addressed"** (confidence: high for the design, low for quality numbers; single axis G2)
+    A second prompt grades each comment with a confidence score; cutoffs are set per assistant, language and comment category from developer feedback; a similarity filter dedups; a classifier suppresses categories of historically low value. Best pairing by F1: Claude-4-Sonnet generating, o4-mini-high grading. A comment counts as addressed only if none of 5 re-runs on the final commit reproduces it; 5 is the smallest count that "virtually eliminates missed detections". Reported: about 75% of rated comments useful, over 65% addressed (51% for human comments), 90% or more of about 65,000 weekly diffs covered. A "Best Practices" assistant reads a shared registry of Uber style rules into the prompt, never compiled into checks.
+    - Evidence: https://www.uber.com/us/en/blog/ureview/ (2025-08-12)
+    - Marks: vendor engineering blog with ownership interest; no precision published; 1 primary source plus secondary summaries
+    - Grade: medium for the design, low for the quality claims
+
+96. **G-Research's coding-standards reviewer: separate recall and precision passes, severity from the RFC 2119 keyword, output validated against a rules index** (confidence: medium; single axis G2)
+    A single pass gave 2 to 3 false positives in 8 findings; a second call re-checks each finding. Model adoption gates: MUST and MUST NOT rules at 100% recall, SHOULD at 75%, no false positives on the integration set, overall precision above 85%. Output is forced into a Pydantic schema; a finding citing an unknown rule, title or level is rejected; severity is computed from the keyword, not by the model. No test-set size, repeated-run averaging or calibration method is given.
+    - Evidence: https://www.gresearch.com/news/building-a-code-review-tool-the-llm-patterns-that-actually-work/ (2026-05-13)
+    - Marks: company engineering blog, owner checked; 1 source
+    - Grade: medium for the mechanism, low for effectiveness
+
+97. **Whole-PR LLM review reaches F1 about 19% at best, and merging repeated reviews from one model raises it** (confidence: medium; single axis G2)
+    SWR-Bench, 1,000 manually verified PRs across 12 projects: best PR-Review with Gemini-2.5-Pro, precision 16.65%, recall 23.18%, F1 19.38%; four other tool families had precision below 10%. Only 36 found issues overlapped across models and 27 across five runs of one model. Merging 10 reviews of the same PR from Gemini-2.5-Flash raised F1 from 15.25% to 21.91% and recall by 118.83%, the precision and recall trade steered by intersecting or unioning runs. The LLM grader of review hits agreed with humans 89.2 to 94.9%. These are real-bug review tasks, not rule-set compliance.
+    - Evidence: arXiv:2509.01494 (2025-09-01)
+    - Marks: preprint, no venue listed; 0 citations; 1 source
+    - Grade: medium
+
+98. **The same code review at temperature 0 yields different findings; repeated sampling cuts variance with diminishing returns and leaves bias in place** (confidence: medium; axes G2, A2; C46)
+    Four LLMs, 70 Java commits, 5 repeats at temperature 0 (21,000 responses): responses varied, no consistency score given (arXiv:2502.20747). Rating Roulette (EMNLP 2025 Findings) finds "low intra-rater reliability", "almost arbitrary in worst case"; a search summary gives Krippendorff alpha 0.265 to 0.563 over 3 runs and temperature 0 lowering human agreement for two models (arXiv:2510.27106). About 11 trials match the 50-trial verdict at 95% (arXiv:2606.13685); averaging k=8 scores raised RewardBench 2 accuracy from 71.7% to 81.5% at 5x cost, about 70% of the gain by k=3 (arXiv:2604.13717, vendor-affiliated). A search summary states bias terms do not shrink with more calls (arXiv:2602.21368, not fetched).
+    - Marks: preprints and one Findings paper, 0 to 11 citations; not retracted; 3 sources agree on direction; most figures on preference tasks, not rule compliance; Rating Roulette figures via summary
+    - Grade: high for the existence of run-to-run disagreement, medium for voting, low for the alpha figures
+
+99. **Consistency is not validity: a judge can repeat its own score 97% of the time and correlate 0.28 with humans** (confidence: medium; single axis G2)
+    Local judges: LLaMA-3-8B Pearson 0.275 with humans (Qwen2.5-7B 0.340) while repeating its scores 97.3% and 92.3% of the time (arXiv:2609.13824). An essay-scoring audit found replication was not the bottleneck at temperature 0, phi 0.80 or more with two or fewer repeats (arXiv:2608.29517).
+    - Marks: preprints; 0 citations; 2 sources agree; figures from search summaries
+    - Grade: low
+
+100. **Judge-version changes shift scores loudly, and judge drift can be separated from system drift with a frozen anchor set** (confidence: medium; single axis G2; C43)
+    A pre-registered audit of 12 essay judges from 4 providers found every version comparison changed severity beyond chance, up to 133 points on a 0 to 1000 scale, and rejected "silent drift" because agreement with humans moved in four of five comparisons; one judge was retired mid-study (arXiv:2608.29517, under review). "Who Drifted" re-scores a fixed human-labelled anchor set at intervals, tracks the judge-versus-human gap with a betting e-process, and attributes drift to none, system or judge: a silent version bump flagged as judge drift in 60 of 60 runs, a rolling z-test false-alarmed on 75% of drift-free streams, cost about 0.64 of judging every item (arXiv:2606.15474, abstract only). Practitioner posts converge on pinning a dated judge snapshot, storing judge ID, prompt hash and rubric version with every score, keeping a frozen labelled regression set, and A/B testing a candidate judge before switching (tianpan.co, qaskills.sh, via search summary). No study covers judge drift for code review or rule checking.
+    - Marks: single-author preprints, 0 citations, non-code domains; practitioner posts, tier-3 blogs, advice not measurement
+    - Grade: low to medium for the two studies, low for the practices
+
+101. **Noise-band, control-chart and sequential-test gates exist for noisy judge scores; none is called hysteresis and none is tested on a rule-compliance sensor** (confidence: low; single axis G2; C44)
+    llm-eval-gate fails CI only when a change is both large and outside a noise band $\sigma \sqrt{se_{base}^2 + se_{cand}^2}$; drift-caliper applies EWMA with a target average run length to judge scores; AgentAssay adapts Wald's SPRT with a PASS / FAIL / INCONCLUSIVE verdict and reports 78% fewer trials (arXiv:2603.02601). A coarse score grid (0, 0.25, ..., 1) is suggested to stop sub-grid noise moving aggregates. Reading the INCONCLUSIVE zone and the noise band as a deadband is G2's inference; the sources do not use that framing.
+    - Evidence: https://github.com/CJstate/llm-eval-gate; https://github.com/binary-glide/drift-caliper; arXiv:2603.02601 (all via search summary)
+    - Marks: code repos, owner not checked, no stars retrieved; preprint, citations not retrieved; 3 sources, different mechanisms
+    - Grade: low
+
+102. **Anchoring a judge to a deterministic count is stated as advice, never measured** (confidence: low; single axis G2)
+    Uber's advice: push what you can into linters, compiler and tests, and let the agent handle what is left against encoded standards; uReview frames linters for syntactic patterns and the LLM for semantic ones. No source measures a hybrid sensor where a deterministic count gates or recalibrates a judge's reading. Checkstyle+ and "Still Manual?" combine an LLM with a linter at configuration time only.
+    - Evidence: https://ai.engineer/talks/EL123UNokkI-building-ureview-ubers-multi-agent-code-review (summary); uReview post
+    - Marks: vendor talk and blog; 2 sources agree on stance; no measurement
+    - Grade: low
+
+### Sensors: compiling rules into deterministic checks
+
+103. **Uber's documented LLM-writes-rules work is the Java-to-Kotlin pipeline; no Uber artifact turns natural-language lint rules into ast-grep or semgrep** (confidence: medium; axes G2, A6; C48)
+    An LLM drafts AST rules for Uber's in-house Rectify tool; each rule runs through the migration pipeline and CI (tests, builds, lint), failures feed back to the LLM, passing rules go to platform engineers for review, and approved rules become permanent deterministic transformations. Seeds come from a dataset of what the tooling missed (tool output diffed against developer-landed migrations), not from natural-language rules. Stated reason: hallucinated code could cause production outages. Timeline projection: about 4 years against about 3 for hand-written rules in CI and about 8 as baseline. No accuracy, acceptance or rule counts. Agrees with finding 80.
+    - Evidence: https://www.zenml.io/llmops-database/llm-driven-developer-experience-and-code-migrations-at-scale (secondary summary of a talk; video not watched)
+    - Marks: grey literature, secondary; 2 sources
+    - Grade: low
+
+104. **ast-grep's author documents a five-step loop for LLM rule writing, with named failure modes and no accuracy number** (confidence: high for the recipe; single axis G2)
+    Little training data on ast-grep syntax causes hallucination: O3 invented CodeQL- or jscodeshift-like syntax, Gemini borrowed Semgrep syntax, Claude 4 wrote valid syntax but missed subtle details; errors compound across composed atomic rules. What worked: understand the request, write a sample snippet, write a rule matching it, test the rule against the snippet, search the codebase. No success rate is given.
+    - Evidence: https://ast-grep.github.io/blog/ast-grep-agent.html (June 2025)
+    - Marks: tool maintainer's blog, owner checked; 1 source
+    - Grade: medium for the recipe, none for accuracy
+
+105. **Accuracy of LLM-written checkers depends on what counts as success, from valid-rule rate to confirmed real bugs** (confidence: medium; single axis G2)
+    - AutoChecker: PMD rules from a description plus a test suite, one failing case at a time; 20 random PMD rules, average test pass rate 82.28%, ahead of 5 baselines (arXiv:2411.06796; ICSE 2026 per one summary, unconfirmed; 1 citation).
+    - KNighter: Clang Static Analyzer checkers synthesized from patches, validated against the patch and refined against false positives; 92 new Linux kernel bugs, 77 confirmed, 57 fixed, 30 CVEs (arXiv:2503.09002, SOSP 2025, 11 citations).
+    - QLCoder: CodeQL queries through execution feedback, 53.4% success with Claude Code against 10% for Claude Code alone (arXiv:2511.08462, ICLR 2026, search summary only).
+    - SemOpt: Semgrep rules per cluster of optimization commits; rule-generation success 92.28% (C/C++) and 99.86% (Python) measures a valid rule, not a correct one; raw scanning precision 1.56%, recall 82.78% (arXiv:2510.16384, search summary, 2 citations).
+    - Marks: peer-reviewed and preprints; not retracted; metrics differ, so the four do not converge on one number
+    - Grade: medium for KNighter and AutoChecker, low for QLCoder and SemOpt
+
+106. **Every rule-generation system that reports results runs each candidate and iterates; one-shot generation works poorly** (confidence: medium; single axis G2)
+    ast-grep tests against a snippet, AutoChecker against a failing test case, KNighter against the patch, QLCoder through execution feedback (100% compile with an agent framework), Uber's Rectify rules through CI, Autogrep against vulnerable and fixed code. The test case or suite is the deterministic anchor in each. The ast-grep post and the QLCoder summary report unaided frontier agents far lower.
+    - Evidence: findings 103 to 105; Autogrep https://lambdasec.github.io/AutoGrep-Automated-Generation-and-Filtering-of-Semgrep-Rules-from-Vulnerability-Patches/ (search summary)
+    - Marks: mixed peer-reviewed, preprints and blogs; 6 sources agree on the pattern
+    - Grade: medium
+
+107. **Natural-language coding standards can be mapped to linter configuration: LintCFG reports above 90% on a DSL step and about 70% on detailed configuration** (confidence: medium; single axis G2)
+    Pipeline: tool-agnostic DSL, standard to DSL rules, DSL to linter option names and values, consistency check, per-linter output (Checkstyle for Java, ESLint for JavaScript). DSL precision and recall above 90%; fine-grained configuration accuracy, precision, recall and F1 near 70%. It sets options of existing rules and writes no new rule logic.
+    - Evidence: arXiv:2602.07783 (FSE 2026, DOI 10.1145/3797064, abstract)
+    - Marks: peer-reviewed; 1 citation; 1 source
+    - Grade: medium
+
+108. **No source reports accuracy for LLM-written semgrep or ast-grep rules from natural-language coding conventions** (confidence: medium; single axis G2)
+    Searches found LintCFG (configuration), AutoChecker (PMD) and security-focused generators, not this case; the ast-grep post is qualitative.
+    - Marks: absence from 4 searches; not exhaustive
+    - Grade: low (negative finding)
 
 ### Step 0: End state
 
@@ -360,11 +517,11 @@ Cells: Y or N with the axis's own confidence (h, m, l); `-` means the axis did n
     - Marks: grey literature, vendor-adjacent company blog; 1 source; consistent with ast-grep's `message` and `note` fields
     - Grade: low-medium
 
-40. **A Compass subagent actuator meets `compass guard`, and a user skill in `.claude/skills/` may not survive update** (confidence: medium; axes A9, A7)
-    The guard denies, for every subagent, delete verbs, `git clean`, `git reset --hard`, `git checkout --`, force-push and a Write that empties a file; loops whose work is removing legacy code would meet it. HumanLayer places the actuator skill in `.claude/skills/<name>/`; Compass's self-update copies agents, rules and skills, and `_copy_tree_best_effort` empties the target before copying. Whether non-shipped skills survive, and whether the guard covers deletes outside `.compass/`, is unverified.
+40. **A Compass subagent actuator meets `compass guard`; where its skill lives decides whether it survives update** (confidence: high; axes A9, A7, G3; C41)
+    The guard denies, for every subagent, delete verbs, `git clean`, `git reset --hard`, `git checkout --`, force-push and a Write that empties a file; loops whose work is removing legacy code would meet it. G3 ran the guard and confirmed its scope is project-wide, not limited to `.compass/` (finding 119). HumanLayer places the actuator skill in `.claude/skills/<name>/`. A9 and A7 read that `_copy_tree_best_effort` empties the target before copying and left survival of non-shipped skills unverified; G3 ran `_apply` and found that only `.claude/cli/` is emptied, while user skill dirs survive (findings 113, 114). The disagreement is listed under Partial.
     - Evidence: `plugin/cli/commands/guard.py:6, 27-29, 181-225`; `plugin/cli/commands/self_update.py:143-170`
-    - Marks: code read; partly unverified
-    - Grade: medium
+    - Marks: code read by A9 and A7; code read plus run experiment by G3
+    - Grade: high
 
 ### Step 5: Loop and schedule
 
@@ -485,6 +642,32 @@ Cells: Y or N with the axis's own confidence (h, m, l); `-` means the axis did n
     - Marks: practitioner blog and talk; opinion, not measured
     - Grade: medium
 
+109. **Claude Code cloud routines cap run counts per hour, never dollars per day** (confidence: high; single axis G1)
+    Scheduled runs: 100 per hour per account (waits at the limit); run-now, API and one-off re-arm: 30 per hour per routine, 100 per account (fails at the limit); "None of these hourly limits has overage". Runs draw down subscription usage like interactive sessions; past the limit, orgs with usage credits continue metered, others are rejected until the window resets.
+    - Evidence: https://code.claude.com/docs/en/routines (Usage and limits)
+    - Marks: vendor docs, research preview; 1 page
+    - Grade: high
+
+110. **Anthropic spend limits are windowed or monthly: seat allowances on rolling five-hour and weekly windows, monthly API org, workspace and Claude Code per-user caps** (confidence: high; single axis G1)
+    claude.ai plans: per-seat allowance on five-hour and weekly windows, then optional usage-credit limits per organization, group or member; `/usage` shows a Loops row with per-task token totals. API: monthly tier caps (Start \$500, Build \$1,000, Scale \$200,000), an optional lower org limit (HTTP 400), the tier cap returning 429 `enforced_spend_limit_reached`; workspace limits are monthly; the Claude Code workspace is the only one with per-user monthly limits. No daily period is offered.
+    - Evidence: https://code.claude.com/docs/en/costs; https://platform.claude.com/docs/en/api/rate-limits; https://platform.claude.com/docs/en/manage-claude/workspaces
+    - Marks: vendor docs; 3 pages agree
+    - Grade: high
+
+111. **Other agent products bound spend monthly, per session or per cycle; only Jules uses a rolling daily unit, and it counts tasks** (confidence: medium; single axis G1)
+    - OpenAI: monthly hard limits per organization and project, 429 `organization_spend_limit_exceeded` or `project_spend_limit_exceeded`, enforcement "not instantaneous"; page fetch trimmed, Help Center reported to still describe soft limits (grade medium-high).
+    - Devin: ACU limits per session (`max_acu_limit`, behavior at the cap undocumented), per user per month, per organization per cycle; a session is blocked if any applicable limit is reached (grade high for read pages).
+    - Cursor cloud agents: API pricing, spend limit requested at first use, monthly, enforcement not instant; per-member limits Enterprise-only; sources conflict on whether a team limit blocks every member (grade medium).
+    - GitHub Copilot cloud agent (legacy premium-request billing): one premium request per session; budgets alert at 75, 90 and 100% and are never described as blocking; the June 2026 AI Credits model rests on third-party summaries (grade high legacy, low credits).
+    - Jules: 15 / 100 / 300 tasks per rolling 24 hours and 3 / 15 / 60 concurrent, per user, not pooled (grade high).
+    - Evidence: developers.openai.com spend-limits; docs.devin.ai usage-policies and v1 sessions; cursor.com/docs/cloud-agent; docs.github.com Copilot premium requests; jules.google/docs/usage-limits
+    - Marks: vendor docs, some via search summaries; contradictions listed below
+
+112. **No product read offers a per-day dollar cap or a per-loop or per-repo budget; a loop budget is summed outside the product from per-run records** (confidence: medium; single axis G1)
+    Per-run bounds are a session, task or invocation: `--max-budget-usd`, `--max-turns`, Devin `max_acu_limit`, one Copilot premium request per session. Routines scope by repository and branch permission, not spend. For Claude Code the per-run records are `total_cost_usd` in each result (finding 10) and the transcript's `cost-state` records (finding 90).
+    - Marks: synthesis over findings 87 to 89, 109 to 111; bounded absence across 7 vendors' docs, not every feature
+    - Grade: medium
+
 ### FSMs
 
 60. **No source formalizes "every control loop is also an FSM"; the theory supports FSM models of controllers, with a documented counter-stance** (confidence: medium; single axis A11; C30)
@@ -575,10 +758,84 @@ Cells: Y or N with the axis's own confidence (h, m, l); `-` means the axis did n
     - Grade: high
 
 72. **Compass already holds the primitives HumanLayer's later steps need, except a scheduler and a steering file** (confidence: high; axes A9, A7; C26)
-    Headless actuator: the capture worker runs `claude -p ... --output-format json --allowedTools ...` with stdin closed, an env marker, a per-run log and a `no-headless` failure class; its model resolves through the model policy table. Flow control: one worker per vault by lock, bounded retries, the fix-loop cap, file exclusivity for parallel builders, autopilot's L+ exit. Config formats a loop definition could reuse: `meta/capture.json`, `meta/models.yaml`, `sources.yaml`, overlays. [[specs/pipeline/SPEC-009-configurable-pipeline-workflows]] is the nearest home for flow-as-data but is a deferred draft modeling one-pass phases, not repeating cycles; whether a loop is a workflow, a phase or a new artifact type is undecided.
+    Headless actuator: the capture worker runs `claude -p ... --output-format json --allowedTools ...` with stdin closed, an env marker, a per-run log and a `no-headless` failure class; its model resolves through the model policy table. Flow control: one worker per vault by lock, bounded retries, the fix-loop cap, file exclusivity for parallel builders, autopilot's L+ exit. Config formats a loop definition could reuse: `meta/capture.json`, `meta/models.yaml`, `sources.yaml`, overlays. [[specs/pipeline/SPEC-009-configurable-pipeline-workflows]] is the nearest home for flow-as-data but is a deferred draft modeling one-pass phases, not repeating cycles; whether a loop is a workflow, a phase or a new artifact type is undecided. Where a loop's files can live today is in findings 113 to 123.
     - Evidence: `plugin/cli/commands/capture_worker.py:22-35, 301-321`; `plugin/cli/modelslib.py:1-12`; `.compass/specs/pipeline/SPEC-009-configurable-pipeline-workflows.md:11, 43, 74-88`; `plugin/cli/commands/coverage.py:66-82`
     - Marks: code and first-party spec; 2 axes
     - Grade: high
+
+### Where a loop lives in a Compass project
+
+All findings in this section are G3's, from code read plus `self_update._apply` and `guard.decide` run in a scratch project at `eadad7f` (single axis unless noted).
+
+113. **Update never deletes a user-authored agent, rule, command or skill dir; it overwrites same-named shipped files** (confidence: high; G3)
+    `_apply` copies shipped agents, rules and commands file by file with no deletion pass, and for each shipped skill dir copies only its top-level `*.md`; the only removal is the named `RETIRED_SKILLS` list. A user `.claude/skills/my-loop/` with `SKILL.md`, a script, a `golden/` folder and refs, a user agent, rule, command and hook file all survived. A user-edited `builder.md` was replaced; user extras inside the shipped `research` skill dir survived; a user skill that later collides with a newly shipped name loses its same-named `*.md`. dsh materialization removes only `compass-*` dirs no longer shipped.
+    - Evidence: `plugin/cli/commands/self_update.py:43-46, 234-256`; `plugin/skills/update/SKILL.md:41-54`; `plugin/cli/tests/test_self_update.py:233-244`; `plugin/cli/hostlib.py:146-180`
+    - Marks: code read plus run experiment; 3 sources agree
+    - Grade: high
+
+114. **`.claude/cli/` is emptied and replaced on every update, so a sensor script placed there is deleted** (confidence: high; G3; C41)
+    `_copy_tree_best_effort(src/cli, .claude/cli)` unlinks or removes every destination entry before copying; `.claude/cli/my_sensor.py` was missing after `_apply`. The manual skill runs `rm -rf .claude/cli`. This is the only emptied target.
+    - Evidence: `self_update.py:145-170, 257`; `plugin/skills/update/SKILL.md:56-58`
+    - Marks: code read plus run experiment; 3 sources agree
+    - Grade: high
+
+115. **Hook registration replaces only groups that run a shipped command or Compass's CLI; a user's own hook survives even when it mentions "compass"** (confidence: high; G3 plus code read at consolidation)
+    `merge_settings` treats a group as Compass-owned when any of its hooks runs a command the manifest ships or matches `.claude/cli/compass` or `$CLAUDE_PLUGIN_ROOT/cli/compass`; every other group and top-level key is kept. A test pins that `python3 tools/compass_report.py`, `echo compass` and paths containing `compass` survive while stale Compass CLI commands are replaced. A group mixing a Compass CLI command with a user command is replaced whole. The manual `/compass:update` skill still drops any group whose command contains the substring `compass` (see Contradictions).
+    - Evidence: `self_update.py:174-211, 237`; `test_self_update.py:363-395`; `plugin/skills/update/SKILL.md:125-129, 158`
+    - Marks: code read and test read; G3's run showed the earlier substring rule, since replaced in `self_update.py`
+    - Grade: high
+
+116. **`compass overlay` appends `*.md` addenda to existing targets and creates nothing** (confidence: high; G3)
+    `.compass/meta/local/{agents,rules}/<name>.md` and `skills/<name>.md` append to the matching `.claude/` file after the refresh; a missing target is reported ORPHAN and skipped. A user-authored skill can be a target. Scripts, subfolders and golden-pattern folders cannot be overlaid. ADR-020 D-06 scopes whole new local files out because local-only skills already survive.
+    - Evidence: `plugin/cli/commands/overlay.py:33-84`; `self_update.py:278-285`; [[ADR-020-local-overlays-appended-after-refresh]] D-01, D-05, D-06
+    - Marks: code read plus run experiment
+    - Grade: high
+
+117. **`.compass/meta/` is untouched by update except `plugin.yaml` and invisible to the vault scanner; a new root folder is unclassified unless its index declares `type: unit`** (confidence: high; G3)
+    `.compass/meta/loops/migrate.md` survived update; `NON_TYPE_DIRS` skips `meta`, `tmp`, `archive`, `.annotations`, so files there are neither artifacts nor validated. A `.compass/loops/` folder without a marker returned `unclassified` and draws `unclassified_root_folder` from validate (warning text read, not executed). No `loop` artifact type exists.
+    - Evidence: `self_update.py:66-89, 418-427`; `plugin/cli/vaultlib.py:14-82`; `plugin/cli/commands/validate.py:13, 215`
+    - Marks: code read plus run experiment; 3 sources agree
+    - Grade: high
+
+118. **`.claude/` is not durable in every project; `.compass/` is version-controlled wherever the project tracks it** (confidence: medium; G3)
+    ADR-020 D-01 records `.claude/` as excluded in some projects; this repo gitignores `.claude/` and `.compass/tmp/`; setup and doctor have no gitignore handling for user projects. What a given user project tracks was not inspected.
+    - Evidence: ADR-020 D-01; `.gitignore`
+    - Marks: first-party decision record plus file read; 2 sources
+    - Grade: medium
+
+119. **`compass guard` judges only subagent calls, and its scope is the whole project** (confidence: high; G3)
+    The hook exits unless the event carries `agent_id` or `agent_type`. For subagents against non-vault `src/old.ts`: denied `rm`, `git rm`, `git checkout --`, `git restore`, `git reset --hard`, `git push --force`, `git branch -D`, `git stash drop`, inline `os.remove`, an empty Write; allowed `sed -i`, `mv`, `ast-grep run -U`, `git commit` and plain push, `gh pr create`, `> file` truncation, a Write shrinking 60 lines to 1 character, an Edit blanking 30 lines. Shrink and blanking checks apply only inside the vault, and `meta/` and `archive/` are exempt from them, while delete verbs against `meta/` are denied.
+    - Evidence: `plugin/cli/commands/guard.py:27-30, 45-50, 64-90, 101-107, 184-209, 298-335, 376-377`; `plugin/hooks/hooks.json:12`
+    - Marks: code read plus run experiment; 3 sources agree
+    - Grade: high
+
+120. **A top-level `claude -p` loop run is a main-agent session to the guard, and the guard runs only where `.claude/cli/compass` is installed** (confidence: high for code facts, medium for the CI consequence; G3)
+    A top-level process carries no `agent_id`, so the guard constrains only subagents it spawns. The hook begins `[ -f "$CLAUDE_PROJECT_DIR/.claude/cli/compass" ] || exit 0`, so a fresh CI checkout without `.claude/` has no guard. Compass's headless workers set `COMPASS_WORKER_SESSION=1`, which silences capture, context and sync hooks; a loop session without it runs those hooks where registered.
+    - Evidence: `guard.py:376-377`; `hooks.json:12`; `capture_check.py:406`, `capture_signal.py:131`, `capture_note.py:65`, `context_check.py:292`, `sync.py:1030`, `capture_worker.py:306`, `clone.py:554`
+    - Marks: code read, not run; CI behavior inferred
+    - Grade: high for code, medium for CI
+
+121. **No existing state file is loop-shaped; persistent ledgers belong outside `tmp/`** (confidence: high; G3)
+    Nearest patterns: `tmp/capture-state.json` (per-session counters, gitignored scratch), `tmp/capture-log.jsonl` (append-only, aged into `archive/logs/` after 365 days), `meta/capture.json` (durable tunables), `<COMPASS_HOME>/sessions/<project>/<run-id>/run.json` written atomically outside the project, with `meta/clone-log.jsonl` as its project trace. Sync ages only three known names under `tmp/`; a new ledger there stays unaged, and `tmp/` is scratch a subagent may delete. The Data rule moves aged records colder, never deletes.
+    - Evidence: `plugin/cli/capturelib.py:35-77, 147-172`; `clone.py:15-22, 207-221`; `sync.py:62-63, 828-902`; `guard.py:84`; `.claude/rules/compass-pipeline.md` "Data"
+    - Marks: code read; 6 modules
+    - Grade: high
+
+122. **SPEC-009 is a deferred draft whose needs bind a loop definition, with format and location left open; its only code seam is a hardcoded function** (confidence: high; G3, agreeing with finding 72)
+    [[specs/pipeline/SPEC-009-configurable-pipeline-workflows]] D-01: a workflow configures contracts between phases. Needs: zero-config default, the workflow is data the harness resolves, malformed configuration fails loud. Constraints: mechanical resolution, reuse existing config conventions, host-agnostic, cross-platform. Non-goals: ad-hoc phase invention. `workflow_binding()` in `coverage.py:66-82` returns the hardcoded spec and decision to plan binding; ADR-007 requires a config seam for SPEC-009; SPEC-014 D-01 says shipping SPEC-014 first gives SPEC-009 a substrate. The config conventions to reuse all sit under `.compass/meta/`: `capture.json`, `models.yaml`, `local/`, `plugin.yaml`. No document read decides whether a loop is a workflow, a phase or a new artifact type.
+    - Evidence: SPEC-009 lines 11, 32-39, 43, 56, 69-88; `.compass/backlog.md:27`; ADR-007 Consequences; SPEC-014 line 34; `capturelib.py:72-73`; `modelslib.py:169`
+    - Marks: first-party code, specs and ADRs; 4 sources agree
+    - Grade: high
+
+123. **Placement map: what the code shows for each loop part and location** (confidence: high except cells marked; G3)
+    | Part | `.claude/skills/<name>/` or `.claude/agents/` | `.claude/cli/` | `.compass/meta/<x>/` | `.compass/<x>/` root folder | project source tree |
+    |---|---|---|---|---|---|
+    | Actuator skill or agent | survives unless a shipped name collides (113); may be untracked (118) | deleted (114) | whether Claude Code loads a skill from here is unchecked | unclassified unless `type: unit` (117) | not checked |
+    | Sensor and controller scripts | survive inside a user skill dir (113) | deleted (114) | survive (117) | survive, unscanned unless a unit (117) | untouched by update and scanner |
+    | Loop definition, golden patterns | skill-dir files survive (113); overlay appends `*.md` only (116) | deleted (114) | survive, unscanned, exempt from shrink checks (117, 119) | scanned only as a unit or type dir (117) | untouched |
+    | Feedback file | as a skill-dir file (113) | deleted (114) | survives (117) | as a unit artifact | untouched |
+    | Run ledger | untracked where `.claude/` is ignored (118) | deleted (114) | persists, no aging for new names (121) | n/a | n/a |
+    | Hook registering a sensor | survives unless it runs a shipped command or Compass's CLI (115) | n/a | n/a | n/a | same rule (115) |
 
 ### Loops for users' tasks: Maya
 
@@ -647,9 +904,22 @@ Cells: Y or N with the axis's own confidence (h, m, l); `-` means the axis did n
     - Grade: medium
 
 82. **No source reports token or dollar cost per accepted change** (confidence: high as a bounded absence; axes A6, A4)
-    Airbnb calls cost "far more efficient" than manual without a figure; Google says costs "add up"; HumanLayer reports no merged-PR counts, error rates or cost per iteration.
+    Airbnb calls cost "far more efficient" than manual without a figure; Google says costs "add up"; HumanLayer reports no merged-PR counts, error rates or cost per iteration. G1 confirms the absence for migration PRs and finds figures for agent changes outside migrations (findings 124, 125); the disagreement is listed under Partial (C42).
     - Marks: negative finding across every migration source read
     - Grade: medium
+
+124. **Dollars per merged migration PR remain unreported; SWE-bench+ defines cost per accepted result as total cost over issues resolved** (confidence: medium; G1; C42)
+    Google's migration study reports 595 changes and 50% time saved, no dollars; library-migration papers report cost per KLOC or per run. SWE-bench+ Table 4 (548 instances): RAG+GPT-4 \$32.5 per fix, RAG+GPT-3.5 \$10.0, SWE-Agent+GPT-4 \$655.0, AutoCodeRover+GPT-4o \$12.61, on benchmark issues, not merged PRs; the paper's prose quotes different numbers for two rows.
+    - Evidence: search summaries of arXiv:2504.09691, 2504.13272, 2510.08810; arXiv:2410.06992 v2 §5 Table 4 (HTML read)
+    - Marks: negative finding across a few hundred hits; SWE-bench+ preprint 2024-10, not retracted, citations not found
+    - Grade: medium for the absence, medium-low for SWE-bench+
+
+125. **Measured cost figures for agent changes outside migrations exist, each from one source** (confidence: medium, low for merge rates; G1; C42)
+    - Feature to automated-gate merge: \$2.59 to \$33.38 across 23 model-and-harness pairings, 29 runs, one task; same model, different CLI about 2.5x; a gate-approved run passed 12 of 38 unit tests on a second task (blog.apac.insight.com, 2026-07-06; single-author blog; grade medium-low).
+    - Sonar's own repository: one agent PR about \$41 (512 round trips, 152.8M cache-read tokens); 18 comparable PRs averaged about \$65, median about \$52 (vendor blog selling a cost tool; grade medium-low).
+    - TraceLab, about 4,300 Claude Code and Codex sessions: mean \$9.70, median \$0.61, p99 \$178 per session, cache reads 59.5% of cost (arXiv:2606.30560 v2, preprint; per session, not per change; grade medium-low).
+    - Merge rate, the denominator: 43.0% to 84.3% merge probability by agent, and 83.8% eventual merge but 54.9% merged unmodified in another study (search summaries of arXiv:2607.21832 or 2605.22534; not read; grade low).
+    - Marks: blogs, a vendor post and preprints; 0 or unknown citations; costs are list-price estimates, not bills
 
 ### Prior art: react-doctor
 
@@ -685,7 +955,7 @@ All other HumanLayer findings sit under the step they inform: findings 1 to 4, 2
 
 1. **Where the LLM sits in the loop** (C31; positions held by sources, reported without conflict by A1, A4, A6, A10, A11)
    - Position A, LLM as actuator only, deterministic sensor and controller: HumanLayer ("never send an agent to do deterministic code's job"), Google (deterministic finder, "LLM planning capabilities are often not needed"), regulatory control (LLM returns a mode, code computes the command), Blueprint-First (LLM "never [decides] the workflow's path"). Findings 7, 30, 33, 61.
-   - Position B, LLM authors deterministic rules and never edits code: Uber Java-to-Kotlin, Fiberplane's agent-written ast-grep bans. Findings 39, 80.
+   - Position B, LLM authors deterministic rules and never edits code: Uber Java-to-Kotlin, Fiberplane's agent-written ast-grep bans; checker-synthesis systems (KNighter, AutoChecker, QLCoder) work only with an execution anchor. Findings 39, 80, 103 to 106.
    - Position C, LLM edits directly under brute-force retry inside a per-file state machine: Airbnb. Finding 79.
    - Position D, the agent owns its own control flow from skill files: the declarative agent of arXiv:2606.06923, which beat an imperative phase machine when retrieval was good. Finding 61.
    Google also says deterministic AST migrations "have not proven to be quite as effective" for contextual variance, against Uber's rejection of LLM code generation.
@@ -701,6 +971,16 @@ All other HumanLayer findings sit under the step they inform: findings 1 to 4, 2
    - A4: the transcript names only "telemetry" and "APM"; PostHog and sentry.io in the spec are the spec's own extension; Dex names Sentry only as a loop trigger. Read from the transcript `[719s]-[745s]`, grade high.
    - A10: "Telemetry (Sentry traces, error counts, instrumentation gaps) named as a controller input", read from a third-party summary on the ai.engineer page, grade medium.
 
+4. **Whether judge-score drift has been studied** (C43, split 1/1)
+   - A2: no direct study; the nearest is generation drift between GPT-4 versions (finding 21), one search, grade low.
+   - G2: judge-version drift is studied in essay scoring, and an anchor-set method separates judge from system drift (finding 100), abstracts and single-author preprints, grade low to medium.
+   - Both agree nothing covers code review or rule checking.
+
+5. **Whether temporal filters or noise gates exist for judge scores** (C44, split 1/1)
+   - A2: no Kalman, EMA, low-pass or hysteresis filtering found (finding 21), grade low.
+   - G2: noise-band, EWMA and SPRT gates exist as CI tools (finding 101), via search summaries, grade low.
+   - Both agree none is tested inside an agent loop or on a rule-compliance sensor.
+
 ## Partial (needs attention)
 
 1. **What the dampener's baseline commits** (C6, 2/3)
@@ -712,6 +992,16 @@ All other HumanLayer findings sit under the step they inform: findings 1 to 4, 2
    - Majority (A6, A8): Betterer and ESLint bulk suppressions are committed-baseline ratchets that fail on regression (finding 28).
    - Minority (A1): no source applies ratchet, deadband or hysteresis to LLM-agent loops.
    - Scope explains it: A1 searched the LLM-agent control literature, A6 and A8 searched CI tooling. Deadband and hysteresis stay unfound by every axis.
+
+3. **Whether self-update empties the installed skills directory** (C41, 2/3)
+   - Majority (A9, A7): `_copy_tree_best_effort` empties the target before copying; read from code, survival of non-shipped skills marked unverified (finding 40).
+   - Minority (G3): only `.claude/cli/` is emptied; skills are copied file by file and a user skill dir survived a run of `_apply` (findings 113, 114).
+   - The majority read code only; the minority ran it.
+
+4. **Whether any source reports dollar cost per accepted change** (C42, 2/3)
+   - Majority (A4, A6): none in any migration source (finding 82).
+   - Minority (G1): figures exist for agent features, PRs and benchmark fixes, one source each (findings 124, 125), while confirming none for migration PRs.
+   - Scope explains it: A4 and A6 read migration sources, G1 searched agent cost broadly.
 
 ## Evidence resting on summaries or abstracts
 
@@ -729,6 +1019,9 @@ Findings below were not read in the primary text. Where a later axis read the pr
 | A8 | Ralph `stop-hook.sh` (summarizing fetch); autoresearch (search summary); Little and Reinertsen (secondary blogs); SWE-smith and other trajectory papers (search results); Devin and Jules (third-party or snippets); Mistele talk (ai.engineer summary) | Talk verified by A4 |
 | A9 | Mistele talk (search summary); GitHub concurrency pending-run semantics (unread) | Talk verified by A4; concurrency read by A8 |
 | A10 | Mistele talk and its "never send an agent" quote (ai.engineer summary); leaf-first translation papers; CEDAR; Xia et al. figures; PostHog API and endpoints (search summaries of docs and PRs); comby (overview page only) | Talk and quote verified by A4 |
+| G1 | Cursor help page, OpenAI daily options and reset date, Copilot AI Credits, Devin v3 org limit (search summaries); library-migration cost papers and both merge-rate studies (summaries) | none |
+| G2 | Nearly every paper at abstract level through a fetch summarizer; Rating Roulette alphas, arXiv:2609.13824 correlations, SemOpt, QLCoder, LASIK, llm-eval-gate, drift-caliper, AgentAssay and practitioner drift posts via search summaries; Uber Rectify via a secondary talk summary | none |
+| G3 | none (code read, two experiments run); full `_perform` path, manual update bash and the validate warning read, not run | n/a |
 | A11 | Ramadge-Wonham (secondary summaries); hybrid automata, behavior trees, StateFlow, HEXIS, Blueprint-First, arXiv:2606.06923, 2603.19328, 2608.23670, tau-bench (abstracts); StateFlow's ReAct-rewrite control (secondary); 12-factor, Temporal, Anthropic "building effective agents" (fetch summaries) | 12-factor factors 8 to 10 read by A4 from a clone |
 
 ## Contradictions
@@ -747,29 +1040,41 @@ Findings below were not read in the primary text. Where a later axis read the pr
 - **Enforcement.** AgentSpec prevents over 90% of unsafe executions; mediation on tau-bench left safe success below 5% with poor recovery after blocks (A11).
 - **Maya.** Headless playblast works (practitioner article) vs is unavailable in standalone (maya-mcp skill); batch render needs a licence (consultancy, mayapy docs) vs does not (forum answers). GG_MayaMCP rejects `mayapy`; abrahamADSK/maya-mcp ships a mayapy path for heavy work, a design difference (A5).
 - **Feedback file location.** Step 6 wants a file tracked in version control; Claude Code routines are account-owned and not repo-tracked, while `.claude/loop.md` and HumanLayer's memory file are repo files (A9).
-- **Actuator skill location.** HumanLayer puts the actuator skill in `.claude/skills/`; Compass's self-update empties and re-copies the shipped skills directory (A9, A7; survival of non-shipped skills unverified).
+- **Actuator skill location.** HumanLayer puts the actuator skill in `.claude/skills/`; A9 and A7 read Compass's self-update as emptying the skills directory, G3's run shows a user skill dir survives and only `.claude/cli/` is emptied (Partial 3, C41).
+- **Update docs vs collisions.** `plugin/skills/update/SKILL.md:49-51` and `self_update.py:43-45` say user-authored skills are never touched, yet a user skill with a shipped name has its `*.md` overwritten (G3, finding 113).
+- **Two update paths, two hook rules.** `self_update.py` replaces only groups running a shipped command or Compass's CLI; the manual `/compass:update` skill still drops every group whose command contains `compass` (`plugin/skills/update/SKILL.md:125-129, 158`; finding 115).
+- **Judge voting vs validity.** Voting cuts variance by about 1 to 10 points (finding 98) while a judge can be 97% self-consistent and 0.28 correlated with humans (finding 99); they measure different things (G2).
+- **Temperature 0.** Rating Roulette reports temperature 0 lowering human agreement for two models; other studies say it reduces but does not remove inconsistency (G2).
+- **Graders without error rates.** uReview and G-Research filter with a second LLM (findings 95, 96) while finding 20 records judges without external signals as weak; neither post gives the grader's own error rate (G2).
+- **Uber attribution.** The research brief credited Uber with LLM-written ast-grep or semgrep rules; the sources found show Rectify AST rules for Kotlin migration only (finding 103).
+- **Vendor budget pages.** OpenAI Help Center (soft limits) vs developer docs (hard limits); Cursor's help (limit stops one user) vs a third-party guide (team limit blocks all); Jules Pro 100 tasks (vendor) vs 75 (March 2026 article) (G1).
+- **Cost figures inside sources.** The Insight post says \$3 to \$33, a search summary of it \$7 to \$70; SWE-bench+ prose vs its Table 4 (G1, findings 124, 125).
 - **Fix-loop cap scopes.** "Max 3 cycles per task", "up to 3 cycles, then escalate", and "max 3 iterations" for validator re-review: one number for three loops, enforced by no code (A7).
 - **Talk prediction vs result.** The harness-as-controller paper predicts better harnesses reduce model-choice sensitivity, yet reports cross-model variance rising under its full harness (A1).
 
 ## Gaps
 
-Gaps no axis closed. Those marked **plan-blocking** leave a decision a planner would otherwise have to research; those marked **experiment** are named by the axes as closable only by a run, which per the pipeline rules belongs in a plan as an experiment.
+What the research leaves open. No remaining gap is **plan-blocking**: each is either closable only by a run, marked **experiment** (per the pipeline rules it belongs in a plan as an experiment), or a design choice for the human or the plan, marked **decision**.
 
-- **Daily budgets (plan-blocking).** No source documents a per-day spend cap for scheduled Claude Code loops; budgets exist only per invocation, resume resets them, and no Compass loop checks cost (findings 12, 68). Whether the capture worker's json envelope carries `total_cost_usd` is unverified (finding 67).
-- **Judge as sensor, specifically a skill or natural-language rules (plan-blocking).** The spec's named non-deterministic sensor was not searched as such; judge-score drift across model versions has no direct study; temporal filtering (EMA, Kalman, hysteresis) of judge scores found none; verbalized-confidence calibration and majority vote for judges not found (finding 21).
-- **Loop definition home in Compass (plan-blocking).** No loop-definition format exists; [[specs/pipeline/SPEC-009-configurable-pipeline-workflows]] is deferred and models one-pass phases; whether a loop is a workflow, phase or new artifact is undecided (finding 72). Unverified: whether a non-shipped skill in `.claude/skills/` survives `/compass:update`, and whether `compass guard` covers deletes outside `.compass/` (finding 40).
+Closed by the gap passes: daily budgets as a research question (G1: no product offers a per-day or per-loop dollar cap, a loop sums per-run records, the per-run caps behave as documented; findings 87 to 90, 109 to 112); the judge-as-sensor search (G2: the exact sensor is untested anywhere, with neighbouring evidence on noise, drift, gates and rule compilation; findings 92 to 108); the loop's home in a Compass project (G3: survival under update, guard scope, state files, SPEC-009 constraints; findings 113 to 123); `--max-turns` runtime behavior (finding 87).
+
+- **Budget edges (experiment).** `--max-turns` at N greater than 1 and across `--resume`; a resume whose new spend alone exceeds the cap; whether the budget check ever precedes the first request. Only live runs settle these. Unread pages: Copilot AI Credits, the full OpenAI spend-limits page, Cursor's help page, Devin's per-session cap behavior. Finding 10 counts `total_cost_usd` in 44 capture-worker logs and finding 67 records that the worker reads only its `extracted:` line, so no Compass code sums cost today.
+- **Judge precision and noise for a skill plus natural-language rules (experiment).** Precision and recall of that sensor against labelled compliance data, its per-rule flip rate across repeated runs, and judge drift for code review across model versions have no source; only a plan-time experiment on a labelled set (planted violations, repeated runs) can measure them (findings 92, 98, 100). Deadband or hysteresis on a judge reading inside a loop is untested (finding 101); anchoring a judge to a deterministic count is advice only (finding 102). Several figures (Rating Roulette, SemOpt, QLCoder, LASIK, arXiv:2609.13824) need a full-text check before a plan leans on them.
+- **Accuracy of LLM-written ast-grep or semgrep rules from natural-language rules (experiment).** Unreported (finding 108); the documented recipe is test-against-a-snippet (finding 104). The Uber talk was seen only through a secondary summary.
+- **What a loop is in Compass (decision).** Whether a loop is a [[specs/pipeline/SPEC-009-configurable-pipeline-workflows]] workflow, a phase or a new artifact type is undecided in every document read; SPEC-009 is a deferred draft and its format and location are open (findings 72, 122).
+- **Loop-home residue.** Whether Claude Code loads a skill from outside `.claude/skills/`; what a user's project tracks in git (finding 118); guard and capture hooks in a fresh CI checkout, inferred from code only (finding 120, experiment); no ledger vocabulary, aging rule or doctor check exists for a new ledger name (finding 121, decision).
 - **Golden patterns tested directly in agent loops.** No controlled study; evidence is single-shot few-shot work and practitioner opinion (finding 38).
 - **"All control loops are also FSMs".** No source formalizes or tests the claim; Kubernetes documents the opposite stance (finding 60). Ramadge-Wonham definitions are second-hand.
 - **Any LLM loop tested in Maya, or any loop outside a code repository with CI** (findings 75, 76). Studio pipeline schedulers and flow control (ShotGrid/Flow, Deadline, render-farm submitters) were not searched. No evidence that a vision model judging a clip against a reference clip is reliable enough to drive a controller.
 - **Headless playblast and batch-render licensing (experiment).** Sources disagree; closing it needs a run on the user's Maya version and Autodesk's licence terms, which were not fetched (finding 74).
 - **Agent-driven fork maintenance.** Only sync tooling found; no agent-driven merge result and no patch-queue rebasing prior art (Chromium, Electron) (finding 81).
 - **Loop stability measured empirically.** No step response, settling time, oscillation or loop-caused regression measured for a coding-agent loop over a real repository; no Compass loop run to failure (finding 9).
-- **Deadband and hysteresis for agent loops.** None found; autoscaler hysteresis and the Kubernetes HPA stabilization window were named but not searched (finding 8).
-- **Cost per accepted change.** Unreported in every migration source (finding 82).
-- **Claude Code internals (experiment for the first two).** `--max-turns` runtime behavior on this machine; auto mode at its block thresholds inside a pure `-p` run; `Stop`, `SubagentStop` and `SessionEnd` hook input schemas; the TypeScript `SDKResultMessage` definition (findings 12, 13, 55).
+- **Deadband and hysteresis for agent loops.** None found in agent loops; noise-band and sequential-test gates exist for judge scores only (finding 101); autoscaler hysteresis and the Kubernetes HPA stabilization window were named but not searched (finding 8).
+- **Cost per accepted change for migrations.** Unreported (findings 82, 124); figures outside migrations rest on one source each, and the merge-rate studies that would give the denominator were not read in full (finding 125).
+- **Claude Code internals (experiment for the first).** Auto mode at its block thresholds inside a pure `-p` run; `Stop`, `SubagentStop` and `SessionEnd` hook input schemas; the TypeScript `SDKResultMessage` definition; stability of the undocumented `cost-state` record format (findings 13, 55, 90).
 - **Telemetry intake.** Sentry per-function aggregation, `is:regressed` and `is:escalating` semantics, Seer's programmatic trigger; PostHog query API shape and rate limits verified against its docs. Compass has no PostHog or Sentry intake (finding 34).
 - **HumanLayer specifics.** Which four ast-grep keys are kept and the rule text (slides not viewed); whether its own Effect dampener fails or comments; quantitative results (findings 23, 27, 82).
 - **react-doctor specifics.** The score formula and whether the server stores per-repo history (finding 83).
 - **Automated post-merge revert for agent loops.** None found (finding 57).
 - **Primary texts unread.** Hellerstein et al. 2004, Kephart and Chess 2003, Filieri et al. 2015, Lehman's laws of software evolution, Ashby's law, Little 1961, Reinertsen 2009, Wonham and Cai 2019.
-- **Citation counts.** Missing for most 2026 preprints (Semantic Scholar rate-limited; OpenAlex near zero for new preprints) and for every paper on axes A5, A6, A10.
+- **Citation counts.** Missing for most 2026 preprints (Semantic Scholar rate-limited; OpenAlex near zero for new preprints), for every paper on axes A5, A6, A10, and for G1's preprints (arXiv:2606.30560, 2410.06992, 2607.21832, 2605.22534).
