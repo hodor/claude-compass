@@ -225,7 +225,7 @@ def _append_log_row(log_path, row):
     """Append one JSON line, first closing an existing last line that lacks
     its newline so rows never run together."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    line = json.dumps(row, ensure_ascii=False) + "\n"
+    line = json.dumps(row) + "\n"
     prefix = b""
     try:
         with open(log_path, "rb") as fh:

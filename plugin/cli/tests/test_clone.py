@@ -1444,5 +1444,19 @@ class InterruptTests(CloneHarness):
         self.assertTrue(interrupted or self.read_run("int1")["finished_at"] is not None)
 
 
+class LogRowLineTests(unittest.TestCase):
+    def test_a_unicode_line_separator_in_a_field_stays_inside_one_row(self):
+        """Adversarial where: a transcript path holding U+2028, U+2029 or
+        U+0085 is written raw, so a reader splitting the log with
+        `splitlines()` meets fragments that are not JSON."""
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        log = tmp / "meta" / "clone-log.jsonl"
+        for sep in (" ", " ", "\u0085"):
+            clone._append_log_row(log, {"event": "clone", "transcript": f"a{sep}b"})
+        rows = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
+        self.assertEqual([row["transcript"] for row in rows], ["a b", "a b", "a\u0085b"])
+
+
 if __name__ == "__main__":
     unittest.main()
