@@ -294,3 +294,6 @@ Plan: [[PLAN-018-research-covers-the-whole-spec]] (approved 2026-09-13). Pause a
 - [x] TASK-147: `loops` becomes a vault artifact type
 - [x] TASK-148: `looplib`: definition, state machine, state file, ledger and lock
 - [x] TASK-149: `sensorlib`: result event, domain sensor, budget sums, change judgment
+
+### PLAN-021 Wave 1: control loops
+- [x] TASK-152: The fix loop tells a helpful cycle from a harmful one
