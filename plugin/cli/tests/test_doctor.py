@@ -1352,3 +1352,155 @@ class SessionRetentionRowTests(unittest.TestCase):
                 self.assertNotIn("\n", row["detail"])
                 self.assertTrue(row["detail"])
                 self.assertEqual(code, 0)
+
+
+class SessionRetentionPostBuildTests(unittest.TestCase):
+    def setUp(self):
+        self.project = make_project(self)
+        with_project_env(self, self.project)
+        build_complete_install(self.project)
+
+    def row(self):
+        code, out = run_doctor(["--json"])
+        return code, retention_row(json.loads(out))
+
+    def test_bom_and_crlf_user_settings_are_read(self):
+        """Adversarial where: a user settings file saved with a UTF-8 BOM and
+        CRLF line endings that sets a long retention must read as OK. A
+        reader decoding with plain `utf-8` fails on the BOM and reports a
+        parse WARN, telling the user to repair a file that is fine."""
+        path = set_user_retention(None)
+        path.write_bytes(b'\xef\xbb\xbf{\r\n  "cleanupPeriodDays": 3650\r\n}\r\n')
+        code, row = self.row()
+        self.assertEqual(row["status"], "OK", row["detail"])
+        self.assertEqual(code, 0)
+
+    def test_non_integer_values_count_as_unset(self):
+        """Adversarial where: a string, bool, float or null `cleanupPeriodDays`
+        is not a day count. `true` read as the int 1, or the string "3650"
+        read as long enough, would turn a misconfigured setting into an OK
+        or a '1 day' message; each must be the unset WARN."""
+        rows = [
+            ("string", '{"cleanupPeriodDays": "3650"}'),
+            ("bool true", '{"cleanupPeriodDays": true}'),
+            ("float", '{"cleanupPeriodDays": 3650.5}'),
+            ("null", '{"cleanupPeriodDays": null}'),
+        ]
+        for name, content in rows:
+            with self.subTest(name=name):
+                set_user_retention(content)
+                code, row = self.row()
+                self.assertEqual(row["status"], "WARN")
+                self.assertIn("unset", row["detail"])
+                self.assertEqual(code, 0)
+
+    def test_zero_and_negative_values_warn(self):
+        """Adversarial where: 0 and negative day counts are integers at or
+        below 30 and must WARN with the value named. A truthiness check
+        (`if days`) would treat 0 as unset or skip the layer."""
+        for value in (0, -1):
+            with self.subTest(value=value):
+                set_user_retention({RETENTION_KEY: value})
+                _code, row = self.row()
+                self.assertEqual(row["status"], "WARN")
+                self.assertIn(str(value), row["detail"])
+
+    def test_broken_project_or_local_settings_never_fail_the_row(self):
+        """Adversarial where: a malformed project or local settings file
+        beside a valid user file must degrade the row to a single-line
+        non-FAIL result, never crash doctor into its generic internal-error
+        row. Asymmetric: only one of three layers is broken."""
+        set_user_retention({RETENTION_KEY: 3650})
+        local = self.project / ".claude" / "settings.local.json"
+        for name, content in (("not json", "{oops"), ("empty", "")):
+            with self.subTest(name=name):
+                local.write_text(content, encoding="utf-8")
+                code, out = run_doctor(["--json"])
+                payload = json.loads(out)
+                self.assertEqual(len(payload["checks"]), 12)
+                row = retention_row(payload)
+                self.assertNotEqual(row["status"], "FAIL")
+                self.assertNotIn("\n", row["detail"])
+                self.assertEqual(code, 0)
+
+
+class NonObjectSettingsTests(unittest.TestCase):
+    def test_array_settings_file_is_unreadable_for_the_hook_row_only(self):
+        """Adversarial where: a settings file whose JSON is an array has no
+        `hooks` key to read. The hook row must name the file and keep every
+        other row (12 in total) instead of collapsing doctor into one
+        'internal error' FAIL row. Asymmetric: the project settings.json is
+        valid and registers the hooks; only settings.local.json is bad."""
+        project = make_project(self)
+        with_project_env(self, project)
+        build_complete_install(project)
+        (project / ".claude" / "settings.local.json").write_text("[1]", encoding="utf-8")
+        code, out = run_doctor(["--json"])
+        payload = json.loads(out)
+        checks = payload["checks"]
+        self.assertEqual(len(checks), 12)
+        self.assertFalse([c for c in checks if c["check"] == "doctor"])
+        self.assertNotIn("internal error", out)
+        hook_row = [c for c in checks if c["check"] == "hook registration"][0]
+        self.assertIn("settings.local.json", hook_row["detail"])
+        self.assertEqual(code, 0)
+
+    def test_array_settings_file_naming_survives_when_hooks_are_missing(self):
+        """Adversarial where: when the only settings file is an array, the
+        hook row FAILs (nothing registered) and still names the bad file, so
+        the reader learns why instead of seeing a bare missing-registration
+        message."""
+        project = make_project(self)
+        with_project_env(self, project)
+        build_complete_install(project)
+        (project / ".claude" / "settings.json").write_text("[1]", encoding="utf-8")
+        code, out = run_doctor(["--json"])
+        checks = json.loads(out)["checks"]
+        self.assertFalse([c for c in checks if c["check"] == "doctor"])
+        hook_row = [c for c in checks if c["check"] == "hook registration"][0]
+        self.assertEqual(hook_row["status"], "FAIL")
+        self.assertIn("settings.json", hook_row["detail"])
+        self.assertEqual(code, 1)
+
+
+class WrongShapedHooksEntryTests(unittest.TestCase):
+    def test_non_iterable_hook_entries_do_not_collapse_doctor(self):
+        """Adversarial where: a settings file that is a JSON object but whose
+        `hooks.<Event>` value (or a group's inner `hooks`) is a number or a
+        boolean instead of a list must be reported on the hook row, not crash
+        the whole run into a single 'internal error' FAIL row that hides every
+        other check. Rows are the wrong-shaped values at each nesting level."""
+        rows = {
+            "event value is an int": '{"hooks": {"Stop": 5}}',
+            "event value is a bool": '{"hooks": {"PreToolUse": true}}',
+            "group hooks is an int": '{"hooks": {"Stop": [{"hooks": 5}]}}',
+        }
+        for name, content in rows.items():
+            with self.subTest(name=name):
+                project = make_project(self)
+                with_project_env(self, project)
+                build_complete_install(project)
+                (project / ".claude" / "settings.local.json").write_text(content, encoding="utf-8")
+                code, out = run_doctor(["--json"])
+                checks = json.loads(out)["checks"]
+                self.assertFalse([c for c in checks if c["check"] == "doctor"], out[:300])
+                self.assertEqual(len([c for c in checks if c["check"] == "hook registration"]), 1)
+
+
+class BomSettingsHookTests(unittest.TestCase):
+    def test_bom_project_settings_still_register_hooks(self):
+        """Adversarial where: a project settings.json saved with a UTF-8 BOM
+        is valid to Claude Code. The hook row must read it, not report 'not
+        valid JSON' for a file that is fine; a reader decoding as plain
+        utf-8 fails on the BOM."""
+        project = make_project(self)
+        with_project_env(self, project)
+        build_complete_install(project)
+        path = project / ".claude" / "settings.json"
+        path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes())
+        code, out = run_doctor(["--json"])
+        checks = json.loads(out)["checks"]
+        hook_row = [c for c in checks if c["check"] == "hook registration"][0]
+        self.assertEqual(hook_row["status"], "OK", hook_row["detail"])
+        self.assertNotIn("not valid JSON", hook_row["detail"])
+        self.assertEqual(code, 0)

@@ -11,6 +11,8 @@ but nothing else prompts a human to run it, and reconciles the detached
 capture worker's ledger (ADR-013 D-10): spawn/finish/failure counts, a
 started worker with no end row past its grace period, fallback-channel
 firings, the last failure reason, and the no-headless latch's date when set.
+It also reports the effective session retention (`cleanupPeriodDays`), warning
+when Claude Code would delete sessions after 30 days or fewer.
 
 Claude Code loads hooks only from a settings file's `hooks` key
 (`.claude/settings.json`, `.claude/settings.local.json`, `~/.claude/settings.json`)
@@ -35,7 +37,7 @@ import sys
 
 import capturelib
 import vaultlib
-from commands import unit_check
+from commands import retention, unit_check
 
 OK, WARN, FAIL = "OK", "WARN", "FAIL"
 
@@ -179,22 +181,31 @@ def _plugin_yaml_check(vault_root):
 def _load_json_best_effort(path):
     """`(data, error)`. `error` is None on success; a missing file is success
     with an empty dict, since a project running without settings.local.json is
-    a normal state. A present-but-unparseable file reports the error string
-    rather than raising."""
+    a normal state. A present file that does not parse, or whose JSON is not
+    an object, reports an error string rather than raising."""
     if not path.is_file():
         return {}, None
     try:
-        return json.loads(path.read_text(encoding="utf-8")), None
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except ValueError as exc:
-        return {}, str(exc)
+        return {}, f"not valid JSON: {exc}"
+    if not isinstance(data, dict):
+        return {}, "not a JSON object"
+    return data, None
 
 
 def _collect_commands(hooks_by_event, event_name):
     commands = []
-    for group in hooks_by_event.get(event_name) or []:
+    groups = hooks_by_event.get(event_name)
+    if not isinstance(groups, list):
+        return commands
+    for group in groups:
         if not isinstance(group, dict):
             continue
-        for entry in group.get("hooks") or []:
+        entries = group.get("hooks")
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
             if isinstance(entry, dict) and isinstance(entry.get("command"), str):
                 commands.append(entry["command"])
     return commands
@@ -222,7 +233,7 @@ def _hooks_checks(project_root):
             continue
         data, error = _load_json_best_effort(path)
         if error:
-            malformed.append(filename)
+            malformed.append(f"{filename} is {error.split(':')[0]}")
             continue
         hooks = data.get("hooks")
         if not isinstance(hooks, dict):
@@ -248,7 +259,7 @@ def _hooks_checks(project_root):
     if missing:
         parts = []
         if malformed:
-            parts.append(f"{', '.join(malformed)} is not valid JSON")
+            parts.append("; ".join(malformed))
         if hooks_json_exists and not any_hooks_key:
             parts.append(
                 f"{hooks_json_path} exists but no settings file registers its hooks; "
@@ -257,7 +268,10 @@ def _hooks_checks(project_root):
         parts.append(f"missing registration for: {', '.join(missing)}")
         return [Check("hook registration", FAIL, "; ".join(parts), fix)]
 
-    checks = [Check("hook registration", OK, "PreToolUse, PostToolUse, Stop, SubagentStop all registered")]
+    detail = "PreToolUse, PostToolUse, Stop, SubagentStop all registered"
+    if malformed:
+        detail += f" (unreadable settings skipped: {'; '.join(malformed)})"
+    checks = [Check("hook registration", OK, detail)]
     teammate_event, teammate_needle = OPTIONAL_HOOK_EVENT
     if not _event_registered(commands_by_event, teammate_event, teammate_needle):
         checks.append(Check(
@@ -523,6 +537,42 @@ def _worker_ledger_check(vault_root):
         return Check("worker ledger", WARN, f"ledger reconciliation failed: {_flatten(exc)}")
 
 
+RETENTION_FIX = (
+    'add "cleanupPeriodDays": 3650 to ~/.claude/settings.json '
+    "(or run `compass retention --set 3650`)"
+)
+
+
+def _retention_check():
+    """Row for the effective `cleanupPeriodDays`. Claude Code deletes
+    sessions older than that many days (30 when unset), so unset or 30 or
+    less WARNs with the fix and anything longer is OK. A settings file that
+    does not parse degrades to a WARN naming it, never a FAIL. Read-only."""
+    try:
+        days, label, _path, problems = retention.effective()
+    except Exception as exc:
+        return Check("session retention", WARN, f"retention scan failed: {_flatten(exc)}")
+    if problems:
+        return Check(
+            "session retention", WARN,
+            f"cannot read settings: {_flatten(problems[0][1])}",
+            "repair the settings file so its cleanupPeriodDays can be read; " + RETENTION_FIX,
+        )
+    if days is None:
+        return Check(
+            "session retention", WARN,
+            "cleanupPeriodDays is unset; Claude Code deletes sessions after 30 days",
+            RETENTION_FIX,
+        )
+    if days <= retention.SHORT_RETENTION_DAYS:
+        return Check(
+            "session retention", WARN,
+            f"cleanupPeriodDays is {days} ({label} settings); sessions older than that are deleted",
+            RETENTION_FIX,
+        )
+    return Check("session retention", OK, f"cleanupPeriodDays is {days} ({label} settings)")
+
+
 def _run_checks():
     try:
         vault_root = vaultlib.find_vault_root()
@@ -546,6 +596,7 @@ def _run_checks():
     checks.append(_usage_check(vault_root))
     checks.append(_overlay_check(vault_root))
     checks.append(_worker_ledger_check(vault_root))
+    checks.append(_retention_check())
     checks.extend(_host_checks(vault_root, project_root))
     return checks
 
