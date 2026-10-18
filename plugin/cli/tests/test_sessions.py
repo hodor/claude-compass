@@ -835,6 +835,7 @@ class SessionsRobustnessTests(StrictOutputCase):
             self.skipTest("the test file and the temp dir share a drive")
         elsewhere = Path(tempfile.mkdtemp(dir=os.path.dirname(os.path.abspath(__file__)))).resolve()
         self.addCleanup(shutil.rmtree, elsewhere, True)
+        self.addCleanup(os.chdir, os.getcwd())
         (elsewhere / "name.jsonl").write_text(json.dumps(assistant(text_block("CWD-FILE"))) + "\n", encoding="utf-8")
         os.chdir(elsewhere)
         code, out, err = run_sessions(["show", f"{other}/name"])
