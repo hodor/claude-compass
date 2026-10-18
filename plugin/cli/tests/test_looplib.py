@@ -26,13 +26,13 @@ Public API under test (module `looplib`, importable from `plugin/cli`). Every
         Reads and validates `<loop_dir>/loop.json` and returns it as a dict
         keyed exactly as the file. Raises DefinitionError whose message names
         the offending field. Keys (all required unless noted):
-          sensor_command (non-blank str), sensor_timeout_s (number >= 0),
+          sensor_command (non-blank str), sensor_timeout_s (number > 0),
           target (number), direction ("down" | "up"),
           controller ("first" | "command"),
           controller_command (non-blank str; required only when controller
           is "command"), wip_command (non-blank str, optional),
-          model (str), max_turns (int >= 0), max_budget_usd (number >= 0),
-          timeout_s (number >= 0), allowed_tools (list of str),
+          model (str), max_turns (int > 0), max_budget_usd (number > 0),
+          timeout_s (number > 0), allowed_tools (list of str),
           daily_budget_usd (number >= 0), total_budget_usd (number >= 0),
           wip_limit (int >= 0), max_actuator_failures (int >= 0),
           max_harmful_runs (int >= 0), max_runs_without_help (int >= 0).
