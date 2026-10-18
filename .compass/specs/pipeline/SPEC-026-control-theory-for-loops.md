@@ -7,7 +7,7 @@ area: pipeline
 tags: [loops, control-theory, feedback, sensors, incremental-change]
 summary: "Compass loops, its own and the ones it builds for users' tasks, measure something, apply changes incrementally, and get feedback on the quality of those changes, so they stay stable amid disturbances and remain steerable"
 created: 2026-10-17
-updated: 2026-10-17
+updated: 2026-10-18
 approved: 2026-10-17
 ---
 
@@ -39,6 +39,10 @@ HumanLayer's example of how they make a control loop; then that loop will be run
 - **Step 7: add flow control, limiting in-progress work.** If this thing is running without human supervision, we have to ensure it doesn't go crazy.
 
 All control loops are also FSMs.
+
+## Decisions
+
+- **D-01:** A loop is its own artifact type in the vault, `.compass/loops/LOOP-NNN-name/`, holding everything the loop needs to keep running: its end state, sensor, controller, actuator, golden patterns, feedback file and state.
 
 ## User Scenarios
 
