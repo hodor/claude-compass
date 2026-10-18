@@ -23,10 +23,17 @@ import math
 import os
 import threading
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
 import vaultlib
+
+try:
+    import msvcrt
+except ImportError:
+    msvcrt = None
+    import fcntl
 
 RESTING = frozenset({"idle", "throttled", "paused", "halted", "done"})
 WORKING = frozenset({"sensing", "gating", "controlling", "actuating", "verifying"})
@@ -77,9 +84,13 @@ DEFINITION_FILE = "loop.json"
 STATE_FILE = "state.json"
 LEDGER_FILE = "ledger.jsonl"
 
-# Appends within one process are serialised so that the check of the ledger's
-# last byte and the write of the new line cannot interleave.
+# Appends are serialised, so that the check of the ledger's last byte and the
+# write of the new line cannot interleave: by a thread lock within one process
+# and by an OS file lock on a sidecar file across processes.
 _APPEND_LOCK = threading.Lock()
+LEDGER_LOCK_FILE = "ledger.jsonl.lock"
+LEDGER_LOCK_ATTEMPTS = 2000
+LEDGER_LOCK_RETRY_SECONDS = 0.005
 
 _VERIFIED = frozenset({"helpful", "neutral", "harmful"})
 
@@ -283,18 +294,56 @@ def _now_iso():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+@contextmanager
+def _ledger_file_lock(loop_dir):
+    """Hold an exclusive OS lock on the ledger's sidecar lock file, retrying
+    briefly while another process holds it. The OS drops the lock if the
+    holder dies. TimeoutError when it stays held."""
+    fd = os.open(
+        Path(loop_dir) / LEDGER_LOCK_FILE,
+        os.O_RDWR | os.O_CREAT | getattr(os, "O_BINARY", 0),
+        0o666,
+    )
+    try:
+        for attempt in range(LEDGER_LOCK_ATTEMPTS):
+            try:
+                if msvcrt:
+                    os.lseek(fd, 0, os.SEEK_SET)
+                    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                else:
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError:
+                if attempt == LEDGER_LOCK_ATTEMPTS - 1:
+                    raise TimeoutError(
+                        f"ledger lock {LEDGER_LOCK_FILE} in {loop_dir} stayed held"
+                    ) from None
+                time.sleep(LEDGER_LOCK_RETRY_SECONDS)
+        try:
+            yield
+        finally:
+            if msvcrt:
+                os.lseek(fd, 0, os.SEEK_SET)
+                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        os.close(fd)
+
+
 def append_ledger(loop_dir, row):
     """Append `row` as one LF-terminated JSON line, stamping `ts` when the row
     carries none.
 
-    The line goes out in a single write to a file opened for appending. When
+    The line goes out in a single write to a file opened for appending, under
+    the ledger lock so appenders in other processes cannot interleave. When
     the ledger ends in a partial line (a write cut short), the new row starts
     on its own line so only the fragment is lost.
     """
     line = (json.dumps({"ts": _now_iso(), **row}) + "\n").encode("utf-8")
     path = Path(loop_dir) / LEDGER_FILE
     flags = os.O_RDWR | os.O_CREAT | os.O_APPEND | getattr(os, "O_BINARY", 0)
-    with _APPEND_LOCK:
+    with _APPEND_LOCK, _ledger_file_lock(loop_dir):
         fd = os.open(path, flags, 0o666)
         try:
             size = os.fstat(fd).st_size
