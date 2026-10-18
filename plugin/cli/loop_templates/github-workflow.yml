@@ -41,7 +41,7 @@ jobs:
 
       - name: Install Compass
         run: |
-          repo=$(sed -n 's/^[[:space:]]*repository:[[:space:]]*//p' .compass/meta/plugin.yaml | head -n 1 | tr -d '\r')
+          repo=$(sed -n 's/^[[:space:]]*repository:[[:space:]]*//p' .compass/meta/plugin.yaml | head -n 1 | tr -d "\"'\r")
           if [ -z "$repo" ]; then
             echo "::error::.compass/meta/plugin.yaml names no repository; commit that file to the repository"
             exit 1
@@ -124,17 +124,20 @@ jobs:
         if: always()
         run: |
           git switch "$DEFAULT_BRANCH"
-          git add -- .compass/loops/{{folder}}/state.json .compass/loops/{{folder}}/feedback.md
+          if [ -f .compass/loops/{{folder}}/state.json ]; then git add -- .compass/loops/{{folder}}/state.json; fi
           if [ -f .compass/loops/{{folder}}/ledger.jsonl ]; then git add -- .compass/loops/{{folder}}/ledger.jsonl; fi
+          if [ -f .compass/loops/{{folder}}/feedback.md ]; then git add -- .compass/loops/{{folder}}/feedback.md; fi
           if git diff --cached --quiet; then
             echo "the loop state did not change"
             exit 0
           fi
           git commit -m "{{id}} state after ${RUN_ID:-an iteration without a run}"
-          if git pull --rebase --autostash origin "$DEFAULT_BRANCH" && git push origin "HEAD:$DEFAULT_BRANCH"; then
-            exit 0
-          fi
-          git rebase --abort || true
+          for attempt in 1 2 3; do
+            if git pull --rebase --autostash origin "$DEFAULT_BRANCH" && git push origin "HEAD:$DEFAULT_BRANCH"; then
+              exit 0
+            fi
+            git rebase --abort || true
+          done
           git push origin "HEAD:refs/heads/compass-loop/{{id}}/state-${RUN_ID:-$GITHUB_RUN_ID}"
           echo "::error::the default branch refused the state commit; it is on compass-loop/{{id}}/state-${RUN_ID:-$GITHUB_RUN_ID}"
           exit 1

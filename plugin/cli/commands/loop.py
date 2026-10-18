@@ -88,7 +88,11 @@ WORKFLOW_TEMPLATE = "github-workflow.yml"
 OUTSIDE_FOLDER = frozenset({WORKFLOW_TEMPLATE})
 DEFAULT_CRON = "0 6 * * *"
 LOCAL_START = "06:00"  # the time of day DEFAULT_CRON names
-CRON_FIELD = re.compile(r"[0-9A-Za-z*/,?#-]+")
+CRON_CHARACTERS = re.compile(r"[0-9*,/ -]+")
+CRON_ITEM = re.compile(r"(?:\*|([0-9]+)(?:-([0-9]+))?)(?:/([0-9]+))?")
+# (low, high) of the minute, hour, day of month, month and weekday fields.
+CRON_RANGES = ((0, 59), (0, 23), (1, 31), (1, 12), (0, 6))
+RUN_TOKEN = re.compile(r"[A-Za-z0-9._:-]+")
 UNION_LINE = ".compass/loops/*/ledger.jsonl merge=union"
 PLACEHOLDER = re.compile(r"(?<!\$)\{\{[^}]*\}\}")
 REPOSITORY_LINE = re.compile(r"^\s*repository:[ \t]*(\S.*?)\s*$")
@@ -396,7 +400,7 @@ def _last_run(args):
         raise UsageError(f"{_loop_label(folder)} has no run row")
     run_id, outcome = last.get("run_id"), last.get("outcome")
     for value in (run_id, outcome):
-        if not isinstance(value, str) or not value or len(value.split()) != 1:
+        if not isinstance(value, str) or not RUN_TOKEN.fullmatch(value):
             raise UsageError(f"the last run row of {_loop_label(folder)} has no usable run_id and outcome")
     print(f"{run_id} {outcome}")
     return 0
@@ -821,11 +825,26 @@ def _parse_schedule(args):
 
 def _cron_expression(expression):
     """`expression` as five single-space-separated cron fields, or a
-    UsageError. Quotes, backslashes and line breaks never pass, so the value
-    is safe inside a quoted YAML scalar."""
+    UsageError. Each field is a comma list of `*`, a number or a range, with an
+    optional `/step`, every number inside the field's range. Only digits and
+    `*,/-` pass, so the value is safe inside a quoted YAML scalar."""
+    message = f"{expression[:60]!r} is not a cron expression of five fields like '0 6 * * *'"
+    if not CRON_CHARACTERS.fullmatch(expression):
+        raise UsageError(message)
     fields = expression.split()
-    if len(fields) != 5 or not all(CRON_FIELD.fullmatch(field) for field in fields):
-        raise UsageError(f"{expression[:60]!r} is not a cron expression of five fields like '0 6 * * *'")
+    if len(fields) != 5:
+        raise UsageError(message)
+    for field, (low, high) in zip(fields, CRON_RANGES):
+        for item in field.split(","):
+            match = CRON_ITEM.fullmatch(item)
+            if not match:
+                raise UsageError(message)
+            start, end, step = match.groups()
+            numbers = [int(n) for n in (start, end) if n is not None]
+            if any(not low <= n <= high for n in numbers) or numbers != sorted(numbers):
+                raise UsageError(message)
+            if step is not None and not 1 <= int(step) <= high:
+                raise UsageError(message)
     return " ".join(fields)
 
 
@@ -942,10 +961,15 @@ def _schedule_local(folder):
     log_dir = project / ".compass" / "tmp" / "loops" / loop_id
     log = log_dir / "schedule.log"
     run = f"loop run {loop_id}"
-    if sys.platform == "win32":
+    windows = sys.platform == "win32"
+
+    def shown(path):
+        """`path` quoted for the shell of the platform being scheduled."""
+        return f'"{path}"' if windows else shlex.quote(Path(path).as_posix())
+
+    if windows:
         def quoted(path):
-            text = str(path)
-            return f'\\"{text}\\"' if any(ch.isspace() for ch in text) else text
+            return f'\\"{path}\\"'
 
         action = (
             f"cmd /c cd /d {quoted(project)} && if not exist {quoted(log_dir)} md {quoted(log_dir)} "
@@ -953,6 +977,8 @@ def _schedule_local(folder):
         )
         print(f"Schedule {loop_id} daily at {LOCAL_START} with Task Scheduler:")
         print(f'schtasks /Create /SC DAILY /ST {LOCAL_START} /TN "Compass {loop_id}" /TR "{action}"')
+        if "%" in action:
+            print("note: cmd.exe expands %name% even inside quotes; run the loop from a .cmd file for a path holding %")
         if len(action) > SCHTASKS_TR_LIMIT:
             print(f"note: the /TR text is {len(action)} characters and schtasks accepts {SCHTASKS_TR_LIMIT}; use a task XML or a .cmd file")
     else:
@@ -967,9 +993,9 @@ def _schedule_local(folder):
         print(f"{DEFAULT_CRON} {command.replace('%', chr(92) + '%')}")
     print()
     print("Desktop scheduled task (the Claude Desktop app, Schedule page):")
-    print(f"  folder: {project}")
+    print(f"  folder: {shown(project)}")
     print(f"  frequency: daily at {LOCAL_START}")
-    print(f"  prompt: Run `{python} {compass} {run}` in the project folder and report its output.")
+    print(f"  prompt: Run `{shown(python)} {shown(compass)} {run}` in the project folder and report its output.")
     return 0
 
 
@@ -1019,8 +1045,8 @@ def _read_pull_requests(source):
         raise UsageError(f"cannot read the pull request list {source!r}: {exc}") from exc
     try:
         data = json.loads(raw.decode("utf-8-sig"))
-    except ValueError as exc:
-        raise UsageError(f"the pull request list is not JSON: {exc}") from exc
+    except (ValueError, RecursionError) as exc:
+        raise UsageError(f"the pull request list is not readable JSON: {type(exc).__name__}") from exc
     if not isinstance(data, list):
         raise UsageError("the pull request list must be a JSON array")
     found = []
