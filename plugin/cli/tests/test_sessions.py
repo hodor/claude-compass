@@ -649,5 +649,262 @@ class RecordTests(SessionsCase):
         self.assertEqual(self.rows()[0]["merged_count"], 1)
 
 
+class StrictOutputCase(SessionsCase):
+    """Runs a subcommand against a real encoding-strict text stream, the way a
+    terminal or pipe behaves, instead of a StringIO that accepts anything."""
+
+    def run_strict(self, args, encoding="utf-8"):
+        """`(exit_code, stdout_bytes, stderr)`; an exception that escapes `run`
+        propagates so the test shows the traceback."""
+        module = importlib.import_module("commands.sessions")
+        raw = io.BytesIO()
+        wrapper = io.TextIOWrapper(raw, encoding=encoding, errors="strict", newline="\n")
+        err = io.StringIO()
+        with redirect_stdout(wrapper), redirect_stderr(err):
+            code = module.run(list(args))
+        wrapper.flush()
+        return code, raw.getvalue(), err.getvalue()
+
+
+class SessionsRobustnessTests(StrictOutputCase):
+    def test_one_unreadable_transcript_does_not_kill_the_listing(self):
+        """Adversarial where: a transcript that raises on read (locked by
+        another process, permission denied) escapes the per-row guard and the
+        whole `list` fails, or the bad session is listed with garbage fields."""
+        self.make_session("good-a", commits=10, age=100)
+        bad = self.make_session("locked", commits=10, age=200)
+        self.make_session("good-b", commits=10, age=300)
+        if os.name == "nt":
+            import msvcrt
+            holder = open(bad, "r+b")
+            self.addCleanup(holder.close)
+            msvcrt.locking(holder.fileno(), msvcrt.LK_NBLCK, 8)
+            self.addCleanup(lambda: (holder.seek(0), msvcrt.locking(holder.fileno(), msvcrt.LK_UNLCK, 8)))
+        else:
+            if os.geteuid() == 0:
+                self.skipTest("root reads any file")
+            os.chmod(bad, 0)
+            self.addCleanup(os.chmod, bad, 0o600)
+        code, out, err = run_sessions(["list", "--json", "--all"])
+        self.assertEqual(code, 0, err)
+        shown = [row["session_id"] for row in json.loads(out)]
+        self.assertIn("good-a", shown)
+        self.assertIn("good-b", shown)
+        self.assertNotIn("locked", shown)
+
+    def test_a_deeply_nested_json_line_is_skipped_like_any_unparseable_line(self):
+        """Adversarial where: a line of 100000 open brackets makes `json.loads`
+        raise RecursionError (not ValueError), which the line parser does not
+        catch, so one hostile line takes down `list` for every session and
+        `show` for that transcript."""
+        self.make_session("fine", commits=10, age=100)
+        bad = self.folder / "nested.jsonl"
+        self.write_raw(bad, b"[" * 100000,
+                       json.dumps({"type": "user", "entrypoint": "cli"}).encode(),
+                       json.dumps(assistant(text_block("AFTER-THE-NEST"))).encode())
+        with self.subTest("list"):
+            code, out, err = run_sessions(["list", "--json", "--all"])
+            self.assertEqual(code, 0, err)
+            self.assertEqual(sorted(r["session_id"] for r in json.loads(out)), ["fine", "nested"])
+        with self.subTest("show"):
+            code, out, err = run_sessions(["show", str(bad)])
+            self.assertEqual(code, 0, err)
+            self.assertIn("AFTER-THE-NEST", out)
+
+    def test_show_does_not_crash_on_text_the_output_encoding_cannot_hold(self):
+        """Adversarial where: a transcript text holding a lone surrogate
+        (JSON `\\ud83d` is legal) reaches the strict UTF-8 stdout and raises
+        UnicodeEncodeError instead of printing the rest of the transcript."""
+        path = self.write_raw(self.tmp / "t.jsonl",
+                              json.dumps(assistant(text_block("before \ud83d after"))).encode(),
+                              json.dumps(assistant(text_block("LATER-LINE"))).encode())
+        code, out, err = self.run_strict(["show", str(path)])
+        self.assertEqual(code, 0, err)
+        self.assertIn(b"LATER-LINE", out)
+
+    def test_output_is_utf8_whatever_the_stream_default_encoding(self):
+        """Adversarial where: stdout keeps a legacy codepage (cp1252) because
+        the reconfigure step is skipped or wrong, so non-Latin transcript text
+        and session ids raise or come out as mojibake."""
+        self.make_session("sess-ação-日本", commits=10)
+        path = self.write_raw(self.tmp / "t.jsonl",
+                              json.dumps(assistant(text_block("日本語 ação"))).encode())
+        code, out, err = self.run_strict(["show", str(path)], encoding="cp1252")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(out.decode("utf-8").strip(), "日本語 ação")
+        code, out, err = self.run_strict(["list", "--all"], encoding="cp1252")
+        self.assertEqual(code, 0, err)
+        self.assertIn("sess-ação-日本", out.decode("utf-8"))
+
+    def test_show_prints_a_twenty_megabyte_single_line_whole(self):
+        """Adversarial where: a transcript line far larger than any read chunk
+        is truncated, dropped, or makes the render quadratic."""
+        big = "x" * (20 * 1024 * 1024)
+        path = self.write_raw(self.tmp / "big.jsonl",
+                              json.dumps(assistant(text_block(big))).encode(),
+                              json.dumps(assistant(text_block("TAIL-MARK"))).encode())
+        started = time.monotonic()
+        code, out, err = run_sessions(["show", str(path)])
+        elapsed = time.monotonic() - started
+        self.assertEqual(code, 0, err)
+        self.assertEqual(out, big + "\nTAIL-MARK\n")
+        self.assertLess(elapsed, 30)
+
+    def test_list_of_three_hundred_sessions_finishes_in_bounded_time(self):
+        """Adversarial where: per-session work grows with the folder (a rescan
+        of every transcript per row) so a long-lived project's `list` takes
+        minutes."""
+        for n in range(300):
+            self.make_session("s%03d" % n, commits=10 + n % 3, sub_commits=n % 2, age=1000 + n)
+        started = time.monotonic()
+        rows = self.list_json()
+        elapsed = time.monotonic() - started
+        self.assertEqual(len(rows), 300)
+        self.assertEqual(rows[0]["session_id"], "s000")
+        self.assertLess(elapsed, 30)
+
+    def test_a_session_with_an_unrepresentable_mtime_is_not_silently_dropped(self):
+        """Adversarial where: a transcript whose mtime cannot be formatted
+        (far future, clock skew, restored backup) hits the `except OSError`
+        around the row and vanishes from `list --all` with no message."""
+        self.make_session("normal", commits=10, age=100)
+        odd = self.make_session("skewed", commits=10)
+        os.utime(odd, (2 ** 36, 2 ** 36))
+        code, out, err = run_sessions(["list", "--json", "--all"])
+        self.assertEqual(code, 0, err)
+        self.assertIn("skewed", [row["session_id"] for row in json.loads(out)])
+
+    def test_min_commits_refuses_values_that_only_look_like_integers(self):
+        """Adversarial where: `int()`-style leniency lets Unicode digits, a
+        trailing newline, surrounding space, a decimal or an empty value
+        through as a commit line instead of returning 1."""
+        self.make_session("c10", commits=10)
+        values = {"arabic-indic digit": "\u0663", "trailing newline": "5\n", "leading space": " 5",
+                  "decimal": "1.0", "exponent": "1e1", "hex": "0x10", "empty": ""}
+        for name, value in values.items():
+            with self.subTest(name):
+                code, out, err = run_sessions(["list", "--min-commits", value])
+                self.assertEqual(code, 1)
+                self.assertTrue(err.strip())
+                self.assertEqual(out, "")
+        with self.subTest("flag swallowed as the value"):
+            code, _, err = run_sessions(["list", "--min-commits", "--all"])
+            self.assertEqual(code, 1)
+            self.assertTrue(err.strip())
+        with self.subTest("zero is the boundary and valid"):
+            self.make_session("c00", commits=0, age=10)
+            self.assertIn("c00", self.ids("--min-commits", "0"))
+
+    def test_show_refuses_targets_that_climb_out_of_the_run_folder(self):
+        """Adversarial where: a `..` or separator in the run id or session id
+        resolves a file outside `<central>/sessions/<key>/<run-id>/`, so `show`
+        reads arbitrary jsonl through the clone shorthand."""
+        run = sessionslib.run_dir(self.project, "run-1")
+        run.mkdir(parents=True)
+        (run / "inside.jsonl").write_text(json.dumps(assistant(text_block("INSIDE"))) + "\n", encoding="utf-8")
+        decoy = run.parent / "loose.jsonl"
+        decoy.write_text(json.dumps(assistant(text_block("DECOY-OUTSIDE"))) + "\n", encoding="utf-8")
+        with self.subTest("control: the shorthand resolves"):
+            code, out, err = run_sessions(["show", "run-1/inside"])
+            self.assertEqual(code, 0, err)
+            self.assertIn("INSIDE", out)
+        targets = {
+            "parent as run id": "../loose",
+            "parent as session id": "run-1/..",
+            "three segments": "run-1/../loose",
+            "backslash climb": "run-1\\..\\loose",
+            "backslash in session id": "run-1/..\\loose",
+            "empty session id": "run-1/",
+            "empty run id": "/inside",
+            "dot run id": "./inside",
+        }
+        for name, target in targets.items():
+            with self.subTest(name):
+                code, out, err = run_sessions(["show", target])
+                self.assertEqual(code, 1)
+                self.assertNotIn("DECOY-OUTSIDE", out)
+                self.assertTrue(err.strip())
+
+    @unittest.skipUnless(os.name == "nt", "drive-relative paths exist only on Windows")
+    def test_show_refuses_a_drive_letter_run_id(self):
+        """Adversarial where: `C:/name` passes the `..`/separator screen, and
+        `run_dir / "C:"` then re-roots the join at the drive's current
+        directory, so `show` reads `<cwd>/name.jsonl` instead of a kept clone."""
+        other = os.path.splitdrive(os.path.abspath(__file__))[0]
+        if other.lower() == os.path.splitdrive(str(self.tmp))[0].lower():
+            self.skipTest("the test file and the temp dir share a drive")
+        elsewhere = Path(tempfile.mkdtemp(dir=os.path.dirname(os.path.abspath(__file__)))).resolve()
+        self.addCleanup(shutil.rmtree, elsewhere, True)
+        (elsewhere / "name.jsonl").write_text(json.dumps(assistant(text_block("CWD-FILE"))) + "\n", encoding="utf-8")
+        os.chdir(elsewhere)
+        code, out, err = run_sessions(["show", f"{other}/name"])
+        self.assertEqual(code, 1)
+        self.assertNotIn("CWD-FILE", out)
+        self.assertTrue(err.strip())
+
+
+class RecordHostileInputTests(StrictOutputCase):
+    def rows_by_lines(self):
+        """Parse the log the way a line-oriented reader does: every line of
+        `str.splitlines()` must itself be one JSON object."""
+        text = self.log.read_text(encoding="utf-8")
+        return [json.loads(line) for line in text.splitlines() if line.strip()]
+
+    def test_names_with_line_breaking_characters_stay_on_one_parseable_line(self):
+        """Adversarial where: a lesson name or run id holding a newline, quote,
+        backslash or a Unicode line separator (U+2028, U+0085) splits the
+        appended row across lines, so a reader using `splitlines()` meets
+        fragments that are not JSON."""
+        names = {
+            "newline": "LESSON-a\nb",
+            "carriage return": "LESSON-a\rb",
+            "double quote": 'LESSON-"q"',
+            "backslash": "LESSON-a\\nb",
+            "tab": "LESSON-a\tb",
+            "line separator U+2028": "LESSON-a\u2028b",
+            "paragraph separator U+2029": "LESSON-a\u2029b",
+            "next line U+0085": "LESSON-a\u0085b",
+        }
+        for label, name in names.items():
+            with self.subTest(label):
+                self.log.write_bytes(b"")
+                code, _, err = run_sessions(["record", "run-" + name, "--written", name, "--merged", name])
+                self.assertEqual(code, 0, err)
+                self.assertEqual(len(self.log.read_bytes().split(b"\n")), 2)
+                (row,) = self.rows_by_lines()
+                self.assertEqual((row["run_id"], row["written"], row["merged"]),
+                                 ("run-" + name, [name], [name]))
+
+    def test_unencodable_argument_returns_one_instead_of_a_traceback(self):
+        """Adversarial where: an argument holding a lone surrogate (what POSIX
+        argv yields for invalid UTF-8 bytes) makes the append raise
+        UnicodeEncodeError, which the command does not turn into exit 1."""
+        before = self.log.exists()
+        code, _, err = run_sessions(["record", "run-1", "--written", "LESSON-\udcff"])
+        self.assertEqual(code, 1)
+        self.assertTrue(err.strip())
+        self.assertEqual(self.log.exists(), before)
+
+    def test_record_and_list_report_a_missing_vault_or_blocked_log_with_exit_one(self):
+        """Adversarial where: no `.compass` above the project, or the log path
+        occupied by a directory, escapes as a traceback or exit 2 instead of a
+        stderr message and exit 1; a blocked log must also leave no row."""
+        self.log.mkdir()
+        with self.subTest("log path is a directory"):
+            code, _, err = run_sessions(["record", "run-1"])
+            self.assertEqual(code, 1)
+            self.assertTrue(err.strip())
+        bare = self.tmp / "no-vault"
+        bare.mkdir()
+        os.environ["CLAUDE_PROJECT_DIR"] = str(bare)
+        os.chdir(bare)
+        for args in (["record", "run-1"], ["list"], ["show", "run-1/s"]):
+            with self.subTest("no vault: " + args[0]):
+                code, out, err = run_sessions(args)
+                self.assertEqual(code, 1)
+                self.assertTrue(err.strip())
+                self.assertEqual(out, "")
+
+
 if __name__ == "__main__":
     unittest.main()

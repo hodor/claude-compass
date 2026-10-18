@@ -88,7 +88,7 @@ def subagent_transcripts(transcript):
     return sorted((p for p in side.glob("agent-*.jsonl") if p.is_file()), key=lambda p: p.name)
 
 
-def _records(path):
+def records(path):
     """Yield parsed transcript records from the first line to the last."""
     with open(path, "rb") as fh:
         for raw in fh:
@@ -120,7 +120,7 @@ def _message_text(record):
 
 
 def entrypoint(transcript):
-    for record in _records(transcript):
+    for record in records(transcript):
         value = record.get("entrypoint")
         if isinstance(value, str) and value:
             return value
@@ -171,7 +171,7 @@ def model_id(transcript):
 
 def _commits_in(path):
     count = 0
-    for record in _records(path):
+    for record in records(path):
         for block in _blocks(record, "tool_use"):
             tool_input = block.get("input")
             command = tool_input.get("command") if isinstance(tool_input, dict) else None
@@ -186,7 +186,7 @@ def commit_count(transcript):
 
 def _ids(transcript, pattern, prefix):
     numbers = {}
-    for record in _records(transcript):
+    for record in records(transcript):
         for digits in pattern.findall(_message_text(record)):
             numbers[f"{prefix}-{digits}"] = int(digits)
     return sorted(numbers, key=lambda name: (numbers[name], name))

@@ -189,7 +189,7 @@ def _parse(raw):
         return None
     try:
         record = json.loads(raw.decode("utf-8-sig"))
-    except (ValueError, UnicodeDecodeError):
+    except (ValueError, UnicodeDecodeError, RecursionError):
         return None
     return record if isinstance(record, dict) else None
 
