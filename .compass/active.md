@@ -45,7 +45,7 @@ Plan: [[PLAN-020-clone-old-sessions]].
 
 Plan: [[PLAN-021-control-loops]].
 
-- [ ] TASK-158: Judge sensors: an agent reading plain-language rules reports voted findings beside the deterministic sensor, advisory only - complexity: L, depends_on: none
+- [x] TASK-158: Judge sensors: an agent reading plain-language rules reports voted findings beside the deterministic sensor, advisory only - complexity: L, depends_on: none
 - [ ] TASK-159: The schedule: `compass loop schedule` writes a GitHub Actions workflow that installs Compass with `compass self-update`, or prints the local-lane line - complexity: L, depends_on: none
 - [ ] TASK-161: A code loop end to end: an ast-grep sensor adapter, then a loop that removes a bad pattern from a real repository the human names, run to its stop - complexity: L, depends_on: TASK-158, TASK-159
 - [ ] TASK-160: `/compass:loop`: guided creation through steps 0 to 7 - complexity: M, depends_on: TASK-158, TASK-159, TASK-161
