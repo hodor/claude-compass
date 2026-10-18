@@ -131,6 +131,7 @@ EXPECTED_TABLE = {
     ("verifying", "harmful"): "idle",
     ("verifying", "harmful-limit"): "halted",
     ("verifying", "no-progress-limit"): "halted",
+    ("verifying", "controls-changed"): "halted",
     ("idle", "pause"): "paused",
     ("throttled", "pause"): "paused",
     ("paused", "resume"): "idle",
