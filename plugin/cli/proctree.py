@@ -126,9 +126,11 @@ class WindowsJob:
             self._kernel32.CloseHandle(process)
 
     def terminate(self):
+        """End every process in the job. Returns False when it could not."""
         with self._lock:
-            if self._handle:
-                self._kernel32.TerminateJobObject(self._handle, 1)
+            if not self._handle:
+                return False
+            return bool(self._kernel32.TerminateJobObject(self._handle, 1))
 
     def close(self):
         """Close the handle; the job's remaining processes are killed."""
@@ -165,10 +167,15 @@ def release(job):
 
 def kill(proc, job=None):
     """Kill `proc` and everything it started. A Windows `job` holding the
-    child is terminated first; `taskkill /T` (Windows) or a group kill
-    (POSIX) follows, and the child itself is killed last."""
-    if job is not None:
-        job.terminate()
+    child is terminated; when that succeeds the whole tree is gone. Without a
+    job, or when the termination fails, `taskkill /T` (Windows) or a group
+    kill (POSIX) reaches the tree. The child itself is killed last."""
+    if job is not None and job.terminate():
+        try:
+            proc.kill()
+        except OSError:
+            pass
+        return
     try:
         if sys.platform == "win32":
             subprocess.run(
