@@ -47,6 +47,16 @@ recorded, not `not_required`, and not yet landed - the mechanical
 definition of "no failures outside the open checkpoint set" that this
 plan's suite-green rule depends on everywhere else.
 
+A test skipped by design on the machine that produced the evidence (a
+POSIX-only test run on Windows) would otherwise keep its checkpoint unlanded.
+`--accept-skip Class.test_name --reason "..."` (repeatable, valid only with
+`--against-run`) counts a named test as accepted when the evidence shows it
+SKIPPED. A failed, errored, or absent test is never accepted, nor is a skip
+that was not named, nor a name that is not a checkpointed test. When the
+checkpoint lands, each acceptance (test id, reason, evidence path, UTC time)
+is stored in the record's `accepted_skips`, and every later `verify` prints
+it as an `accepted-skip` line.
+
 The git repository is the one holding the checkpointed files, so a workspace
 of nested repositories works: `record` asks git for the top level containing
 the files (all must share one), and the index stores it as `repo`, relative
@@ -105,7 +115,8 @@ USAGE = (
     "usage: compass test-checkpoint record TASK-NNN <file>... --commit SHA "
     "[--red-evidence PATH] [--supersede TASK-NNN --reason \"...\"] [--not-required]\n"
     "       compass test-checkpoint verify TASK-NNN [--tree PATH] "
-    "[--against-run EVIDENCE] [--expect-checkpoint]\n"
+    "[--against-run EVIDENCE [--accept-skip Class.test_name --reason \"...\"]...] "
+    "[--expect-checkpoint]\n"
     "       compass test-checkpoint open-ids\n"
     "       compass test-checkpoint cycle TASK-NNN --evidence PATH"
 )
@@ -668,9 +679,28 @@ def _parse_verify(args):
     rest = args[1:]
     tree_opt = against_run = None
     expect_checkpoint = False
+    accept_skips = []  # [{"id": ..., "reason": ... or None}]
+    leading_reason = None  # a --reason given before its --accept-skip
     i = 0
     while i < len(rest):
         arg = rest[i]
+        if arg in ("--accept-skip", "--reason"):
+            if i + 1 >= len(rest):
+                return None, f"{arg} expects a value"
+            value = rest[i + 1]
+            if not value.strip():
+                return None, f"{arg} expects a non-empty value"
+            if arg == "--accept-skip":
+                accept_skips.append({"id": value.strip(), "reason": leading_reason})
+                leading_reason = None
+            elif accept_skips and accept_skips[-1]["reason"] is None:
+                accept_skips[-1]["reason"] = value
+            elif leading_reason is None:
+                leading_reason = value
+            else:
+                return None, "--reason given twice without an --accept-skip"
+            i += 2
+            continue
         if arg in ("--tree", "--against-run"):
             if i + 1 >= len(rest):
                 return None, f"{arg} expects a value"
@@ -685,9 +715,16 @@ def _parse_verify(args):
             i += 1
             continue
         return None, f"unknown flag {arg}"
+    if (accept_skips or leading_reason is not None) and against_run is None:
+        return None, "--accept-skip requires --against-run"
+    if leading_reason is not None:
+        return None, "--reason has no --accept-skip to attach to"
+    for entry in accept_skips:
+        if entry["reason"] is None:
+            return None, f"--accept-skip {entry['id']} needs a --reason"
     return {
         "task": task, "tree": tree_opt, "against_run": against_run,
-        "expect_checkpoint": expect_checkpoint,
+        "expect_checkpoint": expect_checkpoint, "accept_skips": accept_skips,
     }, None
 
 
@@ -774,13 +811,41 @@ def _record_run_status(statuses, name, path, raw_status):
 def _fold_status(statuses, class_name, name, status):
     """Record `status` under both the class-qualified and bare keys. A key
     already holding a non-`ok` status keeps it: a test id proven failed
-    once is not laundered by a later passing occurrence of the same id."""
+    once is not laundered by a later passing occurrence of the same id.
+    `fail` and `error` outrank every other status, so a skipped case that
+    precedes a failed case of the same id still folds to the failure."""
     for key in ((class_name, name), (None, name)):
-        if statuses.get(key, "ok") == "ok":
+        held = statuses.get(key, "ok")
+        if held == "ok" or (status in _FAILING_STATUSES and held not in _FAILING_STATUSES):
             statuses[key] = status
 
 
-def _print_report(task, record, findings):
+def _one_line(value):
+    """`value` as text with every non-printable character (newlines, control
+    characters, line separators) written as its escape sequence."""
+    return "".join(
+        ch if ch.isprintable() else ch.encode("unicode_escape").decode("ascii")
+        for ch in str(value)
+    )
+
+
+def _stored_accepted_skips(record):
+    """`(entries, problem)` for the record's `accepted_skips`. An absent key
+    is no acceptances; a value that is not a list of objects carrying a text
+    `id` and `reason` is reported as `problem` and yields no acceptances."""
+    if "accepted_skips" not in record:
+        return [], None
+    stored = record["accepted_skips"]
+    if not isinstance(stored, list):
+        return [], "accepted_skips is not a list"
+    for entry in stored:
+        if not (isinstance(entry, dict) and isinstance(entry.get("id"), str)
+                and isinstance(entry.get("reason"), str)):
+            return [], "accepted_skips holds an entry without a text id and reason"
+    return stored, None
+
+
+def _print_report(task, record, findings, accepted_skips=()):
     lines = [f"compass test-checkpoint verify: {task}"]
     supersedes = record.get("supersedes")
     if supersedes:
@@ -793,6 +858,12 @@ def _print_report(task, record, findings):
     for finding in findings:
         detail = f" - {finding['detail']}" if finding.get("detail") else ""
         lines.append(f"  {finding['status']:<12} {finding['file']}{detail}")
+    for skip in accepted_skips:
+        lines.append(
+            f"  {'accepted-skip':<12} {_one_line(skip['id'])} - {_one_line(skip['reason'])} "
+            f"(evidence {_one_line(skip.get('evidence', '?'))}, "
+            f"{_one_line(skip.get('accepted_at', '?'))})"
+        )
     sys.stdout.write("\n".join(lines) + "\n")
 
 
@@ -858,6 +929,7 @@ def _run_verify(args):
     recorded_paths = _recorded_paths_across_versions(record)
 
     findings = []
+    accepted_now = []
     ok = True
     for rel in commit_files + sorted(recorded_paths - set(commit_files)):
         if not rel.endswith(".py") and rel not in recorded_paths:
@@ -902,10 +974,29 @@ def _run_verify(args):
             )
             return 1
         statuses = _parse_run_evidence(_read_evidence(evidence_path))
+        requested = {entry["id"]: entry["reason"] for entry in options["accept_skips"]}
+        checkpointed = {
+            f"{class_name}.{test_name}" if class_name else test_name
+            for file_record in record.get("files", [])
+            for class_name, test_name in file_record.get("ids", [])
+        }
+        for skip_id in requested:
+            if skip_id not in checkpointed:
+                findings.append({
+                    "file": skip_id, "status": "bad-accept-skip",
+                    "detail": "not a checkpointed test",
+                })
+                ok = False
         for file_record in record.get("files", []):
             for class_name, test_name in file_record.get("ids", []):
                 status = statuses.get((class_name, test_name))
                 label = f"{class_name}.{test_name}" if class_name else test_name
+                if status == "skipped" and label in requested:
+                    accepted_now.append({
+                        "id": label, "reason": requested[label],
+                        "evidence": str(evidence_path), "accepted_at": _iso_now(),
+                    })
+                    continue
                 if status != "ok":
                     findings.append({
                         "file": label, "status": "not-passed",
@@ -913,9 +1004,19 @@ def _run_verify(args):
                     })
                     ok = False
 
-    _print_report(task, record, findings)
+    stored_skips, stored_problem = _stored_accepted_skips(record)
+    if stored_problem:
+        findings.append({
+            "file": "accepted_skips", "status": "malformed", "detail": stored_problem,
+        })
+        ok = False
+    accepted = {skip["id"]: skip for skip in stored_skips}
+    accepted.update({skip["id"]: skip for skip in accepted_now})
+    _print_report(task, record, findings, list(accepted.values()))
 
     if ok and options["against_run"]:
+        if accepted:
+            record["accepted_skips"] = list(accepted.values())
         record["landed"] = True
         record["landed_at"] = _iso_now()
         _write_record(path, record)
