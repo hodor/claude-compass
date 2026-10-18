@@ -41,6 +41,22 @@ Plan: [[PLAN-020-clone-old-sessions]].
 
 - [ ] TASK-146: Live acceptance on this repo
 
+## PLAN-021 Wave 1: control loops
+
+Plan: [[PLAN-021-control-loops]].
+
+- [ ] TASK-147: `loops` becomes a vault artifact type
+- [ ] TASK-148: `looplib`: definition, state machine, state file, ledger and lock
+- [ ] TASK-149: `sensorlib`: result event, domain sensor, budget sums, change judgment
+- [ ] TASK-150: `compass loop` new, status, activate, pause, resume, review
+- [ ] TASK-151: `looprunner`: one iteration, the dry run and the dampener
+- [ ] TASK-152: The fix loop tells a helpful cycle from a harmful one
+- [ ] TASK-153: prototype - how do the turn and budget caps behave past one turn and across resume?
+- [ ] TASK-154: prototype - how accurate is an agent judging natural-language rules, against planted violations?
+- [ ] TASK-155: prototype - can an agent draft accurate ast-grep rules from natural-language rules?
+- [ ] TASK-156: prototype - what does a fresh CI-style checkout of a Compass project run?
+- [ ] TASK-157: Ship 0.28.0 and run a loop live in a scratch project
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].

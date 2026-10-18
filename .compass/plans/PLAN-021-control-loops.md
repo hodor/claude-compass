@@ -1,12 +1,13 @@
 ---
 title: "Control Loops as Vault Artifacts"
 type: plan
-status: draft
+status: approved
 confidence: medium
 area: pipeline
 tags: [loops, control-theory, fsm, sensors, budgets, flow-control, feedback]
 created: 2026-10-18
 updated: 2026-10-18
+approved: 2026-10-18
 git_branch: master
 git_commit: 8082347
 author: planner
