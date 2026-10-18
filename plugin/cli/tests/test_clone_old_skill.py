@@ -1,9 +1,9 @@
-"""The clone-old skill names real `compass` commands and ships as version 0.27.0.
+"""The clone-old skill names real `compass` commands and ships from version 0.27.0 on.
 
 Guards two defects: the skill naming a `compass` subcommand that is not
 registered in `COMMAND_SPECS` (a renamed command would otherwise break the
-skill silently), and the plugin version drifting from the release that ships
-the skill.
+skill silently), and the plugin version falling below 0.27.0, the first release
+that ships the skill.
 """
 
 import json
@@ -77,9 +77,11 @@ class CloneOldSkillTests(unittest.TestCase):
         unknown = sorted({n for n in names if n not in registered})
         self.assertEqual(unknown, [], "clone-old skill names unregistered commands")
 
-    def test_plugin_version_is_0_27_0(self):
+    def test_plugin_version_is_at_least_0_27_0(self):
         with open(PLUGIN_JSON, encoding="utf-8") as handle:
-            self.assertEqual(json.load(handle)["version"], "0.27.0")
+            version = json.load(handle)["version"]
+        parts = tuple(int(part) for part in version.split("."))
+        self.assertGreaterEqual(parts, (0, 27, 0), f"plugin version {version}")
 
     def test_reference_parser_skips_slash_commands_and_prose(self):
         sample = (
