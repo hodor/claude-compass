@@ -156,6 +156,7 @@ STUB_BODY = textwrap.dedent(
     import sys
     import threading
     import time
+    import uuid
 
     def _watchdog():
         time.sleep(22)
@@ -185,8 +186,9 @@ STUB_BODY = textwrap.dedent(
             },
             fh,
         )
-    with open(os.path.join(calls, "calls.log"), "a", encoding="utf-8") as fh:
-        fh.write(sid + "\n")
+    token = "%d-%s" % (os.getpid(), uuid.uuid4().hex)
+    with open(os.path.join(calls, token + ".invoked"), "w", encoding="utf-8") as fh:
+        fh.write(sid)
 
     counting_dir = spec.get("concurrency_dir")
     mine = None
@@ -195,8 +197,9 @@ STUB_BODY = textwrap.dedent(
         mine = os.path.join(counting_dir, sid + ".active")
         open(mine, "w").close()
         running = len([n for n in os.listdir(counting_dir) if n.endswith(".active")])
-        with open(spec["counts_log"], "a", encoding="utf-8") as fh:
-            fh.write(str(running) + "\n")
+        os.makedirs(spec["counts_dir"], exist_ok=True)
+        with open(os.path.join(spec["counts_dir"], token + ".count"), "w", encoding="utf-8") as fh:
+            fh.write(str(running))
 
     hold = spec.get("hold_for")
     if hold:
@@ -433,8 +436,9 @@ class CloneHarness(unittest.TestCase):
         return json.loads((self.calls / f"{sid}.json").read_text(encoding="utf-8"))
 
     def call_log(self):
-        path = self.calls / "calls.log"
-        return path.read_text(encoding="utf-8").split() if path.is_file() else []
+        if not self.calls.is_dir():
+            return []
+        return [p.read_text(encoding="utf-8") for p in self.calls.glob("*.invoked")]
 
     def log_path(self):
         return self.project / ".compass" / "meta" / "clone-log.jsonl"
@@ -1080,21 +1084,364 @@ class ConcurrencyTests(CloneHarness):
                 sids = [f"2222222{index}-000{n}-4000-8000-000000000000" for n in range(count)]
                 for sid in sids:
                     self.add_session(sid)
-                counts = self.stubdir / f"counts{index}.log"
+                counts = self.stubdir / f"counts{index}"
                 self.set_plan({
                     "stream_file": str(self.clean),
                     "concurrency_dir": str(self.stubdir / f"active{index}"),
-                    "counts_log": str(counts),
+                    "counts_dir": str(counts),
                     "sleep": 1.2,
                 })
                 code, _, _ = self.invoke(*sids, *extra, "--run-id", f"con{index}")
                 self.assertEqual(code, 0)
-                seen = [int(n) for n in counts.read_text().split()]
+                seen = [int(p.read_text()) for p in counts.glob("*.count")]
                 self.assertEqual(len(seen), count)
                 self.assertEqual(max(seen), expected_max)
                 self.assertEqual(
                     sorted(r["session_id"] for r in self.read_run(f"con{index}")["clones"]), sorted(sids)
                 )
+
+
+STUB2_BODY = textwrap.dedent(
+    r"""
+    import json
+    import os
+    import sys
+    import uuid
+
+    argv = sys.argv[1:]
+    with open(os.environ["STUB2_PLAN"], encoding="utf-8") as fh:
+        spec = json.load(fh)
+    if spec.get("read_stdin", True):
+        sys.stdin.buffer.read()
+    sid = argv[argv.index("--resume") + 1]
+    calls = os.environ["STUB_CALLS"]
+    os.makedirs(calls, exist_ok=True)
+    name = "%d-%s.invoked" % (os.getpid(), uuid.uuid4().hex)
+    with open(os.path.join(calls, name), "w", encoding="utf-8") as fh:
+        fh.write(sid)
+    if spec.get("stderr_hex"):
+        sys.stderr.buffer.write(bytes.fromhex(spec["stderr_hex"]))
+        sys.stderr.buffer.flush()
+    if spec.get("stream_file"):
+        with open(spec["stream_file"], "rb") as fh:
+            sys.stdout.buffer.write(fh.read())
+        sys.stdout.buffer.flush()
+    sys.exit(spec.get("exit", 0))
+    """
+)
+
+
+class ImplementationBranchTests(CloneHarness):
+    """Defect classes that exist only once the runner's threads, encodings
+    and error handling are written."""
+
+    def use_second_stub(self, **spec):
+        body = self.stubdir / "stub2_body.py"
+        body.write_text(STUB2_BODY, encoding="utf-8")
+        if sys.platform == "win32":
+            launcher = self.stubdir / "stub2.bat"
+            launcher.write_text(
+                '@echo off\r\n"' + sys.executable + '" "' + str(body) + '" %*\r\n', encoding="utf-8"
+            )
+        else:
+            launcher = self.stubdir / "stub2.sh"
+            launcher.write_text('#!/bin/sh\nexec "' + sys.executable + '" "' + str(body) + '" "$@"\n', encoding="utf-8")
+            launcher.chmod(0o755)
+        plan = self.stubdir / "plan2.json"
+        plan.write_text(json.dumps(spec), encoding="utf-8")
+        os.environ["COMPASS_CLAUDE_BIN"] = str(launcher)
+        os.environ["STUB2_PLAN"] = str(plan)
+
+    def test_child_that_exits_without_reading_a_large_prompt_is_not_a_crash(self):
+        """Adversarial where: the child ends while the stdin feeder is still
+        writing a prompt far larger than the pipe buffer, so the write raises
+        a broken-pipe error that escapes the feeder thread (a traceback on
+        stderr, a hung join, or a clone lost) instead of the result line
+        deciding the status."""
+        self.add_session(SID_A)
+        self.use_second_stub(read_stdin=False, stream_file=str(self.clean))
+        prompt_file = self.base / "huge.txt"
+        prompt_file.write_bytes(("{output} " + "x" * 79 + "\n").encode("utf-8") * 100000)
+        started = time.monotonic()
+        code, _, err = self.invoke(SID_A, "--run-id", "pipe1", "--prompt-file", str(prompt_file), "--timeout", "30")
+        self.assertEqual(code, 0)
+        self.assertLess(time.monotonic() - started, 25)
+        self.assertEqual(self.row("pipe1", SID_A)["status"], "done")
+        self.assertNotIn("Traceback", err)
+        self.assertNotIn("Exception in thread", err)
+
+    def test_stream_edges_do_not_hide_the_result_line_and_are_saved_verbatim(self):
+        """Adversarial where: the last stream line has no newline (the
+        iterator hands it over unterminated), lines end in CRLF (a strip-less
+        parse sees trailing `\\r`), or the result line follows a line that is
+        not valid UTF-8; the result is lost, the clone is called failed, or
+        the saved transcript differs from the stream by a byte."""
+        rows = {
+            "no final newline": (
+                stream_bytes(init_record(SID_A), assistant_text("working"))
+                + json.dumps(result_record(cost=0.5)).encode("utf-8"),
+                0.5,
+            ),
+            "crlf endings": (
+                stream_bytes(init_record(SID_A), result_record(cost=0.75)).replace(b"\n", b"\r\n"),
+                0.75,
+            ),
+            "undecodable bytes then unterminated result": (
+                b'{"type":"assistant","note":"\xc3\x28 half"}\n'
+                + json.dumps(result_record(cost=0.125)).encode("utf-8"),
+                0.125,
+            ),
+        }
+        for index, (name, (data, cost)) in enumerate(rows.items()):
+            with self.subTest(name):
+                sid = f"1111111{index}-0000-4000-8000-000000000000"
+                self.add_session(sid)
+                self.set_plan({"stream_file": self.write_stream(f"edge{index}", data)})
+                code, _, _ = self.invoke(sid, "--run-id", f"edge{index}")
+                self.assertEqual(code, 0)
+                row = self.row(f"edge{index}", sid)
+                self.assertEqual(row["status"], "done")
+                self.assertEqual(row["cost_usd"], cost)
+                self.assertEqual((self.run_dir(f"edge{index}") / f"{sid}.jsonl").read_bytes(), data)
+
+    def test_error_results_without_usable_text_or_cost_still_classify(self):
+        """Adversarial where: an error result whose `result` is null, blank
+        or not a string crashes the context-full substring check or leaves
+        the failed row without a reason; a `total_cost_usd` that is a string
+        or a boolean is stored as a cost (True would be read as 1)."""
+        rows = {
+            "null text": ({"type": "result", "subtype": "error_max_turns", "is_error": True, "result": None}, "failed", None),
+            "blank text": ({"type": "result", "subtype": "error_during_execution", "is_error": True, "result": "  \n"}, "failed", None),
+            "numeric text": ({"type": "result", "subtype": "error_x", "is_error": True, "result": 7}, "failed", None),
+            "no text key": ({"type": "result", "subtype": "error_y", "is_error": True}, "failed", None),
+            "string cost": ({"type": "result", "is_error": False, "result": "ok", "total_cost_usd": "0.29"}, "done", None),
+            "boolean cost": ({"type": "result", "is_error": False, "result": "ok", "total_cost_usd": True}, "done", None),
+        }
+        for index, (name, (record, status, cost)) in enumerate(rows.items()):
+            with self.subTest(name):
+                sid = f"3333333{index}-0000-4000-8000-000000000000"
+                self.add_session(sid)
+                self.set_plan({"stream_file": self.write_stream(f"err{index}", stream_bytes(record)), "exit": 0 if status == "done" else 1})
+                code, _, _ = self.invoke(sid, "--run-id", f"err{index}")
+                self.assertEqual(code, 0)
+                row = self.row(f"err{index}", sid)
+                self.assertEqual(row["status"], status)
+                self.assertIsNone(row["cost_usd"])
+                if status == "failed":
+                    self.assertTrue(isinstance(row["reason"], str) and row["reason"].strip())
+
+    def test_interleaved_and_case_variant_duplicate_ids_collapse_to_one_row_each(self):
+        """Adversarial where: the same id seen both as a missing session and
+        as a present one in one invocation (or spelled with different hex
+        case) produces a second row, a second child, or two clones writing
+        one lesson file."""
+        self.add_session(SID_A)
+        code, _, _ = self.invoke(SID_B, SID_A, SID_B, SID_A, SID_A.upper(), "--run-id", "dup1")
+        self.assertEqual(code, 0)
+        rows = self.read_run("dup1")["clones"]
+        self.assertEqual(sorted((r["session_id"], r["status"]) for r in rows), sorted([(SID_B, "missing"), (SID_A, "done")]))
+        self.assertEqual(self.call_log(), [SID_A])
+
+        shutil.rmtree(self.calls)
+        code, _, _ = self.invoke(SID_A.upper(), SID_A, "--run-id", "dup2")
+        self.assertEqual(code, 0)
+        rows = self.read_run("dup2")["clones"]
+        self.assertEqual([r["session_id"].lower() for r in rows], [SID_A])
+        self.assertLessEqual(len(self.call_log()), 1)
+
+    def test_run_json_is_valid_json_at_every_moment_of_a_run(self):
+        """Adversarial where: `run.json` is rewritten in place (truncate then
+        write) or its temp file is shared unguarded by finishing clones, so a
+        reader polling during the run sees an empty or torn file, a vanished
+        file, or a clone count that goes backwards."""
+        import threading
+
+        sids = [f"4444444{n}-0000-4000-8000-000000000000" for n in range(6)]
+        for sid in sids:
+            self.add_session(sid)
+        self.set_plan({"stream_file": str(self.clean), "sleep": 0.3})
+        record_path = self.run_dir("poll1") / "run.json"
+        stop = threading.Event()
+        bad = []
+        counts = []
+
+        def poll():
+            seen_once = False
+            while not stop.is_set():
+                try:
+                    text = record_path.read_text(encoding="utf-8")
+                except FileNotFoundError:
+                    if seen_once:
+                        bad.append("run.json vanished")
+                except OSError:
+                    pass
+                else:
+                    seen_once = True
+                    try:
+                        data = json.loads(text)
+                        ids = [r["session_id"] for r in data["clones"]]
+                        if len(ids) != len(set(ids)):
+                            bad.append("duplicate rows")
+                        counts.append(len(ids))
+                    except (ValueError, KeyError) as exc:
+                        bad.append(f"torn read: {exc!r}")
+                time.sleep(0.001)
+
+        poller = threading.Thread(target=poll, daemon=True)
+        poller.start()
+        try:
+            code, _, _ = self.invoke(*sids, "--run-id", "poll1", "--jobs", "3")
+        finally:
+            stop.set()
+            poller.join(10)
+        self.assertEqual(code, 0)
+        self.assertEqual(bad, [])
+        self.assertGreaterEqual(len(counts), 10)
+        self.assertEqual(counts, sorted(counts))
+        self.assertEqual(len(self.read_run("poll1")["clones"]), 6)
+        self.assertEqual(sorted(p.name for p in self.run_dir("poll1").glob("*.tmp")), [])
+
+    def test_project_and_home_paths_with_spaces_and_non_ascii_reach_the_child_whole(self):
+        """Adversarial where: a project folder or `COMPASS_HOME` containing
+        spaces and non-ASCII characters is cut at the space or mangled by
+        the launcher or a locale encoding, so the lesson path in the prompt,
+        `--add-dir`, the child's cwd or the log row no longer names the real
+        folder."""
+        self.project = self.base / "pröj ect 日本"
+        (self.project / ".compass").mkdir(parents=True)
+        self.chome = self.base / "chöme dir ñ"
+        self.chome.mkdir()
+        os.environ["CLAUDE_PROJECT_DIR"] = str(self.project)
+        os.environ["COMPASS_HOME"] = str(self.chome)
+        self.add_session(SID_A)
+        self.set_plan({"stream_file": str(self.clean), "lesson": "- rule é 日本\n"})
+        code, _, _ = self.invoke(SID_A, "--run-id", "uni1")
+        self.assertEqual(code, 0)
+
+        row = self.row("uni1", SID_A)
+        self.assertEqual(row["status"], "done")
+        self.assertEqual(norm(row["lesson_file"]), norm(self.run_dir("uni1") / f"{SID_A}.md"))
+        marker = self.call(SID_A)
+        self.assertIn(row["lesson_file"], marker["stdin"])
+        self.assertEqual(norm(flag_value(marker["argv"], "--add-dir")), norm(self.run_dir("uni1")))
+        self.assertEqual(norm(marker["cwd"]), norm(self.project))
+        self.assertEqual(Path(row["lesson_file"]).read_text(encoding="utf-8"), "- rule é 日本\n")
+        record_text = (self.run_dir("uni1") / "run.json").read_bytes().decode("utf-8")
+        self.assertIn("日本", record_text)
+        self.assertEqual([entry["session_id"] for entry in self.log_rows()], [SID_A])
+        self.assertEqual(norm(self.log_rows()[0]["transcript"]), norm(row["transcript"]))
+
+    def test_error_text_with_a_lone_surrogate_does_not_break_run_json(self):
+        """Adversarial where: an error result whose text carries a JSON
+        `\\ud83d` escape (a truncated emoji) puts a lone surrogate in the
+        row's reason; encoding `run.json` to UTF-8 then raises, and because
+        the row is already in the list every later rewrite raises too, so the
+        record never shows this clone or any after it."""
+        self.add_session(SID_A)
+        self.add_session(SID_B)
+        broken = b'{"type":"result","subtype":"error_during_execution","is_error":true,"result":"boom \\ud83d cut"}\n'
+        self.set_plan(
+            None,
+            **{
+                SID_A: {"stream_file": self.write_stream("sur", broken), "exit": 1},
+                SID_B: {"stream_file": str(self.clean)},
+            },
+        )
+        code, _, _ = self.invoke(SID_A, SID_B, "--run-id", "sur1", "--jobs", "1")
+        self.assertEqual(code, 0)
+        text = (self.run_dir("sur1") / "run.json").read_bytes().decode("utf-8")
+        data = json.loads(text)
+        self.assertEqual(sorted(r["session_id"] for r in data["clones"]), sorted([SID_A, SID_B]))
+        self.assertIsNotNone(data["finished_at"])
+        self.assertEqual(self.row("sur1", SID_A)["status"], "failed")
+        self.assertEqual(self.row("sur1", SID_B)["status"], "done")
+
+    def test_stderr_tail_cut_inside_a_multibyte_character_still_gives_a_reason(self):
+        """Adversarial where: the kept 2000-byte stderr tail starts in the
+        middle of a two-byte character, and decoding it strictly raises, so
+        the failed clone has no row or an unreadable `run.json`."""
+        self.add_session(SID_A)
+        self.use_second_stub(stderr_hex=("é" * 5000 + "x").encode("utf-8").hex(), exit=1)
+        code, _, _ = self.invoke(SID_A, "--run-id", "tail1")
+        self.assertEqual(code, 0)
+        row = self.row("tail1", SID_A)
+        self.assertEqual(row["status"], "failed")
+        self.assertIn("é", row["reason"])
+        self.assertLess(len(row["reason"]), 2300)
+
+    def test_prompt_file_with_a_byte_order_mark_does_not_send_the_mark(self):
+        """Adversarial where: a prompt file saved by a Windows editor starts
+        with a UTF-8 byte order mark, decoded as plain UTF-8 so the child's
+        prompt begins with U+FEFF."""
+        self.add_session(SID_A)
+        prompt_file = self.base / "bom.txt"
+        prompt_file.write_bytes(b"\xef\xbb\xbfWrite to {output} now.\n")
+        self.invoke(SID_A, "--run-id", "bom1", "--prompt-file", str(prompt_file))
+        self.assertTrue(self.call(SID_A)["stdin"].startswith("Write to "))
+
+    def test_timeouts_too_large_for_arithmetic_are_refused_or_run_cleanly(self):
+        """Adversarial where: a timeout of several hundred digits passes
+        option parsing, then overflows the deadline arithmetic after the
+        child has been launched (the clone fails with an OverflowError while
+        its child runs on unwatched), or becomes `inf`, which `run.json`
+        writes as the non-JSON token `Infinity`."""
+        rows = {
+            "integer beyond float range": "9" * 400,
+            "decimal that parses to infinity": "9" * 400 + ".5",
+        }
+        for index, (name, value) in enumerate(rows.items()):
+            with self.subTest(name):
+                sid = f"5555555{index}-0000-4000-8000-000000000000"
+                self.add_session(sid)
+                before = len(self.call_log())
+                code, _, _ = self.invoke(sid, "--run-id", f"big{index}", "--timeout", value)
+                self.assertIn(code, (0, 1))
+                if code == 1:
+                    self.assertEqual(len(self.call_log()), before, "a refusal must launch no child")
+                    self.assertFalse(self.run_dir(f"big{index}").exists())
+                    continue
+
+                def reject(token):
+                    raise ValueError(f"non-JSON token {token}")
+
+                text = (self.run_dir(f"big{index}") / "run.json").read_text(encoding="utf-8")
+                json.loads(text, parse_constant=reject)
+                self.assertEqual(self.row(f"big{index}", sid)["status"], "done")
+
+
+class InterruptTests(CloneHarness):
+    def test_interrupt_stops_the_run_and_leaves_no_child_running(self):
+        """Adversarial where: Ctrl-C reaches the main thread while clones run
+        in a pool; the pool is not cancelled, so queued sessions still launch
+        after the interrupt and the running child (in its own process group,
+        deaf to the console signal) keeps going unwatched once the command
+        has returned."""
+        import _thread
+        import threading
+
+        sids = [f"6666666{n}-0000-4000-8000-000000000000" for n in range(3)]
+        for sid in sids:
+            self.add_session(sid)
+        beat = self.stubdir / "beat"
+        self.set_plan({"stream_file": str(self.clean), "hang": True, "heartbeat": str(beat)})
+        timer = threading.Timer(2.0, _thread.interrupt_main)
+        self.addCleanup(timer.cancel)
+        interrupted = False
+        started = time.monotonic()
+        timer.start()
+        try:
+            self.invoke(*sids, "--run-id", "int1", "--jobs", "1", "--timeout", "4")
+        except KeyboardInterrupt:
+            interrupted = True
+        finally:
+            timer.cancel()
+        self.assertLess(time.monotonic() - started, 8, "the interrupt did not stop the run")
+        size = beat.stat().st_size if beat.exists() else 0
+        time.sleep(1.2)
+        grown = (beat.stat().st_size if beat.exists() else 0) - size
+        self.assertEqual(grown, 0, "a child kept running after the command returned")
+        self.assertLessEqual(len(self.call_log()), 1, "a queued session launched after the interrupt")
+        self.assertTrue(interrupted or self.read_run("int1")["finished_at"] is not None)
 
 
 if __name__ == "__main__":
