@@ -54,12 +54,13 @@ COMMAND_SPECS = [
     ("doctor", "Diagnose install drift: plugin.yaml, hook registration, CLI completeness, agents/skills, lessons catalog. Exit 1 on any FAIL."),
     ("lessons", "Ranked catalog rows for an area, tag set, free text, or a document. Exit 1 on a malformed catalog row or missing catalog."),
     ("lesson-coverage", "Report cited, surfaced-but-uncited, and unresolvable lesson citations for a plan's `lessons:` fields. Advisory: exit 1 only on an unresolvable citation."),
-    ("test-checkpoint", "record | verify | open-ids for pre-build failing-test checkpoints, tamper-evident against git. Never exits 2."),
+    ("test-checkpoint", "record | verify | open-ids | cycle for pre-build failing-test checkpoints, tamper-evident against git. Never exits 2."),
     ("test-smells", "AST-based test-smell checks over test files: empty test, duplicate assert, literal-only assertion (gate), assertion-free (advisory). Exit 1 on any gate finding, never 2."),
     ("sizing", "stats reports the sizing-log.yaml decision/correction record: by shape, by provenance, and a qualified correction rate."),
     ("sources", "Print the curated research-source catalog; --check classifies each scripted entry by response body shape (--live to probe for real)."),
     ("sessions", "list | show | record - rank the project's past sessions that finished a feature (read from Claude Code's transcripts in place), print a kept clone as text, log a clone run's outcome."),
     ("clone", "Run a headless, non-persisted fork of old sessions that writes the lessons each learned to a lesson file in ~/.compass/sessions; --discard keeps no transcript."),
+    ("loop", "new | status | activate | pause | resume | review | run | check | baseline - control loops: a sensor, a controller and an actuator that move the project toward an end state under a budget."),
     ("retention", "Report the effective cleanupPeriodDays (how long Claude Code keeps sessions); --set N writes it to the user's settings.json."),
 ]
 

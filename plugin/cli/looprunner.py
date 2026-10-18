@@ -45,6 +45,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import looplib
+import proctree
 import sensorlib
 import vaultlib
 from commands import capture_worker
@@ -128,14 +129,9 @@ def _split_command(command):
 
 
 def _run_process(argv, cwd, timeout, stdin_bytes=None, env=None):
-    """Run `argv` from `cwd` and return a `_Process`. The child leads its own
-    process group, and on Windows sits in a job object, so a run past
-    `timeout` seconds is killed together with everything it started."""
-    kwargs = {}
-    if sys.platform == "win32":
-        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
-    else:
-        kwargs["start_new_session"] = True
+    """Run `argv` from `cwd` and return a `_Process`. The child roots its own
+    process tree (see proctree), so a run past `timeout` seconds, or an
+    interrupt, kills it together with everything it started."""
     try:
         proc = subprocess.Popen(
             argv,
@@ -144,36 +140,35 @@ def _run_process(argv, cwd, timeout, stdin_bytes=None, env=None):
             stdin=subprocess.DEVNULL if stdin_bytes is None else subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            **kwargs,
+            **proctree.popen_kwargs(),
         )
     except (OSError, ValueError, TypeError, IndexError) as exc:
         name = argv[0] if argv else "(empty command)"
         return _Process(error=f"could not start {name}: {exc}")
-    job = sensorlib._WindowsJob.create()
-    if job is not None and not job.assign(proc.pid):
-        job.close()
-        job = None
+    job = proctree.assign(proc)
     timed_out = False
     try:
         try:
             stdout, stderr = proc.communicate(input=stdin_bytes, timeout=timeout)
         except subprocess.TimeoutExpired:
             timed_out = True
-            sensorlib._kill_tree(proc, job)
+            proctree.kill(proc, job)
             try:
-                stdout, stderr = proc.communicate(timeout=sensorlib._KILL_WAIT_SECONDS)
+                stdout, stderr = proc.communicate(timeout=proctree.KILL_WAIT_SECONDS)
             except (subprocess.TimeoutExpired, OSError, ValueError):
                 stdout = stderr = b""
         except (OSError, ValueError) as exc:
-            sensorlib._kill_tree(proc, job)
+            proctree.kill(proc, job)
             try:
-                proc.wait(timeout=sensorlib._KILL_WAIT_SECONDS)
+                proc.wait(timeout=proctree.KILL_WAIT_SECONDS)
             except (subprocess.TimeoutExpired, OSError):
                 pass
             return _Process(error=f"could not read the output of {argv[0]}: {exc}")
+        except BaseException:
+            proctree.kill(proc, job)
+            raise
     finally:
-        if job is not None:
-            job.close()
+        proctree.release(job)
     return _Process(returncode=proc.returncode, stdout=stdout or b"", stderr=stderr or b"",
                     timed_out=timed_out)
 
