@@ -265,3 +265,7 @@ Plan: [[PLAN-018-research-covers-the-whole-spec]] (approved 2026-09-13). Pause a
 ### PLAN-020: clone old sessions to harvest their lessons
 - [x] TASK-140: The transcript reader and the central folder
 - [x] TASK-141: `compass retention` and the doctor row
+
+### PLAN-020: clone old sessions to harvest their lessons
+- [x] TASK-142: `compass sessions list`, `show` and `record`
+- [x] TASK-144: Setup offers longer session retention
