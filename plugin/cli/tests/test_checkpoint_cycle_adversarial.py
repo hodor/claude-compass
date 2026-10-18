@@ -521,6 +521,33 @@ class RecordCommitTests(unittest.TestCase):
         )
         self.assertEqual(code, 1, out + err)
 
+    def test_dropping_a_carried_file_from_the_index_does_not_hide_it_from_verify(self):
+        """Adversarial where: a carried file (tracked in the superseding
+        commit but untouched by it) is found by verify only through the
+        index's files list, so deleting that entry lets an edit to the file
+        pass verification."""
+        self.write("tests/test_a.py", self.SRC_A)
+        first = self.commit("test(TASK-804): failing tests")
+        code, out, err = run_cycle(["record", "TASK-804", "tests/test_a.py", "--commit", first])
+        self.assertEqual(code, 0, out + err)
+        self.write("tests/test_b.py", self.SRC_B)
+        second = self.commit("test(TASK-804): more tests")
+        code, out, err = run_cycle(
+            ["record", "TASK-804", "tests/test_a.py", "tests/test_b.py", "--commit", second,
+             "--supersede", "TASK-804", "--reason", "second batch"]
+        )
+        self.assertEqual(code, 0, out + err)
+
+        path = self.root / ".compass" / "tmp" / "test-checkpoints" / "TASK-804.json"
+        record = json.loads(path.read_text(encoding="utf-8"))
+        record["files"] = [entry for entry in record["files"] if entry["path"] != "tests/test_a.py"]
+        path.write_text(json.dumps(record), encoding="utf-8")
+        self.write("tests/test_a.py", self.SRC_A.replace("assertTrue(True)", "assertTrue(False)"))
+
+        code, out, err = run_cycle(["verify", "TASK-804"])
+        self.assertEqual(code, 1, out + err)
+        self.assertIn("tests/test_a.py", out)
+
 
 if __name__ == "__main__":
     unittest.main()

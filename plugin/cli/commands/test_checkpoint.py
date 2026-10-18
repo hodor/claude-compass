@@ -796,6 +796,27 @@ def _print_report(task, record, findings):
     sys.stdout.write("\n".join(lines) + "\n")
 
 
+def _recorded_paths_across_versions(record):
+    """Every file path named by `record` or by any prior version in its
+    `supersedes` chain. A superseding record can carry a file its commit left
+    unchanged, which no commit diff names; the union with the earlier versions
+    keeps that file under verification when its entry is dropped from the
+    current index."""
+    paths = set()
+    seen = 0
+    while isinstance(record, dict) and seen < 1000:
+        files = record.get("files")
+        if isinstance(files, list):
+            paths |= {
+                entry["path"] for entry in files
+                if isinstance(entry, dict) and isinstance(entry.get("path"), str)
+            }
+        supersedes = record.get("supersedes")
+        record = supersedes.get("prior") if isinstance(supersedes, dict) else None
+        seen += 1
+    return paths
+
+
 def _run_verify(args):
     options, error = _parse_verify(args)
     if error:
@@ -834,13 +855,7 @@ def _run_verify(args):
 
     tree_root = Path(options["tree"]) if options["tree"] else repo_root
     commit_files = _git_commit_files(repo_root, sha)
-    recorded_files = record.get("files")
-    if not isinstance(recorded_files, list):
-        recorded_files = []
-    recorded_paths = {
-        entry["path"] for entry in recorded_files
-        if isinstance(entry, dict) and isinstance(entry.get("path"), str)
-    }
+    recorded_paths = _recorded_paths_across_versions(record)
 
     findings = []
     ok = True
@@ -1090,21 +1105,22 @@ def _run_cycle(args):
     except TimeoutError as exc:
         sys.stderr.write(f"compass test-checkpoint cycle: {exc}\n")
         return 1
-    if isinstance(result, str):
-        sys.stderr.write(f"compass test-checkpoint cycle: {result}\n")
+    report, problem = result
+    if problem:
+        sys.stderr.write(f"compass test-checkpoint cycle: {problem}\n")
         return 1
-    sys.stdout.write(result)
+    sys.stdout.write(report)
     return 0
 
 
 def _append_cycle(task, statuses, vault_root, log_path):
     """Judge `statuses` against the task's last logged cycle and append the
-    new cycle. Returns the report text, or an error string with the log left
+    new cycle. Returns `(report, None)`, or `(None, error)` with the log left
     untouched. Runs under the log's lock, so reading the count and writing the
     row are one step."""
     rows, load_error = _load_cycle_log(log_path)
     if load_error:
-        return load_error
+        return None, load_error
 
     open_pairs = {(class_name, test) for _, class_name, test in _open_test_ids(vault_root, "cycle", exclude_task=task)}
     failing = {
@@ -1139,7 +1155,7 @@ def _append_cycle(task, statuses, vault_root, log_path):
     if gone:
         lines.append(f"  failing tests no longer passing or present: {_format_tests(gone)}")
     lines.append(f"escalate: {'yes' if escalate else 'no'}")
-    return "\n".join(lines) + "\n"
+    return "\n".join(lines) + "\n", None
 
 
 # --------------------------------------------------------------------------
