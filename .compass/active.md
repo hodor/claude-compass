@@ -48,7 +48,7 @@ Plan: [[PLAN-021-control-loops]].
 - [x] TASK-147: `loops` becomes a vault artifact type
 - [x] TASK-148: `looplib`: definition, state machine, state file, ledger and lock
 - [ ] TASK-149: `sensorlib`: result event, domain sensor, budget sums, change judgment
-- [ ] TASK-150: `compass loop` new, status, activate, pause, resume, review
+- [x] TASK-150: `compass loop` new, status, activate, pause, resume, review
 - [ ] TASK-151: `looprunner`: one iteration, the dry run and the dampener
 - [ ] TASK-152: The fix loop tells a helpful cycle from a harmful one
 - [ ] TASK-157: Ship 0.28.0 and run a loop live in a scratch project

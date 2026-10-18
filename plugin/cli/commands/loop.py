@@ -1,0 +1,507 @@
+"""`compass loop new | status | activate | pause | resume | review | run | check | baseline`
+- the project's control loops.
+
+A loop is a folder `.compass/loops/LOOP-NNN-name/` (see `looplib`). `new <name>`
+writes one from `loop_templates/`: a draft index, a `loop.json` with safe caps
+and no sensor command, the actuator instructions, a feedback file, a golden
+pattern template and a `state.json` at `idle`. A loop is addressed as
+`LOOP-NNN`.
+
+`status [LOOP-NNN]` prints the state, last reading, unreviewed increments,
+today's and lifetime spend against their budgets and the last halt reason.
+`activate` sets the index `status` to `active`. `pause` and `resume` apply the
+transition table through `looplib.advance`. `review <LOOP-NNN> <run-id>
+accept|reject [--reason TEXT]` appends one ledger row and moves no state; a
+reject reason becomes one line of `feedback.md`.
+
+`run [--dry-run]`, `check [--blocking]` and `baseline` belong to `looprunner`,
+imported when one of them is used. It provides `run_iteration(loop_dir,
+dry_run)`, `check(loop_dir, blocking)` and `write_baseline(loop_dir)`, each
+returning the exit code (None reads as 0).
+
+Every failure prints a message on stderr and returns 1; the command never
+exits 2.
+"""
+
+import importlib
+import json
+import re
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+import looplib
+import vaultlib
+
+TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "loop_templates"
+
+LOOP_ID = re.compile(r"^LOOP-(\d+)$")
+LOOP_FOLDER_NAME = re.compile(r"^LOOP-(\d+)-(.+)$")
+LOOP_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+ACTIVE = "active"
+DECISIONS = ("accept", "reject")
+RUNNER_COMMANDS = ("run", "check", "baseline")
+
+USAGE = (
+    "usage: compass loop new <name>\n"
+    "       compass loop status [LOOP-NNN]\n"
+    "       compass loop activate <LOOP-NNN>\n"
+    "       compass loop pause <LOOP-NNN>\n"
+    "       compass loop resume <LOOP-NNN>\n"
+    "       compass loop review <LOOP-NNN> <run-id> accept|reject [--reason TEXT]\n"
+    "       compass loop run <LOOP-NNN> [--dry-run]\n"
+    "       compass loop check <LOOP-NNN> [--blocking]\n"
+    "       compass loop baseline <LOOP-NNN>\n"
+)
+
+
+class UsageError(Exception):
+    """A bad argument or an unusable loop; the message goes to stderr and the
+    exit code is 1."""
+
+
+def _fail(message):
+    sys.stderr.write(f"compass loop: {message}\n")
+    return 1
+
+
+def _loops_dir():
+    return vaultlib.find_vault_root() / "loops"
+
+
+def _loop_folders(loops_dir):
+    """Every `LOOP-NNN-name` folder directly under `loops_dir` as
+    (number, name, path), in number order."""
+    if not loops_dir.is_dir():
+        return []
+    found = []
+    for entry in loops_dir.iterdir():
+        match = LOOP_FOLDER_NAME.match(entry.name)
+        if entry.is_dir() and match:
+            found.append((int(match.group(1)), match.group(2), entry))
+    return sorted(found, key=lambda item: (item[0], item[1]))
+
+
+def _resolve(loop_id):
+    """The folder of `LOOP-NNN`, or UsageError when the id is malformed,
+    unknown or held by more than one folder."""
+    match = LOOP_ID.match(loop_id or "")
+    if not match:
+        raise UsageError(f"{loop_id!r} is not a loop id like LOOP-001")
+    number = int(match.group(1))
+    folders = [path for num, _name, path in _loop_folders(_loops_dir()) if num == number]
+    if not folders:
+        raise UsageError(f"no loop {loop_id}")
+    if len(folders) > 1:
+        names = ", ".join(path.name for path in folders)
+        raise UsageError(f"{loop_id} is ambiguous: {names}")
+    return folders[0]
+
+
+def _loop_label(folder):
+    match = LOOP_FOLDER_NAME.match(folder.name)
+    return f"LOOP-{match.group(1)} {match.group(2)}"
+
+
+def _single_id(args, command):
+    if len(args) != 1:
+        raise UsageError(f"{command} needs exactly one <LOOP-NNN>")
+    return args[0]
+
+
+# --- new ---------------------------------------------------------------
+
+
+def _render(name, number, text):
+    """`text` with the template placeholders filled in."""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    for key, value in (("{{name}}", name), ("{{id}}", f"LOOP-{number:03d}"), ("{{date}}", today)):
+        text = text.replace(key, value)
+    return text
+
+
+def _stage_template(stage, name, number):
+    """Write every file of the template tree under `stage`, LF-terminated."""
+    for source in sorted(TEMPLATE_DIR.rglob("*")):
+        if not source.is_file():
+            continue
+        target = stage / source.relative_to(TEMPLATE_DIR)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        text = source.read_bytes().decode("utf-8")
+        vaultlib.write_text_lf(target, _render(name, number, text))
+
+
+def _new(args):
+    if len(args) != 1:
+        raise UsageError("new needs exactly one <name>")
+    name = args[0]
+    if not LOOP_NAME.match(name):
+        raise UsageError(
+            f"{name!r} is not a loop name: use lowercase letters, digits and single hyphens"
+        )
+    if not TEMPLATE_DIR.is_dir():
+        raise UsageError(f"loop templates missing at {TEMPLATE_DIR}")
+    loops_dir = _loops_dir()
+    existing = _loop_folders(loops_dir)
+    for number, existing_name, path in existing:
+        if existing_name == name:
+            raise UsageError(f"a loop named {name} already exists: {path.name}")
+    number = max((num for num, _n, _p in existing), default=0) + 1
+    folder = loops_dir / f"LOOP-{number:03d}-{name}"
+    stage = loops_dir / f".new-{folder.name}.tmp"
+    loops_dir.mkdir(parents=True, exist_ok=True)
+    if stage.exists():
+        _remove_tree(stage)
+    try:
+        _stage_template(stage, name, number)
+        stage.rename(folder)
+    except OSError as exc:
+        raise UsageError(f"could not write {folder}: {exc}") from exc
+    finally:
+        if stage.exists():
+            _remove_tree(stage)
+    print(f"created {folder.name}")
+    print(f"next: set sensor_command in {folder / 'loop.json'}, fill in {folder / 'index.md'}")
+    return 0
+
+
+def _remove_tree(directory):
+    """Remove a scratch folder this command made, best effort."""
+    for path in sorted(directory.rglob("*"), reverse=True):
+        try:
+            path.rmdir() if path.is_dir() else path.unlink()
+        except OSError:
+            pass
+    try:
+        directory.rmdir()
+    except OSError:
+        pass
+
+
+# --- status ------------------------------------------------------------
+
+
+def _money(value):
+    text = f"{round(value, 6):.6f}".rstrip("0").rstrip(".")
+    return text or "0"
+
+
+def _read_json_object(path):
+    """The JSON object in `path`, or {} when it is missing or unreadable."""
+    try:
+        data = json.loads(path.read_bytes().decode("utf-8-sig"))
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _row_cost(row):
+    cost = row.get("cost_usd")
+    if isinstance(cost, bool) or not isinstance(cost, (int, float)):
+        return None
+    return float(cost)
+
+
+def _row_day(row):
+    """The UTC date of a row's `ts`, or None when it has no readable one."""
+    ts = row.get("ts")
+    if not isinstance(ts, str):
+        return None
+    try:
+        moment = datetime.fromisoformat(ts.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(timezone.utc).date()
+
+
+# Spend is the sum of `cost_usd` over ledger rows: over all of them for the
+# lifetime total, over those stamped on the current UTC day for today's.
+def _spend_lifetime(rows):
+    return sum(cost for cost in map(_row_cost, rows) if cost is not None)
+
+
+def _spend_today(rows, now):
+    today = now.astimezone(timezone.utc).date()
+    return sum(
+        cost for row in rows
+        if (cost := _row_cost(row)) is not None and _row_day(row) == today
+    )
+
+
+def _last_halt_reason(rows):
+    for row in reversed(rows):
+        if row.get("type") == "transition" and row.get("to") == "halted":
+            reason = row.get("reason")
+            return reason if isinstance(reason, str) and reason else "no reason recorded"
+    return None
+
+
+def _last_reading(rows):
+    """The sensor reading carried by the most recent run row, or None."""
+    for row in reversed(rows):
+        if row.get("type") != "run":
+            continue
+        for key in ("reading_after", "after", "reading"):
+            if row.get(key) is not None:
+                return row[key]
+    return None
+
+
+def _budget(definition, key):
+    value = definition.get(key)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return "?"
+    return _money(value)
+
+
+def _status_lines(folder, now):
+    state_error = None
+    try:
+        state = looplib.read_state(folder)
+    except looplib.StateError as exc:
+        state, state_error = {"state": "unreadable"}, str(exc)
+    rows, skipped = looplib.read_ledger(folder)
+    definition = _read_json_object(folder / looplib.DEFINITION_FILE)
+    try:
+        index_data, _error = vaultlib.parse_frontmatter(folder / "index.md")
+    except (OSError, ValueError):
+        index_data = None
+    index_status = (index_data or {}).get("status", "unknown")
+    counters = looplib.fold(rows)
+    reading = _last_reading(rows)
+    halt = _last_halt_reason(rows)
+    lines = [
+        f"{_loop_label(folder)}  state: {state['state']}  index status: {index_status}",
+        f"  last reading: {json.dumps(reading) if reading is not None else 'none'}",
+        f"  wip: {counters['wip']} of {_budget(definition, 'wip_limit')} unreviewed increments",
+        f"  spend today: {_money(_spend_today(rows, now))} of {_budget(definition, 'daily_budget_usd')} usd",
+        f"  spend lifetime: {_money(_spend_lifetime(rows))} of {_budget(definition, 'total_budget_usd')} usd",
+        f"  last halt: {halt if halt is not None else 'none'}",
+    ]
+    if state_error:
+        lines.append(f"  state file: {state_error}")
+    if skipped:
+        lines.append(f"  ledger: {len(skipped)} unreadable line(s) skipped")
+    return lines
+
+
+def _status(args):
+    if len(args) > 1:
+        raise UsageError("status takes at most one <LOOP-NNN>")
+    if args:
+        folders = [_resolve(args[0])]
+    else:
+        folders = [path for _n, _name, path in _loop_folders(_loops_dir())]
+        if not folders:
+            print("no loops")
+            return 0
+    now = datetime.now(timezone.utc)
+    for index, folder in enumerate(folders):
+        if index:
+            print()
+        print("\n".join(_status_lines(folder, now)))
+    return 0
+
+
+# --- activate, pause, resume -------------------------------------------
+
+
+def _activate(args):
+    folder = _resolve(_single_id(args, "activate"))
+    index = folder / "index.md"
+    try:
+        text = vaultlib.read_vault_text(index)
+    except OSError as exc:
+        raise UsageError(f"cannot read {index}: {exc}") from exc
+    match = re.match(r"---\n(.*?)\n---\n", text, re.DOTALL)
+    if not match:
+        raise UsageError(f"{index} has no frontmatter")
+    head = match.group(1)
+    status_line = re.search(r"^status:.*$", head, re.MULTILINE)
+    if not status_line:
+        raise UsageError(f"{index} frontmatter has no status field")
+    new_head = head[: status_line.start()] + f"status: {ACTIVE}" + head[status_line.end():]
+    if new_head != head:
+        vaultlib.write_text_lf(index, text[: match.start(1)] + new_head + text[match.end(1):])
+    try:
+        looplib.load_definition(folder)
+    except looplib.DefinitionError as exc:
+        sys.stderr.write(f"compass loop: note: {exc}\n")
+    print(f"{_loop_label(folder)} is active")
+    return 0
+
+
+def _advance(args, command, reason):
+    folder = _resolve(_single_id(args, command))
+    try:
+        new = looplib.advance(folder, command, reason)
+    except looplib.TransitionError as exc:
+        raise UsageError(f"{_loop_label(folder)}: {exc}") from exc
+    except looplib.StateError as exc:
+        raise UsageError(str(exc)) from exc
+    print(f"{_loop_label(folder)} is {new}")
+    return 0
+
+
+def _pause(args):
+    return _advance(args, "pause", "paused by the human")
+
+
+def _resume(args):
+    return _advance(args, "resume", "resumed by the human")
+
+
+# --- review ------------------------------------------------------------
+
+
+def _parse_review(args):
+    """(loop id, run id, decision, reason) from the arguments."""
+    positional, reason = [], None
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg == "--reason":
+            index += 1
+            if index >= len(args):
+                raise UsageError("--reason needs a value")
+            reason = args[index]
+        elif arg.startswith("--reason="):
+            reason = arg[len("--reason="):]
+        elif arg.startswith("--"):
+            raise UsageError(f"unknown option {arg[:40]!r}")
+        else:
+            positional.append(arg)
+        index += 1
+    if len(positional) != 3:
+        raise UsageError("review needs <LOOP-NNN> <run-id> accept|reject")
+    loop_id, run_id, decision = positional
+    if decision not in DECISIONS:
+        raise UsageError(f"the decision must be accept or reject, got {decision[:40]!r}")
+    return loop_id, run_id, decision, reason
+
+
+def _require_verified_run(rows, run_id):
+    """Return when `run_id` names a run that reached `verifying`; otherwise
+    raise a UsageError saying why not."""
+    matches = [r for r in rows if r.get("type") == "run" and r.get("run_id") == run_id]
+    if not matches or not run_id:
+        raise UsageError(f"no run {run_id!r} in the ledger")
+    outcome = matches[-1].get("outcome")
+    if outcome not in ("helpful", "neutral", "harmful"):
+        raise UsageError(
+            f"run {run_id!r} ended {outcome!r} and left no increment to review"
+        )
+
+
+def _append_guidance(folder, reason):
+    """Add `reason`, squeezed to one line, as a bullet at the end of
+    `feedback.md`."""
+    line = " ".join(reason.split())
+    if not line:
+        return
+    path = folder / "feedback.md"
+    try:
+        text = vaultlib.read_vault_text(path)
+    except FileNotFoundError:
+        text = "# Feedback\n\n## Guidance\n"
+    if not text.endswith("\n"):
+        text += "\n"
+    vaultlib.write_text_lf(path, f"{text}- {line}\n")
+
+
+def _review(args):
+    loop_id, run_id, decision, reason = _parse_review(args)
+    folder = _resolve(loop_id)
+    rows, _skipped = looplib.read_ledger(folder)
+    _require_verified_run(rows, run_id)
+    row = {"type": "review", "run_id": run_id, "decision": decision}
+    if reason is not None and reason.strip():
+        row["reason"] = " ".join(reason.split())
+    looplib.append_ledger(folder, row)
+    if decision == "reject" and "reason" in row:
+        _append_guidance(folder, row["reason"])
+    print(f"{_loop_label(folder)}: run {run_id} {decision}ed")
+    return 0
+
+
+# --- run, check, baseline ----------------------------------------------
+
+
+def _runner_flags(args, flag):
+    """(loop id, flag present) from `<LOOP-NNN> [flag]`."""
+    positional = [a for a in args if a != flag]
+    if len(positional) != 1 or any(a.startswith("--") for a in positional):
+        raise UsageError(f"needs exactly one <LOOP-NNN> and at most {flag}")
+    return positional[0], flag in args
+
+
+def _runner_function(name):
+    """The `looprunner` function `name`, or None when no `looprunner` module
+    exists (a different missing module is a real error and propagates)."""
+    try:
+        module = importlib.import_module("looprunner")
+    except ModuleNotFoundError as exc:
+        if exc.name == "looprunner":
+            return None
+        raise
+    function = getattr(module, name, None)
+    if function is None:
+        raise UsageError(f"looprunner has no {name}")
+    return function
+
+
+def _exit_code(result):
+    """The exit code a runner function returned: None is 0, and 2 (the code
+    that blocks a hook's write) is reported as 1."""
+    code = 0 if result is None else int(result)
+    return 1 if code == 2 else code
+
+
+def _run_runner(command, args):
+    flag = {"run": "--dry-run", "check": "--blocking", "baseline": None}[command]
+    if flag is None:
+        loop_id, flagged = _single_id(args, command), False
+    else:
+        loop_id, flagged = _runner_flags(args, flag)
+    folder = _resolve(loop_id)
+    name = {"run": "run_iteration", "check": "check", "baseline": "write_baseline"}[command]
+    function = _runner_function(name)
+    if function is None:
+        return _fail(f"{command}: not implemented yet")
+    if command == "run":
+        return _exit_code(function(folder, dry_run=flagged))
+    if command == "check":
+        return _exit_code(function(folder, blocking=flagged))
+    return _exit_code(function(folder))
+
+
+COMMANDS = {
+    "new": _new,
+    "status": _status,
+    "activate": _activate,
+    "pause": _pause,
+    "resume": _resume,
+    "review": _review,
+}
+
+
+def run(args):
+    for stream, errors in ((sys.stdout, "replace"), (sys.stderr, "backslashreplace")):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors=errors)
+    if not args or (args[0] not in COMMANDS and args[0] not in RUNNER_COMMANDS):
+        sys.stderr.write(USAGE)
+        return 1
+    command, rest = args[0], args[1:]
+    try:
+        if command in RUNNER_COMMANDS:
+            return _run_runner(command, rest)
+        return COMMANDS[command](rest)
+    except UsageError as exc:
+        return _fail(str(exc))
+    except (OSError, ValueError, looplib.LockHeld, TimeoutError) as exc:
+        return _fail(str(exc))
