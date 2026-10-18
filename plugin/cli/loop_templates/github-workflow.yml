@@ -1,0 +1,148 @@
+# One iteration of {{id}} per run. Rendered by `compass loop schedule {{id}} --github`.
+# A run installs Compass, reconciles reviews from pull requests, runs the loop once,
+# proposes the run's file changes as a pull request on its own branch, and commits the
+# loop's state to the default branch.
+name: compass-loop-{{id}}
+
+on:
+  schedule:
+    - cron: "{{cron}}"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: compass-loop-{{id}}
+  cancel-in-progress: false
+
+jobs:
+  iterate:
+    runs-on: ubuntu-latest
+    if: github.ref_name == github.event.repository.default_branch
+    env:
+      GH_TOKEN: ${{ github.token }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Install Compass
+        run: |
+          repo=$(sed -n 's/^[[:space:]]*repository:[[:space:]]*//p' .compass/meta/plugin.yaml | head -n 1 | tr -d '\r')
+          if [ -z "$repo" ]; then
+            echo "::error::.compass/meta/plugin.yaml names no repository; commit that file to the repository"
+            exit 1
+          fi
+          git clone --depth 1 "$repo" "$RUNNER_TEMP/compass-source"
+          CLAUDE_PROJECT_DIR="$GITHUB_WORKSPACE" python "$RUNNER_TEMP/compass-source/plugin/cli/compass" self-update --force
+
+      - name: Check the install
+        run: |
+          test -f .claude/cli/compass || { echo "::error::Compass did not install .claude/cli/compass"; exit 1; }
+          grep -E '^[[:space:]]*(version|commit):' .compass/meta/plugin.yaml
+
+      - name: Snapshot the working tree
+        run: |
+          git config user.name "compass-loop"
+          git config user.email "compass-loop@users.noreply.github.com"
+          export LC_ALL=C
+          git status --porcelain -z -uall --no-renames | sort -z > "$RUNNER_TEMP/tree-before.txt"
+          echo "SINCE=RUN-$(date -u +%Y%m%dT%H%M%S)" >> "$GITHUB_ENV"
+
+      - name: Reconcile reviews from pull requests
+        run: |
+          gh pr list --label "compass-loop-{{id}}" --state all --limit 200 \
+            --json number,headRefName,state,mergedAt \
+            | python .claude/cli/compass loop reconcile {{id}} --prs -
+
+      - name: Run one iteration
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set +e
+          python .claude/cli/compass loop run {{id}}
+          echo "RUN_EXIT=$?" >> "$GITHUB_ENV"
+
+      - name: Read the outcome
+        run: |
+          export LC_ALL=C
+          last=$(python .claude/cli/compass loop status {{id}} --last-run || true)
+          run_id="${last%% *}"
+          if [ -n "$last" ] && [[ "$run_id" > "$SINCE" ]]; then
+            echo "RUN_ID=$run_id" >> "$GITHUB_ENV"
+            echo "RUN_OUTCOME=${last#* }" >> "$GITHUB_ENV"
+          else
+            echo "the iteration left no new ledger row"
+          fi
+
+      - name: Open a pull request for the increment
+        run: |
+          case "${RUN_OUTCOME:-}" in
+            helpful|neutral|harmful) ;;
+            *) echo "no increment to propose (outcome: ${RUN_OUTCOME:-none})"; exit 0 ;;
+          esac
+          export LC_ALL=C
+          git status --porcelain -z -uall --no-renames | sort -z > "$RUNNER_TEMP/tree-after.txt"
+          paths=()
+          while IFS= read -r -d '' entry; do
+            path="${entry:3}"
+            case "$path" in
+              .compass/*|.claude/*) continue ;;
+            esac
+            paths+=("$path")
+          done < <(comm -z -13 "$RUNNER_TEMP/tree-before.txt" "$RUNNER_TEMP/tree-after.txt")
+          if [ "${#paths[@]}" -eq 0 ]; then
+            echo "the iteration changed nothing outside .compass"
+            exit 0
+          fi
+          gh label create "compass-loop-{{id}}" --force --description "Increments proposed by {{id}}"
+          branch="compass-loop/{{id}}/$RUN_ID"
+          git switch -c "$branch"
+          git add -- "${paths[@]}"
+          git commit -m "{{id}} $RUN_ID: $RUN_OUTCOME"
+          git push origin "$branch"
+          gh pr create --base "$DEFAULT_BRANCH" --head "$branch" \
+            --label "compass-loop-{{id}}" \
+            --title "{{id}} $RUN_ID: $RUN_OUTCOME" \
+            --body "Run $RUN_ID of {{id}} ended $RUN_OUTCOME. Merging accepts the increment; closing it without merging rejects it. The next scheduled run reads the result."
+          git switch "$DEFAULT_BRANCH"
+
+      - name: Commit the loop state
+        if: always()
+        run: |
+          git switch "$DEFAULT_BRANCH"
+          git add -- .compass/loops/{{folder}}/state.json .compass/loops/{{folder}}/feedback.md
+          if [ -f .compass/loops/{{folder}}/ledger.jsonl ]; then git add -- .compass/loops/{{folder}}/ledger.jsonl; fi
+          if git diff --cached --quiet; then
+            echo "the loop state did not change"
+            exit 0
+          fi
+          git commit -m "{{id}} state after ${RUN_ID:-an iteration without a run}"
+          if git pull --rebase --autostash origin "$DEFAULT_BRANCH" && git push origin "HEAD:$DEFAULT_BRANCH"; then
+            exit 0
+          fi
+          git rebase --abort || true
+          git push origin "HEAD:refs/heads/compass-loop/{{id}}/state-${RUN_ID:-$GITHUB_RUN_ID}"
+          echo "::error::the default branch refused the state commit; it is on compass-loop/{{id}}/state-${RUN_ID:-$GITHUB_RUN_ID}"
+          exit 1
+
+      - name: Fail the job when the iteration failed
+        if: always()
+        run: |
+          if [ "${RUN_EXIT:-0}" != "0" ]; then
+            echo "::error::the iteration exited with ${RUN_EXIT}"
+            exit "$RUN_EXIT"
+          fi
