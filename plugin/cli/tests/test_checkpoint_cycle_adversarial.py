@@ -413,5 +413,114 @@ class OpenSetChangesBetweenCyclesTests(VaultCase):
         self.assertEqual((got, "fixed 1," in out), ("helpful", True), out)
 
 
+class RecordCommitTests(unittest.TestCase):
+    """`record` against a real git repository."""
+
+    SRC_A = (
+        "import unittest\n\n\nclass AT(unittest.TestCase):\n"
+        "    def test_a(self):\n        self.assertTrue(True)\n"
+    )
+    SRC_B = (
+        "import unittest\n\n\nclass BT(unittest.TestCase):\n"
+        "    def test_b(self):\n        self.assertTrue(True)\n"
+    )
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root, True)
+        (self.root / ".compass").mkdir()
+        (self.root / ".gitignore").write_text(".compass/tmp/\n", encoding="utf-8")
+        self.git("init", "-q")
+        self.commit("initial")
+        old = os.environ.get("CLAUDE_PROJECT_DIR")
+        os.environ["CLAUDE_PROJECT_DIR"] = str(self.root)
+        self.addCleanup(
+            lambda: os.environ.pop("CLAUDE_PROJECT_DIR", None) if old is None
+            else os.environ.__setitem__("CLAUDE_PROJECT_DIR", old)
+        )
+
+    def git(self, *args):
+        result = subprocess.run(
+            ["git", "-c", "user.email=t@example.com", "-c", "user.name=t", *args],
+            cwd=str(self.root), capture_output=True, text=True, check=True,
+        )
+        return result.stdout.strip()
+
+    def commit(self, message):
+        self.git("add", "-A")
+        self.git("commit", "-q", "--allow-empty", "-m", message)
+        return self.git("rev-parse", "HEAD")
+
+    def write(self, rel, text):
+        path = self.root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8", newline="\n")
+
+    def index(self, task):
+        path = self.root / ".compass" / "tmp" / "test-checkpoints" / f"{task}.json"
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def test_a_symbolic_commit_is_stored_as_the_full_sha(self):
+        """Adversarial where: `--commit HEAD` (or a branch name) is stored
+        as typed, so the checkpoint follows the moving ref and every later
+        verify compares against whatever HEAD has become."""
+        self.write("tests/test_a.py", self.SRC_A)
+        sha = self.commit("test(TASK-800): failing tests")
+        code, out, err = run_cycle(["record", "TASK-800", "tests/test_a.py", "--commit", "HEAD"])
+        self.assertEqual(code, 0, out + err)
+        self.assertEqual(self.index("TASK-800")["commit"], sha)
+        self.write("tests/test_other.py", self.SRC_B)
+        self.commit("later work")
+        self.assertEqual(self.index("TASK-800")["commit"], sha)
+        code, out, err = run_cycle(["verify", "TASK-800"])
+        self.assertEqual(code, 0, out + err)
+
+    def test_an_unknown_or_option_shaped_commit_is_refused(self):
+        """Adversarial where: a name that resolves to nothing, or one that
+        starts with `-` and reaches git as an option, is accepted."""
+        self.write("tests/test_a.py", self.SRC_A)
+        self.commit("test(TASK-801): failing tests")
+        for name in ("no-such-ref", "--all", "-1"):
+            with self.subTest(commit=name):
+                code, out, err = run_cycle(["record", "TASK-801", "tests/test_a.py", "--commit", name])
+                self.assertEqual(code, 1, out + err)
+
+    def test_a_superseding_record_may_carry_a_file_the_commit_did_not_change(self):
+        """Adversarial where: a superseding record is refused for a test file
+        that is tracked in the new commit's tree but untouched by it, or a
+        first record (or an untracked file) is accepted on the same
+        loosened rule, or verify never classifies the unchanged recorded
+        file so editing it goes unseen."""
+        self.write("tests/test_a.py", self.SRC_A)
+        first = self.commit("test(TASK-802): failing tests")
+        code, out, err = run_cycle(["record", "TASK-802", "tests/test_a.py", "--commit", first])
+        self.assertEqual(code, 0, out + err)
+        self.write("tests/test_b.py", self.SRC_B)
+        second = self.commit("test(TASK-802): more tests")
+
+        code, out, err = run_cycle(["record", "TASK-803", "tests/test_a.py", "tests/test_b.py", "--commit", second])
+        self.assertEqual(code, 1, "a first record still requires the files be part of the commit")
+
+        args = ["record", "TASK-802", "tests/test_a.py", "tests/test_b.py", "--commit", second,
+                "--supersede", "TASK-802", "--reason", "second batch"]
+        code, out, err = run_cycle(args)
+        self.assertEqual(code, 0, out + err)
+        record = self.index("TASK-802")
+        by_path = {entry["path"]: entry["ids"] for entry in record["files"]}
+        self.assertEqual(by_path, {"tests/test_a.py": [["AT", "test_a"]], "tests/test_b.py": [["BT", "test_b"]]})
+
+        self.write("tests/test_a.py", self.SRC_A.replace("assertTrue(True)", "assertTrue(False)"))
+        code, out, err = run_cycle(["verify", "TASK-802"])
+        self.assertEqual(code, 1, out)
+        self.assertIn("tests/test_a.py", out)
+
+        self.write("tests/untracked.py", self.SRC_B)
+        code, out, err = run_cycle(
+            ["record", "TASK-802", "tests/untracked.py", "--commit", second,
+             "--supersede", "TASK-802", "--reason", "x"]
+        )
+        self.assertEqual(code, 1, out + err)
+
+
 if __name__ == "__main__":
     unittest.main()

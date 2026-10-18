@@ -66,6 +66,11 @@ command prints the verdict line and `escalate: yes|no`, yes at cycle 3 or on
 a harmful cycle. An unreadable or testless evidence file exits 1 and appends
 nothing.
 
+`record --commit` is resolved to a full SHA, so a symbolic name such as
+`HEAD` never drifts. A first record names only files the commit touched; a
+`--supersede` record may also name a file tracked in that commit's tree that
+the commit left unchanged, and `verify` classifies every recorded file.
+
 Vault root resolution goes through `vaultlib.find_vault_root`
 (LESSON-scratch-vaults-need-compass-dir). Never exits 2; a missing git
 binary, a detached or non-repository working tree, and a corrupt index all
@@ -77,13 +82,22 @@ import codecs
 import datetime
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
+import time
 from collections import Counter
+from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
 
 import vaultlib
+
+try:
+    import msvcrt
+except ImportError:
+    msvcrt = None
+    import fcntl
 
 CHECKPOINTS_DIR = ("tmp", "test-checkpoints")
 
@@ -104,14 +118,17 @@ _RUN_LINE_RE = re.compile(
 
 # pytest -v line: "path/to/test_file.py::Class::test_name PASSED [ 10%]" -
 # class segments optional and nestable, an optional [param] suffix on the
-# name. Short-summary lines (-rA) put the status first instead.
-_PYTEST_NODEID = r"\S+?\.py(?:::\w+)*::\w+(?:\[[^\]]*\])?"
+# name. Short-summary lines (-rA) put the status first instead. A param id
+# may hold spaces, `]` and `::`: in a `-v` line it runs to the last `]`
+# that precedes the status; in a summary line, to the first `]` followed by
+# whitespace or the end, since a failure message trails it.
+_PYTEST_NODE_BASE = r"\S+?\.py(?:::\w+)*::\w+"
 _PYTEST_STATUS = r"PASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS"
 _PYTEST_LINE_RE = re.compile(
-    rf"^(?P<nodeid>{_PYTEST_NODEID})\s+(?P<status>{_PYTEST_STATUS})\b"
+    rf"^(?P<nodeid>{_PYTEST_NODE_BASE}(?:\[.*\])?)\s+(?P<status>{_PYTEST_STATUS})\b"
 )
 _PYTEST_SUMMARY_RE = re.compile(
-    rf"^(?P<status>{_PYTEST_STATUS})\s+(?P<nodeid>{_PYTEST_NODEID})\b"
+    rf"^(?P<status>{_PYTEST_STATUS})\s+(?P<nodeid>{_PYTEST_NODE_BASE}(?:\[.*?\](?=\s|$))?)(?=\s|$)"
 )
 
 # A test's status is not always on its own line. A docstring prints the
@@ -156,6 +173,15 @@ def _git_commit_exists(repo_root, sha):
         return False
     code, _, _ = _run_git(repo_root, ["cat-file", "-e", f"{sha}^{{commit}}"])
     return code == 0
+
+
+def _git_resolve_commit(repo_root, name):
+    """The full SHA that `name` (a SHA, a branch, `HEAD`) names, or None."""
+    if not name or name.startswith("-"):
+        return None
+    code, out, _ = _run_git(repo_root, ["rev-parse", "--verify", f"{name}^{{commit}}"])
+    sha = out.strip()
+    return sha if code == 0 and sha else None
 
 
 def _git_commit_files(repo_root, sha):
@@ -575,9 +601,9 @@ def _run_record(args):
         sys.stderr.write("compass test-checkpoint record: not a git repository (or git is unavailable)\n")
         return 1
 
-    commit = options["commit"]
-    if not _git_commit_exists(repo_root, commit):
-        sys.stderr.write(f"compass test-checkpoint record: commit {commit} not found in git log\n")
+    commit = _git_resolve_commit(repo_root, options["commit"])
+    if commit is None:
+        sys.stderr.write(f"compass test-checkpoint record: commit {options['commit']} not found in git log\n")
         return 1
 
     commit_files = set(_git_commit_files(repo_root, commit))
@@ -585,7 +611,10 @@ def _run_record(args):
     dirs = set()
     for given in resolved:
         rel = _to_posix_rel(repo_root, given)
-        if rel not in commit_files:
+        in_commit = rel in commit_files
+        if not in_commit and options["supersede"] and _git_show(repo_root, commit, rel) is not None:
+            in_commit = True  # a superseding record may carry a file tracked in the commit's tree
+        if not in_commit:
             sys.stderr.write(f"compass test-checkpoint record: {rel} is not part of commit {commit}\n")
             return 1
         content = _git_show(repo_root, commit, rel)
@@ -815,7 +844,7 @@ def _run_verify(args):
 
     findings = []
     ok = True
-    for rel in commit_files:
+    for rel in commit_files + sorted(recorded_paths - set(commit_files)):
         if not rel.endswith(".py") and rel not in recorded_paths:
             continue
         baseline = _git_show(repo_root, sha, rel)
@@ -887,15 +916,18 @@ def _dotted_module(path):
     return str(PurePosixPath(path).with_suffix("")).replace("/", ".")
 
 
-def _open_test_ids(vault_root, label="open-ids"):
+def _open_test_ids(vault_root, label="open-ids", exclude_task=None):
     """`[(module, class_name_or_None, test_name)]` for every checkpointed test
     of a task whose checkpoint is recorded, not `not_required`, and not yet
-    landed. An unreadable index is reported on stderr and skipped."""
+    landed, leaving out the checkpoint of `exclude_task`. An unreadable index
+    is reported on stderr and skipped."""
     checkpoints_dir = Path(vault_root).joinpath(*CHECKPOINTS_DIR)
     found = []
     if not checkpoints_dir.is_dir():
         return found
     for entry in sorted(checkpoints_dir.glob("TASK-*.json")):
+        if entry.stem == exclude_task:
+            continue
         record, load_error = _load_record(entry)
         if load_error:
             sys.stderr.write(f"compass test-checkpoint {label}: skipping {entry.name}: {load_error}\n")
@@ -936,7 +968,7 @@ def _parse_cycle(args):
     if not args or args[0].startswith("--"):
         return None, None, "a task id is required"
     task, rest = args[0], args[1:]
-    if not re.fullmatch(r"TASK-\d+", task):
+    if not re.fullmatch(r"TASK-[0-9]+", task):
         return None, None, f"{task!r} is not a task id (TASK-NNN)"
     evidence = None
     i = 0
@@ -975,9 +1007,54 @@ def _load_cycle_log(path):
                 rows.append(json.loads(line))
     except (OSError, ValueError) as exc:
         return None, f"unreadable cycle log {path.name}: {exc}"
-    if not all(isinstance(row, dict) and isinstance(row.get("failing"), list) for row in rows):
+    if not all(isinstance(row, dict) and _is_test_pair_list(row.get("failing")) for row in rows):
         return None, f"unreadable cycle log {path.name}: a row is not a cycle record"
     return rows, None
+
+
+def _is_test_pair_list(value):
+    """A cycle row's `failing` entry: a list of `[class_or_null, name]` pairs."""
+    return isinstance(value, list) and all(
+        isinstance(item, list) and len(item) == 2
+        and (item[0] is None or isinstance(item[0], str)) and isinstance(item[1], str)
+        for item in value
+    )
+
+
+CYCLE_LOCK_ATTEMPTS = 2000
+CYCLE_LOCK_RETRY_SECONDS = 0.005
+
+
+@contextmanager
+def _cycle_log_lock(log_path):
+    """Hold an exclusive OS lock on a sidecar file of `log_path`, retrying
+    briefly while another process holds it. The OS drops the lock when the
+    holder dies. TimeoutError when it stays held."""
+    lock_path = log_path.with_suffix(".lock")
+    fd = os.open(lock_path, os.O_RDWR | os.O_CREAT | getattr(os, "O_BINARY", 0), 0o666)
+    try:
+        for attempt in range(CYCLE_LOCK_ATTEMPTS):
+            try:
+                if msvcrt:
+                    os.lseek(fd, 0, os.SEEK_SET)
+                    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                else:
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError:
+                if attempt == CYCLE_LOCK_ATTEMPTS - 1:
+                    raise TimeoutError(f"cycle log lock {lock_path.name} stayed held") from None
+                time.sleep(CYCLE_LOCK_RETRY_SECONDS)
+        try:
+            yield
+        finally:
+            if msvcrt:
+                os.lseek(fd, 0, os.SEEK_SET)
+                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        os.close(fd)
 
 
 def _format_tests(tests):
@@ -1006,12 +1083,30 @@ def _run_cycle(args):
 
     vault_root = vaultlib.find_vault_root()
     log_path = Path(vault_root).joinpath(*CHECKPOINTS_DIR) / f"{task}.cycles.jsonl"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with _cycle_log_lock(log_path):
+            result = _append_cycle(task, statuses, vault_root, log_path)
+    except TimeoutError as exc:
+        sys.stderr.write(f"compass test-checkpoint cycle: {exc}\n")
+        return 1
+    if isinstance(result, str):
+        sys.stderr.write(f"compass test-checkpoint cycle: {result}\n")
+        return 1
+    sys.stdout.write(result)
+    return 0
+
+
+def _append_cycle(task, statuses, vault_root, log_path):
+    """Judge `statuses` against the task's last logged cycle and append the
+    new cycle. Returns the report text, or an error string with the log left
+    untouched. Runs under the log's lock, so reading the count and writing the
+    row are one step."""
     rows, load_error = _load_cycle_log(log_path)
     if load_error:
-        sys.stderr.write(f"compass test-checkpoint cycle: {load_error}\n")
-        return 1
+        return load_error
 
-    open_pairs = {(class_name, test) for _, class_name, test in _open_test_ids(vault_root, "cycle")}
+    open_pairs = {(class_name, test) for _, class_name, test in _open_test_ids(vault_root, "cycle", exclude_task=task)}
     failing = {
         key for key, status in statuses.items()
         if status in _FAILING_STATUSES and key not in open_pairs
@@ -1036,7 +1131,6 @@ def _run_cycle(args):
         "cycle": number, "recorded_at": _iso_now(), "verdict": verdict,
         "failing": [list(key) for key in sorted(failing, key=lambda test: (test[0] or "", test[1]))],
     })
-    log_path.parent.mkdir(parents=True, exist_ok=True)
     vaultlib.write_text_lf(log_path, "".join(json.dumps(row) + "\n" for row in rows))
 
     lines = [f"cycle {number}: {verdict} - fixed {len(fixed)}, new {len(new)}, still failing {len(still)}"]
@@ -1045,8 +1139,7 @@ def _run_cycle(args):
     if gone:
         lines.append(f"  failing tests no longer passing or present: {_format_tests(gone)}")
     lines.append(f"escalate: {'yes' if escalate else 'no'}")
-    sys.stdout.write("\n".join(lines) + "\n")
-    return 0
+    return "\n".join(lines) + "\n"
 
 
 # --------------------------------------------------------------------------
