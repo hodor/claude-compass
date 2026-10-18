@@ -39,9 +39,9 @@ Plan: [[PLAN-019-stop-at-80-percent-context]]. TASK-137 and TASK-138 shipped as 
 
 Plan: [[PLAN-020-clone-old-sessions]].
 
-- [ ] TASK-142: `compass sessions list`, `show` and `record`
+- [x] TASK-142: `compass sessions list`, `show` and `record`
 - [ ] TASK-143: `compass clone`
-- [ ] TASK-144: Setup offers longer session retention
+- [x] TASK-144: Setup offers longer session retention
 - [ ] TASK-145: `/compass:clone-old` skill and version 0.27.0
 - [ ] TASK-146: Live acceptance on this repo
 
