@@ -39,8 +39,6 @@ Plan: [[PLAN-019-stop-at-80-percent-context]]. TASK-137 and TASK-138 shipped as 
 
 Plan: [[PLAN-020-clone-old-sessions]].
 
-- [ ] TASK-143: `compass clone`
-- [x] TASK-145: `/compass:clone-old` skill and version 0.27.0
 - [ ] TASK-146: Live acceptance on this repo
 
 ## Next Up

@@ -512,6 +512,7 @@ tags:
   - lessons/vault-structure/LESSON-obsidian-bare-link-creates-stray-note.md
   - lessons/vault-structure/LESSON-template-shape-vs-template-precondition.md
   fork:
+  - plans/PLAN-020-clone-old-sessions.md
   - research/learning/RESEARCH-clone-old-sessions.md
   - specs/learning/SPEC-022-clone-old-sessions.md
   foundational:
@@ -586,6 +587,7 @@ tags:
   - lessons/hooks/LESSON-spawned-sessions-inherit-project-hooks.md
   - lessons/subagents/LESSON-headless-worker-denies-tools-silently.md
   - plans/PLAN-010-invisible-capture.md
+  - plans/PLAN-020-clone-old-sessions.md
   - research/learning/RESEARCH-clone-old-sessions.md
   - research/learning/RESEARCH-invisible-scaffolding.md
   headroom:
@@ -809,6 +811,7 @@ tags:
   - plans/PLAN-001-lessons-and-index-implementation.md
   - plans/PLAN-003-hybrid-hierarchy.md
   - plans/PLAN-006-learning-loop.md
+  - plans/PLAN-020-clone-old-sessions.md
   - research/learning/RESEARCH-clone-old-sessions.md
   - research/learning/RESEARCH-lesson-capture-failure.md
   - research/learning/RESEARCH-lessons-and-index-architecture.md
@@ -1174,6 +1177,8 @@ tags:
   - lessons/experiments/LESSON-human-practice-rationing-assumes-human-scarcity.md
   resume:
   - lessons/subagents/LESSON-long-agents-stall-resume-them.md
+  retention:
+  - plans/PLAN-020-clone-old-sessions.md
   retrieval:
   - decisions/learning/ADR-010-identity-resident-fetch-mandatory.md
   - lessons/vault-structure/LESSON-tag-index-trades-cost-for-directed-retrieval.md
@@ -1254,6 +1259,7 @@ tags:
   - research/distribution/RESEARCH-self-update-surfaces.md
   - specs/distribution/SPEC-020-compass-updates-itself.md
   sessions:
+  - plans/PLAN-020-clone-old-sessions.md
   - research/learning/RESEARCH-clone-old-sessions.md
   - specs/learning/SPEC-022-clone-old-sessions.md
   settings:
@@ -1487,6 +1493,7 @@ tags:
   - research/pipeline/RESEARCH-decision-coverage-impl.md
   - specs/pipeline/SPEC-007-decision-coverage-tracing.md
   transcript:
+  - plans/PLAN-020-clone-old-sessions.md
   - research/learning/RESEARCH-clone-old-sessions.md
   - research/pipeline/RESEARCH-context-threshold-stop.md
   transcription:
