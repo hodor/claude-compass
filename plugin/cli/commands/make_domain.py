@@ -161,6 +161,12 @@ def run(args):
         )
         return 1
 
+    if parts[root_segments - 1] == "loops":
+        sys.stderr.write(
+            "compass make-domain: refused, loops are never domain-grouped\n"
+        )
+        return 1
+
     target = vault_root / rel
     if target.exists() or target.with_suffix(".md").exists():
         sys.stderr.write(f"compass make-domain: {rel} already exists, refused\n")
