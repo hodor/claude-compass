@@ -47,7 +47,7 @@ Plan: [[PLAN-021-control-loops]].
 
 - [ ] TASK-150: `compass loop` new, status, activate, pause, resume, review
 - [ ] TASK-151: `looprunner`: one iteration, the dry run and the dampener
-- [ ] TASK-152: The fix loop tells a helpful cycle from a harmful one
+- [x] TASK-152: The fix loop tells a helpful cycle from a harmful one
 - [ ] TASK-157: Ship 0.28.0 and run a loop live in a scratch project
 
 ## Next Up
