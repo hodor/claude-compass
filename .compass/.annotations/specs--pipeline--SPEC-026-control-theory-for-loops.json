@@ -1,0 +1,23 @@
+{
+  "path": "specs/pipeline/SPEC-026-control-theory-for-loops.md",
+  "notes": [
+    {
+      "text": "Step 2's gloss ('an insane amount of work in their case and it breaks a bunch of stuff') is not in the transcript of Kyle Mistele's talk, which is the source of the seven steps. The transcript says only that HumanLayer had to 'enforce that all new procedures are using effect' to 'stop the bleeding' before migrating. See [[research/pipeline/RESEARCH-control-theory-for-loops]] finding 26 and Contradictions.",
+      "by": "reviewer",
+      "date": "2026-10-17",
+      "tags": ["conflict", "step-2", "attribution"]
+    },
+    {
+      "text": "Step 3 names PostHog and sentry.io as telemetry sources. The transcript names only 'telemetry' and 'APM'; one axis's third-party summary says Sentry. Treat the vendors as the spec's own extension until the talk is rechecked. Research findings 32 and 34; Divergent item 3.",
+      "by": "reviewer",
+      "date": "2026-10-17",
+      "tags": ["conflict", "step-3", "telemetry"]
+    },
+    {
+      "text": "'All control loops are also FSMs' is not formalized or tested by any source found. Supervisory control and hybrid automata support FSM models of controllers; Kubernetes API conventions document the opposite stance (level-based observation, phase deprecated as a state-machine field). Research findings 60 and 61; Gaps.",
+      "by": "reviewer",
+      "date": "2026-10-17",
+      "tags": ["gap", "fsm"]
+    }
+  ]
+}
