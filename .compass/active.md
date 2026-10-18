@@ -39,8 +39,8 @@ Plan: [[PLAN-019-stop-at-80-percent-context]]. TASK-137 and TASK-138 shipped as 
 
 Plan: [[PLAN-020-clone-old-sessions]].
 
-- [ ] TASK-140: The transcript reader and the central folder
-- [ ] TASK-141: `compass retention` and the doctor row
+- [x] TASK-140: The transcript reader and the central folder
+- [x] TASK-141: `compass retention` and the doctor row
 - [ ] TASK-142: `compass sessions list`, `show` and `record`
 - [ ] TASK-143: `compass clone`
 - [ ] TASK-144: Setup offers longer session retention
