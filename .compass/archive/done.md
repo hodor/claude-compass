@@ -310,3 +310,9 @@ Plan: [[PLAN-018-research-covers-the-whole-spec]] (approved 2026-09-13). Pause a
 - [x] TASK-149: `sensorlib`: result event, domain sensor, budget sums, change judgment
 - [x] TASK-150: `compass loop` new, status, activate, pause, resume, review
 - [x] TASK-151: `looprunner`: one iteration, the dry run and the dampener
+
+### PLAN-021 Wave 1: control loops
+
+Plan: [[PLAN-021-control-loops]].
+
+- [x] TASK-157: Ship 0.28.0 and run a loop live in a scratch project
