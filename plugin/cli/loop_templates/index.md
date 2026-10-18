@@ -43,4 +43,4 @@ Who reads the increments and how do they steer? `compass loop review {{id}} <run
 
 ## Step 7: Flow control
 
-Needed when the loop runs unsupervised, on a schedule with nobody watching; a loop you run by hand can keep the defaults in `loop.json`. How much unreviewed work may pile up (`wip_limit`)? How much may the loop spend per day (`daily_budget_usd`) and in total (`total_budget_usd`)? After how many failed, harmful or unproductive runs should it halt and wait for a human?
+Needed when the loop runs unsupervised, on a schedule with nobody watching, or when a run is expensive, for example one that rents cloud GPUs; a cheap loop you run by hand can keep the defaults in `loop.json`. How much unreviewed work may pile up (`wip_limit`)? How much may the loop spend per day (`daily_budget_usd`) and in total (`total_budget_usd`)? After how many failed, harmful or unproductive runs should it halt and wait for a human?
