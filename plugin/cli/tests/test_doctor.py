@@ -1485,3 +1485,22 @@ class WrongShapedHooksEntryTests(unittest.TestCase):
                 checks = json.loads(out)["checks"]
                 self.assertFalse([c for c in checks if c["check"] == "doctor"], out[:300])
                 self.assertEqual(len([c for c in checks if c["check"] == "hook registration"]), 1)
+
+
+class BomSettingsHookTests(unittest.TestCase):
+    def test_bom_project_settings_still_register_hooks(self):
+        """Adversarial where: a project settings.json saved with a UTF-8 BOM
+        is valid to Claude Code. The hook row must read it, not report 'not
+        valid JSON' for a file that is fine; a reader decoding as plain
+        utf-8 fails on the BOM."""
+        project = make_project(self)
+        with_project_env(self, project)
+        build_complete_install(project)
+        path = project / ".claude" / "settings.json"
+        path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes())
+        code, out = run_doctor(["--json"])
+        checks = json.loads(out)["checks"]
+        hook_row = [c for c in checks if c["check"] == "hook registration"][0]
+        self.assertEqual(hook_row["status"], "OK", hook_row["detail"])
+        self.assertNotIn("not valid JSON", hook_row["detail"])
+        self.assertEqual(code, 0)

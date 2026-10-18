@@ -186,7 +186,7 @@ def _load_json_best_effort(path):
     if not path.is_file():
         return {}, None
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except ValueError as exc:
         return {}, f"not valid JSON: {exc}"
     if not isinstance(data, dict):
@@ -196,10 +196,16 @@ def _load_json_best_effort(path):
 
 def _collect_commands(hooks_by_event, event_name):
     commands = []
-    for group in hooks_by_event.get(event_name) or []:
+    groups = hooks_by_event.get(event_name)
+    if not isinstance(groups, list):
+        return commands
+    for group in groups:
         if not isinstance(group, dict):
             continue
-        for entry in group.get("hooks") or []:
+        entries = group.get("hooks")
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
             if isinstance(entry, dict) and isinstance(entry.get("command"), str):
                 commands.append(entry["command"])
     return commands

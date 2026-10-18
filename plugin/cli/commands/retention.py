@@ -113,10 +113,15 @@ def _report():
 
 
 def _parse_days(raw):
-    if raw is None or not re.fullmatch(r"[0-9]{1,%d}" % MAX_DIGITS, raw):
+    """The day count in `raw`, or None when it is not an integer of 1 or
+    more with at most MAX_DIGITS significant digits (leading zeros are not
+    counted)."""
+    if raw is None or not re.fullmatch(r"[0-9]+", raw):
         return None
-    value = int(raw)
-    return value if value >= 1 else None
+    digits = raw.lstrip("0")
+    if not digits or len(digits) > MAX_DIGITS:
+        return None
+    return int(digits)
 
 
 def _indent_of(text):
@@ -157,7 +162,7 @@ def _write_atomic(path, text):
 def _set(raw):
     days = _parse_days(raw)
     if days is None:
-        sys.stderr.write(f"compass retention: --set needs an integer of 1 or more, got {raw!r}\n")
+        sys.stderr.write(f"compass retention: --set needs an integer of 1 to {10 ** MAX_DIGITS - 1}, got {(raw or '')[:40]!r}\n")
         return 1
     path = user_settings_path()
     indent = "  "

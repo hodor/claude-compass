@@ -620,3 +620,21 @@ class PostBuildSetTests(RetentionCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LeadingZeroTests(RetentionCase):
+    def test_leading_zeros_do_not_count_toward_the_digit_limit(self):
+        """Adversarial where: `0000000005` is the integer 5 and must be
+        accepted, while an all-zero string is still under 1 and refused, and
+        a long run of zeros before a value past the limit is still refused.
+        A cap on raw string length refuses the padded 5."""
+        code, _out, err = run_retention(["--set", "0000000005"])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(json.loads(self.user_file.read_text(encoding="utf-8")), {KEY: 5})
+        for value in ("0000000000000", "0" * 5000, "0" * 20 + "9" * 12):
+            with self.subTest(value=value[:30]):
+                before = self.snapshot()
+                code, out, err = run_retention(["--set", value])
+                self.assertEqual(code, 1)
+                self.assertTrue((out + err).strip())
+                self.assertEqual(self.snapshot(), before)
