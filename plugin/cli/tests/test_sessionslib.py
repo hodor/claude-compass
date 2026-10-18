@@ -687,6 +687,30 @@ class CommitCommandShapeTests(SessionsFixture):
                 self.write(bash_line(command))
                 self.assertEqual(sessionslib.commit_count(self.transcript), 1)
 
+    def test_commit_with_other_global_options_and_path_prefixed_binary_counts(self):
+        """Adversarial where: the global options `--no-pager`, `--git-dir` and
+        `--work-tree` stop the match, or a `git.exe` / path-prefixed git binary
+        (quoted when its path holds spaces) is not recognised; a path that only
+        ends in `git` as a word part must still not count."""
+        rows = {
+            "--no-pager": ("git --no-pager commit -m x", 1),
+            "--git-dir equals": ("git --git-dir=.git --work-tree=. commit -m x", 1),
+            "--git-dir separate": ("git --git-dir .git commit -m x", 1),
+            "all options mixed": ("git -C a -c k=v --no-pager commit -m x", 1),
+            "git.exe": ("git.exe commit -m x", 1),
+            "git.exe with -c": ("git.exe -c k=v commit -m x", 1),
+            "posix path": ("/usr/bin/git commit -m x", 1),
+            "quoted windows path with spaces": (r'"C:\Program Files\Git\bin\git.exe" commit -m x', 1),
+            "path after &&": ("cd r && /usr/bin/git -c k=v commit -m x", 1),
+            "path prefixed word ending in git": ("/usr/bin/legit commit -m x", 0),
+            "option then another subcommand": ("git -c k=v log --grep commit", 0),
+            "path prefixed commit-tree": ("/usr/bin/git commit-tree HEAD", 0),
+        }
+        for name, (command, expected) in rows.items():
+            with self.subTest(name):
+                self.write(bash_line(command))
+                self.assertEqual(sessionslib.commit_count(self.transcript), expected)
+
 
 class SubagentFolderShapeTests(SessionsFixture):
     def test_only_top_level_agent_jsonl_files_are_listed_in_name_order(self):
@@ -765,6 +789,30 @@ class ProjectKeyPathShapeTests(SessionsFixture):
         folder.mkdir(parents=True)
         self.assertEqual(folder.name, "F--proj-a--o")
         self.assertTrue(folder.is_dir())
+
+    def test_character_outside_the_bmp_becomes_two_dashes(self):
+        """Adversarial where: an emoji in a project path becomes one dash, but
+        Claude Code's JavaScript regex counts UTF-16 code units and writes two,
+        so the derived folder differs from the one it created."""
+        rows = {
+            "emoji directory": ("/home/a/\U0001F600x", "-home-a---x"),
+            "emoji next to bmp non-ascii": ("/p/\U0001F680ç", "-p----"),
+        }
+        for name, (path, expected) in rows.items():
+            with self.subTest(name):
+                self.assertEqual(sessionslib.project_key(path), expected)
+
+
+class SubagentDirectoryEntryTests(SessionsFixture):
+    def test_a_directory_named_like_a_subagent_transcript_is_not_listed(self):
+        """Adversarial where: a folder called `agent-x.jsonl` in the side folder
+        is listed as a transcript, and reading it raises PermissionError out of
+        commit_count."""
+        self.write(text_line("user", "hi"))
+        real = self.write_subagent("agent-a.jsonl", bash_line("git commit -m a", sidechain=True))
+        (real.parent / "agent-x.jsonl").mkdir()
+        self.assertEqual(sessionslib.subagent_transcripts(self.transcript), [real])
+        self.assertEqual(sessionslib.commit_count(self.transcript), 1)
 
 
 if __name__ == "__main__":

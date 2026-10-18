@@ -28,20 +28,30 @@ from commands import context_check
 
 ACTIVE_WINDOW_SECONDS = 600
 EXTENDED_SUFFIX = "[1m]"
-_NON_ALNUM = re.compile(r"[^A-Za-z0-9]")
-# `git commit` and `git -C <path> commit`, not `git commit-tree` or a word
-# that merely ends in "git".
-_GIT_COMMIT = re.compile(
-    r"(?:^|[\s;&|(])git"
-    r"(?:\s+-C\s+(?:\"[^\"]*\"|'[^']*'|\S+))?"
-    r"\s+commit(?![\w-])"
+_ARG = r"(?:\"[^\"]*\"|'[^']*'|\S+)"
+# `git commit` with any global options before the subcommand (`-C <path>`,
+# `-c <k=v>`, `--no-pager`, `--git-dir`, `--work-tree`), the binary written as
+# `git`, `git.exe`, or a path to either (quoted when it holds spaces); not
+# `git commit-tree` or a word that merely ends in "git".
+_GIT_COMMAND = (
+    r"(?:\"[^\"\n]*[/\\]git(?:\.exe)?\"|'[^'\n]*[/\\]git(?:\.exe)?'"
+    r"|(?:^|[\s;&|(])(?:[^\s;&|()]*[/\\])?git(?:\.exe)?)"
 )
+_GIT_GLOBAL_OPTION = (
+    rf"\s+(?:-C\s+{_ARG}|-c\s+{_ARG}|--no-pager|--git-dir(?:=|\s+){_ARG}|--work-tree(?:=|\s+){_ARG})"
+)
+_GIT_COMMIT = re.compile(rf"{_GIT_COMMAND}(?:{_GIT_GLOBAL_OPTION})*\s+commit(?![\w-])")
 _PLAN_ID = re.compile(r"\bPLAN-(\d+)\b")
 _TASK_ID = re.compile(r"\bTASK-(\d+)\b")
 
 
 def project_key(project_path):
-    return _NON_ALNUM.sub("-", str(project_path))
+    """Claude Code builds the key with a JavaScript regex over UTF-16 code
+    units, so a character outside the BMP yields two dashes."""
+    return "".join(
+        ch if ch.isascii() and ch.isalnum() else "-" * (2 if ord(ch) > 0xFFFF else 1)
+        for ch in str(project_path)
+    )
 
 
 def _dir_from_env(name, default_name):
@@ -70,7 +80,7 @@ def subagent_transcripts(transcript):
     side = transcript.with_suffix("") / "subagents"
     if not side.is_dir():
         return []
-    return sorted(side.glob("agent-*.jsonl"), key=lambda p: p.name)
+    return sorted((p for p in side.glob("agent-*.jsonl") if p.is_file()), key=lambda p: p.name)
 
 
 def _records(path):
