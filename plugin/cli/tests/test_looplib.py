@@ -44,7 +44,7 @@ Public API under test (module `looplib`, importable from `plugin/cli`). Every
         STATES.
     write_state(loop_dir, state_dict) -> None
         Writes `state.json` pretty-printed (indent 2, multi-line) with LF line
-        endings on every platform, through vaultlib.write_text_lf.
+        endings on every platform, through an atomic replace a reader never sees torn.
 
     append_ledger(loop_dir, row) -> None
         Appends `row` as one JSON line, LF-terminated, to `ledger.jsonl`.

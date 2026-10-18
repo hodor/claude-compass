@@ -28,7 +28,6 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
-import vaultlib
 
 try:
     import msvcrt
@@ -83,8 +82,9 @@ RELEASE_RETRY_SECONDS = 0.01
 
 # A state file is rewritten in place on filesystems that refuse an atomic
 # replace, so a reader meeting an empty or partial file reads again briefly.
-STATE_READ_ATTEMPTS = 20
+STATE_READ_ATTEMPTS = 200
 STATE_READ_RETRY_SECONDS = 0.01
+STATE_REPLACE_SECONDS = 5.0
 
 DEFINITION_FILE = "loop.json"
 STATE_FILE = "state.json"
@@ -295,9 +295,35 @@ def read_state(loop_dir):
 
 
 def write_state(loop_dir, state_dict):
-    """Write `state.json` pretty-printed, LF-terminated on every platform."""
+    """Write `state.json` pretty-printed, LF-terminated on every platform.
+
+    The text lands in a per-writer temp file that atomically replaces
+    `state.json`, so a reader sees the old state or the new one, never an
+    empty or partial file. Windows refuses the replace while a reader holds
+    the file open; the replace is retried for up to STATE_REPLACE_SECONDS,
+    then the error is raised with the temp file removed.
+    """
+    path = Path(loop_dir) / STATE_FILE
     text = json.dumps(state_dict, indent=2) + "\n"
-    vaultlib.write_text_lf(Path(loop_dir) / STATE_FILE, text)
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.{secrets.token_hex(8)}.tmp")
+    with open(tmp, "w", encoding="utf-8", newline="") as handle:
+        handle.write(text)
+    deadline = time.monotonic() + STATE_REPLACE_SECONDS
+    try:
+        while True:
+            try:
+                os.replace(tmp, path)
+                return
+            except PermissionError:
+                if time.monotonic() >= deadline:
+                    raise
+                time.sleep(STATE_READ_RETRY_SECONDS)
+    except OSError:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
 
 
 def _now_iso():
