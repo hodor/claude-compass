@@ -382,6 +382,18 @@ class LoopMisshapenWarningTests(Vault):
             ],
         )
 
+    def test_dot_entries_under_loops_draw_no_warning(self):
+        """Adversarial where: `loops/.gitkeep` or a dot-folder drawing
+        loop_misshapen, which would nag every vault that keeps an empty
+        `loops/` in git; a visible stray file beside them still warns, so
+        the skip is not blanket."""
+        self.write("loops/.gitkeep", "")
+        self.write("loops/.hidden/notes.md", "# n\n")
+        self.write("loops/stray.md", "# s\n")
+        _, warnings = validate.check_vault(self.root)
+        flagged = [w.split(": ")[1] for w in warnings if w.startswith("loop_misshapen")]
+        self.assertEqual(flagged, ["loops/stray.md"])
+
 
 if __name__ == "__main__":
     unittest.main()

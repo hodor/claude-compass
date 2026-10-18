@@ -160,6 +160,8 @@ def _check_loops_shape(vault_root, layout, warnings):
         if not base.is_dir():
             continue
         for entry in sorted(base.iterdir()):
+            if entry.name.startswith("."):
+                continue
             if (entry.is_dir() and vaultlib.LOOP_FOLDER.match(entry.name)
                     and (entry / "index.md").is_file()):
                 continue
