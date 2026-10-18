@@ -41,6 +41,7 @@ import concurrent.futures
 import datetime
 import hashlib
 import json
+import math
 import os
 import re
 import subprocess
@@ -66,16 +67,17 @@ RUN_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 JOBS_RE = re.compile(r"[0-9]{1,9}")
 TIMEOUT_RE = re.compile(r"(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)")
 
-# Longest single wait handed to the OS; larger timeouts wait in slices.
-MAX_WAIT_SECONDS = 3600
+# Longest wait on a child or on the pool before a stop request is rechecked.
+POLL_SECONDS = 0.2
+# Largest `--timeout` accepted: seven days.
+MAX_TIMEOUT_SECONDS = 7 * 24 * 3600
 # How long the stdout reader may outlive its child (an orphan can hold the
 # pipe open) before the clone is classified from what was read.
 READER_GRACE_SECONDS = 10
 STDERR_TAIL_BYTES = 2000
-# Minimum gap between two child launches, so clones that start together do
-# not hit the API with their first (cache-writing) request at the same instant.
-LAUNCH_SPACING_SECONDS = 0.3
 RENAME_ATTEMPTS = 100
+# How long an interrupted run waits for its killed clones to record their rows.
+INTERRUPT_GRACE_SECONDS = 15
 
 USAGE = (
     "usage: compass clone <session-id>... [--jobs N] [--timeout S] [--discard]\n"
@@ -145,9 +147,12 @@ def _parse_args(args):
                 raise Refusal("--jobs needs an integer of 1 or more")
             opts["jobs"] = int(value)
         elif name == "--timeout":
-            if not TIMEOUT_RE.fullmatch(value) or float(value) <= 0:
-                raise Refusal("--timeout needs a number of seconds above 0")
-            opts["timeout"] = int(value) if value.isdigit() else float(value)
+            seconds = float(value) if TIMEOUT_RE.fullmatch(value) else math.nan
+            if not 0 < seconds <= MAX_TIMEOUT_SECONDS:
+                raise Refusal(
+                    f"--timeout needs a number of seconds above 0 and at most {MAX_TIMEOUT_SECONDS}"
+                )
+            opts["timeout"] = int(seconds) if value.isdigit() else seconds
         elif name == "--prompt-file":
             opts["prompt_file"] = value
         else:
@@ -174,7 +179,7 @@ def _read_prompt_template(path):
     if path is None:
         return DEFAULT_PROMPT
     try:
-        return Path(path).read_bytes().decode("utf-8")
+        return Path(path).read_bytes().decode("utf-8-sig")
     except (OSError, UnicodeDecodeError) as exc:
         raise Refusal(f"cannot read prompt file {path}: {exc}")
 
@@ -205,7 +210,7 @@ def _atomic_write(path, text):
     rename is retried briefly."""
     path = Path(path)
     temp = path.with_name(path.name + ".tmp")
-    temp.write_bytes(text.encode("utf-8"))
+    temp.write_bytes(text.encode("utf-8", errors="replace"))
     for attempt in range(RENAME_ATTEMPTS):
         try:
             os.replace(temp, path)
@@ -232,7 +237,7 @@ def _append_log_row(log_path, row):
     except OSError:
         pass
     with open(log_path, "ab") as fh:
-        fh.write(prefix + line.encode("utf-8"))
+        fh.write(prefix + line.encode("utf-8", errors="replace"))
 
 
 def _kill_tree(proc):
@@ -335,29 +340,45 @@ def _feed_stdin(stream, data):
             pass
 
 
-def _wait_with_deadline(proc, timeout):
-    """True when the child exited within `timeout` seconds."""
+def _wait_for_child(proc, timeout, stop):
+    """`"exited"`, `"timeout"` or `"interrupted"`: how the wait for the child
+    ended. The wait polls in short slices so a stop request is seen at once."""
     deadline = time.monotonic() + timeout
     while True:
+        if stop.is_set():
+            return "interrupted"
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            return proc.poll() is not None
+            return "exited" if proc.poll() is not None else "timeout"
         try:
-            proc.wait(timeout=min(remaining, MAX_WAIT_SECONDS))
-            return True
+            proc.wait(timeout=min(remaining, POLL_SECONDS))
+            return "exited"
         except subprocess.TimeoutExpired:
             continue
 
 
-def _classify(reader, timed_out, exit_code, timeout, stderr_tail):
+def _wait_for(futures, limit):
+    """Poll until every future is done (a cancelled one counts), or `limit`
+    seconds pass. Polling keeps the main thread able to receive Ctrl-C, which
+    a blocking wait does not on Windows."""
+    deadline = None if limit is None else time.monotonic() + limit
+    while not all(future.done() for future in futures):
+        if deadline is not None and time.monotonic() >= deadline:
+            return
+        time.sleep(POLL_SECONDS)
+
+
+def _classify(reader, outcome, exit_code, timeout, stderr_tail):
     """`(status, reason, cost)` for a clone that ran."""
     result = reader.result
     cost = None
     if result is not None:
         value = result.get("total_cost_usd")
-        if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value):
             cost = value
-    if timed_out:
+    if outcome == "interrupted":
+        return "failed", "interrupted", cost
+    if outcome == "timeout":
         return "timeout", f"killed after {timeout:g} seconds", cost
     if result is not None:
         if not result.get("is_error"):
@@ -387,8 +408,9 @@ class _Run:
         self.rows = []
         self.state_lock = threading.Lock()
         self.print_lock = threading.Lock()
-        self.launch_lock = threading.Lock()
-        self.last_launch = 0.0
+        self.procs_lock = threading.Lock()
+        self.live = set()
+        self.stop = threading.Event()
 
     def _record_json(self, finished_at):
         return json.dumps(
@@ -468,6 +490,19 @@ class _Run:
         except Exception:
             pass
 
+    def close_interrupted(self):
+        """Give every session without a row an `interrupted` failure and write
+        the final record."""
+        try:
+            with self.state_lock:
+                have = {row["session_id"] for row in self.rows}
+                for sid in self.opts["ids"]:
+                    if sid not in have:
+                        self.rows.append(self._row(sid, "failed", "interrupted before it started"))
+                _atomic_write(self.run_folder / "run.json", self._record_json(_now_iso()))
+        except Exception as exc:
+            sys.stderr.write(f"compass clone: {type(exc).__name__}: {exc}\n")
+
     def _argv(self, sid, model):
         argv = [
             self.binary, "-p",
@@ -487,12 +522,13 @@ class _Run:
         ]
         return argv
 
-    def _space_launch(self):
-        with self.launch_lock:
-            wait = self.last_launch + LAUNCH_SPACING_SECONDS - time.monotonic()
-            if wait > 0:
-                time.sleep(wait)
-            self.last_launch = time.monotonic()
+    def stop_all(self):
+        """Stop launching and kill every live child's process tree."""
+        with self.procs_lock:
+            self.stop.set()
+            live = list(self.live)
+        for proc in live:
+            _kill_tree(proc)
 
     def _clone(self, sid):
         original = sessionslib.transcripts_dir(self.project) / f"{sid}.jsonl"
@@ -523,16 +559,19 @@ class _Run:
             popen_kwargs["start_new_session"] = True
 
         try:
-            self._space_launch()
-            proc = subprocess.Popen(
-                self._argv(sid, model),
-                cwd=str(self.project),
-                env=env,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                **popen_kwargs,
-            )
+            with self.procs_lock:
+                if self.stop.is_set():
+                    return self._row(sid, "failed", "interrupted before it started")
+                proc = subprocess.Popen(
+                    self._argv(sid, model),
+                    cwd=str(self.project),
+                    env=env,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    **popen_kwargs,
+                )
+                self.live.add(proc)
         except OSError as exc:
             return self._row(
                 sid, "failed", f"could not start {self.binary}: {exc}",
@@ -545,13 +584,15 @@ class _Run:
         for thread in (reader, drain, feeder):
             thread.start()
 
-        timed_out = not _wait_with_deadline(proc, self.opts["timeout"])
-        if timed_out:
+        outcome = _wait_for_child(proc, self.opts["timeout"], self.stop)
+        if outcome != "exited":
             _kill_tree(proc)
         try:
             proc.wait(timeout=30)
         except subprocess.TimeoutExpired:
             pass
+        with self.procs_lock:
+            self.live.discard(proc)
         reader.join(READER_GRACE_SECONDS)
         drain.join(READER_GRACE_SECONDS)
         for stream, thread in ((proc.stdout, reader), (proc.stderr, drain)):
@@ -562,7 +603,7 @@ class _Run:
                     pass
 
         status, reason, cost = _classify(
-            reader, timed_out, proc.returncode, self.opts["timeout"], drain.tail
+            reader, outcome, proc.returncode, self.opts["timeout"], drain.tail
         )
         if note:
             reason = f"{reason}; {note}" if reason else note
@@ -641,10 +682,18 @@ def run(args):
         job.write_record()
     except OSError as exc:
         sys.stderr.write(f"compass clone: cannot write run.json: {exc}\n")
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=job.opts["jobs"])
+    futures = [pool.submit(job.clone_one, sid) for sid in job.opts["ids"]]
     try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=job.opts["jobs"]) as pool:
-            for sid in job.opts["ids"]:
-                pool.submit(job.clone_one, sid)
+        _wait_for(futures, None)
+    except KeyboardInterrupt:
+        job.stop_all()
+        pool.shutdown(wait=False, cancel_futures=True)
+        _wait_for(futures, INTERRUPT_GRACE_SECONDS)
+        job.close_interrupted()
+        raise
+    pool.shutdown(wait=True)
+    try:
         job.write_record(_now_iso())
     except Exception as exc:  # the run folder exists: the exit stays 0
         sys.stderr.write(f"compass clone: {type(exc).__name__}: {exc}\n")
