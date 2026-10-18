@@ -1,0 +1,17 @@
+============================= test session starts =============================
+platform win32 -- Python 3.13.1, pytest-9.0.2, pluggy-1.6.0 -- ~\scoop\apps\python\current\python.exe
+rootdir: F:\claude\plugins\compass\plugin\cli
+plugins: anyio-4.12.1, asyncio-1.3.0, cov-7.0.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 7 items
+
+tests/test_bom.py::BomFrontmatterTests::test_bom_alone_is_not_read_as_content PASSED [ 14%]
+tests/test_bom.py::BomFrontmatterTests::test_bom_artifact_still_parses_its_frontmatter PASSED [ 28%]
+tests/test_bom.py::BomFrontmatterTests::test_plain_artifact_is_unaffected PASSED [ 42%]
+tests/test_bom.py::BomCatalogTests::test_bom_catalog_does_not_become_unparseable PASSED [ 57%]
+tests/test_bom.py::BomCatalogTests::test_plain_catalog_is_unaffected PASSED [ 71%]
+tests/test_bom.py::SummaryExpectedOnEveryTypeTests::test_every_known_type_expects_summary 
+tests/test_bom.py::SummaryExpectedOnEveryTypeTests::test_every_known_type_expects_summary PASSED [ 85%]
+tests/test_bom.py::SummaryExpectedOnEveryTypeTests::test_missing_summary_is_a_warning_not_an_error PASSED [100%]
+
+==================== 7 passed, 7 subtests passed in 0.07s =====================
