@@ -21,6 +21,7 @@ leading UTF-8 byte order mark tolerated.
 import json
 import math
 import os
+import secrets
 import threading
 import time
 from contextlib import contextmanager
@@ -75,6 +76,11 @@ EVENTS = frozenset(event for (_state, event) in TRANSITIONS)
 # time instead.
 LOCK_GRACE_SECONDS = 600
 
+# Removing the lock file is retried when the system refuses it because another
+# process has the file open.
+RELEASE_ATTEMPTS = 500
+RELEASE_RETRY_SECONDS = 0.01
+
 # A state file is rewritten in place on filesystems that refuse an atomic
 # replace, so a reader meeting an empty or partial file reads again briefly.
 STATE_READ_ATTEMPTS = 20
@@ -118,6 +124,8 @@ _DEFINITION_FIELDS = {
 _OPTIONAL_FIELDS = frozenset({"controller_command", "wip_command"})
 _COMMAND_FIELDS = frozenset({"sensor_command", "controller_command", "wip_command"})
 _CHOICES = {"direction": ("down", "up"), "controller": ("first", "command")}
+# A run is bounded by these; zero would mean no turns, no budget or no time.
+_POSITIVE_FIELDS = frozenset({"max_turns", "max_budget_usd", "timeout_s", "sensor_timeout_s"})
 
 
 class TransitionError(ValueError):
@@ -208,6 +216,8 @@ def _field_problem(key, value):
         return "must be a finite number"
     elif key != "target" and value < 0:
         return "must not be negative"
+    if kind in (_INT, _NUMBER) and key in _POSITIVE_FIELDS and value == 0:
+        return "must be greater than zero"
     return None
 
 
@@ -470,31 +480,52 @@ def acquire_lock(lock_path, timeout_s, now=None):
         fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except FileExistsError:
         raise LockHeld(f"run lock {lock_path} is held") from None
+    except PermissionError as exc:
+        # Windows refuses to create a file that another process is reading or
+        # deleting; the lock is in use by that process.
+        raise LockHeld(f"run lock {lock_path} is in use: {exc}") from None
     started = time.time() if now is None else now
     with os.fdopen(fd, "w", encoding="utf-8", newline="") as handle:
         handle.write(json.dumps({"pid": os.getpid(), "started": started}))
 
 
 def release_lock(lock_path):
-    Path(lock_path).unlink(missing_ok=True)
+    """Remove the lock file. On Windows a process reading the file blocks the
+    removal for a moment, so a refused removal is retried for a few seconds
+    before the error is raised."""
+    lock_path = Path(lock_path)
+    for attempt in range(RELEASE_ATTEMPTS):
+        try:
+            lock_path.unlink(missing_ok=True)
+            return
+        except PermissionError:
+            if attempt == RELEASE_ATTEMPTS - 1:
+                raise
+            time.sleep(RELEASE_RETRY_SECONDS)
 
 
 def _lock_started(lock_path, now):
     """When the lock's run began: the recorded start when it is a finite
     number no further ahead of `now` than the grace margin, otherwise the
-    file's modification time. None when the file is gone."""
+    file's modification time. None when the file is gone. A file the system
+    refuses to open for reading is in use by another process and counts as
+    started `now`."""
     try:
         started = json.loads(lock_path.read_text(encoding="utf-8"))["started"]
         if _is_number(started) and started <= now + LOCK_GRACE_SECONDS:
             return started
     except FileNotFoundError:
         return None
+    except PermissionError:
+        return now
     except (OSError, ValueError, KeyError, TypeError):
         pass
     try:
         return lock_path.stat().st_mtime
     except FileNotFoundError:
         return None
+    except PermissionError:
+        return now
 
 
 def is_stale(lock_path, timeout_s, now=None):
@@ -508,6 +539,55 @@ def is_stale(lock_path, timeout_s, now=None):
     return now - started > timeout_s + LOCK_GRACE_SECONDS
 
 
+def take_stale_lock(lock_path, timeout_s, now=None):
+    """Clear a lock judged stale without ever removing one another runner
+    just created. True when the lock is gone afterwards because it was stale
+    or already absent; False when it is live or was replaced meanwhile.
+
+    The lock file is renamed to a tombstone unique to this process, so only
+    one of several callers moves it; a failed rename means another caller took
+    it first. The tombstone is then compared with the content judged stale: a
+    different content is a fresh lock that slipped in, and it goes back.
+    """
+    lock_path = Path(lock_path)
+    try:
+        judged = lock_path.read_bytes()
+    except FileNotFoundError:
+        return True
+    except OSError:
+        return False
+    if not is_stale(lock_path, timeout_s, now):
+        return False
+    tombstone = lock_path.with_name(
+        f"{lock_path.name}.stale-{os.getpid()}-{secrets.token_hex(4)}"
+    )
+    try:
+        os.rename(lock_path, tombstone)
+    except FileNotFoundError:
+        return True
+    except OSError:
+        return False
+    try:
+        moved = tombstone.read_bytes()
+    except OSError:
+        moved = None
+    if moved == judged:
+        _drop_tombstone(tombstone)
+        return True
+    try:
+        os.rename(tombstone, lock_path)
+    except OSError:
+        _drop_tombstone(tombstone)
+    return False
+
+
+def _drop_tombstone(tombstone):
+    try:
+        release_lock(tombstone)
+    except OSError:
+        pass
+
+
 def _already_recorded_crash(loop_dir, run_id):
     rows, _skipped = read_ledger(loop_dir)
     return any(
@@ -518,7 +598,7 @@ def _already_recorded_crash(loop_dir, run_id):
     )
 
 
-def recover(loop_dir, lock_path, definition, now=None):
+def recover(loop_dir, lock_path, definition, now=None, lock_held=False):
     """Return a loop left in a working state by a crashed run to `idle`.
 
     A resting state is left alone (False). A working state whose lock is
@@ -527,13 +607,18 @@ def recover(loop_dir, lock_path, definition, now=None):
     lock is removed. A run already recorded as crashed is not charged again,
     which makes a recovery that failed partway safe to retry. A live lock
     raises LockHeld and changes nothing.
+
+    `lock_held` says the caller already holds the run lock, which makes it
+    the only process that can be recovering: the lock is neither judged nor
+    removed here. Two callers that each judge the lock themselves can both
+    pass the check and then overwrite one another's state.
     """
     lock_path = Path(lock_path)
     state = read_state(loop_dir)
     if state["state"] in RESTING:
         return False
     timeout_s = definition["timeout_s"]
-    lock_present = lock_path.exists()
+    lock_present = not lock_held and lock_path.exists()
     if lock_present and not is_stale(lock_path, timeout_s, now):
         raise LockHeld(f"run lock {lock_path} belongs to a live run")
     new = transition(state["state"], "crash-recovered")
@@ -558,8 +643,12 @@ def recover(loop_dir, lock_path, definition, now=None):
             "from": state["state"],
             "event": "crash-recovered",
             "to": new,
-            "reason": "stale run lock" if lock_present else "no run lock",
+            "reason": (
+                "run left in a working state" if lock_held
+                else "stale run lock" if lock_present else "no run lock"
+            ),
         },
     )
-    release_lock(lock_path)
+    if lock_present:
+        take_stale_lock(lock_path, timeout_s, now)
     return True
