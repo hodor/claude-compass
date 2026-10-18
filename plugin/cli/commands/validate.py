@@ -43,6 +43,7 @@ EXPECTED_FIELDS = {
     "decision": ["title", "type", "status", "confidence", "area", "tags", "created", "updated", "summary"],
     "lesson": ["title", "type", "status", "category", "area", "tags", "created", "updated", "score", "summary"],
     "handoff": ["title", "type", "status", "area", "tags", "created", "updated", "summary"],
+    "loop": ["title", "type", "status", "area", "tags", "created", "updated", "summary"],
     "domain": ["title", "type", "status", "tags", "created", "updated", "summary"],
 }
 

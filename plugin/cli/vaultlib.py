@@ -14,7 +14,7 @@ from pathlib import Path
 NON_TYPE_DIRS = {"meta", "tmp", "archive", ".annotations"}
 
 # Reserved artifact type directories, scanned even when empty.
-CORE_TYPE_DIRS = ["specs", "plans", "research", "decisions", "lessons", "handoffs", "prs"]
+CORE_TYPE_DIRS = ["specs", "plans", "research", "decisions", "lessons", "handoffs", "prs", "loops"]
 
 # Maps an artifact's `type` frontmatter value to its directory name. Used by
 # numbering; artifact scanning discovers type directories from disk instead.
@@ -26,7 +26,11 @@ TYPE_TO_DIR = {
     "lesson": "lessons",
     "handoff": "handoffs",
     "pr": "prs",
+    "loop": "loops",
 }
+
+# A loop folder is `loops/LOOP-NNN-name/`; only its `index.md` is an artifact.
+LOOP_FOLDER = re.compile(r"^LOOP-\d+-")
 
 
 def _has_typed_artifact(directory):
@@ -304,6 +308,23 @@ def _scan_type_dir(base, type_dir, unit):
     for path in sorted(base.rglob("*.md")):
         rel = path.relative_to(base)
         parts = rel.parts
+        if type_dir == "loops":
+            # A loop's feedback, golden patterns and other parts are not
+            # artifacts; its `index.md` is one flat artifact named for the
+            # folder, never a folder spec with children.
+            if not (len(parts) == 2 and parts[1] == "index.md"
+                    and LOOP_FOLDER.match(parts[0])):
+                continue
+            records.append({
+                "path": path,
+                "type_dir": type_dir,
+                "kind": "loop-index",
+                "rel": str(rel).replace("\\", "/"),
+                "name": parts[0] if unit is None else f"{unit}/{type_dir}/{parts[0]}",
+                "depth": 0,
+                "unit": unit,
+            })
+            continue
         if path.name == "index.md":
             if len(parts) == 1:
                 # A bare `<type>/index.md` is not an artifact; skip it.
@@ -348,7 +369,7 @@ def scan_artifacts(vault_root):
     unit folder - and classify every artifact markdown file.
 
     Each record is a dict with: `path`, `type_dir` (bare type dir name, e.g.
-    `specs` even inside a unit), `kind` (`flat` | `folder-index` | `child`),
+    `specs` even inside a unit), `kind` (`flat` | `folder-index` | `child` | `loop-index`),
     `rel` (POSIX path within the type dir), `name` (wikilink identity;
     vault-relative for unit artifacts), `depth` (folder nesting level), and
     `unit` (owning unit folder name, None for root artifacts). A unit's own
