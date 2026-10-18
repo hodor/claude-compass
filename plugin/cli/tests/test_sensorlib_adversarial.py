@@ -325,6 +325,19 @@ class SpendEdgeTests(unittest.TestCase):
                 self.assertEqual(sensorlib.spend_by_day(rows)[sensorlib.UNKNOWN_DAY], 2.0)
                 self.assertEqual(sensorlib.spend_lifetime(rows), 11.0)
 
+    def test_timestamps_at_the_datetime_range_edge_do_not_raise(self):
+        """Adversarial where: a ts at year 9999 or year 1 whose UTC conversion
+        leaves the datetime range raises OverflowError out of the day sums
+        instead of landing in the unknown bucket, crashing the budget check
+        on one corrupt ledger row."""
+        now = datetime(2026, 3, 1, 12, tzinfo=timezone.utc)
+        for name, ts in {"year_9999_west_offset": "9999-12-31T23:59:59-05:00",
+                         "year_1_east_offset": "0001-01-01T00:00:00+05:00"}.items():
+            with self.subTest(name=name):
+                rows = [{"ts": ts, "cost_usd": 1.5}]
+                self.assertEqual(sensorlib.spend_by_day(rows), {sensorlib.UNKNOWN_DAY: 1.5})
+                self.assertEqual(sensorlib.spend_today(rows, now), 1.5)
+
     def test_negative_cost_cannot_erase_recorded_spend(self):
         """Adversarial where: a corrupt row with a negative cost_usd is
         summed as-is, cancelling real spend and letting a loop pass its
