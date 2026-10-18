@@ -447,5 +447,89 @@ class JudgeRunAdversarialTests(judged.JudgeHarness):
         self.assert_no_lock()
 
 
+class JudgeFileNameSanitizerTests(unittest.TestCase):
+    def test_file_name_boundaries_of_the_sanitizer(self):
+        """Adversarial where: the sanitizer rejects a legitimate name that only
+        looks like a traversal (`a..b.py`, `..hidden/x.py`), keeps one that is
+        rooted, on a drive, a UNC share or a `..` component in either slash
+        style, is off by one at the length limit, or lets a tab, a NUL or a
+        paragraph separator through."""
+        bs = chr(92)
+        rows = [
+            ("dots inside a component", "a..b.py", True),
+            ("component starting with dots", "..hidden/x.py", True),
+            ("nested relative path", "pkg/sub/x.py", True),
+            ("space and non-ASCII", "my dir/ac" + chr(0xE7) + chr(0xE3) + "o.py", True),
+            ("299 characters", "a" * 299, True),
+            ("300 characters", "a" * 300, False),
+            ("parent component", "pkg/../x.py", False),
+            ("parent component with backslash", "pkg" + bs + ".." + bs + "x.py", False),
+            ("leading parent", "../x.py", False),
+            ("rooted posix", "/etc/passwd", False),
+            ("rooted backslash", bs + "x.py", False),
+            ("UNC share", bs + bs + "srv" + bs + "share" + bs + "x.py", False),
+            ("drive letter", "C:" + bs + "x.py", False),
+            ("drive relative", "C:x.py", False),
+            ("tab", "a" + chr(9) + "b.py", False),
+            ("paragraph separator", "a" + chr(0x2029) + "b.py", False),
+            ("lone surrogate", "a" + chr(0xD800) + ".py", False),
+        ]
+        for name, file, kept in rows:
+            with self.subTest(name=name):
+                line = json.dumps({"rule": "R1", "file": file, "line": 1})
+                parsed = sensorlib.parse_judge_lines(line, ["R1"])
+                self.assertEqual((len(parsed.findings), parsed.discarded),
+                                 (1, 0) if kept else (0, 1))
+
+
+class JudgeProjectSnapshotTests(judged.JudgeHarness):
+    def git_project(self):
+        subprocess.run(["git", "init", "-q"], cwd=self.project, check=True)
+        (self.project / "src").mkdir(exist_ok=True)
+        (self.project / "src" / "mod.py").write_text("x = 1\n", encoding="utf-8")
+
+    def tamper_second_call(self, path, text, append=False):
+        self.set_stub(None, [{}, reply(""), {
+            "tamper": [{"path": str(path), "text": text, "append": append}],
+            "stdout_text": envelope("", 0.25),
+        }, reply("")])
+
+    def test_judge_that_writes_a_source_file_halts_the_loop_and_is_charged(self):
+        """Adversarial where: a judge that creates or edits a project file
+        despite its tool list is kept silently, the halt leaves the lock or a
+        working state behind, or the judge's spend is dropped from the row of
+        the run it halted."""
+        rows = [
+            ("new file", "src/new_file.py", "y = 2\n", False),
+            ("edit of an untracked file", "src/mod.py", "x = 2\n", False),
+            ("append to an untracked file", "src/mod.py", "# more\n", True),
+        ]
+        for name, rel, text, append in rows:
+            with self.subTest(name=name):
+                self.judged_loop(judge_replies=[reply("")] * 3)
+                self.git_project()
+                self.tamper_second_call(self.project / rel, text, append)
+                self.iterate()
+                self.assertEqual(self.events()[-1], "controls-changed")
+                self.assertEqual(self.state(), "halted")
+                (row,) = self.run_rows()
+                self.assertEqual(row["outcome"], "failed")
+                self.assertGreaterEqual(row["cost_usd"], judged.ACTUATOR_COST + 0.25 - 1e-9)
+                self.assert_no_lock()
+
+    def test_judge_write_to_a_tracked_file_is_noticed(self):
+        """Adversarial where: a judge that rewrites a file git already tracks
+        (it appears in `ls-files -m` only once changed) is missed because the
+        snapshot was taken from untracked files alone."""
+        self.judged_loop(judge_replies=[reply("")] * 3)
+        self.git_project()
+        subprocess.run(["git", "add", "src/mod.py"], cwd=self.project, check=True)
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q",
+                        "-m", "x"], cwd=self.project, check=True)
+        self.tamper_second_call(self.project / "src" / "mod.py", "x = 99\n")
+        self.iterate()
+        self.assertEqual(self.events()[-1], "controls-changed")
+
+
 if __name__ == "__main__":
     unittest.main()
