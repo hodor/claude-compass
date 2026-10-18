@@ -1,5 +1,5 @@
-"""`compass test-checkpoint record | verify | open-ids` - tamper-evident
-checkpoints for pre-build failing tests.
+"""`compass test-checkpoint record | verify | open-ids | cycle` - tamper-evident
+checkpoints for pre-build failing tests, and the fix loop's cycle ledger.
 
 A checkpoint records that a set of test files, in a specific state, existed
 and failed before the implementation they test was written. `record` stores
@@ -54,6 +54,18 @@ to the workspace (`.` for the workspace's own repo). Paths in the index,
 `--commit`, and `verify --tree` are all relative to that repository; an
 index without `repo` means the workspace's own.
 
+`cycle TASK-NNN --evidence PATH` judges one fix-loop cycle. It parses the
+run evidence, keys every test by class and name, drops the tests of open
+checkpoints, and compares the remaining failing set with the previous cycle
+recorded in `.compass/tmp/test-checkpoints/TASK-NNN.cycles.jsonl`. The first
+call for a task is cycle 0, the state at fix-loop entry. Later cycles are
+`helpful` (something fixed, nothing new, nothing gone), `harmful` (a new
+failure, or a previously failing test that is no longer present and passing,
+since a vanished or skipped test proves nothing fixed), or `neutral`. The
+command prints the verdict line and `escalate: yes|no`, yes at cycle 3 or on
+a harmful cycle. An unreadable or testless evidence file exits 1 and appends
+nothing.
+
 Vault root resolution goes through `vaultlib.find_vault_root`
 (LESSON-scratch-vaults-need-compass-dir). Never exits 2; a missing git
 binary, a detached or non-repository working tree, and a corrupt index all
@@ -80,7 +92,8 @@ USAGE = (
     "[--red-evidence PATH] [--supersede TASK-NNN --reason \"...\"] [--not-required]\n"
     "       compass test-checkpoint verify TASK-NNN [--tree PATH] "
     "[--against-run EVIDENCE] [--expect-checkpoint]\n"
-    "       compass test-checkpoint open-ids"
+    "       compass test-checkpoint open-ids\n"
+    "       compass test-checkpoint cycle TASK-NNN --evidence PATH"
 )
 
 # unittest -v line: "test_name (module.path.ClassName) ... ok" (also FAIL,
@@ -874,29 +887,165 @@ def _dotted_module(path):
     return str(PurePosixPath(path).with_suffix("")).replace("/", ".")
 
 
+def _open_test_ids(vault_root, label="open-ids"):
+    """`[(module, class_name_or_None, test_name)]` for every checkpointed test
+    of a task whose checkpoint is recorded, not `not_required`, and not yet
+    landed. An unreadable index is reported on stderr and skipped."""
+    checkpoints_dir = Path(vault_root).joinpath(*CHECKPOINTS_DIR)
+    found = []
+    if not checkpoints_dir.is_dir():
+        return found
+    for entry in sorted(checkpoints_dir.glob("TASK-*.json")):
+        record, load_error = _load_record(entry)
+        if load_error:
+            sys.stderr.write(f"compass test-checkpoint {label}: skipping {entry.name}: {load_error}\n")
+            continue
+        if record.get("landed") or record.get("not_required"):
+            continue
+        for file_record in record.get("files", []):
+            module = _dotted_module(file_record["path"])
+            for class_name, test_name in file_record.get("ids", []):
+                found.append((module, class_name, test_name))
+    return found
+
+
 def _run_open_ids(args):
     if args:
         sys.stderr.write(f"compass test-checkpoint open-ids: unexpected argument(s): {' '.join(args)}\n")
         return 1
 
-    vault_root = vaultlib.find_vault_root()
-    checkpoints_dir = Path(vault_root).joinpath(*CHECKPOINTS_DIR)
-    ids = []
-    if checkpoints_dir.is_dir():
-        for entry in sorted(checkpoints_dir.glob("TASK-*.json")):
-            record, load_error = _load_record(entry)
-            if load_error:
-                sys.stderr.write(f"compass test-checkpoint open-ids: skipping {entry.name}: {load_error}\n")
-                continue
-            if record.get("landed") or record.get("not_required"):
-                continue
-            for file_record in record.get("files", []):
-                module = _dotted_module(file_record["path"])
-                for class_name, test_name in file_record.get("ids", []):
-                    ids.append(f"{module}.{class_name}.{test_name}" if class_name else f"{module}.{test_name}")
-
+    ids = [
+        f"{module}.{class_name}.{test_name}" if class_name else f"{module}.{test_name}"
+        for module, class_name, test_name in _open_test_ids(vaultlib.find_vault_root())
+    ]
     if ids:
         sys.stdout.write("\n".join(ids) + "\n")
+    return 0
+
+
+# --------------------------------------------------------------------------
+# cycle
+# --------------------------------------------------------------------------
+
+CYCLE_ESCALATION = 3
+_FAILING_STATUSES = ("fail", "error")
+
+
+def _parse_cycle(args):
+    """Returns `(task, evidence_path, error)`."""
+    if not args or args[0].startswith("--"):
+        return None, None, "a task id is required"
+    task, rest = args[0], args[1:]
+    if not re.fullmatch(r"TASK-\d+", task):
+        return None, None, f"{task!r} is not a task id (TASK-NNN)"
+    evidence = None
+    i = 0
+    while i < len(rest):
+        if rest[i] != "--evidence":
+            return None, None, f"unknown argument {rest[i]}"
+        if i + 1 >= len(rest) or rest[i + 1].startswith("--"):
+            return None, None, "--evidence expects a value"
+        evidence = rest[i + 1]
+        i += 2
+    if evidence is None:
+        return None, None, "--evidence is required"
+    return task, evidence, None
+
+
+def _tests_by_class_and_name(statuses):
+    """`{(class_name, test_name): status}` with one entry per test.
+    `_parse_run_evidence` also files every test under a bare-name key; that
+    alias is dropped whenever a class-qualified test of the same name exists,
+    so a name shared by two classes counts as two tests."""
+    qualified_names = {name for (class_name, name) in statuses if class_name is not None}
+    return {
+        key: status for key, status in statuses.items()
+        if key[0] is not None or key[1] not in qualified_names
+    }
+
+
+def _load_cycle_log(path):
+    """Returns `(rows, error)`: every logged cycle in order."""
+    if not path.is_file():
+        return [], None
+    rows = []
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                rows.append(json.loads(line))
+    except (OSError, ValueError) as exc:
+        return None, f"unreadable cycle log {path.name}: {exc}"
+    if not all(isinstance(row, dict) and isinstance(row.get("failing"), list) for row in rows):
+        return None, f"unreadable cycle log {path.name}: a row is not a cycle record"
+    return rows, None
+
+
+def _format_tests(tests):
+    ordered = sorted(tests, key=lambda test: (test[0] or "", test[1]))
+    return ", ".join(f"{class_name}.{name}" if class_name else name for class_name, name in ordered)
+
+
+def _run_cycle(args):
+    task, evidence, error = _parse_cycle(args)
+    if error:
+        sys.stderr.write(f"compass test-checkpoint cycle: {error}\n{USAGE}\n")
+        return 1
+
+    evidence_path = Path(evidence)
+    if not evidence_path.is_file():
+        sys.stderr.write(f"compass test-checkpoint cycle: evidence not found: {evidence}\n")
+        return 1
+    try:
+        statuses = _tests_by_class_and_name(_parse_run_evidence(_read_evidence(evidence_path)))
+    except OSError as exc:
+        sys.stderr.write(f"compass test-checkpoint cycle: cannot read evidence {evidence}: {exc}\n")
+        return 1
+    if not statuses:
+        sys.stderr.write(f"compass test-checkpoint cycle: no test results found in {evidence}\n")
+        return 1
+
+    vault_root = vaultlib.find_vault_root()
+    log_path = Path(vault_root).joinpath(*CHECKPOINTS_DIR) / f"{task}.cycles.jsonl"
+    rows, load_error = _load_cycle_log(log_path)
+    if load_error:
+        sys.stderr.write(f"compass test-checkpoint cycle: {load_error}\n")
+        return 1
+
+    open_pairs = {(class_name, test) for _, class_name, test in _open_test_ids(vault_root, "cycle")}
+    failing = {
+        key for key, status in statuses.items()
+        if status in _FAILING_STATUSES and key not in open_pairs
+    }
+
+    number = len(rows)
+    previous = {tuple(item) for item in rows[-1]["failing"]} - open_pairs if rows else set()
+    fixed = {key for key in previous if statuses.get(key) == "ok"}
+    gone = {key for key in previous if statuses.get(key) not in ("ok", *_FAILING_STATUSES)}
+    new = failing - previous if rows else set()
+    still = failing & previous if rows else failing
+
+    if new or gone:
+        verdict = "harmful"
+    elif fixed:
+        verdict = "helpful"
+    else:
+        verdict = "neutral"
+    escalate = number >= CYCLE_ESCALATION or verdict == "harmful"
+
+    rows.append({
+        "cycle": number, "recorded_at": _iso_now(), "verdict": verdict,
+        "failing": [list(key) for key in sorted(failing, key=lambda test: (test[0] or "", test[1]))],
+    })
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    vaultlib.write_text_lf(log_path, "".join(json.dumps(row) + "\n" for row in rows))
+
+    lines = [f"cycle {number}: {verdict} - fixed {len(fixed)}, new {len(new)}, still failing {len(still)}"]
+    if new:
+        lines.append(f"  new failures: {_format_tests(new)}")
+    if gone:
+        lines.append(f"  failing tests no longer passing or present: {_format_tests(gone)}")
+    lines.append(f"escalate: {'yes' if escalate else 'no'}")
+    sys.stdout.write("\n".join(lines) + "\n")
     return 0
 
 
@@ -915,5 +1064,7 @@ def run(args):
         return _run_verify(rest)
     if sub == "open-ids":
         return _run_open_ids(rest)
+    if sub == "cycle":
+        return _run_cycle(rest)
     sys.stderr.write(f"compass test-checkpoint: unknown subcommand {sub}\n{USAGE}\n")
     return 1
