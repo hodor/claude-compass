@@ -37,7 +37,6 @@ import hashlib
 import json
 import os
 import re
-import secrets
 import shlex
 import subprocess
 import sys
@@ -316,44 +315,14 @@ class _Run:
                 looplib.acquire_lock(self.lock_path, timeout_s)
                 break
             except looplib.LockHeld as exc:
-                if not looplib.is_stale(self.lock_path, timeout_s):
+                if not looplib.take_stale_lock(self.lock_path, timeout_s):
                     raise _Refusal(str(exc)) from None
-                self._move_stale_lock_aside()
         else:
             raise _Refusal(f"run lock {self.lock_path} stays contended")
         self.locked = True
         self.state = looplib.read_state(self.dir)["state"]
         if self.state not in STARTABLE:
             raise _Refusal(f"loop is {self.state}, not idle or throttled")
-
-    def _move_stale_lock_aside(self):
-        """Clear a lock judged stale without ever deleting a lock another
-        runner just created. The lock file is renamed to a tombstone unique to
-        this process; a failed rename means another runner took it first. The
-        tombstone is then compared with the content judged stale: a different
-        content is a fresh lock that slipped in, and it goes back."""
-        path = self.lock_path
-        try:
-            judged = path.read_bytes()
-        except OSError:
-            return
-        tombstone = path.with_name(f"{path.name}.stale-{os.getpid()}-{secrets.token_hex(4)}")
-        try:
-            os.rename(path, tombstone)
-        except OSError:
-            return
-        try:
-            moved = tombstone.read_bytes()
-        except OSError:
-            moved = None
-        if moved == judged:
-            tombstone.unlink(missing_ok=True)
-            return
-        try:
-            os.rename(tombstone, path)
-        except OSError:
-            tombstone.unlink(missing_ok=True)
-        raise _Refusal(f"run lock {path} was replaced while it was judged stale")
 
     def release(self):
         if self.locked:
