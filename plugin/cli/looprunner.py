@@ -560,6 +560,7 @@ class _Run:
             "--model", defn["model"],
             "--max-turns", str(defn["max_turns"]),
             "--max-budget-usd", _number(defn["max_budget_usd"]),
+            "--strict-mcp-config",
         ]
         if defn["allowed_tools"]:
             argv += ["--allowedTools", ",".join(defn["allowed_tools"])]

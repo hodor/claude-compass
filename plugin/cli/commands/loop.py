@@ -288,10 +288,12 @@ def _last_halt_reason(rows):
 
 
 def _last_reading(rows):
-    """The `reading_after` of the most recent run row, or None."""
+    """The `reading_after` of the most recent run row, or its `reading_before`
+    when the run ended at a gate before re-sensing, or None."""
     for row in reversed(rows):
         if row.get("type") == "run":
-            return row.get("reading_after")
+            after = row.get("reading_after")
+            return after if after is not None else row.get("reading_before")
     return None
 
 
