@@ -13,12 +13,15 @@ gate and the stop limits read, so no counter lives anywhere but the ledger.
 
 Every ledger row carries `ts`, ISO-8601 with a UTC offset, and spend is always
 the `cost_usd` key. A ledger line that does not parse is reported by
-`read_ledger()`, never fatal.
+`read_ledger()`, never fatal, and a row whose fields have the wrong type is
+reported by `fold()` the same way. The loop's JSON files are read with a
+leading UTF-8 byte order mark tolerated.
 """
 
 import json
 import math
 import os
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -60,12 +63,23 @@ TRANSITIONS = {
 EVENTS = frozenset(event for (_state, event) in TRANSITIONS)
 
 # A run's lock outlives its wall-clock timeout by this margin before it counts
-# as left behind by a crash.
+# as left behind by a crash. A lock whose recorded start lies further ahead of
+# the clock than this margin is not trusted and is aged by file modification
+# time instead.
 LOCK_GRACE_SECONDS = 600
+
+# A state file is rewritten in place on filesystems that refuse an atomic
+# replace, so a reader meeting an empty or partial file reads again briefly.
+STATE_READ_ATTEMPTS = 20
+STATE_READ_RETRY_SECONDS = 0.01
 
 DEFINITION_FILE = "loop.json"
 STATE_FILE = "state.json"
 LEDGER_FILE = "ledger.jsonl"
+
+# Appends within one process are serialised so that the check of the ledger's
+# last byte and the write of the new line cannot interleave.
+_APPEND_LOCK = threading.Lock()
 
 _VERIFIED = frozenset({"helpful", "neutral", "harmful"})
 
@@ -126,30 +140,37 @@ def advance(loop_dir, event, reason):
     """Apply `event` to the state on disk and record it in the ledger.
 
     The event is checked before anything is written, so an illegal event
-    leaves state.json and the ledger untouched.
+    leaves state.json and the ledger untouched. A ledger write that fails
+    puts the prior state back, so the state never moves without its row.
     """
     state = read_state(loop_dir)
     new = transition(state["state"], event)
     write_state(loop_dir, {**state, "state": new})
-    append_ledger(
-        loop_dir,
-        {
-            "type": "transition",
-            "from": state["state"],
-            "event": event,
-            "to": new,
-            "reason": reason,
-        },
-    )
+    try:
+        append_ledger(
+            loop_dir,
+            {
+                "type": "transition",
+                "from": state["state"],
+                "event": event,
+                "to": new,
+                "reason": reason,
+            },
+        )
+    except BaseException:
+        write_state(loop_dir, state)
+        raise
     return new
 
 
 def _is_number(value):
-    return (
-        isinstance(value, (int, float))
-        and not isinstance(value, bool)
-        and math.isfinite(value)
-    )
+    """A real, finite int or float; an int too large for a float is not."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
 
 
 def _field_problem(key, value):
@@ -168,13 +189,29 @@ def _field_problem(key, value):
     elif kind == _INT:
         if not isinstance(value, int) or isinstance(value, bool):
             return "must be an integer"
+        if not _is_number(value):
+            return "must be a finite integer"
         if value < 0:
             return "must not be negative"
     elif not _is_number(value):
-        return "must be a number"
+        return "must be a finite number"
     elif key != "target" and value < 0:
         return "must not be negative"
     return None
+
+
+def _read_json_text(path):
+    """The file's text, a leading UTF-8 byte order mark dropped."""
+    return path.read_bytes().decode("utf-8-sig")
+
+
+def _no_duplicate_keys(pairs):
+    seen = {}
+    for key, value in pairs:
+        if key in seen:
+            raise DefinitionError(f"duplicate key {key!r}")
+        seen[key] = value
+    return seen
 
 
 def load_definition(loop_dir):
@@ -182,9 +219,11 @@ def load_definition(loop_dir):
     first offending field."""
     path = Path(loop_dir) / DEFINITION_FILE
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(_read_json_text(path), object_pairs_hook=_no_duplicate_keys)
     except FileNotFoundError:
         raise DefinitionError(f"{DEFINITION_FILE}: {path} does not exist") from None
+    except DefinitionError as exc:
+        raise DefinitionError(f"{exc} in {path}") from None
     except (OSError, ValueError) as exc:
         raise DefinitionError(f"{DEFINITION_FILE}: cannot read {path}: {exc}") from None
     if not isinstance(data, dict):
@@ -209,18 +248,28 @@ def load_definition(loop_dir):
 
 
 def read_state(loop_dir):
-    """The parsed `state.json`; a missing file reads as an idle loop."""
+    """The parsed `state.json`; a missing file reads as an idle loop.
+
+    A file that is empty or does not parse is read again a few times before
+    it is reported, since a writer may be replacing it.
+    """
     path = Path(loop_dir) / STATE_FILE
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        return {"state": "idle"}
-    except (OSError, ValueError) as exc:
-        raise StateError(f"cannot read {path}: {exc}") from None
+    data = None
+    for attempt in range(STATE_READ_ATTEMPTS):
+        try:
+            data = json.loads(_read_json_text(path))
+            break
+        except FileNotFoundError:
+            return {"state": "idle"}
+        except (OSError, ValueError) as exc:
+            if attempt == STATE_READ_ATTEMPTS - 1:
+                raise StateError(f"cannot read {path}: {exc}") from None
+            time.sleep(STATE_READ_RETRY_SECONDS)
     if not isinstance(data, dict):
         raise StateError(f"{path} must hold a JSON object")
-    if data.get("state") not in STATES:
-        raise StateError(f"{path}: unknown state {data.get('state')!r}")
+    name = data.get("state")
+    if not isinstance(name, str) or name not in STATES:
+        raise StateError(f"{path}: unknown state {name!r}")
     return data
 
 
@@ -236,11 +285,26 @@ def _now_iso():
 
 def append_ledger(loop_dir, row):
     """Append `row` as one LF-terminated JSON line, stamping `ts` when the row
-    carries none."""
-    line = json.dumps({"ts": _now_iso(), **row}) + "\n"
+    carries none.
+
+    The line goes out in a single write to a file opened for appending. When
+    the ledger ends in a partial line (a write cut short), the new row starts
+    on its own line so only the fragment is lost.
+    """
+    line = (json.dumps({"ts": _now_iso(), **row}) + "\n").encode("utf-8")
     path = Path(loop_dir) / LEDGER_FILE
-    with open(path, "ab") as handle:
-        handle.write(line.encode("utf-8"))
+    flags = os.O_RDWR | os.O_CREAT | os.O_APPEND | getattr(os, "O_BINARY", 0)
+    with _APPEND_LOCK:
+        fd = os.open(path, flags, 0o666)
+        try:
+            size = os.fstat(fd).st_size
+            if size:
+                os.lseek(fd, size - 1, os.SEEK_SET)
+                if os.read(fd, 1) != b"\n":
+                    line = b"\n" + line
+            os.write(fd, line)
+        finally:
+            os.close(fd)
 
 
 def read_ledger(loop_dir):
@@ -248,7 +312,7 @@ def read_ledger(loop_dir):
     each non-blank line that is not a JSON object."""
     path = Path(loop_dir) / LEDGER_FILE
     try:
-        text = path.read_bytes().decode("utf-8", errors="replace")
+        text = path.read_bytes().decode("utf-8-sig", errors="replace")
     except FileNotFoundError:
         return [], []
     rows, skipped = [], []
@@ -267,6 +331,30 @@ def read_ledger(loop_dir):
     return rows, skipped
 
 
+def _item_sort_key(item):
+    return (type(item).__name__, str(item))
+
+
+def _row_problem(row):
+    """Why a run or review row cannot be counted, or None when it can."""
+    kind = row.get("type")
+    run_id = row.get("run_id")
+    if kind == "review":
+        if not isinstance(run_id, str):
+            return "review run_id must be a string"
+    elif kind == "run":
+        if run_id is not None and not isinstance(run_id, str):
+            return "run run_id must be a string"
+        if not isinstance(row.get("outcome"), str):
+            return "run outcome must be a string"
+        item = row.get("item")
+        if item is not None and (
+            isinstance(item, bool) or not isinstance(item, (str, int, float))
+        ):
+            return "run item must be a string or a number"
+    return None
+
+
 def fold(rows):
     """Counters over ledger rows.
 
@@ -278,16 +366,26 @@ def fold(rows):
     crashed runs touch no streak. Only helpful and neutral runs end the
     harmful streak. `runs_without_help` counts verified runs since the last
     helpful run.
+
+    A run or review row whose fields have the wrong type is left out of every
+    counter and listed under `skipped_rows` as `{"index", "reason"}`.
     """
-    reviewed = {r.get("run_id") for r in rows if r.get("type") == "review"}
+    usable, skipped_rows = [], []
+    for index, row in enumerate(rows):
+        problem = _row_problem(row)
+        if problem:
+            skipped_rows.append({"index": index, "reason": problem})
+        else:
+            usable.append(row)
+    reviewed = {r["run_id"] for r in usable if r.get("type") == "review"}
     held = []
     failures = harmful = without_help = 0
-    for row in rows:
+    for row in usable:
         kind = row.get("type")
         if kind == "transition" and row.get("event") == "resume":
             failures = harmful = without_help = 0
         elif kind == "run":
-            outcome = row.get("outcome")
+            outcome = row["outcome"]
             if outcome == "failed":
                 failures += 1
                 continue
@@ -300,10 +398,14 @@ def fold(rows):
                 held.append(row)
     return {
         "wip": len(held),
-        "held_items": sorted(r["item"] for r in held if r.get("item") is not None),
+        "held_items": sorted(
+            (r["item"] for r in held if r.get("item") is not None),
+            key=_item_sort_key,
+        ),
         "consecutive_failures": failures,
         "consecutive_harmful": harmful,
         "runs_without_help": without_help,
+        "skipped_rows": skipped_rows,
     }
 
 
@@ -328,22 +430,43 @@ def release_lock(lock_path):
     Path(lock_path).unlink(missing_ok=True)
 
 
-def is_stale(lock_path, timeout_s, now=None):
-    """True when the lock is older than `timeout_s` plus the grace margin, or
-    gone. A lock whose content is unreadable (a holder between creating and
-    writing it) is aged by its file modification time."""
-    lock_path = Path(lock_path)
-    now = time.time() if now is None else now
+def _lock_started(lock_path, now):
+    """When the lock's run began: the recorded start when it is a finite
+    number no further ahead of `now` than the grace margin, otherwise the
+    file's modification time. None when the file is gone."""
     try:
         started = json.loads(lock_path.read_text(encoding="utf-8"))["started"]
+        if _is_number(started) and started <= now + LOCK_GRACE_SECONDS:
+            return started
     except FileNotFoundError:
-        return True
+        return None
     except (OSError, ValueError, KeyError, TypeError):
-        try:
-            started = lock_path.stat().st_mtime
-        except FileNotFoundError:
-            return True
+        pass
+    try:
+        return lock_path.stat().st_mtime
+    except FileNotFoundError:
+        return None
+
+
+def is_stale(lock_path, timeout_s, now=None):
+    """True when the lock is older than `timeout_s` plus the grace margin, or
+    gone. A lock whose recorded start is unusable (a holder between creating
+    and writing it, a corrupt file) is aged by its modification time."""
+    now = time.time() if now is None else now
+    started = _lock_started(Path(lock_path), now)
+    if started is None:
+        return True
     return now - started > timeout_s + LOCK_GRACE_SECONDS
+
+
+def _already_recorded_crash(loop_dir, run_id):
+    rows, _skipped = read_ledger(loop_dir)
+    return any(
+        r.get("type") == "run"
+        and r.get("outcome") == "crashed"
+        and r.get("run_id") == run_id
+        for r in rows
+    )
 
 
 def recover(loop_dir, lock_path, definition, now=None):
@@ -352,27 +475,31 @@ def recover(loop_dir, lock_path, definition, now=None):
     A resting state is left alone (False). A working state whose lock is
     absent or stale is recovered (True): the earlier run is recorded as
     crashed, charged its full run budget, the state returns to idle and the
-    lock is removed. A live lock raises LockHeld and changes nothing.
+    lock is removed. A run already recorded as crashed is not charged again,
+    which makes a recovery that failed partway safe to retry. A live lock
+    raises LockHeld and changes nothing.
     """
     lock_path = Path(lock_path)
     state = read_state(loop_dir)
     if state["state"] in RESTING:
         return False
     timeout_s = definition["timeout_s"]
-    if lock_path.exists() and not is_stale(lock_path, timeout_s, now):
+    lock_present = lock_path.exists()
+    if lock_present and not is_stale(lock_path, timeout_s, now):
         raise LockHeld(f"run lock {lock_path} belongs to a live run")
-    reason = "stale run lock" if lock_path.exists() else "no run lock"
     new = transition(state["state"], "crash-recovered")
-    append_ledger(
-        loop_dir,
-        {
-            "type": "run",
-            "run_id": state.get("run_id"),
-            "outcome": "crashed",
-            "item": state.get("item"),
-            "cost_usd": definition["max_budget_usd"],
-        },
-    )
+    run_id = state.get("run_id")
+    if run_id is None or not _already_recorded_crash(loop_dir, run_id):
+        append_ledger(
+            loop_dir,
+            {
+                "type": "run",
+                "run_id": run_id,
+                "outcome": "crashed",
+                "item": state.get("item"),
+                "cost_usd": definition["max_budget_usd"],
+            },
+        )
     idle = {k: v for k, v in state.items() if k not in ("run_id", "item")}
     write_state(loop_dir, {**idle, "state": new})
     append_ledger(
@@ -382,7 +509,7 @@ def recover(loop_dir, lock_path, definition, now=None):
             "from": state["state"],
             "event": "crash-recovered",
             "to": new,
-            "reason": reason,
+            "reason": "stale run lock" if lock_present else "no run lock",
         },
     )
     release_lock(lock_path)
