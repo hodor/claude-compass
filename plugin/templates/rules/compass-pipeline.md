@@ -93,7 +93,7 @@ Conversation output is never the record - logs, reports, and vault files are. On
 
 ## Build
 
-- Builders execute approved planned tasks. If no approved plan exists, ask the human what to do instead of improvising.
+- Builders execute approved planned tasks. If no approved plan exists, do not improvise: ask the human what to do through `AskUserQuestion`, exactly one question per call, the recommended option first and labelled "(Recommended)", each option one short line saying what choosing it does, and the free-text "Other" left open. Several questions are never batched in one message or one call.
 - If the codebase contradicts what the plan describes, stop and report the mismatch.
 - When tasks have non-overlapping file ownership, builders can run in parallel.
 - Fix loop: if tests fail, respawn targeted fix builders up to 3 cycles, then escalate.
