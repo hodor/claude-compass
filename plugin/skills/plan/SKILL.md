@@ -44,6 +44,8 @@ Iterate and elaborate are different mechanisms with different owners. Iterate is
 - Plan path, changes unclear → read it, ask: "What do you want changed?"
 - Neither → read `.compass/active.md` and `index.md` to find the active plan, then ask.
 
+Every ask in this step goes through `AskUserQuestion`, exactly one question per call; several questions are never batched in one message or one call, and each waits for the previous answer. The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text. For "What do you want changed?", offer the likely changes you found while reading the plan as options, with "Other" for the human's own words. When no plan path was given, ask which plan with the active plan first as "(Recommended)", then, in a second call, what to change.
+
 #### 2. Read the hot path
 
 `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`.
