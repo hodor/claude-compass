@@ -160,7 +160,7 @@ class UnitInternalCreateTests(DomainFixture):
     def setUp(self):
         super().setUp()
         self.write("acme/index.md",
-                   "---\ntitle: acme\ntype: unit\nstatus: active\n---\n")
+                   "---\ntitle: Acme\ntype: unit\nstatus: active\n---\n")
         self.write("acme/specs/SPEC-001-a.md", spec_body("A"))
 
     def test_unit_internal_domain_created_with_sizing_row(self):

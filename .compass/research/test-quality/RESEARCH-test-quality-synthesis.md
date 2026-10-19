@@ -47,7 +47,7 @@ The tooling axis read its own number as a warning ("self-described adversarial i
 
 **What I did.** The tooling axis's mutation run persisted. `mutants/capturelib.py.meta` holds a per-mutant exit code for all 393 mutants and `mutants/capturelib.py` holds every mutant's source. I reconstructed the survivor set from the exit codes (0 = survived, 1 = killed, 33 = no covering test), confirmed it reproduces the axis's reported 250/129/14 split exactly, and read a sample of roughly 40 surviving mutant bodies across every function with survivors. The findings below are read off that data, not inferred from the write-ups. Confidence: high.
 
-Persisted at `~\AppData\Local\Temp\claude\F--claude-plugins-compass\a53dc5f3-060b-4130-8322-58329bf4afa6\scratchpad\tq-tooling\mut-minimal-wsl\mutants\`. Scratchpad, so treat as transient.
+Persisted at `~\AppData\Local\Temp\claude\F--claude-plugins-compass\<session>\scratchpad\tq-tooling\mut-minimal-wsl\mutants\`. Scratchpad, so treat as transient.
 
 ### 2a. Where the 129 survivors actually are
 

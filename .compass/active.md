@@ -61,4 +61,4 @@ Plan: [[PLAN-021-control-loops]].
 
 ## Blocked
 
-- Fleet pushes outstanding from the v0.6.x waves: 7 projects have no git, 2 no remote, 1 has all Compass paths gitignored (private-project-e), 4 were push-rejected behind their remotes (3 private-project-f checkouts + wt-spec056) and need a human pull/rebase call. private-project-g's remote no longer exists.
+- Fleet pushes outstanding from the v0.6.x waves: 7 projects have no git, 2 no remote, 1 has all Compass paths gitignored (private project 1), 4 were push-rejected behind their remotes (3 private project 2 checkouts + wt-spec056) and need a human pull/rebase call. private project 3's remote no longer exists.

@@ -24,7 +24,7 @@ Three independent identification methods were run against every discoverable Com
 
 ### Method 1: enumerate the vaults
 
-`find /f/{AI,Creative,acme,private-studio,Projects} -maxdepth 6 -type d -name ".compass"` (Git Bash paths for `F:\AI`, `F:\Creative`, `F:\acme`, `F:\private-studio`, `F:\Projects`) returns 47 `.compass` directories. Six are ephemeral agent worktrees under `F:\Projects\experiments\.claude\worktrees\*` (not real vaults), and two are vaults nested inside plugin/submodule repos (`F:/work/<work-project>`, `F:/private/<private-project>`). That leaves 39 standing project vaults, consistent with the "42 vaults" figure `git show f07012d:.compass/active.md` in this repo records for the last fleet distribution (some vaults created or removed since).
+`find /f/{AI,Creative,<work root>,<private project 1>,Projects} -maxdepth 6 -type d -name ".compass"` (Git Bash paths for `F:\AI`, `F:\Creative`, `F:\<work root>`, `F:\<private project 1>`, `F:\Projects`) returns 47 `.compass` directories. Six are ephemeral agent worktrees under `F:\Projects\experiments\.claude\worktrees\*` (not real vaults), and two are vaults nested inside plugin/submodule repos (`<work project A>\addons\<work project B>`, `<private project 2>\Plugins\<private project 3>`). That leaves 39 standing project vaults, consistent with the "42 vaults" figure `git show f07012d:.compass/active.md` in this repo records for the last fleet distribution (some vaults created or removed since).
 
 ### Method 2: literal text search for "841" and its likely phrasings
 
@@ -34,7 +34,7 @@ grep -rIlE "suite green|841 test|841 pass|841/841|Ran 841" <vault> --include="*.
 grep -rIlE "5 of 6 task|5/6 task" <vault> --include="*.md"
 ```
 
-Run across all 39 standing vaults. Every `"841"` hit is a false positive unrelated to a test count: a Jira-style ticket number (`ENG-0000`), a source line number (`main.js:1841`, `ModuleManager.cpp:1841`), a UTC microsecond timestamp (`captured_at: ...:841142Z`), or a PDF/binary filename byte offset. Zero files anywhere in the fleet contain "841" adjacent to the word "test" in prose. `"suite green"` appears in five vaults (`roblox/seo-analytics`, `work-project-f`, `diagrams`, `work-project-e`/`wt-spec056`, `experiments`) but every counted figure at each hit is different from 841: seo-analytics reports 899-900 passing across its history, diagrams reports 3,068, work-project-f and work-project-e report figures in the 200-400s at the matched lines. `"5 of 6 task"` / `"5/6 task"` matches nothing. Neither does a check of the four most-recently-modified `active.md` files in the fleet (`diagrams`, `experiments`, `work-project-a`, `ludensoft-accounting`, all touched today).
+Run across all 39 standing vaults. Every `"841"` hit is a false positive unrelated to a test count: a Jira-style ticket number (`TICKET-4841`), a source line number (`main.js:1841`, `ModuleManager.cpp:1841`), a UTC microsecond timestamp (`captured_at: ...:841142Z`), or a PDF/binary filename byte offset. Zero files anywhere in the fleet contain "841" adjacent to the word "test" in prose. `"suite green"` appears in five vaults (`roblox/seo-analytics`, work project C, work project D, work project E/`wt-spec056`, `experiments`) but every counted figure at each hit is different from 841: seo-analytics reports 899-900 passing across its history, work project D reports 3,068, work project C and work project E report figures in the 200-400s at the matched lines. `"5 of 6 task"` / `"5/6 task"` matches nothing. Neither does a check of the four most-recently-modified `active.md` files in the fleet (work project D, `experiments`, work project F, `ludensoft-accounting`, all touched today).
 
 ### Method 3: mechanical test-function count per project
 
@@ -42,20 +42,20 @@ Since no vault's own prose names 841, the fallback the task brief allows was run
 
 | Project | Own-code `def test_` count | Note |
 |---|---|---|
-| `F:/work/<work-project>` | 420 | coincides with this repo's own count, unrelated project |
-| `F:/work/<work-project>` | 723 | active.md states 3,068 tests directly (pytest collects more per function via parametrize than the static grep sees) |
+| work project F | 420 | coincides with this repo's own count, unrelated project |
+| work project D | 723 | active.md states 3,068 tests directly (pytest collects more per function via parametrize than the static grep sees) |
 | `F:\AI\ComfyUI` | 446 | |
 | `F:\AI\_Tools\ai-songwriting` | 845 (all locations) | **closest raw number to 841**, but disqualified - see below |
 | `F:\AI\learn\learn-video-image` | 1,006 | |
-| `F:/work/<work-project>` | 1,312 | |
-| `F:/work/<work-project>` | 388 | |
-| `F:/work/<work-project>` | 244 | |
-| `F:/work/<work-project>` | 3,916 | |
-| `F:/private/<private-project>` | 1,302 | |
+| work project A | 1,312 | |
+| work project G | 388 | |
+| work project H | 244 | |
+| work project E | 3,916 | |
+| private project 2 | 1,302 | |
 | `F:\Projects\experiments` | 4,617 | |
 | `F:\Projects\usd` | 1,892 | entirely `OpenUSD/pxr/**/testenv` - a vendored Pixar source clone, not project-owned |
-| `F:/work/<work-project>` | 9,093 | entirely `.repo-cache/**` - vendored third-party repos (pybind11, numpy/scipy inside a Maya toolkit mirror, external app clones) |
-| `F:\Creative\creative-harness`, `F:/work/<work-project>` | 40,273 / 38,982 | both dominated by vendored dependency trees; not investigated further given the scale mismatch |
+| work project I | 9,093 | entirely `.repo-cache/**` - vendored third-party repos (pybind11, numpy/scipy inside a Maya toolkit mirror, external app clones) |
+| `F:\Creative\creative-harness`, work project C | 40,273 / 38,982 | both dominated by vendored dependency trees; not investigated further given the scale mismatch |
 
 **`ai-songwriting`'s 845 is the only raw count within single digits of 841, and it does not survive inspection.** Breaking it down by directory: the project's actual authored suites (`scripts/piano-loop/tests`, `scripts/model-watch/tests`, `scripts/engine/tests`, `reaper/tests`) sum to well under 100 tests per the project's own `active.md` verification notes (10/10, 20/20, 32/32, 168/168 lines cited per task). The remainder of the 845 comes from `trials/midi-gpt/repo/tests/**` - a cloned external MIDI-GPT model repository's own comparison and benchmark test suite, vendored for local experimentation, not written by or for this project's Compass plan work. Its `.compass/active.md` also shows no "5 of 6 tasks" plan status - the closest is a 5-task PLAN-001 (all done) and a 7-task PLAN-002 in progress. Coincidental proximity, not a match.
 
@@ -84,7 +84,7 @@ All commands were run from Git Bash with `/f/...` paths mapping to `F:\...`.
 
 ```bash
 # vault enumeration
-find /f/AI /f/Creative /f/acme /f/private-studio /f/Projects -maxdepth 6 -type d -name ".compass"
+find /f/AI /f/Creative /f/<work root> /f/<private project 1> /f/Projects -maxdepth 6 -type d -name ".compass"
 
 # literal text search (repeat <vault> for each of the 39 standing vaults)
 grep -rIl "841" <vault> --include="*.md"

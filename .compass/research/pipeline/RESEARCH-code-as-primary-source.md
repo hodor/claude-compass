@@ -28,7 +28,7 @@ In: per-ecosystem source location (PyPI, npm, crates.io, Go, Maven, NuGet), doc-
 
 ## Methodology
 
-Technology Landscape survey (per-item profiles + comparison) for the tools and ecosystem mechanisms, since the question evaluates discrete options rather than one contested claim. For the doc-drift sub-question, a lighter scoping review of empirical software-engineering literature (ACM DL, arXiv, Semantic Scholar). Code-reading tools were verified by cloning and reading their actual source in `~\AppData\Local\Temp\claude\F--claude-plugins-compass\c0fc3fc7-fc23-4997-ab9e-419caebb5529\scratchpad\codesource\{serena,aider,zoekt}`, per D-04's own instruction to read code, not docs, about the tools that read code.
+Technology Landscape survey (per-item profiles + comparison) for the tools and ecosystem mechanisms, since the question evaluates discrete options rather than one contested claim. For the doc-drift sub-question, a lighter scoping review of empirical software-engineering literature (ACM DL, arXiv, Semantic Scholar). Code-reading tools were verified by cloning and reading their actual source in `~\AppData\Local\Temp\claude\F--claude-plugins-compass\<session>\scratchpad\codesource\{serena,aider,zoekt}`, per D-04's own instruction to read code, not docs, about the tools that read code.
 
 ## Findings
 

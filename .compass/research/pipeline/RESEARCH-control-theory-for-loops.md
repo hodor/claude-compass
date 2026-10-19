@@ -237,7 +237,7 @@ Claims a gap pass addressed. "Prior" lists the original axes' cells for the clai
 
 87. **`--max-turns 1` is honored: the run ends with exit 1 and `subtype: error_max_turns` after the first tool has run, and `num_turns` reports 2** (confidence: high; single axis G1)
     Live run, haiku-4-5, Claude Code 2.1.302: `claude -p --max-turns 1 --output-format json "say hi then list files with a tool"`. Verbatim: `"terminal_reason":"max_turns"`, `"stop_reason":"tool_use"`, `"is_error":true`, `"num_turns":2`, `"errors":["Reached maximum number of turns (1)"]`, `"total_cost_usd":0.041615`; the JSON has no `result` key. The transcript holds the `tool_use` and its `tool_result` and no assistant message after it: the model turn ran, its tool executed, and the run stopped before the next model call. The flag works while still absent from `claude --help`.
-    - Evidence: `.compass/tmp/research-control-loops/gap-01-evidence/r1.json`; session transcript `25441f85-ede7-4bc2-a5bf-949a899a07af.jsonl`
+    - Evidence: `.compass/tmp/research-control-loops/gap-01-evidence/r1.json`; session transcript `<session>.jsonl`
     - Marks: live run on the installed product, 1 run; agrees with vendor docs
     - Grade: high
     - Caveat: one observation at N=1; the reading "cap N allows N tool rounds" is untested at N greater than 1.

@@ -33,7 +33,7 @@ Read every module in `plugin/cli/` in full; grepped `plugin/skills/`, `plugin/te
 1. **Discovery is a three-part hybrid: denylist + core-name list + content signal** (confidence: high)
  - `plugin/cli/vaultlib.py:13` - `NON_TYPE_DIRS = {"meta", "tmp", "archive", ".annotations"}` (denylist, plus any dot-dir at `vaultlib.py:55`).
  - `plugin/cli/vaultlib.py:16` - `CORE_TYPE_DIRS = ["specs", "plans", "research", "decisions", "lessons", "handoffs", "prs"]`, always scanned even when empty.
- - `plugin/cli/vaultlib.py:31-40` - `_has_typed_artifact`: any other subdir is admitted as a type dir if a depth-1 `*.md` OR a `*/index.md` has a `type:` frontmatter field. Rationale in [[LESSON-type-dir-discovery-needs-content-signal]] (the private-project-e `claude/` false-positive incident).
+ - `plugin/cli/vaultlib.py:31-40` - `_has_typed_artifact`: any other subdir is admitted as a type dir if a depth-1 `*.md` OR a `*/index.md` has a `type:` frontmatter field. Rationale in [[LESSON-type-dir-discovery-needs-content-signal]] (the private project 1 `claude/` false-positive incident).
 
 2. **A unit folder WITH its own typed `index.md` is misclassified as a type directory today** (confidence: high, verified live)
  - `vaultlib.py:35` - `directory.glob("*.md")` picks up `compass-cli/index.md`; if it has `type:`, the whole unit is treated as an artifact type named `compass-cli`.

@@ -1,0 +1,25 @@
+#!/bin/sh
+# Refuses a commit whose staged changes add private data: deny-listed terms,
+# the current user's home-directory paths, Claude Code session UUIDs in paths,
+# or credential tokens. The check is the LOOP-002-no-private-data sensor in
+# --staged mode; it names each finding as <path>:<category>:<term or pattern>.
+# Enable with: git config core.hooksPath .githooks
+
+root=$(git rev-parse --show-toplevel) || exit 1
+sensor="$root/.compass/loops/LOOP-002-no-private-data/sensor.py"
+
+if command -v python >/dev/null 2>&1; then
+    py=python
+elif command -v python3 >/dev/null 2>&1; then
+    py=python3
+else
+    echo "pre-commit: no python found; the privacy check cannot run, commit refused." >&2
+    exit 1
+fi
+
+if ! "$py" "$sensor" --staged >/dev/null; then
+    echo "pre-commit: commit refused. Remove the private data above, or point" >&2
+    echo "COMPASS_PRIVATE_DENYLIST at a readable deny-list if the check could not run." >&2
+    exit 1
+fi
+exit 0

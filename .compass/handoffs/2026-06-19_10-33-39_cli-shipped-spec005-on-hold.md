@@ -29,7 +29,7 @@ Built and shipped the `compass` CLI (PLAN-002) and iterated it from v0.2.0 to v0
 | compass CLI (PLAN-002 / SPEC-004) | DONE | command-hook cutover, ~99.8% bookkeeping-token cut, hypothesis confirmed |
 | setup/update split; rename bootstrap->setup | DONE | `init` rejected (shadows built-in `/init`); setup/update collision-free |
 | fix-frontmatter / bug self-reporting / consolidate-memory | DONE | shipped through v0.3.7 |
-| overfit fixes (content-aware type dirs; validate top-level links) | DONE | found on private-project-b + private-project-e |
+| overfit fixes (content-aware type dirs; validate top-level links) | DONE | found on private project 5 + private project 1 |
 | SPEC-005 auto per-folder index + LLM summaries | DRAFT, ON HOLD | token-cost concern; cap guardrail specced; needs approval -> ADR-006 -> PLAN-003 |
 | Stop/SubagentStop -> command hooks | BACKLOG | still agent-type; per-turn agent spawns = biggest remaining ongoing cost |
 
@@ -46,7 +46,7 @@ Built and shipped the `compass` CLI (PLAN-002) and iterated it from v0.2.0 to v0
 - Rust port deprioritized (needs a distribution decision: binary vs copyable source).
 
 ## Learnings
-- The CLI was overfit to the dogfood twice; real repos are the test (private-project-b `retro/`, private-project-e's symlinked `.compass/claude/` install). [[LESSON-type-dir-discovery-needs-content-signal]].
+- The CLI was overfit to the dogfood twice; real repos are the test (private project 5 `retro/`, private project 1's symlinked `.compass/claude/` install). [[LESSON-type-dir-discovery-needs-content-signal]].
 - An updater must remove only what it installed, never "anything not in my source". [[LESSON-installer-removes-only-what-it-installed]].
 - Hook-invoked CLI must gate stdin on a flag, not isatty. [[LESSON-hook-cli-gate-stdin-on-flag]]. autocrlf churns LF writers. [[LESSON-autocrlf-churns-lf-writers]].
 - Token spike was memory bloat (per-project file memory up to 49 files / 25K tokens) + multi-project, not Compass. `claude -p` haiku summary ~$0.005, 10-30s -> detached only.
@@ -62,10 +62,10 @@ Built and shipped the `compass` CLI (PLAN-002) and iterated it from v0.2.0 to v0
 2. [ ] On approval: ADR-006 - resolve the detached-background spawn (cross-platform, outlives the hook, no pileup), the backfill-on-update, the per-folder format (folder-spec body vs machine contents section), and lock the cost cap.
 3. [ ] Then PLAN-003 + build with tests + a real-repo dry-run.
 4. [ ] Independent of SPEC-005: convert `Stop`/`SubagentStop` hooks to commands (backlog) - the biggest current ongoing token saving.
-5. [ ] Roll `/compass:update` (-> v0.3.7) + `/compass:consolidate-memory` across repos. private-project-b's update hit a ".claude write blocked" friction needing a hand-run script - diagnose it.
+5. [ ] Roll `/compass:update` (-> v0.3.7) + `/compass:consolidate-memory` across repos. private project 5's update hit a ".claude write blocked" friction needing a hand-run script - diagnose it.
 
 ## Context for Resuming
-- Other repos are at mixed versions (private-project-e / private-project-b ~0.3.1). Update to 0.3.7 for the latest. private-project-b's `/compass:update` needed a manual `update-compass.sh` because a `.claude/` write was blocked in that session - worth hardening.
+- Other repos are at mixed versions (private project 1 / private project 5 ~0.3.1). Update to 0.3.7 for the latest. private project 5's `/compass:update` needed a manual `update-compass.sh` because a `.claude/` write was blocked in that session - worth hardening.
 - Summary prototype: `cat <file> | claude -p --model claude-haiku-4-5 "Summarize ... one terse line ..."` -> good output, 10-30s, so detached only.
 - Do NOT run the LLM summary loop without the cap + loop-guard - that is the explicit human concern that paused the build.
-- Memory consolidation A/B: an aggressive human prompt cut iwyc 92%; the skill cut private-project-b 47% (too gentle), now retuned in v0.3.7 to lead with the aggressive directive.
+- Memory consolidation A/B: an aggressive human prompt cut iwyc 92%; the skill cut private project 5 47% (too gentle), now retuned in v0.3.7 to lead with the aggressive directive.

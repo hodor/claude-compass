@@ -41,7 +41,7 @@ Shipped v0.4.0 (pushed): SPEC-007 decision coverage (D-NN parser, compass decisi
 3. [ ] Walk the human through SPEC-012 (plain language, one doc per message, never assume he read the files - standing preference).
 4. [ ] On approval -> planner (research is complete) -> build with the wave protocol.
 5. [ ] SPEC-011 experiment (grep vs graph on the named query classes) - can run as part of SPEC-012's research or standalone; its outcome decides SPEC-011.
-6. [ ] Distribution pass: /compass:update to v0.4.0+ across the fleet - the audit found 19/40 vaults cannot run the Stop-hook backstop and 3 stale v0.2.0 partial installs; private-project-b has a known blocked-.claude-write friction. Then SPEC-006 hosts (hermes first).
+6. [ ] Distribution pass: /compass:update to v0.4.0+ across the fleet - the audit found 19/40 vaults cannot run the Stop-hook backstop and 3 stale v0.2.0 partial installs; private project 5 has a known blocked-.claude-write friction. Then SPEC-006 hosts (hermes first).
 
 ## Operational lessons for the next orchestrator (already in the vault as lessons)
 

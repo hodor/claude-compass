@@ -295,7 +295,7 @@ Two gaps from the original pass, closed.
 
 57. **Zapata et al.'s protocol (arXiv:2002.04974) re-fetched in full; confidence raised** (confidence: high; primary PDF downloaded and text-extracted)
     The full text substantially exceeds the prior secondary summary. It fixes: four research questions plus two publication questions, each mapped to a data-extraction item (Table 1); an automated search across five databases (ScienceDirect, SpringerLink, Scopus, IEEE Xplore, ACM Digital Library) built via an explicit four-step search-string construction method; a manual search of three named conference proceedings (ICGSE, ICSE, ESEM); snowballing per Wohlin (2014), run after the automated and manual search; a three-round selection process (title, abstract, full text) against named inclusion/exclusion criteria (IC1-3/EC1-3) with two-person discrepancy resolution and a fourth author arbitrating, quality-checked via Cohen's Kappa.
-    - Local copy: `~\AppData\Local\Temp\claude\F--claude-plugins-compass\c0fc3fc7-fc23-4997-ab9e-419caebb5529\scratchpad\round2-methods\zapata.pdf` / `zapata.txt`, pp.2-8
+    - Local copy: `~\AppData\Local\Temp\claude\F--claude-plugins-compass\<session>\scratchpad\round2-methods\zapata.pdf` / `zapata.txt`, pp.2-8
 
 58. **"Bridging MDE and AI" (arXiv:2307.04599) author list confirmed directly from the arXiv abstract page** (confidence: high)
     Authors: Simon Raedler (submitter), Luca Berardinelli, Karolin Winter, Abbas Rahimi, Stefanie Rinderle-Ma. The abstract confirms the SLR methodology described in finding 47 (five databases, 1,335 candidate studies, 18 primary studies, CRISP-DM mapping). No GitHub link appears on the arXiv page itself; the artifact link is external to the paper's own metadata.

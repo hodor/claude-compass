@@ -104,3 +104,4 @@ Indexed in meta/lessons-catalog.yaml (loaded with the hot path); files in `lesso
 
 ## Loops
 - [[LOOP-001-visual-questions]] - Control loop for SPEC-029: drives every point where Compass asks the human something to one AskUserQuestion call per question.
+- [[LOOP-002-no-private-data]] - Control loop keeping private data out of this public repository: deny-listed names, home-directory paths, session ids in paths and tokens, with a pre-commit hook that refuses new ones.

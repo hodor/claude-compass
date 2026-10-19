@@ -24,7 +24,7 @@ SOURCE = Path(__file__).resolve().parents[2] / "plugin"
 
 sys.path.insert(0, str(SOURCE / "cli"))
 from commands import self_update  # noqa: E402
-ROOTS = [Path("F:/"), Path("~")]
+ROOTS = [Path("F:/"), Path.home()]
 SKIP_DIRS = {
     "node_modules", ".git", "Library", "AppData", "scoop", ".cache", "venv",
     ".venv", "__pycache__", "Intermediate", "Saved", "DerivedDataCache",

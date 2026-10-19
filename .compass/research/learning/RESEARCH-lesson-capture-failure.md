@@ -25,9 +25,9 @@ Confirmed, decisively. Across 40 vaults, the designed automatic capture path has
 
 ## Findings
 
-1. **The fleet numbers (HIGH).** 40 vaults; 26 (65%) hold zero lessons; ~153 lesson-shaped files total, 87 (57%) in two outlier vaults. Heavily-used vaults capture nothing: private-project-b (12 specs, 6 handoffs, 0), private-project-c (16 specs, 0), private-project-d (12 specs, v0.4.0 installed 2026-07-24, 0), private-project-a (277 files, 0), private-project-e (196 files, 50 specs, 26 handoffs, 2).
+1. **The fleet numbers (HIGH).** 40 vaults; 26 (65%) hold zero lessons; ~153 lesson-shaped files total, 87 (57%) in two outlier vaults. Heavily-used vaults capture nothing: private project 1 (12 specs, 6 handoffs, 0), private project 2 (16 specs, 0), private project 3 (12 specs, v0.4.0 installed 2026-07-24, 0), private project 4 (277 files, 0), private project 5 (196 files, 50 specs, 26 handoffs, 2).
 
-2. **Neither outlier used the system (HIGH).** private-project-f (54): bulk migration of a pre-Compass `ai/discoveries/` folder (`migrated_from:` frontmatter, dated 2026-05-24), extended by hand in the legacy schema; had the compliant mechanism installed for weeks during heavy crash-debugging and produced zero mechanism-originated lessons. work-project-f (33): a homegrown numbered `LESSON-NNN` prose template running ~3.5 months, with `## Surprise` headers from the pre-ADR-002 design; compliant tooling arrived the day of its newest lesson.
+2. **Neither outlier used the system (HIGH).** private project 6 (54): bulk migration of a pre-Compass `ai/discoveries/` folder (`migrated_from:` frontmatter, dated 2026-05-24), extended by hand in the legacy schema; had the compliant mechanism installed for weeks during heavy crash-debugging and produced zero mechanism-originated lessons. work project A (33): a homegrown numbered `LESSON-NNN` prose template running ~3.5 months, with `## Surprise` headers from the pre-ADR-002 design; compliant tooling arrived the day of its newest lesson.
 
 3. **Exactly one organic firing, and it proves the pipeline (HIGH).** ai-songwriting: `phase-summary.yaml` -> `extraction-log-2026-07-25.md` (5 candidates, all passed, all created) -> 5 canonical lessons -> catalog in sync. The dogfood repo's only phase-report is a synthetic `TEST-PLAN` dry-run from the subsystem's own construction day.
 
@@ -35,7 +35,7 @@ Confirmed, decisively. Across 40 vaults, the designed automatic capture path has
 
 5. **Contributing cause: install drift (HIGH).** 19/40 vaults categorically cannot run the Stop-hook backstop (13 have no plugin.yaml; 3 v0.2.0 installs have skills but no hooks dir; assorted partials). 21/40 have everything installed and still show zero firings. The backstop also only fires when a phase-summary exists - so it inherits the same upstream gate.
 
-6. **Contributing cause: bypass routes and schema drift (HIGH).** Where canonical-format lessons exist outside the dogfood (work-project-e, wt-spec056, recruiting, work-project-g), they trace to manual `/compass:learned`, not auto-extraction. The outliers' bespoke schemas produce catalog mismatches (ue5's catalog rows point at `domain/*.md` files; work-project-f's numbered files violate the 5-line cap and lack required fields).
+6. **Contributing cause: bypass routes and schema drift (HIGH).** Where canonical-format lessons exist outside the dogfood (work project B, wt-spec056, work project C, work project D), they trace to manual `/compass:learned`, not auto-extraction. The outliers' bespoke schemas produce catalog mismatches (private project 6's catalog rows point at `domain/*.md` files; work project A's numbered files violate the 5-line cap and lack required fields).
 
 7. **The historical irony (HIGH).** ADR-002's redesign was motivated by "0 lessons after 3 months" under prose-based capture. The redesign moved capture to a phase boundary real work does not visit; the failure mode changed from "agents never bother" to "the trigger never fires." Same outcome. This very session repeated the pattern: the v0.4.0 build ran research -> ADRs -> plans -> builders -> validator orchestrated conversationally, and its two lessons had to be written manually.
 
@@ -58,4 +58,4 @@ Lesson capture fails because it is coupled to a single rare event (the `/compass
 
 ## Sources
 
-Full per-vault table and raw outputs: scratchpad `audit.sh`, `audit_table.tsv`, `audit_detail.txt`, `subagent_captures_report.txt` (session-temporary). Key evidence files: `F:\AI\_Tools\ai-songwriting\.compass\tmp\extraction-log-2026-07-25.md` (the one organic firing); `F:/private/<private-project>` (migration marker); `F:/work/<work-project>` (bespoke template); [[ADR-002-retrospective-lessons-subsystem]] (the prior diagnosis this one supersedes in scope).
+Full per-vault table and raw outputs: scratchpad `audit.sh`, `audit_table.tsv`, `audit_detail.txt`, `subagent_captures_report.txt` (session-temporary). Key evidence files: `F:\AI\_Tools\ai-songwriting\.compass\tmp\extraction-log-2026-07-25.md` (the one organic firing); `<private project 6>\.compass\lessons\_overview.md` (migration marker); `<work project A>\.compass\lessons\` (bespoke template); [[ADR-002-retrospective-lessons-subsystem]] (the prior diagnosis this one supersedes in scope).

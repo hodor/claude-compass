@@ -42,7 +42,7 @@ Close the loop [[SPEC-012-learning-loop]] declares broken. Capture stops being w
 - No forked-agent review pass. [[RESEARCH-hermes-memory-mechanics]] flags it as too token-heavy against [[SPEC-004-mechanical-work-off-the-agent-budget]]; the Compass equivalent is a hook-emitted nudge that costs one command process.
 - No graph substrate for retrieval (SPEC-012 D-04, discharged by [[RESEARCH-grep-vs-graph-experiment]]: lesson rows carry no `depends_on` or wikilink edges, and tag matching over 14 flat rows is well inside grep's comfort zone). Nothing in this plan depends on [[SPEC-011-vault-graph-queries]], and no task here builds toward it.
 - No embeddings, no semantic retrieval, no external memory provider.
-- No migration of the outlier vaults' bespoke lesson schemas (private-project-f, work-project-f). Separate cleanup.
+- No migration of the outlier vaults' bespoke lesson schemas (private project 2, private project 6). Separate cleanup.
 - No change to the substance of the extraction core: triggers stay binary, the anti-list stays the filter, `lesson-write` stays the only writer, the 5-line cap stays hard.
 - No gate on lesson citation. Decision coverage gates at plan approval; lesson coverage audits and never blocks (see Risks).
 - No fleet-wide redistribution run. This plan makes drift detectable; rolling v0.4.x out to 40 vaults stays the separate queued item in [[active]].

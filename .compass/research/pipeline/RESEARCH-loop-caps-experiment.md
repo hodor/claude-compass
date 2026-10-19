@@ -25,10 +25,10 @@ Does `--max-turns N` allow N tool rounds beyond N=1, and do `--max-turns` and `-
 Repository mining shape "how does an existing system actually behave", run as an experiment on the installed artifact (Claude Code 2.1.302, `claude-haiku-4-5-20251001`), with the session transcript as the primary record. Marks are recorded on every finding; the brief carried no `grading:` state, so findings are marked and ungraded because nobody was asked.
 
 ## Setup
-- Each run executes in its own folder under `~\AppData\Local\Temp\claude\F--claude-plugins-compass\ae974588-929f-4f0a-8ff2-ad796c7400a9\scratchpad\caps\` (outside the repo, no project hooks). Command shape: `claude -p --model claude-haiku-4-5-20251001 [--max-turns N | --max-budget-usd X] [--resume SID] --allowedTools "Write Bash" --output-format json "<prompt>"`.
+- Each run executes in its own folder under `~\AppData\Local\Temp\claude\F--claude-plugins-compass\<session>\scratchpad\caps\` (outside the repo, no project hooks). Command shape: `claude -p --model claude-haiku-4-5-20251001 [--max-turns N | --max-budget-usd X] [--resume SID] --allowedTools "Write Bash" --output-format json "<prompt>"`.
 - Capped-run prompt: create `f1.txt` to `f8.txt`, one Write call per assistant message, then `ls` with Bash (ten tool rounds). Resume-arm prompts follow the same shape with `g`, `h`, `k` files.
 - All 12 stderr files are empty; `permission_denials` is `[]` in every run.
-- Raw JSON, stderr, transcript copies and the files each run wrote are in `F:\claude\plugins\compass\.compass\tmp\loop-experiments\caps\` (`*.json`, `*.err`, `transcripts\`, `workdirs\`, `summarize.py`). Original transcripts: `~\.claude\projects\C--Users-user-AppData-Local-Temp-claude-F--claude-plugins-compass-ae974588-929f-4f0a-8ff2-ad796c7400a9-scratchpad-caps-<run>\<session_id>.jsonl`.
+- Raw JSON, stderr, transcript copies and the files each run wrote are in `F:\claude\plugins\compass\.compass\tmp\loop-experiments\caps\` (`*.json`, `*.err`, `transcripts\`, `workdirs\`, `summarize.py`). Original transcripts: `~\.claude\projects\C--Users-<user>-AppData-Local-Temp-claude-F--claude-plugins-compass-<session>-scratchpad-caps-<run>\<session_id>.jsonl`.
 - A resume arm is two invocations on one session: a seed (`--max-turns 5`, "write g1.txt then say done", `success`, 2 turns) and the resume. A resume writes into the same transcript file as its seed, so each seed and resume pair shares one `transcripts\rsN.jsonl`.
 
 ## Runs

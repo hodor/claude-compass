@@ -30,7 +30,7 @@ No `grading:` disclosure reached this run, so the findings are marked and ungrad
 
 ## Setup
 
-- Scratch clone: `~\AppData\Local\Temp\claude\F--claude-plugins-compass\ae974588-929f-4f0a-8ff2-ad796c7400a9\scratchpad\fresh-clone\` (called `<clone>` below), HEAD `b5f38de`.
+- Scratch clone: `~\AppData\Local\Temp\claude\F--claude-plugins-compass\<session>\scratchpad\fresh-clone\` (called `<clone>` below), HEAD `b5f38de`.
 - Claude Code 2.1.302, model `claude-haiku-4-5-20251001`, every `claude -p` run with `--allowedTools "Agent" "Bash" --max-budget-usd 0.30` (headless runs need the tools allowed; permission mode `default`).
 - User-level `~\.claude\settings.json` (read only): no `hooks` key; `settings.local.json` has no `hooks` either. The five enabled plugins (zoekt-ue5, zoekt-defold, rust-analyzer-lsp, codex-hud, codex-review) ship no `hooks*.json` or `"hooks"` entry in their JSON.
 - Spend: 0.0844 + 0.1136 + 0.0553 + 0.0753 = 0.3286 USD.
