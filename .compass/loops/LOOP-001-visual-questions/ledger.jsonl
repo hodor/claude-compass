@@ -1,0 +1,8 @@
+{"ts": "2026-10-19T01:32:27+00:00", "type": "transition", "from": "idle", "event": "start", "to": "sensing", "reason": "run RUN-20261019T013227701029Z"}
+{"ts": "2026-10-19T01:32:27+00:00", "type": "transition", "from": "sensing", "event": "off-set-point", "to": "gating", "reason": "reading 76"}
+{"ts": "2026-10-19T01:32:27+00:00", "type": "transition", "from": "gating", "event": "clear", "to": "controlling", "reason": "budget and work in progress allow a run"}
+{"ts": "2026-10-19T01:32:27+00:00", "type": "transition", "from": "controlling", "event": "selected", "to": "actuating", "reason": "selected plugin/skills/autopilot/SKILL.md:3. Plan:Proceed with implementation? (approve / redirect / abort)"}
+{"ts": "2026-10-19T01:32:44+00:00", "type": "transition", "from": "actuating", "event": "finished", "to": "verifying", "reason": "actuator finished RUN-20261019T013227701029Z"}
+{"ts": "2026-10-19T01:32:27+00:00", "cost_usd": 0.16863650000000002, "type": "run", "run_id": "RUN-20261019T013227701029Z", "reading_before": {"value": 76.0, "items_count": 76}, "reading_after": {"value": 75.0, "items_count": 75}, "item": "plugin/skills/autopilot/SKILL.md:3. Plan:Proceed with implementation? (approve / redirect / abort)", "outcome": "helpful", "reason": "76 -> 75", "num_turns": 5, "duration_ms": 14364, "subtype": "success", "input_tokens": 8, "output_tokens": 1066, "cache_read_tokens": 105685, "cache_creation_tokens": 36848}
+{"ts": "2026-10-19T01:32:44+00:00", "type": "transition", "from": "verifying", "event": "helpful", "to": "idle", "reason": "76 -> 75"}
+{"ts": "2026-10-19T03:18:22+00:00", "type": "review", "run_id": "RUN-20261019T013227701029Z", "decision": "accept"}

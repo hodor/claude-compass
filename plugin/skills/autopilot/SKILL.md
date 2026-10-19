@@ -2,7 +2,7 @@
 name: autopilot
 description: Run the full Compass pipeline (research → plan → build → test → validate) for S/M tasks. Orchestrates the actual agents with human checkpoints.
 version: 1.0.0
-allowed-tools: [Read, Grep, Glob, Write, Edit, Bash, Agent]
+allowed-tools: [Read, Grep, Glob, Write, Edit, Bash, Agent, AskUserQuestion]
 when_to_use: "Use for small-to-medium tasks that should run the full pipeline autonomously with checkpoints. Triggers: 'autopilot', 'run the full pipeline', 'do this task with compass'."
 argument-hint: "<task description or TASK-NNN>"
 ---
@@ -40,9 +40,15 @@ Spawn the `planner` agent with the spec and research. Wait for completion.
 Research: [one-line summary with confidence]
 Plan ready for: [task description]
 [Summary of phases, tasks, complexity, verification]
-
-Proceed with implementation? (approve / redirect / abort)
 ```
+
+Then ask "Proceed with implementation?" through `AskUserQuestion`, exactly one question per call. The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Approve (Recommended):** the plan is approved; build starts.
+- **Redirect:** you say what to change; the plan is revised and shown again.
+- **Abort:** the run stops here.
+
+Never put several questions in one message or one call.
 
 ### 4. Build
 
