@@ -1,7 +1,7 @@
 ---
 title: "Questions to the Human Are Clear and Visual"
 type: spec
-status: draft
+status: approved
 confidence: low
 area: methodology
 tags: [questions, ui, human-gates, clarity]
@@ -9,6 +9,7 @@ summary: "when Compass asks the user questions they come one by one, insanely cl
 taxonomy_hint: "the human's conversation surface; sits beside SPEC-018 at the specs root"
 created: 2026-10-18
 updated: 2026-10-18
+approved: 2026-10-18
 ---
 
 # Questions to the Human Are Clear and Visual
