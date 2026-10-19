@@ -42,6 +42,8 @@ Optional, ask if not covered - read the room, don't force every question:
 4. **Hard constraints:** budget, infrastructure, regulatory, team.
 6. **Existing context:** what exists today, what's been tried, what's in the way.
 
+Ask each question through `AskUserQuestion`, exactly one question per call, in the order above. The recommended option comes first, labelled "(Recommended)", drawn from what the braindump already said; each option is one short line saying what choosing it does, and "Other" stays open for the human's own words. Never batch several questions in one message or one call; the next question waits for this answer.
+
 ### 3. Identify distinct needs
 
 Each distinct need becomes one spec. Use the spec rule: if you write "and also" between two needs, they're separate.
