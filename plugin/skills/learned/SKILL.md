@@ -48,7 +48,12 @@ If `--area` flag is set, use it.
 
 Otherwise infer from content keywords against the standard areas: `architecture`, `frontend`, `backend`, `testing`, `devops`, `infra`, `docs`, `workflow`, `methodology`.
 
-If multiple plausible areas, pick the one most cited in the current `active.md` task context. If still ambiguous, ask the human: "Which area? (a) backend (b) testing (c) other".
+If multiple plausible areas, pick the one most cited in the current `active.md` task context. If still ambiguous, ask through `AskUserQuestion`, exactly one question per call: "Which area?". The most plausible area comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **backend (Recommended):** files the lesson under the backend area.
+- **testing:** files the lesson under the testing area.
+
+Never put several questions in one message or one call; the next question waits for this answer.
 
 ### 4. Determine tags
 
