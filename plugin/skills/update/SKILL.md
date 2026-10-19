@@ -2,7 +2,7 @@
 name: update
 description: Update an existing Compass install in this project from GitHub - refreshes agents, rules, skills, the compass CLI, and hooks. Pulls from the canonical git repository, never from a local copy. Does not touch the .compass vault.
 version: 1.0.0
-allowed-tools: [Read, Write, Bash]
+allowed-tools: [Read, Write, Bash, AskUserQuestion]
 argument-hint: "[--repository <url>]"
 when_to_use: "Use to pull the latest Compass plugin into a project that already has it installed. Triggers: 'update compass', 'compass update', 'pull the latest compass'. For first-time setup use /compass:setup instead."
 ---
@@ -17,7 +17,7 @@ Refreshes the installed plugin files in `.claude/` (agents, rules, skills, the `
 
 ### 1. Resolve the repository
 
-Read `.compass/meta/plugin.yaml` `repository:`. If `--repository <url>` was passed, use that instead. If neither is available, ask the human for the repository URL and stop until provided.
+Read `.compass/meta/plugin.yaml` `repository:`. If `--repository <url>` was passed, use that instead. If neither is available, ask the human for the repository URL through `AskUserQuestion`, exactly one question per call: "Which repository should Compass update from?". Offer the canonical Compass repository first, labelled "(Recommended)", each option one short line saying what choosing it does, and leave "Other" open for a custom URL. Several questions are never batched in one message or one call. Stop until the human answers.
 
 ### 2. Clone shallow to a temp directory
 
