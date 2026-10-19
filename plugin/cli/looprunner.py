@@ -75,6 +75,11 @@ LOCK_RETRY_SECONDS = 0.05
 # prompt.
 MAX_KEPT_FINDINGS = 200
 
+# A directory-walk snapshot stops after this many entries and carries the
+# key PARTIAL.
+SNAPSHOT_ENTRIES = 200_000
+PARTIAL = "<partial>"
+
 # Seconds allowed to `git ls-files` when the project is snapshotted around
 # the judge.
 SNAPSHOT_SECONDS = 120
@@ -244,10 +249,10 @@ def _fingerprints(loop_dir, definition):
     return prints
 
 
-def _project_snapshot(project):
-    """`{path: (size, mtime_ns) or None}` for every file of the project git
-    reports modified or untracked, outside `.compass/tmp`; None when the
-    project is not a git work tree or git cannot be run."""
+def _git_snapshot(project):
+    """`{path: (size, mtime_ns) or None}` for every file git reports modified
+    or untracked, outside `.compass/tmp`; None when the project is not a git
+    work tree or git cannot be run."""
     proc = _run_process(
         ["git", "ls-files", "-m", "-o", "--exclude-standard", "-z"], project, SNAPSHOT_SECONDS
     )
@@ -263,6 +268,41 @@ def _project_snapshot(project):
         except OSError:
             snapshot[name] = None
     return snapshot
+
+
+def _walk_snapshot(project, loop_dir):
+    """`{relative path: (size, mtime_ns)}` for the files under the project,
+    walked in sorted order and skipping `.git`, `.compass/tmp` and the loop's
+    own ledger and state files. After SNAPSHOT_ENTRIES entries the walk stops
+    and the snapshot carries the key PARTIAL."""
+    project, loop_dir = Path(project), Path(loop_dir)
+    skip_dirs = {project / ".git", project / ".compass" / "tmp"}
+    skip_files = {loop_dir / name for name in ("ledger.jsonl", "ledger.jsonl.lock", "state.json")}
+    snapshot = {}
+    for root, dirs, files in os.walk(project):
+        dirs[:] = sorted(d for d in dirs if Path(root, d) not in skip_dirs)
+        for name in sorted(files):
+            path = Path(root, name)
+            if path in skip_files or (path.parent == loop_dir and name.startswith(".state.json.")):
+                continue
+            if len(snapshot) >= SNAPSHOT_ENTRIES:
+                snapshot[PARTIAL] = True
+                return snapshot
+            key = path.relative_to(project).as_posix()
+            try:
+                stat = path.stat()
+                snapshot[key] = (stat.st_size, stat.st_mtime_ns)
+            except OSError:
+                snapshot[key] = None
+    return snapshot
+
+
+def _project_snapshot(project, loop_dir):
+    """A snapshot of the project's files that tells a later snapshot what
+    changed: git's modified and untracked files, or a directory walk when the
+    project is not a git work tree."""
+    snapshot = _git_snapshot(project)
+    return snapshot if snapshot is not None else _walk_snapshot(project, loop_dir)
 
 
 def _new_run_id():
@@ -655,7 +695,7 @@ class _Run:
             reason = f"re-sense invalid: {after.reason}"
         if defn.get(looplib.JUDGE_KEY):
             judged_prints = _fingerprints(self.dir, defn)
-            judged_tree = _project_snapshot(self.project)
+            judged_tree = _project_snapshot(self.project, self.dir)
             record = self.run_judge(scratch, after, rules_text)
             fields["judge"] = record
             fields["cost_usd"] = fields["cost_usd"] + record["cost_usd"]
@@ -663,13 +703,13 @@ class _Run:
                 n for n, digest in _fingerprints(self.dir, defn).items()
                 if digest != judged_prints[n]
             ]
-            if judged_tree is not None:
-                tree_after = _project_snapshot(self.project)
-                if tree_after is not None:
-                    touched += sorted(
-                        n for n in judged_tree.keys() | tree_after.keys()
-                        if judged_tree.get(n) != tree_after.get(n)
-                    )
+            tree_after = _project_snapshot(self.project, self.dir)
+            if PARTIAL in judged_tree or PARTIAL in tree_after:
+                record["snapshot_partial"] = True
+            touched += sorted(
+                n for n in judged_tree.keys() | tree_after.keys()
+                if n != PARTIAL and judged_tree.get(n) != tree_after.get(n)
+            )
             if touched:
                 # The judge may read and nothing else.
                 return self.end(

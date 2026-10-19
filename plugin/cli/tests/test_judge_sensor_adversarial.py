@@ -405,6 +405,28 @@ class JudgeRunAdversarialTests(judged.JudgeHarness):
         self.assertEqual(self.events()[-1], "controls-changed")
         self.assertEqual(self.state(), "halted")
 
+    def test_judge_that_writes_a_project_file_halts_the_loop_without_git(self):
+        """Adversarial where: the project is not a git work tree, so no
+        snapshot is taken around the judge and a judge session that creates
+        `src/new.py` despite its read-only tool list goes unseen; an
+        untouched tree must not halt."""
+        (self.project / "src").mkdir(parents=True, exist_ok=True)
+        self.judged_loop(judge_replies=[reply("")] * 3)
+        (self.project / "src").mkdir(parents=True, exist_ok=True)
+        new_file = self.project / "src" / "new.py"
+        self.set_stub(None, [{}, reply(""), {
+            "tamper": [{"path": str(new_file), "text": "x = 1\n"}],
+            "stdout_text": envelope("", 0.25),
+        }, reply("")])
+        self.iterate()
+        self.assertTrue(new_file.exists())
+        self.assertEqual(self.events()[-1], "controls-changed")
+        self.assertEqual(self.state(), "halted")
+        (row,) = self.run_rows()
+        self.assertIn("src/new.py", row["reason"])
+        self.assertEqual(row["outcome"], "failed")
+        self.assert_no_lock()
+
     def test_lock_is_held_through_every_judge_and_a_second_run_is_refused(self):
         """Adversarial where: the run lock is released after the actuator and
         before the judge runs, so a second iteration starts while a judge is
