@@ -2,7 +2,7 @@
 name: vault-health
 description: Validate Compass vault integrity - frontmatter and wikilinks via `compass validate`, plus orphan and bare-reference detection. Reports vault health with actionable fixes.
 version: 2.0.0
-allowed-tools: [Read, Glob, Grep, Bash]
+allowed-tools: [Read, Glob, Grep, Bash, AskUserQuestion]
 when_to_use: "Use when checking vault quality, after a series of changes, before a release, or when something feels off. Triggers: 'vault health', 'check vault', 'validate vault', 'vault build'."
 argument-hint: "[validate | orphans | linking | full]"
 ---
@@ -66,7 +66,13 @@ Report first. If the human says "fix it":
 - **Orphans:** add to `index.md` (run `compass sync`) or archive.
 - **Bare references:** wrap in `[[...]]`.
 
-Always confirm before bulk fixes.
+Before a bulk fix, confirm through `AskUserQuestion`, exactly one question per call: "Apply this fix to all N files?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Apply to all (Recommended):** runs the fix on every listed file.
+- **Review one by one:** shows each change and waits for your answer.
+- **Skip:** leaves the files untouched.
+
+Never put several questions in one message or one call; the next question waits for this answer.
 
 ## When to run
 
