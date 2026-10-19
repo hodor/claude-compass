@@ -26,7 +26,7 @@ The frontmatter `initialPrompt` already loaded `.compass/index.md`, `.compass/ac
 
 Read the referenced specs, the research, and any existing plans (to avoid duplication).
 
-Check `.compass/plans/` for plans that `depends_on` the same spec. If one exists and isn't archived, present it to the human - ask whether to update it (via `/compass:plan iterate`) or create a new one. Never create a duplicate silently.
+Check `.compass/plans/` for plans that `depends_on` the same spec. If one exists and isn't archived, stop and return the question to the orchestrator, naming the existing plan, with the options "Update the existing plan via `/compass:plan iterate` (Recommended)" and "Create a new plan", and the recommended one marked. The orchestrator asks it through `AskUserQuestion`, one question per call. Never create a duplicate silently.
 
 Use the `pattern-finder` agent to verify that key assumptions are still accurate against the current codebase. If research is stale (its `git_commit` is far behind current HEAD), flag it.
 
