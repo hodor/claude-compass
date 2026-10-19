@@ -78,9 +78,15 @@ N specs drafted (all status: draft):
 1. [[SPEC-NNN-name]] - [one line]
 2. [[SPEC-NNN-name]] - [one line]
 ...
-
-Approve all / review one by one / approve some refine others?
 ```
+
+Then ask through `AskUserQuestion`, exactly one question per call: "How do you want to review these specs?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Approve all (Recommended):** marks every spec approved.
+- **Review one by one:** each spec is shown and approved on its own.
+- **Approve some, refine others:** you name the ones to approve; the rest are refined.
+
+Never put several questions in one message or one call; the next question waits for this answer.
 
 Update statuses. Update `index.md` with all new specs.
 
