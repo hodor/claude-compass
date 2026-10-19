@@ -15,7 +15,7 @@ Create vault artifacts for commits that exist without corresponding specs, plans
 
 ### 1. Identify the work
 
-If a commit hash was given, use it. Otherwise `git log --oneline -20`, present the commits, ask which to document.
+If a commit hash was given, use it. Otherwise run `git log --oneline -20`, present the commits, then ask which to document through `AskUserQuestion`, exactly one question per call: "Which commit should I document?". The most recent commit comes first, labelled "(Recommended)"; each option is one short line with the commit hash and message, saying that choosing it documents that commit; "Other" stays open for a different hash or a range. Never put several questions in one message or one call.
 
 ### 2. Read the hot path
 
