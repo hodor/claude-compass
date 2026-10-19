@@ -86,13 +86,21 @@ Before presenting, spawn a reviewer sub-agent on the cheap model tier with exact
 
 ### 7. Present for approval
 
-Show the Problem and Desired Outcome as they will be saved, his sentences with any guess bracketed inline where it sits, then one line: "Approve?". No summary, no counts, no section list. After "needs changes", show only the lines that changed.
+Show the Problem and Desired Outcome as they will be saved, his sentences with any guess bracketed inline where it sits. No summary, no counts, no section list. After "needs changes", show only the lines that changed.
+
+Then ask through `AskUserQuestion`, exactly one question per call: "Approve this spec?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Approve (Recommended):** marks the spec approved; research can start.
+- **Needs changes:** you say what to change; I edit and show the changed lines.
+- **Reject:** archives the spec.
+
+Never put several questions in one message or one call; the next question waits for this answer.
 
 - **Approved:** change `status: draft` to `status: approved`. "Spec approved. Ready for research when you are."
 - **Needs changes:** ask what to change, edit, present again.
 - **Rejected:** change `status: archived`, ask why so you can learn.
 
-After approval, offer: "Create another spec, or start research on this one?"
+After approval, ask one more question the same way: "What next?", with "Start research on this spec (Recommended)" and "Create another spec".
 
 ## Failure modes worth naming
 
