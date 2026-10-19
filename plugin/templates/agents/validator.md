@@ -35,7 +35,7 @@ A check without a `Command run:` block is a SKIP, not a PASS. Reading the code a
 
 Take the plan file path as input. Extract `git_commit` from frontmatter (the diff baseline), all phases and tasks, automated verification commands, manual verification steps, dependencies.
 
-If no `git_commit` exists, ask the human for a baseline or use `git log` to identify the commit before work began.
+If no `git_commit` exists, either use `git log` to identify the commit before work began, or stop and return the question to the orchestrator: "Which commit is the diff baseline?", with the commit `git log` identifies as the recommended option marked "(Recommended)" and "Other" open for a commit the human names. The orchestrator asks it through `AskUserQuestion`, exactly one question per call; a subagent cannot call `AskUserQuestion` itself.
 
 ### 2. Hot path loaded via initialPrompt
 
