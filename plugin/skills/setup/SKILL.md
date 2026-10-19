@@ -329,9 +329,10 @@ else
 fi
 ```
 
-The first line is the number of days or `unset`. When it is `unset` or 30 or less, ask once:
+The first line is the number of days or `unset`. When it is `unset` or 30 or less, ask once, through `AskUserQuestion`, exactly one question per call, never batched with another question: "Claude Code deletes old sessions after 30 days by default. Keep them longer, so `/compass:clone-old` can use them?" The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
 
-> "Claude Code deletes old sessions after 30 days by default. Keep them longer, so `/compass:clone-old` can use them?"
+- **Keep longer (Recommended):** sets retention to 3650 days so `/compass:clone-old` can use old sessions.
+- **Keep the default:** leaves retention at 30 days.
 
 On a yes, run `compass retention --set 3650` (same `python3` / `python` fallback). On a no, move on; setup does not ask again. When the value is already above 30, say nothing.
 
