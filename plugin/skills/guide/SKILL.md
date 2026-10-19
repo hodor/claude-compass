@@ -2,7 +2,7 @@
 name: guide
 description: Interactive guide for working with Compass. Detects where you are in the workflow, explains what to do next, and can spawn the right agents for you. Also helps port existing projects into Compass.
 version: 1.0.0
-allowed-tools: [Read, Glob, Grep, Bash, Agent]
+allowed-tools: [Read, Glob, Grep, Bash, Agent, AskUserQuestion]
 when_to_use: "Use when learning Compass, unsure what to do next, starting a new task, or porting an existing project. Triggers: 'how do I use compass', 'what do I do next', 'compass help', 'guide me', 'port this project'."
 ---
 
@@ -45,7 +45,7 @@ Read: .compass/index.md  - what exists?
 
 **C - Active work:** read `active.md`, present in-progress + blocked + recently completed, then list options (continue building, validate, new task, handoff, checkup).
 
-**D - Port an existing project:** if setup hasn't run, run it. Then `git log --oneline -20` to show recent work, ask which commits to document, run `/compass:retroactive` per piece, then offer a forward-looking spec.
+**D - Port an existing project:** if setup hasn't run, run it. Then `git log --oneline -20` to show recent work. Ask which commits to document through `AskUserQuestion`, exactly one question per call: the recommended option first, labelled "(Recommended)", each option one short line saying what choosing it does, "Other" left open for free text. Never batch several questions in one message or one call. Run `/compass:retroactive` per piece, then offer a forward-looking spec the same way, as one more question: "Write a forward-looking spec?", with "Yes, start the spec (Recommended)" and "Not now".
 
 **E - Stuck:** show the pipeline table.
 
