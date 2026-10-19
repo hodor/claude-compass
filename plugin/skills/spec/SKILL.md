@@ -106,7 +106,7 @@ After approval, ask one more question the same way: "What next?", with "Start re
 
 - Bundling multiple concerns ("we need X and also Y"). Split.
 - Rewriting the human into polished agent prose. He reads the spec back and does not recognize himself; his framing - which was the requirement - is gone. Extract and arrange his sentences instead.
-- Substituting a generic for a word the transcript garbled ("Permis" becoming "any other tool"). Flag `[unclear: heard "X"]` and ask.
+- Substituting a generic for a word the transcript garbled ("Permis" becoming "any other tool"). Flag `[unclear: heard "X"]` and ask through `AskUserQuestion`, exactly one question per call, with the most likely reading first labelled "(Recommended)", each option one short line saying what choosing it does, and "Other" left open for free text. Several garbled words are asked one per call, in order, never batched.
 - Describing HOW instead of WHAT ("we need REST/WebSocket" is implementation).
 - Structuring around system components ("Plugin Architecture") instead of user needs.
 - Minting open questions. A question the human did not leave open is settled by research or dropped; the section carries his questions only.
