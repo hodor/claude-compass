@@ -2,7 +2,7 @@
 name: specs
 description: Capture a braindump of ideas, break them into separate specs, and write them all in batch with minimal repeated questioning. Use when you have multiple specs in your head at once.
 version: 1.0.0
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Agent]
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Agent, AskUserQuestion]
 when_to_use: "Use when the user has multiple specs to create. Triggers: 'I have a bunch of specs', 'multiple specs', 'braindump', 'organize my ideas into specs'."
 ---
 
@@ -14,9 +14,16 @@ For when the human has many ideas at once and shouldn't be asked the same setup 
 
 ### 1. Capture the braindump
 
+Ask through `AskUserQuestion`, exactly one question per call, the recommended option first and labelled "(Recommended)", each option one short line saying what choosing it does, and "Other" left open for free text. The question:
+
 > "Tell me everything you have in your head about what you want to build. Don't worry about structure - just get it all out. I'll organize it into specs after."
 
-Organizing means routing the human's sentences to the right spec - each spec's Problem and Desired Outcome carry his words verbatim, per the `spec` skill's extraction rule; your words only connect them. A garbled word gets `[unclear: heard "X"]` and a question; anything you add is bracketed `[guess: ...]`. Each spec is placed into the topic tree per the `spec` skill's placement step; genuine placement doubt becomes its `taxonomy_hint:`.
+- **I'll type it all out (Recommended):** the braindump arrives as free text through "Other"; I organize it into specs after.
+- **I have a document to point you to:** you give the path; I read it as the braindump.
+
+Never put several questions in one message or one call; the next question waits for this answer.
+
+Organizing means routing the human's sentences to the right spec - each spec's Problem and Desired Outcome carry his words verbatim, per the `spec` skill's extraction rule; your words only connect them. A garbled word gets `[unclear: heard "X"]` and a question, asked the same way through `AskUserQuestion`, one question per call; anything you add is bracketed `[guess: ...]`. Each spec is placed into the topic tree per the `spec` skill's placement step; genuine placement doubt becomes its `taxonomy_hint:`.
 
 Wait for the response. Don't interrupt.
 
