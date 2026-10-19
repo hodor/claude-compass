@@ -59,8 +59,15 @@ Delegate to `/compass:build`. It spawns one builder per task, each with the Agen
 Spawn the `validator` agent with the plan file.
 
 - **PASS** → proceed to vault update.
-- **FAIL** → present report, ask whether to respawn builder or abort.
-- **PARTIAL** → present what passed/failed, ask how to proceed.
+- **FAIL** → present report, then ask whether to respawn the builder or abort.
+- **PARTIAL** → present what passed/failed, then ask how to proceed.
+
+Ask each of these through `AskUserQuestion`, exactly one question per call. The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text. For FAIL:
+
+- **Respawn builder (Recommended):** a builder is respawned on the failures; validation runs again.
+- **Abort:** the run stops here with the report as the record.
+
+For PARTIAL, the options are the ways forward the report supports (for example, fix the failed items or accept the partial result), the recommended one first. Never put several questions in one message or one call.
 
 ### 6. Update the vault
 
