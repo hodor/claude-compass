@@ -2,7 +2,7 @@
 name: research
 description: Research entry point. A plainly code-shaped or paper-shaped question dispatches straight to research-codebase or research-papers. Anything naming a spec runs full scope derivation - the whole spec becomes the axis list, the human's own questions lead, grading is disclosed and gated, and one researcher per axis feeds a reviewer that consolidates.
 version: 2.0.0
-allowed-tools: [Read, Grep, Glob, Bash, Agent]
+allowed-tools: [Read, Grep, Glob, Bash, Agent, AskUserQuestion]
 when_to_use: "Use to research a spec, or to research anything else. Triggers: 'research this spec', 'research this', 'investigate', 'do some research', 'find out how X works'. A question that plainly names a codebase location or a paper/algorithm dispatches directly; anything naming a spec runs the derivation below."
 argument-hint: "<spec name> | codebase <question> | papers <topic>"
 ---
@@ -48,7 +48,13 @@ State which grading the run intends to apply to evidence and on what basis, and 
 
 ### 7. The gate
 
-Present the axis list, one plain line per axis naming where its answer will be sought, alongside the grading disclosure. Block on the reply.
+Present the axis list, one plain line per axis naming where its answer will be sought, alongside the grading disclosure. Then ask through `AskUserQuestion`, exactly one question per call: "Run research on these axes?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Approve (Recommended):** research runs on these axes with grading allowed.
+- **Approve, refuse grading:** research runs on these axes with grading off.
+- **Change an axis:** you say what to change; I fold it in and show the list again.
+
+Never put several questions in one message or one call. Block on the reply.
 
 - Approval, accepting or ignoring the grading disclosure: proceed, every brief below carries `grading: allowed`.
 - Approval with grading explicitly refused: proceed, every brief below carries `grading: refused`.
