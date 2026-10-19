@@ -68,6 +68,15 @@ Does this list cover everything? Should I:
 - remove any (out of scope)?
 ```
 
+Ask it through `AskUserQuestion`, exactly one question per call: "Does this list cover everything?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Covers everything (Recommended):** the list is final; I write the vision document.
+- **Merge or split needs:** you say which are really one problem or bundle distinct concerns; I adjust and show the list again.
+- **Add a missing need:** you describe what I missed; I add it and show the list again.
+- **Remove a need:** you say which is out of scope; I drop it and show the list again.
+
+Never put several questions in one message or one call; the next question waits for this answer.
+
 For any need that just got its own workspace, add one plain sentence, said once: "I set up [need name] as its own workspace since it reads as ongoing work rather than a single spec - say the word and I'll fold it back." Never name the mechanism. If the human asks you to stop mentioning this, note the preference in `.compass/vision.md` and stay silent about it for the rest of the project.
 
 Iterate until the human approves.
