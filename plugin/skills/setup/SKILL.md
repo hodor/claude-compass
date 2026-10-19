@@ -344,9 +344,12 @@ For NEW projects, immediately invoke `/compass:vision` - don't stop and ask. Ski
 
 Pass any context already gathered during setup (the project description, anything the human said when invoking setup).
 
-For MIGRATE mode (existing project with code/docs), ask once:
+For MIGRATE mode (existing project with code/docs), ask once, through `AskUserQuestion` with exactly one question per call: "I see this project already has code and docs. How should I start?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
 
-> "I see this project already has code and docs. Should I capture the vision retroactively from what exists (run `/compass:vision`), or skip straight to documenting specific work via `/compass:retroactive`?"
+- **Capture the vision retroactively (Recommended):** runs `/compass:vision` against what exists.
+- **Skip to specific work:** documents it via `/compass:retroactive`.
+
+Never put several questions in one message or one call.
 
 Only skip vision if the human explicitly requests it.
 
