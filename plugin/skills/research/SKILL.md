@@ -18,7 +18,7 @@ Two shapes. A plain code or paper question dispatches straight through. A spec r
 | `research-codebase` | "How does X work in the codebase?", "Where is Y handled?", "Trace this flow" | codebase-locator, codebase-analyzer, pattern-finder |
 | `research-papers` | "Explain this paper", "What's the prior art for X", an arXiv ID or paper title | Three researchers (Current / Backward / Forward) plus a reviewer |
 
-`codebase <question>` or a plainly code-shaped question (a file path, function name, "where", "trace") dispatches to `research-codebase`. `papers <topic>` or a plainly paper-shaped question (an arXiv ID, paper title, "algorithm", "technique") dispatches to `research-papers`. If neither prefix is given and the question is genuinely ambiguous, ask once whether it is code, papers, or a spec to derive from. Don't reimplement either skill's logic here.
+`codebase <question>` or a plainly code-shaped question (a file path, function name, "where", "trace") dispatches to `research-codebase`. `papers <topic>` or a plainly paper-shaped question (an arXiv ID, paper title, "algorithm", "technique") dispatches to `research-papers`. If neither prefix is given and the question is genuinely ambiguous, ask once through `AskUserQuestion`, exactly one question per call: "Is this about code, papers, or a spec?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does ("Code: dispatch to research-codebase", "Papers: dispatch to research-papers", "Spec: derive scope from a spec"); "Other" stays open for free text. Never put several questions in one message or one call. Don't reimplement either skill's logic here.
 
 ## Deriving scope from a spec
 
