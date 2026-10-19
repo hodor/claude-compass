@@ -2,7 +2,7 @@
 name: consolidate
 description: The long-horizon consolidation pass, textual and structural in one skill. Runs only when a hard-cap warning is present (proves bloat triggered). Lessons half: merges near-duplicates, rewrites verbose bodies preserving the displaced text in-file, archives stale baseline lessons, rebuilds the catalog. Structure half (consolidation is also taxonomy, SPEC-022): when the weight is non-redundant index lines, proposes domain groupings - similar specs and research folded under folder specs/units, recursively - as a diff the human approves; the root index then says one line per broad area. Never archives escalated lessons; never destroys information.
 version: 1.0.0
-allowed-tools: [Read, Glob, Grep, Write, Edit]
+allowed-tools: [Read, Glob, Grep, Write, Edit, AskUserQuestion]
 argument-hint: "(no arguments; uses warning state)"
 when_to_use: "Run /compass:consolidate on any standing bloat trigger: a hot-path or catalog cap warning, a folder_over_ceiling or taxonomy_hints warning from compass validate, or the human asking for a grouping proposal outright. Do not run on a fixed cadence - a trigger is the contract."
 ---
@@ -167,6 +167,14 @@ While proposing, also flag tag-vocabulary repairs (synonyms to one canonical for
 ### S3. Present the proposal as a diff, and stop
 
 One block per proposed domain: the folder to create, the files that move into it (exact `compass move` invocations), the one index line that replaces their N lines, and the rationale. Domains are the human's knowledge's shape - only his approval moves files. Without approval this pass is read-only.
+
+Then ask for approval through `AskUserQuestion`, exactly one question per call, one domain block per question, in order: "Create the `<domain>` domain and move these files?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Approve (Recommended):** the domain is created and its files move in.
+- **Needs changes:** you say what to change; I revise the block and ask again.
+- **Skip:** the files stay flat.
+
+Never put several questions in one message or one call; the next domain waits for this answer.
 
 ### S4. Apply after approval
 
