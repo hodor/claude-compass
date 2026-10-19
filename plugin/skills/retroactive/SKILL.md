@@ -105,7 +105,12 @@ Only if the human confirmed a significant decision. Compute next ADR number JIT 
 
 ### 9. Capture lessons (if applicable)
 
-> "Did this work reveal any lessons or patterns future developers should know?"
+Ask through `AskUserQuestion`, exactly one question per call: "Did this work reveal any lessons or patterns future developers should know?" The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Yes, capture a lesson (Recommended):** I create the lesson and add it to the catalog.
+- **No lessons:** nothing is recorded.
+
+Never put several questions in one message or one call.
 
 If yes, create a lesson in `.compass/lessons/` and append to `lessons-catalog.yaml`.
 
