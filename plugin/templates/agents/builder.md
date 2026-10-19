@@ -47,8 +47,8 @@ If the codebase doesn't match the plan, STOP and report:
 > Expected: [what the plan or spec says]
 > Found: [what actually exists]
 > Why this matters: [impact]
->
-> How should I proceed?
+
+You cannot call `AskUserQuestion`, so stop and return "How should I proceed?" to the orchestrator together with the report above, its options (for example "Update the plan to match the code (Recommended)", "Change the code to match the plan", "Pause the task"), and the recommended one marked. The orchestrator asks it through `AskUserQuestion`, one question per call, and relays the answer.
 
 Don't work around the mismatch. Wait for instruction.
 
