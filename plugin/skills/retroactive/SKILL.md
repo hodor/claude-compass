@@ -35,10 +35,12 @@ Build your own understanding before asking questions. Don't rely on commit messa
 
 ### 4. Interview, one question at a time
 
+Ask each question through `AskUserQuestion`, exactly one question per call, in order. Offer your best reading from the commits as the first option, labelled "(Recommended)", each option one short line saying what choosing it does; "Other" stays open for his own words. Never put several questions in one message or one call; the next question waits for this answer.
+
 **Q1:** "What problem did this solve?" → Problem section.
 **Q2:** "What does success look like now?" → Desired Outcome + acceptance criteria.
 
-If the change involved an architectural choice:
+If the change involved an architectural choice, ask one more question the same way, with "Yes, create an ADR (Recommended)" and "No decision worth recording":
 > "Was there a key decision here future developers should know about? (If yes, I'll create an ADR.)"
 
 If the human doesn't know an answer, mark it as unknown. Don't invent.
