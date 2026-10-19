@@ -128,22 +128,55 @@ def all_markdown_files(vault_root):
     return files
 
 
+COMPASS_HOME_STORES = ("sessions", "private")
+
+
+def _compass_homes():
+    """The user's Compass home directories: `~/.compass` and, when set,
+    `COMPASS_HOME`."""
+    homes = [Path.home() / ".compass"]
+    configured = os.environ.get("COMPASS_HOME")
+    if configured:
+        homes.append(Path(configured))
+    return homes
+
+
+def _is_compass_home(candidate, homes):
+    """True for a configured Compass home, or for any `.compass` holding the
+    Compass-home stores (`sessions/`, `private/`) and no `index.md`, which
+    names the user's home store even when HOME points elsewhere."""
+    if not (candidate / "index.md").exists() and any(
+        (candidate / store).is_dir() for store in COMPASS_HOME_STORES
+    ):
+        return True
+    for home in homes:
+        try:
+            if os.path.samefile(candidate, home):
+                return True
+        except OSError:
+            continue
+    return False
+
+
 def find_vault_root(start=None):
     """Return the `.compass` directory for the current project.
 
     Honors `CLAUDE_PROJECT_DIR` (set by the plugin hook runtime) first, then
-    walks up from `start` (or cwd) looking for a `.compass` directory.
+    walks up from `start` (or cwd) looking for a `.compass` directory. The
+    user's Compass home (`COMPASS_HOME`, default `~/.compass`), which holds
+    kept session clones and private stores, is never a project vault.
     Raises FileNotFoundError if none is found.
     """
+    homes = _compass_homes()
     env = os.environ.get("CLAUDE_PROJECT_DIR")
     if env:
         candidate = Path(env) / ".compass"
-        if candidate.is_dir():
+        if candidate.is_dir() and not _is_compass_home(candidate, homes):
             return candidate
     current = Path(start or os.getcwd()).resolve()
     for directory in [current, *current.parents]:
         candidate = directory / ".compass"
-        if candidate.is_dir():
+        if candidate.is_dir() and not _is_compass_home(candidate, homes):
             return candidate
     raise FileNotFoundError(f"no .compass vault found from {current}")
 
