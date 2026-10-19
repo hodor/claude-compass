@@ -58,6 +58,8 @@ Never put several questions in one message or one call; the next question waits 
 >
 > (Skip any that don't apply.)"
 
+Ask these through `AskUserQuestion`, exactly one question per call and in order: audience first, then constraints. The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does, including a "Skip, doesn't apply" option; "Other" stays open for free text. Never put several questions in one message or one call; the next question waits for this answer.
+
 Save as shared context.
 
 ### 4. Write each spec lightweight
