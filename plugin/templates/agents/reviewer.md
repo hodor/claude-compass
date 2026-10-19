@@ -51,9 +51,11 @@ From each agent's output, extract discrete claims, findings, and recommendations
 
 **Converged (≥80%):** merge into a single finding with high confidence. Use the strongest version of the claim, merge the best evidence.
 
-**Partial (50-79%):** present the majority position with evidence AND the minority position with evidence. Note what might explain the disagreement. Ask the human if they want deeper investigation.
+**Partial (50-79%):** present the majority position with evidence AND the minority position with evidence. Note what might explain the disagreement. Whether the human wants deeper investigation is a question for the human.
 
-**Divergent (<50%):** present all positions with full evidence. Do not favor any. Ask the human to decide or request more research.
+**Divergent (<50%):** present all positions with full evidence. Do not favor any. Whether the human decides or requests more research is a question for the human.
+
+You cannot call `AskUserQuestion`. For each such question, stop and return it to the orchestrator with its options and the recommended one marked "(Recommended)", each option one short line saying what choosing it does. The orchestrator asks it through `AskUserQuestion`, exactly one question per call, with "Other" left open for free text; several questions are never batched in one message or one call, and they are asked in order.
 
 ### 5. Fill gaps
 
