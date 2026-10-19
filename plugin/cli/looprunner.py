@@ -27,9 +27,20 @@ The actuator is `claude -p --output-format json` with the caps from
 holds the actuator's instructions, the golden patterns, the selected work and
 the feedback, and none of the budget or cap numbers.
 
-`loop.json`, `state.json`, `ledger.jsonl` and `baseline.json` are fingerprinted
-before the actuator starts. When any differs afterwards the run is recorded
-with its real cost and the loop halts with `controls-changed`.
+`loop.json`, `state.json`, `ledger.jsonl`, `baseline.json` and, for a loop
+with a `judge`, its rules file are fingerprinted before the actuator starts.
+When any differs afterwards the run is recorded with its real cost and the
+loop halts with `controls-changed`.
+
+A loop with a `judge` object runs the judge `runs` times after the
+deterministic re-sense, each a fresh headless session launched like the
+actuator with the judge's own model and caps, `--allowedTools Read,Glob,Grep`
+and the rules file plus a checklist as the prompt. The votes of the valid runs
+become the `judge` record of the run row, and the judge's spend joins the
+row's `cost_usd`. The gate budgets, and a crash charges, the actuator plus
+`runs` judge budgets. The next run's prompt carries the kept findings of the
+last judged run after the controller's pick. The reading is advisory: it
+reaches no transition and no exit code.
 """
 
 import functools
@@ -59,6 +70,19 @@ NOT_RUNNABLE = ("paused", "halted", "done")
 # Tries at taking the run lock, a short pause apart, before the run refuses.
 LOCK_ATTEMPTS = 5
 LOCK_RETRY_SECONDS = 0.05
+
+# A judge answer keeps at most this many findings in the ledger and the next
+# prompt.
+MAX_KEPT_FINDINGS = 200
+
+# A directory-walk snapshot stops after this many entries and carries the
+# key PARTIAL.
+SNAPSHOT_ENTRIES = 200_000
+PARTIAL = "<partial>"
+
+# Seconds allowed to `git ls-files` when the project is snapshotted around
+# the judge.
+SNAPSHOT_SECONDS = 120
 
 # Spend sums are floats; a budget met exactly must still fit.
 BUDGET_EPSILON = 1e-9
@@ -199,14 +223,86 @@ def _reading_summary(reading):
     return {"value": reading.value, "items_count": len(reading.items)}
 
 
-def _fingerprints(loop_dir):
+def _control_files(definition):
+    """The files that bind the actuator: the loop's own and, with a judge,
+    its rules file."""
+    names = list(CONTROL_FILES)
+    judge = definition.get(looplib.JUDGE_KEY)
+    if judge:
+        names.append(Path(looplib.judge_rules_file(judge)).as_posix())
+    return names
+
+
+def _fingerprints(loop_dir, definition):
     prints = {}
-    for name in CONTROL_FILES:
+    for name in _control_files(definition):
+        path = Path(loop_dir) / name
         try:
-            prints[name] = hashlib.sha256((Path(loop_dir) / name).read_bytes()).hexdigest()
+            if path.is_dir():
+                prints[name] = "<directory>"
+            else:
+                prints[name] = hashlib.sha256(path.read_bytes()).hexdigest()
         except FileNotFoundError:
             prints[name] = None
+        except OSError:
+            prints[name] = "<unreadable>"
     return prints
+
+
+def _git_snapshot(project):
+    """`{path: (size, mtime_ns) or None}` for every file git reports modified
+    or untracked, outside `.compass/tmp`; None when the project is not a git
+    work tree or git cannot be run."""
+    proc = _run_process(
+        ["git", "ls-files", "-m", "-o", "--exclude-standard", "-z"], project, SNAPSHOT_SECONDS
+    )
+    if proc.error or proc.timed_out or proc.returncode != 0:
+        return None
+    snapshot = {}
+    for name in _text(proc.stdout).split("\0"):
+        if not name or name.startswith(".compass/tmp/"):
+            continue
+        try:
+            stat = (Path(project) / name).stat()
+            snapshot[name] = (stat.st_size, stat.st_mtime_ns)
+        except OSError:
+            snapshot[name] = None
+    return snapshot
+
+
+def _walk_snapshot(project, loop_dir):
+    """`{relative path: (size, mtime_ns)}` for the files under the project,
+    walked in sorted order and skipping `.git`, `.compass/tmp` and the loop's
+    own ledger and state files. After SNAPSHOT_ENTRIES entries the walk stops
+    and the snapshot carries the key PARTIAL."""
+    project, loop_dir = Path(project), Path(loop_dir)
+    skip_dirs = {project / ".git", project / ".compass" / "tmp"}
+    skip_files = {loop_dir / name for name in ("ledger.jsonl", "ledger.jsonl.lock", "state.json")}
+    snapshot = {}
+    for root, dirs, files in os.walk(project):
+        dirs[:] = sorted(d for d in dirs if Path(root, d) not in skip_dirs)
+        for name in sorted(files):
+            path = Path(root, name)
+            if path in skip_files or (path.parent == loop_dir and name.startswith(".state.json.")):
+                continue
+            if len(snapshot) >= SNAPSHOT_ENTRIES:
+                snapshot[PARTIAL] = True
+                return snapshot
+            key = path.relative_to(project).as_posix()
+            try:
+                stat = path.stat()
+                snapshot[key] = (stat.st_size, stat.st_mtime_ns)
+            except OSError:
+                snapshot[key] = None
+    return snapshot
+
+
+def _project_snapshot(project, loop_dir):
+    """A snapshot of the project's files that tells a later snapshot what
+    changed: git's modified and untracked files, or a directory walk when the
+    project is not a git work tree."""
+    snapshot = _git_snapshot(project)
+    return snapshot if snapshot is not None else _walk_snapshot(project, loop_dir)
 
 
 def _new_run_id():
@@ -256,9 +352,55 @@ def _section(title, body):
     return f"## {title}\n\n{body}" if body else f"## {title}"
 
 
-def _assemble_prompt(loop_dir, item):
-    """The actuator prompt: instructions, golden patterns, selected work,
-    feedback."""
+JUDGE_CHECKLIST = (
+    "## Checklist\n\n"
+    "Go rule by rule. For each rule, go over every file it applies to and check "
+    "the file against the rule, reading with Read, Glob and Grep.\n\n"
+    "Answer with one JSON line per violation, in this shape and nothing else:\n\n"
+    '{"rule": "<rule id>", "file": "<path relative to the project root>", '
+    '"line": <line number>}\n\n'
+    "Write no prose, no code fences and no summary. When no rule is violated, "
+    "answer with nothing.\n"
+)
+JUDGE_TOOLS = "Read,Glob,Grep"
+
+
+def _judge_prompt(rules_text):
+    """The judge prompt: the rules file verbatim, then the checklist."""
+    return rules_text.strip() + "\n\n" + JUDGE_CHECKLIST
+
+
+def _kept_findings(rows):
+    """`(findings, total)`: the kept findings, at most MAX_KEPT_FINDINGS, of
+    the last run row that carries a `judge` record, and how many the judge
+    kept in all."""
+    for row in reversed(rows):
+        record = row.get("judge") if row.get("type") == "run" else None
+        if isinstance(record, dict):
+            kept = record.get("kept")
+            kept = [k for k in kept if isinstance(k, dict)] if isinstance(kept, list) else []
+            total = record.get("kept_total")
+            if not isinstance(total, int) or isinstance(total, bool) or total < len(kept):
+                total = len(kept)
+            return kept[:MAX_KEPT_FINDINGS], total
+    return [], 0
+
+
+def _findings_block(findings, total):
+    """The findings as a fenced block, one ASCII-escaped JSON object per line,
+    so no file name can open a heading or a section of the prompt."""
+    heading = "Judge findings from the last run (advisory)"
+    if total > len(findings):
+        heading += f", {len(findings)} of {total}"
+    lines = [json.dumps(
+        {"rule": k.get("rule"), "file": k.get("file"), "line": k.get("line")}, ensure_ascii=True
+    ) for k in findings]
+    return f"{heading}:\n\n```\n" + "\n".join(lines) + "\n```"
+
+
+def _assemble_prompt(loop_dir, item, findings=(), total=0):
+    """The actuator prompt: instructions, golden patterns, selected work
+    (followed by the judge's kept findings, when there are any), feedback."""
     loop_dir = Path(loop_dir)
     golden = [
         _read_text(path).strip()
@@ -268,7 +410,10 @@ def _assemble_prompt(loop_dir, item):
     parts = [
         _read_text(loop_dir / "actuator.md").strip(),
         _section("Golden patterns", "\n\n".join(g for g in golden if g)),
-        _section("Selected work (controller output)", item),
+        _section(
+            "Selected work (controller output)",
+            f"{item}\n\n{_findings_block(findings, total)}" if findings else item,
+        ),
         _section("Feedback", _read_text(loop_dir / "feedback.md").strip()),
     ]
     return "\n\n".join(parts) + "\n"
@@ -403,7 +548,8 @@ class _Run:
         if item is None:
             return self.end("halted", "nothing-selected", why, 1)
         self.row["item"] = item
-        prompt = _assemble_prompt(self.dir, item)
+        findings, total = _kept_findings(rows) if defn.get(looplib.JUDGE_KEY) else ([], 0)
+        prompt = _assemble_prompt(self.dir, item, findings, total)
         if self.dry:
             self.step("selected", f"selected {item}")
             _write(sys.stdout, prompt)
@@ -416,7 +562,7 @@ class _Run:
         """`(outcome, event, reason, code)` for a run the budget or the work
         in progress stops, or None."""
         defn = self.defn
-        run_budget = defn["max_budget_usd"]
+        run_budget = looplib.run_budget(defn)
         lifetime = sensorlib.spend_lifetime(rows)
         if lifetime + run_budget > defn["total_budget_usd"] + BUDGET_EPSILON:
             return (
@@ -474,7 +620,11 @@ class _Run:
         vaultlib.write_text_lf(scratch / "prompt.md", prompt)
 
         state_in_memory = looplib.read_state(self.dir)
-        prints = _fingerprints(self.dir)
+        judge = defn.get(looplib.JUDGE_KEY)
+        rules_text = (
+            looplib.read_rules_text(looplib.judge_rules_path(self.dir, judge)) if judge else None
+        )
+        prints = _fingerprints(self.dir, defn)
         proc = self.launch(prompt)
         (scratch / "actuator-stdout.json").write_bytes(proc.stdout)
         if proc.stderr:
@@ -511,7 +661,7 @@ class _Run:
                 cache_creation_tokens=event.cache_creation_tokens,
             )
 
-        changed = [n for n, digest in _fingerprints(self.dir).items() if digest != prints[n]]
+        changed = [n for n, digest in _fingerprints(self.dir, defn).items() if digest != prints[n]]
         if changed:
             # The actuator rewrote what binds it; the state file is put back
             # so the halting transition applies to the state the run was in.
@@ -543,6 +693,29 @@ class _Run:
             # first sense halts on the invalid reading before any spend.
             outcome = "neutral"
             reason = f"re-sense invalid: {after.reason}"
+        if defn.get(looplib.JUDGE_KEY):
+            judged_prints = _fingerprints(self.dir, defn)
+            judged_tree = _project_snapshot(self.project, self.dir)
+            record = self.run_judge(scratch, after, rules_text)
+            fields["judge"] = record
+            fields["cost_usd"] = fields["cost_usd"] + record["cost_usd"]
+            touched = [
+                n for n, digest in _fingerprints(self.dir, defn).items()
+                if digest != judged_prints[n]
+            ]
+            tree_after = _project_snapshot(self.project, self.dir)
+            if PARTIAL in judged_tree or PARTIAL in tree_after:
+                record["snapshot_partial"] = True
+            touched += sorted(
+                n for n in judged_tree.keys() | tree_after.keys()
+                if n != PARTIAL and judged_tree.get(n) != tree_after.get(n)
+            )
+            if touched:
+                # The judge may read and nothing else.
+                return self.end(
+                    "failed", "controls-changed",
+                    "the judge changed " + ", ".join(touched[:20]), 1, **fields,
+                )
         row = {**self.row, **fields, "outcome": outcome}
         counters = looplib.fold(self.ledger_rows() + [row])
         event_name, code = outcome, 0
@@ -554,20 +727,72 @@ class _Run:
 
     def launch(self, prompt):
         """Run the actuator with the prompt on stdin."""
-        defn = self.defn
+        return self.launch_session(prompt, self.defn, self.defn["allowed_tools"])
+
+    def launch_session(self, prompt, caps, tools):
+        """Run a fresh headless session with the model, caps and timeout of
+        `caps` (the definition or its judge object) and the tool names
+        `tools`, the prompt on stdin."""
         argv = [
             self.binary, "-p", "--output-format", "json",
-            "--model", defn["model"],
-            "--max-turns", str(defn["max_turns"]),
-            "--max-budget-usd", _number(defn["max_budget_usd"]),
+            "--model", caps["model"],
+            "--max-turns", str(caps["max_turns"]),
+            "--max-budget-usd", _number(caps["max_budget_usd"]),
             "--strict-mcp-config",
         ]
-        if defn["allowed_tools"]:
-            argv += ["--allowedTools", ",".join(defn["allowed_tools"])]
+        if tools:
+            argv += ["--allowedTools", ",".join(tools)]
         env = dict(os.environ)
         env["COMPASS_WORKER_SESSION"] = "1"
         env.setdefault("CLAUDE_PROJECT_DIR", str(self.project))
-        return _run_process(argv, self.project, defn["timeout_s"], prompt.encode("utf-8"), env)
+        return _run_process(argv, self.project, caps["timeout_s"], prompt.encode("utf-8"), env)
+
+    def run_judge(self, scratch, after, rules_text):
+        """Launch the judge `runs` times and return the run row's `judge`
+        record. A run with no usable answer is invalid, votes for nothing and
+        is charged the event's cost, or the judge's full budget when no
+        result event arrived."""
+        judge = self.defn[looplib.JUDGE_KEY]
+        rule_ids = [rule_id for rule_id, _text in looplib.parse_rules(rules_text)]
+        prompt = _judge_prompt(rules_text)
+        voting, invalid, discarded, cost = [], 0, 0, 0.0
+        for number in range(1, judge["runs"] + 1):
+            proc = self.launch_session(prompt, judge, JUDGE_TOOLS.split(","))
+            (scratch / f"judge-{number}-stdout.json").write_bytes(proc.stdout)
+            event = None
+            if not proc.error and not proc.timed_out:
+                try:
+                    event = sensorlib.parse_result(_text(proc.stdout))
+                except sensorlib.NoResultEvent:
+                    pass
+            if event is None:
+                cost += judge["max_budget_usd"]
+                invalid += 1
+                continue
+            cost += event.cost_usd
+            if (
+                proc.returncode != 0 or event.is_error or event.subtype != "success"
+                or event.result is None
+            ):
+                invalid += 1
+                continue
+            parsed = sensorlib.parse_judge_lines(event.result, rule_ids)
+            discarded += parsed.discarded
+            voting.append(parsed.findings)
+        kept = sensorlib.vote_findings(voting, judge["runs"])
+        record = {
+            "kept": kept[:MAX_KEPT_FINDINGS],
+            "kept_total": len(kept),
+            "valid_runs": len(voting),
+            "invalid_runs": invalid,
+            "discarded": discarded,
+            "cost_usd": cost,
+        }
+        anchor = judge.get("anchor_rule")
+        if anchor and after.valid:
+            delta = sum(1 for k in kept if k["rule"] == anchor) - after.value
+            record["anchor_delta"] = int(delta) if float(delta).is_integer() else delta
+        return record
 
     def resolve_binary(self):
         config = {}

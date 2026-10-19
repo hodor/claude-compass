@@ -6,6 +6,10 @@ machine definition), `state.json` (the current state) and `ledger.jsonl` (the
 append-only record of transitions, runs and reviews). The run lock is a file
 under `.compass/tmp/loops/`.
 
+`loop.json` may carry a `judge` object (an agent that reads a rules file and
+reports violations, advisory only); `load_definition` validates it and reads
+its rules file.
+
 The state machine is one declared table, `TRANSITIONS`; `transition()` is a
 pure lookup and refuses every (state, event) pair the table does not list.
 The ledger is the loop's memory: `fold()` turns its rows into the counters the
@@ -21,12 +25,13 @@ leading UTF-8 byte order mark tolerated.
 import json
 import math
 import os
+import re
 import secrets
 import threading
 import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 
 try:
@@ -60,6 +65,7 @@ TRANSITIONS = {
     ("verifying", "harmful"): "idle",
     ("verifying", "harmful-limit"): "halted",
     ("verifying", "no-progress-limit"): "halted",
+    ("verifying", "controls-changed"): "halted",
     ("idle", "pause"): "paused",
     ("throttled", "pause"): "paused",
     ("paused", "resume"): "idle",
@@ -126,6 +132,15 @@ _COMMAND_FIELDS = frozenset({"sensor_command", "controller_command", "wip_comman
 _CHOICES = {"direction": ("down", "up"), "controller": ("first", "command")}
 # A run is bounded by these; zero would mean no turns, no budget or no time.
 _POSITIVE_FIELDS = frozenset({"max_turns", "max_budget_usd", "timeout_s", "sensor_timeout_s"})
+
+# The optional `judge` object: an agent reads the rules file and reports
+# violations `runs` times. Every key but `rules_file` and `anchor_rule` is
+# required; the caps are the judge's own.
+JUDGE_KEY = "judge"
+JUDGE_RULES_DEFAULT = "judge-rules.md"
+_JUDGE_REQUIRED = ("model", "runs", "max_turns", "max_budget_usd", "timeout_s")
+_JUDGE_KEYS = frozenset(_JUDGE_REQUIRED) | {"rules_file", "anchor_rule"}
+_RULE_LINE = re.compile(r"^\s*-\s+(R[0-9]+):\s*(\S.*)$")
 
 
 class TransitionError(ValueError):
@@ -250,7 +265,7 @@ def load_definition(loop_dir):
     if not isinstance(data, dict):
         raise DefinitionError(f"{DEFINITION_FILE}: {path} must hold a JSON object")
     for key in data:
-        if key not in _DEFINITION_FIELDS:
+        if key not in _DEFINITION_FIELDS and key != JUDGE_KEY:
             raise DefinitionError(f"unknown key {key!r} in {path}")
     for key in _DEFINITION_FIELDS:
         if key not in data:
@@ -265,7 +280,120 @@ def load_definition(loop_dir):
             f"missing key 'controller_command' (required when controller is "
             f"'command') in {path}"
         )
+    if JUDGE_KEY in data:
+        _check_judge(data[JUDGE_KEY], Path(loop_dir), path)
     return data
+
+
+def _judge_problem(key, value):
+    """Why `value` is wrong for the judge's `key`, or None."""
+    if key == "runs":
+        if not isinstance(value, int) or isinstance(value, bool):
+            return "must be an integer"
+        if value < 1 or value % 2 == 0:
+            return "must be odd and at least 1"
+    elif key in ("model", "rules_file", "anchor_rule"):
+        if not isinstance(value, str) or not value.strip():
+            return "must be a non-blank string"
+    else:
+        return _field_problem(key, value)
+    return None
+
+
+def judge_rules_file(judge):
+    """The judge's rules file, relative to the loop folder."""
+    return judge.get("rules_file", JUDGE_RULES_DEFAULT)
+
+
+def judge_rules_path(loop_dir, judge):
+    """The judge's rules file inside `loop_dir`; DefinitionError when its name
+    is rooted, climbs out with `..`, or resolves (through a link) outside the
+    loop folder."""
+    name = judge_rules_file(judge)
+    relative = Path(name)
+    rooted = (
+        relative.is_absolute()
+        or PurePosixPath(name).is_absolute()
+        or PureWindowsPath(name).drive
+        or PureWindowsPath(name).root
+    )
+    climbs = ".." in relative.parts or ".." in name.replace("\\", "/").split("/")
+    inside = False
+    if not rooted and not climbs:
+        root = os.path.realpath(loop_dir)
+        target = os.path.realpath(Path(loop_dir) / relative)
+        try:
+            inside = os.path.commonpath([root, target]) == root
+        except ValueError:
+            inside = False
+    if not inside:
+        raise DefinitionError(
+            f"'{JUDGE_KEY}.rules_file' {name!r} must stay inside the loop folder"
+        )
+    return Path(loop_dir) / relative
+
+
+def parse_rules(text):
+    """The rules of a judge rules file as `(id, text)` pairs in file order. A
+    rule is one bullet, `- R<n>: text`."""
+    rules = []
+    for line in text.splitlines():
+        match = _RULE_LINE.match(line)
+        if match:
+            rules.append((match.group(1), match.group(2).strip()))
+    return rules
+
+
+def read_rules_text(rules_path):
+    """The rules file's text with LF line endings and no byte order mark;
+    OSError when it cannot be read."""
+    raw = Path(rules_path).read_bytes().decode("utf-8-sig", errors="replace")
+    return raw.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _check_judge(judge, loop_dir, path):
+    """Validate the `judge` object of the definition at `path`, including the
+    rules file it names; DefinitionError names the field."""
+    if not isinstance(judge, dict):
+        raise DefinitionError(f"'{JUDGE_KEY}' must be a JSON object in {path}")
+    for key in judge:
+        if key not in _JUDGE_KEYS:
+            raise DefinitionError(f"unknown key {key!r} in '{JUDGE_KEY}' of {path}")
+    for key in _JUDGE_REQUIRED:
+        if key not in judge:
+            raise DefinitionError(f"missing key {key!r} in '{JUDGE_KEY}' of {path}")
+    for key in sorted(judge):
+        problem = _judge_problem(key, judge[key])
+        if problem:
+            raise DefinitionError(f"'{JUDGE_KEY}.{key}' {problem} in {path}")
+    rules_path = judge_rules_path(loop_dir, judge)
+    try:
+        text = read_rules_text(rules_path)
+    except OSError as exc:
+        raise DefinitionError(
+            f"'{JUDGE_KEY}.rules_file' cannot be read: {rules_path}: {exc}"
+        ) from None
+    rules = parse_rules(text)
+    if not rules:
+        raise DefinitionError(
+            f"'{JUDGE_KEY}.rules_file' {rules_path} holds no rule "
+            f"(a rule is one bullet, '- R<n>: text')"
+        )
+    anchor = judge.get("anchor_rule")
+    if anchor is not None and anchor not in {rule_id for rule_id, _text in rules}:
+        raise DefinitionError(
+            f"'{JUDGE_KEY}.anchor_rule' {anchor!r} names no rule of {rules_path} in {path}"
+        )
+
+
+def run_budget(definition):
+    """The most one iteration may spend: the actuator's budget plus, for a
+    loop with a judge, `runs` times the judge's budget."""
+    total = definition["max_budget_usd"]
+    judge = definition.get(JUDGE_KEY)
+    if judge:
+        total += judge["runs"] * judge["max_budget_usd"]
+    return total
 
 
 def read_state(loop_dir):
@@ -629,10 +757,10 @@ def recover(loop_dir, lock_path, definition, now=None, lock_held=False):
 
     A resting state is left alone (False). A working state whose lock is
     absent or stale is recovered (True): the earlier run is recorded as
-    crashed, charged its full run budget, the state returns to idle and the
-    lock is removed. A run already recorded as crashed is not charged again,
-    which makes a recovery that failed partway safe to retry. A live lock
-    raises LockHeld and changes nothing.
+    crashed, charged its full run budget (`run_budget`, the judge's included),
+    the state returns to idle and the lock is removed. A run already recorded
+    as crashed is not charged again, which makes a recovery that failed
+    partway safe to retry. A live lock raises LockHeld and changes nothing.
 
     `lock_held` says the caller already holds the run lock, which makes it
     the only process that can be recovering: the lock is neither judged nor
@@ -657,7 +785,7 @@ def recover(loop_dir, lock_path, definition, now=None, lock_held=False):
                 "run_id": run_id,
                 "outcome": "crashed",
                 "item": state.get("item"),
-                "cost_usd": definition["max_budget_usd"],
+                "cost_usd": run_budget(definition),
             },
         )
     idle = {k: v for k, v in state.items() if k not in ("run_id", "item")}
