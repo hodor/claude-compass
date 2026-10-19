@@ -1,0 +1,18 @@
+{
+  "sensor_command": "python .compass/loops/LOOP-001-visual-questions/sensor.py",
+  "sensor_timeout_s": 120,
+  "target": 0,
+  "direction": "down",
+  "controller": "first",
+  "model": "sonnet",
+  "max_turns": 30,
+  "max_budget_usd": 0.40,
+  "timeout_s": 900,
+  "allowed_tools": ["Read", "Edit", "Glob", "Grep"],
+  "daily_budget_usd": 2.0,
+  "total_budget_usd": 5.0,
+  "wip_limit": 2,
+  "max_actuator_failures": 3,
+  "max_harmful_runs": 2,
+  "max_runs_without_help": 5
+}

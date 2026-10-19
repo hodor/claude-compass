@@ -101,3 +101,6 @@ Indexed in meta/lessons-catalog.yaml (loaded with the hot path); files in `lesso
 - [[compass-cli/research/RESEARCH-cli-and-hook-command-contract]] - How Claude Code Structures CLIs and the Command-Hook Contract
 - [[compass-cli/research/RESEARCH-cli-token-reduction-measurement]] - Measuring SPEC-004's 80% Bookkeeping-Token Reduction
 - [[compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget]] - Mechanical Vault Work Must Not Cost Agent Tokens
+
+## Loops
+- [[LOOP-001-visual-questions]] - Control loop for SPEC-029: drives every point where Compass asks the human something to one AskUserQuestion call per question.
