@@ -18,6 +18,14 @@ Two modes:
 
 Spawn the `planner` agent. It reads the approved spec and research, drafts the full plan, and presents it for approval.
 
+Ask for the approval through `AskUserQuestion`, exactly one question per call: "Approve this plan?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Approve (Recommended):** marks the plan approved; tasks can be distributed.
+- **Needs changes:** you say what to change; the plan is edited and shown again.
+- **Reject:** the plan is not approved.
+
+Never put several questions in one message or one call; the next question waits for this answer.
+
 ## Rolling-wave format
 
 A plan may carry a `## Later (intent only)` section instead of detailing every task upfront - the shape [[ADR-009-rolling-wave-mechanism]] fixes. Every line sits in one of three detail regions, decided by which heading it falls under:
