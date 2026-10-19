@@ -2,7 +2,7 @@
 name: build
 description: Execute tasks from active.md by spawning builder agents. Handles parallel execution for non-overlapping tasks, the fix loop, and optional validation.
 version: 1.0.0
-allowed-tools: [Read, Glob, Grep, Bash, Agent, Write, Edit]
+allowed-tools: [Read, Glob, Grep, Bash, Agent, Write, Edit, AskUserQuestion]
 when_to_use: "Use when the user wants to execute planned tasks. Triggers: 'build this', 'execute the tasks', 'run the plan', 'start building', 'implement this'."
 argument-hint: "[TASK-NNN | next | all | all-phases]"
 ---
@@ -17,7 +17,7 @@ Spawn builder agents to execute tasks. The main conversation orchestrates; it do
 - `next` - pick the first unchecked task with no unmet dependencies
 - `all` - execute all ready tasks (respecting dependencies, parallel when files don't overlap)
 - `all-phases` - same as `all` but skip the per-phase pause for manual verification. Run end-to-end, pause only after the last phase.
-- (no argument) - list available tasks and ask which
+- (no argument) - list available tasks, then ask which through `AskUserQuestion`, exactly one question per call: "Which task should I build?". The recommended task (the `next` pick) comes first, labelled "(Recommended)"; each option is one short line naming the task and what choosing it does; "Other" stays open for free text. Never put several questions in one message or one call.
 
 ## Protocol
 
