@@ -23,7 +23,7 @@ If vision exists and the requested spec isn't on the roadmap, note this in your 
 
 ### 2. Draft from what he already said
 
-The vision, the roadmap entry, and every sentence he has said about this need are the interview. Draft the spec from them before asking anything. If he named the need in one line and nothing else exists, ask for the one-sentence version and draft from that.
+The vision, the roadmap entry, and every sentence he has said about this need are the interview. Draft the spec from them before asking anything. If he named the need in one line and nothing else exists, ask for the one-sentence version through `AskUserQuestion`, exactly one question per call: "What is the need, in one sentence?". Offer the best reading of his one line first, labelled "(Recommended)", each option one short line saying what choosing it does, and leave "Other" open for his own sentence. Never put several questions in one message or one call. Draft from his answer.
 
 If the material describes multiple distinct problems ("users can do X and admins can do Y"):
 > "That's two specs: [problem A] and [problem B]. I'll start with [problem A]."
