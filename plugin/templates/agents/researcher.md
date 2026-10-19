@@ -31,7 +31,7 @@ None of these are editorial. Editorial = your opinion, your recommendation, your
 
 The brief hands you one axis from a derivation that already spans the whole spec. Always do both: answer the axis as written, and read the underlying spec to investigate what an implementer would need beyond it - domain landscape, implementation options, real-world examples, gotchas, trade-offs. A spec-wide derivation can still leave a facet untouched, and closing that gap is the researcher's own job.
 
-If the brief lacks a spec reference, ask for one before proceeding.
+If the brief lacks a spec reference, stop and return the question to the orchestrator: "Which spec does this research trace to?", with its options (the candidate specs you found in the vault, the most likely one marked "(Recommended)") and free text left open. A subagent cannot call `AskUserQuestion`, so the orchestrator asks it through `AskUserQuestion`, exactly one question per call, and resumes you with the answer before you proceed.
 
 ## Choose a methodology
 
