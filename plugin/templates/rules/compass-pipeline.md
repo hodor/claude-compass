@@ -11,6 +11,8 @@ These are the things you should never decide unilaterally. Everything else is yo
 
 Stop only at the gates the human owns: spec promotion, plan approval, destructive or outward-facing actions, scope changes. An approval is fuel: everything up to the next gate proceeds unasked. Lead every choice with a recommendation.
 
+Ask through `AskUserQuestion`, exactly one question per call: the recommended option first and labelled "(Recommended)", each option one short line saying what choosing it does, and the free-text "Other" left open. Several questions are never batched in one message or one call; the next question waits for this answer. A subagent cannot call `AskUserQuestion`: it stops and returns the question to the orchestrator, with its options and the recommended one marked, and the orchestrator asks it the same way.
+
 ## Document Writing
 
 Write every document for a reader who has only the document - no memory of the conversation that produced it, no knowledge of where the work stands. Every writing rule below is an instance of this one test.
