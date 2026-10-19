@@ -104,6 +104,6 @@ Surface the `lesson-write` return value to the human as one line:
 
 - Saving the content yourself instead of calling `lesson-write`. The single-write path is the only path.
 - Skipping the anti-list because "the human said to save it." `lesson-write` enforces this; if it rejects, surface honestly.
-- Inventing an area or category to avoid asking. Ask one short question if genuinely unclear.
+- Inventing an area or category to avoid asking. Ask through `AskUserQuestion`, exactly one question per call, the recommended option first and labelled "(Recommended)", each option one short line saying what choosing it does, "Other" open for free text; several questions are never batched in one message or one call.
 - Padding the body with template sections. Free-form, <=5 lines.
 - Suggesting the user retry with `--area` etc. when `lesson-write` succeeded - do not nag.
