@@ -147,7 +147,14 @@ Add a link to `.compass/index.md` under `## Research`.
 
 ### 8. Present and offer follow-up
 
-> "Saved to [[RESEARCH-name]]. Follow-up questions, or move to planning?"
+> "Saved to [[RESEARCH-name]]."
+
+Then ask through `AskUserQuestion`, exactly one question per call: "Follow-up questions, or move to planning?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Move to planning (Recommended):** starts the plan from this research.
+- **Follow-up questions:** you ask; I answer from the research or run another research pass.
+
+Never put several questions in one message or one call.
 
 ## Failure modes worth naming
 
