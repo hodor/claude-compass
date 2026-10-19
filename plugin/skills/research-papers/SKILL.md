@@ -2,7 +2,7 @@
 name: research-papers
 description: Investigate an academic paper, algorithm, or technique using the citation graph - Current (the paper itself), Backward (ancestors / why it works), Forward (descendants / how it evolved). Output is a research document saved to .compass/research/.
 version: 1.0.0
-allowed-tools: [Read, Write, Edit, Bash, Agent]
+allowed-tools: [Read, Write, Edit, Bash, Agent, AskUserQuestion]
 when_to_use: "Use when the user wants to research a paper, algorithm, or technique deeply. Triggers: 'research this paper', 'explain this algorithm', 'deep research on X', 'go through the citations of', 'what's the prior art for'."
 argument-hint: "<arxiv ID, HF paper URL, or topic>"
 ---
@@ -43,9 +43,13 @@ Then wait.
 
 Spawn `vault-locator` with the paper title, arXiv ID, and key technique keywords as the topic. If it returns prior research, plans, or lessons on the same paper, spawn `vault-analyzer` on the most relevant. Surface what the vault already knows before spawning the citation triad - don't redo work the vault already captured.
 
-If the vault already has thorough research on this exact paper, ask the human:
+If the vault already has thorough research on this exact paper, ask the human through `AskUserQuestion`, exactly one question per call: "[[RESEARCH-name]] already covers this paper. What now?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
 
-> "[[RESEARCH-name]] already covers this paper. Re-research, follow-up only, or use the existing research?"
+- **Use the existing research (Recommended):** skips the citation triad and works from the research already in the vault.
+- **Follow-up only:** researches only what the existing document leaves open.
+- **Re-research:** runs the full citation triad again.
+
+Never put several questions in one message or one call.
 
 ### 2. Identify the seminal paper
 
