@@ -31,7 +31,12 @@ SRC="$TMP/clone/plugin"
 
 ### 3. Report the version delta
 
-Read `$SRC/.claude-plugin/plugin.json` `version` and the project's `.compass/meta/plugin.yaml` `plugin.version`. If equal, tell the human and ask whether to force-refresh anyway. If the clone is newer, proceed.
+Read `$SRC/.claude-plugin/plugin.json` `version` and the project's `.compass/meta/plugin.yaml` `plugin.version`. If equal, tell the human and ask whether to force-refresh anyway, through `AskUserQuestion` with exactly one question per call: "Versions match. Force-refresh anyway?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Stop (Recommended):** the install is already current; nothing is copied.
+- **Force-refresh:** continue to step 4 and copy everything from the clone.
+
+Never put several questions in one message or one call. If the clone is newer, proceed.
 
 ### 4. Copy everything from the clone (one Bash call)
 
