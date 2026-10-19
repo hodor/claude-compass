@@ -2,7 +2,7 @@
 name: learned
 description: Capture an in-the-moment lesson the human just noticed. One-line argument; the skill infers category (process or domain via Reinertsen) plus area and tags, then hands off to lesson-write. Use when the human types /compass:learned to record a discovery before they forget.
 version: 1.0.0
-allowed-tools: [Read, Glob, Grep]
+allowed-tools: [Read, Glob, Grep, AskUserQuestion]
 argument-hint: "<lesson text> [--process|--domain] [--area <area>] [--tags tag1,tag2]"
 when_to_use: "Use only when the human explicitly invokes /compass:learned. Never suggest it to the human and never run it on their behalf: an agent that notices something worth remembering runs compass capture-note with one sentence instead, and the auto-extraction path judges the note at the next capture opportunity."
 ---
@@ -35,7 +35,12 @@ If `--process` or `--domain` flag is set, use it. Otherwise infer using Reinerts
 - **Process** - the content describes a build technique, a tooling gotcha, a testing strategy, a refactoring pattern, anything about *how* to build. "X technique works better than Y for case Z."
 - **Domain** - the content describes a user reality, a business rule, a regulatory constraint, an integration quirk, anything about *what* to build. "Users actually need X, not Y."
 
-If the content is genuinely ambiguous (e.g. "Always check the OAuth refresh token expiry" - both how to build AND what the system must do), ask the human one question: "Process (how to build it) or Domain (what users need)?"
+If the content is genuinely ambiguous (e.g. "Always check the OAuth refresh token expiry" - both how to build AND what the system must do), ask through `AskUserQuestion`, exactly one question per call: "Process (how to build it) or Domain (what users need)?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Process (how to build it):** saves the lesson as a build technique or tooling lesson.
+- **Domain (what users need):** saves the lesson as a user reality or system requirement.
+
+Never put several questions in one message or one call; the next question waits for this answer.
 
 ### 3. Determine area
 
