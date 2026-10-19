@@ -20,7 +20,14 @@ Arguments arrive as a single string. Parse in order:
 1. **Flags** (any order, may appear anywhere): `--process`, `--domain`, `--area <name>`, `--tags tag1,tag2`
 2. **Body text**: everything else, joined into the lesson body
 
-If both `--process` and `--domain` are passed, ask the human which one.
+If both `--process` and `--domain` are passed, ask the human which one through `AskUserQuestion`, exactly one question per call: "Which category is this lesson?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Process:** records the lesson as a process lesson.
+- **Domain:** records the lesson as a domain lesson.
+
+Put the option that fits the lesson text under the Reinertsen split first and label it "(Recommended)".
+
+Never put several questions in one message or one call.
 
 ## Protocol
 
