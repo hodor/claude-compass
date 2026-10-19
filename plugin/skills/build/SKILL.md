@@ -101,3 +101,5 @@ Spawn builder agents to execute tasks. The main conversation orchestrates; it do
 
 Next: run validator? Manual verification items from the plan?
 ```
+
+Ask the two "Next" questions through `AskUserQuestion`, exactly one question per call, in order: "Run the validator?", then "Review the manual verification items from the plan?". For each, the recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text. Never put several questions in one message or one call; the second question waits for the first answer.
