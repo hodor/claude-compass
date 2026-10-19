@@ -21,13 +21,13 @@ Adapted from HumanLayer's `research_codebase`. Spawns parallel sub-agents to inv
 
 ## Initial response
 
-When invoked without a clear question, respond exactly:
+When invoked without a clear question, ask through `AskUserQuestion`, exactly one question per call: "Ready to research the codebase. What's the question?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text, where the human types the question:
 
-```
-Ready to research the codebase. What's the question?
-```
+- **Trace a flow (Recommended):** you name a flow or behavior and I document how it runs.
+- **Document a component:** you name a component and I describe what it does and how it connects.
+- **Find where something is handled:** you name a concern and I locate where the code handles it.
 
-Then wait. Don't decompose anything until the user replies.
+Never put several questions in one message or one call. Then wait. Don't decompose anything until the user replies.
 
 ## Protocol
 
