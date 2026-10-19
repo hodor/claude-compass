@@ -1,0 +1,24 @@
+---
+title: "Compass Uses Fewer Tokens"
+type: spec
+status: approved
+confidence: low
+area: tooling
+tags: [tokens, cost, loops, measurement]
+summary: "minimize the amount of tokens Compass uses, driven by a control loop in this repo"
+created: 2026-10-18
+updated: 2026-10-18
+approved: 2026-10-18
+---
+
+# Compass Uses Fewer Tokens
+
+## Problem
+
+I want to minimize the amount of tokens that Compass uses.
+
+## Desired Outcome
+
+This is done here, through a Compass control loop, so the token use keeps going down while the plugin keeps changing.
+
+KPI: [guess: the tokens Compass spends on the same benchmark work, measured the same way every run, go down and stay down.]
