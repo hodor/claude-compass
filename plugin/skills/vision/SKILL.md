@@ -19,10 +19,15 @@ A vision is the project's purpose, its users, the shape of the problem space, pr
 
 ### 1. Braindump
 
-Ask the human:
+Ask through `AskUserQuestion`, exactly one question per call:
 > "Tell me everything about what you want to build. Don't worry about structure - just dump it. Goals, problems, users, ideas. I'll organize it after."
 
-Wait. Don't interrupt. Don't ask questions yet.
+The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for the free-text dump itself:
+
+- **Dump it in Other (Recommended):** you type everything you have; I organize it after.
+- **Start from existing notes:** you point me to a file or document to read.
+
+Never put several questions in one message or one call. Wait. Don't interrupt. Don't ask questions yet.
 
 Organizing means arranging the human's sentences under headings - his words carry the content, your words only connect them. Clean-verbatim only: drop filler and false starts, fix obvious speech-to-text errors; his grammar, word choice, and enumerations stay his. A garbled word gets `[unclear: heard "X"]` and a question, never a generic substitute. Anything you add is bracketed `[guess: ...]`.
 
