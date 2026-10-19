@@ -2,7 +2,7 @@
 name: setup
 description: Set up Compass in a project for the first time - creates the .compass/ vault, installs agents, rules, skills, the compass CLI, and hooks into .claude/, and proposes CLAUDE.md additions. To refresh an existing install, use /compass:update.
 version: 2.0.0
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash]
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion]
 when_to_use: "Use for first-time Compass setup in a project. Triggers: 'set up compass', 'initialize compass', 'install compass', 'compass setup'. To refresh an existing install from git, use /compass:update instead."
 argument-hint: "[new | migrate]"
 ---
@@ -128,7 +128,12 @@ That refresh replaces every shipped agent, rule, and skill, so a project that wa
 
 This file is the single source of truth for "where did this project's Compass install come from." Future `/compass:update` runs read it directly; no filesystem rediscovery. `/compass:checkup` can diff the recorded version against the source's current version to detect drift.
 
-If agents are already installed (re-running setup on a project), ask once before overwriting. Refreshing an existing install from git is `/compass:update`, not this skill.
+If agents are already installed (re-running setup on a project), ask once before overwriting, through `AskUserQuestion` with exactly one question per call: "Overwrite the installed agents, rules, and skills?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Keep the existing install (Recommended):** leaves the installed files untouched.
+- **Overwrite:** replaces the installed agents, rules, and skills with the plugin's copies.
+
+Never batch several questions in one message or one call. Refreshing an existing install from git is `/compass:update`, not this skill.
 
 ### 2b. Hooks and permissions
 
