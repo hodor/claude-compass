@@ -288,7 +288,13 @@ Draft a short Compass section - rules, not essays:
 **Help:** `/compass:guide` (workflow) or `/compass:checkup` (health).
 ```
 
-Present and wait for approval. Write only after approval.
+Show the draft, then ask through `AskUserQuestion`, exactly one question per call: "Add this section to CLAUDE.md?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Add it (Recommended):** writes the section to CLAUDE.md.
+- **Needs changes:** you say what to change; I edit and show the draft again.
+- **Skip:** leaves CLAUDE.md untouched.
+
+Never put several questions in one message or one call. Write only after approval.
 
 ### 5. Verify with `compass doctor`
 
