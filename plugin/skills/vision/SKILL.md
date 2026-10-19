@@ -130,6 +130,13 @@ Add a `## Vision` section to `.compass/index.md` (above Specs) with `[[vision]]`
 >
 > Want to start with [first item], or pick a different one?"
 
+Ask that last question through `AskUserQuestion`, exactly one question per call. The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Start with [first item] (Recommended):** begins `/compass:spec` on that need.
+- **Pick a different item:** you name which roadmap item to spec first.
+
+Never put several questions in one message or one call.
+
 Don't auto-spawn the spec writer. The human chooses.
 
 ## Examples
