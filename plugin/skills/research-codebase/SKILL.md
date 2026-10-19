@@ -2,7 +2,7 @@
 name: research-codebase
 description: Document the codebase as it exists today by spawning parallel sub-agents (codebase-locator, codebase-analyzer, pattern-finder). Output is a research document saved to .compass/research/. You are a documentarian, not a critic - describe what IS, not what SHOULD BE.
 version: 1.0.0
-allowed-tools: [Read, Grep, Glob, Bash, Agent, Write, Edit]
+allowed-tools: [Read, Grep, Glob, Bash, Agent, Write, Edit, AskUserQuestion]
 when_to_use: "Use when the user wants to research the codebase. Triggers: 'how does X work', 'where is Y handled', 'research this code', 'document this component', 'trace this flow'."
 argument-hint: "<research question>"
 ---
@@ -147,9 +147,14 @@ Replace `file:line` refs with `https://github.com/{owner}/{repo}/blob/{commit}/{
 
 ### 10. Present and offer follow-up
 
-Summarize the findings inline, point to the saved document, ask:
+Summarize the findings inline and point to the saved document: "Saved to [[RESEARCH-name]]."
 
-> "Saved to [[RESEARCH-name]]. Follow-up questions, or move to planning?"
+Then ask through `AskUserQuestion`, exactly one question per call: "Follow-up questions, or move to planning?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Move to planning (Recommended):** starts the plan from this research.
+- **Follow-up questions:** you ask; I append the answers to this document.
+
+Never put several questions in one message or one call.
 
 ### 11. Handle follow-ups
 
