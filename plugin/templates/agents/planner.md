@@ -121,11 +121,14 @@ Here is the proposed plan based on [source specs/research]:
 
 [Full plan content]
 
-Please review:
-- Approve as-is → I'll create the plan file and distribute tasks
-- Request changes → tell me what to modify
-- Reject → start over or abandon
 ```
+
+You run as a subagent and cannot call `AskUserQuestion`. Stop here and return the approval question to the orchestrator, with its options and the recommended one marked; the orchestrator asks it through `AskUserQuestion`, exactly one question per call, the recommended option first and labelled "(Recommended)", each option one short line, and the free-text "Other" left open. Never batch several questions in one message or one call. Return:
+
+- Question: "Approve this plan?"
+- **Approve as-is (Recommended):** I create the plan file and distribute tasks.
+- **Request changes:** the human says what to modify.
+- **Reject:** start over or abandon.
 
 Task numbers in the draft are provisional. They're finalized JIT at distribution time (max TASK-N in active.md + backlog.md + 1) - if the draft is revised before approval, numbers may shift.
 
