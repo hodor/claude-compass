@@ -132,7 +132,7 @@ The handoff is a snapshot. Trust current state over the handoff. Don't start wor
 
 5. **Classify scenario:**
    - **A. Clean continuation** - same branch, same/ahead commit, no unexpected changes → resume from action items.
-   - **B. Diverged** - different branch OR commits by others since handoff → flag, show what changed, ask how to reconcile.
+   - **B. Diverged** - different branch OR commits by others since handoff → flag, show what changed, then ask how to reconcile through `AskUserQuestion`, exactly one question per call: the recommended option first, labelled "(Recommended)", each option one short line saying what choosing it does, "Other" left open for free text. Never batch several questions in one message or one call.
    - **C. Incomplete work** - uncommitted changes not in handoff → flag, present, ask for intent.
    - **D. Stale** - >7 days old OR >20 commits since handoff → treat handoff as historical context only, recommend fresh summary.
 
