@@ -41,7 +41,14 @@ I see N specs:
 Confirm, or tell me what to merge / split / remove?
 ```
 
-Iterate until approved.
+Show the list, then ask through `AskUserQuestion`, exactly one question per call: "Confirm this spec list?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+- **Confirm (Recommended):** the list is final; I move on to shared context.
+- **Merge:** you say which specs to combine; I revise the list.
+- **Split:** you say which spec to divide; I revise the list.
+- **Remove:** you say which specs to drop; I revise the list.
+
+Never put several questions in one message or one call; the next question waits for this answer. Iterate until approved.
 
 ### 3. Capture shared context once
 
