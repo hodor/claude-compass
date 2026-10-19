@@ -75,7 +75,12 @@ Spawn builder agents to execute tasks. The main conversation orchestrates; it do
 
    **Editing discipline**, from a recorded incident of this kind: anchor structural edits (heading insertions, section moves, deletions) on whole heading lines, never on substring matches - a backticked mention of a heading in prose is not the heading, and a substring replace once spliced a plan's own Goal paragraph before its gates caught it.
 
-   **7c. Pause for human.** Present manual verification items from the plan, plus the extract-lessons summary and 7d's elaboration delta if it ran. Wait for human confirmation before proceeding to next phase.
+   **7c. Pause for human.** Present manual verification items from the plan, plus the extract-lessons summary and 7d's elaboration delta if it ran. Then ask through `AskUserQuestion`, exactly one question per call: "Proceed to the next phase?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+
+   - **Proceed (Recommended):** the manual items are confirmed; the next phase starts.
+   - **Needs changes:** you say what failed or what to adjust; I address it before the next phase.
+
+   Never put several questions in one message or one call; when the manual verification items need individual answers, ask them one per call, in order. Wait for the answer before proceeding to next phase.
 
    Skip the pause (but NOT 7a, 7b or 7d) in `all-phases` mode; pause only after the last phase. Reports, extraction and elaboration still run between phases so lessons and wave promotion happen incrementally.
 
