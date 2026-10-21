@@ -12,7 +12,7 @@ What you want is an agent that joins the project, finds the relevant context fas
 
 Compass stores project knowledge in a `.compass/` folder next to your code. Plain markdown with YAML frontmatter, Obsidian-compatible. The folder is the source of truth for what the project is, what has been decided, what is in progress, and what was learned.
 
-Every agent reads the hot path first (`index.md`, `active.md`, `meta/lessons-catalog.yaml`) so it orients in seconds, not turns.
+Every agent reads the hot path first (`index.md`, `active.md`, `lessons/index.md`, capped at 5,000 tokens together) so it orients in seconds, not turns.
 
 The vault contains:
 
@@ -22,8 +22,10 @@ The vault contains:
 - `plans/`: ordered tasks with verification criteria, derived from approved specs.
 - `decisions/`: ADRs for choices that future-you would not be able to reconstruct from code.
 - `lessons/`: surprising discoveries, tagged so future sessions surface them.
-- `handoffs/`: end-of-session snapshots so the next session starts oriented.
-- `meta/`: generated indexes (`tag-index.yaml`, `lessons-catalog.yaml`) and the install record (`plugin.yaml`).
+- `handoffs/`: session snapshots, written on request, so the next session starts oriented.
+- `loops/`: control loops that move the project toward an end state under a budget.
+- `archive/`: retired documents and `done.md`, where finished tasks are swept out of `active.md`.
+- `meta/`: generated indexes (`tag-index.yaml`, `lessons-catalog.yaml`), the install record (`plugin.yaml`), and the optional model override (`models.yaml`).
 - `.annotations/`: sidecar notes attached to specific files.
 
 The pipeline is `vision -> spec -> research -> plan -> build -> test -> validate`. Each step has a dedicated agent or skill with one job and bounded behavior. Specs cannot make implementation decisions. Researchers cannot recommend. Validators cannot edit. The builder writes code in an isolated git worktree; tests are written and run as part of the build cycle; the validator gates the result.
@@ -37,18 +39,39 @@ Keeping the vault consistent is mechanical: regenerating `index.md` and the tag 
 A `PostToolUse` hook runs `compass sync` **as a command** on every vault write, so the index and tag index stay fresh at roughly zero agent cost. The command never blocks an edit and produces no visible output on success. This is the core of the design (SPEC-004 / ADR-005): a deterministic tool owns the upkeep that an LLM should never spend tokens re-deriving. The CLI is stdlib-only (runs under `python` or `python3`), ships as part of the install, and is also runnable by hand:
 
 ```
-compass sync             # regenerate index + tag index, check caps, clean logs
-compass validate         # check frontmatter + wikilinks; errors fail, dangling links warn
+compass                  # list every command with a one-liner
+compass sync             # regenerate index + tag index, sweep done tasks, check caps, clean logs
+compass validate         # check frontmatter, wikilinks, and the hot-path cap
+compass doctor           # diagnose install drift: hooks, CLI, agents, skills, catalog
 compass fix-frontmatter  # scaffold missing frontmatter / core fields (--apply to write)
 compass next-num         # next artifact number, computed from the filesystem
-compass tree             # render the spec hierarchy
+compass tree             # every artifact with its summary, the whole vault at a glance
+compass lessons          # ranked lessons for an area, tag set, free text, or document
+compass graph            # link-graph queries: orphans, hubs, impact of a change
+compass promote | demote | move | make-domain | make-unit   # reshape the vault, rewriting wikilinks
 compass sources          # the shipped research sources; --check --live probes each by response body
+compass models           # resolved model and effort per agent
+compass usage            # which commands are used, and which never have been
 compass guard "<cmd>"    # the verdict the PreToolUse guard would give a shell command
 ```
 
-A `PreToolUse` hook runs `compass guard` before every Bash, Write, and Edit call a subagent makes, whatever its permission mode; the main agent, working with you, is never denied. Nothing in a Compass project destroys information: the guard denies a subagent's a delete or git discard, a Write that empties a file or guts a vault document, and an Edit that blanks a long vault passage, and hands the agent the reason with the colder home for the text (`.compass/archive/` or a Record section). Scratch stays deletable: `.compass/tmp/`, agent worktrees, the session scratchpad.
+A `PreToolUse` hook runs `compass guard` before every Bash, Write, and Edit call a subagent makes, whatever its permission mode; the main agent, working with you, is never denied. Nothing in a Compass project destroys information: the guard denies a subagent's delete or git discard, a Write that empties a file or guts a vault document, and an Edit that blanks a long vault passage, and hands the agent the reason with the colder home for the text (`.compass/archive/` or a Record section). Scratch stays deletable: `.compass/tmp/`, agent worktrees, the session scratchpad.
+
+A second `PostToolUse` hook, `compass context-check`, measures the main session's context and stops once at 80% and once more at 95% of the window, suggesting `/compass:handoff`.
 
 The CLI also captures its own crashes to a local queue; `compass file-bugs` (or `/compass:report-bug`) deduplicates them against existing issues and files them on the Compass repo.
+
+## Lessons capture themselves
+
+Recording a lesson is never your job. The `Stop` and `SubagentStop` hooks watch for capture opportunities (a finished build phase, a subagent report, a note an agent left with `compass capture-note`). When one is due, a headless worker runs `extract-lessons` against it, filters out the obvious and the one-off, and writes survivors through `lesson-write`, which deduplicates against the catalog and escalates recurring lessons. `compass capture-stats` reports how often this fires and writes. `/compass:clone-old` harvests lessons from sessions that ended before Compass was watching.
+
+## Control loops
+
+A loop (`compass loop new <name>`) pairs a sensor command, a controller, and an actuator that moves the project toward a stated end state, with daily and lifetime budgets. Each run is reviewed (accept or reject, a rejection becoming feedback for the next run). `compass loop schedule` runs a loop from a GitHub workflow, with one pull request per run, or from a local scheduled task.
+
+## Models per agent
+
+Every agent has a built-in model and effort. `.compass/meta/models.yaml` or `COMPASS_MODEL_<AGENT>` / `COMPASS_EFFORT_<AGENT>` override them; `compass apply-models` writes the result into the installed agent files.
 
 ## Slash commands
 
@@ -61,6 +84,8 @@ The CLI also captures its own crashes to a local queue; `compass file-bugs` (or 
 | `/compass:guide` | Detect where you are and tell you what to do next. |
 | `/compass:checkup` | Find drift: stale handoffs, broken links, missing agents or config. |
 | `/compass:vault-health` | Validate vault integrity (frontmatter, wikilinks, orphans) via `compass validate`. |
+| `/compass:index-sync` | Run `compass sync` on demand (the hook already runs it on every vault write). |
+| `/tree` | Render the whole vault tree with each artifact's summary, at zero agent tokens. |
 | `/compass:annotate` | Manage sidecar notes on vault files. |
 | `/compass:report-bug` | Report a Compass bug as a deduplicated GitHub issue (the CLI also auto-captures its own crashes). |
 
@@ -69,7 +94,7 @@ The CLI also captures its own crashes to a local queue; `compass file-bugs` (or 
 | Command | What it does |
 |---|---|
 | `/compass:vision` | Capture the project goal and the spec roadmap. |
-| `/compass:spec` | Interview to produce one spec. One problem per spec. |
+| `/compass:spec` | Draft one spec from what you already said, asking only where your words read two ways. One problem per spec. |
 | `/compass:specs` | Braindump to multiple specs at once. |
 | `/compass:research` | Research a spec: derives the axes from the whole spec (never from its question list), puts your own questions first, discloses any grading of evidence for you to refuse, and spawns one researcher per axis plus a reviewer. A plainly code-shaped or paper-shaped question dispatches straight to the two skills below. |
 | `/compass:research-methods` | Catalog of research methodologies (scoping review, mapping study, DESMET, snowballing, repository mining, and more) with a chooser; agents pick one per question and say which. |
@@ -92,11 +117,14 @@ The CLI also captures its own crashes to a local queue; `compass file-bugs` (or 
 | Command | What it does |
 |---|---|
 | `/compass:handoff` | Save context at session end, restore at session start. |
-| `/compass:learned` | Capture an in-the-moment lesson. |
-| `/compass:consolidate` | Merge, prune, and demote lessons when the catalog grows past its cap. |
+| `/compass:learned` | Record a lesson you just noticed (agents capture their own automatically). |
+| `/compass:clone-old` | Harvest lessons from past feature sessions via temporary headless copies; originals untouched. |
+| `/compass:consolidate` | On a cap warning: merge and archive lessons, and propose domain groupings for an overgrown index. |
 | `/compass:consolidate-memory` | Condense the project's file-based memory store (merge, prune, rebuild the index) to cut per-session context. |
 | `/compass:retroactive` | Document existing commits that predate the vault. |
 | `/compass:promote-spec` | Promote a flat spec into a folder spec (via `compass promote`). |
+
+Agents also load reference skills on their own: `methodology`, `obsidian`, `lessons`, `test-design`, and the internal `extract-lessons` and `lesson-write`.
 
 ## Repo layout
 
@@ -117,7 +145,7 @@ Requires Claude Code, and a Python 3 interpreter (`python` or `python3`) for the
 claude --plugin-dir "/path/to/claude-compass/plugin"
 ```
 
-Inside Claude Code, run `/compass:setup`. It copies agents, skills, rules, and the `compass` CLI into your project's `.claude/`, installs the hooks (vault sync, the guard, lesson capture, self-update), scaffolds the vault, and runs `/compass:vision` to capture what you are building. After setup the project is self-contained: anyone who clones the repo has the same agents, skills, and CLI, no plugin install required.
+Inside Claude Code, run `/compass:setup`. It copies agents, skills, rules, and the `compass` CLI into your project's `.claude/`, installs the hooks (vault sync, the guard, context check, lesson capture, self-update), scaffolds the vault, and runs `/compass:vision` to capture what you are building. After setup the project is self-contained: anyone who clones the repo has the same agents, skills, and CLI, no plugin install required.
 
 An installed project refreshes itself: a `SessionStart` hook runs `compass self-update`, which pulls the latest Compass from GitHub when the recorded commit is behind, leaves the vault untouched, and stays silent otherwise. `/compass:update` does the same on demand. Restart the session after either so the refreshed hooks load.
 
