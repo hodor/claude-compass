@@ -24,6 +24,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[specs/vault-structure/index|vault-structure]] (folder, 7 children) - how the vault organizes, bounds, and retrieves its own memory - hierarchy, indexes, graph queries, active-set sweeping, sizing shapes, domain taxonomy
 - [[specs/tooling/index|tooling]] (folder, 3 children) - Compass's own machinery as a surface - capabilities reachable and measured, scaffolding invisible to the human
 - [[SPEC-029-questions-to-the-human-are-clear-and-visual]] - when Compass asks the user a question it is insanely clear and visual, like opening a UI to ask it
+- [[SPEC-030-review-documents-open-in-obsidian]] - when configured, Compass always opens the thing the human should review in Obsidian instead of just asking
 
 ## Research
 
