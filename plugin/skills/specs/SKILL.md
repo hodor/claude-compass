@@ -23,27 +23,29 @@ Ask through `AskUserQuestion`, exactly one question per call, the recommended op
 
 Never put several questions in one message or one call; the next question waits for this answer.
 
-Organizing means routing the human's sentences to the right spec - each spec's Problem and Desired Outcome carry his words verbatim, per the `spec` skill's extraction rule; your words only connect them. A garbled word gets `[unclear: heard "X"]` and a question, asked the same way through `AskUserQuestion`, one question per call; anything you add is bracketed `[guess: ...]`. Each spec is placed into the topic tree per the `spec` skill's placement step; genuine placement doubt becomes its `taxonomy_hint:`.
+Organizing means routing the human's sentences to the right spec - each spec's Problem and Desired Outcome carry his words verbatim, per the `spec` skill's extraction rule; your words only connect them. A garbled word gets `[unclear: heard "X"]` and a question, asked the same way through `AskUserQuestion`, one question per call; anything you add is bracketed `[guess: ...]`. Each spec is placed into the topic tree per the `spec` skill's taxonomy review (step 5).
 
 Wait for the response. Don't interrupt.
 
 ### 2. Propose the spec list
 
-Identify distinct concerns from the braindump. Each becomes one spec.
+Identify distinct concerns from the braindump. Each becomes one spec. Draft each at its best-fit domain and run `compass placement <path>` on it, and across the batch on pairs of drafts that would share a domain. The batch is shown as a tree of where each spec would live, a candidate parent or pair marked with the evidence `compass placement` printed:
 
 ```
 I see N specs:
 
-1. **SPEC: [name]** - [one-line problem]
-2. **SPEC: [name]** - [one-line problem]
-...
+specs/
+  <domain>/
+    1. **SPEC: [name]** - [one-line problem]
+    2. **SPEC: [name]** - [one-line problem]   (pair with 1: shared craft)
+  3. **SPEC: [name]** - [one-line problem]   (child of SPEC-NNN-parent)
 
 Confirm, or tell me what to merge / split / remove?
 ```
 
-Show the list, then ask through `AskUserQuestion`, exactly one question per call: "Confirm this spec list?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+Show the tree, then ask through `AskUserQuestion`, exactly one question per call: "Confirm this spec list?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
 
-- **Confirm (Recommended):** the list is final; I move on to shared context.
+- **Confirm (Recommended):** the list and its placements are final; I move on to shared context.
 - **Merge:** you say which specs to combine; I revise the list.
 - **Split:** you say which spec to divide; I revise the list.
 - **Remove:** you say which specs to drop; I revise the list.
@@ -64,7 +66,7 @@ Save as shared context.
 
 ### 4. Write each spec lightweight
 
-For each approved spec, write a draft using shared context + the braindump content for that spec. Ask only spec-specific questions that aren't already answered:
+For each approved spec, write a draft at its confirmed placement using shared context + the braindump content for that spec. A confirmed child or pair runs the `spec` skill's step 5 move (`compass promote` or `compass make-domain`, then `compass move`) once its drafts exist. Ask only spec-specific questions that aren't already answered:
 - What's the desired outcome for THIS spec?
 - Anything specific to THIS spec not covered by shared context?
 

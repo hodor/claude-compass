@@ -241,7 +241,7 @@ Always author unit-artifact and below-domain links path-qualified - domain names
 
 ### Where a new artifact goes
 
-Before creating an artifact, resolve its destination root: if the work belongs to an existing unit (its spec, plan, or research lives under `.compass/<unit>/`), create the artifact in that unit's type dir, number it with `compass next-num <type> <unit>`, and link it path-qualified. Otherwise create it in the root type dir with a bare-stem link. Detection of root artifact sets that have outgrown the flat layout is mechanical (`compass unit-check` reports candidates when 3+ artifact types trace to one spec); promotion is the human's decision.
+Before creating an artifact, resolve its destination root: if the work belongs to an existing unit (its spec, plan, or research lives under `.compass/<unit>/`), create the artifact in that unit's type dir, number it with `compass next-num <type> <unit>`, and link it path-qualified. Otherwise create it in the root type dir with a bare-stem link. Inside that type dir, `compass placement <path>` lists where the artifact could live: existing artifacts it could sit under, same-level artifacts it would pair with to form a domain, and domains whose scope fits. A move it surfaces goes to the human as one question. Detection of root artifact sets that have outgrown the flat layout is mechanical (`compass unit-check` reports candidates when 3+ artifact types trace to one spec); promotion is the human's decision.
 
 ## Facet tags (the multi-parent layer)
 
