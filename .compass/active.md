@@ -60,7 +60,7 @@ Plan: [[PLAN-021-control-loops]].
 
 Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
-- [ ] TASK-165: ship the Compass Review plugin with a test harness - complexity: M, depends_on: none
+- [x] TASK-165: ship the Compass Review plugin with a test harness - complexity: M, depends_on: none
 - [ ] TASK-166: `compass review <file>` sends a review and waits for the verdict - complexity: M, depends_on: none
 - [ ] TASK-167: guard denies agent writes to a file under review - complexity: S, depends_on: TASK-166
 - [ ] TASK-168: setup/update install the plugin; doctor walks the human through enabling it - complexity: M, depends_on: TASK-165
