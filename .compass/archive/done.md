@@ -329,3 +329,6 @@ Plan: [[PLAN-021-control-loops]].
 ### PLAN-023: taxonomy review at spec creation
 - [x] TASK-179: `compass placement` lists a spec's candidate parents, pairs and domains - complexity: M, depends_on: none
 - [x] TASK-180: spec and specs run a taxonomy review and propose the deeper home - complexity: M, depends_on: none
+
+### PLAN-023: taxonomy review at spec creation
+- [x] TASK-181: refresh the install and bump the version - complexity: S, depends_on: TASK-179, TASK-180

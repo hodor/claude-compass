@@ -47,7 +47,7 @@ Plan: [[PLAN-021-control-loops]].
 - [ ] TASK-161: A code loop end to end: an ast-grep sensor adapter, then a loop that removes a bad pattern from a real repository the human names, run to its stop - complexity: L, depends_on: TASK-158, TASK-159
 - [ ] TASK-160: `/compass:loop`: guided creation through steps 0 to 7 - complexity: M, depends_on: TASK-158, TASK-159, TASK-161
 - [ ] TASK-162: The Maya recipe on the local lane, marked untested on this machine - complexity: S, depends_on: TASK-160
-- [ ] TASK-163: Teach the vault conventions about loops and ship 0.29.0 - complexity: M, depends_on: TASK-158, TASK-159, TASK-160, TASK-161, TASK-162
+- [ ] TASK-163: Teach the vault conventions about loops and ship the next minor release - complexity: M, depends_on: TASK-158, TASK-159, TASK-160, TASK-161, TASK-162
 
 ## Next Up
 
@@ -70,5 +70,4 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
 Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per task).
 
-- [ ] TASK-181: refresh the install and bump the version - complexity: S, depends_on: TASK-179, TASK-180
 - [ ] TASK-182: run the review on this vault's pending hints - complexity: M, depends_on: TASK-181
