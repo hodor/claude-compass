@@ -133,7 +133,7 @@ class _Vault:
         )
         links = set()
         for raw in _WIKILINK.findall(text):
-            target = raw.split("|")[0].split("#")[0].strip()
+            target = raw.split("|")[0].split("#")[0].rstrip("\\").strip()
             if target:
                 links.update(vaultlib.resolve_link(self.mapping(), target))
         named = set()
@@ -320,7 +320,7 @@ def run(args):
 
     vault = _Vault(vaultlib.find_vault_root())
     if hints:
-        pending = [r for r in vault.records if vault.facts(r)["hint"]]
+        pending = [r for r in vault.artifacts if vault.facts(r)["hint"]]
         sys.stdout.write(
             f"placement --hints: {len(pending)} artifact(s) with a pending hint\n"
         )

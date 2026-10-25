@@ -26,17 +26,16 @@ from commands import sizing
 
 
 def _resolve(vault_root, target):
-    """Return the flat artifacts `target` names. A path resolves to at most
-    one file; a bare stem resolves to every flat artifact bearing it, under
-    any type dir (root or unit) at any depth, so the caller can refuse an
-    ambiguous stem."""
+    """Return the flat artifacts `target` names. A vault-relative path
+    resolves to the one flat artifact at that path; a bare stem resolves to
+    every flat artifact bearing it, under any type dir (root or unit) at any
+    depth, so the caller can refuse an ambiguous stem. A path that is not a
+    flat artifact of the vault resolves to nothing."""
+    flats = [r["path"] for r in vaultlib.scan_artifacts(vault_root) if r["kind"] in ("flat", "child")]
     if target.endswith(".md") or "/" in target:
-        candidate = vault_root / target
-        return [candidate] if candidate.is_file() else []
-    return [
-        record["path"] for record in vaultlib.scan_artifacts(vault_root)
-        if record["kind"] in ("flat", "child") and record["path"].stem == target
-    ]
+        candidate = (vault_root / target).resolve()
+        return [p for p in flats if p.resolve() == candidate]
+    return [p for p in flats if p.stem == target]
 
 
 def git_mv(repo, src, dest):
@@ -100,6 +99,11 @@ def run(args):
 
     folder = path.with_suffix("")
     dest = folder / "index.md"
+    if dest.exists():
+        sys.stderr.write(
+            f"compass promote: {dest.relative_to(vault_root).as_posix()} already exists, no changes made\n"
+        )
+        return 1
 
     if not apply:
         sys.stdout.write(
