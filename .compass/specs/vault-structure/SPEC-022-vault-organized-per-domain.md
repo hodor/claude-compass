@@ -7,7 +7,7 @@ confidence: high
 area: methodology
 tags: [taxonomy, hierarchy, domains, index, consolidation, hot-path]
 created: 2026-08-30
-updated: 2026-08-30
+updated: 2026-10-24
 depends_on: ["[[SPEC-003-hierarchical-vault-organization]]", "[[SPEC-010-universal-hybrid-hierarchy]]", "[[SPEC-005-index-auto-maintained-and-mirrored-per-folder]]"]
 summary: "similar specs and research group into domain folders, recursively; the root index says one line per broad area instead of dropping every artifact flat (approved 2026-08-30)"
 ---
@@ -37,7 +37,7 @@ The goal: two things at once - how humans organize topics and how machines find 
 - **D-01:** Consolidation is also taxonomy. When the hot path is over cap and the weight is structural (many flat lines), the remedy is grouping into domains, never deleting or truncating entries.
 - **D-02:** Per-domain organization applies to everything in the vault - specs, research, anything else - and recurses: subdomains within domains, which can go as deep as needed.
 - **D-03:** The filesystem is the taxonomy; an index is a view of one level. The folder itself is the listing, the index shows the meaning, but sometimes you might get all you need to find the file you want just by using `ls`. This semantic logic will help both LLMs and humans to make sense of the data. This is not about organizing the index file only - the files themselves are organized in a folder structure that enforces the taxonomy. The index explains the first level; entering a folder shows that folder's first level; and so on down. So a LLM or a human can easily find what they need just by going into sub folders and checking the index.md file of each without having to read the whole thing. 
-- **D-04:** Taxonomize could apply at spec creation. Making a new spec is a possible reorganization point: place it, or at least leave a hint for the next consolidation - recorded by the authoring agent, which understands the spec better than any later pass. So the system should take advantage of this.
+- **D-04:** Taxonomize could apply at spec creation. Making a new spec is a possible reorganization point: place it, or at least leave a hint for the next consolidation - recorded by the authoring agent, which understands the spec better than any later pass. So the system should take advantage of this. Compass NEVER creates child specs, and all specs are 100% flat; this needs to change: Compass goes through a taxonomy review when creating a new spec, to organize and add depth if needed.
 - **D-05:** Each folder has its own index doc. Similar to [[SPEC-005-index-auto-maintained-and-mirrored-per-folder]].
 - **D-06:** The classification-science research (how humans and machines organize topics; placement without ambiguity) is an important reference. Research into how computer-science applies classification science is the most critical for us. 
 - **D-07:** Reorganization moves are suggested to the human, never something the human must remember to trigger. The harness notices the trigger - ceiling breach, pending hints, cap warning - and puts the proposal forward; approval applies it.
