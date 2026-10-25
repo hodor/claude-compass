@@ -325,3 +325,7 @@ Plan: [[PLAN-021-control-loops]].
 
 ### PLAN-022: review documents in Obsidian
 - [x] TASK-165: ship the Compass Review plugin with a test harness - complexity: M, depends_on: none
+
+### PLAN-023: taxonomy review at spec creation
+- [x] TASK-179: `compass placement` lists a spec's candidate parents, pairs and domains - complexity: M, depends_on: none
+- [x] TASK-180: spec and specs run a taxonomy review and propose the deeper home - complexity: M, depends_on: none
