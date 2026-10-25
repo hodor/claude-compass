@@ -1,4 +1,3 @@
-<!-- WARNING: hot path 5037 / 5000 tokens (index.md 3135, active.md 1212, lessons/index.md 690). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -70,7 +69,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[decisions/distribution/index|distribution]] (folder, 3 children) - rulings on installing, updating, and configuring Compass across projects
 - [[decisions/learning/index|learning]] (folder, 5 children) - rulings on capture and feedback - lessons, workers, signal handling, source-word fidelity
 - [[decisions/pipeline/index|pipeline]] (folder, 3 children) - rulings on the development workflow stages and gates
-- [[decisions/vault-structure/index|vault-structure]] (folder, 8 children) - rulings on how the vault organizes, bounds, and retrieves its own memory
+- [[decisions/vault-structure/index|vault-structure]] (folder, 9 children) - rulings on how the vault organizes, bounds, and retrieves its own memory
 
 ## Active Work
 
