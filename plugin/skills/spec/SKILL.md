@@ -50,9 +50,21 @@ Somewhere in the interview, look for the spec's KPI: the measurable number that 
 
 Before saving, re-read Problem and Desired Outcome. Multiple distinct problems or unrelated successes split into separate sibling specs - tell the human you're splitting, don't ask permission. One problem with many parts stays one spec, its parts added as children inside its own folder.
 
-### 5. Create the spec file
+### 5. Create the spec file and review its taxonomy
 
-Before creating the spec file, resolve its destination per the `obsidian` skill's "Where a new artifact goes" rule - the owning unit's `specs/` dir, or the root. Inside that root, `specs/` is a topic tree: place the spec in the domain folder whose Scope fits it, at whatever depth fits. When it fits a domain but no subdomain cleanly, file it directly in the domain - shallower beats a wrong guess. A vault with no domains files at the root; that is correct, not provisional. When placement is genuinely uncertain, file shallower AND record `taxonomy_hint: "<one line: where this might belong>"` in the frontmatter - validate surfaces pending hints on every run, and consolidate consumes them. A spec is a file: `.compass/specs/SPEC-NNN-descriptive-name.md`, NNN from `compass next-num spec`. The folder shape is earned by the second member: when a spec gains its first child, `compass promote` turns it into `SPEC-NNN-name/index.md` and the child is created inside, numbered locally (`compass next-num spec <parent-path>`). A folder holding only its own index is over-shaped - simple as possible, no simpler. Required sections: Problem and Desired Outcome. Optional: User Scenarios, Constraints, Decisions, Risks. Open Questions holds only a question the human himself left open, in his words; the agent never mints one. Omit any optional section if empty - don't include a heading with no content.
+Resolve the destination per the `obsidian` skill's "Where a new artifact goes" rule: the owning unit's `specs/` dir, or the root. Write the draft at its best-fit domain, the domain folder whose Scope fits it (a vault with no domains files at the root), as `.compass/specs/SPEC-NNN-descriptive-name.md`, NNN from `compass next-num spec`.
+
+Then run `compass placement <path-to-draft>`. It prints where the spec could live, each candidate with the evidence that put it there: existing specs it could sit under (`parents:`), same-level specs it would pair with (`pairs:`), domains whose scope fits (`domains:`), and where its own `taxonomy_hint` points (`hint:`). The ranking is an evidence count, not a validated measure. Apply the parent test to each candidate:
+
+- **Child:** the candidate's decisions hold for the new spec, and the new spec diverges on something the candidate left open.
+- **Pair:** the two share a subject only; they form a domain.
+- **Neither:** the spec stays where it is.
+
+Propose any child or pair through `AskUserQuestion`, exactly one question per call: "Where should this spec live?". The recommended option, the best-fitting candidate, comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Stay at `<current path>`" is an option; "Other" stays open for free text. Never put several questions in one message or one call. Nothing moves without his answer.
+
+An approved move runs in this step, so no folder is left holding only its index. A child: `compass promote <parent>` turns the parent into `SPEC-NNN-name/index.md`, then `compass move <draft> <parent-folder>` files the spec inside it. A pair: `compass make-domain specs/<path>` creates the domain, then `compass move` files both specs into it. A candidate parent or pair is always proposed; the spec stays shallow with `taxonomy_hint: "<one line: where this might belong>"` in the frontmatter only when the human declines or nothing fits. Validate surfaces pending hints on every run, and consolidate consumes them.
+
+Required sections: Problem and Desired Outcome. Optional: User Scenarios, Constraints, Decisions, Risks. Open Questions holds only a question the human himself left open, in his words; the agent never mints one. Omit any optional section if empty - don't include a heading with no content.
 
 ```markdown
 ---

@@ -9,13 +9,15 @@ when_to_use: "Run /compass:promote-spec when a flat spec needs to grow children.
 
 # /compass:promote-spec - Convert a flat spec to a folder spec
 
-A flat spec is one file: `specs/SPEC-002-tile-editor.md`. A folder spec is a directory whose `index.md` IS that spec, with child specs inside. Promote when the spec has grown 3+ sub-concerns or its body would exceed ~2,000 tokens.
+A flat spec is one file: `specs/SPEC-002-tile-editor.md`. A folder spec is a directory whose `index.md` IS that spec, with child specs inside. Promote when the spec has grown 3+ sub-concerns, its body would exceed ~2,000 tokens, or a new spec is its child.
 
 The move itself is mechanical and lives in the CLI. This skill is the judgment around it.
 
 ## 1. Confirm it should be promoted
 
 Read the spec. Does it genuinely have 3+ separable sub-concerns, or is it just long prose? Only promote when children will follow; a folder with one `index.md` and no children adds nothing.
+
+An existing spec also adopts a child: when `compass placement <new-spec>` lists it under `parents:` and the parent test holds (its decisions hold for the new spec, and the new spec diverges on something it left open), promote the parent, then `compass move` the new spec into the folder. The child already exists, so the folder is never left holding only its index.
 
 ## 2. Perform the move
 

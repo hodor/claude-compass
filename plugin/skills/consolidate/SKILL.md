@@ -154,7 +154,7 @@ The lessons half above shrinks textual redundancy. This half shrinks structural 
 
 ### S1. Inventory
 
-First collect the hints: grep `taxonomy_hint:` across `specs/`, `research/`, `decisions/`, and `lessons/`. Each is a placement judgment recorded at creation by the agent that understood the artifact best, and together they are this pass's work queue. Acting on one clears it - the move happens, or the placement is confirmed fine - and the frontmatter line is removed either way.
+First collect the hints: run `compass placement --hints`, which reports every artifact with a pending `taxonomy_hint:` across `specs/`, `research/`, `decisions/`, and `lessons/`, each with its placement candidates and the current path of every artifact its hint names. Each is a placement judgment recorded at creation by the agent that understood the artifact best, and together they are this pass's work queue. Acting on one clears it - the move happens, or the placement is confirmed fine - and the frontmatter line is removed either way.
 
 Glob every flat root artifact in scope: specs, research, decisions, and lessons all taxonomize the same way (SPEC-022 D-12) - ADRs usually reuse the spec domains since every ruling resolves a fork inside one; lessons split by the craft each teaches; plans mirror their specs. Read frontmatter (title, area, tags, summary, status) and record outbound wikilinks. `compass graph hubs` and `compass graph impact` give the link structure cheaply.
 
