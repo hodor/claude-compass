@@ -13,6 +13,10 @@ exits 2); the reason names the rule and the colder home for the text.
 Scratch areas stay open, so cleanup keeps working: `.compass/tmp/`, agent
 worktrees under `.claude/worktrees/`, the session scratchpad and system
 temp dirs, and Python bytecode caches.
+
+A document under review in Obsidian (a pending `compass review` request)
+belongs to the human until the verdict: a subagent's Write or Edit to it is
+denied, since Obsidian merges an outside write into the open editor.
 """
 
 import json
@@ -22,6 +26,7 @@ import shlex
 import sys
 from pathlib import Path
 
+import reviewlib
 import vaultlib
 
 DELETE_VERBS = {
@@ -335,10 +340,37 @@ def _edit_reason(tool_input, project_root):
     )
 
 
+def _review_reason(tool_input, project_root):
+    file_path = tool_input.get("file_path") or ""
+    if not file_path:
+        return None
+    compass_vault = Path(project_root) / ".compass"
+    if not reviewlib.review_dir(compass_vault).is_dir():
+        return None
+    path = Path(file_path)
+    if not path.is_absolute():
+        path = Path(project_root) / path
+    obsidian_root = reviewlib.find_obsidian_vault(path)
+    if obsidian_root is None:
+        return None
+    request = reviewlib.under_review(compass_vault, obsidian_root, path)
+    if request is None:
+        return None
+    return (
+        f"compass guard: {_posix(path)} is under review in Obsidian (request "
+        f"{request.get('id')}); the human owns it until the verdict. Wait for "
+        f"`compass review` to return, then edit."
+    )
+
+
 def decide(tool_name, tool_input, project_root):
     """Return (denied, reason) for one tool call."""
     tool_input = tool_input or {}
     reason = None
+    if tool_name in {"Write", "Edit", "MultiEdit"}:
+        reason = _review_reason(tool_input, project_root)
+        if reason:
+            return (True, reason)
     if tool_name == "Bash":
         reason = _bash_reason(str(tool_input.get("command") or ""), project_root)
     elif tool_name == "Write":

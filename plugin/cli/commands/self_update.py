@@ -275,6 +275,17 @@ def _apply(src, project_root, apply_models):
         if retired_dir.is_dir():
             shutil.rmtree(retired_dir, ignore_errors=True)
     _copy_tree_best_effort(src / "cli", claude / "cli")
+    if (src / "obsidian").is_dir():
+        _copy_tree_best_effort(src / "obsidian", claude / "obsidian")
+        # Into the project's Obsidian vault, when Obsidian has opened one;
+        # best-effort, so an odd vault never fails the apply.
+        try:
+            import reviewlib
+
+            reviewlib.install_plugin(
+                Path(project_root) / ".compass", claude / "obsidian" / reviewlib.PLUGIN_ID)
+        except Exception:
+            pass
     hooks_dir = claude / "hooks"
     hooks_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src / "hooks" / "hooks.json", hooks_dir / "hooks.json")

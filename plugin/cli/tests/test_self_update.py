@@ -300,6 +300,35 @@ class LocalSourceTests(SelfUpdateFixture):
         self.assertIn("0.9.0 -> 1.0.0", result["notice"])
 
 
+class ObsidianPluginInstallTests(SelfUpdateFixture):
+    """The apply carries the Compass Review plugin into `.claude/obsidian/` and,
+    when Obsidian has opened the vault, into its `.obsidian/plugins/`."""
+
+    def setUp(self):
+        super().setUp()
+        self.local_src = make_plugin_tree(self.project / "plugin", version="0.9.0")
+        plugin_dir = self.local_src / "obsidian" / "compass-review"
+        plugin_dir.mkdir(parents=True)
+        for name in ("main.js", "manifest.json", "styles.css"):
+            (plugin_dir / name).write_text(f"// {name}", encoding="utf-8")
+        self.write_plugin_yaml(source=str(self.local_src))
+        self.forbid_network()
+
+    def test_installs_into_an_opened_vault_and_keeps_other_plugins(self):
+        obsidian = self.vault / ".obsidian"
+        obsidian.mkdir()
+        (obsidian / "community-plugins.json").write_text('["dataview"]', encoding="utf-8")
+        self.perform(force=True)
+        self.assertTrue((self.project / ".claude" / "obsidian" / "compass-review" / "main.js").is_file())
+        self.assertEqual((obsidian / "plugins" / "compass-review" / "main.js").read_text(), "// main.js")
+        self.assertEqual(json.loads((obsidian / "community-plugins.json").read_text()), ["dataview", "compass-review"])
+
+    def test_a_vault_obsidian_never_opened_gets_no_obsidian_folder(self):
+        self.perform(force=True)
+        self.assertFalse((self.vault / ".obsidian").exists())
+        self.assertFalse((self.project / ".obsidian").exists())
+
+
 class SettingsMergeTests(SelfUpdateFixture):
     def settings(self):
         return json.loads(

@@ -1,0 +1,34 @@
+filters:
+  and:
+    - file.ext == "md"
+    - 'status == "draft"'
+properties:
+  type:
+    displayName: Type
+  summary:
+    displayName: Summary
+views:
+  - type: table
+    name: "Waiting on you"
+    filters:
+      or:
+        - 'type == "spec"'
+        - 'type == "plan"'
+        - 'type == "vision"'
+    groupBy:
+      property: type
+      direction: ASC
+    order:
+      - file.name
+      - type
+      - summary
+      - updated
+  - type: table
+    name: "Research drafts"
+    filters:
+      and:
+        - 'type == "research"'
+    order:
+      - file.name
+      - summary
+      - updated

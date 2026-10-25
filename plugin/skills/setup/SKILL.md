@@ -84,6 +84,10 @@ rm -rf .claude/cli
 cp -r "$PLUGIN_ROOT/cli" .claude/cli
 echo "CLI copied: $(ls .claude/cli/commands/*.py | wc -l) command modules"
 
+# The Compass Review Obsidian plugin (copied into the vault by step 5)
+rm -rf .claude/obsidian
+cp -r "$PLUGIN_ROOT/obsidian" .claude/obsidian
+
 # The PostToolUse hook runs the CLI via `python3` if present, else `python`
 # (python3 is canonical on POSIX; Windows often only has `python`). Verify one exists.
 if ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
@@ -300,11 +304,15 @@ Never put several questions in one message or one call. Write only after approva
 
 ```bash
 if command -v python3 >/dev/null 2>&1; then
+  python3 .claude/cli/compass review --install
   python3 .claude/cli/compass doctor
 else
+  python .claude/cli/compass review --install
   python .claude/cli/compass doctor
 fi
 ```
+
+`review --install` copies the Compass Review plugin into the project's Obsidian vault when Obsidian has already opened one, and does nothing otherwise. Obsidian lets only the human turn a community plugin on: when doctor's `obsidian review` row WARNs, give him its steps as they are. Once the plugin is on, every document Compass asks him to review opens in Obsidian with Approve and Needs changes buttons. A vault opened in Obsidian after setup gets the plugin at the next `/compass:update` or self-update, or at once with `compass review --install`.
 
 This is the install's acceptance check: `plugin.yaml`, hook registration, CLI completeness, `.claude/agents/`, `.claude/skills/`, and `.compass/meta/lessons-catalog.yaml` in one pass, exiting 1 on any FAIL. A FAIL means setup did not fully land - fix the named defect (doctor prints the command) before moving on to vision capture. For a human skimming the report without running the command, the same six checks restated:
 
@@ -369,7 +377,7 @@ New project / Existing project with N existing documents
 - [x] compass doctor: 0 FAIL
 
 ### Obsidian
-Open `.compass/` as a vault: **Obsidian → Open folder as vault → `<project-root>/.compass/`**
+Open `.compass/` as a vault: **Obsidian → Open folder as vault → `<project-root>/.compass/`**, then run `compass review --install` and turn on Compass Review (Settings → Community plugins) so reviews open in Obsidian
 
 ### Next Steps
 1. Open `.compass/` in Obsidian

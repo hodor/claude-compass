@@ -193,6 +193,63 @@ class CompleteInstallTests(unittest.TestCase):
         self.assertTrue(all(row["status"] != "FAIL" for row in payload["checks"]))
 
 
+class ObsidianReviewCheckTests(unittest.TestCase):
+    def row(self, project):
+        code, out = run_doctor(["--json"])
+        rows = [r for r in json.loads(out)["checks"] if r["check"] == "obsidian review"]
+        self.assertEqual(len(rows), 1, out)
+        return code, rows[0]
+
+    def setUp(self):
+        self.project = make_project(self)
+        with_project_env(self, self.project)
+        build_complete_install(self.project)
+        self.config = self.project / "obsidian.json"
+        with_env(self, "COMPASS_OBSIDIAN_CONFIG", str(self.config))
+        self.obsidian = self.project / ".compass" / ".obsidian"
+
+    def listed(self):
+        self.config.write_text(json.dumps({"vaults": {"v1": {"path": str(self.project / ".compass")}}}), encoding="utf-8")
+
+    def plugin(self, on):
+        d = self.obsidian / "plugins" / "compass-review"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "main.js").write_text("//", encoding="utf-8")
+        (self.obsidian / "community-plugins.json").write_text(json.dumps(["compass-review"] if on else []), encoding="utf-8")
+
+    def test_no_obsidian_vault_is_ok(self):
+        code, row = self.row(self.project)
+        self.assertEqual((code, row["status"]), (0, "OK"))
+        self.assertIn("terminal", row["detail"])
+
+    def test_absent_plugin_warns_with_install_and_enable_steps(self):
+        self.obsidian.mkdir()
+        self.listed()
+        code, row = self.row(self.project)
+        self.assertEqual((code, row["status"]), (0, "WARN"))
+        self.assertIn("compass review --install", row["fix"])
+        self.assertIn("restricted mode", row["fix"])
+
+    def test_off_plugin_warns_with_enable_steps(self):
+        self.plugin(on=False)
+        self.listed()
+        _, row = self.row(self.project)
+        self.assertEqual(row["status"], "WARN")
+        self.assertIn("switch on Compass Review", row["fix"])
+
+    def test_on_but_unlisted_vault_warns(self):
+        self.plugin(on=True)
+        _, row = self.row(self.project)
+        self.assertEqual(row["status"], "WARN")
+        self.assertIn("open this vault once in Obsidian", row["fix"])
+
+    def test_on_and_listed_is_ok(self):
+        self.plugin(on=True)
+        self.listed()
+        _, row = self.row(self.project)
+        self.assertEqual(row["status"], "OK")
+
+
 class HookRegistrationTests(unittest.TestCase):
     def test_hooks_json_present_without_settings_registration_fails_naming_defect(self):
         project = make_project(self)
@@ -480,9 +537,9 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        # 12 rows: the baseline checks (session retention and the
-        # host-roster row included) plus unit-promotion.
-        self.assertEqual(len(payload["checks"]), 12)
+        # 13 rows: the baseline checks (session retention, obsidian review
+        # and the host-roster row included) plus unit-promotion.
+        self.assertEqual(len(payload["checks"]), 13)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         row = new_rows[0]
@@ -511,9 +568,9 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        # 12 rows: the baseline checks (session retention and the
-        # host-roster row included) plus unit-promotion.
-        self.assertEqual(len(payload["checks"]), 12)
+        # 13 rows: the baseline checks (session retention, obsidian review
+        # and the host-roster row included) plus unit-promotion.
+        self.assertEqual(len(payload["checks"]), 13)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         self.assertEqual(new_rows[0]["status"], "OK")
@@ -571,9 +628,9 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        # 12 rows: the baseline checks (session retention and the
-        # host-roster row included) plus unit-promotion.
-        self.assertEqual(len(payload["checks"]), 12)
+        # 13 rows: the baseline checks (session retention, obsidian review
+        # and the host-roster row included) plus unit-promotion.
+        self.assertEqual(len(payload["checks"]), 13)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         self.assertEqual(new_rows[0]["status"], "WARN")
@@ -698,6 +755,9 @@ PRE_TASK_093_CHECKS.add("host roster")
 # The session-retention row also appears in every run.
 KNOWN_BASELINE_CHECKS.add("session retention")
 PRE_TASK_093_CHECKS.add("session retention")
+# The obsidian-review row also appears in every run.
+KNOWN_BASELINE_CHECKS.add("obsidian review")
+PRE_TASK_093_CHECKS.add("obsidian review")
 
 
 def ledger_rows(payload):
@@ -1346,7 +1406,7 @@ class SessionRetentionRowTests(unittest.TestCase):
                 set_user_retention(content)
                 code, out = run_doctor(["--json"])
                 payload = json.loads(out)
-                self.assertEqual(len(payload["checks"]), 12)
+                self.assertEqual(len(payload["checks"]), 13)
                 row = retention_row(payload)
                 self.assertNotEqual(row["status"], "FAIL")
                 self.assertNotIn("\n", row["detail"])
@@ -1417,7 +1477,7 @@ class SessionRetentionPostBuildTests(unittest.TestCase):
                 local.write_text(content, encoding="utf-8")
                 code, out = run_doctor(["--json"])
                 payload = json.loads(out)
-                self.assertEqual(len(payload["checks"]), 12)
+                self.assertEqual(len(payload["checks"]), 13)
                 row = retention_row(payload)
                 self.assertNotEqual(row["status"], "FAIL")
                 self.assertNotIn("\n", row["detail"])
@@ -1438,7 +1498,7 @@ class NonObjectSettingsTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         checks = payload["checks"]
-        self.assertEqual(len(checks), 12)
+        self.assertEqual(len(checks), 13)
         self.assertFalse([c for c in checks if c["check"] == "doctor"])
         self.assertNotIn("internal error", out)
         hook_row = [c for c in checks if c["check"] == "hook registration"][0]

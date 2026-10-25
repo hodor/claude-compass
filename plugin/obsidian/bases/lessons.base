@@ -1,0 +1,35 @@
+filters:
+  and:
+    - file.ext == "md"
+    - 'type == "lesson"'
+    - 'status == "active"'
+properties:
+  category:
+    displayName: Category
+  area:
+    displayName: Area
+  score:
+    displayName: Score
+  summary:
+    displayName: Summary
+views:
+  - type: table
+    name: "By area"
+    groupBy:
+      property: area
+      direction: ASC
+    order:
+      - file.name
+      - category
+      - score
+      - summary
+  - type: table
+    name: "By category"
+    groupBy:
+      property: category
+      direction: ASC
+    order:
+      - file.name
+      - area
+      - score
+      - summary

@@ -228,6 +228,53 @@ class EditTests(GuardFixture):
         self.assert_allowed(self.decide("Edit", {"file_path": str(src), "old_string": passage, "new_string": ""}))
 
 
+class UnderReviewTests(GuardFixture):
+    """A document with a pending `compass review` request is the human's until
+    the verdict; Obsidian would merge an agent's write into his open editor."""
+
+    def setUp(self):
+        super().setUp()
+        (self.vault / ".obsidian").mkdir()
+        self.doc = self.vault / "specs" / "SPEC-001-x.md"
+        self.doc.write_text("# X\n\nbody\n", encoding="utf-8")
+        self.other = self.vault / "specs" / "SPEC-002-y.md"
+        self.other.write_text("# Y\n", encoding="utf-8")
+        self.review_dir = self.vault / "tmp" / "review"
+        self.review_dir.mkdir(parents=True)
+        (self.review_dir / "r1.request.json").write_text(json.dumps(
+            {"id": "r1", "file": "specs/SPEC-001-x.md", "title": None, "return": True}), encoding="utf-8")
+
+    def test_write_to_the_reviewed_file_is_denied(self):
+        self.assert_denied(self.decide("Write", {"file_path": str(self.doc), "content": "# X\n\nbody\nmore\n"}),
+                           "under review", "r1")
+
+    def test_edit_and_multiedit_by_relative_path_are_denied(self):
+        rel = ".compass/specs/SPEC-001-x.md"
+        self.assert_denied(self.decide("Edit", {"file_path": rel, "old_string": "body", "new_string": "BODY"}), "r1")
+        self.assert_denied(self.decide("MultiEdit", {"file_path": rel, "edits": []}), "r1")
+
+    def test_answered_request_frees_the_file(self):
+        (self.review_dir / "r1.verdict.json").write_text("{}", encoding="utf-8")
+        self.assert_allowed(self.decide("Edit", {"file_path": str(self.doc), "old_string": "body", "new_string": "BODY"}))
+
+    def test_other_files_stay_open(self):
+        self.assert_allowed(self.decide("Edit", {"file_path": str(self.other), "old_string": "Y", "new_string": "Z"}))
+
+    def test_reading_and_bash_are_not_judged_by_review(self):
+        self.assert_allowed(self.bash(f"cat {self.doc}"))
+
+    def test_main_agent_write_to_reviewed_file_is_allowed(self):
+        sys.stdin = io.StringIO(json.dumps({
+            "hook_event_name": "PreToolUse", "tool_name": "Write",
+            "tool_input": {"file_path": str(self.doc), "content": "x"},
+        }))
+        self.addCleanup(setattr, sys, "stdin", sys.__stdin__)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = guard.run(["--hook"])
+        self.assertEqual((code, out.getvalue()), (0, ""))
+
+
 class HookContractTests(GuardFixture):
     def _run(self, payload):
         sys.stdin = io.StringIO(json.dumps(payload))
