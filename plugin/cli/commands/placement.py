@@ -219,6 +219,11 @@ def _candidate_rows(vault, subject):
         items = _evidence(vault, subject, record)
         if items:
             rows.append((record, items))
+    # A candidate whose only evidence is one shared word is listed only when
+    # no stronger candidate exists; beside one it is noise.
+    weak = [row for row in rows if len(row[1]) == 1 and row[1][0].startswith("shared term ")]
+    if len(weak) < len(rows):
+        rows = [row for row in rows if row not in weak]
     return _ranked(rows)
 
 

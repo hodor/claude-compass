@@ -81,6 +81,29 @@ class HintTokenTests(PlacementCase):
         self.assertIn("hint names it", row[0])
 
 
+class WeakEvidenceTests(PlacementCase):
+    def test_one_shared_word_is_dropped_beside_a_stronger_candidate(self):
+        """Adversarial where: a candidate whose only evidence is one common
+        word ("reading") is listed beside a candidate with a shared tag, and
+        the noise ranks as a parent the human must wade through."""
+        self.add(f"specs/{SUBJECT}.md", doc("Tide chart reading", tags=["oceanography"]))
+        self.add("specs/SPEC-030-strong.md", doc("Wave heights", tags=["oceanography"]))
+        self.add("specs/SPEC-031-weak.md", doc("Palm reading", tags=["unrelated"]))
+        code, out, err = self.run_placement([SUBJECT])
+        self.assertEqual(code, 0, err)
+        self.assertIn("[[SPEC-030-strong]]", out)
+        self.assertNotIn("SPEC-031-weak", out)
+
+    def test_one_shared_word_is_kept_when_nothing_stronger_exists(self):
+        """Adversarial where: the weak-evidence filter empties the report for
+        a subject whose only signal is a shared word."""
+        self.add(f"specs/{SUBJECT}.md", doc("Tide chart reading"))
+        self.add("specs/SPEC-031-weak.md", doc("Palm reading", tags=["unrelated"]))
+        code, out, err = self.run_placement([SUBJECT])
+        self.assertEqual(code, 0, err)
+        self.assertIn("[[SPEC-031-weak]]", out)
+
+
 class ResolutionTests(PlacementCase):
     def test_every_spelling_of_one_artifact_path_resolves_to_it(self):
         """Adversarial where: path normalisation handles `specs/X.md` but not
