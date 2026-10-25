@@ -13,7 +13,6 @@ Triggered by a live failure in another project: a vision session produced seven 
 
 ## Per-domain organization initiative
 
-- [ ] D-13 follow-up: grep across all indexes made the most obvious first move for agents (capability + rule nudge; folds into TASK-119's strategy work)
 - [ ] v0.15.0's premature skill/sync edits were reverted; index depth-0 rule stays (shipped); everything further waits on the plan.
 
 ## Research covers the whole spec (SPEC-023)
@@ -60,10 +59,18 @@ Plan: [[PLAN-021-control-loops]].
 
 Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
-- [x] TASK-165: ship the Compass Review plugin with a test harness - complexity: M, depends_on: none
 - [ ] TASK-166: `compass review <file>` sends a review and waits for the verdict - complexity: M, depends_on: none
 - [ ] TASK-167: guard denies agent writes to a file under review - complexity: S, depends_on: TASK-166
 - [ ] TASK-168: setup/update install the plugin; doctor walks the human through enabling it - complexity: M, depends_on: TASK-165
 - [ ] TASK-169: review inbox and lessons table as Bases - complexity: S, depends_on: none
 - [ ] TASK-178: (code done, awaits manual round trip) generic review core; Obsidian becomes its first surface - complexity: M, depends_on: TASK-166, TASK-167, TASK-168
 - [ ] TASK-170: experiment: does a verdict land while a question is open - complexity: S, depends_on: TASK-166
+
+## PLAN-023: taxonomy review at spec creation
+
+Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per task).
+
+- [ ] TASK-179: `compass placement` lists a spec's candidate parents, pairs and domains - complexity: M, depends_on: none
+- [ ] TASK-180: spec and specs run a taxonomy review and propose the deeper home - complexity: M, depends_on: none
+- [ ] TASK-181: refresh the install and bump the version - complexity: S, depends_on: TASK-179, TASK-180
+- [ ] TASK-182: run the review on this vault's pending hints - complexity: M, depends_on: TASK-181

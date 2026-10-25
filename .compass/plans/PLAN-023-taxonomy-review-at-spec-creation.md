@@ -1,12 +1,13 @@
 ---
 title: "Taxonomy Review at Spec Creation"
 type: plan
-status: draft
+status: approved
 confidence: medium
 area: methodology
 tags: [taxonomy, hierarchy, domains, spec-writing, placement]
 created: 2026-10-25
 updated: 2026-10-25
+approved: 2026-10-25
 git_branch: "master"
 git_commit: "7854356"
 author: "planner"

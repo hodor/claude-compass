@@ -316,3 +316,12 @@ Plan: [[PLAN-018-research-covers-the-whole-spec]] (approved 2026-09-13). Pause a
 Plan: [[PLAN-021-control-loops]].
 
 - [x] TASK-157: Ship 0.28.0 and run a loop live in a scratch project
+
+### PLAN-021 Wave 2: judge, schedule, ast-grep sensor, skill, release
+- [x] TASK-158: Judge sensors: an agent reading plain-language rules reports voted findings beside the deterministic sensor, advisory only - complexity: L, depends_on: none
+- [x] TASK-159: The schedule: `compass loop schedule` writes a GitHub Actions workflow that installs Compass with `compass self-update`, or prints the local-lane line - complexity: L, depends_on: none
+
+## 2026-10-25
+
+### PLAN-022: review documents in Obsidian
+- [x] TASK-165: ship the Compass Review plugin with a test harness - complexity: M, depends_on: none

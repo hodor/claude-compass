@@ -103,3 +103,11 @@ Old open items moved here to keep the hot path under its cap.
 
 - [ ] Review and approve all plugin files - 3/21 approved, paused since 2026-03-12; largely superseded by the per-file reviews every later plan performed.
 - [ ] Blocked: Fleet pushes outstanding from the v0.6.x waves: 7 projects have no git, 2 no remote, 1 has all Compass paths gitignored (private project 1), 4 were push-rejected behind their remotes (3 private project 2 checkouts + wt-spec056) and need a human pull/rebase call. private project 3's remote no longer exists.
+
+## PLAN-023 Later (intent only)
+
+Plan: [[PLAN-023-taxonomy-review-at-spec-creation]].
+
+- [ ] TASK-183: measure the change with a finder drill and a filer drill (SPEC-022 D-11)
+- [ ] D-13 follow-up (now TASK-184): grep across all indexes made the most obvious first move for agents (capability + rule nudge; folds into TASK-119's strategy work)
+- [ ] TASK-184: one capability that greps every index level, named in the session-start rule (SPEC-022 D-13)
