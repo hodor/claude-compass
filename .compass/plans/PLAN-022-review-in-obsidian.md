@@ -9,7 +9,7 @@ created: 2026-10-24
 updated: 2026-10-24
 approved: 2026-10-24
 depends_on: ["[[SPEC-030-review-documents-open-in-obsidian]]", "[[RESEARCH-review-in-obsidian]]"]
-summary: "ships the Compass Review Obsidian plugin and a `compass review` command that raises a document for review and waits for its verdict, installed and diagnosed by setup and doctor, guarded against agent writes while under review, with a review inbox and lessons table as Bases; the gate wiring waits on whether a background verdict can land while a question is open"
+summary: "the Compass Review Obsidian plugin, a `compass review` command, install, doctor and guard support; gate wiring follows an experiment"
 ---
 
 # Review Documents in Obsidian

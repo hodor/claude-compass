@@ -9,7 +9,7 @@ created: 2026-10-24
 updated: 2026-10-24
 author: "researcher"
 depends_on: ["[[SPEC-030-review-documents-open-in-obsidian]]"]
-summary: "a small Obsidian plugin raises the review document over whatever has focus, takes the verdict from Approve / Needs changes buttons, and minimizes to return the human; a waiting CLI process wakes the session on the verdict file - proven end to end on Windows; ranks seven Compass features for an Obsidian UI, led by a review inbox and a loop dashboard; macOS, Linux, WSL and non-Claude hosts untested"
+summary: "a small Obsidian plugin takes the verdict and returns the human; proven on Windows; ranks Compass features for an Obsidian UI"
 taxonomy_hint: "the human's review surface; sits beside SPEC-030 at the research root"
 ---
 

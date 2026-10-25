@@ -55,19 +55,14 @@ Plan: [[PLAN-021-control-loops]].
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].
 - [ ] [[SPEC-006-multi-host-agent-cli-support]] hosts: hermes first, then deepseek-harness (dsh; fit assessed in [[research/distribution/RESEARCH-deepseek-harness-fit]], 2026-09-04), then Kimi Code / Codex.
 - [ ] Blinded rerun of the test-bar experiment ([[LESSON-blind-the-author-in-self-validation]]).
-- [ ] Review and approve all plugin files - 3/21 approved, paused since 2026-03-12; largely superseded by the per-file reviews every later plan performed.
-
-## Blocked
-
-- Fleet pushes outstanding from the v0.6.x waves: 7 projects have no git, 2 no remote, 1 has all Compass paths gitignored (private project 1), 4 were push-rejected behind their remotes (3 private project 2 checkouts + wt-spec056) and need a human pull/rebase call. private project 3's remote no longer exists.
 
 ## PLAN-022: review documents in Obsidian
 
-Plan: [[PLAN-022-review-in-obsidian]]. Wave 1 ends when the human runs one real review through the shipped parts.
+Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
-- [ ] TASK-165: Ship the Compass Review plugin at `plugin/obsidian/compass-review/` from the prototype in `.compass/.obsidian/plugins/compass-review/`, with a Node test harness that stubs the `obsidian` module and drives the request, bar, verdict and step-aside paths - complexity: M, depends_on: none, files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/manifest.json, plugin/obsidian/compass-review/styles.css, plugin/obsidian/tests/test_main.js, plugin/cli/tests/test_obsidian_plugin.py]
-- [ ] TASK-166: `compass review <file> [--title T] [--timeout S] [--no-wait]` writes the request under the vault's `tmp/review/`, opens the `obsidian://compass-review` link, waits for the verdict, and prints the verdict JSON then the file as the human left it; exit 0 on a verdict, 1 on timeout, 2 when not configured; `compass review --status` prints pending requests - complexity: M, depends_on: none, files: [plugin/cli/commands/review.py, plugin/cli/reviewlib.py, plugin/cli/maincli.py, plugin/cli/tests/test_review.py]
-- [ ] TASK-167: `compass guard` denies a subagent's Write or Edit to a file that has a pending review request, naming the request and that the file is the human's until the verdict - complexity: S, depends_on: TASK-166, files: [plugin/cli/commands/guard.py, plugin/cli/tests/test_guard.py]
-- [ ] TASK-168: Setup and update copy the plugin into the vault's `.obsidian/plugins/compass-review/` when `.obsidian/` exists, add it to `community-plugins.json` without dropping other entries, and never create `.obsidian/`; doctor reports the plugin as absent, installed but off, or on, and when off prints the steps to turn it on (Settings, Community plugins, leave restricted mode, enable Compass Review) - complexity: M, depends_on: TASK-165, files: [plugin/skills/setup/SKILL.md, plugin/skills/update/SKILL.md, plugin/cli/commands/self_update.py, plugin/cli/commands/doctor.py, plugin/cli/tests/test_doctor.py, plugin/cli/tests/test_self_update.py]
-- [ ] TASK-169: Setup installs `.compass/review-inbox.base` (draft specs, draft plans, pending review requests) and `.compass/lessons.base` (lessons by area and category, sorted by score), each created only when absent - complexity: S, depends_on: none, files: [plugin/templates/vault/review-inbox.base, plugin/templates/vault/lessons.base, plugin/skills/setup/SKILL.md, plugin/cli/tests/test_vault_bases.py]
-- [ ] TASK-170: Experiment: with `compass review` running in the background and an `AskUserQuestion` open, the human approves in Obsidian; record whether the session acts on the verdict before the question is answered, and the shape gates take as a result - complexity: S, depends_on: TASK-166, files: [.compass/research/RESEARCH-review-in-obsidian.md]
+- [ ] TASK-165: ship the Compass Review plugin with a test harness - complexity: M, depends_on: none
+- [ ] TASK-166: `compass review <file>` sends a review and waits for the verdict - complexity: M, depends_on: none
+- [ ] TASK-167: guard denies agent writes to a file under review - complexity: S, depends_on: TASK-166
+- [ ] TASK-168: setup/update install the plugin; doctor walks the human through enabling it - complexity: M, depends_on: TASK-165
+- [ ] TASK-169: review inbox and lessons table as Bases - complexity: S, depends_on: none
+- [ ] TASK-170: experiment: does a verdict land while a question is open - complexity: S, depends_on: TASK-166

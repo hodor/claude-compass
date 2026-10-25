@@ -96,3 +96,10 @@ Plan: [[PLAN-022-review-in-obsidian]].
 - [ ] TASK-175: Consolidate's grouping proposal as a canvas the human rearranges and approves
 - [ ] TASK-176: Chat with Claude in Obsidian: answers appear there and choices (1, 2, 3, other) are picked there
 - [ ] TASK-177: Live runs on macOS, Linux (X11 and Wayland) and WSL; a blocking review under Codex and dsh
+
+## Parked from active.md (2026-10-24)
+
+Old open items moved here to keep the hot path under its cap.
+
+- [ ] Review and approve all plugin files - 3/21 approved, paused since 2026-03-12; largely superseded by the per-file reviews every later plan performed.
+- [ ] Blocked: Fleet pushes outstanding from the v0.6.x waves: 7 projects have no git, 2 no remote, 1 has all Compass paths gitignored (private project 1), 4 were push-rejected behind their remotes (3 private project 2 checkouts + wt-spec056) and need a human pull/rebase call. private project 3's remote no longer exists.
