@@ -1,3 +1,4 @@
+<!-- WARNING: hot path 5726 / 5000 tokens (index.md 3212, active.md 1824, lessons/index.md 690). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -59,6 +60,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-019-stop-at-80-percent-context]] - a PostToolUse hook measures the main session's context from its transcript and, once it reaches 80% of the window, halts after the current tool with a stopReason suggesting /compass:handoff; fires once per crossing so the handoff itself runs; Claude Code only
 - [[PLAN-020-clone-old-sessions]] - /compass:clone-old ranks the project's past sessions that finished a feature, reading Claude Code's own transcripts in place, and runs a headless non-persisted fork of each with autocompact off; every clone writes its lessons to a file as it goes, the skill aggregates them through lesson-write, kept clones live in a central folder outside every repository, and doctor and setup keep sessions alive through cleanupPeriodDays
 - [[PLAN-021-control-loops]] - A loop is a folder under .compass/loops/ run by `compass loop run` as an explicit state machine: each run reads its sensor, checks the caps, the budget it sums itself and the work-in-progress limit, sends the controller's pick to a headless actuator, re-reads the sensor to judge the change, and records everything; the fix loop learns to tell a helpful cycle from a harmful one; four experiments decide the judge sensor, rule drafting, CI scheduling and the guided /compass:loop skill
+- [[PLAN-022-review-in-obsidian]] - ships the Compass Review Obsidian plugin and a `compass review` command that raises a document for review and waits for its verdict, installed and diagnosed by setup and doctor, guarded against agent writes while under review, with a review inbox and lessons table as Bases; the gate wiring waits on whether a background verdict can land while a question is open
 
 ## Decisions
 

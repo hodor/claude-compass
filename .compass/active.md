@@ -45,8 +45,6 @@ Plan: [[PLAN-020-clone-old-sessions]].
 
 Plan: [[PLAN-021-control-loops]].
 
-- [x] TASK-158: Judge sensors: an agent reading plain-language rules reports voted findings beside the deterministic sensor, advisory only - complexity: L, depends_on: none
-- [x] TASK-159: The schedule: `compass loop schedule` writes a GitHub Actions workflow that installs Compass with `compass self-update`, or prints the local-lane line - complexity: L, depends_on: none
 - [ ] TASK-161: A code loop end to end: an ast-grep sensor adapter, then a loop that removes a bad pattern from a real repository the human names, run to its stop - complexity: L, depends_on: TASK-158, TASK-159
 - [ ] TASK-160: `/compass:loop`: guided creation through steps 0 to 7 - complexity: M, depends_on: TASK-158, TASK-159, TASK-161
 - [ ] TASK-162: The Maya recipe on the local lane, marked untested on this machine - complexity: S, depends_on: TASK-160
@@ -62,3 +60,14 @@ Plan: [[PLAN-021-control-loops]].
 ## Blocked
 
 - Fleet pushes outstanding from the v0.6.x waves: 7 projects have no git, 2 no remote, 1 has all Compass paths gitignored (private project 1), 4 were push-rejected behind their remotes (3 private project 2 checkouts + wt-spec056) and need a human pull/rebase call. private project 3's remote no longer exists.
+
+## PLAN-022: review documents in Obsidian
+
+Plan: [[PLAN-022-review-in-obsidian]]. Wave 1 ends when the human runs one real review through the shipped parts.
+
+- [ ] TASK-165: Ship the Compass Review plugin at `plugin/obsidian/compass-review/` from the prototype in `.compass/.obsidian/plugins/compass-review/`, with a Node test harness that stubs the `obsidian` module and drives the request, bar, verdict and step-aside paths - complexity: M, depends_on: none, files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/manifest.json, plugin/obsidian/compass-review/styles.css, plugin/obsidian/tests/test_main.js, plugin/cli/tests/test_obsidian_plugin.py]
+- [ ] TASK-166: `compass review <file> [--title T] [--timeout S] [--no-wait]` writes the request under the vault's `tmp/review/`, opens the `obsidian://compass-review` link, waits for the verdict, and prints the verdict JSON then the file as the human left it; exit 0 on a verdict, 1 on timeout, 2 when not configured; `compass review --status` prints pending requests - complexity: M, depends_on: none, files: [plugin/cli/commands/review.py, plugin/cli/reviewlib.py, plugin/cli/maincli.py, plugin/cli/tests/test_review.py]
+- [ ] TASK-167: `compass guard` denies a subagent's Write or Edit to a file that has a pending review request, naming the request and that the file is the human's until the verdict - complexity: S, depends_on: TASK-166, files: [plugin/cli/commands/guard.py, plugin/cli/tests/test_guard.py]
+- [ ] TASK-168: Setup and update copy the plugin into the vault's `.obsidian/plugins/compass-review/` when `.obsidian/` exists, add it to `community-plugins.json` without dropping other entries, and never create `.obsidian/`; doctor reports the plugin as absent, installed but off, or on, and when off prints the steps to turn it on (Settings, Community plugins, leave restricted mode, enable Compass Review) - complexity: M, depends_on: TASK-165, files: [plugin/skills/setup/SKILL.md, plugin/skills/update/SKILL.md, plugin/cli/commands/self_update.py, plugin/cli/commands/doctor.py, plugin/cli/tests/test_doctor.py, plugin/cli/tests/test_self_update.py]
+- [ ] TASK-169: Setup installs `.compass/review-inbox.base` (draft specs, draft plans, pending review requests) and `.compass/lessons.base` (lessons by area and category, sorted by score), each created only when absent - complexity: S, depends_on: none, files: [plugin/templates/vault/review-inbox.base, plugin/templates/vault/lessons.base, plugin/skills/setup/SKILL.md, plugin/cli/tests/test_vault_bases.py]
+- [ ] TASK-170: Experiment: with `compass review` running in the background and an `AskUserQuestion` open, the human approves in Obsidian; record whether the session acts on the verdict before the question is answered, and the shape gates take as a result - complexity: S, depends_on: TASK-166, files: [.compass/research/RESEARCH-review-in-obsidian.md]

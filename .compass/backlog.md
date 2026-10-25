@@ -22,6 +22,8 @@ Held under [[PLAN-009-sizing-mechanism]]'s `## Later` region. Promoted into a de
 
 - [ ] **Lesson-coverage parity** Question raised while approving unit-nested lessons: lessons surface at plan/build time by tag *search* (advisory, unverified), while ADR rulings are getting *coverage* (enumerable + mechanically audited) via [[SPEC-007-decision-coverage-tracing]]. Should high-score lessons matching a task's area get the same treatment - plan records which lessons were consulted, validator audits that none were skipped? Needs its own spec; interacts with the lessons catalog and the validator.
 
+- [ ] **Obsidian as the place to talk to Compass (2026-10-24).** "some good examples of things we could do in obsidian is a place to chat, answers from you there and the selection of things to do like 1, 2, 3, other etc." Follows [[SPEC-030-review-documents-open-in-obsidian]]; intent line TASK-176 in [[PLAN-022-review-in-obsidian]].
+
 ## Deferred specs (not current work)
 
 - [ ] **[[SPEC-009-configurable-pipeline-workflows]] (deferred, the human 2026-07-23).** Draft exists with D-01 (workflows configure cross-phase contracts, not just order) recorded. Deliberately NOT today's work: it ripples through every skill and must be reviewed against SPEC-007's coverage roles and the pipeline rules before any build. Pick up after the hierarchy work ([[SPEC-010-universal-hybrid-hierarchy]]) lands.
@@ -82,3 +84,15 @@ Held under [[PLAN-009-sizing-mechanism]]'s `## Later` region. Promoted into a de
 Plan: [[PLAN-021-control-loops]].
 
 - [ ] TASK-164: A harder judge corpus decides whether a judge reading may move the state machine: subtler violations among dense near-misses, longer files, rules without a crisp definition, and cross-file rules with thresholds of their own; on GATE, a judge reading may decide `done` and harmful
+
+## PLAN-022 Later (intent only)
+
+Plan: [[PLAN-022-review-in-obsidian]].
+
+- [ ] TASK-171: Wire `compass review` into the document gates of spec, plan and planner, research, vision, specs, build's manual verification and autopilot, plus one line in the pipeline rules, in the shape TASK-170 chose - files: [plugin/templates/rules/compass-pipeline.md, plugin/skills/spec/SKILL.md, plugin/skills/plan/SKILL.md, plugin/templates/agents/planner.md, plugin/skills/research/SKILL.md, plugin/skills/vision/SKILL.md, plugin/skills/specs/SKILL.md, plugin/skills/build/SKILL.md, plugin/skills/autopilot/SKILL.md]
+- [ ] TASK-172: Live acceptance: the human approves a real spec entirely from Obsidian while working in another app
+- [ ] TASK-173: Loop dashboard view with Accept / Reject per run calling `compass loop review`
+- [ ] TASK-174: Vault-health sidebar listing `validate` and `doctor` warnings with links
+- [ ] TASK-175: Consolidate's grouping proposal as a canvas the human rearranges and approves
+- [ ] TASK-176: Chat with Claude in Obsidian: answers appear there and choices (1, 2, 3, other) are picked there
+- [ ] TASK-177: Live runs on macOS, Linux (X11 and Wayland) and WSL; a blocking review under Codex and dsh
