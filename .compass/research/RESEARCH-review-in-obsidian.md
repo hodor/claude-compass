@@ -9,13 +9,13 @@ created: 2026-10-24
 updated: 2026-10-24
 author: "researcher"
 depends_on: ["[[SPEC-030-review-documents-open-in-obsidian]]"]
-summary: "a small Obsidian plugin raises the review document over whatever has focus, takes the verdict from Approve / Needs changes buttons, and minimizes to return the human; a waiting CLI process wakes the session on the verdict file - proven end to end on Windows, other platforms and multi-document reviews untested"
+summary: "a small Obsidian plugin raises the review document over whatever has focus, takes the verdict from Approve / Needs changes buttons, and minimizes to return the human; a waiting CLI process wakes the session on the verdict file - proven end to end on Windows; ranks seven Compass features for an Obsidian UI, led by a review inbox and a loop dashboard; macOS, Linux, WSL and non-Claude hosts untested"
 taxonomy_hint: "the human's review surface; sits beside SPEC-030 at the research root"
 ---
 
 # Reviewing Compass Documents in Obsidian
 
-Evidence for [[SPEC-030-review-documents-open-in-obsidian]]. The human's own question led: he types in Obsidian, presses a button when done, and the session takes the verdict and acts, returning him to whatever he was doing without visiting Claude Code.
+Evidence for [[SPEC-030-review-documents-open-in-obsidian]]. The human's own questions led: he types in Obsidian, presses a button when done, and the session takes the verdict and acts, returning him to whatever he was doing without visiting Claude Code; and which Compass features would make sense as a UI in Obsidian.
 
 Grading: **live** = run on this machine (Windows 11, Obsidian 1.13.7 installer, Claude Code CLI inside zellij 0.44.3 in Windows Terminal); **doc** = Obsidian's official help; **forum** = third-party writeups.
 
@@ -52,12 +52,52 @@ Every gate goes through `AskUserQuestion` (69 call sites across 23 skill and age
 
 `.compass/.obsidian/plugins/compass-review/` (main.js, manifest.json, styles.css) with a driver at the session's scratchpad (`review_request.py`). Protocol, all under the vault's `tmp/review/`: Compass writes `<id>.request.json` (`id`, `file`, `title`, `return`) and opens `obsidian://compass-review?vault=<id>&id=<id>`; the plugin raises its window (brief always-on-top), opens the file, and shows a bar with a notes box, Approve and Needs changes; a click saves the editor, writes `<id>.verdict.json` (`verdict: approved|changes`, `notes`, `at`), and steps aside. Pending requests found at startup get their bar without being raised. Run at 19:40:04, approved at 19:42:27 with the human's typed edit present in the file read back. Confidence: high (live).
 
+### 7. Compass features that would gain an Obsidian UI
+
+Ranked by how often the human meets the feature and how much a view beats terminal text. Use counts from `compass usage` since 2026-09-13.
+
+| Rank | Feature | UI | Built on | Why |
+|---|---|---|---|---|
+| 1 | Every document gate (spec, plan, research axes, vision list, manual verification items) | The review bar of finding 6, extended with per-item checkboxes for lists | The prototype | The human's most frequent decision point; the document is the thing decided on |
+| 2 | A review inbox: everything waiting on the human | A pinned note with an embedded base over `status: draft` specs, unapproved plans, pending `tmp/review/` requests | Bases (core) | Today the waiting set is scattered across `active.md` lines and frontmatter |
+| 3 | Control loops (`loop`, 120 uses) | A loop dashboard: state, last reading, spend against budget, unreviewed runs with Accept / Reject buttons calling `compass loop review` | Plugin view | Review of increments is a gate the human currently does by CLI |
+| 4 | Lessons (files with `category`, `area`, `tags`, `score`, `summary`) | A lessons table filtered by area and category | Bases, zero code | The frontmatter already carries every column |
+| 5 | Vault health (`validate`, `doctor`, 44 uses together) | A sidebar listing current warnings, each linking to its file | Plugin view | Warnings print in the terminal and are forgotten |
+| 6 | Consolidate's grouping proposal | A canvas: one group per proposed domain, members inside; the human moves cards, then approves | Canvas (core, JSON `.canvas`) | A proposal of moves is spatial; text diffs of moves are hard to read |
+| 7 | `active.md` tasks (18 open) | A board by section | Plugin view; Bases cannot, tasks are lines, not files | Useful, but `active.md` already reads well in Obsidian |
+
+Lesson capture stays out: it is invisible by design ([[specs/tooling/SPEC-018-scaffolding-invisible-to-the-human]]). Confidence: medium (code read and usage record; value is judgment).
+
+### 8. What Obsidian already provides
+
+- Bases, a core plugin: database views over notes and their properties (table, list, cards, kanban by a grouped property, map), filters and formulas, edits write back to the notes' properties, embeddable as a code block in any note. Confidence: high (doc).
+- Canvas: a core plugin storing nodes and groups as JSON, so Compass can write a proposal as a `.canvas` file and read the human's rearrangement back. Confidence: medium (doc knowledge; not run).
+- Meta Bind: buttons whose `updateMetadata` action writes a property; one more community install per user. Confidence: high (plugin docs).
+
+### 9. Prior art
+
+`coddingtonbear/obsidian-local-rest-api` (3.6.x) serves REST and an MCP server on `127.0.0.1:27124` with a bearer key: read and patch files down to a heading or frontmatter field, list and run Obsidian commands, and `POST /open/{path}` to open a file in the UI. It has no review or verdict concept; Compass's plugin needs only its own small protocol, and the REST plugin is the reference if Compass ever needs in-Obsidian reads or commands from the agent. Confidence: medium (README).
+
+### 10. Reviews that are not one file
+
+- `specs` batch ("Approve all / Review one by one / Approve some"): one request listing several files; the bar shows on each, with the batch verdict on a generated summary note. Confidence: low (design reading of `plugin/skills/specs/SKILL.md`).
+- `consolidate` proposal: written as a canvas (finding 7). Confidence: low.
+- A diff: Obsidian has no native diff view; the verdict note can embed the changed sections. Confidence: low.
+
+### 11. The human and an agent editing one file
+
+Obsidian merges an external change into an open note automatically when the editor holds unsaved edits from the last ~2 seconds, with the notice "has been modified externally, merging changes automatically"; users report lost and shuffled words, and there is no setting to turn it off. A file under review must have one writer: the agent does not write it until the verdict, which `compass guard` can enforce by denying writes to any file with a pending `tmp/review/` request. Confidence: medium (forum, several independent reports; not run).
+
+### 12. Other platforms and hosts
+
+- macOS: `app.hide()` returns focus to the previous app; `open obsidian://...` opens the link. Confidence: medium (Electron docs; untested).
+- Linux on Wayland: compositors refuse `focus()` without an xdg-activation token. A link opened through the desktop launcher starts a second instance, and Electron forwards that launch token to the running window, so raising through `obsidian://` may work where a plugin-initiated raise fails. The URI handler needs a hand-made `.desktop` entry. Confidence: low (Electron docs and issues; untested).
+- WSL: the CLI runs in Linux while Obsidian runs in Windows; the link opens through `cmd.exe /c start` or `wslview`, and the vault path converts between `/mnt/f/...` and `F:\...`. Confidence: low (untested).
+- Remote or headless sessions, where Obsidian is on another machine: no path found. Confidence: high that it does not work.
+- Codex and dsh have no background wake-up; a review there runs as a blocking foreground command, bounded by the host's tool timeout (Compass's own hook timeouts sit at 300 s in `plugin/cli/hostlib.py`). Confidence: low (reading; untested).
+
 ## Gaps
 
-These need another research pass before a plan:
-
-- macOS, Linux, WSL, and remote or headless sessions (Obsidian on another machine than the CLI).
-- Hosts other than Claude Code: Codex and dsh have no `run_in_background` wake-up.
-- Reviews that are not one file: the `specs` batch, the `consolidate` grouping proposal, a diff.
-- The human editing in Obsidian while an agent writes the same file.
-- Prior art: Obsidian Local REST API and MCP-server plugins.
+- Live runs on macOS, Linux (X11 and Wayland) and WSL.
+- The blocking-command wake-up under Codex and dsh, and its timeout.
+- The canvas round trip for a consolidate proposal.
