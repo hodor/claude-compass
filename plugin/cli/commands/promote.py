@@ -1,7 +1,10 @@
 """`compass promote <spec>` - flat spec to folder spec (mechanical half).
 
 Moves `specs/SPEC-NNN-name.md` to `specs/SPEC-NNN-name/index.md` via `git mv`
-(history preserved) and marks it a folder spec with `children_count: 0`.
+(history preserved) and marks it a folder spec with `children_count: 0`. A bare
+stem resolves a flat artifact at any depth, and a stem borne by more than one
+file is refused as ambiguous. The folder is created beside the original file,
+so a spec inside a domain stays in that domain.
 Inbound `[[SPEC-NNN-name]]` wikilinks keep resolving because the folder name
 equals the old stem, so no link rewrite is needed. Deciding to promote and
 authoring child specs stay with the agent.
@@ -23,14 +26,17 @@ from commands import sizing
 
 
 def _resolve(vault_root, target):
+    """Return the flat artifacts `target` names. A path resolves to at most
+    one file; a bare stem resolves to every flat artifact bearing it, under
+    any type dir (root or unit) at any depth, so the caller can refuse an
+    ambiguous stem."""
     if target.endswith(".md") or "/" in target:
         candidate = vault_root / target
-        return candidate if candidate.is_file() else None
-    for type_dir in vaultlib.discover_type_dirs(vault_root):
-        candidate = vault_root / type_dir / f"{target}.md"
-        if candidate.is_file():
-            return candidate
-    return None
+        return [candidate] if candidate.is_file() else []
+    return [
+        record["path"] for record in vaultlib.scan_artifacts(vault_root)
+        if record["kind"] in ("flat", "child") and record["path"].stem == target
+    ]
 
 
 def git_mv(repo, src, dest):
@@ -76,10 +82,18 @@ def run(args):
         return 1
 
     vault_root = vaultlib.find_vault_root()
-    path = _resolve(vault_root, positional[0])
-    if path is None:
+    matches = _resolve(vault_root, positional[0])
+    if not matches:
         sys.stderr.write(f"compass promote: spec not found: {positional[0]}\n")
         return 1
+    if len(matches) > 1:
+        listing = ", ".join(m.relative_to(vault_root).as_posix() for m in matches)
+        sys.stderr.write(
+            f"compass promote: ambiguous spec {positional[0]}: matches {listing}; "
+            "pass the vault-relative path, no changes made\n"
+        )
+        return 1
+    path = matches[0]
     if path.name == "index.md":
         sys.stderr.write("compass promote: already a folder spec\n")
         return 1
@@ -91,7 +105,7 @@ def run(args):
         sys.stdout.write(
             f"compass promote: would move {path.stem} (flat -> folder) "
             "(dry-run; pass --apply to write)\n"
-            f"  {path.relative_to(vault_root)} -> {dest.relative_to(vault_root)}\n"
+            f"  {path.relative_to(vault_root).as_posix()} -> {dest.relative_to(vault_root).as_posix()}\n"
         )
         return 0
 
@@ -115,7 +129,7 @@ def run(args):
 
     sys.stdout.write(
         f"promoted: {path.stem} (flat -> folder)\n"
-        f"  {path.relative_to(vault_root)} -> {dest.relative_to(vault_root)}\n"
+        f"  {path.relative_to(vault_root).as_posix()} -> {dest.relative_to(vault_root).as_posix()}\n"
         f"  children_count: 0\n"
     )
     return 0
