@@ -12,7 +12,7 @@ git_branch: master
 git_commit: 8082347
 author: planner
 depends_on: ["[[specs/pipeline/SPEC-026-control-theory-for-loops]]", "[[research/pipeline/RESEARCH-control-theory-for-loops]]"]
-summary: "A loop is a folder under .compass/loops/ run by `compass loop run` as an explicit state machine: each run reads its sensor, checks the caps, the budget it sums itself and the work-in-progress limit, sends the controller's pick to a headless actuator, re-reads the sensor to judge the change, and records everything; the fix loop learns to tell a helpful cycle from a harmful one; four experiments decide the judge sensor, rule drafting, CI scheduling and the guided /compass:loop skill"
+summary: "control loops under .compass/loops/: `compass loop run` drives sensor, controller and actuator as a state machine inside caps and budget, plus four experiments"
 ---
 
 # Control Loops as Vault Artifacts

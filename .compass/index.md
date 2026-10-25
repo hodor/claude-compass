@@ -1,3 +1,4 @@
+<!-- WARNING: hot path 5037 / 5000 tokens (index.md 3135, active.md 1212, lessons/index.md 690). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -57,9 +58,10 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-017-dsh-host-support]] - dsh is a native Compass host from the one canonical plugin source (v0.19-0.23): materializers, model routes, doctor, capture worker, global auto-installed bundle, and Wave 6 zero-decision (SPEC-006 D-05) - hosts detected never asked, dsh-first bootstrap via a second bridge mount, both-direction acceptance at 0 errors
 - [[PLAN-018-research-covers-the-whole-spec]] - rebuilds Compass's research surfaces so a run scopes to a whole spec instead of its question list, draws from a shipped list of sources whose access was tested, reads code instead of documentation, and reports when it needs another pass
 - [[PLAN-019-stop-at-80-percent-context]] - a PostToolUse hook measures the main session's context from its transcript and, once it reaches 80% of the window, halts after the current tool with a stopReason suggesting /compass:handoff; fires once per crossing so the handoff itself runs; Claude Code only
-- [[PLAN-020-clone-old-sessions]] - /compass:clone-old ranks the project's past sessions that finished a feature, reading Claude Code's own transcripts in place, and runs a headless non-persisted fork of each with autocompact off; every clone writes its lessons to a file as it goes, the skill aggregates them through lesson-write, kept clones live in a central folder outside every repository, and doctor and setup keep sessions alive through cleanupPeriodDays
-- [[PLAN-021-control-loops]] - A loop is a folder under .compass/loops/ run by `compass loop run` as an explicit state machine: each run reads its sensor, checks the caps, the budget it sums itself and the work-in-progress limit, sends the controller's pick to a headless actuator, re-reads the sensor to judge the change, and records everything; the fix loop learns to tell a helpful cycle from a harmful one; four experiments decide the judge sensor, rule drafting, CI scheduling and the guided /compass:loop skill
+- [[PLAN-020-clone-old-sessions]] - /compass:clone-old runs headless copies of past feature sessions, each writes its lessons, and the skill merges them through lesson-write
+- [[PLAN-021-control-loops]] - control loops under .compass/loops/: `compass loop run` drives sensor, controller and actuator as a state machine inside caps and budget, plus four experiments
 - [[PLAN-022-review-in-obsidian]] - the Compass Review Obsidian plugin, a `compass review` command, install, doctor and guard support; gate wiring follows an experiment
+- [[PLAN-023-taxonomy-review-at-spec-creation]] - a `compass placement` command shows a new spec its candidate parents and domains; spec and specs propose the deeper home; first run on this vault
 
 ## Decisions
 

@@ -12,7 +12,7 @@ git_branch: master
 git_commit: 38b1935
 author: planner
 depends_on: ["[[specs/learning/SPEC-022-clone-old-sessions]]", "[[research/learning/RESEARCH-clone-old-sessions]]"]
-summary: "/compass:clone-old ranks the project's past sessions that finished a feature, reading Claude Code's own transcripts in place, and runs a headless non-persisted fork of each with autocompact off; every clone writes its lessons to a file as it goes, the skill aggregates them through lesson-write, kept clones live in a central folder outside every repository, and doctor and setup keep sessions alive through cleanupPeriodDays"
+summary: "/compass:clone-old runs headless copies of past feature sessions, each writes its lessons, and the skill merges them through lesson-write"
 ---
 
 # Clone Old Sessions to Harvest Their Lessons
