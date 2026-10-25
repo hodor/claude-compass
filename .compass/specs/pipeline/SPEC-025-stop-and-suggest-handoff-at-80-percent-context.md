@@ -6,7 +6,6 @@ confidence: low
 area: methodology
 tags: [handoff, context-window, session-continuity, hooks]
 summary: "Compass automatically stops working and suggests a handoff when the session reaches 80% of context usage"
-taxonomy_hint: "session continuity has no domain of its own; could sit beside the handoff skill's specs if one forms"
 created: 2026-10-02
 updated: 2026-10-02
 approved: 2026-10-02

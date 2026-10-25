@@ -6,7 +6,6 @@ confidence: low
 area: methodology
 tags: [obsidian, review, human-gates]
 summary: "when configured, Compass always opens the thing the human should review in Obsidian instead of just asking"
-taxonomy_hint: "the human's review surface; sits beside SPEC-029 at the specs root"
 created: 2026-10-24
 updated: 2026-10-24
 approved: 2026-10-24

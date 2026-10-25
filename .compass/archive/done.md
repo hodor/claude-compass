@@ -332,3 +332,9 @@ Plan: [[PLAN-021-control-loops]].
 
 ### PLAN-023: taxonomy review at spec creation
 - [x] TASK-181: refresh the install and bump the version - complexity: S, depends_on: TASK-179, TASK-180
+
+### PLAN-023: taxonomy review at spec creation
+
+Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per task).
+
+- [x] TASK-182: run the review on this vault's pending hints - complexity: M, depends_on: TASK-181

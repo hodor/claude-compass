@@ -231,3 +231,11 @@ log:
     by: agent
     at: 2026-09-05
     volatile: []
+  - id: sz-2026-10-25-1
+    action: decision
+    shape: domain
+    subject: "specs/human-surface"
+    reason: "SPEC-029 and SPEC-030 pair on this subject (TASK-182, human approved)"
+    by: agent
+    at: 2026-10-25
+    volatile: []

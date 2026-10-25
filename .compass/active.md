@@ -65,9 +65,3 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 - [ ] TASK-169: review inbox and lessons table as Bases - complexity: S, depends_on: none
 - [ ] TASK-178: (code done, awaits manual round trip) generic review core; Obsidian becomes its first surface - complexity: M, depends_on: TASK-166, TASK-167, TASK-168
 - [ ] TASK-170: experiment: does a verdict land while a question is open - complexity: S, depends_on: TASK-166
-
-## PLAN-023: taxonomy review at spec creation
-
-Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per task).
-
-- [ ] TASK-182: run the review on this vault's pending hints - complexity: M, depends_on: TASK-181

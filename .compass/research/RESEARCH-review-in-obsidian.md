@@ -10,7 +10,6 @@ updated: 2026-10-24
 author: "researcher"
 depends_on: ["[[SPEC-030-review-documents-open-in-obsidian]]"]
 summary: "a small Obsidian plugin takes the verdict and returns the human; proven on Windows; ranks Compass features for an Obsidian UI"
-taxonomy_hint: "the human's review surface; sits beside SPEC-030 at the research root"
 ---
 
 # Reviewing Compass Documents in Obsidian
