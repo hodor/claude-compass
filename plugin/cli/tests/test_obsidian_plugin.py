@@ -25,13 +25,13 @@ class ObsidianPluginHarness(unittest.TestCase):
 
 
 class ShippedPluginFiles(unittest.TestCase):
-    def test_manifest_names_the_id_reviewlib_checks(self):
+    def test_manifest_names_the_id_the_obsidian_surface_checks(self):
         import json
         import sys
         sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-        import reviewlib
+        from review_surfaces import obsidian
         manifest = json.loads((PLUGIN_DIR / "compass-review" / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["id"], reviewlib.PLUGIN_ID)
+        self.assertEqual(manifest["id"], obsidian.PLUGIN_ID)
         self.assertTrue(manifest["isDesktopOnly"])
         for name in ("main.js", "manifest.json", "styles.css"):
             self.assertTrue((PLUGIN_DIR / "compass-review" / name).is_file(), name)

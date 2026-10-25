@@ -277,13 +277,13 @@ def _apply(src, project_root, apply_models):
     _copy_tree_best_effort(src / "cli", claude / "cli")
     if (src / "obsidian").is_dir():
         _copy_tree_best_effort(src / "obsidian", claude / "obsidian")
-        # Into the project's Obsidian vault, when Obsidian has opened one;
-        # best-effort, so an odd vault never fails the apply.
+        # Each review surface installs what it needs into the project, from
+        # the files just copied; best-effort, so an odd vault never fails the
+        # apply.
         try:
             import reviewlib
 
-            reviewlib.install_plugin(
-                Path(project_root) / ".compass", claude / "obsidian" / reviewlib.PLUGIN_ID)
+            reviewlib.install(Path(project_root) / ".compass", claude)
         except Exception:
             pass
     hooks_dir = claude / "hooks"

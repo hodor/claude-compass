@@ -1,11 +1,12 @@
 """`compass review <file> [--title T] [--timeout S] [--no-wait]` and
-`compass review --status` and `compass review --install` - put a document in front of the human in Obsidian
-and wait for the verdict.
+`compass review --status` and `compass review --install` - put a document in
+front of the human in a visual md interface and wait for the verdict.
 
-`review <file>` writes a request (see `reviewlib`), opens it in Obsidian
-through the Compass Review plugin, and waits. When the plugin writes the
-verdict, it prints the verdict JSON, then a `--- <file> as the human left it ---`
-line and the document's current text, so the caller reads the human's edits.
+`review <file>` writes a request (see `reviewlib`), delivers it to the first
+review surface configured for the document (see `review_surfaces`), and
+waits. When the surface writes the verdict, it prints the verdict JSON, then
+a `--- <file> as the human left it ---` line and the document's current
+text, so the caller reads the human's edits.
 
 The first stdout line is always one of:
   `requested <id> <file>`   the request went out
@@ -14,18 +15,18 @@ The first stdout line is always one of:
 `--no-wait` returns after the request line. `--timeout S` bounds the wait
 (default 4 hours) and prints `timeout <id>` when it runs out. `--status`
 prints one `pending <id> <file>` line per request still waiting.
-`--install` copies the shipped plugin into the Obsidian vault holding this
-project's `.compass` and lists it as enabled, printing one line saying what
-was done; Obsidian still asks the human to turn community plugins on.
+`--install` runs every surface's install, printing one `<surface>: <what was
+done>` line each. A surface may need a step only the human can take, such
+as turning community plugins on in Obsidian; `compass doctor` names it.
 
 Exit 0 on a verdict, on `--no-wait`, `--status` and `--install`; 1 when not
-configured, on timeout, or on a usage error; never 2.
+configured, on timeout, on a usage error, or when `--status` or `--install`
+finds no `.compass` vault; never 2.
 """
 
 import json
 import sys
 import time
-import urllib.parse
 from pathlib import Path
 
 import reviewlib
@@ -35,7 +36,8 @@ DEFAULT_TIMEOUT = 4 * 3600
 POLL_SECONDS = 0.5
 
 USAGE = ("usage: compass review <file> [--title T] [--timeout S] [--no-wait]\n"
-         "       compass review --status\n")
+         "       compass review --status\n"
+         "       compass review --install\n")
 
 
 def _parse(args):
@@ -121,14 +123,15 @@ def run(args):
         except FileNotFoundError:
             print("no .compass vault found")
             return 1
-        print(reviewlib.install_plugin(vault))
+        for line in reviewlib.install(vault):
+            print(line)
         return 0
 
     document = Path(opts["file"]).resolve()
     if not document.is_file():
         print(f"not configured: {opts['file']} is not a file")
         return 1
-    root, vid, reason = reviewlib.configuration(document)
+    surface, context, reason = reviewlib.choose(document)
     if reason:
         print(f"not configured: {reason}")
         return 1
@@ -139,10 +142,9 @@ def run(args):
         return 1
 
     request, request_path = reviewlib.write_request(
-        compass_vault, root, document, opts["title"], step_aside=not reviewlib.obsidian_has_focus())
-    rel_request = request_path.resolve().relative_to(root.resolve()).as_posix()
-    reviewlib.open_uri("obsidian://compass-review?" + urllib.parse.urlencode(
-        {"vault": vid, "request": rel_request}, quote_via=urllib.parse.quote))
+        compass_vault, surface.NAME, context["root"], document, opts["title"],
+        step_aside=not surface.has_focus())
+    surface.deliver(context, request_path)
     print(f"requested {request['id']} {request['file']}", flush=True)
     if not opts["wait"]:
         return 0

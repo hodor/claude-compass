@@ -30,6 +30,7 @@ from unittest import mock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import reviewlib  # noqa: E402
+from review_surfaces import obsidian as obsidian_surface  # noqa: E402
 
 
 class ReviewProject(unittest.TestCase):
@@ -46,8 +47,8 @@ class ReviewProject(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
         self.opened = []
-        for target, value in [("open_uri", self.opened.append), ("obsidian_has_focus", lambda: False)]:
-            p = mock.patch.object(reviewlib, target, value)
+        for target, value in [("open_uri", self.opened.append), ("has_focus", lambda: False)]:
+            p = mock.patch.object(obsidian_surface, target, value)
             p.start()
             self.addCleanup(p.stop)
 
@@ -57,10 +58,10 @@ class ReviewProject(unittest.TestCase):
         vaults = {"abc123": {"path": str(self.vault)}} if listed else {"zzz": {"path": str(self.tmp / "other")}}
         self.config.write_text(json.dumps({"vaults": vaults}), encoding="utf-8")
         if plugin in ("on", "off"):
-            d = obsidian / "plugins" / reviewlib.PLUGIN_ID
+            d = obsidian / "plugins" / obsidian_surface.PLUGIN_ID
             d.mkdir(parents=True, exist_ok=True)
             (d / "main.js").write_text("//", encoding="utf-8")
-            enabled = ["other-plugin"] + ([reviewlib.PLUGIN_ID] if plugin == "on" else [])
+            enabled = ["other-plugin"] + ([obsidian_surface.PLUGIN_ID] if plugin == "on" else [])
             (obsidian / "community-plugins.json").write_text(json.dumps(enabled), encoding="utf-8")
 
     def review(self, *args):
@@ -119,7 +120,7 @@ class Configuration(ReviewProject):
 
     def test_plugin_absent(self):
         self.configure(plugin="absent")
-        self.assertEqual(reviewlib.plugin_state(self.vault), "absent")
+        self.assertEqual(obsidian_surface.plugin_state(self.vault), "absent")
 
     def test_corrupt_vault_list_reads_as_unlisted(self):
         self.configure()
@@ -132,7 +133,7 @@ class Configuration(ReviewProject):
         self.configure()
         alt = str(self.vault).upper() if sys.platform == "win32" else str(self.vault) + os.sep
         self.config.write_text(json.dumps({"vaults": {"v9": {"path": alt}}}), encoding="utf-8")
-        self.assertEqual(reviewlib.vault_id(self.vault), "v9")
+        self.assertEqual(obsidian_surface.vault_id(self.vault), "v9")
 
     def test_missing_file(self):
         self.configure()
@@ -150,14 +151,14 @@ class Request(ReviewProject):
         self.assertEqual(first[0], "requested")
         self.assertEqual(first[2], "specs/SPEC-001-x.md")
         request = json.loads((reviewlib.review_dir(self.vault) / f"{first[1]}.request.json").read_text())
-        self.assertEqual(request, {"id": first[1], "file": "specs/SPEC-001-x.md", "title": "Spec one", "return": True})
+        self.assertEqual(request, {"id": first[1], "surface": "obsidian", "file": "specs/SPEC-001-x.md", "title": "Spec one", "return": True})
         self.assertEqual(len(self.opened), 1)
         self.assertTrue(self.opened[0].startswith("obsidian://compass-review?vault=abc123&request="))
         self.assertIn("tmp%2Freview%2F" + first[1] + ".request.json", self.opened[0])
 
     def test_focus_in_obsidian_means_no_step_aside(self):
         self.configure()
-        with mock.patch.object(reviewlib, "obsidian_has_focus", lambda: True):
+        with mock.patch.object(obsidian_surface, "has_focus", lambda: True):
             code, out, _ = self.review(str(self.doc), "--no-wait")
         rid = out.split()[1]
         request = json.loads((reviewlib.review_dir(self.vault) / f"{rid}.request.json").read_text())
@@ -224,9 +225,9 @@ class StatusAndPending(ReviewProject):
         self.review(str(self.doc), "--no-wait")
         other = self.vault / "specs" / "SPEC-002-y.md"
         other.write_text("y", encoding="utf-8")
-        self.assertIsNotNone(reviewlib.under_review(self.vault, self.vault, self.doc))
-        self.assertIsNone(reviewlib.under_review(self.vault, self.vault, other))
-        self.assertIsNone(reviewlib.under_review(self.vault, self.vault, self.tmp / "outside.md"))
+        self.assertIsNotNone(reviewlib.under_review(self.vault, self.doc))
+        self.assertIsNone(reviewlib.under_review(self.vault, other))
+        self.assertIsNone(reviewlib.under_review(self.vault, self.tmp / "outside.md"))
 
 
 class Install(ReviewProject):
@@ -234,11 +235,11 @@ class Install(ReviewProject):
         super().setUp()
         self.src = self.tmp / "shipped"
         self.src.mkdir()
-        for name in reviewlib.PLUGIN_FILES:
+        for name in obsidian_surface.PLUGIN_FILES:
             (self.src / name).write_text(f"// {name}", encoding="utf-8")
 
     def test_no_obsidian_folder_is_left_alone(self):
-        msg = reviewlib.install_plugin(self.vault, self.src)
+        msg = obsidian_surface.install_plugin(self.vault, self.src)
         self.assertTrue(msg.startswith("skipped"), msg)
         self.assertFalse((self.vault / ".obsidian").exists())
         self.assertFalse((self.tmp / ".obsidian").exists())
@@ -248,7 +249,7 @@ class Install(ReviewProject):
         project = outer / "proj"
         (project / ".compass").mkdir(parents=True)
         (outer / ".obsidian").mkdir()
-        msg = reviewlib.install_plugin(project / ".compass", self.src)
+        msg = obsidian_surface.install_plugin(project / ".compass", self.src)
         self.assertTrue(msg.startswith("skipped"), msg)
         self.assertFalse((outer / ".obsidian" / "plugins").exists())
 
@@ -256,33 +257,33 @@ class Install(ReviewProject):
         obsidian = self.vault / ".obsidian"
         obsidian.mkdir()
         (obsidian / "community-plugins.json").write_text('["dataview", "kanban"]', encoding="utf-8")
-        msg = reviewlib.install_plugin(self.vault, self.src)
+        msg = obsidian_surface.install_plugin(self.vault, self.src)
         self.assertTrue(msg.startswith("installed"), msg)
         self.assertEqual(json.loads((obsidian / "community-plugins.json").read_text()),
-                         ["dataview", "kanban", reviewlib.PLUGIN_ID])
-        for name in reviewlib.PLUGIN_FILES:
-            self.assertEqual((obsidian / "plugins" / reviewlib.PLUGIN_ID / name).read_text(), f"// {name}")
-        reviewlib.install_plugin(self.vault, self.src)
-        self.assertEqual(json.loads((obsidian / "community-plugins.json").read_text()).count(reviewlib.PLUGIN_ID), 1)
+                         ["dataview", "kanban", obsidian_surface.PLUGIN_ID])
+        for name in obsidian_surface.PLUGIN_FILES:
+            self.assertEqual((obsidian / "plugins" / obsidian_surface.PLUGIN_ID / name).read_text(), f"// {name}")
+        obsidian_surface.install_plugin(self.vault, self.src)
+        self.assertEqual(json.loads((obsidian / "community-plugins.json").read_text()).count(obsidian_surface.PLUGIN_ID), 1)
 
     def test_project_root_vault_is_used_when_compass_has_none(self):
         (self.tmp / ".obsidian").mkdir()
-        reviewlib.install_plugin(self.vault, self.src)
-        self.assertTrue((self.tmp / ".obsidian" / "plugins" / reviewlib.PLUGIN_ID / "main.js").is_file())
-        self.assertEqual(json.loads((self.tmp / ".obsidian" / "community-plugins.json").read_text()), [reviewlib.PLUGIN_ID])
+        obsidian_surface.install_plugin(self.vault, self.src)
+        self.assertTrue((self.tmp / ".obsidian" / "plugins" / obsidian_surface.PLUGIN_ID / "main.js").is_file())
+        self.assertEqual(json.loads((self.tmp / ".obsidian" / "community-plugins.json").read_text()), [obsidian_surface.PLUGIN_ID])
 
     def test_unparseable_list_is_left_untouched(self):
         obsidian = self.vault / ".obsidian"
         obsidian.mkdir()
         (obsidian / "community-plugins.json").write_text("{oops", encoding="utf-8")
-        msg = reviewlib.install_plugin(self.vault, self.src)
+        msg = obsidian_surface.install_plugin(self.vault, self.src)
         self.assertIn("does not parse", msg)
         self.assertEqual((obsidian / "community-plugins.json").read_text(), "{oops")
 
     def test_missing_shipped_files_installs_nothing(self):
         (self.vault / ".obsidian").mkdir()
         (self.src / "main.js").unlink()
-        msg = reviewlib.install_plugin(self.vault, self.src)
+        msg = obsidian_surface.install_plugin(self.vault, self.src)
         self.assertIn("missing", msg)
         self.assertFalse((self.vault / ".obsidian" / "plugins").exists())
 
@@ -290,25 +291,25 @@ class Install(ReviewProject):
         (self.vault / ".obsidian").mkdir()
         bases = self.tmp / "bases"
         bases.mkdir()
-        for name in reviewlib.BASE_FILES:
+        for name in obsidian_surface.BASE_FILES:
             (bases / name).write_text(f"shipped {name}", encoding="utf-8")
         (self.vault / "lessons.base").write_text("mine", encoding="utf-8")
-        msg = reviewlib.install_plugin(self.vault, self.src, bases)
+        msg = obsidian_surface.install_plugin(self.vault, self.src, bases)
         self.assertIn("added review-inbox.base", msg)
         self.assertNotIn("lessons.base", msg)
         self.assertEqual((self.vault / "lessons.base").read_text(), "mine")
         self.assertEqual((self.vault / "review-inbox.base").read_text(), "shipped review-inbox.base")
-        self.assertNotIn("added", reviewlib.install_plugin(self.vault, self.src, bases))
+        self.assertNotIn("added", obsidian_surface.install_plugin(self.vault, self.src, bases))
 
     def test_bases_go_to_compass_even_when_the_vault_is_the_project(self):
         (self.tmp / ".obsidian").mkdir()
-        reviewlib.install_plugin(self.vault, self.src, reviewlib.shipped_bases_dir())
-        for name in reviewlib.BASE_FILES:
+        obsidian_surface.install_plugin(self.vault, self.src, obsidian_surface.shipped_bases_dir())
+        for name in obsidian_surface.BASE_FILES:
             self.assertTrue((self.vault / name).is_file(), name)
             self.assertFalse((self.tmp / name).exists(), name)
 
     def test_shipped_plugin_dir_resolves_in_the_source_tree(self):
-        self.assertTrue((reviewlib.shipped_plugin_dir() / "main.js").is_file())
+        self.assertTrue((obsidian_surface.shipped_plugin_dir() / "main.js").is_file())
 
 
 class Usage(ReviewProject):

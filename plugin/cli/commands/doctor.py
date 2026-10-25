@@ -575,30 +575,12 @@ def _retention_check():
     return Check("session retention", OK, f"cleanupPeriodDays is {days} ({label} settings)")
 
 
-def _obsidian_review_check(vault_root):
-    """Row for reviewing in Obsidian. A project with no Obsidian vault is OK
-    (it reviews in the terminal); a plugin that is absent or off WARNs with
-    the fix; a plugin listed as on is OK, naming restricted mode, which
-    Obsidian keeps outside the vault's files."""
+def _review_surface_checks(vault_root):
+    """One `<surface> review` row per review surface (see `review_surfaces`)."""
     import reviewlib
 
-    root = reviewlib.find_obsidian_vault(vault_root)
-    if root is None:
-        return Check("obsidian review", OK, "no Obsidian vault; reviews happen in the terminal")
-    state = reviewlib.plugin_state(root)
-    listed = reviewlib.vault_id(root) is not None
-    where = "" if listed else "; Obsidian does not list this vault yet, open it once in Obsidian"
-    if state == "absent":
-        return Check("obsidian review", WARN, f"Compass Review is not installed in {root}{where}",
-                     "run `compass review --install`, then " + reviewlib.ENABLE_STEPS)
-    if state == "off":
-        return Check("obsidian review", WARN, f"Compass Review is installed but off in {root}{where}",
-                     reviewlib.ENABLE_STEPS)
-    if not listed:
-        return Check("obsidian review", WARN, f"Compass Review is on in {root}{where}",
-                     "open this vault once in Obsidian")
-    return Check("obsidian review", OK,
-                 "Compass Review is on; if no review bar appears, " + reviewlib.ENABLE_STEPS)
+    return [Check(f"{name} review", status, detail, fix)
+            for name, status, detail, fix in reviewlib.doctor_rows(vault_root)]
 
 
 def _run_checks():
@@ -625,7 +607,7 @@ def _run_checks():
     checks.append(_overlay_check(vault_root))
     checks.append(_worker_ledger_check(vault_root))
     checks.append(_retention_check())
-    checks.append(_obsidian_review_check(vault_root))
+    checks.extend(_review_surface_checks(vault_root))
     checks.extend(_host_checks(vault_root, project_root))
     return checks
 

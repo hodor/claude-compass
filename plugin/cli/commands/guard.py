@@ -350,14 +350,12 @@ def _review_reason(tool_input, project_root):
     path = Path(file_path)
     if not path.is_absolute():
         path = Path(project_root) / path
-    obsidian_root = reviewlib.find_obsidian_vault(path)
-    if obsidian_root is None:
-        return None
-    request = reviewlib.under_review(compass_vault, obsidian_root, path)
+    request = reviewlib.under_review(compass_vault, path)
     if request is None:
         return None
+    where = f" in {request['surface']}" if isinstance(request.get("surface"), str) else ""
     return (
-        f"compass guard: {_posix(path)} is under review in Obsidian (request "
+        f"compass guard: {_posix(path)} is under review{where} (request "
         f"{request.get('id')}); the human owns it until the verdict. Wait for "
         f"`compass review` to return, then edit."
     )

@@ -185,6 +185,17 @@ test("startup scan picks up unanswered requests without raising, and skips answe
   assert.equal(win.focused, 0);
 });
 
+test("startup scan leaves a request addressed to another surface alone", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x", "b.md": "y",
+    "tmp/review/10.request.json": req("10", "a.md", { surface: "vscode" }),
+    "tmp/review/11.request.json": req("11", "b.md", { surface: "obsidian" }),
+  });
+  await app.workspace.ready();
+  await new Promise((r) => setImmediate(r));
+  assert.deepEqual([...plugin.pending.keys()], ["11"]);
+});
+
 test("verdictPathFor swaps only the suffix", () => {
   assert.equal(CompassReview.verdictPathFor("x.request.json/tmp/review/1.request.json"), "x.request.json/tmp/review/1.verdict.json");
 });

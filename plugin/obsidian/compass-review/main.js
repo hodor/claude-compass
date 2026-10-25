@@ -3,13 +3,14 @@
 //
 // Protocol (paths relative to the Obsidian vault root, forward slashes):
 //   <dir>/<id>.request.json   written by Compass:
-//     {"id", "file", "title"?, "return": bool}
+//     {"id", "surface"?, "file", "title"?, "return": bool}
 //   obsidian://compass-review?vault=<vault id>&request=<dir>/<id>.request.json
 //   <dir>/<id>.verdict.json   written here when a button is clicked:
 //     {"id", "file", "verdict": "approved"|"changes", "notes", "at"}
 // <dir> is the Compass vault's tmp/review folder: `tmp/review` when the
 // Obsidian vault is the Compass vault, `.compass/tmp/review` when the
-// Obsidian vault is the project around it.
+// Obsidian vault is the project around it. Other review surfaces share the
+// folder; a request whose `surface` names another one is theirs.
 //
 // A request raises the Obsidian window above whatever has focus and opens the
 // file with a review bar on top. A click saves the editor, writes the verdict,
@@ -19,6 +20,7 @@
 const { Plugin, Notice, MarkdownView } = require("obsidian");
 
 const REVIEW_DIRS = ["tmp/review", ".compass/tmp/review"];
+const SURFACE = "obsidian";
 
 function electronRemote() {
   const electron = require("electron");
@@ -69,7 +71,9 @@ class CompassReview extends Plugin {
         if (!path.endsWith(".request.json")) continue;
         if (await adapter.exists(verdictPathFor(path))) continue;
         try {
-          this.track(await this.readRequest(path), path);
+          const request = await this.readRequest(path);
+          if (request.surface && request.surface !== SURFACE) continue;
+          this.track(request, path);
         } catch (e) {
           console.error("[compass-review] skipped", path, e);
         }

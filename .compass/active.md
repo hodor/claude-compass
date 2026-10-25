@@ -65,5 +65,5 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 - [ ] TASK-167: guard denies agent writes to a file under review - complexity: S, depends_on: TASK-166
 - [ ] TASK-168: setup/update install the plugin; doctor walks the human through enabling it - complexity: M, depends_on: TASK-165
 - [ ] TASK-169: review inbox and lessons table as Bases - complexity: S, depends_on: none
-- [ ] TASK-178: generic review core; Obsidian becomes its first surface - complexity: M, depends_on: TASK-166, TASK-167, TASK-168
+- [ ] TASK-178: (code done, awaits manual round trip) generic review core; Obsidian becomes its first surface - complexity: M, depends_on: TASK-166, TASK-167, TASK-168
 - [ ] TASK-170: experiment: does a verdict land while a question is open - complexity: S, depends_on: TASK-166
