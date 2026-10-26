@@ -59,8 +59,5 @@ Plan: [[PLAN-021-control-loops]].
 
 Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
-- [ ] TASK-185: the review bar follows the human through links and embeds; notes on other files - complexity: M, depends_on: none
-- [ ] TASK-186: `compass review` prints comments and edits; `--cancel` withdraws a request - complexity: S, depends_on: none
-- [ ] TASK-171: document gates go through review and ask nothing in the terminal - complexity: M, depends_on: TASK-186
 - [ ] TASK-168: setup/update install the plugin; doctor walks the human through enabling it - complexity: M, depends_on: TASK-165
 - [ ] TASK-169: review inbox and lessons table as Bases - complexity: S, depends_on: none

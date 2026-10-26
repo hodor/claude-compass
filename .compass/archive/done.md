@@ -346,3 +346,8 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 
 ### PLAN-022: review documents in Obsidian
 - [x] TASK-170: experiment: does a verdict land while a question is open - complexity: S, depends_on: TASK-166
+
+### PLAN-022: review documents in Obsidian
+- [x] TASK-185: the review bar follows the human through links and embeds; notes on other files - complexity: M, depends_on: none
+- [x] TASK-186: `compass review` prints comments and edits; `--cancel` withdraws a request - complexity: S, depends_on: none
+- [x] TASK-171: document gates go through review and ask nothing in the terminal - complexity: M, depends_on: TASK-186
