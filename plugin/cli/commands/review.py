@@ -1,12 +1,15 @@
 """`compass review <file> [--title T] [--timeout S] [--no-wait]` and
-`compass review --status` and `compass review --install` - put a document in
-front of the human in a visual md interface and wait for the verdict.
+`compass review --status`, `compass review --cancel <id>` and
+`compass review --install` - put a document in front of the human in a visual
+md interface and wait for the verdict.
 
 `review <file>` writes a request (see `reviewlib`), delivers it to the first
 review surface configured for the document (see `review_surfaces`), and
 waits. When the surface writes the verdict, it prints the verdict JSON, then
-a `--- <file> as the human left it ---` line and the document's current
-text, so the caller reads the human's edits.
+one `comment <file>: <note>` line per note the human left on another file,
+one `edited <file>` line per other file the human changed, a
+`--- <file> as the human left it ---` line and the document's current text,
+so the caller reads the human's notes and edits.
 
 The first stdout line is always one of:
   `requested <id> <file>`   the request went out
@@ -15,13 +18,17 @@ The first stdout line is always one of:
 `--no-wait` returns after the request line. `--timeout S` bounds the wait
 (default 4 hours) and prints `timeout <id>` when it runs out. `--status`
 prints one `pending <id> <file>` line per request still waiting.
+`--cancel <id>` withdraws that pending request (removes its request file),
+which ends its waiter with `withdrawn <id>` and clears the review in the
+surface; an id that is not pending prints a message on stderr.
 `--install` runs every surface's install, printing one `<surface>: <what was
 done>` line each. A surface may need a step only the human can take, such
 as turning community plugins on in Obsidian; `compass doctor` names it.
 
-Exit 0 on a verdict, on `--no-wait`, `--status` and `--install`; 1 when not
-configured, on timeout, on a usage error, or when `--status` or `--install`
-finds no `.compass` vault; never 2.
+Exit 0 on a verdict, on `--no-wait`, `--status`, `--cancel` and `--install`;
+1 when not configured, on timeout, on a withdrawn request, on a usage error,
+on a `--cancel` of an id that is not pending, or when `--status`, `--cancel`
+or `--install` finds no `.compass` vault; never 2.
 """
 
 import json
@@ -37,12 +44,13 @@ POLL_SECONDS = 0.5
 
 USAGE = ("usage: compass review <file> [--title T] [--timeout S] [--no-wait]\n"
          "       compass review --status\n"
+         "       compass review --cancel <id>\n"
          "       compass review --install\n")
 
 
 def _parse(args):
     opts = {"file": None, "title": None, "timeout": DEFAULT_TIMEOUT, "wait": True,
-            "status": False, "install": False}
+            "status": False, "install": False, "cancel": None}
     i = 0
     while i < len(args):
         arg = args[i]
@@ -50,6 +58,11 @@ def _parse(args):
             opts["status"] = True
         elif arg == "--install":
             opts["install"] = True
+        elif arg == "--cancel":
+            if i + 1 >= len(args):
+                raise ValueError("--cancel needs a request id")
+            i += 1
+            opts["cancel"] = args[i]
         elif arg == "--no-wait":
             opts["wait"] = False
         elif arg in ("--title", "--timeout"):
@@ -72,9 +85,10 @@ def _parse(args):
         else:
             raise ValueError(f"one file per review, got a second: {arg}")
         i += 1
-    if opts["status"] and opts["install"]:
-        raise ValueError("--status and --install are separate runs")
-    if not (opts["status"] or opts["install"]) and opts["file"] is None:
+    modes = [opts["status"], opts["install"], opts["cancel"] is not None]
+    if sum(modes) > 1:
+        raise ValueError("--status, --cancel and --install are separate runs")
+    if not any(modes) and opts["file"] is None:
         raise ValueError("name the file to review")
     return opts
 
@@ -90,6 +104,30 @@ def _status():
     return 0
 
 
+def _cancel(request_id):
+    try:
+        vault = vaultlib.find_vault_root()
+    except FileNotFoundError:
+        sys.stderr.write("compass review: no .compass vault found\n")
+        return 1
+    if not reviewlib.cancel(vault, request_id):
+        sys.stderr.write(f"compass review: no pending review with id {request_id!r}\n")
+        return 1
+    return 0
+
+
+def _one_line(text):
+    return " ".join(str(text).split())
+
+
+def _print_carried(verdict):
+    for comment in verdict.get("comments", []):
+        if isinstance(comment, dict):
+            print(f"comment {_one_line(comment.get('file', ''))}: {_one_line(comment.get('note', ''))}")
+    for path in verdict.get("edited", []):
+        print(f"edited {_one_line(path)}")
+
+
 def _wait(request, request_path, document, timeout):
     target = reviewlib.verdict_path(request_path)
     deadline = time.monotonic() + timeout
@@ -98,12 +136,16 @@ def _wait(request, request_path, document, timeout):
             verdict = reviewlib.read_json(target)
             if reviewlib.valid_verdict(verdict, request):
                 print(json.dumps(verdict, indent=2))
+                _print_carried(verdict)
                 print(f"--- {request['file']} as the human left it ---")
                 try:
                     print(Path(document).read_text(encoding="utf-8"), end="")
                 except OSError as exc:
                     print(f"(the document can no longer be read: {exc})")
                 return 0
+        if not Path(request_path).exists():
+            print(f"withdrawn {request['id']}")
+            return 1
         time.sleep(POLL_SECONDS)
     print(f"timeout {request['id']}")
     return 1
@@ -117,6 +159,8 @@ def run(args):
         return 1
     if opts["status"]:
         return _status()
+    if opts["cancel"] is not None:
+        return _cancel(opts["cancel"])
     if opts["install"]:
         try:
             vault = vaultlib.find_vault_root()
