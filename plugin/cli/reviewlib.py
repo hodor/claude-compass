@@ -9,10 +9,15 @@ A review is two JSON files in the Compass vault's `tmp/review/`:
   surface to step aside after the verdict, set when it did not have focus
   as the request was made.
 - `<id>.verdict.json`, written by the surface on the human's answer:
-  `{"id", "file", "verdict": "approved"|"changes", "notes", "at"}`.
+  `{"id", "file", "verdict": "approved"|"changes", "notes", "at"}`, plus
+  two optional lists: `comments`, `{"file", "note"}` entries for notes the
+  human left on other files while reviewing, and `edited`, the paths of
+  other files the human changed.
 
 A request with no verdict is pending; while it is pending the document
-belongs to the human. The surfaces themselves live in `review_surfaces`.
+belongs to the human. Removing a pending request's file withdraws it: its
+waiter ends and the surface drops the review. The surfaces themselves live
+in `review_surfaces`.
 """
 
 import json
@@ -25,6 +30,7 @@ import review_surfaces
 
 REVIEW_DIR = ("tmp", "review")
 VERDICTS = ("approved", "changes")
+CARRIED_LISTS = ("comments", "edited")
 
 
 def choose(document):
@@ -82,11 +88,12 @@ def valid_verdict(verdict, request):
         isinstance(verdict, dict)
         and verdict.get("id") == request["id"]
         and verdict.get("verdict") in VERDICTS
+        and all(isinstance(verdict.get(key, []), list) for key in CARRIED_LISTS)
     )
 
 
-def pending(compass_vault):
-    """Every request in the vault with no verdict file, oldest first."""
+def _pending_entries(compass_vault):
+    """`(path, request)` for every request file with no verdict, oldest first."""
     directory = review_dir(compass_vault)
     if not directory.is_dir():
         return []
@@ -95,8 +102,26 @@ def pending(compass_vault):
         request = read_json(path)
         if request is None or verdict_path(path).exists():
             continue
-        out.append(request)
+        out.append((path, request))
     return out
+
+
+def pending(compass_vault):
+    """Every request in the vault with no verdict file, oldest first."""
+    return [request for _, request in _pending_entries(compass_vault)]
+
+
+def cancel(compass_vault, request_id):
+    """Withdraw the pending request whose id is exactly `request_id` by
+    removing its request file; True when one was withdrawn."""
+    for path, request in _pending_entries(compass_vault):
+        if request_id and request.get("id") == request_id:
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                return False
+            return True
+    return False
 
 
 def _same_path(a, b):
