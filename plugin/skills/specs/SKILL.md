@@ -82,7 +82,7 @@ N specs drafted (all status: draft):
 ...
 ```
 
-Then ask through `AskUserQuestion`, exactly one question per call: "How do you want to review these specs?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+When a review surface is configured, each drafted spec is reviewed one by one, in order, through the review rule in the pipeline rules (`compass review <spec file> --title "Approve this spec?"`) and nothing is asked here. Otherwise ask through `AskUserQuestion`, exactly one question per call: "How do you want to review these specs?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
 
 - **Approve all (Recommended):** marks every spec approved.
 - **Review one by one:** each spec is shown and approved on its own.

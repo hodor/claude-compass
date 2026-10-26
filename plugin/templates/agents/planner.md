@@ -123,7 +123,7 @@ Here is the proposed plan based on [source specs/research]:
 
 ```
 
-You run as a subagent and cannot call `AskUserQuestion`. Stop here and return the approval question to the orchestrator, with its options and the recommended one marked; the orchestrator asks it through `AskUserQuestion`, exactly one question per call, the recommended option first and labelled "(Recommended)", each option one short line, and the free-text "Other" left open. Never batch several questions in one message or one call. Return:
+You run as a subagent and cannot call `AskUserQuestion`. Stop here and return the approval question to the orchestrator, with its options and the recommended one marked; the orchestrator asks it through `AskUserQuestion`, exactly one question per call, the recommended option first and labelled "(Recommended)", each option one short line, and the free-text "Other" left open. Never batch several questions in one message or one call. Return the path of the draft plan file (written with `status: draft` in step 4) together with the question, so the orchestrator can send the file through the review rule in the pipeline rules when a review surface is configured and ask nothing in the terminal. Return:
 
 - Question: "Approve this plan?"
 - **Approve as-is (Recommended):** I create the plan file and distribute tasks.
