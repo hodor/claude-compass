@@ -122,6 +122,8 @@ tags:
   - lessons/subagents/LESSON-subagent-reports-need-sendmessage.md
   browser:
   - specs/pipeline/SPEC-024-walled-sources-through-the-browser.md
+  budget:
+  - lessons/pipeline/LESSON-subscription-cost-is-an-estimate-not-a-budget.md
   budgets:
   - plans/PLAN-021-control-loops.md
   - research/pipeline/RESEARCH-control-theory-for-loops.md
@@ -172,7 +174,7 @@ tags:
   ci:
   - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
   clarity:
-  - specs/SPEC-029-questions-to-the-human-are-clear-and-visual.md
+  - specs/human-surface/SPEC-029-questions-to-the-human-are-clear-and-visual.md
   class-here:
   - lessons/vault-structure/LESSON-scope-notes-are-load-bearing.md
   classification:
@@ -298,6 +300,7 @@ tags:
   - research/distribution/RESEARCH-update-safe-customization.md
   cost:
   - decisions/distribution/ADR-008-model-resolution-table.md
+  - lessons/pipeline/LESSON-subscription-cost-is-an-estimate-not-a-budget.md
   - lessons/vault-structure/LESSON-tag-index-trades-cost-for-directed-retrieval.md
   - plans/PLAN-005-model-table.md
   - research/distribution/RESEARCH-model-resolution-impl.md
@@ -411,6 +414,8 @@ tags:
   - lessons/distribution/LESSON-self-update-silent-on-bad-repository-url.md
   documentation-drift:
   - research/pipeline/RESEARCH-code-as-primary-source.md
+  documents:
+  - specs/human-surface/SPEC-031-documents-use-obsidians-richer-markdown.md
   domain:
   - decisions/distribution/index.md
   - decisions/learning/index.md
@@ -437,6 +442,7 @@ tags:
   domains:
   - decisions/vault-structure/ADR-021-index-speaks-in-domains.md
   - plans/PLAN-016-domain-taxonomy.md
+  - plans/PLAN-023-taxonomy-review-at-spec-creation.md
   - specs/vault-structure/SPEC-022-vault-organized-per-domain.md
   drift:
   - specs/distribution/SPEC-014-update-safe-customizations.md
@@ -532,8 +538,11 @@ tags:
   - research/rolling-wave/RESEARCH-rolling-wave-flow-theory.md
   - research/rolling-wave/index.md
   flow-control:
+  - lessons/pipeline/LESSON-subscription-cost-is-an-estimate-not-a-budget.md
   - plans/PLAN-021-control-loops.md
   - research/pipeline/RESEARCH-control-theory-for-loops.md
+  focus:
+  - research/RESEARCH-review-in-obsidian.md
   folder-spec:
   - lessons/vault-structure/LESSON-obsidian-bare-link-creates-stray-note.md
   - lessons/vault-structure/LESSON-template-shape-vs-template-precondition.md
@@ -649,6 +658,7 @@ tags:
   - decisions/vault-structure/ADR-021-index-speaks-in-domains.md
   - decisions/vault-structure/index.md
   - plans/PLAN-003-hybrid-hierarchy.md
+  - plans/PLAN-023-taxonomy-review-at-spec-creation.md
   - research/vault-structure/RESEARCH-hierarchical-knowledge-base-design.md
   - research/vault-structure/RESEARCH-hybrid-hierarchy-impl.md
   - research/vault-structure/index.md
@@ -729,12 +739,18 @@ tags:
   human-decision:
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   human-gates:
+  - decisions/vault-structure/ADR-023-new-specs-propose-depth.md
   - loops/LOOP-001-visual-questions/index.md
-  - specs/SPEC-029-questions-to-the-human-are-clear-and-visual.md
+  - plans/PLAN-022-review-in-obsidian.md
+  - research/RESEARCH-review-in-obsidian.md
+  - specs/human-surface/SPEC-029-questions-to-the-human-are-clear-and-visual.md
+  - specs/human-surface/SPEC-030-review-documents-open-in-obsidian.md
   human-practice:
   - lessons/experiments/LESSON-human-practice-rationing-assumes-human-scarcity.md
   human-priority:
   - research/pipeline/REVIEW-spec-023-research-consolidation.md
+  human-surface:
+  - specs/human-surface/index.md
   human-voice:
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   human-words:
@@ -888,6 +904,7 @@ tags:
   - loops/LOOP-001-visual-questions/index.md
   - loops/LOOP-002-no-private-data/index.md
   loops:
+  - lessons/pipeline/LESSON-subscription-cost-is-an-estimate-not-a-budget.md
   - plans/PLAN-021-control-loops.md
   - research/pipeline/RESEARCH-control-theory-for-loops.md
   - research/pipeline/RESEARCH-loop-ast-grep-rule-experiment.md
@@ -907,6 +924,8 @@ tags:
   - lessons/pipeline/LESSON-manual-verification-is-judgment-only.md
   mapping-study:
   - research/pipeline/RESEARCH-research-methodologies-catalog.md
+  markdown:
+  - specs/human-surface/SPEC-031-documents-use-obsidians-richer-markdown.md
   markers:
   - research/distribution/RESEARCH-update-safe-customization.md
   materializers:
@@ -1024,6 +1043,10 @@ tags:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   - decisions/vault-structure/ADR-022-domains-scope-notes-shallow-when-unsure.md
   - lessons/vault-structure/LESSON-obsidian-bare-link-creates-stray-note.md
+  - plans/PLAN-022-review-in-obsidian.md
+  - research/RESEARCH-review-in-obsidian.md
+  - specs/human-surface/SPEC-030-review-documents-open-in-obsidian.md
+  - specs/human-surface/SPEC-031-documents-use-obsidians-richer-markdown.md
   offline:
   - lessons/distribution/LESSON-self-update-silent-on-bad-repository-url.md
   okf:
@@ -1102,6 +1125,9 @@ tags:
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
   - specs/pipeline/SPEC-030-a-loop-moves-specs-through-the-pipeline.md
   - specs/pipeline/index.md
+  placement:
+  - decisions/vault-structure/ADR-023-new-specs-propose-depth.md
+  - plans/PLAN-023-taxonomy-review-at-spec-creation.md
   plain-language:
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   plan-approval:
@@ -1130,6 +1156,9 @@ tags:
   - lessons/pipeline/LESSON-manual-verification-is-judgment-only.md
   platform:
   - lessons/platform/index.md
+  plugin:
+  - plans/PLAN-022-review-in-obsidian.md
+  - research/RESEARCH-review-in-obsidian.md
   plugin-config:
   - lessons/hooks/LESSON-hook-if-clause-no-or.md
   plugin-yaml:
@@ -1206,7 +1235,7 @@ tags:
   - specs/vault-structure/SPEC-011-vault-graph-queries.md
   questions:
   - loops/LOOP-001-visual-questions/index.md
-  - specs/SPEC-029-questions-to-the-human-are-clear-and-visual.md
+  - specs/human-surface/SPEC-029-questions-to-the-human-are-clear-and-visual.md
   rag:
   - research/vault-structure/RESEARCH-rag-fit-for-large-vaults.md
   raptor:
@@ -1306,7 +1335,11 @@ tags:
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   - lessons/pipeline/LESSON-adversarial-plan-review-before-build.md
+  - plans/PLAN-022-review-in-obsidian.md
+  - research/RESEARCH-review-in-obsidian.md
   - research/pipeline/REVIEW-spec-023-research-consolidation.md
+  - specs/human-surface/SPEC-030-review-documents-open-in-obsidian.md
+  - specs/human-surface/SPEC-031-documents-use-obsidians-richer-markdown.md
   ripple:
   - research/vault-structure/RESEARCH-taxonomy-for-unambiguous-placement.md
   rolling-wave:
@@ -1439,8 +1472,10 @@ tags:
   - decisions/learning/ADR-016-capture-by-extraction.md
   - lessons/vault-structure/LESSON-template-shape-vs-template-precondition.md
   - plans/PLAN-013-capture-by-extraction.md
+  - plans/PLAN-023-taxonomy-review-at-spec-creation.md
   - specs/learning/SPEC-021-capture-in-the-humans-words.md
   specs:
+  - decisions/vault-structure/ADR-023-new-specs-propose-depth.md
   - lessons/experiments/LESSON-pin-the-motivating-datum.md
   - lessons/pipeline/LESSON-adversarial-plan-review-before-build.md
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
@@ -1476,6 +1511,8 @@ tags:
   - research/pipeline/RESEARCH-context-threshold-stop.md
   subagentstop:
   - decisions/learning/ADR-019-subagentstop-redelivery-and-teammate-typing.md
+  subscription:
+  - lessons/pipeline/LESSON-subscription-cost-is-an-estimate-not-a-budget.md
   suite-size:
   - lessons/test-quality/LESSON-suite-size-is-not-coverage.md
   summaries:
@@ -1510,6 +1547,7 @@ tags:
   taxonomy:
   - decisions/vault-structure/ADR-021-index-speaks-in-domains.md
   - decisions/vault-structure/ADR-022-domains-scope-notes-shallow-when-unsure.md
+  - decisions/vault-structure/ADR-023-new-specs-propose-depth.md
   - decisions/vault-structure/index.md
   - handoffs/2026-08-31_12-04-15_v0.17.x-hardening.md
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_16-47-06_wave1-tree-uncommitted.md
@@ -1518,6 +1556,7 @@ tags:
   - lessons/vault-structure/LESSON-scope-notes-are-load-bearing.md
   - lessons/vault-structure/LESSON-template-shape-vs-template-precondition.md
   - plans/PLAN-016-domain-taxonomy.md
+  - plans/PLAN-023-taxonomy-review-at-spec-creation.md
   - research/vault-structure/RESEARCH-hierarchical-knowledge-base-design.md
   - research/vault-structure/RESEARCH-taxonomy-for-unambiguous-placement.md
   - research/vault-structure/index.md
@@ -1631,7 +1670,7 @@ tags:
   - research/vault-structure/RESEARCH-graph-engineering-for-compass.md
   ui:
   - loops/LOOP-001-visual-questions/index.md
-  - specs/SPEC-029-questions-to-the-human-are-clear-and-visual.md
+  - specs/human-surface/SPEC-029-questions-to-the-human-are-clear-and-visual.md
   units:
   - decisions/vault-structure/ADR-006-hybrid-hierarchy-implementation.md
   - decisions/vault-structure/ADR-011-sizing-is-a-procedure-not-a-score.md

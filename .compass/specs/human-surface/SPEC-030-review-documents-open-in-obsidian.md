@@ -7,7 +7,7 @@ area: methodology
 tags: [obsidian, review, human-gates]
 summary: "when configured, Compass always opens the thing the human should review in Obsidian instead of just asking"
 created: 2026-10-24
-updated: 2026-10-24
+updated: 2026-10-25
 approved: 2026-10-24
 ---
 
@@ -29,3 +29,4 @@ Related: [[SPEC-029-questions-to-the-human-are-clear-and-visual]].
 
 - **D-01:** Obsidian is one of many possible visual md interfaces for Compass. Compass builds a generic one and Obsidian implements that one; in the future one could be built for VS Code.
 - **D-02:** Obsidian just opens, and if the human is doing something else he does whatever he needs there, clicks a button, and it takes him back where he was; he does not even need to come to Claude Code.
+- **D-03:** For embeds and navigating inside Obsidian, the review tracks it properly, so the human doesn't lose track of the original question, and he also has the possibility to give feedback on other files he is navigating.

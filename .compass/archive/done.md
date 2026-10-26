@@ -338,3 +338,8 @@ Plan: [[PLAN-021-control-loops]].
 Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per task).
 
 - [x] TASK-182: run the review on this vault's pending hints - complexity: M, depends_on: TASK-181
+
+### PLAN-022: review documents in Obsidian
+- [x] TASK-166: `compass review <file>` sends a review and waits for the verdict - complexity: M, depends_on: none
+- [x] TASK-167: guard denies agent writes to a file under review - complexity: S, depends_on: TASK-166
+- [x] TASK-178: generic review core; Obsidian becomes its first surface - complexity: M, depends_on: TASK-166, TASK-167, TASK-168
