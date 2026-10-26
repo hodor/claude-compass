@@ -239,3 +239,11 @@ log:
     by: agent
     at: 2026-10-25
     volatile: []
+  - id: sz-2026-10-26-1
+    action: decision
+    shape: domain
+    subject: "research/human-surface"
+    reason: "SPEC-031 research is the first human-surface research document; mirrors specs/human-surface"
+    by: agent
+    at: 2026-10-26
+    volatile: []

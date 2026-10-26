@@ -34,6 +34,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[research/test-quality/index|test-quality]] (folder, 7 children) - what makes a test suite good and how to measure it
 - [[research/vault-structure/index|vault-structure]] (folder, 10 children) - evidence on organizing and retrieving vault memory - hierarchy, tiers, RAG, graphs, taxonomy
 - [[research/pipeline/index|pipeline]] (folder, 16 children) - evidence on the pipeline as a method - benchmarks, scientific rigor, decision-coverage mechanics
+- [[research/human-surface/index|human-surface]] (folder, 1 child) - how Compass puts things in front of the human: the questions it asks, the documents it hands over for review, and how all of it reads
 - [[RESEARCH-review-in-obsidian]] - a small Obsidian plugin takes the verdict and returns the human; proven on Windows; ranks Compass features for an Obsidian UI
 - [[RESEARCH-review-mockup]] - the review lives in one side panel that follows the human through links
 

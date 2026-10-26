@@ -61,6 +61,7 @@ tags:
   - compass-cli/research/RESEARCH-cli-and-hook-command-contract.md
   - lessons/hooks/LESSON-hook-cli-gate-stdin-on-flag.md
   artifacts:
+  - research/human-surface/RESEARCH-working-in-compass-is-visual.md
   - specs/human-surface/SPEC-031-working-in-compass-is-visual.md
   ast:
   - plans/PLAN-007-test-quality.md
@@ -215,6 +216,7 @@ tags:
   - plans/PLAN-015-graph-queries.md
   - research/distribution/RESEARCH-model-resolution-impl.md
   - research/distribution/RESEARCH-self-update-surfaces.md
+  - research/human-surface/RESEARCH-working-in-compass-is-visual.md
   - research/pipeline/RESEARCH-decision-coverage-impl.md
   - research/test-quality/RESEARCH-test-quality-bar-validation.md
   - research/test-quality/RESEARCH-test-quality-empirical.md
@@ -756,6 +758,8 @@ tags:
   human-priority:
   - research/pipeline/REVIEW-spec-023-research-consolidation.md
   human-surface:
+  - research/human-surface/RESEARCH-working-in-compass-is-visual.md
+  - research/human-surface/index.md
   - specs/human-surface/index.md
   human-voice:
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
@@ -829,6 +833,7 @@ tags:
   - research/pipeline/RESEARCH-research-spawning-research.md
   jargon:
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
+  - research/human-surface/RESEARCH-working-in-compass-is-visual.md
   - specs/human-surface/SPEC-031-working-in-compass-is-visual.md
   jit:
   - decisions/vault-structure/ADR-003-drop-counter-file-jit-compute.md
@@ -1056,6 +1061,7 @@ tags:
   - plans/PLAN-022-review-in-obsidian.md
   - research/RESEARCH-review-in-obsidian.md
   - research/RESEARCH-review-mockup.md
+  - research/human-surface/RESEARCH-working-in-compass-is-visual.md
   - specs/human-surface/SPEC-030-review-documents-open-in-obsidian.md
   - specs/human-surface/SPEC-031-working-in-compass-is-visual.md
   offline:
@@ -1141,6 +1147,7 @@ tags:
   - plans/PLAN-023-taxonomy-review-at-spec-creation.md
   plain-language:
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
+  - research/human-surface/RESEARCH-working-in-compass-is-visual.md
   plan-approval:
   - lessons/pipeline/LESSON-ui-change-needs-agreed-mockup-before-build.md
   - research/rolling-wave/RESEARCH-rolling-wave-software-practice.md
@@ -1260,6 +1267,8 @@ tags:
   - lessons/experiments/LESSON-human-practice-rationing-assumes-human-scarcity.md
   react-doctor:
   - research/pipeline/RESEARCH-control-theory-for-loops.md
+  readability:
+  - research/human-surface/RESEARCH-working-in-compass-is-visual.md
   real-options:
   - research/vault-structure/RESEARCH-decomposition-criteria-for-sizing.md
   recall:
@@ -1586,6 +1595,8 @@ tags:
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   - lessons/vault-structure/LESSON-template-shape-vs-template-precondition.md
+  terminal:
+  - research/human-surface/RESEARCH-working-in-compass-is-visual.md
   test-checkpoint:
   - decisions/pipeline/ADR-012-test-checkpoint-py-membership-git-authoritative.md
   test-design:

@@ -1,0 +1,11 @@
+{
+  "path": "research/RESEARCH-review-in-obsidian.md",
+  "notes": [
+    {
+      "text": "Finding 8 says Compass can write a .canvas proposal and read the human's rearrangement back (medium, not run). [[research/human-surface/RESEARCH-working-in-compass-is-visual]] finding 59 found no CLI code that reads .canvas files (vaultlib globs *.md only, compass move never rewrites them) and no documentation of whether a regenerated canvas keeps the human's arrangement. Treat the read-back claim as untested.",
+      "by": "reviewer",
+      "date": "2026-10-26",
+      "tags": ["contradiction", "canvas", "SPEC-031"]
+    }
+  ]
+}
