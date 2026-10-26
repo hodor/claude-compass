@@ -61,5 +61,3 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
 - [ ] TASK-168: setup/update install the plugin; doctor walks the human through enabling it - complexity: M, depends_on: TASK-165
 - [ ] TASK-169: review inbox and lessons table as Bases - complexity: S, depends_on: none
-- [ ] TASK-187: the review moves into one side panel (layout B) - complexity: M, depends_on: none
-- [ ] TASK-188: `compass review` requires a commit and prints the git diff after the verdict - complexity: S, depends_on: none

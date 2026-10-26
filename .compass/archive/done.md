@@ -351,3 +351,7 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 - [x] TASK-185: the review bar follows the human through links and embeds; notes on other files - complexity: M, depends_on: none
 - [x] TASK-186: `compass review` prints comments and edits; `--cancel` withdraws a request - complexity: S, depends_on: none
 - [x] TASK-171: document gates go through review and ask nothing in the terminal - complexity: M, depends_on: TASK-186
+
+### PLAN-022: review documents in Obsidian
+- [x] TASK-187: the review moves into one side panel (layout B) - complexity: M, depends_on: none
+- [x] TASK-188: `compass review` requires a commit and prints the git diff after the verdict - complexity: S, depends_on: none
