@@ -23,8 +23,9 @@ The first stdout line is always one of:
   `requested <id> <file>`   the request went out
   `not configured: <why>`   nothing was sent; ask in the terminal instead
 
-`--no-wait` returns after the request line. `--timeout S` bounds the wait
-(default 4 hours) and prints `timeout <id>` when it runs out. `--status`
+`--no-wait` returns after the request line. The wait has no limit: the
+human may answer hours later. `--timeout S` bounds it and prints
+`timeout <id>` when it runs out. `--status`
 prints one `pending <id> <file>` line per request still waiting.
 `--cancel <id>` withdraws that pending request (removes its request file),
 which ends its waiter with `withdrawn <id>` and clears the review in the
@@ -47,7 +48,6 @@ from pathlib import Path
 import reviewlib
 import vaultlib
 
-DEFAULT_TIMEOUT = 4 * 3600
 POLL_SECONDS = 0.5
 
 USAGE = ("usage: compass review <file> [--title T] [--timeout S] [--no-wait]\n"
@@ -57,7 +57,7 @@ USAGE = ("usage: compass review <file> [--title T] [--timeout S] [--no-wait]\n"
 
 
 def _parse(args):
-    opts = {"file": None, "title": None, "timeout": DEFAULT_TIMEOUT, "wait": True,
+    opts = {"file": None, "title": None, "timeout": None, "wait": True,
             "status": False, "install": False, "cancel": None}
     i = 0
     while i < len(args):
@@ -144,8 +144,8 @@ def _print_changes(root, commit, skip):
 
 def _wait(request, request_path, document, timeout, root, vault):
     target = reviewlib.verdict_path(request_path)
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
+    deadline = None if timeout is None else time.monotonic() + timeout
+    while deadline is None or time.monotonic() < deadline:
         if target.exists():
             verdict = reviewlib.read_json(target)
             if reviewlib.valid_verdict(verdict, request):

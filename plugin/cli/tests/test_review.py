@@ -248,6 +248,18 @@ class Wait(ReviewProject):
         self.assertEqual(code, 0)
         self.assertIn('"verdict": "changes"', out)
 
+    def test_without_timeout_the_wait_outlasts_days(self):
+        self.configure()
+        module = importlib.import_module("commands.review")
+        ticks = iter(range(10 ** 9))
+        clock = mock.Mock(monotonic=lambda: next(ticks) * 86400.0, sleep=time.sleep)
+        self.answer_later("approved", delay=1.0)
+        with mock.patch.object(module, "time", clock):
+            code, out, _ = self.review(str(self.doc))
+        self.assertEqual(code, 0, out)
+        self.assertIn('"verdict": "approved"', out)
+        self.assertNotIn("timeout ", out)
+
 
 class StatusAndPending(ReviewProject):
     def test_status_lists_only_unanswered(self):
