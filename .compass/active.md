@@ -61,4 +61,3 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
 - [ ] TASK-168: setup/update install the plugin; doctor walks the human through enabling it - complexity: M, depends_on: TASK-165
 - [ ] TASK-169: review inbox and lessons table as Bases - complexity: S, depends_on: none
-- [ ] TASK-170: experiment: does a verdict land while a question is open - complexity: S, depends_on: TASK-166

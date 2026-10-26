@@ -343,3 +343,6 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 - [x] TASK-166: `compass review <file>` sends a review and waits for the verdict - complexity: M, depends_on: none
 - [x] TASK-167: guard denies agent writes to a file under review - complexity: S, depends_on: TASK-166
 - [x] TASK-178: generic review core; Obsidian becomes its first surface - complexity: M, depends_on: TASK-166, TASK-167, TASK-168
+
+### PLAN-022: review documents in Obsidian
+- [x] TASK-170: experiment: does a verdict land while a question is open - complexity: S, depends_on: TASK-166

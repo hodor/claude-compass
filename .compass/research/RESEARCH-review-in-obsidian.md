@@ -95,6 +95,10 @@ Obsidian merges an external change into an open note automatically when the edit
 - Remote or headless sessions, where Obsidian is on another machine: no path found. Confidence: high that it does not work.
 - Codex and dsh have no background wake-up; a review there runs as a blocking foreground command, bounded by the host's tool timeout (Compass's own hook timeouts sit at 300 s in `plugin/cli/hostlib.py`). Confidence: low (reading; untested).
 
+### 13. A verdict while a terminal question is open
+
+Observed on 2026-10-25 under Claude Code on Windows: `compass review` ran in the background and an `AskUserQuestion` was open for the same spec. The human approved in Obsidian at 00:15:20Z; the background completion reached the session only after the human dismissed the terminal question, so the session could not act on the verdict or close the question. A gate that sends a review and also asks in the terminal makes the human approve twice. A gate that sends a review therefore asks nothing in the terminal: it waits on the verdict, and a reply typed in the terminal is taken as plain text. Confidence: high (run once, live).
+
 ## Gaps
 
 - Live runs on macOS, Linux (X11 and Wayland) and WSL.
