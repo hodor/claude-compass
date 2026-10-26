@@ -6,7 +6,13 @@
 //     {"id", "surface"?, "file", "title"?, "return": bool}
 //   obsidian://compass-review?vault=<vault id>&request=<dir>/<id>.request.json
 //   <dir>/<id>.verdict.json   written here when a button is clicked:
-//     {"id", "file", "verdict": "approved"|"changes", "notes", "at"}
+//     {"id", "file", "verdict": "approved"|"changes", "notes",
+//      "comments": [{"file", "note"}], "edited": [path], "at"}
+//     notes     the note typed on the review bar
+//     comments  one note per other file the human annotated from the slim
+//               bar (files with an empty note are left out)
+//     edited    every markdown file modified in the vault while the review
+//               was pending, each listed once
 // <dir> is the Compass vault's tmp/review folder: `tmp/review` when the
 // Obsidian vault is the Compass vault, `.compass/tmp/review` when the
 // Obsidian vault is the project around it. Other review surfaces share the
@@ -16,11 +22,19 @@
 // file with a review bar on top. A click saves the editor, writes the verdict,
 // and, when the request says `return`, steps Obsidian aside (minimize, or hide
 // on macOS) so focus falls back to the window that had it before.
+//
+// While a review is pending, any other markdown file shows a slim bar naming
+// the most recently opened pending review. It carries a note field for that
+// file and a "Back to review" button that reopens the reviewed file in the
+// same pane. "Needs changes" is enabled once there is something to send: a
+// bar note, a note on another file, or an edit. A periodic recheck drops a
+// review whose request file is gone or whose verdict already exists.
 
 const { Plugin, Notice, MarkdownView } = require("obsidian");
 
 const REVIEW_DIRS = ["tmp/review", ".compass/tmp/review"];
 const SURFACE = "obsidian";
+const RECHECK_MS = 5000;
 
 function electronRemote() {
   const electron = require("electron");
@@ -33,18 +47,29 @@ function verdictPathFor(requestPath) {
 
 class CompassReview extends Plugin {
   async onload() {
-    this.pending = new Map(); // request id -> {request, path}
+    // request id -> {request, path, notes, comments: Map(file -> note), edited: Set(path)}
+    this.pending = new Map();
+    this.lastId = null; // id of the review whose file was opened most recently
     this.registerObsidianProtocolHandler("compass-review", (params) =>
       this.onRequest(params.request).catch((e) => this.fail("request", e))
     );
-    this.registerEvent(this.app.workspace.on("file-open", () => this.decorate()));
+    this.registerEvent(
+      this.app.workspace.on("file-open", (file) => {
+        this.noteOpened(file);
+        this.decorate();
+      })
+    );
     this.registerEvent(this.app.workspace.on("layout-change", () => this.decorate()));
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => this.onRename(file, oldPath)));
+    this.registerEvent(this.app.vault.on("modify", (file) => this.onModify(file)));
+    this.registerInterval(
+      window.setInterval(() => this.recheck().catch((e) => console.error("[compass-review] recheck failed", e)), RECHECK_MS)
+    );
     this.app.workspace.onLayoutReady(() => this.scanPending().catch((e) => this.fail("scan", e)));
   }
 
   onunload() {
-    document.querySelectorAll(".compass-review-bar").forEach((el) => el.remove());
+    document.querySelectorAll(".compass-review-bar, .compass-review-trail").forEach((el) => el.remove());
   }
 
   fail(where, err) {
@@ -88,7 +113,13 @@ class CompassReview extends Plugin {
     for (const [id, entry] of this.pending) {
       if (entry.request.file === request.file && id !== request.id) this.pending.delete(id);
     }
-    this.pending.set(request.id, { request, path });
+    const known = this.pending.get(request.id);
+    if (known) {
+      known.request = request;
+      known.path = path;
+      return;
+    }
+    this.pending.set(request.id, { request, path, notes: "", comments: new Map(), edited: new Set() });
   }
 
   async onRequest(path) {
@@ -97,6 +128,7 @@ class CompassReview extends Plugin {
     const file = this.app.vault.getAbstractFileByPath(request.file);
     if (!file) throw new Error(`file not in this vault: ${request.file}`);
     this.track(request, path);
+    this.lastId = request.id;
     const open = this.app.workspace
       .getLeavesOfType("markdown")
       .find((leaf) => leaf.view.file && leaf.view.file.path === request.file);
@@ -110,7 +142,37 @@ class CompassReview extends Plugin {
   onRename(file, oldPath) {
     for (const entry of this.pending.values()) {
       if (entry.request.file === oldPath) entry.request.file = file.path;
+      if (entry.comments.has(oldPath)) {
+        entry.comments.set(file.path, entry.comments.get(oldPath));
+        entry.comments.delete(oldPath);
+      }
+      if (entry.edited.delete(oldPath)) entry.edited.add(file.path);
     }
+    this.decorate();
+  }
+
+  onModify(file) {
+    if (!file || typeof file.path !== "string" || !file.path.endsWith(".md")) return;
+    for (const entry of this.pending.values()) {
+      entry.edited.add(file.path);
+      this.refreshGate(entry);
+    }
+  }
+
+  noteOpened(file) {
+    const entry = file ? this.entryFor(file.path) : null;
+    if (entry) this.lastId = entry.request.id;
+  }
+
+  // Drops reviews whose request file was removed or whose verdict another
+  // surface already wrote.
+  async recheck() {
+    const adapter = this.app.vault.adapter;
+    const dead = [];
+    for (const [id, entry] of this.pending) {
+      if (!(await adapter.exists(entry.path)) || (await adapter.exists(verdictPathFor(entry.path)))) dead.push(id);
+    }
+    for (const id of dead) this.pending.delete(id);
     this.decorate();
   }
 
@@ -144,19 +206,40 @@ class CompassReview extends Plugin {
     return null;
   }
 
+  // The review the slim bar names: the one whose file was opened last, else
+  // the most recently tracked.
+  trailTarget() {
+    const last = this.pending.get(this.lastId);
+    if (last) return last;
+    let target = null;
+    for (const entry of this.pending.values()) target = entry;
+    return target;
+  }
+
   decorate() {
+    const target = this.trailTarget();
     for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
       const view = leaf.view;
       const host = view.containerEl;
-      const old = host.querySelector(".compass-review-bar");
-      const entry = view.file ? this.entryFor(view.file.path) : null;
+      const file = view.file;
+      const entry = file ? this.entryFor(file.path) : null;
+
+      const oldBar = host.querySelector(".compass-review-bar");
       if (!entry) {
-        if (old) old.remove();
-        continue;
+        if (oldBar) oldBar.remove();
+      } else if (!oldBar || oldBar.dataset.id !== entry.request.id) {
+        if (oldBar) oldBar.remove();
+        host.insertBefore(this.buildBar(entry, view), host.querySelector(".view-content"));
       }
-      if (old && old.dataset.id === entry.request.id) continue;
-      if (old) old.remove();
-      host.insertBefore(this.buildBar(entry, view), host.querySelector(".view-content"));
+
+      const oldTrail = host.querySelector(".compass-review-trail");
+      const key = file && !entry && target ? `${target.request.id}|${file.path}` : null;
+      if (!key) {
+        if (oldTrail) oldTrail.remove();
+      } else if (!oldTrail || oldTrail.dataset.key !== key) {
+        if (oldTrail) oldTrail.remove();
+        host.insertBefore(this.buildTrail(target, leaf, file), host.querySelector(".view-content"));
+      }
     }
   }
 
@@ -166,11 +249,60 @@ class CompassReview extends Plugin {
     bar.dataset.id = request.id;
     bar.createSpan({ cls: "compass-review-title", text: `Review: ${request.title || view.file.basename}` });
     const notes = bar.createEl("input", { type: "text", placeholder: "Notes for Claude (optional)" });
+    notes.value = entry.notes;
+    notes.addEventListener("input", () => {
+      entry.notes = notes.value;
+      this.refreshGate(entry);
+    });
     const approve = bar.createEl("button", { cls: "mod-cta", text: "Approve" });
-    const changes = bar.createEl("button", { text: "Needs changes" });
+    const changes = bar.createEl("button", { cls: "compass-review-changes", text: "Needs changes" });
+    changes.disabled = !this.hasFeedback(entry);
     approve.onclick = () => this.verdict(entry, "approved", notes.value).catch((e) => this.fail("verdict", e));
     changes.onclick = () => this.verdict(entry, "changes", notes.value).catch((e) => this.fail("verdict", e));
     return bar;
+  }
+
+  buildTrail(entry, leaf, file) {
+    const { request } = entry;
+    const trail = createDiv({ cls: "compass-review-trail" });
+    trail.dataset.key = `${request.id}|${file.path}`;
+    trail.createSpan({ cls: "compass-review-title", text: `Review: ${request.title || request.file}` });
+    const note = trail.createEl("input", {
+      cls: "compass-review-file-note",
+      type: "text",
+      placeholder: "Note on this file for Claude",
+    });
+    note.value = entry.comments.get(file.path) || "";
+    note.addEventListener("input", () => {
+      if (note.value.trim()) entry.comments.set(file.path, note.value);
+      else entry.comments.delete(file.path);
+      this.refreshGate(entry);
+    });
+    const back = trail.createEl("button", { text: "Back to review" });
+    back.onclick = () => this.goBack(entry, leaf).catch((e) => this.fail("back to review", e));
+    return trail;
+  }
+
+  async goBack(entry, leaf) {
+    const file = this.app.vault.getAbstractFileByPath(entry.request.file);
+    if (!file) throw new Error(`file not in this vault: ${entry.request.file}`);
+    this.lastId = entry.request.id;
+    await leaf.openFile(file);
+    this.decorate();
+  }
+
+  hasFeedback(entry) {
+    return entry.notes.trim() !== "" || entry.comments.size > 0 || entry.edited.size > 0;
+  }
+
+  // "Needs changes" is enabled while the review has anything to send.
+  refreshGate(entry) {
+    for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
+      const bar = leaf.view.containerEl.querySelector(".compass-review-bar");
+      if (!bar || bar.dataset.id !== entry.request.id) continue;
+      const changes = bar.querySelector(".compass-review-changes");
+      if (changes) changes.disabled = !this.hasFeedback(entry);
+    }
   }
 
   async verdict(entry, verdict, notes) {
@@ -181,7 +313,15 @@ class CompassReview extends Plugin {
         await leaf.view.save();
       }
     }
-    const body = { id: request.id, file: request.file, verdict, notes, at: new Date().toISOString() };
+    const body = {
+      id: request.id,
+      file: request.file,
+      verdict,
+      notes,
+      comments: [...entry.comments].map(([file, note]) => ({ file, note })),
+      edited: [...entry.edited],
+      at: new Date().toISOString(),
+    };
     await this.app.vault.adapter.write(verdictPathFor(path), JSON.stringify(body, null, 2));
     this.pending.delete(request.id);
     this.decorate();

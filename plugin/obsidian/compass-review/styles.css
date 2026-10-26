@@ -7,12 +7,24 @@
   background: var(--background-secondary);
 }
 
-.compass-review-bar .compass-review-title {
+.compass-review-bar .compass-review-title,
+.compass-review-trail .compass-review-title {
   font-weight: 600;
   white-space: nowrap;
 }
 
-.compass-review-bar input {
+.compass-review-bar input,
+.compass-review-trail input {
   flex: 1;
   min-width: 0;
+}
+
+.compass-review-trail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  font-size: var(--font-ui-small);
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
 }
