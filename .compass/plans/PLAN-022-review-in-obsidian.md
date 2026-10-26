@@ -68,15 +68,33 @@ This plan implements [[SPEC-030-review-documents-open-in-obsidian]] based on [[R
 
 **Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before the next wave.
 
+### Wave 2 (detailed): Obsidian alone is enough
+
+- [ ] TASK-185: The plugin keeps the review in view while the human moves around the vault: any other markdown file opened while a review is pending shows a slim bar naming the review, a Back to review button that reopens the reviewed file in the same pane, and a note field for that file; files the human edits while the review is pending are tracked; Needs changes stays disabled until there is a note, a note on another file, or an edit; the verdict gains `comments: [{file, note}]` and `edited: [path]`; a bar disappears when its request file is gone or its verdict exists, rechecked every few seconds - complexity: M, depends_on: none, files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/styles.css, plugin/obsidian/tests/test_main.js], decisions: [SPEC-030-review-documents-open-in-obsidian/D-03]
+  - Automated verification: the harness covers a navigation from the reviewed file to a linked file (slim bar shown, Back reopens the original), a note on a second file landing in `comments`, an edit to a second file landing in `edited`, Needs changes disabled with nothing written and enabled after a note, a request file removed mid-review (bar gone), and two pending reviews (the slim bar names the one last opened); `node --check` passes; full suite passes.
+  - Manual verification: from a reviewed spec the human follows a link, leaves a note on the linked file, returns with Back, and clicks Needs changes; the session receives both notes.
+- [ ] TASK-186: `compass review` prints the verdict's `comments` and `edited` after the verdict JSON, one `comment <file>: <note>` and one `edited <file>` line each, before the reviewed file's text; `compass review --cancel <id>` withdraws a pending request (its request file is removed, its waiter ends with `withdrawn <id>`, exit 1) so a terminal answer clears the Obsidian bar; `valid_verdict` accepts a verdict with or without the new fields and rejects a non-list `comments` or `edited` - complexity: S, depends_on: none, files: [plugin/cli/commands/review.py, plugin/cli/reviewlib.py, plugin/cli/tests/test_review.py], decisions: [SPEC-030-review-documents-open-in-obsidian/D-03, SPEC-030-review-documents-open-in-obsidian/D-04]
+  - Automated verification: tests cover a verdict with comments and edits (lines printed in order), a verdict without them (output unchanged), malformed `comments`, `--cancel` of a pending request (waiter prints `withdrawn`), `--cancel` of an unknown id (exit 1, message), and `--status` after a cancel; full suite passes.
+  - Manual verification: none.
+- [ ] TASK-171: Every gate whose subject is a document goes through review when a surface is configured, and then asks nothing in the terminal. One paragraph in the pipeline rules states the shape: commit, run `compass review <file> --title "<the gate's question>"` in the background, and on `requested` end the turn with one line naming the document; an approved verdict is the gate's recommended approve option, its notes and comments steering what follows, and a follow-up question the gate would ask next takes its recommended option unless the notes say otherwise; a changes verdict applies the notes, comments and edits and sends the revised document again; a reply typed in the terminal instead runs `compass review --cancel <id>` and is the answer; `not configured` asks through `AskUserQuestion` as before. The gates of spec, specs, plan, planner, vision, research-codebase, research-papers, build's phase pause (the plan file, titled with the wave's manual checks) and autopilot point at that paragraph - complexity: M, depends_on: TASK-186, files: [plugin/templates/rules/compass-pipeline.md, plugin/skills/spec/SKILL.md, plugin/skills/specs/SKILL.md, plugin/skills/plan/SKILL.md, plugin/templates/agents/planner.md, plugin/skills/vision/SKILL.md, plugin/skills/research-codebase/SKILL.md, plugin/skills/research-papers/SKILL.md, plugin/skills/build/SKILL.md, plugin/skills/autopilot/SKILL.md], decisions: [SPEC-030-review-documents-open-in-obsidian/D-02, SPEC-030-review-documents-open-in-obsidian/D-04]
+  - Automated verification: every listed skill's document gate names the review paragraph; no listed gate asks `AskUserQuestion` before the `not configured` branch; the shipped-rules tests and full suite pass.
+  - Manual verification: the human approves a spec in Obsidian while in another app and the session moves on with no terminal question (TASK-172).
+
+**Pause point:** when automated verification passes, the human runs TASK-172.
+
 ## Later (intent only)
 
-- [ ] TASK-171: Wire `compass review` into the document gates of spec, plan and planner, research, vision, specs, build's manual verification and autopilot, plus one line in the pipeline rules, in the shape TASK-170 chose - files: [plugin/templates/rules/compass-pipeline.md, plugin/skills/spec/SKILL.md, plugin/skills/plan/SKILL.md, plugin/templates/agents/planner.md, plugin/skills/research/SKILL.md, plugin/skills/vision/SKILL.md, plugin/skills/specs/SKILL.md, plugin/skills/build/SKILL.md, plugin/skills/autopilot/SKILL.md]
 - [ ] TASK-172: Live acceptance: the human approves a real spec entirely from Obsidian while working in another app
 - [ ] TASK-173: Loop dashboard view with Accept / Reject per run calling `compass loop review`
 - [ ] TASK-174: Vault-health sidebar listing `validate` and `doctor` warnings with links
 - [ ] TASK-175: Consolidate's grouping proposal as a canvas the human rearranges and approves
 - [ ] TASK-176: Chat with Claude in Obsidian: answers appear there and choices (1, 2, 3, other) are picked there
 - [ ] TASK-177: Live runs on macOS, Linux (X11 and Wayland) and WSL; a blocking review under Codex and dsh
+
+## Wave 2 elaborated
+
+- TASK-171: the gate sends the review in the background, ends its turn, and asks nothing in the terminal, because the TASK-170 run showed a verdict cannot reach the session while a terminal question is open ([[RESEARCH-review-in-obsidian]] finding 13, SPEC-030 D-04); research's axis gate is a conversation, not a document, and stays in the terminal, while research-codebase and research-papers review their finished documents; build's gate is the phase pause.
+- TASK-185, TASK-186: new, from SPEC-030 D-03 (navigation inside Obsidian keeps the original question in view and takes feedback on other files) and the cancel path D-04 needs when the human answers in the terminal.
 
 ## Risks
 

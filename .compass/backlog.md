@@ -90,7 +90,6 @@ Plan: [[PLAN-021-control-loops]].
 
 Plan: [[PLAN-022-review-in-obsidian]].
 
-- [ ] TASK-171: Wire `compass review` into the document gates of spec, plan and planner, research, vision, specs, build's manual verification and autopilot, plus one line in the pipeline rules, in the shape TASK-170 chose - files: [plugin/templates/rules/compass-pipeline.md, plugin/skills/spec/SKILL.md, plugin/skills/plan/SKILL.md, plugin/templates/agents/planner.md, plugin/skills/research/SKILL.md, plugin/skills/vision/SKILL.md, plugin/skills/specs/SKILL.md, plugin/skills/build/SKILL.md, plugin/skills/autopilot/SKILL.md]
 - [ ] TASK-172: Live acceptance: the human approves a real spec entirely from Obsidian while working in another app
 - [ ] TASK-173: Loop dashboard view with Accept / Reject per run calling `compass loop review`
 - [ ] TASK-174: Vault-health sidebar listing `validate` and `doctor` warnings with links
