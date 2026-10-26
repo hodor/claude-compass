@@ -7,7 +7,7 @@ md interface and wait for the verdict.
 review surface configured for the document (see `review_surfaces`), and
 waits. When the surface writes the verdict, it prints the verdict JSON, then
 one `comment <file>: <note>` line per note the human left on another file,
-one `edited <file>` line per other file the human changed, a
+one `edited <file>` line per file the human changed, a
 `--- <file> as the human left it ---` line and the document's current text,
 so the caller reads the human's notes and edits.
 
