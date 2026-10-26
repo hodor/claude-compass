@@ -29,5 +29,6 @@ Related: [[SPEC-029-questions-to-the-human-are-clear-and-visual]].
 
 - **D-01:** Obsidian is one of many possible visual md interfaces for Compass. Compass builds a generic one and Obsidian implements that one; in the future one could be built for VS Code.
 - **D-02:** Obsidian just opens, and if the human is doing something else he does whatever he needs there, clicks a button, and it takes him back where he was; he does not even need to come to Claude Code.
-- **D-03:** For embeds and navigating inside Obsidian, the review tracks it properly, so the human doesn't lose track of the original question, and he also has the possibility to give feedback on other files he is navigating.
+- **D-03:** For embeds and navigating inside Obsidian, the review tracks it properly, so the human doesn't lose track of the original question, and he also has the possibility to give feedback on other files he is navigating. The review lives in one panel at the side (layout B of [[RESEARCH-review-mockup]]).
 - **D-04:** When the human approves something on Obsidian through the plugin, he does NOT have to approve again in the terminal.
+- **D-05:** Committing to git and reviewing git after should be a required step. It's how you'll really know the deltas.

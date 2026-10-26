@@ -80,7 +80,16 @@ This plan implements [[SPEC-030-review-documents-open-in-obsidian]] based on [[R
   - Automated verification: every listed skill's document gate names the review paragraph; no listed gate asks `AskUserQuestion` before the `not configured` branch; the shipped-rules tests and full suite pass.
   - Manual verification: the human approves a spec in Obsidian while in another app and the session moves on with no terminal question (TASK-172).
 
-**Pause point:** when automated verification passes, the human runs TASK-172.
+### Wave 3 (detailed): the review panel and the git delta
+
+- [ ] TASK-187: The review moves into one panel in Obsidian's right sidebar, drawn as layout B of [[RESEARCH-review-mockup]]: per pending review a card, newest on top, with the question, a link to the reviewed file, the notes field, an "On this file" note for the page in view (absent while the reviewed file itself is in view), a "Feedback so far" list of every note and edited file as links, and Approve and Needs changes; the reviewed document keeps a one-line bar on top that opens the panel; the panel opens itself on a request and survives navigation; the slim bar on other pages goes; every Wave 2 behavior (edit tracking, gating, withdrawn requests, one click per review, rename, recheck) holds - complexity: M, depends_on: none, files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/styles.css, plugin/obsidian/tests/test_main.js], decisions: [SPEC-030-review-documents-open-in-obsidian/D-03]
+  - Automated verification: the harness covers the panel opening on a request, a card per pending review newest first, the "On this file" field following the page in view and hidden on the reviewed file, the feedback list after a note and an edit, Approve from the panel while another file is in view, the one-line bar on the reviewed file, and the Wave 2 cases carried over to the panel; `node --check` passes; full suite passes.
+  - Manual verification: the human follows a link from a reviewed document, leaves a note there, sees it under "Feedback so far", and approves from that page.
+- [ ] TASK-188: `compass review` refuses a document with uncommitted changes (`not configured: <file> has uncommitted changes; commit first`), records the commit it was sent at in the request as `commit`, and after the verdict prints `--- changes since <sha> ---` with `git diff <sha>` across the repository holding the vault (untracked files listed by name), before the reviewed file's text - complexity: S, depends_on: none, files: [plugin/cli/commands/review.py, plugin/cli/reviewlib.py, plugin/cli/tests/test_review_git.py], decisions: [SPEC-030-review-documents-open-in-obsidian/D-05]
+  - Automated verification: tests in a temporary git repository cover a dirty reviewed file (refused, no request written), a clean one (request carries the sha), an edit after the request (diff printed), a new untracked file (named), no edits (an empty changes section), and a vault outside any git repository (refused with its own message); full suite passes.
+  - Manual verification: none.
+
+**Pause point:** when automated verification passes, the human runs TASK-172 through the panel.
 
 ## Later (intent only)
 
@@ -95,6 +104,11 @@ This plan implements [[SPEC-030-review-documents-open-in-obsidian]] based on [[R
 
 - TASK-171: the gate sends the review in the background, ends its turn, and asks nothing in the terminal, because the TASK-170 run showed a verdict cannot reach the session while a terminal question is open ([[RESEARCH-review-in-obsidian]] finding 13, SPEC-030 D-04); research's axis gate is a conversation, not a document, and stays in the terminal, while research-codebase and research-papers review their finished documents; build's gate is the phase pause.
 - TASK-185, TASK-186: new, from SPEC-030 D-03 (navigation inside Obsidian keeps the original question in view and takes feedback on other files) and the cancel path D-04 needs when the human answers in the terminal.
+
+## Wave 3 elaborated
+
+- TASK-187: new; the human chose the side panel over a bar on every page in [[RESEARCH-review-mockup]], replacing TASK-185's slim bar.
+- TASK-188: new, from SPEC-030 D-05: the commit before a review and the git diff after it are enforced by the command instead of left to the agent.
 
 ## Risks
 

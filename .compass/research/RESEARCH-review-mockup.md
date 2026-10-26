@@ -1,12 +1,12 @@
 ---
 title: "Review in Obsidian: Mockup"
 type: research
-status: draft
+status: complete
 confidence: low
 area: methodology
 tags: [obsidian, review, mockup, human-gates]
 depends_on: ["[[SPEC-030-review-documents-open-in-obsidian]]"]
-summary: "two layouts for reviewing in Obsidian while following links: a slim bar on every visited page, or one review panel at the side"
+summary: "the review lives in one side panel that follows the human through links"
 created: 2026-10-25
 updated: 2026-10-25
 ---
@@ -86,11 +86,11 @@ A panel in Obsidian's right sidebar stays put while the human moves around the v
 - Two pending reviews show as two cards in the panel, newest on top.
 - The reviewed document keeps a one-line bar on top pointing at the panel, so a review never goes unnoticed when the sidebar is collapsed.
 
-## Recommendation
+## Decision
 
 Layout B. The question and every piece of feedback sit in one place that never scrolls away, and the answer is one click from any page. Layout A takes less screen width and needs no sidebar.
 
-## Choices inside either layout
+## Within the layout
 
-- Needs changes with nothing written: greyed out (Recommended), or allowed and the session asks what to change.
-- A note on an embed: lands on the embedded file (Recommended), or on the reviewed document with the embed named.
+- Needs changes with nothing written: greyed out.
+- A note on an embed: lands on the embedded file.
