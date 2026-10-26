@@ -8,9 +8,13 @@ files present but disabled, a corrupt vault list), verdict files that are
 half-written, for another request, or carry an unknown verdict, a timeout,
 the never-exit-2 contract, and the pending set the guard reads.
 
-Every test runs in a temp project with `COMPASS_OBSIDIAN_CONFIG` pointing at
-a temp vault list, and stubs the URI opener and the focus probe, so no test
-touches the real Obsidian.
+Every test runs in a temp project that is a committed git repository (a
+document goes out only when committed), with `COMPASS_OBSIDIAN_CONFIG`
+pointing at a temp vault list outside it, and stubs the URI opener and the
+focus probe, so no test touches the real Obsidian. The git side of a review
+(the dirty-document refusal, the recorded commit, the changes section) is
+tested in `test_review_git.py`; here the repository is clean, so the changes
+section is its header alone.
 """
 
 import importlib
@@ -18,6 +22,7 @@ import io
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import threading
@@ -34,23 +39,54 @@ from review_surfaces import obsidian as obsidian_surface  # noqa: E402
 
 
 class ReviewProject(unittest.TestCase):
+    """A temp directory holding `project/` (a git repository whose first
+    commit holds the `.compass` vault and its spec) beside the Obsidian vault
+    list and an empty git config, both outside the repository."""
+
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
-        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.base = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
+        self.tmp = self.base / "project"
         self.vault = self.tmp / ".compass"
         (self.vault / "specs").mkdir(parents=True)
         self.doc = self.vault / "specs" / "SPEC-001-x.md"
         self.doc.write_text("---\ntitle: x\n---\n\n# X\n", encoding="utf-8")
-        self.config = self.tmp / "obsidian.json"
-        env = {"COMPASS_OBSIDIAN_CONFIG": str(self.config), "CLAUDE_PROJECT_DIR": str(self.tmp)}
+        self.config = self.base / "obsidian.json"
+        (self.base / "gitconfig").write_text("", encoding="utf-8")
+        env = {
+            "COMPASS_OBSIDIAN_CONFIG": str(self.config),
+            "CLAUDE_PROJECT_DIR": str(self.tmp),
+            "GIT_CEILING_DIRECTORIES": str(self.base),
+            "GIT_CONFIG_GLOBAL": str(self.base / "gitconfig"),
+            "GIT_CONFIG_NOSYSTEM": "1",
+        }
         patcher = mock.patch.dict(os.environ, env)
         patcher.start()
         self.addCleanup(patcher.stop)
+        (self.tmp / ".gitignore").write_text(".compass/tmp/\n.compass/.obsidian/\n", encoding="utf-8")
+        self.git("init", "-q")
+        self.git("config", "user.name", "Tester")
+        self.git("config", "user.email", "tester@example.invalid")
+        self.git("config", "core.autocrlf", "false")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "first")
+        self.commit = self.git("rev-parse", "HEAD").stdout.strip()
         self.opened = []
         for target, value in [("open_uri", self.opened.append), ("has_focus", lambda: False)]:
             p = mock.patch.object(obsidian_surface, target, value)
             p.start()
             self.addCleanup(p.stop)
+
+    def git(self, *args):
+        result = subprocess.run(["git", *args], cwd=self.tmp, capture_output=True,
+                                text=True, encoding="utf-8")
+        if result.returncode != 0:
+            raise AssertionError(f"git {' '.join(args)} failed: {result.stderr}")
+        return result
+
+    @property
+    def changes_header(self):
+        return f"--- changes since {self.commit[:reviewlib.SHORT_SHA]} ---"
 
     def configure(self, listed=True, plugin="on"):
         obsidian = self.vault / ".obsidian"
@@ -74,8 +110,9 @@ class ReviewProject(unittest.TestCase):
                 code = exc.code
         return code, out.getvalue(), err.getvalue()
 
-    def answer_later(self, verdict, delay=0.3, raw=None, rid=None):
-        """Write a verdict for the first request that appears, after `delay`."""
+    def answer_later(self, verdict, delay=0.3, raw=None, rid=None, during=None):
+        """Write a verdict for the first request that appears, after `delay`;
+        `during` runs first, standing for the human's edits while reviewing."""
         directory = reviewlib.review_dir(self.vault)
 
         def write():
@@ -85,6 +122,8 @@ class ReviewProject(unittest.TestCase):
                 if requests:
                     time.sleep(delay)
                     req = json.loads(requests[0].read_text(encoding="utf-8"))
+                    if during:
+                        during()
                     target = reviewlib.verdict_path(requests[0])
                     body = raw if raw is not None else json.dumps(
                         {"id": rid or req["id"], "file": req["file"], "verdict": verdict, "notes": "n", "at": "t"})
@@ -151,7 +190,7 @@ class Request(ReviewProject):
         self.assertEqual(first[0], "requested")
         self.assertEqual(first[2], "specs/SPEC-001-x.md")
         request = json.loads((reviewlib.review_dir(self.vault) / f"{first[1]}.request.json").read_text())
-        self.assertEqual(request, {"id": first[1], "surface": "obsidian", "file": "specs/SPEC-001-x.md", "title": "Spec one", "return": True})
+        self.assertEqual(request, {"id": first[1], "surface": "obsidian", "file": "specs/SPEC-001-x.md", "title": "Spec one", "return": True, "commit": self.commit})
         self.assertEqual(len(self.opened), 1)
         self.assertTrue(self.opened[0].startswith("obsidian://compass-review?vault=abc123&request="))
         self.assertIn("tmp%2Freview%2F" + first[1] + ".request.json", self.opened[0])
@@ -173,8 +212,8 @@ class Request(ReviewProject):
 class Wait(ReviewProject):
     def test_verdict_mid_wait_prints_verdict_then_human_text(self):
         self.configure()
-        self.answer_later("approved")
-        self.doc.write_text("---\ntitle: x\n---\n\n# X\n\nhuman edit\n", encoding="utf-8")
+        self.answer_later("approved", during=lambda: self.doc.write_text(
+            "---\ntitle: x\n---\n\n# X\n\nhuman edit\n", encoding="utf-8"))
         code, out, _ = self.review(str(self.doc), "--timeout", "5")
         self.assertEqual(code, 0, out)
         lines = out.splitlines()
@@ -363,6 +402,8 @@ class Carried(ReviewProject):
         self.assertEqual(code, 0, out)
         lines = out.splitlines()
         marker = lines.index("--- specs/SPEC-001-x.md as the human left it ---")
+        self.assertEqual(lines[marker - 1], self.changes_header, "nothing changed, so the section is its header")
+        marker -= 1
         expected = [
             "comment specs/SPEC-002-y.md: why: unclear",
             "comment plans/PLAN-009-z.md: second",
@@ -387,6 +428,8 @@ class Carried(ReviewProject):
                 self.assertEqual(code, 0, out)
                 lines = out.splitlines()
                 marker = lines.index("--- specs/SPEC-001-x.md as the human left it ---")
+                self.assertEqual(lines[marker - 1], self.changes_header)
+                marker -= 1
                 self.assertEqual(lines[marker - len(expected):marker], expected)
                 carried = [ln for ln in lines if ln.startswith(("comment ", "edited "))]
                 self.assertEqual(carried, expected)
@@ -407,7 +450,8 @@ class Carried(ReviewProject):
                 shown = json.dumps(json.loads(verdict_file.read_text(encoding="utf-8")), indent=2)
                 self.assertEqual(
                     rest,
-                    shown + "\n--- specs/SPEC-001-x.md as the human left it ---\n" + self.doc.read_text(encoding="utf-8"),
+                    shown + "\n" + self.changes_header + "\n--- specs/SPEC-001-x.md as the human left it ---\n"
+                    + self.doc.read_text(encoding="utf-8"),
                 )
 
     def test_valid_verdict_accepts_absent_or_list_fields_and_rejects_non_lists(self):
