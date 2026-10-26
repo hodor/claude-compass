@@ -194,17 +194,13 @@ def _removable_lines(index_text, resolve, moved_files):
     set, resolved through the pre-move name map. A line that also references
     an unmoved file is kept; fenced code lines are never touched."""
     moved = set(moved_files)
-    removable, in_fence = [], False
-    for i, line in enumerate(index_text.split("\n")):
-        if line.lstrip().startswith("```"):
-            in_fence = not in_fence
-            continue
+    removable = []
+    lines = index_text.split("\n")
+    fenced, _ = vaultlib.fence_mask(lines)
+    for i, (line, in_fence) in enumerate(zip(lines, fenced)):
         if in_fence:
             continue
-        targets = [
-            raw.split("#")[0].split("|")[0].strip()
-            for raw in WIKILINK.findall(line)
-        ]
+        targets = [vaultlib.split_link(raw)[0] for raw in WIKILINK.findall(line)]
         resolved = [p for target in targets for p in resolve.get(target, [])]
         if resolved and all(p in moved for p in resolved):
             removable.append(i)

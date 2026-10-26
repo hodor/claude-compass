@@ -29,7 +29,6 @@ DONE_FILE = "archive/done.md"
 TASK_LINE = re.compile(r"^- \[( |x|X)\] ")
 ANY_TASK = re.compile(r"^\s*- \[( |x|X)\] ")
 OPEN_TASK = re.compile(r"^\s*- \[ \] ")
-FENCE = re.compile(r"^\s*```")
 
 DONE_HEADER = """---
 title: Done Log
@@ -54,12 +53,8 @@ def _parse_sections(body):
     tuple is the preamble (heading None). Fence state is tracked so a `##`
     inside a code block never opens a section."""
     sections = [(None, [])]
-    in_fence = False
-    for line in body:
-        if FENCE.match(line):
-            in_fence = not in_fence
-            sections[-1][1].append(line)
-            continue
+    fenced, _ = vaultlib.fence_mask(body)
+    for line, in_fence in zip(body, fenced):
         if not in_fence and line.startswith("## "):
             sections.append((line, []))
             continue
@@ -75,7 +70,7 @@ def _parse_items(lines):
     unchecked descendant. Fenced lines are always `text` and end any item."""
     blocks = []
     current = None  # (kind, lines) being accumulated for an item
-    in_fence = False
+    fenced, _ = vaultlib.fence_mask(lines)
 
     def flush():
         nonlocal current
@@ -83,12 +78,7 @@ def _parse_items(lines):
             blocks.append(current)
             current = None
 
-    for line in lines:
-        if FENCE.match(line):
-            in_fence = not in_fence
-            flush()
-            blocks.append(("text", [line]))
-            continue
+    for line, in_fence in zip(lines, fenced):
         if in_fence:
             flush()
             blocks.append(("text", [line]))

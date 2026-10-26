@@ -31,7 +31,7 @@ STRUCTURAL_KINDS = ("depends_on", "wikilink", "containment", "citation")
 
 
 def _target(raw):
-    return raw.split("#")[0].split("|")[0].strip()
+    return vaultlib.split_link(raw)[0]
 
 
 def _split_frontmatter(text):
@@ -45,11 +45,9 @@ def _split_frontmatter(text):
 
 def _body_links(text):
     """Wikilink targets in body text, skipping fenced blocks and inline code."""
-    in_fence = False
-    for line in _split_frontmatter(text).split("\n"):
-        if line.lstrip().startswith("```"):
-            in_fence = not in_fence
-            continue
+    lines = _split_frontmatter(text).split("\n")
+    fenced, _ = vaultlib.fence_mask(lines)
+    for line, in_fence in zip(lines, fenced):
         if in_fence:
             continue
         for raw in WIKILINK.findall(INLINE_CODE.sub("", line)):

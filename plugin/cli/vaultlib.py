@@ -128,6 +128,24 @@ def all_markdown_files(vault_root):
     return files
 
 
+def attachment_names(vault_root):
+    """The names a wikilink or embed reaches a non-markdown vault file by
+    (an image, a `.canvas`, a `.base`): each file's name with its extension
+    and its vault-relative POSIX path. Skips what `all_markdown_files` skips
+    and every dot-directory, such as `.obsidian/`."""
+    vault_root = Path(vault_root)
+    skip = {"tmp", "meta", ".annotations"}
+    names = set()
+    for path in vault_root.rglob("*"):
+        rel_parts = path.relative_to(vault_root).parts
+        if (rel_parts[0] in skip or any(part.startswith(".") for part in rel_parts[:-1])
+                or path.suffix == ".md" or not path.is_file()):
+            continue
+        names.add(path.name)
+        names.add("/".join(rel_parts))
+    return names
+
+
 COMPASS_HOME_STORES = ("sessions", "private")
 
 
@@ -497,46 +515,57 @@ _FENCE_CLOSE = re.compile(r"^(`{3,}|~{3,})\s*$")
 _INLINE_CODE_SPAN = re.compile(r"`[^`\n]+`")
 
 
-def strip_fenced_code(text):
-    """Blank out fenced code blocks, preserving the line count.
+def split_link(raw):
+    """`(target, suffix)` for the text inside a wikilink's brackets: the
+    target before any `#heading` or `|alias`, and the rest verbatim. Inside
+    a markdown table the alias pipe is written `\\|`; its backslash belongs
+    to the suffix."""
+    split_at = next((i for i, c in enumerate(raw) if c in "#|"), len(raw))
+    if raw[split_at:split_at + 1] == "|" and raw[:split_at].endswith("\\"):
+        split_at -= 1
+    return raw[:split_at].strip(), raw[split_at:]
 
-    Returns `(stripped_text, unterminated_fence)`. Every line of a fenced
-    block - delimiters included - becomes an empty line, so line numbers
-    computed on the stripped text still point at the original. Both backtick
-    and tilde fences are handled; a closing fence must use the opener's
-    character and be at least as long.
 
-    A fence that never closes runs to the end of the text (CommonMark), so
-    everything from the opener onward is blanked and the flag is True. The
-    flag is how callers tell "content absent" from "content swallowed by a
-    broken fence" - they must fail loud instead of passing silently.
-    """
-    lines = text.split("\n")
-    out = list(lines)
+def fence_mask(lines):
+    """`(mask, unterminated_fence)` for a list of lines: `mask[i]` is True
+    when line `i` belongs to a fenced code block, delimiters included. Both
+    backtick and tilde fences count; a closing fence uses the opener's
+    character and is at least as long, so a shorter or other-character
+    fence inside a block is content. A fence that never closes runs to the
+    end (CommonMark) and the flag is True."""
+    mask = [False] * len(lines)
     open_marker = None
-    open_index = None
     for i, line in enumerate(lines):
         stripped = line.strip()
         if open_marker is None:
             match = _FENCE_OPEN.match(stripped)
             if match:
                 open_marker = match.group(1)
-                open_index = i
-        else:
-            match = _FENCE_CLOSE.match(stripped)
-            if (
-                match
-                and match.group(1)[0] == open_marker[0]
-                and len(match.group(1)) >= len(open_marker)
-            ):
-                for j in range(open_index, i + 1):
-                    out[j] = ""
-                open_marker = None
-                open_index = None
-    unterminated = open_marker is not None
-    if unterminated:
-        for j in range(open_index, len(out)):
-            out[j] = ""
+                mask[i] = True
+            continue
+        mask[i] = True
+        match = _FENCE_CLOSE.match(stripped)
+        if (
+            match
+            and match.group(1)[0] == open_marker[0]
+            and len(match.group(1)) >= len(open_marker)
+        ):
+            open_marker = None
+    return mask, open_marker is not None
+
+
+def strip_fenced_code(text):
+    """Blank out fenced code blocks, preserving the line count.
+
+    Returns `(stripped_text, unterminated_fence)`. Every line `fence_mask`
+    marks becomes an empty line, so line numbers computed on the stripped
+    text still point at the original. The flag is how callers tell "content
+    absent" from "content swallowed by a broken fence" - they must fail loud
+    instead of passing silently.
+    """
+    lines = text.split("\n")
+    mask, unterminated = fence_mask(lines)
+    out = ["" if fenced else line for line, fenced in zip(lines, mask)]
     return "\n".join(out), unterminated
 
 

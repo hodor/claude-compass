@@ -67,16 +67,18 @@ WIKILINK = re.compile(r"\[\[([^\]]+)\]\]")
 INLINE_CODE = re.compile(r"`[^`]*`")
 
 
-def _check_links(rel, text, resolve, warnings):
+def _check_links(rel, text, resolve, warnings, attachments=frozenset()):
     """Append a warning for each wikilink in `text` that does not resolve to
     exactly one file: `broken_wikilink` when the name maps to nothing,
     `ambiguous_wikilink` (with every matching path listed) when it maps to
-    more than one. Resolution goes through `vaultlib.resolve_link` - exact
-    name first, then the unique-prefix glob `rules/wikilinks.md` documents -
-    over `vaultlib.resolvable_names_map` output, the same resolution `sync`
-    emits links against."""
+    more than one. A name in `attachments` (`vaultlib.attachment_names`)
+    reaches an image, canvas or base and resolves. Other resolution goes
+    through `vaultlib.resolve_link` - exact name first, then the
+    unique-prefix glob `rules/wikilinks.md` documents - over
+    `vaultlib.resolvable_names_map` output, the same resolution `sync` emits
+    links against."""
     for lineno, target in _wikilinks_in(text):
-        if target in SPECIAL_TARGETS:
+        if target in SPECIAL_TARGETS or target in attachments:
             continue
         paths = vaultlib.resolve_link(resolve, target)
         if not paths:
@@ -88,16 +90,14 @@ def _check_links(rel, text, resolve, warnings):
 
 def _wikilinks_in(text):
     """Yield (line_number, target) for wikilinks outside code blocks/spans."""
-    in_fence = False
-    for lineno, line in enumerate(text.splitlines(), start=1):
-        if line.lstrip().startswith("```"):
-            in_fence = not in_fence
-            continue
+    lines = text.splitlines()
+    fenced, _ = vaultlib.fence_mask(lines)
+    for lineno, (line, in_fence) in enumerate(zip(lines, fenced), start=1):
         if in_fence:
             continue
         cleaned = INLINE_CODE.sub("", line)
         for match in WIKILINK.finditer(cleaned):
-            target = match.group(1).split("#")[0].split("|")[0].strip()
+            target = vaultlib.split_link(match.group(1))[0]
             if target:
                 yield lineno, target
 
@@ -232,6 +232,7 @@ def check_vault(vault_root):
     errors, warnings = [], []
     records = vaultlib.scan_artifacts(vault_root)
     resolve = vaultlib.resolvable_names_map(vault_root)
+    attachments = vaultlib.attachment_names(vault_root)
     layout = vaultlib.classify_root_dirs(vault_root)
 
     for name in layout["unclassified"]:
@@ -253,13 +254,13 @@ def check_vault(vault_root):
                 msg = f"frontmatter_missing_field: {rel}: {field}"
                 (errors if field in CORE_REQUIRED else warnings).append(msg)
 
-        _check_links(rel, path.read_text(encoding="utf-8"), resolve, warnings)
+        _check_links(rel, path.read_text(encoding="utf-8"), resolve, warnings, attachments)
 
     for rel in TOP_LEVEL_FILES:
         path = vault_root / rel
         if not path.is_file():
             continue
-        _check_links(rel, path.read_text(encoding="utf-8"), resolve, warnings)
+        _check_links(rel, path.read_text(encoding="utf-8"), resolve, warnings, attachments)
 
     index_path = vault_root / "index.md"
     if index_path.is_file():

@@ -140,21 +140,17 @@ def _rewrite_links(text, renames):
 
     def repl(match):
         nonlocal changed
-        raw = match.group(1)
-        split_at = next((i for i, c in enumerate(raw) if c in "#|"), len(raw))
-        new = renames.get(raw[:split_at].strip())
+        target, suffix = vaultlib.split_link(match.group(1))
+        new = renames.get(target)
         if new is None:
             return match.group(0)
         changed += 1
-        return f"[[{new}{raw[split_at:]}]]"
+        return f"[[{new}{suffix}]]"
 
     out = []
-    in_fence = False
-    for line in text.split("\n"):
-        if line.lstrip().startswith("```"):
-            in_fence = not in_fence
-            out.append(line)
-            continue
+    lines = text.split("\n")
+    fenced, _ = vaultlib.fence_mask(lines)
+    for line, in_fence in zip(lines, fenced):
         if in_fence:
             out.append(line)
             continue
@@ -191,19 +187,16 @@ def _index_descriptions_of(vault_root, moved_rel):
         return []
     resolve = vaultlib.resolvable_names_map(vault_root)
     found = []
-    in_fence = False
-    for line in index_path.read_text(encoding="utf-8").split("\n"):
-        if line.lstrip().startswith("```"):
-            in_fence = not in_fence
-            continue
+    lines = index_path.read_text(encoding="utf-8").split("\n")
+    fenced, _ = vaultlib.fence_mask(lines)
+    for line, in_fence in zip(lines, fenced):
         if in_fence:
             continue
         entry = sync_command.ENTRY_PATTERN.match(line)
         raws = WIKILINK.findall(line)
         if not entry or not raws:
             continue
-        split_at = next((i for i, c in enumerate(raws[0]) if c in "#|"), len(raws[0]))
-        paths = vaultlib.resolve_link(resolve, raws[0][:split_at].strip())
+        paths = vaultlib.resolve_link(resolve, vaultlib.split_link(raws[0])[0])
         if len(paths) == 1 and paths[0] in moved_rel:
             found.append((paths[0], entry.group("desc")))
     return found
