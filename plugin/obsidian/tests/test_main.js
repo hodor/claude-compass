@@ -1,7 +1,7 @@
 // Tests for the Compass Review plugin, run with `node --test`. The `obsidian`
 // and `electron` modules and the DOM helpers Obsidian adds are stubbed, so
-// the plugin's request, bar, verdict, rename and step-aside paths run without
-// Obsidian.
+// the plugin's request, panel, bar, verdict, rename and step-aside paths run
+// without Obsidian.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -9,6 +9,13 @@ const Module = require("node:module");
 const path = require("node:path");
 
 // ---- minimal DOM: just what the plugin touches ----
+// A selector is an optional tag followed by any number of `.class` parts.
+function matches(el, sel) {
+  const m = /^([a-z0-9]*)((?:\.[\w-]+)*)$/i.exec(sel);
+  if (!m) return false;
+  const have = el.cls.split(" ");
+  return (!m[1] || el.tag === m[1]) && m[2].split(".").filter(Boolean).every((c) => have.includes(c));
+}
 class El {
   constructor(tag, opts = {}) {
     this.tag = tag;
@@ -16,7 +23,8 @@ class El {
     this.text = opts.text || "";
     this.type = opts.type;
     this.placeholder = opts.placeholder;
-    this.value = "";
+    this.href = opts.href;
+    this.value = opts.value !== undefined ? opts.value : "";
     this.dataset = {};
     this.children = [];
     this.parent = null;
@@ -25,16 +33,21 @@ class El {
   }
   addEventListener(type, fn) { (this.handlers[type] = this.handlers[type] || []).push(fn); }
   createEl(tag, opts) { const e = new El(tag, opts); e.parent = this; this.children.push(e); return e; }
+  createDiv(opts) { return this.createEl("div", opts); }
   createSpan(opts) { return this.createEl("span", opts); }
   insertBefore(el, ref) {
     el.parent = this;
     const i = ref ? this.children.indexOf(ref) : -1;
     if (i < 0) this.children.push(el); else this.children.splice(i, 0, el);
   }
+  empty() { this.children.forEach((c) => { c.parent = null; }); this.children = []; }
+  setText(t) { this.text = t; }
+  addClass(c) { this.cls = this.cls ? `${this.cls} ${c}` : c; }
+  removeClass(c) { this.cls = this.cls.split(" ").filter((x) => x && x !== c).join(" "); }
   remove() { if (this.parent) this.parent.children = this.parent.children.filter((c) => c !== this); this.parent = null; }
   all() { return [this, ...this.children.flatMap((c) => c.all())]; }
-  querySelector(sel) { return this.all().slice(1).find((e) => e.cls.split(" ").includes(sel.slice(1))) || null; }
-  querySelectorAll(sel) { return this.all().slice(1).filter((e) => e.cls.split(" ").includes(sel.slice(1))); }
+  querySelector(sel) { return this.all().slice(1).find((e) => matches(e, sel)) || null; }
+  querySelectorAll(sel) { return this.all().slice(1).filter((e) => matches(e, sel)); }
 }
 global.createDiv = (opts) => new El("div", opts);
 global.document = new El("document");
@@ -50,10 +63,27 @@ class Plugin {
   // The timer is cleared at once so the test process can exit; the id is kept for assertions.
   registerInterval(id) { this.intervals.push(id); clearInterval(id); return id; }
   registerObsidianProtocolHandler(name, fn) { this.handler = fn; }
+  registerView(type, factory) { this.app.viewFactories[type] = factory; }
+  addCommand() {}
+  addRibbonIcon() { return new El("div"); }
+}
+// A view in a sidebar leaf: containerEl.children[0] is the header, children[1] the content.
+class ItemView {
+  constructor(leaf) {
+    this.leaf = leaf;
+    this.app = leaf.app;
+    this.containerEl = new El("view-container");
+    this.containerEl.createEl("div", { cls: "view-header" });
+    this.contentEl = this.containerEl.createEl("div", { cls: "view-content" });
+  }
+  getViewType() { return ""; }
+  getDisplayText() { return ""; }
+  async onOpen() {}
+  async onClose() {}
 }
 class MarkdownView { constructor(file) { this.file = file; this.saved = 0; this.containerEl = new El("view"); this.containerEl.createEl("div", { cls: "view-content" }); } async save() { this.saved++; } }
 const stubs = {
-  obsidian: { Plugin, MarkdownView, Notice: class { constructor(m) { notices.push(m); } } },
+  obsidian: { Plugin, ItemView, MarkdownView, Notice: class { constructor(m) { notices.push(m); } } },
   electron: { remote: { getCurrentWindow: () => win, app: { hide() { win.minimized++; } } } },
 };
 const origResolve = Module._resolveFilename;
@@ -63,13 +93,20 @@ for (const [name, exp] of Object.entries(stubs)) require.cache[name] = { id: nam
 const CompassReview = require(path.join(__dirname, "..", "compass-review", "main.js"));
 
 // ---- a fake app over an in-memory vault ----
+// Opening a file in a leaf makes it the active file and fires the workspace's
+// `file-open` and `layout-change` events, as Obsidian does.
 function makeApp(files) {
   const store = new Map(Object.entries(files));
   const leaves = [];
+  const panelLeaves = [];
+  const revealed = [];
   const listeners = {};
   const wsListeners = {};
+  const fire = (name, ...args) => { if (wsListeners[name]) wsListeners[name](...args); };
   const app = {
     store,
+    active: null,
+    viewFactories: {},
     vault: {
       adapter: {
         async read(p) { if (!store.has(p)) throw new Error(`ENOENT ${p}`); return store.get(p); },
@@ -77,19 +114,45 @@ function makeApp(files) {
         async exists(p) { return store.has(p) || [...store.keys()].some((k) => k.startsWith(p + "/")); },
         async list(dir) { return { files: [...store.keys()].filter((k) => path.posix.dirname(k) === dir), folders: [] }; },
       },
-      getAbstractFileByPath(p) { return store.has(p) ? { path: p, basename: path.posix.basename(p, ".md") } : null; },
+      getAbstractFileByPath(p) { return store.has(p) ? { path: p, basename: path.posix.basename(p, ".md"), extension: "md" } : null; },
       on(name, fn) { listeners[name] = fn; },
     },
     workspace: {
-      getLeavesOfType: () => leaves,
-      getLeaf() { const leaf = { view: new MarkdownView(null), async openFile(f) { this.view.file = f; } }; leaves.push(leaf); return leaf; },
-      setActiveLeaf() {},
+      getLeavesOfType: (type) => (type === "markdown" ? leaves : panelLeaves.filter((l) => l.view && l.view.getViewType() === type)),
+      getLeaf() {
+        const leaf = { view: new MarkdownView(null), async openFile(f) { this.view.file = f; app.active = f; fire("file-open", f); fire("layout-change"); } };
+        leaves.push(leaf);
+        return leaf;
+      },
+      getRightLeaf() {
+        const leaf = {
+          app, view: null,
+          async setViewState(state) {
+            const factory = app.viewFactories[state.type];
+            if (!factory) throw new Error(`no view registered for ${state.type}`);
+            this.view = factory(this);
+            await this.view.onOpen();
+          },
+        };
+        panelLeaves.push(leaf);
+        return leaf;
+      },
+      async revealLeaf(leaf) { revealed.push(leaf); },
+      async openLinkText(link) {
+        const f = app.vault.getAbstractFileByPath(link);
+        if (!f) return;
+        await this.getLeaf(false).openFile(f);
+      },
+      getActiveFile: () => app.active,
+      setActiveLeaf(leaf) { if (leaf.view && leaf.view.file) app.active = leaf.view.file; },
       on(name, fn) { wsListeners[name] = fn; },
       onLayoutReady(fn) { this.ready = fn; },
     },
     listeners,
     wsListeners,
     leaves,
+    panelLeaves,
+    revealed,
   };
   return app;
 }
@@ -102,44 +165,123 @@ async function loaded(files) {
 }
 
 const req = (id, file, extra = {}) => JSON.stringify({ id, file, title: "T", return: true, ...extra });
+// The one-line bar on a reviewed document, and the review panel's cards.
 const bar = (app) => app.leaves.map((l) => l.view.containerEl.querySelector(".compass-review-bar")).find(Boolean);
-const button = (b, text) => b.children.find((c) => c.tag === "button" && c.text === text);
+const button = (root, text) => root.all().find((c) => c.tag === "button" && c.text === text);
 
 test.beforeEach(() => { notices.length = 0; win.minimized = 0; win.focused = 0; win.onTop = []; });
 
-test("a request opens the file, raises the window and shows the bar", async () => {
+const sleep = () => new Promise((r) => setImmediate(r));
+const mdFile = (p) => ({ path: p, basename: path.posix.basename(p, ".md"), extension: "md" });
+const barIn = (leaf) => leaf.view.containerEl.querySelector(".compass-review-bar");
+const barText = (b) => b.all().map((e) => e.text).join(" ");
+
+// Puts a markdown file in view in a leaf, as navigating to it does.
+function show(app, leaf, p) {
+  const f = mdFile(p);
+  leaf.view.file = f;
+  app.active = f;
+  if (app.wsListeners["file-open"]) app.wsListeners["file-open"](f);
+  if (app.wsListeners["layout-change"]) app.wsListeners["layout-change"]();
+}
+
+const panelView = (app) => (app.panelLeaves.find((l) => l.view) || {}).view || null;
+const panelEl = (app) => { const v = panelView(app); return v ? v.containerEl.children[1] : null; };
+const cards = (app) => { const p = panelEl(app); return p ? p.querySelectorAll(".compass-review-card") : []; };
+const cardIds = (app) => cards(app).map((c) => c.dataset.id);
+const cardFor = (app, id) => cards(app).find((c) => c.dataset.id === id);
+const cardBtn = (app, id, text) => button(cardFor(app, id), text);
+const thisFileIn = (card) => card.querySelector(".compass-review-this-file");
+const fileNoteIn = (card) => { const block = thisFileIn(card); return block && block.all().find((e) => e.tag === "textarea"); };
+const notesIn = (card) => {
+  const block = thisFileIn(card);
+  const inBlock = block ? block.all() : [];
+  return card.all().find((e) => e.tag === "textarea" && e.cls.split(" ").includes("compass-review-notes") && !inBlock.includes(e));
+};
+const linkIn = (card) => card.querySelector(".compass-review-file");
+const feedbackOf = (card) => {
+  const list = card.querySelector(".compass-review-feedback");
+  return list ? list.all().filter((e) => e.tag === "li").map((li) => li.all().map((e) => e.text).join("")) : [];
+};
+const trailCount = (app) => [...app.leaves.map((l) => l.view.containerEl), ...app.panelLeaves.filter((l) => l.view).map((l) => l.view.containerEl)]
+  .flatMap((h) => h.querySelectorAll(".compass-review-trail")).length;
+async function closePanel(app) {
+  for (const l of [...app.panelLeaves]) if (l.view) await l.view.onClose();
+  app.panelLeaves.length = 0;
+}
+
+// A click reaches `onclick` or a `click` listener, whichever the plugin attached.
+function click(el) {
+  const fn = typeof el.onclick === "function" ? el.onclick : (el.handlers.click || [])[0];
+  assert.ok(fn, `no click handler on <${el.tag}> "${el.text}"`);
+  return fn.call(el, { target: el, preventDefault() {}, stopPropagation() {} });
+}
+
+// A text field reports its value through its handlers: the stub DOM has no
+// events, so a test sets `.value` and calls whichever of `on<type>` or the
+// addEventListener handlers the plugin attached, for both `input` and `change`.
+function typeInto(el, value) {
+  assert.ok(el, "text field to type into is missing");
+  el.value = value;
+  for (const type of ["input", "change"]) {
+    if (typeof el["on" + type] === "function") el["on" + type]({ target: el });
+    for (const fn of el.handlers[type] || []) fn({ target: el });
+  }
+}
+
+const verdictOf = (app, p) => JSON.parse(app.store.get(p));
+
+// ---- request and verdict through the panel ----
+
+// Adversarial where: a request opens the file but not the panel (or opens a
+// panel nobody reveals), the card lacks a verdict button, or the old
+// slim/verdict bar is what appears instead.
+test("a request opens the file, raises the window, opens and reveals the panel with a card, and puts a bar on the document", async () => {
   const { app, plugin } = await loaded({ "specs/a.md": "x", "tmp/review/1.request.json": req("1", "specs/a.md") });
   await plugin.handler({ request: "tmp/review/1.request.json" });
   assert.equal(app.leaves[0].view.file.path, "specs/a.md");
   assert.equal(win.focused, 1);
   assert.deepEqual(win.onTop, [true]);
-  const b = bar(app);
-  assert.ok(b, "bar shown");
-  assert.equal(b.dataset.id, "1");
-  assert.ok(button(b, "Approve") && button(b, "Needs changes"));
+  const panel = panelView(app);
+  assert.ok(panel, "panel opened");
+  assert.equal(panel.getViewType(), "compass-review-panel");
+  assert.ok(app.revealed.includes(panel.leaf), "panel revealed");
+  assert.deepEqual(cardIds(app), ["1"]);
+  assert.ok(button(cardFor(app, "1"), "Approve") && button(cardFor(app, "1"), "Needs changes"));
+  assert.equal(bar(app).dataset.id, "1");
 });
 
-test("approve saves the editor, writes the verdict next to the request, and steps aside", async () => {
-  const { app, plugin } = await loaded({ "specs/a.md": "x", ".compass/tmp/review/1.request.json": req("1", "specs/a.md") });
+// Adversarial where: the panel click path differs from the old bar's: the
+// editor is not saved, the verdict lands at the wrong path or without the
+// typed note, Obsidian does not step aside, or the card/bar outlive the verdict;
+// all with a different file in view, which the old bar could never see.
+test("approve from the panel while another file is in view saves the editor, writes the verdict next to the request, and steps aside", async () => {
+  const { app, plugin } = await loaded({ "specs/a.md": "x", "b.md": "y", ".compass/tmp/review/1.request.json": req("1", "specs/a.md") });
   await plugin.handler({ request: ".compass/tmp/review/1.request.json" });
-  const b = bar(app);
-  b.children.find((c) => c.tag === "input").value = "looks good";
-  await button(b, "Approve").onclick();
-  await new Promise((r) => setImmediate(r));
+  const other = app.workspace.getLeaf(true);
+  await other.openFile(mdFile("b.md"));
+  assert.ok(thisFileIn(cardFor(app, "1")), "another file is in view");
+  typeInto(notesIn(cardFor(app, "1")), "looks good");
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
   const verdict = JSON.parse(app.store.get(".compass/tmp/review/1.verdict.json"));
   assert.equal(verdict.verdict, "approved");
   assert.equal(verdict.notes, "looks good");
   assert.equal(verdict.id, "1");
   assert.equal(app.leaves[0].view.saved, 1);
   assert.equal(win.minimized, 1);
+  assert.equal(cardFor(app, "1"), undefined, "card removed after the verdict");
   assert.equal(bar(app), undefined, "bar removed after the verdict");
 });
 
+// Adversarial where: Needs changes from the panel ignores `return: false` and
+// steps Obsidian aside anyway, or writes the wrong verdict word.
 test("return false keeps Obsidian in front after the verdict", async () => {
   const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/2.request.json": req("2", "a.md", { return: false }) });
   await plugin.handler({ request: "tmp/review/2.request.json" });
-  await button(bar(app), "Needs changes").onclick();
-  await new Promise((r) => setImmediate(r));
+  typeInto(notesIn(cardFor(app, "2")), "redo");
+  await click(cardBtn(app, "2", "Needs changes"));
+  await sleep();
   assert.equal(JSON.parse(app.store.get("tmp/review/2.verdict.json")).verdict, "changes");
   assert.equal(win.minimized, 0);
 });
@@ -163,6 +305,8 @@ test("a malformed request reports a failure", async () => {
   assert.match(notices[0], /malformed request/);
 });
 
+// Adversarial where: the older request for a file stays as a second card (or
+// the stale bar id stays) after a newer request for the same file.
 test("a second request for the same file replaces the first", async () => {
   const { app, plugin } = await loaded({
     "a.md": "x", "tmp/review/5.request.json": req("5", "a.md"), "tmp/review/6.request.json": req("6", "a.md") });
@@ -170,16 +314,23 @@ test("a second request for the same file replaces the first", async () => {
   await plugin.handler({ request: "tmp/review/6.request.json" });
   assert.equal(bar(app).dataset.id, "6");
   assert.deepEqual([...plugin.pending.keys()], ["6"]);
+  assert.deepEqual(cardIds(app), ["6"]);
 });
 
-test("a renamed file keeps its bar and the verdict names the new path", async () => {
+// Adversarial where: a rename leaves the panel pointing at the old path: the
+// card still treats the renamed reviewed file as "another file", or the
+// verdict names the old path.
+test("a renamed file keeps its bar and card, and the verdict names the new path", async () => {
   const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/7.request.json": req("7", "a.md") });
   await plugin.handler({ request: "tmp/review/7.request.json" });
-  app.leaves[0].view.file = { path: "b.md", basename: "b" };
+  app.leaves[0].view.file = mdFile("b.md");
+  app.active = mdFile("b.md");
   app.listeners.rename({ path: "b.md" }, "a.md");
   assert.ok(bar(app), "bar follows the rename");
-  await button(bar(app), "Approve").onclick();
-  await new Promise((r) => setImmediate(r));
+  assert.deepEqual(cardIds(app), ["7"]);
+  assert.equal(thisFileIn(cardFor(app, "7")), null, "the renamed reviewed file is still the reviewed file");
+  await click(cardBtn(app, "7", "Approve"));
+  await sleep();
   assert.equal(JSON.parse(app.store.get("tmp/review/7.verdict.json")).file, "b.md");
 });
 
@@ -211,74 +362,185 @@ test("verdictPathFor swaps only the suffix", () => {
   assert.equal(CompassReview.verdictPathFor("x.request.json/tmp/review/1.request.json"), "x.request.json/tmp/review/1.verdict.json");
 });
 
-// ---- review trail: the review stays in view while the human moves around the vault ----
+// ---- the panel: it stays in view while the human moves around the vault ----
 
-const trailOf = (app) => app.leaves.map((l) => l.view.containerEl.querySelector(".compass-review-trail")).find(Boolean);
-const barIn = (leaf) => leaf.view.containerEl.querySelector(".compass-review-bar");
-const trailIn = (leaf) => leaf.view.containerEl.querySelector(".compass-review-trail");
-const trailText = (t) => t.all().map((e) => e.text).join(" ");
-const backOf = (t) => t.all().find((e) => e.tag === "button" && e.text === "Back to review");
-const noteOf = (t) => t.querySelector(".compass-review-file-note");
-const sleep = () => new Promise((r) => setImmediate(r));
-const mdFile = (p) => ({ path: p, basename: path.posix.basename(p, ".md"), extension: "md" });
-const go = (leaf, p) => { leaf.view.file = mdFile(p); };
-
-// A text field reports its value through its handlers: the stub DOM has no
-// events, so a test sets `.value` and calls whichever of `on<type>` or the
-// addEventListener handlers the plugin attached, for both `input` and `change`.
-function typeInto(el, value) {
-  el.value = value;
-  for (const type of ["input", "change"]) {
-    if (typeof el["on" + type] === "function") el["on" + type]({ target: el });
-    for (const fn of el.handlers[type] || []) fn({ target: el });
-  }
-}
-
-const verdictOf = (app, p) => JSON.parse(app.store.get(p));
-
-// Adversarial where: navigating away from the reviewed file in the same pane
-// drops the review from view (no bar, no way back), or Back opens a new pane
-// or the wrong file instead of restoring the reviewed one.
-test("moving to another file shows a slim bar naming the review, and Back reopens the reviewed file in the same pane", async () => {
+// Adversarial where: the panel is created at load with nothing to review, a
+// second request opens a second panel, a request does not reveal a panel that
+// was already open, or navigation rebuilds or duplicates the panel.
+test("the panel opens only on a request, is revealed on every request, and stays one panel through navigation", async () => {
   const { app, plugin } = await loaded({
-    "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md", { title: "Alpha spec" }) });
+    "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md"), "tmp/review/2.request.json": req("2", "b.md") });
+  assert.equal(app.panelLeaves.length, 0, "no panel before a request");
+  assert.ok(app.viewFactories["compass-review-panel"], "the panel view type is registered");
   await plugin.handler({ request: "tmp/review/1.request.json" });
-  const leaf = app.leaves[0];
-  assert.equal(trailIn(leaf), null, "no trail on the reviewed file");
-  go(leaf, "b.md");
-  plugin.decorate();
-  const trail = trailIn(leaf);
-  assert.ok(trail, "slim bar on the linked file");
-  assert.match(trailText(trail), /Alpha spec/);
-  assert.equal(barIn(leaf), null, "the full bar belongs to the reviewed file only");
-  assert.ok(noteOf(trail), "a note field for this file");
-  await backOf(trail).onclick();
-  plugin.decorate();
-  assert.equal(leaf.view.file.path, "a.md");
-  assert.equal(app.leaves.length, 1, "same pane, no new one");
-  assert.equal(trailIn(leaf), null);
-  assert.equal(barIn(leaf).dataset.id, "1");
+  const first = panelView(app);
+  assert.equal(app.panelLeaves.length, 1);
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  assert.equal(app.panelLeaves.length, 1, "a second request reuses the panel");
+  assert.equal(app.revealed.filter((l) => l === first.leaf).length >= 2, true, "every request reveals the panel");
+  show(app, app.leaves[0], "a.md");
+  show(app, app.leaves[1], "b.md");
+  assert.equal(app.panelLeaves.length, 1, "navigation leaves one panel");
+  assert.equal(panelView(app), first, "navigation keeps the same panel view");
 });
 
+// Adversarial where: the question falls back wrongly: a missing title shows
+// nothing, an empty-string title shows an empty question, or the title is
+// shown with the file path instead.
+test("a card's question is the request title, or the file name when the title is missing or empty", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x", "b.md": "y", "specs/c.md": "z",
+    "tmp/review/1.request.json": req("1", "a.md", { title: "Approve this spec?" }),
+    "tmp/review/2.request.json": req("2", "b.md", { title: undefined }),
+    "tmp/review/3.request.json": req("3", "specs/c.md", { title: "" }) });
+  for (const id of ["1", "2", "3"]) await plugin.handler({ request: `tmp/review/${id}.request.json` });
+  const question = (id) => cardFor(app, id).querySelector(".compass-review-question").text;
+  assert.equal(question("1"), "Approve this spec?");
+  assert.equal(question("2"), "b");
+  assert.equal(question("3"), "c");
+});
+
+// Adversarial where: cards sit in arrival order or follow which reviewed file
+// was opened last, so the newest request is not on top.
+test("with two reviews pending, the cards are newest first and opening a reviewed file does not reorder them", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x", "b.md": "y", "c.md": "z",
+    "tmp/review/1.request.json": req("1", "a.md", { title: "Alpha" }),
+    "tmp/review/2.request.json": req("2", "b.md", { title: "Beta" }) });
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  assert.deepEqual(cardIds(app), ["1", "2"]);
+  assert.equal(cardFor(app, "1").querySelector(".compass-review-question").text, "Alpha");
+  show(app, app.leaves[0], "b.md");
+  assert.deepEqual(cardIds(app), ["1", "2"], "opening the older review's file leaves the order alone");
+  show(app, app.leaves[0], "c.md");
+  assert.deepEqual(cardIds(app), ["1", "2"]);
+});
+
+// Adversarial where: "On this file" shows on the reviewed file itself, shows
+// for a non-markdown file or with nothing open, or is missing from cards whose
+// reviewed file is not the one in view.
+test("On this file shows on a card only while a markdown file other than its reviewed file is in view", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x", "b.md": "y", "c.md": "z", "data.json": "{}",
+    "tmp/review/1.request.json": req("1", "a.md"), "tmp/review/2.request.json": req("2", "b.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  const rows = [
+    { name: "nothing in view", file: null, one: false, two: false },
+    { name: "the first review's file", file: mdFile("a.md"), one: false, two: true },
+    { name: "the second review's file", file: mdFile("b.md"), one: true, two: false },
+    { name: "an unrelated markdown file", file: mdFile("c.md"), one: true, two: true },
+    { name: "a non-markdown file", file: { path: "data.json", basename: "data", extension: "json" }, one: false, two: false },
+  ];
+  for (const row of rows) {
+    app.active = row.file;
+    await plugin.renderPanel();
+    assert.equal(Boolean(thisFileIn(cardFor(app, "1"))), row.one, `${row.name}: card 1`);
+    assert.equal(Boolean(thisFileIn(cardFor(app, "2"))), row.two, `${row.name}: card 2`);
+  }
+});
+
+// Adversarial where: the "Feedback so far" list lags the events (a note, an
+// edit) until something else redraws the panel, lists a file twice, lists the
+// bar note or an emptied note, or words the entries differently.
+test("the feedback list shows each note and each edited file once, updating as they happen", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x", "b.md": "y", "z.md": "q", "tmp/review/1.request.json": req("1", "a.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  assert.deepEqual(feedbackOf(cardFor(app, "1")), []);
+  show(app, app.leaves[0], "b.md");
+  typeInto(fileNoteIn(cardFor(app, "1")), "merge D-03");
+  assert.deepEqual(feedbackOf(cardFor(app, "1")), ["b.md: merge D-03"]);
+  typeInto(notesIn(cardFor(app, "1")), "overall note");
+  assert.deepEqual(feedbackOf(cardFor(app, "1")), ["b.md: merge D-03"], "the notes field is not feedback");
+  await app.listeners.modify(mdFile("z.md"));
+  await app.listeners.modify(mdFile("z.md"));
+  await app.listeners.modify(mdFile("a.md"));
+  assert.deepEqual([...feedbackOf(cardFor(app, "1"))].sort(), ["b.md: merge D-03", "edited: a.md", "edited: z.md"]);
+  typeInto(fileNoteIn(cardFor(app, "1")), "");
+  assert.deepEqual([...feedbackOf(cardFor(app, "1"))].sort(), ["edited: a.md", "edited: z.md"], "a cleared note leaves the list");
+});
+
+// Adversarial where: the reviewed document's bar still carries the notes
+// input or verdict buttons, lacks the way to the panel, or cannot bring a
+// closed panel back; or a slim bar survives anywhere.
+test("the reviewed document carries a one-line bar that opens the panel, and no trail bar exists", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md", { title: "Alpha spec" }) });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  const leaf = app.leaves[0];
+  const b = barIn(leaf);
+  assert.match(barText(b), /Alpha spec/);
+  assert.equal(b.all().some((e) => e.tag === "input" || e.tag === "textarea"), false, "no notes field on the bar");
+  assert.equal(button(b, "Approve"), undefined);
+  assert.equal(button(b, "Needs changes"), undefined);
+  assert.ok(button(b, "Open review panel"));
+  await closePanel(app);
+  assert.equal(app.panelLeaves.length, 0);
+  await click(button(barIn(leaf), "Open review panel"));
+  assert.equal(app.panelLeaves.length, 1, "the bar button brings the panel back");
+  assert.ok(app.revealed.includes(panelView(app).leaf));
+  assert.deepEqual(cardIds(app), ["1"]);
+  show(app, leaf, "b.md");
+  assert.equal(barIn(leaf), null, "another page carries no bar");
+  assert.equal(trailCount(app), 0);
+});
+
+// Adversarial where: the panel keeps typed text only in its DOM, so closing
+// and reopening it (or Obsidian rebuilding the view) loses the notes.
+test("typed notes survive closing and reopening the panel", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  show(app, app.leaves[0], "b.md");
+  typeInto(notesIn(cardFor(app, "1")), "keep me");
+  typeInto(fileNoteIn(cardFor(app, "1")), "page note");
+  await closePanel(app);
+  await plugin.openPanel();
+  assert.equal(notesIn(cardFor(app, "1")).value, "keep me");
+  assert.equal(fileNoteIn(cardFor(app, "1")).value, "page note");
+});
+
+// Adversarial where: workspace and vault events redraw a panel that is not
+// open (null dereference) or conjure one nobody asked for, or edits seen while
+// no panel exists are dropped.
+test("events with no panel open do not throw or open one, and the edits they carry still count", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y", "z.md": "q", "tmp/review/1.request.json": req("1", "a.md") });
+  await app.workspace.ready();
+  await sleep();
+  await closePanel(app);
+  app.wsListeners["file-open"](mdFile("b.md"));
+  app.wsListeners["layout-change"]();
+  await app.listeners.modify(mdFile("z.md"));
+  app.listeners.rename({ path: "b.md" }, "b.md");
+  await plugin.recheck();
+  assert.equal(app.panelLeaves.length, 0, "no panel conjured by events");
+  await plugin.openPanel();
+  assert.ok(feedbackOf(cardFor(app, "1")).includes("edited: z.md"));
+});
+
+// ---- Wave 2 behavior, now through the panel ----
+
 // Adversarial where: a note typed on a linked file is lost when the human
-// goes Back (it lived only in the removed field), a blanked-out note is
-// still reported as an empty comment, or the verdict schema omits
+// returns to the reviewed file or moves on, a blanked-out or whitespace-only
+// note is reported as an empty comment, or the verdict schema omits
 // `comments`/`edited` when nothing was written.
 test("notes on other files land in comments, empty ones are omitted, and the verdict carries edited", async () => {
   const { app, plugin } = await loaded({
-    "a.md": "x", "b.md": "y", "c.md": "z", "tmp/review/1.request.json": req("1", "a.md") });
+    "a.md": "x", "b.md": "y", "c.md": "z", "d.md": "w", "tmp/review/1.request.json": req("1", "a.md") });
   await plugin.handler({ request: "tmp/review/1.request.json" });
   const leaf = app.leaves[0];
-  go(leaf, "b.md");
-  plugin.decorate();
-  typeInto(noteOf(trailIn(leaf)), "fix the heading");
-  go(leaf, "c.md");
-  plugin.decorate();
-  typeInto(noteOf(trailIn(leaf)), "temp");
-  typeInto(noteOf(trailIn(leaf)), "");
-  await backOf(trailIn(leaf)).onclick();
-  plugin.decorate();
-  await button(barIn(leaf), "Needs changes").onclick();
+  show(app, leaf, "b.md");
+  typeInto(fileNoteIn(cardFor(app, "1")), "fix the heading");
+  show(app, leaf, "c.md");
+  assert.equal(fileNoteIn(cardFor(app, "1")).value, "", "another file starts with its own empty note");
+  typeInto(fileNoteIn(cardFor(app, "1")), "temp");
+  typeInto(fileNoteIn(cardFor(app, "1")), "");
+  show(app, leaf, "d.md");
+  typeInto(fileNoteIn(cardFor(app, "1")), "   ");
+  show(app, leaf, "b.md");
+  assert.equal(fileNoteIn(cardFor(app, "1")).value, "fix the heading", "the note stays with its file");
+  show(app, leaf, "a.md");
+  await click(cardBtn(app, "1", "Needs changes"));
   await sleep();
   const v = verdictOf(app, "tmp/review/1.verdict.json");
   assert.deepEqual(v.comments, [{ file: "b.md", note: "fix the heading" }]);
@@ -299,7 +561,7 @@ test("markdown files modified while the review is pending land in edited, once e
   await app.listeners.modify(mdFile("b.md"));
   await app.listeners.modify(mdFile("a.md"));
   await app.listeners.modify({ path: "data.json", basename: "data", extension: "json" });
-  await button(barIn(app.leaves[0]), "Approve").onclick();
+  await click(cardBtn(app, "1", "Approve"));
   await sleep();
   const v = verdictOf(app, "tmp/review/1.verdict.json");
   assert.deepEqual([...v.edited].sort(), ["a.md", "b.md"]);
@@ -309,47 +571,59 @@ test("markdown files modified while the review is pending land in edited, once e
 
 // Adversarial where: Needs changes is enabled with nothing to say (the
 // verdict would carry no feedback), stays disabled after a note on another
-// file or an edit, or never re-disables when the note is cleared.
-test("Needs changes stays disabled until a note, a note on another file, or an edit exists", async (t) => {
+// file or an edit, never re-disables when a note is cleared or is only
+// whitespace, or one review's feedback enables another card's button.
+test("Needs changes stays disabled until a note, a note on another file, or an edit exists, per card", async (t) => {
   const setup = async () => {
     const r = await loaded({ "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md") });
     await r.plugin.handler({ request: "tmp/review/1.request.json" });
     return { ...r, leaf: r.app.leaves[0] };
   };
-  const changes = (leaf) => button(barIn(leaf), "Needs changes");
+  const changes = (app, id = "1") => cardBtn(app, id, "Needs changes");
 
   await t.test("nothing written", async () => {
-    const { leaf } = await setup();
-    assert.equal(changes(leaf).disabled, true);
-    assert.notEqual(button(barIn(leaf), "Approve").disabled, true, "Approve is never gated");
+    const { app } = await setup();
+    assert.equal(changes(app).disabled, true);
+    assert.notEqual(cardBtn(app, "1", "Approve").disabled, true, "Approve is never gated");
   });
-  await t.test("a note on the bar, then cleared", async () => {
-    const { leaf } = await setup();
-    const input = barIn(leaf).children.find((c) => c.tag === "input");
-    typeInto(input, "needs work");
-    assert.equal(changes(leaf).disabled, false);
-    typeInto(input, "");
-    assert.equal(changes(leaf).disabled, true);
+  await t.test("a notes field entry, then cleared", async () => {
+    const { app } = await setup();
+    typeInto(notesIn(cardFor(app, "1")), "needs work");
+    assert.equal(changes(app).disabled, false);
+    typeInto(notesIn(cardFor(app, "1")), "");
+    assert.equal(changes(app).disabled, true);
   });
-  await t.test("a note on another file", async () => {
-    const { plugin, leaf } = await setup();
-    go(leaf, "b.md");
-    plugin.decorate();
-    typeInto(noteOf(trailIn(leaf)), "see this");
-    await backOf(trailIn(leaf)).onclick();
-    plugin.decorate();
-    assert.equal(changes(leaf).disabled, false);
+  await t.test("a whitespace-only note", async () => {
+    const { app } = await setup();
+    typeInto(notesIn(cardFor(app, "1")), "   ");
+    assert.equal(changes(app).disabled, true);
+  });
+  await t.test("a note on another file, then cleared", async () => {
+    const { app, leaf } = await setup();
+    show(app, leaf, "b.md");
+    typeInto(fileNoteIn(cardFor(app, "1")), "see this");
+    assert.equal(changes(app).disabled, false);
+    typeInto(fileNoteIn(cardFor(app, "1")), "");
+    assert.equal(changes(app).disabled, true);
   });
   await t.test("an edit to a file", async () => {
-    const { app, leaf } = await setup();
+    const { app } = await setup();
     await app.listeners.modify(mdFile("b.md"));
     await sleep();
-    assert.equal(changes(leaf).disabled, false);
+    assert.equal(changes(app).disabled, false);
+  });
+  await t.test("two reviews: an edit enables only the card it belongs to", async () => {
+    const { app, plugin } = await setup();
+    app.store.set("tmp/review/2.request.json", req("2", "b.md"));
+    await plugin.handler({ request: "tmp/review/2.request.json" });
+    await app.listeners.modify(mdFile("z.md"));
+    assert.equal(changes(app, "2").disabled, false);
+    assert.equal(changes(app, "1").disabled, true);
   });
 });
 
-// Adversarial where: a bar outlives its request (the request file was
-// deleted or another surface answered it), or the sweep drops every bar
+// Adversarial where: a card outlives its request (the request file was
+// deleted or another surface answered it), or the sweep drops every card
 // instead of only the dead one, or no periodic sweep is registered at all.
 test("recheck drops a review whose request file is gone or whose verdict exists, and keeps live ones", async () => {
   const { app, plugin } = await loaded({
@@ -360,47 +634,24 @@ test("recheck drops a review whose request file is gone or whose verdict exists,
   await plugin.handler({ request: "tmp/review/2.request.json" });
   const barFor = (id) => app.leaves.map((l) => barIn(l)).find((b) => b && b.dataset.id === id);
   assert.ok(barFor("1") && barFor("2"));
+  assert.deepEqual(cardIds(app), ["2", "1"]);
 
   app.store.delete("tmp/review/1.request.json");
   await plugin.recheck();
   assert.equal(barFor("1"), undefined, "request removed: bar gone");
+  assert.equal(cardFor(app, "1"), undefined, "request removed: card gone");
   assert.ok(barFor("2"), "the other review keeps its bar");
+  assert.deepEqual(cardIds(app), ["2"]);
   assert.deepEqual([...plugin.pending.keys()], ["2"]);
 
-  go(app.leaves[0], "c.md");
-  plugin.decorate();
-  assert.ok(trailOf(app), "trail shown while review 2 is pending");
+  show(app, app.leaves[0], "c.md");
+  assert.ok(thisFileIn(cardFor(app, "2")), "the surviving card follows the page in view");
   app.store.set("tmp/review/2.verdict.json", "{}");
   await plugin.recheck();
   assert.equal(barFor("2"), undefined, "verdict exists: bar gone");
-  assert.equal(trailOf(app), undefined, "no trail without a pending review");
+  assert.deepEqual(cardIds(app), [], "no card without a pending review");
+  assert.equal(trailCount(app), 0);
   assert.equal(plugin.pending.size, 0);
-});
-
-// Adversarial where: with two reviews pending, the trail names the review of
-// the pane the human came from (or the first tracked) rather than the one
-// whose file was opened most recently.
-test("with two reviews pending, the slim bar names the one whose file was opened last", async () => {
-  const { app, plugin } = await loaded({
-    "a.md": "x", "b.md": "y", "c.md": "z",
-    "tmp/review/1.request.json": req("1", "a.md", { title: "Alpha" }),
-    "tmp/review/2.request.json": req("2", "b.md", { title: "Beta" }) });
-  await plugin.handler({ request: "tmp/review/2.request.json" });
-  await plugin.handler({ request: "tmp/review/1.request.json" });
-  const [betaLeaf] = app.leaves;
-  go(betaLeaf, "c.md");
-  plugin.decorate();
-  assert.match(trailText(trailIn(betaLeaf)), /Alpha/);
-  assert.doesNotMatch(trailText(trailIn(betaLeaf)), /Beta/);
-
-  go(betaLeaf, "b.md");
-  if (app.wsListeners["file-open"]) app.wsListeners["file-open"](mdFile("b.md"));
-  plugin.decorate();
-  go(betaLeaf, "c.md");
-  plugin.decorate();
-  assert.match(trailText(trailIn(betaLeaf)), /Beta/);
-  await backOf(trailIn(betaLeaf)).onclick();
-  assert.equal(betaLeaf.view.file.path, "b.md");
 });
 
 // ---- implementation-visible edges: shared edit tracking, verdict races, rename ----
@@ -415,8 +666,9 @@ const gate = () => { let release; const wait = new Promise((r) => { release = r;
 
 // Adversarial where: an edit event is attributed to a review it does not
 // belong to. An edit to a reviewed file belongs to that file's review; an
-// edit to any other file belongs to the review the slim bar names, the one
-// opened last.
+// edit to any other file belongs to the newest pending review (the top card),
+// even after the older review's file is opened, and moves to the remaining
+// review once the newest is answered.
 test("with two reviews pending, an edit lands only in the review it belongs to", async () => {
   const { app, plugin } = await loaded({
     "a.md": "x", "b.md": "y", "z.md": "q",
@@ -425,20 +677,21 @@ test("with two reviews pending, an edit lands only in the review it belongs to",
   await plugin.handler({ request: "tmp/review/2.request.json" });
   await app.listeners.modify(mdFile("z.md"));
   await app.listeners.modify(mdFile("a.md"));
-  const leafOf = (p) => app.leaves.find((l) => l.view.file.path === p);
-  await button(barIn(leafOf("b.md")), "Approve").onclick();
+  show(app, app.leaves[0], "a.md");
+  await app.listeners.modify(mdFile("y.md"));
+  await click(cardBtn(app, "2", "Approve"));
   await sleep();
-  assert.deepEqual([...verdictOf(app, "tmp/review/2.verdict.json").edited], ["z.md"], "the other file's edit goes to the review opened last");
-  await button(barIn(leafOf("a.md")), "Approve").onclick();
+  assert.deepEqual([...verdictOf(app, "tmp/review/2.verdict.json").edited].sort(), ["y.md", "z.md"], "other files' edits go to the newest review, whichever reviewed file is in view");
+  await app.listeners.modify(mdFile("w.md"));
+  await click(cardBtn(app, "1", "Approve"));
   await sleep();
-  assert.deepEqual([...verdictOf(app, "tmp/review/1.verdict.json").edited], ["a.md"], "a reviewed file's edit goes to its own review");
+  assert.deepEqual([...verdictOf(app, "tmp/review/1.verdict.json").edited].sort(), ["a.md", "w.md"], "a reviewed file's edit goes to its own review, and later edits to the one left");
 });
 
-// Adversarial where: on the reviewed file of a second pending review, the
-// slim bar of the first review is drawn on top of that review's own full bar,
-// or the full bar is lost; and after that review is answered, the file never
-// gets the first review's slim bar.
-test("on the reviewed file of a second pending review the full bar shows with no trail, and the trail appears once it is answered", async () => {
+// Adversarial where: with two reviews pending, a page shows the other
+// review's bar or two bars, the panel's cards are lost when one review is
+// answered, or a trail bar appears on a page once only one review remains.
+test("on the reviewed file of a second pending review its own bar shows, and answering it leaves the other card and no trail", async () => {
   const { app, plugin } = await loaded({
     "a.md": "x", "b.md": "y",
     "tmp/review/1.request.json": req("1", "a.md", { title: "Alpha" }),
@@ -447,21 +700,22 @@ test("on the reviewed file of a second pending review the full bar shows with no
   await plugin.handler({ request: "tmp/review/2.request.json" });
   assert.equal(app.leaves.length, 2, "each review opened in its own pane");
   const [alphaLeaf, betaLeaf] = app.leaves;
-  go(alphaLeaf, "b.md");
-  plugin.decorate();
+  show(app, alphaLeaf, "b.md");
   assert.equal(barIn(alphaLeaf).dataset.id, "2");
-  assert.equal(trailIn(alphaLeaf), null, "no trail beside a full bar");
-  go(alphaLeaf, "a.md");
-  plugin.decorate();
+  assert.match(barText(barIn(alphaLeaf)), /Beta/);
+  assert.equal(alphaLeaf.view.containerEl.querySelectorAll(".compass-review-bar").length, 1, "one bar per page");
+  show(app, alphaLeaf, "a.md");
   assert.equal(barIn(alphaLeaf).dataset.id, "1");
 
-  go(betaLeaf, "a.md");
-  go(alphaLeaf, "b.md");
-  plugin.decorate();
-  await button(barIn(alphaLeaf), "Approve").onclick();
+  show(app, betaLeaf, "a.md");
+  show(app, alphaLeaf, "b.md");
+  await click(cardBtn(app, "2", "Approve"));
   await sleep();
   assert.equal(barIn(alphaLeaf), null, "answered review: bar gone");
-  assert.match(trailText(trailIn(alphaLeaf)), /Alpha/, "b.md now shows the remaining review's slim bar");
+  assert.deepEqual(cardIds(app), ["1"]);
+  assert.ok(thisFileIn(cardFor(app, "1")), "b.md is another file to the remaining review");
+  assert.equal(barIn(betaLeaf).dataset.id, "1");
+  assert.equal(trailCount(app), 0);
 });
 
 // Adversarial where: the plugin's own save of the reviewed file (made so
@@ -473,7 +727,7 @@ test("the save made for the verdict counts as the human's edit once; a clean sav
     await plugin.handler({ request: "tmp/review/1.request.json" });
     const leaf = app.leaves[0];
     leaf.view.save = async () => { if (fireModifyOnSave) await app.listeners.modify(mdFile("a.md")); };
-    await button(barIn(leaf), "Approve").onclick();
+    await click(cardBtn(app, "1", "Approve"));
     await sleep();
     return verdictOf(app, "tmp/review/1.verdict.json");
   };
@@ -490,10 +744,11 @@ test("the save made for the verdict counts as the human's edit once; a clean sav
 test("a modify event after the verdict is written is ignored and leaves no review behind", async () => {
   const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md") });
   await plugin.handler({ request: "tmp/review/1.request.json" });
-  await button(barIn(app.leaves[0]), "Approve").onclick();
+  await click(cardBtn(app, "1", "Approve"));
   await sleep();
   await app.listeners.modify(mdFile("a.md"));
   assert.equal(plugin.pending.size, 0);
+  assert.deepEqual(cardIds(app), []);
   assert.equal(verdictOf(app, "tmp/review/1.verdict.json").edited.length, 0);
 });
 
@@ -508,12 +763,13 @@ test("a recheck in flight while a verdict click completes ends with the verdict 
   let first = true;
   app.vault.adapter.exists = async (p) => { if (first) { first = false; await held.wait; } return real(p); };
   const racing = plugin.recheck();
-  await button(barIn(app.leaves[0]), "Approve").onclick();
+  await click(cardBtn(app, "1", "Approve"));
   held.release();
   await racing;
   assert.equal(verdictOf(app, "tmp/review/1.verdict.json").verdict, "approved");
   assert.equal(plugin.pending.size, 0);
   assert.equal(barIn(app.leaves[0]), null);
+  assert.deepEqual(cardIds(app), []);
 });
 
 // Adversarial where: a click already waiting on the editor save writes a
@@ -525,11 +781,12 @@ test("a request withdrawn while the verdict click is saving gets no verdict file
   await plugin.handler({ request: "tmp/review/1.request.json" });
   const held = gate();
   app.leaves[0].view.save = () => held.wait;
-  const click = button(barIn(app.leaves[0]), "Approve").onclick();
+  const click1 = click(cardBtn(app, "1", "Approve"));
   app.store.delete("tmp/review/1.request.json");
   await plugin.recheck();
+  assert.equal(cardFor(app, "1"), undefined, "the withdrawn review's card is gone");
   held.release();
-  await click;
+  await click1;
   assert.equal(app.store.has("tmp/review/1.verdict.json"), false);
   assert.ok(!notices.some((n) => /sent to Claude/.test(n)), "no 'sent' notice for a withdrawn review");
 });
@@ -543,25 +800,25 @@ test("two clicks while the save is pending write one verdict", async () => {
   const writes = verdictWrites(app);
   const held = gate();
   app.leaves[0].view.save = () => held.wait;
-  const b = barIn(app.leaves[0]);
-  typeInto(b.children.find((c) => c.tag === "input"), "note");
-  const first = button(b, "Approve").onclick();
-  const second = button(b, "Needs changes").onclick();
+  typeInto(notesIn(cardFor(app, "1")), "note");
+  const approve = cardBtn(app, "1", "Approve");
+  const changes = cardBtn(app, "1", "Needs changes");
+  const first = click(approve);
+  const second = click(changes);
   held.release();
   await Promise.all([first, second]);
   assert.equal(writes.length, 1);
 });
 
 // Adversarial where: a rename of a file that carries a note or an edit
-// orphans them under the old path, or Back to review opens the old path of a
-// renamed reviewed file.
-test("renaming a noted and edited file moves both to the new path, and Back follows a renamed reviewed file", async () => {
+// orphans them under the old path, or the card's link to the reviewed file
+// opens the old path of a renamed reviewed file.
+test("renaming a noted and edited file moves both to the new path, and the card's link follows a renamed reviewed file", async () => {
   const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md") });
   await plugin.handler({ request: "tmp/review/1.request.json" });
   const leaf = app.leaves[0];
-  go(leaf, "b.md");
-  plugin.decorate();
-  typeInto(noteOf(trailIn(leaf)), "tidy");
+  show(app, leaf, "b.md");
+  typeInto(fileNoteIn(cardFor(app, "1")), "tidy");
   await app.listeners.modify(mdFile("b.md"));
   app.store.set("b2.md", app.store.get("b.md"));
   app.store.delete("b.md");
@@ -569,12 +826,12 @@ test("renaming a noted and edited file moves both to the new path, and Back foll
   app.store.set("a2.md", app.store.get("a.md"));
   app.store.delete("a.md");
   app.listeners.rename({ path: "a2.md" }, "a.md");
-  go(leaf, "b2.md");
-  plugin.decorate();
-  assert.equal(noteOf(trailIn(leaf)).value, "tidy", "the note follows the file");
-  await backOf(trailIn(leaf)).onclick();
-  assert.equal(leaf.view.file.path, "a2.md");
-  await button(barIn(leaf), "Approve").onclick();
+  show(app, leaf, "b2.md");
+  assert.equal(fileNoteIn(cardFor(app, "1")).value, "tidy", "the note follows the file");
+  assert.deepEqual([...feedbackOf(cardFor(app, "1"))].sort(), ["b2.md: tidy", "edited: b2.md"]);
+  await click(linkIn(cardFor(app, "1")));
+  assert.ok(app.leaves.some((l) => l.view.file && l.view.file.path === "a2.md"), "the link opens the renamed reviewed file");
+  await click(cardBtn(app, "1", "Approve"));
   await sleep();
   const v = verdictOf(app, "tmp/review/1.verdict.json");
   assert.deepEqual(v.comments, [{ file: "b2.md", note: "tidy" }]);
@@ -582,16 +839,26 @@ test("renaming a noted and edited file moves both to the new path, and Back foll
   assert.equal(v.file, "a2.md");
 });
 
-// Adversarial where: Back to review on a reviewed file that no longer exists
-// throws out of the click handler or silently does nothing.
-test("Back to review for a deleted reviewed file reports a failure and keeps the pane on the current file", async () => {
-  const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md") });
-  await plugin.handler({ request: "tmp/review/1.request.json" });
-  const leaf = app.leaves[0];
-  go(leaf, "b.md");
-  plugin.decorate();
-  app.store.delete("a.md");
-  await backOf(trailIn(leaf)).onclick();
-  assert.match(notices.join(" "), /back to review failed - file not in this vault: a.md/);
-  assert.equal(leaf.view.file.path, "b.md");
+// Adversarial where: the card's link to the reviewed file does nothing when
+// the human is on another file, or opens a missing file as a new empty note,
+// or throws out of the click handler when the reviewed file no longer exists.
+test("the card's file link reopens the reviewed file; for a deleted file it reports a failure and keeps the pane", async (t) => {
+  await t.test("the file exists", async () => {
+    const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md") });
+    await plugin.handler({ request: "tmp/review/1.request.json" });
+    show(app, app.leaves[0], "b.md");
+    await click(linkIn(cardFor(app, "1")));
+    assert.ok(app.leaves.some((l) => l.view.file && l.view.file.path === "a.md"));
+    assert.equal(bar(app).dataset.id, "1", "the reopened document carries its bar");
+  });
+  await t.test("the file was deleted", async () => {
+    const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md") });
+    await plugin.handler({ request: "tmp/review/1.request.json" });
+    const leaf = app.leaves[0];
+    show(app, leaf, "b.md");
+    app.store.delete("a.md");
+    await click(linkIn(cardFor(app, "1")));
+    assert.match(notices.join(" "), /file not in this vault: a\.md/);
+    assert.equal(leaf.view.file.path, "b.md");
+  });
 });
