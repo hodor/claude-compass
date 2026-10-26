@@ -21,7 +21,9 @@ class El {
     this.children = [];
     this.parent = null;
     this.onclick = null;
+    this.handlers = {};
   }
+  addEventListener(type, fn) { (this.handlers[type] = this.handlers[type] || []).push(fn); }
   createEl(tag, opts) { const e = new El(tag, opts); e.parent = this; this.children.push(e); return e; }
   createSpan(opts) { return this.createEl("span", opts); }
   insertBefore(el, ref) {
@@ -36,12 +38,19 @@ class El {
 }
 global.createDiv = (opts) => new El("div", opts);
 global.document = new El("document");
+global.window = globalThis;
 
 // ---- obsidian and electron stubs ----
 const notices = [];
 const win = { minimized: 0, focused: 0, onTop: [], restore() {}, isMinimized: () => false,
   setAlwaysOnTop(v) { this.onTop.push(v); }, show() {}, focus() { this.focused++; }, minimize() { this.minimized++; } };
-class Plugin { constructor(app) { this.app = app; } registerEvent() {} registerObsidianProtocolHandler(name, fn) { this.handler = fn; } }
+class Plugin {
+  constructor(app) { this.app = app; this.intervals = []; }
+  registerEvent() {}
+  // The timer is cleared at once so the test process can exit; the id is kept for assertions.
+  registerInterval(id) { this.intervals.push(id); clearInterval(id); return id; }
+  registerObsidianProtocolHandler(name, fn) { this.handler = fn; }
+}
 class MarkdownView { constructor(file) { this.file = file; this.saved = 0; this.containerEl = new El("view"); this.containerEl.createEl("div", { cls: "view-content" }); } async save() { this.saved++; } }
 const stubs = {
   obsidian: { Plugin, MarkdownView, Notice: class { constructor(m) { notices.push(m); } } },
@@ -58,6 +67,7 @@ function makeApp(files) {
   const store = new Map(Object.entries(files));
   const leaves = [];
   const listeners = {};
+  const wsListeners = {};
   const app = {
     store,
     vault: {
@@ -74,10 +84,11 @@ function makeApp(files) {
       getLeavesOfType: () => leaves,
       getLeaf() { const leaf = { view: new MarkdownView(null), async openFile(f) { this.view.file = f; } }; leaves.push(leaf); return leaf; },
       setActiveLeaf() {},
-      on() {},
+      on(name, fn) { wsListeners[name] = fn; },
       onLayoutReady(fn) { this.ready = fn; },
     },
     listeners,
+    wsListeners,
     leaves,
   };
   return app;
@@ -198,4 +209,196 @@ test("startup scan leaves a request addressed to another surface alone", async (
 
 test("verdictPathFor swaps only the suffix", () => {
   assert.equal(CompassReview.verdictPathFor("x.request.json/tmp/review/1.request.json"), "x.request.json/tmp/review/1.verdict.json");
+});
+
+// ---- review trail: the review stays in view while the human moves around the vault ----
+
+const trailOf = (app) => app.leaves.map((l) => l.view.containerEl.querySelector(".compass-review-trail")).find(Boolean);
+const barIn = (leaf) => leaf.view.containerEl.querySelector(".compass-review-bar");
+const trailIn = (leaf) => leaf.view.containerEl.querySelector(".compass-review-trail");
+const trailText = (t) => t.all().map((e) => e.text).join(" ");
+const backOf = (t) => t.all().find((e) => e.tag === "button" && e.text === "Back to review");
+const noteOf = (t) => t.querySelector(".compass-review-file-note");
+const sleep = () => new Promise((r) => setImmediate(r));
+const mdFile = (p) => ({ path: p, basename: path.posix.basename(p, ".md"), extension: "md" });
+const go = (leaf, p) => { leaf.view.file = mdFile(p); };
+
+// A text field reports its value through its handlers: the stub DOM has no
+// events, so a test sets `.value` and calls whichever of `on<type>` or the
+// addEventListener handlers the plugin attached, for both `input` and `change`.
+function typeInto(el, value) {
+  el.value = value;
+  for (const type of ["input", "change"]) {
+    if (typeof el["on" + type] === "function") el["on" + type]({ target: el });
+    for (const fn of el.handlers[type] || []) fn({ target: el });
+  }
+}
+
+const verdictOf = (app, p) => JSON.parse(app.store.get(p));
+
+// Adversarial where: navigating away from the reviewed file in the same pane
+// drops the review from view (no bar, no way back), or Back opens a new pane
+// or the wrong file instead of restoring the reviewed one.
+test("moving to another file shows a slim bar naming the review, and Back reopens the reviewed file in the same pane", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md", { title: "Alpha spec" }) });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  const leaf = app.leaves[0];
+  assert.equal(trailIn(leaf), null, "no trail on the reviewed file");
+  go(leaf, "b.md");
+  plugin.decorate();
+  const trail = trailIn(leaf);
+  assert.ok(trail, "slim bar on the linked file");
+  assert.match(trailText(trail), /Alpha spec/);
+  assert.equal(barIn(leaf), null, "the full bar belongs to the reviewed file only");
+  assert.ok(noteOf(trail), "a note field for this file");
+  await backOf(trail).onclick();
+  plugin.decorate();
+  assert.equal(leaf.view.file.path, "a.md");
+  assert.equal(app.leaves.length, 1, "same pane, no new one");
+  assert.equal(trailIn(leaf), null);
+  assert.equal(barIn(leaf).dataset.id, "1");
+});
+
+// Adversarial where: a note typed on a linked file is lost when the human
+// goes Back (it lived only in the removed field), a blanked-out note is
+// still reported as an empty comment, or the verdict schema omits
+// `comments`/`edited` when nothing was written.
+test("notes on other files land in comments, empty ones are omitted, and the verdict carries edited", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x", "b.md": "y", "c.md": "z", "tmp/review/1.request.json": req("1", "a.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  const leaf = app.leaves[0];
+  go(leaf, "b.md");
+  plugin.decorate();
+  typeInto(noteOf(trailIn(leaf)), "fix the heading");
+  go(leaf, "c.md");
+  plugin.decorate();
+  typeInto(noteOf(trailIn(leaf)), "temp");
+  typeInto(noteOf(trailIn(leaf)), "");
+  await backOf(trailIn(leaf)).onclick();
+  plugin.decorate();
+  await button(barIn(leaf), "Needs changes").onclick();
+  await sleep();
+  const v = verdictOf(app, "tmp/review/1.verdict.json");
+  assert.deepEqual(v.comments, [{ file: "b.md", note: "fix the heading" }]);
+  assert.deepEqual(v.edited, []);
+  assert.equal(v.verdict, "changes");
+  assert.deepEqual(Object.keys(v).sort(), ["at", "comments", "edited", "file", "id", "notes", "verdict"]);
+});
+
+// Adversarial where: edit tracking misses the reviewed file itself, counts
+// non-markdown files, double-lists an autosaved file, or leaks edits made
+// before the review existed into its verdict.
+test("markdown files modified while the review is pending land in edited, once each", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x", "b.md": "y", "z.md": "q", "tmp/review/1.request.json": req("1", "a.md") });
+  await app.listeners.modify(mdFile("z.md"));
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  await app.listeners.modify(mdFile("b.md"));
+  await app.listeners.modify(mdFile("b.md"));
+  await app.listeners.modify(mdFile("a.md"));
+  await app.listeners.modify({ path: "data.json", basename: "data", extension: "json" });
+  await button(barIn(app.leaves[0]), "Approve").onclick();
+  await sleep();
+  const v = verdictOf(app, "tmp/review/1.verdict.json");
+  assert.deepEqual([...v.edited].sort(), ["a.md", "b.md"]);
+  assert.equal(v.verdict, "approved");
+  assert.deepEqual(v.comments, []);
+});
+
+// Adversarial where: Needs changes is enabled with nothing to say (the
+// verdict would carry no feedback), stays disabled after a note on another
+// file or an edit, or never re-disables when the note is cleared.
+test("Needs changes stays disabled until a note, a note on another file, or an edit exists", async (t) => {
+  const setup = async () => {
+    const r = await loaded({ "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md") });
+    await r.plugin.handler({ request: "tmp/review/1.request.json" });
+    return { ...r, leaf: r.app.leaves[0] };
+  };
+  const changes = (leaf) => button(barIn(leaf), "Needs changes");
+
+  await t.test("nothing written", async () => {
+    const { leaf } = await setup();
+    assert.equal(changes(leaf).disabled, true);
+    assert.notEqual(button(barIn(leaf), "Approve").disabled, true, "Approve is never gated");
+  });
+  await t.test("a note on the bar, then cleared", async () => {
+    const { leaf } = await setup();
+    const input = barIn(leaf).children.find((c) => c.tag === "input");
+    typeInto(input, "needs work");
+    assert.equal(changes(leaf).disabled, false);
+    typeInto(input, "");
+    assert.equal(changes(leaf).disabled, true);
+  });
+  await t.test("a note on another file", async () => {
+    const { plugin, leaf } = await setup();
+    go(leaf, "b.md");
+    plugin.decorate();
+    typeInto(noteOf(trailIn(leaf)), "see this");
+    await backOf(trailIn(leaf)).onclick();
+    plugin.decorate();
+    assert.equal(changes(leaf).disabled, false);
+  });
+  await t.test("an edit to a file", async () => {
+    const { app, leaf } = await setup();
+    await app.listeners.modify(mdFile("b.md"));
+    await sleep();
+    assert.equal(changes(leaf).disabled, false);
+  });
+});
+
+// Adversarial where: a bar outlives its request (the request file was
+// deleted or another surface answered it), or the sweep drops every bar
+// instead of only the dead one, or no periodic sweep is registered at all.
+test("recheck drops a review whose request file is gone or whose verdict exists, and keeps live ones", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x", "b.md": "y", "c.md": "z",
+    "tmp/review/1.request.json": req("1", "a.md"), "tmp/review/2.request.json": req("2", "b.md") });
+  assert.ok(plugin.intervals.length >= 1, "recheck is registered as an interval");
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  const barFor = (id) => app.leaves.map((l) => barIn(l)).find((b) => b && b.dataset.id === id);
+  assert.ok(barFor("1") && barFor("2"));
+
+  app.store.delete("tmp/review/1.request.json");
+  await plugin.recheck();
+  assert.equal(barFor("1"), undefined, "request removed: bar gone");
+  assert.ok(barFor("2"), "the other review keeps its bar");
+  assert.deepEqual([...plugin.pending.keys()], ["2"]);
+
+  go(app.leaves[0], "c.md");
+  plugin.decorate();
+  assert.ok(trailOf(app), "trail shown while review 2 is pending");
+  app.store.set("tmp/review/2.verdict.json", "{}");
+  await plugin.recheck();
+  assert.equal(barFor("2"), undefined, "verdict exists: bar gone");
+  assert.equal(trailOf(app), undefined, "no trail without a pending review");
+  assert.equal(plugin.pending.size, 0);
+});
+
+// Adversarial where: with two reviews pending, the trail names the review of
+// the pane the human came from (or the first tracked) rather than the one
+// whose file was opened most recently.
+test("with two reviews pending, the slim bar names the one whose file was opened last", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x", "b.md": "y", "c.md": "z",
+    "tmp/review/1.request.json": req("1", "a.md", { title: "Alpha" }),
+    "tmp/review/2.request.json": req("2", "b.md", { title: "Beta" }) });
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  const [betaLeaf] = app.leaves;
+  go(betaLeaf, "c.md");
+  plugin.decorate();
+  assert.match(trailText(trailIn(betaLeaf)), /Alpha/);
+  assert.doesNotMatch(trailText(trailIn(betaLeaf)), /Beta/);
+
+  go(betaLeaf, "b.md");
+  if (app.wsListeners["file-open"]) app.wsListeners["file-open"](mdFile("b.md"));
+  plugin.decorate();
+  go(betaLeaf, "c.md");
+  plugin.decorate();
+  assert.match(trailText(trailIn(betaLeaf)), /Beta/);
+  await backOf(trailIn(betaLeaf)).onclick();
+  assert.equal(betaLeaf.view.file.path, "b.md");
 });

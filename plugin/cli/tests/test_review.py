@@ -324,5 +324,208 @@ class Usage(ReviewProject):
         self.assertIn("review", maincli.VALID_COMMANDS)
 
 
+class Carried(ReviewProject):
+    """A verdict may carry `comments` (notes on other files) and `edited`
+    (files the human changed); the waiter prints them for the session."""
+
+    def answer_with(self, extra, delay=0.3):
+        """Write an `approved` verdict plus `extra` fields for the first request
+        that has no verdict yet."""
+        directory = reviewlib.review_dir(self.vault)
+
+        def write():
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                requests = [p for p in sorted(directory.glob("*.request.json"))
+                            if not reviewlib.verdict_path(p).exists()] if directory.is_dir() else []
+                if requests:
+                    time.sleep(delay)
+                    req = json.loads(requests[0].read_text(encoding="utf-8"))
+                    body = {"id": req["id"], "file": req["file"], "verdict": "approved", "notes": "n", "at": "t"}
+                    body.update(extra)
+                    reviewlib.verdict_path(requests[0]).write_text(json.dumps(body), encoding="utf-8")
+                    return
+                time.sleep(0.05)
+
+        threading.Thread(target=write, daemon=True).start()
+
+    def test_comments_then_edited_print_between_the_json_and_the_file_text(self):
+        """Adversarial where: the carried lines are dropped, swapped (edited
+        before comments), printed after the document text, or a note that itself
+        contains `: ` is cut at its first colon."""
+        self.configure()
+        self.answer_with({
+            "comments": [{"file": "specs/SPEC-002-y.md", "note": "why: unclear"},
+                         {"file": "plans/PLAN-009-z.md", "note": "second"}],
+            "edited": ["specs/SPEC-003-w.md", "specs/SPEC-001-x.md"],
+        })
+        code, out, _ = self.review(str(self.doc), "--timeout", "5")
+        self.assertEqual(code, 0, out)
+        lines = out.splitlines()
+        marker = lines.index("--- specs/SPEC-001-x.md as the human left it ---")
+        expected = [
+            "comment specs/SPEC-002-y.md: why: unclear",
+            "comment plans/PLAN-009-z.md: second",
+            "edited specs/SPEC-003-w.md",
+            "edited specs/SPEC-001-x.md",
+        ]
+        self.assertEqual(lines[marker - len(expected):marker], expected)
+        self.assertEqual(lines[marker - len(expected) - 1], "}", "the verdict JSON ends before the carried lines")
+
+    def test_only_one_of_the_two_fields_prints_only_its_lines(self):
+        """Adversarial where: a verdict with `edited` but no `comments` (or the
+        reverse) crashes on the missing key or prints an empty section line."""
+        for name, extra, expected in [
+            ("edited only", {"edited": ["specs/SPEC-003-w.md"]}, ["edited specs/SPEC-003-w.md"]),
+            ("comments only", {"comments": [{"file": "a.md", "note": "b"}]}, ["comment a.md: b"]),
+        ]:
+            with self.subTest(name):
+                shutil.rmtree(reviewlib.review_dir(self.vault), ignore_errors=True)
+                self.configure()
+                self.answer_with(extra)
+                code, out, _ = self.review(str(self.doc), "--timeout", "5")
+                self.assertEqual(code, 0, out)
+                lines = out.splitlines()
+                marker = lines.index("--- specs/SPEC-001-x.md as the human left it ---")
+                self.assertEqual(lines[marker - len(expected):marker], expected)
+                carried = [ln for ln in lines if ln.startswith(("comment ", "edited "))]
+                self.assertEqual(carried, expected)
+
+    def test_a_verdict_without_the_fields_prints_exactly_as_before(self):
+        """Adversarial where: a verdict with no `comments`/`edited`, or with
+        both empty, gains stray lines or a changed layout."""
+        for name, extra in [("absent", {}), ("empty lists", {"comments": [], "edited": []})]:
+            with self.subTest(name):
+                shutil.rmtree(reviewlib.review_dir(self.vault), ignore_errors=True)
+                self.configure()
+                self.answer_with(extra)
+                code, out, _ = self.review(str(self.doc), "--timeout", "5")
+                self.assertEqual(code, 0, out)
+                first, _, rest = out.partition("\n")
+                self.assertTrue(first.startswith("requested "), first)
+                verdict_file = next(reviewlib.review_dir(self.vault).glob("*.verdict.json"))
+                shown = json.dumps(json.loads(verdict_file.read_text(encoding="utf-8")), indent=2)
+                self.assertEqual(
+                    rest,
+                    shown + "\n--- specs/SPEC-001-x.md as the human left it ---\n" + self.doc.read_text(encoding="utf-8"),
+                )
+
+    def test_valid_verdict_accepts_absent_or_list_fields_and_rejects_non_lists(self):
+        """Adversarial where: `valid_verdict` rejects the old shape, accepts a
+        non-list `comments`/`edited`, or checks only one of the two (one good
+        field must not excuse the bad one)."""
+        request = {"id": "r1"}
+        base = {"id": "r1", "verdict": "changes"}
+        good_comment = [{"file": "a.md", "note": "n"}]
+        for name, extra, ok in [
+            ("neither field", {}, True),
+            ("both lists", {"comments": good_comment, "edited": ["a.md"]}, True),
+            ("empty lists", {"comments": [], "edited": []}, True),
+            ("comments string", {"comments": "a.md: n"}, False),
+            ("comments object", {"comments": {"file": "a.md", "note": "n"}}, False),
+            ("edited string", {"edited": "a.md"}, False),
+            ("edited number", {"edited": 3}, False),
+            ("comments good, edited bad", {"comments": good_comment, "edited": "a.md"}, False),
+            ("comments bad, edited good", {"comments": "x", "edited": ["a.md"]}, False),
+        ]:
+            with self.subTest(name):
+                self.assertIs(bool(reviewlib.valid_verdict({**base, **extra}, request)), ok)
+
+    def test_a_malformed_comments_verdict_is_not_taken_by_the_waiter(self):
+        """Adversarial where: the waiter accepts a verdict whose `comments` is
+        not a list and then fails or prints garbage instead of waiting on."""
+        self.configure()
+        self.answer_with({"comments": "not a list"})
+        code, out, _ = self.review(str(self.doc), "--timeout", "1.5")
+        self.assertEqual(code, 1)
+        self.assertTrue(out.splitlines()[-1].startswith("timeout "), out)
+        self.assertNotIn("as the human left it", out)
+
+
+class Cancel(ReviewProject):
+    def request_id(self):
+        return self.review(str(self.doc), "--no-wait")[1].split()[1]
+
+    def test_cancel_ends_a_live_waiter_with_withdrawn(self):
+        """Adversarial where: a waiter keeps polling until its timeout after the
+        request file is gone, or prints the document as if a verdict arrived."""
+        self.configure()
+        directory = reviewlib.review_dir(self.vault)
+        cancelled = {}
+
+        def cancel():
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                requests = list(directory.glob("*.request.json")) if directory.is_dir() else []
+                if requests:
+                    time.sleep(0.3)
+                    rid = requests[0].name.replace(".request.json", "")
+                    cancelled["id"] = rid
+                    module = importlib.import_module("commands.review")
+                    cancelled["code"] = module.run(["--cancel", rid])
+                    return
+                time.sleep(0.05)
+
+        threading.Thread(target=cancel, daemon=True).start()
+        started = time.monotonic()
+        code, out, _ = self.review(str(self.doc), "--timeout", "30")
+        self.assertLess(time.monotonic() - started, 15, "the waiter must end on the withdrawal, not its timeout")
+        self.assertEqual(code, 1, out)
+        self.assertEqual(cancelled.get("code"), 0)
+        self.assertIn(f"withdrawn {cancelled['id']}", out.splitlines())
+        self.assertFalse(any(ln.startswith("timeout ") for ln in out.splitlines()), out)
+        self.assertNotIn("as the human left it", out)
+        self.assertEqual(list(directory.glob("*.request.json")), [])
+
+    def test_cancel_removes_only_the_named_request_and_status_drops_it(self):
+        """Adversarial where: `--cancel` clears every pending request, leaves
+        the named one listed by `--status`, or fails to exit 0."""
+        self.configure()
+        a, b = self.request_id(), self.request_id()
+        code, _, _ = self.review("--cancel", a)
+        self.assertEqual(code, 0)
+        directory = reviewlib.review_dir(self.vault)
+        self.assertFalse((directory / f"{a}.request.json").exists())
+        self.assertTrue((directory / f"{b}.request.json").exists())
+        code, out, _ = self.review("--status")
+        self.assertEqual(code, 0)
+        self.assertEqual(out.strip(), f"pending {b} specs/SPEC-001-x.md")
+        self.assertEqual(self.review("--cancel", b)[0], 0)
+        self.assertEqual(self.review("--status")[1].strip(), "")
+
+    def test_cancel_of_an_unknown_id_exits_1_with_a_stderr_message_and_touches_nothing(self):
+        """Adversarial where: an id that is only a prefix of a pending id, an
+        id already cancelled, or a path-shaped id reaching a decoy outside
+        `tmp/review/` is treated as a match, or the failure is silent."""
+        self.configure()
+        rid = self.request_id()
+        decoy = self.vault / "specs" / "decoy.request.json"
+        decoy.write_text("{}", encoding="utf-8")
+        directory = reviewlib.review_dir(self.vault)
+        for name, target in [
+            ("never existed", "20990101T000000-abcdef"),
+            ("prefix of a real id", rid[:-1]),
+            ("path-shaped", "../../specs/decoy"),
+            ("empty", ""),
+        ]:
+            with self.subTest(name):
+                code, out, err = self.review("--cancel", target)
+                self.assertEqual(code, 1, (out, err))
+                self.assertNotEqual(err.strip(), "", "the reason goes on stderr")
+                self.assertTrue((directory / f"{rid}.request.json").exists())
+                self.assertTrue(decoy.exists())
+        self.assertEqual(self.review("--cancel", rid)[0], 0)
+        code, _, err = self.review("--cancel", rid)
+        self.assertEqual(code, 1)
+        self.assertNotEqual(err.strip(), "")
+
+    def test_cancel_without_an_id_is_a_usage_error_exit_1(self):
+        """Adversarial where: `--cancel` with no value raises IndexError or
+        exits 2 instead of printing usage and exiting 1."""
+        code, _, err = self.review("--cancel")
+        self.assertEqual(code, 1)
+        self.assertIn("usage:", err)
+
+
 if __name__ == "__main__":
     unittest.main()
