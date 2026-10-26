@@ -15,6 +15,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -79,10 +80,21 @@ class SurfaceProject(unittest.TestCase):
         self.spec.write_text("# X\n", encoding="utf-8")
         self.plan = self.vault / "plans" / "PLAN-001-y.md"
         self.plan.write_text("# Y\n", encoding="utf-8")
-        env = {"COMPASS_OBSIDIAN_CONFIG": str(self.tmp / "obsidian.json"), "CLAUDE_PROJECT_DIR": str(self.tmp)}
+        (self.tmp / "gitconfig").write_text("", encoding="utf-8")
+        env = {
+            "COMPASS_OBSIDIAN_CONFIG": str(self.tmp / "obsidian.json"),
+            "CLAUDE_PROJECT_DIR": str(self.tmp),
+            "GIT_CEILING_DIRECTORIES": str(self.tmp.parent),
+            "GIT_CONFIG_GLOBAL": str(self.tmp / "gitconfig"),
+            "GIT_CONFIG_NOSYSTEM": "1",
+        }
         patcher = mock.patch.dict(os.environ, env)
         patcher.start()
         self.addCleanup(patcher.stop)
+        for args in (["init", "-q"], ["config", "user.name", "Tester"],
+                     ["config", "user.email", "tester@example.invalid"],
+                     ["add", ".compass"], ["commit", "-q", "-m", "first"]):
+            subprocess.run(["git", *args], cwd=self.tmp, check=True, capture_output=True)
         for target, value in [("open_uri", lambda uri: None), ("has_focus", lambda: False)]:
             p = mock.patch.object(obsidian_surface, target, value)
             p.start()

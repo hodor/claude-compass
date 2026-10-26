@@ -8,8 +8,16 @@ review surface configured for the document (see `review_surfaces`), and
 waits. When the surface writes the verdict, it prints the verdict JSON, then
 one `comment <file>: <note>` line per note the human left on another file,
 one `edited <file>` line per file the human changed, a
+`--- changes since <short sha> ---` line followed by `git diff <sha>` for the
+whole repository and one `untracked <path>` line per untracked file, a
 `--- <file> as the human left it ---` line and the document's current text,
-so the caller reads the human's notes and edits.
+so the caller reads the human's notes and edits and every change made during
+the review. `<sha>` is the commit the request was sent at, recorded in the
+request as `commit`.
+
+A document goes out only when it is committed: one with uncommitted changes,
+one outside a git repository, a repository with no commits, and a machine
+without git all print `not configured: <why>`.
 
 The first stdout line is always one of:
   `requested <id> <file>`   the request went out
@@ -129,7 +137,12 @@ def _print_carried(verdict):
             print(f"edited {_one_line(path)}")
 
 
-def _wait(request, request_path, document, timeout):
+def _print_changes(root, commit, skip):
+    for line in reviewlib.changes_since(root, commit, skip):
+        print(line)
+
+
+def _wait(request, request_path, document, timeout, root, vault):
     target = reviewlib.verdict_path(request_path)
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -138,6 +151,7 @@ def _wait(request, request_path, document, timeout):
             if reviewlib.valid_verdict(verdict, request):
                 print(json.dumps(verdict, indent=2))
                 _print_carried(verdict)
+                _print_changes(root, request["commit"], reviewlib.review_dir(vault))
                 print(f"--- {request['file']} as the human left it ---")
                 try:
                     print(Path(document).read_text(encoding="utf-8"), end="")
@@ -186,11 +200,18 @@ def run(args):
         print(f"not configured: {opts['file']} is outside a .compass vault")
         return 1
 
+    try:
+        root, rel = reviewlib.repo_of(document, opts["file"])
+        commit = reviewlib.committed_head(root, rel, opts["file"])
+    except reviewlib.GitUnavailable as exc:
+        print(f"not configured: {exc}")
+        return 1
+
     request, request_path = reviewlib.write_request(
         compass_vault, surface.NAME, context["root"], document, opts["title"],
-        step_aside=not surface.has_focus())
+        step_aside=not surface.has_focus(), commit=commit)
     surface.deliver(context, request_path)
     print(f"requested {request['id']} {request['file']}", flush=True)
     if not opts["wait"]:
         return 0
-    return _wait(request, request_path, document, opts["timeout"])
+    return _wait(request, request_path, document, opts["timeout"], root, compass_vault)

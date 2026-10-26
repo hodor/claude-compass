@@ -3,11 +3,13 @@
 A review is two JSON files in the Compass vault's `tmp/review/`:
 
 - `<id>.request.json`, written here:
-  `{"id", "surface", "file", "title", "return"}`. `surface` names the
-  interface the request went to; `file` is the reviewed document's path
+  `{"id", "surface", "file", "title", "return", "commit"}`. `surface` names
+  the interface the request went to; `file` is the reviewed document's path
   relative to that surface's root, forward slashes. `return` asks the
   surface to step aside after the verdict, set when it did not have focus
-  as the request was made.
+  as the request was made. `commit` is the full sha of the git HEAD the
+  document was committed at when the request went out; the changes made
+  during the review are everything that differs from it.
 - `<id>.verdict.json`, written by the surface on the human's answer:
   `{"id", "file", "verdict": "approved"|"changes", "notes", "at"}`, plus
   two optional lists: `comments`, `{"file", "note"}` entries for notes the
@@ -23,6 +25,7 @@ in `review_surfaces`.
 import json
 import os
 import secrets
+import subprocess
 import time
 from pathlib import Path
 
@@ -31,6 +34,11 @@ import review_surfaces
 REVIEW_DIR = ("tmp", "review")
 VERDICTS = ("approved", "changes")
 CARRIED_LISTS = ("comments", "edited")
+SHORT_SHA = 10
+
+
+class GitUnavailable(Exception):
+    """The review cannot be tied to a commit; the message is the reason."""
 
 
 def choose(document):
@@ -53,12 +61,14 @@ def new_id():
     return time.strftime("%Y%m%dT%H%M%S") + "-" + secrets.token_hex(3)
 
 
-def write_request(compass_vault, surface, root, document, title=None, step_aside=True):
+def write_request(compass_vault, surface, root, document, title=None, step_aside=True, commit=None):
     """Write a request for `document` on `surface` (its `NAME`), `file`
-    relative to `root`; return `(request, request_path)`."""
+    relative to `root`, recording the git `commit` it was sent at; return
+    `(request, request_path)`."""
     rel = Path(document).resolve().relative_to(Path(root).resolve()).as_posix()
     rid = new_id()
-    request = {"id": rid, "surface": surface, "file": rel, "title": title, "return": bool(step_aside)}
+    request = {"id": rid, "surface": surface, "file": rel, "title": title, "return": bool(step_aside),
+               "commit": commit}
     directory = review_dir(compass_vault)
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"{rid}.request.json"
@@ -66,6 +76,90 @@ def write_request(compass_vault, surface, root, document, title=None, step_aside
     tmp.write_text(json.dumps(request, indent=2), encoding="utf-8")
     os.replace(tmp, path)
     return request, path
+
+
+def _git(root, *args):
+    """The completed `git` run (bytes output) with `root` as the working
+    directory; raises `GitUnavailable` when git cannot be started."""
+    try:
+        return subprocess.run(["git", *args], cwd=root, capture_output=True)
+    except OSError as exc:
+        raise GitUnavailable(f"git cannot be run ({exc})")
+
+
+def _text(data):
+    return data.decode("utf-8", errors="replace")
+
+
+def repo_of(document, label=None):
+    """`(root, relative_path)` of `document` inside its git repository: the
+    repository's top directory and the document's path from it, forward
+    slashes. Raises `GitUnavailable` outside a repository or without git;
+    `label` is how its message names the document."""
+    document = Path(document)
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(document.parent), "rev-parse", "--show-toplevel", "--show-prefix"],
+            capture_output=True)
+    except OSError as exc:
+        raise GitUnavailable(f"git cannot be run ({exc})")
+    if result.returncode != 0:
+        raise GitUnavailable(f"{label or document} is not in a git repository")
+    lines = _text(result.stdout).splitlines()
+    if not lines:
+        raise GitUnavailable(f"{label or document} is not in a git repository")
+    prefix = lines[1] if len(lines) > 1 else ""
+    return lines[0], prefix + document.name
+
+
+def committed_head(root, rel, label=None):
+    """The full sha of HEAD when `rel` (a path from `root`) is tracked and
+    equals its committed content in both the index and the worktree; raises
+    `GitUnavailable` naming the problem otherwise, `label` being how it
+    names the document."""
+    status = _git(root, "--literal-pathspecs", "status", "--porcelain", "-z",
+                  "--untracked-files=all", "--", rel)
+    if status.returncode != 0:
+        raise GitUnavailable(f"git status failed: {_text(status.stderr).strip()}")
+    tracked = _git(root, "--literal-pathspecs", "ls-files", "--error-unmatch", "-z", "--", rel)
+    if status.stdout or tracked.returncode != 0:
+        raise GitUnavailable(f"{label or rel} has uncommitted changes; commit first")
+    head = _git(root, "rev-parse", "--verify", "HEAD")
+    sha = _text(head.stdout).strip()
+    if head.returncode != 0 or not sha:
+        raise GitUnavailable("the repository has no commits yet; commit first")
+    return sha
+
+
+def _inside(root, directory):
+    """`directory`'s path from `root` as git names it, with a trailing slash,
+    or None when it is not an existing directory in the repository."""
+    if not Path(directory).is_dir():
+        return None
+    result = _git(root, "-C", str(directory), "rev-parse", "--show-prefix")
+    prefix = _text(result.stdout).strip()
+    return prefix if result.returncode == 0 and prefix else None
+
+
+def changes_since(root, commit, skip=None):
+    """The lines that show everything in the repository that differs from
+    `commit`: the `--- changes since <short sha> ---` header, `git diff
+    <commit>`, then `untracked <path>` for each untracked file outside the
+    directory `skip`, where the review's own request and verdict files sit."""
+    lines = [f"--- changes since {commit[:SHORT_SHA]} ---"]
+    diff = _git(root, "-c", "color.ui=never", "diff", "--no-ext-diff", commit)
+    if diff.returncode == 0:
+        lines.extend(_text(diff.stdout).splitlines())
+    else:
+        lines.append(f"(git diff failed: {_text(diff.stderr).strip()})")
+    others = _git(root, "ls-files", "--others", "--exclude-standard", "-z")
+    if others.returncode == 0:
+        hidden = _inside(root, skip) if skip else None
+        names = [name for name in _text(others.stdout).split("\0") if name]
+        lines.extend(f"untracked {name}" for name in names if not (hidden and name.startswith(hidden)))
+    else:
+        lines.append(f"(untracked files unavailable: {_text(others.stderr).strip()})")
+    return lines
 
 
 def read_json(path):
