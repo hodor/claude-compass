@@ -154,7 +154,7 @@ def _wait(request, request_path, document, timeout, root, vault):
                 _print_changes(root, request["commit"], reviewlib.review_dir(vault))
                 print(f"--- {request['file']} as the human left it ---")
                 try:
-                    print(Path(document).read_text(encoding="utf-8"), end="")
+                    print(Path(document).read_text(encoding="utf-8", errors="replace"), end="")
                 except OSError as exc:
                     print(f"(the document can no longer be read: {exc})")
                 return 0

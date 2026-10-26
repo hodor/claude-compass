@@ -862,3 +862,124 @@ test("the card's file link reopens the reviewed file; for a deleted file it repo
     assert.equal(leaf.view.file.path, "b.md");
   });
 });
+
+// ---- edges that only the implementation reveals ----
+
+// Adversarial where: the in-flight guard set before the editor save and the
+// verdict write is never cleared when either fails, so after one failed
+// click (disk error, locked file) Approve and Needs changes are dead and the
+// human can never answer the review.
+test("a verdict click that failed can be clicked again", async (t) => {
+  const rows = {
+    "the verdict write fails": (app) => { const real = app.vault.adapter.write; let n = 0; app.vault.adapter.write = async (p, d) => { if (n++ === 0) throw new Error("disk full"); return real.call(app.vault.adapter, p, d); }; },
+    "the editor save fails": (app) => { const view = app.leaves[0].view; const real = view.save; let n = 0; view.save = async () => { if (n++ === 0) throw new Error("locked"); return real.call(view); }; },
+  };
+  for (const [name, break_] of Object.entries(rows)) {
+    await t.test(name, async () => {
+      const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md") });
+      await plugin.handler({ request: "tmp/review/1.request.json" });
+      break_(app);
+      await click(cardBtn(app, "1", "Approve")).catch(() => {});
+      await sleep();
+      assert.equal(app.store.has("tmp/review/1.verdict.json"), false, "the first attempt wrote nothing");
+      await click(cardBtn(app, "1", "Approve")).catch(() => {});
+      await sleep();
+      assert.equal(verdictOf(app, "tmp/review/1.verdict.json").verdict, "approved");
+    });
+  }
+});
+
+// Adversarial where: events that redraw the panel (layout changes, another
+// file's modify, the periodic recheck) replace the notes field being typed
+// in, dropping its focus and caret, or lose the text when the active file
+// changes and the card is rebuilt.
+test("typing survives panel events: the same field stays in place, and a rebuilt card restores the text", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  const field = notesIn(cardFor(app, "1"));
+  typeInto(field, "half a senten");
+  app.wsListeners["layout-change"]();
+  app.wsListeners["file-open"](mdFile("a.md"));
+  await plugin.recheck();
+  await app.listeners.modify(mdFile("a.md"));
+  assert.equal(notesIn(cardFor(app, "1")), field, "the notes field is the same element");
+  assert.equal(field.value, "half a senten");
+  show(app, app.leaves[0], "b.md");
+  assert.notEqual(notesIn(cardFor(app, "1")), field, "the card was rebuilt for the new file");
+  assert.equal(notesIn(cardFor(app, "1")).value, "half a senten", "the typed text is restored");
+  assert.ok(thisFileIn(cardFor(app, "1")), "the note field for the file in view appears");
+});
+
+// Adversarial where: with many pending reviews the cards are not newest
+// first, an answer removes a neighbour's card, or an edit is credited to every
+// card instead of the one for that file (or the newest for any other file).
+test("thirty pending reviews: newest first, one answer removes only its card, edits go to one card", async () => {
+  const files = { "other.md": "o" };
+  const n = 30;
+  for (let i = 1; i <= n; i++) {
+    files[`d${i}.md`] = "x";
+    files[`tmp/review/${String(i).padStart(2, "0")}.request.json`] = req(String(i).padStart(2, "0"), `d${i}.md`);
+  }
+  const { app, plugin } = await loaded(files);
+  for (let i = 1; i <= n; i++) await plugin.handler({ request: `tmp/review/${String(i).padStart(2, "0")}.request.json` });
+  const ids = (k) => Array.from({ length: k }, (_, i) => String(i + 1).padStart(2, "0"));
+  assert.deepEqual(cardIds(app), ids(n).reverse());
+  await app.listeners.modify(mdFile("d7.md"));
+  await app.listeners.modify(mdFile("other.md"));
+  const edited = cards(app).filter((c) => feedbackOf(c).length > 0).map((c) => c.dataset.id).sort();
+  assert.deepEqual(edited, ["07", "30"]);
+  await click(cardBtn(app, "15", "Approve"));
+  await sleep();
+  assert.equal(cardIds(app).length, n - 1);
+  assert.equal(cardFor(app, "15"), undefined);
+  assert.deepEqual(verdictOf(app, "tmp/review/15.verdict.json").edited, []);
+  assert.equal(app.store.has("tmp/review/16.verdict.json"), false);
+});
+
+// Adversarial where: closing the panel drops the pending reviews (or their
+// typed notes) with the view, or a request after the close finds no leaf and
+// shows only the new card.
+test("after the human closes the panel, a new request reopens it with every pending card and its typed note", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y",
+    "tmp/review/1.request.json": req("1", "a.md"), "tmp/review/2.request.json": req("2", "b.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  typeInto(notesIn(cardFor(app, "1")), "keep me");
+  await closePanel(app);
+  assert.equal(panelView(app), null);
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  assert.ok(panelView(app), "a new panel view exists");
+  assert.deepEqual(cardIds(app), ["2", "1"]);
+  assert.equal(notesIn(cardFor(app, "1")).value, "keep me");
+});
+
+// Adversarial where: the reviewed file is deleted while its review is pending
+// and Approve throws (the editor leaf holds a dead file) or sends a verdict
+// naming nothing.
+test("approving a review whose file was deleted still writes the verdict for the original path", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  app.store.delete("a.md");
+  app.leaves[0].view.file = null;
+  typeInto(notesIn(cardFor(app, "1")), "file is gone");
+  app.wsListeners["layout-change"]();
+  await click(cardBtn(app, "1", "Needs changes"));
+  await sleep();
+  const v = verdictOf(app, "tmp/review/1.verdict.json");
+  assert.equal(v.file, "a.md");
+  assert.equal(v.verdict, "changes");
+  assert.deepEqual(notices.filter((n) => /failed/.test(n)), []);
+});
+
+// Adversarial where: unloading the plugin leaves its bars in the open panes,
+// so a disabled plugin keeps a dead "Open review panel" button on the page.
+test("unloading the plugin removes every bar from the panes", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y",
+    "tmp/review/1.request.json": req("1", "a.md"), "tmp/review/2.request.json": req("2", "b.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  app.leaves.forEach((l) => document.children.push(l.view.containerEl));
+  assert.equal(document.querySelectorAll(".compass-review-bar").length, 2);
+  plugin.onunload();
+  assert.equal(document.querySelectorAll(".compass-review-bar").length, 0);
+  document.children.length = 0;
+});

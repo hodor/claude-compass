@@ -35,6 +35,7 @@ REVIEW_DIR = ("tmp", "review")
 VERDICTS = ("approved", "changes")
 CARRIED_LISTS = ("comments", "edited")
 SHORT_SHA = 10
+MAX_DIFF_LINES = 2000
 
 
 class GitUnavailable(Exception):
@@ -144,12 +145,21 @@ def _inside(root, directory):
 def changes_since(root, commit, skip=None):
     """The lines that show everything in the repository that differs from
     `commit`: the `--- changes since <short sha> ---` header, `git diff
-    <commit>`, then `untracked <path>` for each untracked file outside the
-    directory `skip`, where the review's own request and verdict files sit."""
+    <commit>` up to MAX_DIFF_LINES lines and a line naming the rest, then
+    `untracked <path>` for each untracked file outside the directory `skip`,
+    where the review's own request and verdict files sit. Diff lines split on
+    newlines only, so a carriage return or a Unicode separator stays inside
+    its line."""
     lines = [f"--- changes since {commit[:SHORT_SHA]} ---"]
     diff = _git(root, "-c", "color.ui=never", "diff", "--no-ext-diff", commit)
     if diff.returncode == 0:
-        lines.extend(_text(diff.stdout).splitlines())
+        text = _text(diff.stdout)
+        body = text.split("\n")
+        if body and body[-1] == "":
+            body.pop()
+        lines.extend(body[:MAX_DIFF_LINES])
+        if len(body) > MAX_DIFF_LINES:
+            lines.append(f"({len(body) - MAX_DIFF_LINES} more diff lines: git diff {commit[:SHORT_SHA]})")
     else:
         lines.append(f"(git diff failed: {_text(diff.stderr).strip()})")
     others = _git(root, "ls-files", "--others", "--exclude-standard", "-z")

@@ -404,9 +404,17 @@ class CompassReview extends Plugin {
   }
 
   async verdict(entry, verdict) {
-    const { request, path } = entry;
     if (entry.sending) return;
     entry.sending = true;
+    try {
+      await this.sendVerdict(entry, verdict);
+    } finally {
+      entry.sending = false;
+    }
+  }
+
+  async sendVerdict(entry, verdict) {
+    const { request, path } = entry;
     // Flush the human's edits before Compass reads the file.
     for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
       if (leaf.view instanceof MarkdownView && leaf.view.file && leaf.view.file.path === request.file) {
