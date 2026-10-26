@@ -402,3 +402,196 @@ test("with two reviews pending, the slim bar names the one whose file was opened
   await backOf(trailIn(betaLeaf)).onclick();
   assert.equal(betaLeaf.view.file.path, "b.md");
 });
+
+// ---- implementation-visible edges: shared edit tracking, verdict races, rename ----
+
+const verdictWrites = (app) => {
+  const writes = [];
+  const real = app.vault.adapter.write;
+  app.vault.adapter.write = async (p, d) => { if (p.endsWith(".verdict.json")) writes.push(p); return real(p, d); };
+  return writes;
+};
+const gate = () => { let release; const wait = new Promise((r) => { release = r; }); return { wait, release }; };
+
+// Adversarial where: an edit event is attributed to a review it does not
+// belong to. An edit to a reviewed file belongs to that file's review; an
+// edit to any other file belongs to the review the slim bar names, the one
+// opened last.
+test("with two reviews pending, an edit lands only in the review it belongs to", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x", "b.md": "y", "z.md": "q",
+    "tmp/review/1.request.json": req("1", "a.md"), "tmp/review/2.request.json": req("2", "b.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  await app.listeners.modify(mdFile("z.md"));
+  await app.listeners.modify(mdFile("a.md"));
+  const leafOf = (p) => app.leaves.find((l) => l.view.file.path === p);
+  await button(barIn(leafOf("b.md")), "Approve").onclick();
+  await sleep();
+  assert.deepEqual([...verdictOf(app, "tmp/review/2.verdict.json").edited], ["z.md"], "the other file's edit goes to the review opened last");
+  await button(barIn(leafOf("a.md")), "Approve").onclick();
+  await sleep();
+  assert.deepEqual([...verdictOf(app, "tmp/review/1.verdict.json").edited], ["a.md"], "a reviewed file's edit goes to its own review");
+});
+
+// Adversarial where: on the reviewed file of a second pending review, the
+// slim bar of the first review is drawn on top of that review's own full bar,
+// or the full bar is lost; and after that review is answered, the file never
+// gets the first review's slim bar.
+test("on the reviewed file of a second pending review the full bar shows with no trail, and the trail appears once it is answered", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x", "b.md": "y",
+    "tmp/review/1.request.json": req("1", "a.md", { title: "Alpha" }),
+    "tmp/review/2.request.json": req("2", "b.md", { title: "Beta" }) });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  assert.equal(app.leaves.length, 2, "each review opened in its own pane");
+  const [alphaLeaf, betaLeaf] = app.leaves;
+  go(alphaLeaf, "b.md");
+  plugin.decorate();
+  assert.equal(barIn(alphaLeaf).dataset.id, "2");
+  assert.equal(trailIn(alphaLeaf), null, "no trail beside a full bar");
+  go(alphaLeaf, "a.md");
+  plugin.decorate();
+  assert.equal(barIn(alphaLeaf).dataset.id, "1");
+
+  go(betaLeaf, "a.md");
+  go(alphaLeaf, "b.md");
+  plugin.decorate();
+  await button(barIn(alphaLeaf), "Approve").onclick();
+  await sleep();
+  assert.equal(barIn(alphaLeaf), null, "answered review: bar gone");
+  assert.match(trailText(trailIn(alphaLeaf)), /Alpha/, "b.md now shows the remaining review's slim bar");
+});
+
+// Adversarial where: the plugin's own save of the reviewed file (made so
+// Compass reads the human's text) is lost, or counted twice, or breaks the
+// verdict when the resulting modify event fires while the verdict is built.
+test("the save made for the verdict counts as the human's edit once; a clean save adds nothing", async (t) => {
+  const run = async (fireModifyOnSave) => {
+    const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md") });
+    await plugin.handler({ request: "tmp/review/1.request.json" });
+    const leaf = app.leaves[0];
+    leaf.view.save = async () => { if (fireModifyOnSave) await app.listeners.modify(mdFile("a.md")); };
+    await button(barIn(leaf), "Approve").onclick();
+    await sleep();
+    return verdictOf(app, "tmp/review/1.verdict.json");
+  };
+  await t.test("dirty document: modify fires during save", async () => {
+    assert.deepEqual((await run(true)).edited, ["a.md"]);
+  });
+  await t.test("clean document: no modify event", async () => {
+    assert.deepEqual((await run(false)).edited, []);
+  });
+});
+
+// Adversarial where: a modify event arriving after the verdict is written
+// throws or resurrects the review.
+test("a modify event after the verdict is written is ignored and leaves no review behind", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  await button(barIn(app.leaves[0]), "Approve").onclick();
+  await sleep();
+  await app.listeners.modify(mdFile("a.md"));
+  assert.equal(plugin.pending.size, 0);
+  assert.equal(verdictOf(app, "tmp/review/1.verdict.json").edited.length, 0);
+});
+
+// Adversarial where: a recheck that is awaiting the file system while the
+// human clicks leaves the review half-dropped, throws on the entry that the
+// click already removed, or loses the verdict.
+test("a recheck in flight while a verdict click completes ends with the verdict written and no review pending", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  const real = app.vault.adapter.exists;
+  const held = gate();
+  let first = true;
+  app.vault.adapter.exists = async (p) => { if (first) { first = false; await held.wait; } return real(p); };
+  const racing = plugin.recheck();
+  await button(barIn(app.leaves[0]), "Approve").onclick();
+  held.release();
+  await racing;
+  assert.equal(verdictOf(app, "tmp/review/1.verdict.json").verdict, "approved");
+  assert.equal(plugin.pending.size, 0);
+  assert.equal(barIn(app.leaves[0]), null);
+});
+
+// Adversarial where: a click already waiting on the editor save writes a
+// verdict for a request that was withdrawn meanwhile (the terminal answered
+// and `compass review --cancel` removed the request file), leaving an orphan
+// verdict file and telling the human it was sent.
+test("a request withdrawn while the verdict click is saving gets no verdict file", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  const held = gate();
+  app.leaves[0].view.save = () => held.wait;
+  const click = button(barIn(app.leaves[0]), "Approve").onclick();
+  app.store.delete("tmp/review/1.request.json");
+  await plugin.recheck();
+  held.release();
+  await click;
+  assert.equal(app.store.has("tmp/review/1.verdict.json"), false);
+  assert.ok(!notices.some((n) => /sent to Claude/.test(n)), "no 'sent' notice for a withdrawn review");
+});
+
+// Adversarial where: two quick clicks (Approve then Needs changes) while the
+// save is pending write two verdicts for one request, the second overwriting
+// the first after the waiter may already have printed it.
+test("two clicks while the save is pending write one verdict", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  const writes = verdictWrites(app);
+  const held = gate();
+  app.leaves[0].view.save = () => held.wait;
+  const b = barIn(app.leaves[0]);
+  typeInto(b.children.find((c) => c.tag === "input"), "note");
+  const first = button(b, "Approve").onclick();
+  const second = button(b, "Needs changes").onclick();
+  held.release();
+  await Promise.all([first, second]);
+  assert.equal(writes.length, 1);
+});
+
+// Adversarial where: a rename of a file that carries a note or an edit
+// orphans them under the old path, or Back to review opens the old path of a
+// renamed reviewed file.
+test("renaming a noted and edited file moves both to the new path, and Back follows a renamed reviewed file", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  const leaf = app.leaves[0];
+  go(leaf, "b.md");
+  plugin.decorate();
+  typeInto(noteOf(trailIn(leaf)), "tidy");
+  await app.listeners.modify(mdFile("b.md"));
+  app.store.set("b2.md", app.store.get("b.md"));
+  app.store.delete("b.md");
+  app.listeners.rename({ path: "b2.md" }, "b.md");
+  app.store.set("a2.md", app.store.get("a.md"));
+  app.store.delete("a.md");
+  app.listeners.rename({ path: "a2.md" }, "a.md");
+  go(leaf, "b2.md");
+  plugin.decorate();
+  assert.equal(noteOf(trailIn(leaf)).value, "tidy", "the note follows the file");
+  await backOf(trailIn(leaf)).onclick();
+  assert.equal(leaf.view.file.path, "a2.md");
+  await button(barIn(leaf), "Approve").onclick();
+  await sleep();
+  const v = verdictOf(app, "tmp/review/1.verdict.json");
+  assert.deepEqual(v.comments, [{ file: "b2.md", note: "tidy" }]);
+  assert.deepEqual(v.edited, ["b2.md"]);
+  assert.equal(v.file, "a2.md");
+});
+
+// Adversarial where: Back to review on a reviewed file that no longer exists
+// throws out of the click handler or silently does nothing.
+test("Back to review for a deleted reviewed file reports a failure and keeps the pane on the current file", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  const leaf = app.leaves[0];
+  go(leaf, "b.md");
+  plugin.decorate();
+  app.store.delete("a.md");
+  await backOf(trailIn(leaf)).onclick();
+  assert.match(notices.join(" "), /back to review failed - file not in this vault: a.md/);
+  assert.equal(leaf.view.file.path, "b.md");
+});

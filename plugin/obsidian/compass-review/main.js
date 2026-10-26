@@ -151,12 +151,14 @@ class CompassReview extends Plugin {
     this.decorate();
   }
 
+  // An edit belongs to the review of that file, else to the review the slim
+  // bar names.
   onModify(file) {
     if (!file || typeof file.path !== "string" || !file.path.endsWith(".md")) return;
-    for (const entry of this.pending.values()) {
-      entry.edited.add(file.path);
-      this.refreshGate(entry);
-    }
+    const entry = this.entryFor(file.path) || this.trailTarget();
+    if (!entry) return;
+    entry.edited.add(file.path);
+    this.refreshGate(entry);
   }
 
   noteOpened(file) {
@@ -307,11 +309,19 @@ class CompassReview extends Plugin {
 
   async verdict(entry, verdict, notes) {
     const { request, path } = entry;
+    if (entry.sending) return;
+    entry.sending = true;
     // Flush the human's edits before Compass reads the file.
     for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
       if (leaf.view instanceof MarkdownView && leaf.view.file && leaf.view.file.path === request.file) {
         await leaf.view.save();
       }
+    }
+    if (!(await this.app.vault.adapter.exists(path))) {
+      this.pending.delete(request.id);
+      this.decorate();
+      new Notice("This review was withdrawn - nothing was sent");
+      return;
     }
     const body = {
       id: request.id,

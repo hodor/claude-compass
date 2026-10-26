@@ -117,7 +117,7 @@ def _cancel(request_id):
 
 
 def _one_line(text):
-    return " ".join(str(text).split())
+    return " ".join(text.split()) if isinstance(text, str) else ""
 
 
 def _print_carried(verdict):
@@ -125,7 +125,8 @@ def _print_carried(verdict):
         if isinstance(comment, dict):
             print(f"comment {_one_line(comment.get('file', ''))}: {_one_line(comment.get('note', ''))}")
     for path in verdict.get("edited", []):
-        print(f"edited {_one_line(path)}")
+        if isinstance(path, str):
+            print(f"edited {_one_line(path)}")
 
 
 def _wait(request, request_path, document, timeout):
