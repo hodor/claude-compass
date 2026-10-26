@@ -23,6 +23,7 @@ Held under [[PLAN-009-sizing-mechanism]]'s `## Later` region. Promoted into a de
 - [ ] **Lesson-coverage parity** Question raised while approving unit-nested lessons: lessons surface at plan/build time by tag *search* (advisory, unverified), while ADR rulings are getting *coverage* (enumerable + mechanically audited) via [[SPEC-007-decision-coverage-tracing]]. Should high-score lessons matching a task's area get the same treatment - plan records which lessons were consulted, validator audits that none were skipped? Needs its own spec; interacts with the lessons catalog and the validator.
 
 - [ ] **Obsidian as the place to talk to Compass (2026-10-24).** "some good examples of things we could do in obsidian is a place to chat, answers from you there and the selection of things to do like 1, 2, 3, other etc." Follows [[SPEC-030-review-documents-open-in-obsidian]]; intent line TASK-176 in [[PLAN-022-review-in-obsidian]].
+- [ ] **Documents use Obsidian's richer markdown (2026-10-25).** "if we're going to be reviewing on obsidian we might as well use obsidian features and using more advanced markdown features in our documents like graphs etc. I would like to see some ideas"
 
 ## Deferred specs (not current work)
 
