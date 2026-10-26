@@ -38,7 +38,7 @@ The reviewed document carries the full bar:
 | Review: Approve this spec?                                             |
 | [ Notes for Claude ...................... ] [Approve] [Needs changes] |
 +------------------------------------------------------------------------+
-| # Documents Use Obsidian's Richer Markdown                             |
+| # Working in Compass Is Visual                                         |
 | ## Problem                                                             |
 | ... see [[SPEC-030-review-documents-open-in-obsidian]] ...             |
 ```

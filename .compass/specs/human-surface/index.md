@@ -3,7 +3,7 @@ title: "human-surface"
 type: domain
 status: active
 tags: [human-surface]
-summary: "how Compass puts things in front of the human: the questions it asks and the documents it hands over for review"
+summary: "how Compass puts things in front of the human: the questions it asks, the documents it hands over for review, and how all of it reads"
 created: 2026-10-25
 updated: 2026-10-25
 sizing_id: sz-2026-10-25-1
@@ -13,4 +13,4 @@ sizing_id: sz-2026-10-25-1
 
 ## Scope
 
-Class here: how Compass puts things in front of the human: the questions it asks and the documents it hands over for review
+Class here: how Compass puts things in front of the human: the questions it asks, the documents it hands over for review, and how all of it reads

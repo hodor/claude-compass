@@ -1,27 +1,29 @@
 ---
-title: "Documents Use Obsidian's Richer Markdown"
+title: "Working in Compass Is Visual"
 type: spec
 status: approved
 confidence: low
 area: methodology
-tags: [obsidian, review, documents, markdown]
-summary: "Compass documents are reviewed in Obsidian, so they use Obsidian features and more advanced markdown, like graphs"
+tags: [obsidian, review, documents, markdown, cli, jargon, artifacts]
+summary: "working in Compass, in the CLI and in the documents, is visual and easy to follow instead of a wall of jargon"
 created: 2026-10-25
-updated: 2026-10-25
+updated: 2026-10-26
 approved: 2026-10-25
 ---
 
-# Documents Use Obsidian's Richer Markdown
+# Working in Compass Is Visual
 
 ## Problem
 
-If we're going to be reviewing on Obsidian we might as well use Obsidian features and using more advanced markdown features in our documents like graphs etc.
+Right now everything in using Compass is a wall of text. A wall of text on both the CLI but also on the markdown files. It's very hard for humans to follow up and let them know what they think because there's also a lot of jargon that Compass puts in place.
 
 ## Desired Outcome
 
-[guess: The documents Compass hands the human to review read better in Obsidian than plain text does: structure, dependencies and trends are seen at a glance, and what another document holds is shown in place. A document stays readable as plain text for agents and on GitHub.]
+Working in Compass is a bliss for anyone, not like reading the phone book. We can see graphs, images and code snippets with colors, and in a very intuitive and visual way, understand exactly what the AI means.
 
-Related: [[SPEC-030-review-documents-open-in-obsidian]].
+This could also be something that we do using Claude artifacts, doesn't have to be only on Obsidian, in fact if we can get something like the artifacts working on Obsidian we should.
+
+Related: [[SPEC-029-questions-to-the-human-are-clear-and-visual]], [[SPEC-030-review-documents-open-in-obsidian]].
 
 ## Decisions
 
