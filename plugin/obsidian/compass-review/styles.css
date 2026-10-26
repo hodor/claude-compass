@@ -2,29 +2,86 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--background-modifier-border);
-  background: var(--background-secondary);
-}
-
-.compass-review-bar .compass-review-title,
-.compass-review-trail .compass-review-title {
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.compass-review-bar input,
-.compass-review-trail input {
-  flex: 1;
-  min-width: 0;
-}
-
-.compass-review-trail {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   padding: 4px 12px;
   font-size: var(--font-ui-small);
   border-bottom: 1px solid var(--background-modifier-border);
   background: var(--background-secondary);
+}
+
+.compass-review-bar .compass-review-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compass-review-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
+.compass-review-empty {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.compass-review-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-primary);
+}
+
+.compass-review-question {
+  font-weight: 600;
+}
+
+.compass-review-file {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.compass-review-card textarea {
+  width: 100%;
+  resize: vertical;
+  font-size: var(--font-ui-small);
+}
+
+.compass-review-this-file {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.compass-review-label {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.compass-review-feedback-block.is-empty {
+  display: none;
+}
+
+.compass-review-feedback {
+  margin: 0;
+  padding-left: 18px;
+  font-size: var(--font-ui-small);
+  overflow-wrap: anywhere;
+}
+
+.compass-review-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
 }
