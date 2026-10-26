@@ -18,7 +18,7 @@ Two modes:
 
 Spawn the `planner` agent. It reads the approved spec and research, drafts the full plan, and presents it for approval.
 
-Ask for the approval through `AskUserQuestion`, exactly one question per call: "Approve this plan?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+When a review surface is configured, the approval of the plan draft file goes through the review rule in the pipeline rules (`compass review <plan draft file> --title "Approve this plan?"`) and nothing is asked here. Otherwise ask for the approval through `AskUserQuestion`, exactly one question per call: "Approve this plan?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
 
 - **Approve (Recommended):** marks the plan approved; tasks can be distributed.
 - **Needs changes:** you say what to change; the plan is edited and shown again.

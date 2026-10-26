@@ -149,7 +149,7 @@ Add a link to `.compass/index.md` under `## Research`.
 
 > "Saved to [[RESEARCH-name]]."
 
-Then ask through `AskUserQuestion`, exactly one question per call: "Follow-up questions, or move to planning?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+When a review surface is configured, the finished research document goes through the review rule in the pipeline rules (`compass review <research file> --title "Follow-up questions, or move to planning?"`) and nothing is asked here. Otherwise ask through `AskUserQuestion`, exactly one question per call: "Follow-up questions, or move to planning?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
 
 - **Move to planning (Recommended):** starts the plan from this research.
 - **Follow-up questions:** you ask; I answer from the research or run another research pass.

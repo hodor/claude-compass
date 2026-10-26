@@ -100,7 +100,7 @@ Before presenting, spawn a reviewer sub-agent on the cheap model tier with exact
 
 Show the Problem and Desired Outcome as they will be saved, his sentences with any guess bracketed inline where it sits. No summary, no counts, no section list. After "needs changes", show only the lines that changed.
 
-Then ask through `AskUserQuestion`, exactly one question per call: "Approve this spec?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+When a review surface is configured, the approval of the spec file goes through the review rule in the pipeline rules (`compass review <spec file> --title "Approve this spec?"`) and nothing is asked here; the "What next?" question below then takes its recommended option after an approved verdict. Otherwise ask through `AskUserQuestion`, exactly one question per call: "Approve this spec?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
 
 - **Approve (Recommended):** marks the spec approved; research can start.
 - **Needs changes:** you say what to change; I edit and show the changed lines.

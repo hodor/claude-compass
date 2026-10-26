@@ -130,7 +130,7 @@ Add a `## Vision` section to `.compass/index.md` (above Specs) with `[[vision]]`
 >
 > Want to start with [first item], or pick a different one?"
 
-Ask that last question through `AskUserQuestion`, exactly one question per call. The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+When a review surface is configured, the approval of `.compass/vision.md` goes through the review rule in the pipeline rules (`compass review .compass/vision.md --title "Approve this vision?"`) and nothing is asked here; the "Want to start with" question then takes its recommended option after an approved verdict. Otherwise ask that last question through `AskUserQuestion`, exactly one question per call. The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
 
 - **Start with [first item] (Recommended):** begins `/compass:spec` on that need.
 - **Pick a different item:** you name which roadmap item to spec first.

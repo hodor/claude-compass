@@ -42,7 +42,7 @@ Plan ready for: [task description]
 [Summary of phases, tasks, complexity, verification]
 ```
 
-Then ask "Proceed with implementation?" through `AskUserQuestion`, exactly one question per call. The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+When a review surface is configured, the plan file goes through the review rule in the pipeline rules (`compass review <plan file> --title "Proceed with implementation?"`) and nothing is asked here. Otherwise ask "Proceed with implementation?" through `AskUserQuestion`, exactly one question per call. The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
 
 - **Approve (Recommended):** the plan is approved; build starts.
 - **Redirect:** you say what to change; the plan is revised and shown again.
