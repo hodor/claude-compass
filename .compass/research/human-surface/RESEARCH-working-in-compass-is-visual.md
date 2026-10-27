@@ -8,10 +8,10 @@ tags: [obsidian, cli, terminal, jargon, plain-language, readability, artifacts, 
 depends_on: ["[[SPEC-031-working-in-compass-is-visual]]"]
 summary: "the wall of text comes from three CLI commands, long plans and coined terms; Obsidian can draw nearly everything asked for cheaply, but callouts, task tables and canvas collide with the compass parsers"
 created: 2026-10-26
-updated: 2026-10-26
+updated: 2026-10-27
 git_branch: "master"
 git_commit: "4fae4f7"
-author: "reviewer (five researchers consolidated)"
+author: "reviewer (seven researchers consolidated)"
 ---
 
 # Working in Compass Is Visual: Evidence
@@ -22,6 +22,7 @@ Evidence for [[specs/human-surface/SPEC-031-working-in-compass-is-visual]].
 
 - **Where the wall comes from.** Three `compass` commands print almost all terminal text (one prints 503 lines). Plans and research run a median of about 2,400 words, and a single plan task line reaches 1,910 characters. Dozens of coined terms ("hot path", "unit", "sweep", "rolling wave") appear with no glossary anywhere.
 - **What Obsidian can show.** Everything the spec's D-01 lists is built into Obsidian except charts, and most of it costs a few dozen bytes per item. Three forms collide with the `compass` command: a decision inside a callout becomes unreadable to it, a task table is ignored by it, and a canvas is invisible to it.
+- **What a plugin can draw.** Community plugins already draw boards, timelines, Gantt charts, heatmaps, mind maps and charts, driven by a code block, a script, a file they own, or a Bases layout; since Obsidian 1.10.0 any plugin can add its own Bases layout that redraws live. Compass's own plugin could draw charts from code blocks an agent writes; a Vega-Lite chart library adds about 780 KB. Much of Compass's data (loop ledgers, logs, task lines) is not something Obsidian lists as rows, and nothing has been drawn inside Obsidian yet.
 - **Claude artifacts.** An artifact is a web page published from a session to claude.ai and opened in a browser. Publishing needs a paid plan and a claude.ai login and is off in headless runs. Artifact-like HTML inside Obsidian needs a plugin and a security choice, since Obsidian has no plugin sandbox.
 - **The terminal.** The `compass` command prints plain text. Color or glyphs would reach the model as raw bytes through the agent's shell, and on Windows a glyph prints as a literal `\uXXXX`. Claude Code does offer visual surfaces (status line, output styles, mods), each with limits.
 - **Does visual help.** Pictures and diagrams improve reading comprehension by about a third of a standard deviation, and decorative extras hurt. Every study measured learners; none measured people reviewing project documents.
@@ -34,7 +35,7 @@ Where do the wall of text and the jargon come from, in the terminal and in the d
 
 ## Methodology
 
-Five researchers ran in parallel, one axis each, on 2026-10-26, and this document consolidates them.
+Five researchers ran in parallel, one axis each, on 2026-10-26; two more (axes 6 and 7) then surveyed what a plugin can draw inside Obsidian. This document consolidates all seven.
 
 | Axis | Question                                             | Method                                                                                                                  |
 | ---- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -43,6 +44,8 @@ Five researchers ran in parallel, one axis each, on 2026-10-26, and this documen
 | 3    | Claude artifacts and artifact-like pages in Obsidian | DESMET feature analysis: vendor docs, Obsidian 1.14.5 bundle and `obsidian.d.ts` read, plugin sources                   |
 | 4    | What Claude Code and the CLI can show                | Systematic mapping: Claude Code docs as raw markdown, CLI code read and run, clig.dev                                   |
 | 5    | Plain language, brevity, readability measurement     | Systematic mapping: government style guides, peer-reviewed studies with OpenAlex/Crossref marks, Vale and textstat code |
+| 6    | What community plugins draw, and Compass data mapped to it | DESMET feature analysis: plugin sources, directory download stats, GitHub API, a mapping trial on the vault's own data |
+| 7    | Custom artifacts drawn by Compass's own plugin       | DESMET feature analysis: `obsidian.d.ts` 1.14.4, plugin sources, bundle files measured, headless Vega-Lite probe, chart-generation studies |
 
 **Grading: allowed.** Each finding carries its confidence (how sure the claim is) and a grade (how much its kind of evidence should weigh for this topic). Executed probes, code read and official docs weigh high; forum posts, directory blurbs and search-engine summaries weigh low.
 
@@ -277,6 +280,91 @@ flowchart LR
 | 105 | clig.dev shows progressive disclosure through concise help and common commands first (`git`, `jq`), but puts the most important error information at the end and does not endorse summary-first output. | high | medium | clig.dev "Help", "Output", "Errors" |
 | 106 | `git status --short -b` collapses state to one header line plus one coded line per file. | high (behavior), low (generalization) | high | run in this repo |
 
+### J. What a plugin can draw inside Obsidian (axis 6, axis 7)
+
+Axis 6 surveyed community plugins and mapped Compass's data onto them; axis 7 studied what Compass's own plugin could draw. Both read code and docs; neither ran anything inside a running Obsidian. Where they overlap they agree:
+
+| Claim | A6 | A7 | Agreement |
+|---|---|---|---|
+| Since 1.10.0 a plugin can add a Bases layout that receives live rows | YES (high) | YES (high) | 2/2 |
+| Charts reads a `chart` block and has had no release since 2024-01-26 | YES (high) | YES (high) | 2/2 |
+| Every route here needs a newer Obsidian than the review plugin's declared 1.4.0 | YES (high) | YES (high) | 2/2 |
+
+Core Bases has no chart view (finding 50), and community plugins add chart layouts to it (113). Plugins can host content in five ways (79, 121).
+
+**Community plugins (axis 6)**
+
+| # | Finding | Conf. | Grade | Evidence |
+|---|---|---|---|---|
+| 107 | Four driver families cover the 20+ plugins surveyed: a code block, a script bridge, a file type the plugin owns, a registered view or Bases layout. Most installed: Excalidraw 8.7M, Dataview 5.2M, Tasks 4.5M, Kanban 2.8M, Advanced Canvas 0.9M. | high | high | obsidian-releases `community-plugin-stats.json`, GitHub API, each `package.json`, 2026-10-26 |
+| 108 | A code-block plugin registers a language name (`chart`, `tracker`); the block is plain text an agent can write, drawn when the note is read. | high | high | obsidian-charts `src/main.ts:193`; obsidian-tracker `src/main.ts:53`; 4 repos agree |
+| 109 | Tracker charts 14 kinds of vault source (frontmatter, tags, tasks, tables, file data) with no script, so a lesson `score:` can be charted across notes. Charts reads only data inside its block or passed by a script. | high | high | obsidian-tracker `src/data.ts:3-18`; obsidian-charts `src/main.ts:107` |
+| 110 | Dataview's script API reads any vault file as text (`dv.io.load`, `dv.io.csv`), so one script could chart a `.jsonl` ledger. `dataviewjs` is off by default; this was not run. | high (API), low (effect) | high / low | obsidian-dataview `src/api/inline-api.ts:24-35,121,300-310` |
+| 111 | Heatmap Calendar (year grid) is drawn only by a `dataviewjs` script calling it. | high | high | heatmap-calendar-obsidian `main.ts:92`, README 28-75 |
+| 112 | Tasks adds `id` and `dependsOn` to a task line (finish-to-start). Kanban opens any note with `kanban-plugin` frontmatter as a board. Excalidraw has a script API, a CLI and a published agent skill. | high | high | Tasks docs "Task Dependencies"; obsidian-kanban `src/parsers/common.ts:9`; Excalidraw `docs/CLI.md` |
+| 113 | `registerBasesView` (1.10.0+) lets a plugin draw a Base's rows any way it likes; `onDataUpdated()` fires on every vault or Base change. At least 15 plugins use it (charts, maps, calendar, board, timeline, graph). Rows are notes, never task lines (finding 57). | high | high | obsidian-api `obsidian.d.ts:2054-2112,2196-2225,7283`; community-plugins.json. Axes 6 and 7 agree |
+| 114 | Bases Chart Views' "AI Chart" stores an agent-written ECharts config in the `.base` file and draws it: the one documented route for an agent authoring a visual in place. 25 stars, not reviewed by Obsidian staff, released the day it was read. | medium | medium | haiqiang-zhang/obsidian-bases-charts README, `package.json` |
+| 115 | Custom Views draws a note through an HTML, CSS and optional JavaScript template picked by rules (tags, folder, frontmatter) and can query Bases; needs 1.11.10 and Bases. Closest community match to a custom page per document type. | medium | medium | anupchavan/obsidian-custom-views README, `manifest.json` |
+| 116 | dotpm draws a Gantt chart with dependency arrows, a table and a board over one note per task, and offers HTTP, MCP and a CLI over the same notes. Needs 1.13 and its own note layout, so Compass task lines would become task notes. | high (capabilities), medium (fit) | high / medium | dotpm/obsidian-pm README, `docs/api.md` |
+| 117 | Stale or gone: Obsidian Projects is not in the directory (repo 404); Full Calendar is archived; Kanban last released 2024-05-31, Charts 2024-01-26, Juggl 2023-11-10, Dataview 2025-04-07. Install count and recency point at different plugins. | high | high | community-plugins.json; GitHub releases API, 2026-10-26 |
+
+**Compass's data as visuals (axis 6)**
+
+| # | Finding | Conf. | Grade | Evidence |
+|---|---|---|---|---|
+| 118 | Compass already holds data worth drawing: plan task lines with `depends_on` and checkboxes, a loop ledger (the event log of a Compass loop, the scripted cycle that measures and improves one behavior; 407 rows: state changes, runs with reading and cost, reviews), frontmatter on 1,500+ notes, capture and retrieval logs, 62 test checkpoints, command usage counts. | high | high | `.compass/plans/PLAN-022-review-in-obsidian.md:47-100`; `.compass/loops/LOOP-001-visual-questions/ledger.jsonl`; `.compass/meta/*.yaml` |
+| 119 | Most of it is not notes: Obsidian lists no `.jsonl`, `.json` or `.yaml` as rows, so ledgers, logs, catalogs and checkpoints need a script, a plugin view or a generated summary note. Plan done/total counts live only in the plan body. No pass/fail test history exists to chart. | medium | medium | mapping trial over `.compass/`; `.compass/tmp/test-checkpoints/` |
+
+**120. Data to visual** (confidence medium, grade medium; axis 6). Data shapes are read from the vault; renderer fit is inferred from source, and none was drawn.
+
+| Compass data | Visual | Candidate renderer | What stands between them |
+|---|---|---|---|
+| Plan tasks, `depends_on`, `[x]` | dependency graph colored by status, grouped by wave (a plan's batch of tasks that run together) | generated Mermaid; Advanced Canvas; dotpm Gantt | generated text goes stale; a plugin view reads the plan live |
+| Plan, spec, research status; tasks done / total | pipeline progress strip | Tracker; Bases Chart Views; a custom Bases view | counts are not properties |
+| Loop runs: reading, cost, outcome | reading trend, cumulative cost, outcome mix | Charts; `dv.io.load` plus `renderChart`; `xychart-beta` | JSONL is not indexed |
+| Loop state changes | timeline per run | Chronos Timeline; Mermaid `stateDiagram` | 305 rows over 52 runs; group per run first |
+| Review verdict plus `git diff` | per-file added / removed bars | Canvas or Excalidraw cards; a custom view | hunks are not saved to a file |
+| Spec tree, `status` | tree colored by status | Bases Structure; Mindmap NextGen; ExcaliBrain | parent/child lives in folders, not one property |
+| Lessons: score, area, tags | clusters, score as size | `lessons.base` plus a chart or graph layout | already a Base; the chart is additive |
+| Capture log | funnel: opened 107, fired 107, written 46 | Charts pie or Sankey | JSONL |
+| `created` / `updated` | activity heatmap by day | Heatmap Calendar; Contribution Graph | `compass sync` bulk writes inflate counts |
+
+**Compass's own plugin (axis 7)**
+
+| # | Finding | Conf. | Grade | Evidence |
+|---|---|---|---|---|
+| 121 | A plugin has five host points: code-block processor, post-processor, custom view (including one per file extension), Bases layout (1.10.0+), and a CodeMirror editor extension for Live Preview widgets. | high | high | `obsidian.d.ts` 1.14.4:5858-5912,6019,7242-7283,2054-2092,2203 |
+| 122 | The review plugin already has the plumbing an artifact needs: a registered view, vault events, and a button writing a JSON file Compass reads. It is plain CommonJS with no build step; its node tests stub `obsidian`. | high | high | `plugin/obsidian/compass-review/main.js:40,89-96,416-444`; `plugin/obsidian/tests/test_main.js:1-85` |
+| 123 | Obsidian lends plugins its own Mermaid, MathJax, PDF.js and Prism, and renders markdown with wikilinks and callouts into any element; it lends no chart, D3 or UI-framework library. | high | high | `obsidian.d.ts:5713-5737` |
+| 124 | A chart that redraws on file change wraps itself in a `MarkdownRenderChild` and listens on `metadataCache.on("changed")` or `vault.on("modify")`; theme switches fire `css-change`. Charts does exactly this. | high | high | `obsidian.d.ts:5858-5912,6515,10433-10451`; obsidian-charts `src/chartRenderer.ts:325-352` |
+| 125 | A chart drawn into Obsidian's own page follows the theme and light/dark through CSS variables; no source copies them into an iframe. | high (page), medium (iframe) | high | obsidian-vega `src/main.ts:17-18,59-95`; obsidian-charts `src/chartRenderer.ts:31,68-73` |
+| 126 | obsidian-vega is the whole Vega-Lite route in 100 lines, with a loader that points `data.url` at vault files. Last release 2023-07-22, 40 stars, `main.js` 787 KB. | high (behavior), low (maturity) | high / low | Justin-J-K/obsidian-vega `src/main.ts:17-100`, `src/vegaLoader.ts` |
+| 127 | Charts takes YAML (`chart`) or raw Chart.js JSON (`advanced-chart`); JSON cannot carry the callback functions some Chart.js options need. AGPL-3.0. | high | high | obsidian-charts `src/main.ts:34,193-196` |
+| 128 | Library sizes, raw / gzip: Vega-Lite plus Vega 779 / 261 KB; ECharts full 1,122 / 368 KB; Observable Plot plus D3 489 / 161 KB; Chart.js 210 / 71 KB; uPlot 51 / 22 KB; Preact 11 / 5 KB. Mermaid comes with Obsidian. Shipped plugins reach 2.4 MB (Dataview). | high | high | jsdelivr dist files, `wc -c` and `gzip -9`, 2026-10-26 |
+| 129 | Obsidian runs `main.js` from a string, so `require("./sibling.js")` fails. A vendored library is pasted into `main.js` by a copy step, or read from the plugin folder and run with `new Function` (the probe in finding 133 did this). Directory policy on `new Function` is unstated and binds only a listed plugin. | medium | medium | forum.obsidian.md thread 25180 (maintainer reply); obsidian-developer-docs policies; probe |
+| 130 | Small open models (7B to 9B) write Vega-Lite that renders 8% to 66% of the time depending on prompting; schema errors dominate. No frontier model tested. | medium | low | arXiv:2401.11255v2. Marks: [Preprint] v2 2025-12 |
+| 131 | GPT-4o produced 70% of 24 chart types in Vega-Lite, Gemini 24%, both worse than in Python. | medium | medium | arXiv:2507.22890, Springer Discover doi:10.1007/s44248-025-00036-4 (search summary of tables) |
+| 132 | Validating each spec against the Vega-Lite schema and retrying cuts invalid or empty charts to 0.3% to 0.8%, from 2.4% to 35% without. No study measures Claude, or compares Vega-Lite, ECharts and Chart.js JSON. | medium | medium | arXiv:2601.15385 Tables 1-2. Marks: [Preprint] 2026-01; arXiv:2407.00981, 2506.03930 |
+| 133 | Probe: a Vega-Lite spec drew to SVG headless in the review plugin's test style, theme variables kept; bad JSON and unknown marks report cleanly. An unreachable `data.url` did not stop drawing, so the loader is where network access gets restricted. 4 of 5 tests passed; the failure was the test's wrong expectation. | high | high | `.compass/tmp/research/SPEC-031/probe/probe.test.js`, `probe-result.txt`; node v22.22.2, Vega 6.4.0, Vega-Lite 6.5.0 |
+| 134 | With no plugin sandbox (finding 86), an artifact may do whatever its renderer allows: a declarative spec still carries capabilities (`data.url`, expressions), and generated script is a named security risk. | high | medium | arXiv:2601.15385; probe |
+| 135 | Talking back: a widget button can write a file Compass reads, as the review verdict does; a custom Bases layout adds live rows, `createFileForView` and settings stored in the `.base`. | high | high | `main.js:416-444`; `obsidian.d.ts:2054-2110,2203-2225` |
+| 136 | Version floors: Bases layouts 1.10.0, Custom Views 1.11.10, Excalidraw CLI 1.12.2, dotpm 1.13; the review plugin declares 1.4.0 (finding 43). | high | high | each manifest; `plugin/obsidian/compass-review/manifest.json`. Axes 6 and 7 agree |
+| 137 | Phones follow the manifest: a plugin using Node or Electron must be desktop-only, as the review plugin is (`main.js:48`); Charts and obsidian-vega run on mobile. | high | high | obsidian-developer-docs "Mobile development"; manifests |
+| 138 | Whether a code-block processor draws in Live Preview is not stated in the docs read. | low | low | docs.obsidian.md "Markdown post processing" |
+
+**139. Chart spec formats compared** (confidence medium, grade medium; axis 7).
+
+| Format | Host | Added size | Interactivity | Evidence models write it well |
+|---|---|---|---|---|
+| Mermaid fence | Obsidian's own | 0 | none | none found |
+| Vega-Lite JSON | own processor plus vendored library | about 780 KB | parameters in the spec | findings 130 to 132; Claude not measured |
+| Chart.js JSON | own processor | 210 KB | no callbacks in JSON | none found |
+| ECharts option JSON | own processor | 1.1 MB | no formatter functions in JSON | none found |
+| Raw HTML and script | iframe or `new Function` | 0 | full | named security risk (134) |
+| A small Compass block language | own processor | smallest | whatever is built | no precedent |
+
+**140. Five shapes of a custom artifact inside Obsidian** (confidence high per route, medium that the list is complete, grade medium; axis 6): a text diagram or chart in the note (Mermaid, Charts, Tracker); a script that reads vault files and draws (`dataviewjs`); a file in a plugin's own format (`.canvas`, `.excalidraw.md`, a `.base` with an AI Chart config, a Kanban note); a Compass plugin view (Bases layout or file-extension view); a per-note HTML template (Custom Views) or an HTML file in an iframe plugin (81 to 83). Every community route runs with Obsidian's full access once restricted mode is off (86).
+
 ## Partial and split
 
 1. **Does hook text written for the model reach the human?** Partial.
@@ -295,7 +383,7 @@ flowchart LR
 
 ## Where the evidence meets the spec's decisions
 
-D-01 asks for every listed form; D-02 asks that documents not bloat. The evidence bears on them as follows. Which way to go is the human's call.
+D-01 asks for every listed form; D-02 asks that documents not bloat. The evidence bears on them as follows. Each row's open choice is a decision for the spec's owner.
 
 | D-01 item | What the evidence says | Open choice |
 |---|---|---|
@@ -313,7 +401,12 @@ Other choices the evidence raises:
 
 - **Compass's coined terms.** Rename to plain words, explain at first use, or keep a glossary. Sources split (findings 23, 24); the only evidence for inline over separate is an inference (25). No tool catches common-word house terms (19, 21).
 - **Terminal visuals.** Color or glyphs need an `isatty` check and a Windows UTF-8 fix to avoid raw bytes or `\uXXXX` text (102, 103). Claude Code's own surfaces each carry a limit: the status line is small, output styles are not guaranteed, mods need v2.1.290+ and an interactive terminal (98 to 100).
-- **Obsidian version floor.** Bases need 1.9.0 while the review plugin declares 1.4.0 (43).
+- **Obsidian version floor.** Bases need 1.9.0 while the review plugin declares 1.4.0 (43); a custom Bases layout needs 1.10.0 and the community routes 1.10.0 to 1.13 (136).
+- **Where Compass's visuals live.** Bases layouts redraw live from note properties but see one row per note, never task lines (113, 135). Code blocks drawn by Compass's own plugin can read anything the plugin reads, including task lines and `.jsonl` ledgers (121, 122). Community plugins as they are (Tracker, Dataview, Excalidraw, Advanced Canvas) each add an install with its own release pace, and several are stale (117).
+- **Which chart spec format.** Vega-Lite (about 780 KB, the only format with studies of models writing it, a loader that limits network access), Chart.js JSON (210 KB, no callbacks), ECharts (1.1 MB, the format AI Chart uses), Mermaid `xychart-beta` (no added size, not yet run in Obsidian), or a small Compass block language (no precedent) (126 to 133, 139).
+- **Vendored library size and loading.** A copy step into `main.js` or `new Function` from the plugin folder; directory policy on the second is unstated; load cost on phones unmeasured (128, 129, 137).
+- **Data that is not notes.** Ledgers, logs and catalogs reach a chart through a script, a Compass plugin view, or a generated summary note; plan done/total counts as a property or read from the body (119).
+- **How much an artifact may do.** A declarative spec through a restricted loader, or script with full app access (133, 134).
 
 ## Defects the probes exposed
 
@@ -325,7 +418,7 @@ Each was reproduced and is fixed in the CLI (commit b9ad849); they were independ
 
 ## Gaps
 
-Named precisely so a follow-up pass can close each one.
+Each gap names what was not checked and how it would be.
 
 **Where the wall comes from (axis 1)**
 - What agents print in chat between gates is unmeasured: sample session transcripts under `~/.claude/projects` or record a live run.
@@ -338,7 +431,6 @@ Named precisely so a follow-up pass can close each one.
 - Whether Obsidian rewrites file paths inside a `.canvas` when a note is renamed outside the app (for example by `compass move`) is undocumented.
 - How a regenerated canvas treats a human-rearranged one (node ids, positions) is undocumented.
 - Whether a `diff` fence is colored in Live Preview is unconfirmed.
-- The Charts plugin's documentation site (charts.phib.ro) was not read.
 - Obsidian 1.15's CLI and URI commands ("add text under a heading") were not investigated.
 
 **Artifacts and HTML in Obsidian (axis 3)**
@@ -352,13 +444,13 @@ Named precisely so a follow-up pass can close each one.
 - No programmatic, non-session way to publish or list artifacts was found beyond the admin-scoped Compliance API.
 
 **Terminal (axis 4)**
-- Progressive-disclosure examples from gh, cargo, ripgrep and uv are unsourced. Next pass: read `cli/cli` `pkg/iostreams` (terminal and color detection), `rust-lang/cargo` `cargo-util` shell and `ColorChoice`, `astral-sh/uv` verbosity and `--color`, and run each tool piped versus in a terminal.
+- Progressive-disclosure examples from gh, cargo, ripgrep and uv are unsourced. Sources to read: `cli/cli` `pkg/iostreams` (terminal and color detection), `rust-lang/cargo` `cargo-util` shell and `ColorChoice`, `astral-sh/uv` verbosity and `--color`, and run each tool piped versus in a terminal.
 - Whether Claude Code's terminal draws Mermaid or other diagram fences is untested.
 - Whether a `MessageDisplay` hook's `displayContent` is itself rendered as markdown, and whether it can add structure, is untested.
 - ANSI in a real Windows console (legacy conhost versus Windows Terminal) and enabling virtual-terminal mode from Python were not tested.
 - Unicode sparklines or block bars in the human-visible tool result with UTF-8 forced (`PYTHONIOENCODING=utf-8` or `sys.stdout.reconfigure`) were not tested.
 - No mod or `MessageDisplay` hook was run (mods need v2.1.290+).
-- How other hosts Compass targets (dsh, Codex) show hook and CLI output is unknown.
+- How other hosts Compass targets (the dsh agent host, Codex) show hook and CLI output is unknown.
 
 **Plain language (axis 5)**
 - No detector for common words used as house terms was found; a glossary-membership check is undocumented in any source read.
@@ -368,6 +460,16 @@ Named precisely so a follow-up pass can close each one.
 - Unread primaries: Redish & Selzer 1985, Klare, Chall & Dale 1995, Wylie's sentence-length study, Kobak's marker word list, Cloze procedure, Pöttker 2003 on the inverted pyramid.
 - Several effect sizes (Guo trim-and-fill, Hu, Cromley & Chen per principle, Rey 2012 and 2019, Richter, Schroeder & Cenkci) come from search summaries because SAGE, ScienceDirect and Springer returned 403.
 - Readability formulas were not run on Compass text; the planned `textstat` comparison was dropped, so finding 33 rests on the literature alone.
+
+**What a plugin can draw (axes 6, 7)**
+- No chart or custom visual has been drawn in a running Obsidian yet; every renderer fit is read from source. Each of these is a direct trial in Obsidian with the review plugin installed: whether a code-block processor draws in Live Preview; whether `dv.io.load` reads a `.jsonl` under `.compass/`; a vendored Vega-Lite processor inside the review plugin.
+- How reliably Claude writes Vega-Lite, ECharts or Chart.js JSON is unmeasured: needs many prompts and a render check.
+- Chart.js needs a canvas and was not drawn headless; the probe covers Vega-Lite only.
+- Load cost on a phone of an 800 KB library, and `new Function` on mobile, were not measured.
+- Whether Bases layout options can offer sliders or inputs: the option types were not enumerated.
+- Whether directory reviewers accept `new Function`; the forum quote on relative `require` is undated and not re-tested.
+- No pass/fail test history and no per-plan done/total counts are stored, so those visuals have no source.
+- Renderers of Maps, Calendar Bases, Kanban Bases View and Bases Timeline View were not read; why Obsidian Projects left the directory is unknown.
 
 **Across axes**
 - No axis tested a Compass document with a human reader, the standard every readability source points to (finding 36).
