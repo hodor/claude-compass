@@ -26,6 +26,11 @@ Opt-outs: an `[informational]` or `[deferred]` bracket tag on the bullet, or
 placement under a discretion subheading, marks the decision non-trackable.
 It is still parsed and recorded, never gate-checked.
 
+Bullets inside a callout (lines opened by one or more `>` markers, at any
+depth) parse like plain bullets and report the same line numbers. A block id
+(`^id`) ending a decision's text is the anchor a `[[doc#^id]]` link points
+at; it is left out of the recorded text.
+
 Fenced code blocks and inline code spans are never decision content, so a
 document quoting the convention as an example parses clean.
 
@@ -97,6 +102,25 @@ _QUOTE_CHARS = re.compile("[‘’‚‛“”„‟'\"`]")
 # Bracket tags that make a decision non-trackable.
 NON_TRACKABLE_TAGS = {"informational", "deferred"}
 
+# The `>` markers opening a callout line, at any depth, with the single space
+# that follows the last marker.
+_QUOTE_PREFIX = re.compile(r"^\s*>(?:\s?>)*\s?")
+
+# An Obsidian block id ending a line: `^id` (letters, digits, hyphens) at the
+# line start or after whitespace, then optional trailing spaces.
+BLOCK_ID_AT_END = re.compile(r"(?:^|\s)\^([A-Za-z0-9-]+)\s*$")
+
+
+def _unquote(line):
+    """The line with its leading callout `>` markers removed."""
+    return _QUOTE_PREFIX.sub("", line, count=1)
+
+
+def _drop_block_id(text):
+    """The text without a block id ending it."""
+    match = BLOCK_ID_AT_END.search(text)
+    return text[: match.start()].rstrip() if match else text
+
 
 def _is_discretion_heading(heading_text):
     """True when a subheading delegates its bullets to agent discretion
@@ -153,7 +177,8 @@ def _parse_decision_lines(body_lines, start_line):
     Returns `(decisions, parse_misses)`. Each decision is a dict with `id`,
     `text`, `trackable`, `tags`, and `line`. Subheadings switch the
     discretion state; an indented non-bullet line continues the current
-    decision's text; a blank line or unrelated content closes it.
+    decision's text; a blank line or unrelated content closes it. Callout
+    markers are removed from each line before it is read.
     """
     decisions = []
     misses = 0
@@ -163,11 +188,12 @@ def _parse_decision_lines(body_lines, start_line):
     def flush():
         nonlocal current
         if current is not None:
-            current["text"] = current["text"].strip()
+            current["text"] = _drop_block_id(current["text"].strip())
             decisions.append(current)
             current = None
 
     for offset, line in enumerate(body_lines):
+        line = _unquote(line)
         trimmed = line.strip()
 
         heading = _SUBHEADING.match(trimmed)
@@ -244,7 +270,7 @@ def extract_decisions(text):
             found, missed = _parse_decision_lines(body_lines, start_line)
             decisions.extend(found)
             misses += missed
-            bodies.append("\n".join(body_lines))
+            bodies.append("\n".join(_unquote(line) for line in body_lines))
         if misses > 0:
             return decisions, "could-not-parse"
         if decisions:
