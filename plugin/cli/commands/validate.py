@@ -16,12 +16,15 @@ checked against `.compass/meta/sizing-log.yaml` (ADR-011 D-08): a `sizing_id`
 absent from frontmatter is flagged `sizing_unrecorded`, and a `sizing_id`
 present but naming no row in the log is flagged `sizing_orphaned_id` -
 neither ever changes the exit code, since the vault predates the log and
-every pre-existing shape starts out unrecorded.
+every pre-existing shape starts out unrecorded. A block link
+`[[doc#^id]]` whose target resolves to one file with no line ending in `^id`
+is flagged `broken_block_link`.
 """
 
 import re
 import sys
 
+import decisionslib
 import vaultlib
 from commands import sizing
 from commands import sweep
@@ -65,9 +68,11 @@ INDEX_LINE_CAP = 250
 
 WIKILINK = re.compile(r"\[\[([^\]]+)\]\]")
 INLINE_CODE = re.compile(r"`[^`]*`")
+# The block id a link suffix names: `#^id`, with an optional alias after it.
+BLOCK_LINK_SUFFIX = re.compile(r"^#\^([A-Za-z0-9-]+)")
 
 
-def _check_links(rel, text, resolve, warnings, attachments=frozenset()):
+def _check_links(rel, text, resolve, warnings, attachments=frozenset(), vault_root=None):
     """Append a warning for each wikilink in `text` that does not resolve to
     exactly one file: `broken_wikilink` when the name maps to nothing,
     `ambiguous_wikilink` (with every matching path listed) when it maps to
@@ -76,8 +81,11 @@ def _check_links(rel, text, resolve, warnings, attachments=frozenset()):
     through `vaultlib.resolve_link` - exact name first, then the
     unique-prefix glob `rules/wikilinks.md` documents - over
     `vaultlib.resolvable_names_map` output, the same resolution `sync` emits
-    links against."""
-    for lineno, target in _wikilinks_in(text):
+    links against. With `vault_root` given, a link of the form
+    `[[target#^id]]` that resolves to one file also warns
+    `broken_block_link` when that file has no line ending in `^id`."""
+    block_ids = {}
+    for lineno, target, suffix in _wikilinks_in(text):
         if target in SPECIAL_TARGETS or target in attachments:
             continue
         paths = vaultlib.resolve_link(resolve, target)
@@ -86,10 +94,38 @@ def _check_links(rel, text, resolve, warnings, attachments=frozenset()):
         elif len(paths) > 1:
             listed = ", ".join(sorted(paths))
             warnings.append(f"ambiguous_wikilink: {rel}:{lineno}: [[{target}]] -> {listed}")
+        elif vault_root is not None:
+            block = BLOCK_LINK_SUFFIX.match(suffix)
+            if not block:
+                continue
+            if paths[0] not in block_ids:
+                block_ids[paths[0]] = _block_ids_in(
+                    vaultlib.read_vault_text(vault_root / paths[0]))
+            if block.group(1) not in block_ids[paths[0]]:
+                warnings.append(
+                    f"broken_block_link: {rel}:{lineno}: [[{target}#^{block.group(1)}]] "
+                    f"- {paths[0]} has no line ending in ^{block.group(1)}"
+                )
+
+
+def _block_ids_in(text):
+    """The set of block ids a document carries: ids ending a line outside
+    fenced code, where Obsidian reads them."""
+    lines = text.split("\n")
+    fenced, _ = vaultlib.fence_mask(lines)
+    ids = set()
+    for line, in_fence in zip(lines, fenced):
+        if in_fence:
+            continue
+        match = decisionslib.BLOCK_ID_AT_END.search(line)
+        if match:
+            ids.add(match.group(1))
+    return ids
 
 
 def _wikilinks_in(text):
-    """Yield (line_number, target) for wikilinks outside code blocks/spans."""
+    """Yield (line_number, target, suffix) for wikilinks outside code
+    blocks/spans; `suffix` is the `#heading` / `^id` / `|alias` tail."""
     lines = text.splitlines()
     fenced, _ = vaultlib.fence_mask(lines)
     for lineno, (line, in_fence) in enumerate(zip(lines, fenced), start=1):
@@ -97,9 +133,9 @@ def _wikilinks_in(text):
             continue
         cleaned = INLINE_CODE.sub("", line)
         for match in WIKILINK.finditer(cleaned):
-            target = vaultlib.split_link(match.group(1))[0]
+            target, suffix = vaultlib.split_link(match.group(1))
             if target:
-                yield lineno, target
+                yield lineno, target, suffix
 
 
 def _check_sizing_id(name, path, known_ids, warnings):
@@ -254,13 +290,15 @@ def check_vault(vault_root):
                 msg = f"frontmatter_missing_field: {rel}: {field}"
                 (errors if field in CORE_REQUIRED else warnings).append(msg)
 
-        _check_links(rel, path.read_text(encoding="utf-8"), resolve, warnings, attachments)
+        _check_links(rel, path.read_text(encoding="utf-8"), resolve, warnings,
+                     attachments, vault_root)
 
     for rel in TOP_LEVEL_FILES:
         path = vault_root / rel
         if not path.is_file():
             continue
-        _check_links(rel, path.read_text(encoding="utf-8"), resolve, warnings, attachments)
+        _check_links(rel, path.read_text(encoding="utf-8"), resolve, warnings,
+                     attachments, vault_root)
 
     index_path = vault_root / "index.md"
     if index_path.is_file():
