@@ -48,17 +48,17 @@ State which grading the run intends to apply to evidence and on what basis, and 
 
 ### 7. The gate
 
-Present the axis list, one plain line per axis naming where its answer will be sought, alongside the grading disclosure. Then ask through `AskUserQuestion`, exactly one question per call: "Run research on these axes?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+With a review surface configured, write the axes as a draft research document in `.compass/research/` (`status: draft`) and send it through the review rule in the pipeline rules (`compass review <draft research document> --title "Run research on these axes?"`), nothing asked in the terminal. It holds a "You decide" callout, a "Your questions" section where the human writes his own (they lead the list), one plain line per axis naming where its answer will be sought, and the grading disclosure as a last checkbox, ticked: a ticked box allows grading, an unticked box means grading refused, and the research still runs.
+
+Without a review surface, present the axis list in plain text, one plain line per axis naming where its answer will be sought, alongside the grading disclosure. Then ask through `AskUserQuestion`, exactly one question per call, never several in one message or one call: "Run research on these axes?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text. Block on the reply:
 
 - **Approve (Recommended):** research runs on these axes with grading allowed.
 - **Approve, refuse grading:** research runs on these axes with grading off.
 - **Change an axis:** you say what to change; I fold it in and show the list again.
 
-Never put several questions in one message or one call. Block on the reply.
-
-- Approval, accepting or ignoring the grading disclosure: proceed, every brief below carries `grading: allowed`.
-- Approval with grading explicitly refused: proceed, every brief below carries `grading: refused`.
-- A named change: fold it in, regenerate the axis it touches, and present again.
+- Approval with the box ticked, or accepting or ignoring the grading disclosure: proceed, every brief below carries `grading: allowed`.
+- Approval with the box unticked or grading explicitly refused: proceed, every brief below carries `grading: refused`.
+- A named change or edit: fold it in, regenerate the axis it touches, and send it again with a "Since your last review" callout.
 
 Cap regeneration at three passes; past that, escalate to the human directly instead of presenting again.
 
