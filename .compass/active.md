@@ -61,8 +61,6 @@ Plan: [[PLAN-021-control-loops]].
 - [ ] TASK-209: Live check: whose writes are edits, after 208
 - [ ] TASK-210: Mockup: panel over several files
 - [ ] TASK-211: one review of several files
-- [ ] TASK-212: PLAN-024 TASK-206 points here
-
 ## [[PLAN-024-working-in-compass-is-visual]]
 
 - [ ] TASK-190: Trial B, Mermaid charts

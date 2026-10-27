@@ -372,3 +372,6 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 
 ### PLAN-024: working in Compass is visual
 - [x] TASK-193: Trial E, a canvas Compass rewrites - after: TASK-192
+
+### [[PLAN-025-review-across-files-and-sessions]]
+- [x] TASK-212: PLAN-024 TASK-206 points here
