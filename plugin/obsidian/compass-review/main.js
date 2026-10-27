@@ -440,7 +440,13 @@ class CompassReview extends Plugin {
     this.pending.delete(request.id);
     this.refresh();
     new Notice(verdict === "approved" ? "Approved - sent to Claude" : "Changes requested - sent to Claude");
-    if (request.return) this.stepAside();
+    // Obsidian steps aside once no review is left, when any review answered
+    // since it was raised came with `return`.
+    this.returnOwed = this.returnOwed || !!request.return;
+    if (this.pending.size === 0 && this.returnOwed) {
+      this.returnOwed = false;
+      this.stepAside();
+    }
   }
 }
 

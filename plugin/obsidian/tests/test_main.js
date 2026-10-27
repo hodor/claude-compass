@@ -286,6 +286,27 @@ test("return false keeps Obsidian in front after the verdict", async () => {
   assert.equal(win.minimized, 0);
 });
 
+// Adversarial where: answering one of two pending reviews hides Obsidian while
+// the other still waits, or the step aside a `return` review asked for is lost
+// because the last review answered came without it.
+test("Obsidian steps aside only after the last pending review is answered", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x",
+    "b.md": "y",
+    "tmp/review/5.request.json": req("5", "a.md"),
+    "tmp/review/6.request.json": req("6", "b.md", { return: false }),
+  });
+  await plugin.handler({ request: "tmp/review/5.request.json" });
+  await plugin.handler({ request: "tmp/review/6.request.json" });
+  await click(cardBtn(app, "5", "Approve"));
+  await sleep();
+  assert.equal(win.minimized, 0, "a review is still pending");
+  assert.deepEqual(cardIds(app), ["6"]);
+  await click(cardBtn(app, "6", "Approve"));
+  await sleep();
+  assert.equal(win.minimized, 1);
+});
+
 test("a link with no request reports a failure and writes nothing", async () => {
   const { app, plugin } = await loaded({ "a.md": "x" });
   await plugin.handler({});
