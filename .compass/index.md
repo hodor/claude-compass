@@ -63,6 +63,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-022-review-in-obsidian]] - the Compass Review Obsidian plugin, a `compass review` command, install, doctor and guard support; gate wiring follows an experiment
 - [[PLAN-023-taxonomy-review-at-spec-creation]] - a `compass placement` command shows a new spec its candidate parents and domains; spec and specs propose the deeper home; first run on this vault
 - [[PLAN-024-working-in-compass-is-visual]] - five trials in Obsidian and three agreed mockups first; then documents gain callouts, embeds, block links and footnotes, Compass's plugin draws task tables, graphs, charts and the spec canvas, and the CLI speaks short plain words, every visual earning its bytes
+- [[PLAN-025-review-across-files-and-sessions]] - two live checks in Obsidian and an agreed mockup first; then one review walks the human through several files with one verdict, each card names its project and session, edits and stepping aside stay inside their own review, and a VS Code surface follows
 
 ## Decisions
 
