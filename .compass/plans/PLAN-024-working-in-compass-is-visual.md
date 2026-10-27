@@ -1,12 +1,13 @@
 ---
 title: "Working in Compass Is Visual"
 type: plan
-status: draft
+status: approved
+approved: 2026-10-27
 confidence: medium
 area: methodology
 tags: [obsidian, documents, cli, jargon, charts, mockup, human-surface]
 created: 2026-10-26
-updated: 2026-10-26
+updated: 2026-10-27
 git_branch: "master"
 git_commit: "d8fbd46"
 author: "planner"
