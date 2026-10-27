@@ -1,0 +1,133 @@
+---
+title: "Working in Compass Is Visual"
+type: plan
+status: draft
+confidence: medium
+area: methodology
+tags: [obsidian, documents, cli, jargon, charts, mockup, human-surface]
+created: 2026-10-26
+updated: 2026-10-26
+git_branch: "master"
+git_commit: "d8fbd46"
+author: "planner"
+depends_on: ["[[specs/human-surface/SPEC-031-working-in-compass-is-visual]]", "[[research/human-surface/RESEARCH-working-in-compass-is-visual]]"]
+summary: "five trials in Obsidian and three agreed mockups first; then documents gain callouts, embeds, block links and footnotes, Compass's plugin draws task tables, graphs, charts and the spec canvas, and the CLI speaks short plain words, every visual earning its bytes"
+---
+
+# Working in Compass Is Visual
+
+## Goal
+
+This plan implements [[specs/human-surface/SPEC-031-working-in-compass-is-visual]] from the evidence in [[research/human-surface/RESEARCH-working-in-compass-is-visual]]. The spec's D-01 asks for diagrams, charts, callouts, embeds, block links, footnotes, a task table and a spec canvas; its D-02 asks that documents not bloat. Compass documents show diagrams, charts, callouts, embeds, block links, footnotes, a task table and a spec canvas where these replace text; Compass Review, Compass's own Obsidian plugin (`plugin/obsidian/compass-review/`), draws what Obsidian cannot; the terminal says less, in plain words; and no document grows heavier than its text-only version.
+
+## The waves
+
+```mermaid
+flowchart LR
+  T[Wave 1: five trials in Obsidian] --> P[Wave 2: mockup of what the plugin draws]
+  M[Wave 1: three mockups] --> B[Wave 2: writing rules, parser, words, terminal]
+  P --> V[Wave 3: the plugin draws]
+  B --> A[Acceptance: a real plan reviewed in Obsidian]
+  V --> A
+```
+
+**Wave 1** finds out and agrees before anything ships. Five small trials run inside this vault's Obsidian and settle what the research could only read from source: whether a plugin's code block draws while editing, whether Obsidian's own Mermaid draws charts, what a bundled Vega-Lite costs, whether non-note files can be read, and how Obsidian treats a canvas Compass rewrites. Three mockups go to the human through `compass review`: documents written with the new forms, the plain words that replace Compass's coined terms, and shorter terminal output. Wave 1 ends when every trial has a recorded result and every mockup has a verdict.
+
+**Wave 2** builds what the mockups agreed and draws the one mockup the trials unlock: what the plugin will draw. **Wave 3** builds that drawing and closes with a real plan reviewed in Obsidian.
+
+## Choices to approve
+
+Every choice the research left open, answered. Finding numbers point into [[research/human-surface/RESEARCH-working-in-compass-is-visual]].
+
+- **Charts of metrics:** Compass's own plugin draws them from a short code block naming its data file. It reads ledgers live with no community plugin (Charts is stale, Tracker cannot read `.jsonl`).
+- **Decisions in callouts:** decisions sit inside a callout and `compass decisions` learns to read them, using only callout types GitHub also draws. D-01 asks for it, and one parser change keeps `compass coverage` working (finding 53).
+- **Embeds:** embed a section instead of copying it, everywhere. Agents already follow links, and a copy costs bytes and drifts (finding 54).
+- **Task table:** the plugin draws it from the plan's own task lines; no table is written into the file. Nothing is duplicated, and Bases cannot see task lines (finding 57).
+- **Canvas:** Compass owns which cards and links exist, the human owns where they sit; regeneration keeps positions by card id and `compass move` rewrites card paths. The arrangement survives every regeneration and move (finding 59).
+- **Pages like Claude artifacts:** inside Obsidian through Compass's plugin, never claude.ai artifacts. Artifacts need a paid plan, a login and a browser, and are off in headless runs (finding 71).
+- **Coined terms:** rename to plain words; a necessary term stays with a short gloss at first use; no glossary file. Plain-language sources say rename before defining (finding 23), and text beside what it explains reads better (finding 25).
+- **Terminal visuals:** no color, glyphs, status line or mods; shorter plain text instead. The human sees a collapsed tool result, the model gets raw bytes, and glyphs print as `\uXXXX` on Windows (findings 102, 103).
+- **Obsidian version floor:** 1.9.0, raised only if a route the trials pick needs more. The Bases the plugin already installs need 1.9.0 (finding 43).
+- **Where visuals live:** code blocks drawn by the plugin for anything inside a document; Bases only for lists of whole notes. Code blocks reach task lines and ledgers; Bases see one row per note (finding 113).
+- **Chart spec format:** a small Compass block (data file, fields, kind) drawn through Obsidian's own Mermaid `xychart-beta`; Vega-Lite only if Trial B fails. An agent writes three lines it cannot get wrong, and nothing is added to the plugin (findings 130 to 132).
+- **Vendored library loading:** none unless Trial B fails; then a copy step pastes the library into `main.js`. That is the documented path; whether Obsidian's community plugin directory accepts `new Function` is unstated (finding 129).
+- **Data that is not notes:** the plugin reads ledgers and task lines directly; no generated summary notes or done/total properties. Generated notes go stale and add bytes (finding 119).
+- **How much a drawing may do:** declarative only; a block reads vault files and nothing else, with no script and no network. Obsidian has no plugin sandbox (findings 86, 134).
+
+## How D-02 is measured
+
+- Every mockup carries a byte table: for each visual, the bytes it adds and the bytes of text it removes, counted with `wc -c` on the excerpt before and after.
+- A visual earns its bytes when it removes at least as many as it adds, or when the human keeps it at mockup review knowing its cost. A visual that only decorates goes: decorative extras hurt comprehension (finding 32).
+- A block the plugin draws counts by the bytes in the file, never by the size of the drawing.
+- After the build, `compass hot-path` (the size of the files every session loads) reads no higher than before, and the acceptance plan weighs no more than its text-only twin.
+
+## Prerequisites
+
+- Obsidian on this machine with this vault registered and Compass Review on; `compass review` reports a surface configured.
+- Node for the plugin harness; the suite green at the start.
+- Trials install throwaway plugins into this vault's `.obsidian/plugins/` and TASK-192 installs Dataview (a community plugin that runs queries and scripts in notes); each install needs one Obsidian reload, asked of the human in one line.
+
+## Desired End State
+
+- Specs, plans and research written by Compass use the agreed forms where they replace text, and none weighs more than its text-only version.
+- In Obsidian a plan shows its task table and dependency graph drawn from its own task lines, a loop shows its readings and cost over time, and the spec tree is a canvas the human arranges and Compass keeps.
+- `compass decisions` and `compass coverage` read decisions inside callouts.
+- The largest terminal outputs are short, and every term the human reads is a plain word or glossed at first use.
+
+## What We're NOT Doing
+
+- claude.ai artifacts, terminal color or glyphs, the Claude Code status line, output styles and mods.
+- Community plugins as a requirement; Dataview appears in one trial only.
+- Mobile; readability formulas as a gate (finding 33).
+- The loop dashboard (a separate view with Accept and Reject per run) and consolidate's grouping canvas: [[PLAN-022-review-in-obsidian]] holds them. This plan's loop chart is a block inside a document.
+- The three CLI link defects in the research: fixed in commit b9ad849.
+
+## Phases
+
+### Wave 1 (detailed): trials and mockups
+
+- [ ] TASK-189: Trial A, a code block drawing while editing: a throwaway `compass-trials` plugin, source under `.compass/tmp/trials/` and installed into this vault, registers a `compass-trial` block that draws a box and appends each draw (view mode, time) to `.compass/tmp/trials/draws.jsonl`; a trial note is opened through `obsidian://open` and the plugin switches it between Reading view and Live Preview; this first result creates the trials document, `RESEARCH-visual-trials-in-obsidian` - complexity: S, depends_on: none, files: [.compass/tmp/trials/compass-trials/main.js, .compass/tmp/trials/compass-trials/manifest.json, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]
+  - Automated verification: `node --check` on the trial plugin; `draws.jsonl` holds a draw for each view mode, or records which mode drew nothing; the trials document records the Obsidian version and the result; `compass validate` adds no warning.
+  - Manual verification: none.
+- [ ] TASK-190: Trial B, charts through Obsidian's own Mermaid: the trial note holds a hand-written `xychart-beta` fence of the readings per run in the ledger of [[LOOP-001-visual-questions]] (the event log of the loop that tunes Compass's questions), and the trial block draws the same chart by building the fence from `ledger.jsonl` and handing it to Obsidian's markdown renderer; record for each, in both views, whether an SVG was drawn; the trial passes when the plugin-built chart draws in both views, and the result decides the chart renderer - complexity: S, depends_on: TASK-189, files: [.compass/tmp/trials/compass-trials/main.js, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]
+  - Automated verification: `draws.jsonl` shows an SVG or a recorded error for each of the four cases; the readings in the drawn chart equal those parsed from `ledger.jsonl` by a script.
+  - Manual verification: the human judges whether the chart reads as a metrics chart at pane width.
+- [ ] TASK-191: Trial C, Vega-Lite bundled into the review plugin: a copy step pastes Vega and Vega-Lite into a trial build of the review plugin's `main.js`, installed into this vault in place of the shipped copy; a `vega-lite` block draws the same ledger chart, its loader allowing vault files only; record `main.js` size, plugin load time, both views, and whether a `data.url` outside the vault is refused; then `compass review --install` restores the shipped copy - complexity: M, depends_on: TASK-189, files: [.compass/tmp/trials/compass-review-vega/build.py, .compass/tmp/trials/compass-review-vega/main.js, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]
+  - Automated verification: `node --check` on the trial build; the recorded size matches `wc -c`; the out-of-vault URL is logged as refused; after restoring, `diff -r plugin/obsidian/compass-review .compass/.obsidian/plugins/compass-review` is empty.
+  - Manual verification: the human compares this chart with Trial B's and says which reads better.
+- [ ] TASK-192: Trial D, reading files that are not notes: with Dataview installed in this vault and `dataviewjs` on, a `dataviewjs` block counts the rows of that same `ledger.jsonl` through `dv.io.load`, and the trial block counts them through the vault adapter; Dataview is turned off afterwards - complexity: S, depends_on: TASK-189, files: [.compass/tmp/trials/compass-trials/main.js, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]
+  - Automated verification: both recorded counts equal `wc -l` of the ledger, or the failing route records its error; `community-plugins.json` lists no Dataview afterwards.
+  - Manual verification: none.
+- [ ] TASK-193: Trial E, a canvas Compass rewrites: two scratch notes under `.compass/tmp/trials/canvas/` and a canvas of them; with the canvas open in Obsidian, the canvas file is rewritten with a card moved, then one note is renamed outside Obsidian; record whether Obsidian shows the new position or writes its own back, and whether it rewrites the card's path - complexity: S, depends_on: TASK-192, files: [.compass/tmp/trials/canvas/trial.canvas, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]
+  - Automated verification: a script compares the card positions and paths read back after each step with those written, and the trials document records its output.
+  - Manual verification: none.
+- [ ] TASK-194: Mockup of plain words: every house term a human reads (in CLI output, `index.md` and `active.md` lines, document templates, `validate` codes), its plain replacement or its first-use gloss, and where it shows, with three real lines rewritten as samples; sent through `compass review` - complexity: S, depends_on: none, files: [.compass/research/human-surface/RESEARCH-plain-words-mockup.md], lessons: [LESSON-ui-change-needs-agreed-mockup-before-build, LESSON-walkthroughs-in-the-humans-words]
+  - Automated verification: every term in the research's jargon census appears in the table with a decision; `compass validate` adds no warning.
+  - Manual verification: the human's verdict on the words in Obsidian.
+- [ ] TASK-195: Mockup of documents: excerpts of [[specs/human-surface/SPEC-030-review-documents-open-in-obsidian]], [[PLAN-022-review-in-obsidian]] and the SPEC-031 research rewritten with every D-01 form (decisions and risks in callouts, block links to decisions, a section embed in place of a restatement, footnotes for sources, the pipeline and status flow as Mermaid), in the agreed plain words, each with its byte table; sent through `compass review` - complexity: M, depends_on: TASK-194, files: [.compass/research/human-surface/RESEARCH-visual-documents-mockup.md], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-031-working-in-compass-is-visual/D-02], lessons: [LESSON-ui-change-needs-agreed-mockup-before-build, LESSON-obsidian-bare-link-creates-stray-note]
+  - Automated verification: each excerpt's before and after text is saved under `.compass/tmp/mockups/` and its byte counts reproduce with `wc -c`; `compass validate` resolves the file of every embed and block link, and a script confirms each `^id` exists in its target.
+  - Manual verification: the human's verdict in Obsidian, including which visuals earn their bytes.
+- [ ] TASK-196: Mockup of terminal output: bare `compass`, `tree`, `unit-check`, `doctor` and `validate` as they print today beside a shorter plain-text version in the agreed words (commands the human runs listed first, hook entry points apart), with line and byte counts for each; sent through `compass review` - complexity: S, depends_on: TASK-194, files: [.compass/research/human-surface/RESEARCH-terminal-output-mockup.md], lessons: [LESSON-ui-change-needs-agreed-mockup-before-build]
+  - Automated verification: the "today" counts reproduce by running each command piped to `wc -lc`; `compass validate` adds no warning.
+  - Manual verification: the human's verdict in Obsidian.
+
+**Pause point:** when automated verification passes and every mockup has a verdict, the human confirms the trial judgments before Wave 2 is detailed.
+
+## Later (intent only)
+
+- [ ] TASK-197: Mockup of what the plugin draws: a plan's task table and dependency graph colored by status, a loop's readings and cost over time, the spec tree canvas, drawn with the routes the trials chose - files: [.compass/research/human-surface/RESEARCH-plugin-visuals-mockup.md], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-031-working-in-compass-is-visual/D-02]
+- [ ] TASK-198: `compass decisions` reads decision bullets inside a callout and drops a trailing block id from the decision text; `compass validate` resolves block links - files: [plugin/cli/decisionslib.py, plugin/cli/commands/validate.py, plugin/cli/tests/test_decisionslib.py], decisions: [SPEC-031-working-in-compass-is-visual/D-01]
+- [ ] TASK-199: The writing rules teach the agreed forms and the byte rule: the obsidian skill, the spec, plan and research templates, and the planner - files: [plugin/skills/obsidian/SKILL.md, plugin/skills/spec/SKILL.md, plugin/skills/plan/SKILL.md, plugin/skills/research/SKILL.md, plugin/templates/agents/planner.md], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-031-working-in-compass-is-visual/D-02]
+- [ ] TASK-200: The agreed plain words replace the coined terms wherever the human reads them - files: [plugin/cli/commands/doctor.py, plugin/cli/commands/validate.py, plugin/cli/commands/sync.py, plugin/templates/rules/compass-pipeline.md]
+- [ ] TASK-201: Terminal output as the mockup agreed: help, `tree`, `unit-check`, `doctor`, `validate` - files: [plugin/cli/maincli.py, plugin/cli/commands/tree.py, plugin/cli/commands/unit_check.py, plugin/cli/commands/doctor.py, plugin/cli/commands/validate.py]
+- [ ] TASK-202: The plugin draws a plan's task table and dependency graph from the plan's own task lines - files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/tests/test_main.js], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-031-working-in-compass-is-visual/D-02]
+- [ ] TASK-203: The plugin draws charts of a loop's readings and cost from the ledger a chart block names, reading vault files only - files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/manifest.json, plugin/obsidian/tests/test_main.js], decisions: [SPEC-031-working-in-compass-is-visual/D-01]
+- [ ] TASK-204: `compass canvas` writes the spec tree as a canvas that keeps the human's card positions, and `compass move` rewrites card paths - files: [plugin/cli/commands/canvas.py, plugin/cli/commands/move.py, plugin/cli/maincli.py], decisions: [SPEC-031-working-in-compass-is-visual/D-01]
+- [ ] TASK-205: Live acceptance: the next plan Compass writes uses the forms, the human reviews it in Obsidian, and its bytes and `compass hot-path` are compared with its text-only twin - decisions: [SPEC-031-working-in-compass-is-visual/D-02]
+
+## Risks
+
+- Obsidian 1.15 swaps its Mermaid renderer for a new one, Pele, and `xychart-beta` may not survive (finding 48): a chart block keeps only its data in the file, so a renderer swap is a plugin change, never a document change.
+- An agent or a GitHub reader sees a block's text, never its drawing: each block names its source file, which they read instead.
+- Decisions inside callouts render as plain quotes in older viewers: only the five callout types GitHub draws are used.
+- No trial passes for in-editor drawing: drawings fall back to Reading view, and the plugin visuals mockup shows that limit to the human.
