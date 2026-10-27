@@ -363,3 +363,6 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 
 ### PLAN-024: working in Compass is visual
 - [x] TASK-194: Mockup: plain words
+
+### PLAN-024: working in Compass is visual
+- [x] TASK-196: Mockup: approval loop in the md editor, terminal as fallback - after: TASK-194

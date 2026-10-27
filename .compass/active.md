@@ -64,8 +64,6 @@ Plan: [[PLAN-024-working-in-compass-is-visual]].
 - [ ] TASK-192: Trial D, reading a `.jsonl` ledger - after: TASK-189
 - [ ] TASK-193: Trial E, a canvas Compass rewrites - after: TASK-192
 - [ ] TASK-195: Mockup: documents as read for approval - after: TASK-194
-- [ ] TASK-196: Mockup: approval loop in the md editor, terminal as fallback - after: TASK-194
-
 ## PLAN-022: review documents in Obsidian
 
 Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).

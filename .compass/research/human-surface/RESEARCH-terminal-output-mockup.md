@@ -1,7 +1,7 @@
 ---
 title: "Terminal Output: Mockup"
 type: research
-status: draft
+status: complete
 confidence: low
 area: methodology
 tags: [terminal, cli, plain-language, mockup, human-surface, review]
