@@ -16,9 +16,9 @@ Two modes:
 
 ## New plan
 
-Spawn the `planner` agent. It reads the approved spec and research, drafts the full plan, and presents it for approval.
+Spawn the `planner` agent. It reads the approved spec and research, drafts the full plan, and writes it as a draft plan file for approval; any choice the plan asks of the human sits in that file.
 
-When a review surface is configured, the approval of the plan draft file goes through the review rule in the pipeline rules (`compass review <plan draft file> --title "Approve this plan?"`) and nothing is asked here. Otherwise ask for the approval through `AskUserQuestion`, exactly one question per call: "Approve this plan?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+With a review surface configured, the plan draft file goes through the review rule in the pipeline rules (`compass review <plan draft file> [<detail file>] --title "Approve this plan?"`; a plan and its detail file go as one review) and nothing is asked here. Without a review surface, ask for the approval through `AskUserQuestion`, exactly one question per call: "Approve this plan?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
 
 - **Approve (Recommended):** marks the plan approved; tasks can be distributed.
 - **Needs changes:** you say what to change; the plan is edited and shown again.

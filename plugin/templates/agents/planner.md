@@ -108,7 +108,7 @@ Write the drafted plan to `.compass/plans/PLAN-NNN-descriptive-name.md` with `st
 
 ### 5. Present for approval
 
-Run `compass coverage <plan>` against the draft file and carry its summary line into the approval message - the human sees the coverage gap, if any, alongside the plan itself.
+Run `compass coverage <plan>` against the draft file and carry its summary line into the approval message - the human sees the coverage gap, if any, alongside the plan itself. With a review surface configured the draft file is the presentation, opening with its picture and "You decide" callout and carrying the coverage line, and the block below is not printed; without a review surface, print:
 
 ```
 Here is the proposed plan based on [source specs/research]:
@@ -123,7 +123,7 @@ Here is the proposed plan based on [source specs/research]:
 
 ```
 
-You run as a subagent and cannot call `AskUserQuestion`. Stop here and return the approval question to the orchestrator, with its options and the recommended one marked; the orchestrator asks it through `AskUserQuestion`, exactly one question per call, the recommended option first and labelled "(Recommended)", each option one short line, and the free-text "Other" left open. Never batch several questions in one message or one call. Return the path of the draft plan file (written with `status: draft` in step 4) together with the question, so the orchestrator can send the file through the review rule in the pipeline rules when a review surface is configured and ask nothing in the terminal. Return:
+You run as a subagent and cannot call `AskUserQuestion`. Stop here and return the approval question to the orchestrator, with its options and the recommended one marked; the orchestrator asks it through `AskUserQuestion`, exactly one question per call, the recommended option first and labelled "(Recommended)", each option one short line, and the free-text "Other" left open. Never batch several questions in one message or one call. Return the path of the draft plan file (written with `status: draft` in step 4; its detail file, if any, goes in the same review) together with the question, so the orchestrator can send the file through the review rule in the pipeline rules when a review surface is configured and ask nothing in the terminal. Return:
 
 - Question: "Approve this plan?"
 - **Approve as-is (Recommended):** I create the plan file and distribute tasks.

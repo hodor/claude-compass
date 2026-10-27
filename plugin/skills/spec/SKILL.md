@@ -98,9 +98,9 @@ Before presenting, spawn a reviewer sub-agent on the cheap model tier with exact
 
 ### 7. Present for approval
 
-Show the Problem and Desired Outcome as they will be saved, his sentences with any guess bracketed inline where it sits. No summary, no counts, no section list. After "needs changes", show only the lines that changed.
+With a review surface configured, the spec file goes through the review rule in the pipeline rules (`compass review <spec file> --title "Approve this spec?"`) and nothing is shown or asked here: the file opens with its picture and "You decide" callout, any guess marked inline where it sits.
 
-When a review surface is configured, the approval of the spec file goes through the review rule in the pipeline rules (`compass review <spec file> --title "Approve this spec?"`) and nothing is asked here; the "What next?" question below then takes its recommended option after an approved verdict. Otherwise ask through `AskUserQuestion`, exactly one question per call: "Approve this spec?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+Without a review surface, show the Problem and Desired Outcome as they will be saved, his sentences with any guess bracketed inline where it sits; no summary, no counts, no section list; after "needs changes", only the lines that changed. Then ask through `AskUserQuestion`, exactly one question per call: "Approve this spec?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
 
 - **Approve (Recommended):** marks the spec approved; research can start.
 - **Needs changes:** you say what to change; I edit and show the changed lines.
@@ -108,7 +108,7 @@ When a review surface is configured, the approval of the spec file goes through 
 
 Never put several questions in one message or one call; the next question waits for this answer.
 
-- **Approved:** change `status: draft` to `status: approved`. "Spec approved. Ready for research when you are."
+- **Approved:** change `status: draft` to `status: approved` and remove the "You decide" callout. "Spec approved. Ready for research when you are."
 - **Needs changes:** ask what to change, edit, present again.
 - **Rejected:** change `status: archived`, ask why so you can learn.
 
