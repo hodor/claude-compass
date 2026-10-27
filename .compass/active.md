@@ -57,16 +57,16 @@ Plan: [[PLAN-021-control-loops]].
 
 ## PLAN-024: working in Compass is visual
 
-Plan: [[PLAN-024-working-in-compass-is-visual]] (files and verification per task). Wave 1: trials in Obsidian, then three mockups.
+Plan: [[PLAN-024-working-in-compass-is-visual]].
 
-- [ ] TASK-189: Trial A, a plugin code block drawing in Reading view and Live Preview - complexity: S, depends_on: none
-- [ ] TASK-190: Trial B, charts through Obsidian's own Mermaid `xychart-beta` - complexity: S, depends_on: TASK-189
-- [ ] TASK-191: Trial C, Vega-Lite bundled into the review plugin - complexity: M, depends_on: TASK-189
-- [ ] TASK-192: Trial D, reading a `.jsonl` ledger with Dataview and with the plugin - complexity: S, depends_on: TASK-189
-- [ ] TASK-193: Trial E, how Obsidian treats a canvas Compass rewrites - complexity: S, depends_on: TASK-192
-- [ ] TASK-194: Mockup of plain words for Compass's coined terms - complexity: S, depends_on: none
-- [ ] TASK-195: Mockup of documents written with every D-01 form - complexity: M, depends_on: TASK-194
-- [ ] TASK-196: Mockup of shorter terminal output - complexity: S, depends_on: TASK-194
+- [ ] TASK-189: Trial A, a plugin code block draws while editing
+- [ ] TASK-190: Trial B, Mermaid charts - after: TASK-189
+- [ ] TASK-191: Trial C, bundled Vega-Lite - after: TASK-189
+- [ ] TASK-192: Trial D, reading a `.jsonl` ledger - after: TASK-189
+- [ ] TASK-193: Trial E, a canvas Compass rewrites - after: TASK-192
+- [ ] TASK-194: Mockup: plain words
+- [ ] TASK-195: Mockup: documents - after: TASK-194
+- [ ] TASK-196: Mockup: terminal output - after: TASK-194
 
 ## PLAN-022: review documents in Obsidian
 
