@@ -63,7 +63,7 @@ Plan: [[PLAN-021-control-loops]].
 ## [[PLAN-024-working-in-compass-is-visual]]
 
 - [ ] TASK-198: decisions read inside callouts
-- [ ] TASK-199: writing rules: forms, bytes, words
+- [x] TASK-199: writing rules: forms, bytes, words
 - [ ] TASK-200: plain words in validate, hook lines
 - [ ] TASK-225: plain words in doctor, command list
 - [ ] TASK-201: approval loop in the editor, after 199
