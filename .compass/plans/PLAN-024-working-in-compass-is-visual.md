@@ -59,23 +59,23 @@ Numbers are task ids; a wave is a group of tasks planned in detail together; lat
 > [!IMPORTANT]
 > You decide: approve the plan and the 15 choices below, all recommended, or comment on a row to change that choice.
 
-| Choice | The plan's answer (recommended) |
-|---|---|
-| Charts of metrics | drawn by the plugin from a short block naming a data file |
-| Decisions in callouts | decisions sit in callouts (highlighted boxes); `compass decisions` learns to read them |
-| Embeds | embed a section instead of copying it |
-| Task table | drawn by the plugin from the task lines, never written into the file |
-| Spec canvas | the spec tree as a canvas (a board of cards): Compass owns which cards exist, the human owns where they sit |
-| Pages like Claude artifacts | inside Obsidian, through the plugin |
-| Coined terms | plain words, a short definition at first use, no glossary file |
-| Terminal visuals | none; one line when the markdown editor holds the document, shorter plain text otherwise |
-| Lowest Obsidian version | 1.9.0, raised only if a trial needs more |
-| Where visuals live | plugin-drawn blocks in documents; Bases (Obsidian's tables of notes) only for lists of whole notes |
-| Chart format | a small Compass block drawn by Obsidian's Mermaid (diagrams from text); Vega-Lite, a heavier chart library, only if Trial B fails |
-| Chart library loading | no library is bundled into the plugin unless Trial B fails |
-| Data that is not notes | the plugin reads run logs and task lines directly |
-| Views | the seven template views of [[research/human-surface/RESEARCH-plugin-ui-mockup]]; an agent writes its own when none fits |
-| How much a drawing may do | template views read vault files only; an agent's own view is a script, reviewed in the `git diff` |
+| Choice                      | The plan's answer (recommended)                                                                                                   |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Charts of metrics           | drawn by the plugin from a short block naming a data file                                                                         |
+| Decisions in callouts       | decisions sit in callouts (highlighted boxes); `compass decisions` learns to read them                                            |
+| Embeds                      | embed a section instead of copying it                                                                                             |
+| Task table                  | drawn by the plugin from the task lines, never written into the file                                                              |
+| Spec canvas                 | the spec tree as a canvas (a board of cards): Compass owns which cards exist, the human owns where they sit                       |
+| Pages like Claude artifacts | inside Obsidian, through the plugin                                                                                               |
+| Coined terms                | plain words, a short definition at first use, no glossary file                                                                    |
+| Terminal visuals            | none; one line when the markdown editor holds the document, shorter plain text otherwise                                          |
+| Lowest Obsidian version     | 1.9.0, raised only if a trial needs more                                                                                          |
+| Where visuals live          | plugin-drawn blocks in documents; Bases (Obsidian's tables of notes) only for lists of whole notes                                |
+| Chart format                | a small Compass block drawn by Obsidian's Mermaid (diagrams from text); Vega-Lite, a heavier chart library, only if Trial B fails |
+| Chart library loading       | no library is bundled into the plugin unless Trial B fails                                                                        |
+| Data that is not notes      | the plugin reads run logs and task lines directly                                                                                 |
+| Views                       | the seven template views of [[research/human-surface/RESEARCH-plugin-ui-mockup]]; an agent writes its own when none fits          |
+| How much a drawing may do   | template views read vault files only; an agent's own view is a script, reviewed in the `git diff`                                 |
 
 The reasons behind each choice, how the byte rule is measured, the full task text and the earlier log entries are in [[archive/PLAN-024-working-in-compass-is-visual-detail]].
 
