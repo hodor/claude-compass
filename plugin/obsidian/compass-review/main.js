@@ -140,7 +140,7 @@ class CompassReview extends Plugin {
   }
 
   // One live request per file: a newer request for the same file replaces
-  // the older one, whose waiter then times out.
+  // the older one, whose request file `compass review` has already removed.
   track(request, path) {
     for (const [id, entry] of this.pending) {
       if (entry.request.file === request.file && id !== request.id) this.pending.delete(id);

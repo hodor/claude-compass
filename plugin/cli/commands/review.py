@@ -23,6 +23,10 @@ The first stdout line is always one of:
   `requested <id> <file>`   the request went out
   `not configured: <why>`   nothing was sent; ask in the terminal instead
 
+The request goes to the `.compass` vault that holds the document. A new
+request for a document already waiting withdraws the older request, whose
+waiter ends with `withdrawn <id>`.
+
 `--no-wait` returns after the request line. The wait has no limit: the
 human may answer hours later. `--timeout S` bounds it and prints
 `timeout <id>` when it runs out. `--status`
@@ -195,7 +199,7 @@ def run(args):
         print(f"not configured: {reason}")
         return 1
     try:
-        compass_vault = vaultlib.find_vault_root(document.parent)
+        compass_vault = vaultlib.find_vault_root(document.parent, honor_env=False)
     except FileNotFoundError:
         print(f"not configured: {opts['file']} is outside a .compass vault")
         return 1
@@ -207,6 +211,11 @@ def run(args):
         print(f"not configured: {exc}")
         return 1
 
+    # A newer request for a document replaces the pending one; its waiter
+    # sees the request file gone and reports it withdrawn.
+    while (older := reviewlib.under_review(compass_vault, document)) is not None:
+        if not reviewlib.cancel(compass_vault, older.get("id")):
+            break
     request, request_path = reviewlib.write_request(
         compass_vault, surface.NAME, context["root"], document, opts["title"],
         step_aside=not surface.has_focus(), commit=commit)

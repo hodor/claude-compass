@@ -176,17 +176,18 @@ def _is_compass_home(candidate, homes):
     return False
 
 
-def find_vault_root(start=None):
+def find_vault_root(start=None, honor_env=True):
     """Return the `.compass` directory for the current project.
 
-    Honors `CLAUDE_PROJECT_DIR` (set by the plugin hook runtime) first, then
-    walks up from `start` (or cwd) looking for a `.compass` directory. The
+    Honors `CLAUDE_PROJECT_DIR` (set by the plugin hook runtime) first, unless
+    `honor_env` is false, then walks up from `start` (or cwd) looking for a
+    `.compass` directory. The
     user's Compass home (`COMPASS_HOME`, default `~/.compass`), which holds
     kept session clones and private stores, is never a project vault.
     Raises FileNotFoundError if none is found.
     """
     homes = _compass_homes()
-    env = os.environ.get("CLAUDE_PROJECT_DIR")
+    env = os.environ.get("CLAUDE_PROJECT_DIR") if honor_env else None
     if env:
         candidate = Path(env) / ".compass"
         if candidate.is_dir() and not _is_compass_home(candidate, homes):

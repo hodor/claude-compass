@@ -209,6 +209,48 @@ class Request(ReviewProject):
         self.assertEqual(len(ids), 5)
 
 
+    # Adversarial where: the older waiter for the same document waits forever
+    # because only the panel dropped its card, or a request for another
+    # document is withdrawn too.
+    def test_new_request_for_a_document_withdraws_the_older_one(self):
+        self.configure()
+        other = self.vault / "specs" / "SPEC-002-y.md"
+        other.write_text("# Y\n", encoding="utf-8")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "second")
+        keep = self.review(str(other), "--no-wait")[1].split()[1]
+        holder = {}
+        waiter = threading.Thread(target=lambda: holder.update(result=self.review(str(self.doc))), daemon=True)
+        waiter.start()
+        directory = reviewlib.review_dir(self.vault)
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and len(list(directory.glob("*.request.json"))) < 2:
+            time.sleep(0.05)
+        with mock.patch.object(reviewlib, "new_id", lambda: "20991231T235959-ffffff"):
+            code, out, _ = self.review(str(self.doc), "--no-wait")
+        self.assertEqual(code, 0)
+        waiter.join(timeout=10)
+        self.assertFalse(waiter.is_alive(), "the older waiter is still waiting")
+        older_code, older_out, _ = holder["result"]
+        self.assertEqual(older_code, 1)
+        self.assertRegex(older_out.splitlines()[-1], r"^withdrawn ")
+        self.assertEqual(sorted(r["id"] for r in reviewlib.pending(self.vault)), sorted([keep, "20991231T235959-ffffff"]))
+
+    # Adversarial where: CLAUDE_PROJECT_DIR names another project, so the
+    # request lands in that project's vault while the link names this one.
+    def test_request_goes_to_the_vault_holding_the_document(self):
+        self.configure()
+        elsewhere = self.base / "elsewhere"
+        (elsewhere / ".compass").mkdir(parents=True)
+        with mock.patch.dict(os.environ, {"CLAUDE_PROJECT_DIR": str(elsewhere)}):
+            code, out, _ = self.review(str(self.doc), "--no-wait")
+        self.assertEqual(code, 0, out)
+        rid = out.split()[1]
+        self.assertTrue((reviewlib.review_dir(self.vault) / f"{rid}.request.json").exists())
+        self.assertFalse((elsewhere / ".compass" / "tmp").exists())
+        self.assertEqual(len(self.opened), 1)
+
+
 class Wait(ReviewProject):
     def test_verdict_mid_wait_prints_verdict_then_human_text(self):
         self.configure()
@@ -499,8 +541,15 @@ class Carried(ReviewProject):
 
 
 class Cancel(ReviewProject):
-    def request_id(self):
-        return self.review(str(self.doc), "--no-wait")[1].split()[1]
+    def request_id(self, doc=None):
+        return self.review(str(doc or self.doc), "--no-wait")[1].split()[1]
+
+    def second_doc(self):
+        doc = self.vault / "specs" / "SPEC-002-y.md"
+        doc.write_text("# Y\n", encoding="utf-8")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "second")
+        return doc
 
     def test_cancel_ends_a_live_waiter_with_withdrawn(self):
         """Adversarial where: a waiter keeps polling until its timeout after the
@@ -537,7 +586,7 @@ class Cancel(ReviewProject):
         """Adversarial where: `--cancel` clears every pending request, leaves
         the named one listed by `--status`, or fails to exit 0."""
         self.configure()
-        a, b = self.request_id(), self.request_id()
+        a, b = self.request_id(), self.request_id(self.second_doc())
         code, _, _ = self.review("--cancel", a)
         self.assertEqual(code, 0)
         directory = reviewlib.review_dir(self.vault)
@@ -545,7 +594,7 @@ class Cancel(ReviewProject):
         self.assertTrue((directory / f"{b}.request.json").exists())
         code, out, _ = self.review("--status")
         self.assertEqual(code, 0)
-        self.assertEqual(out.strip(), f"pending {b} specs/SPEC-001-x.md")
+        self.assertEqual(out.strip(), f"pending {b} specs/SPEC-002-y.md")
         self.assertEqual(self.review("--cancel", b)[0], 0)
         self.assertEqual(self.review("--status")[1].strip(), "")
 
