@@ -62,9 +62,6 @@ flowchart LR
 
 Numbers are task ids; a wave is a group of tasks planned in detail together; later waves stay sketched until the one before is verified. Green is done, yellow is detailed and not started, grey is sketched under Later. TASK-197, done ahead of its wave, is listed under Later.
 
-> [!IMPORTANT]
-> You decide: approve Wave 2, the five yellow tasks detailed under "Wave 2 (detailed)" and the changes listed under "Wave 2 elaborated", or comment on a task to change it. The 15 choices below were approved with the plan on 2026-10-27, all as recommended; comment on a row to reopen that choice.
-
 | Choice                      | The plan's answer (recommended)                                                                                                   |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | Charts of metrics           | drawn by the plugin from a short code block naming a data file                                                                    |
@@ -182,3 +179,4 @@ How each Wave 2 task differs from its one-line sketch in the plan as first appro
 - 2026-10-27: Views choice added (TASK-206, TASK-207); TASK-195 and TASK-197 are answered by [[research/human-surface/RESEARCH-plugin-ui-mockup]].
 - 2026-10-27: Plan shortened for reading, detail moved to the archive file; the human's review asked for it.
 - 2026-10-27: TASK-206 leaves the walk through several files to the review panel of [[plans/PLAN-025-review-across-files-and-sessions]] and takes project and session names from its TASK-211.
+- 2026-10-27: Wave 2 approved; the "You decide" box left the plan at approval.
