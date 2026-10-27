@@ -396,3 +396,6 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 
 ### [[PLAN-024-working-in-compass-is-visual]]
 - [x] TASK-225: plain words in doctor, command list
+
+### [[PLAN-024-working-in-compass-is-visual]]
+- [x] TASK-201: approval loop in the editor, after 199

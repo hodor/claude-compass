@@ -62,8 +62,6 @@ Plan: [[PLAN-021-control-loops]].
 ## [[PLAN-024-working-in-compass-is-visual]]
 
 - [ ] TASK-200: plain words in validate, hook lines
-- [ ] TASK-201: approval loop in the editor, after 199
-
 ## PLAN-022: review documents in Obsidian
 
 Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
