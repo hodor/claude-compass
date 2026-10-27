@@ -393,3 +393,6 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 ### [[PLAN-024-working-in-compass-is-visual]]
 - [x] TASK-198: decisions read inside callouts
 - [x] TASK-199: writing rules: forms, bytes, words
+
+### [[PLAN-024-working-in-compass-is-visual]]
+- [x] TASK-225: plain words in doctor, command list
