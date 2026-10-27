@@ -386,7 +386,7 @@ class V02ShapeTests(unittest.TestCase):
         # v0.2.0 shape: skills dir exists, nothing hooks-related exists at all.
         code, out = run_doctor()
         self.assertEqual(code, 1)
-        self.assertIn("hook registration", out)
+        self.assertIn("automatic step registration", out)
 
 
 class AgentsSkillsTests(unittest.TestCase):
@@ -506,13 +506,13 @@ def unit_check_doc(type_, deps):
 # tests never hard-code the new check's own name or wording.
 KNOWN_BASELINE_CHECKS = {
     "plugin.yaml",
-    "hook registration",
+    "automatic step registration",
     "CLI completeness",
     "agents",
     "skills",
     "lessons-catalog.yaml",
-    "capability usage",
-    "local overlays",
+    "commands you have not run",
+    "local additions",
 }
 
 
@@ -728,14 +728,14 @@ class UnitPromotionCandidateTests(unittest.TestCase):
 # `capturelib.save_state` directly, per the task's own instruction.
 #
 # `PRE_TASK_093_CHECKS` is `KNOWN_BASELINE_CHECKS` (the six install-drift
-# rows) plus `"unit-promotion candidates"` (TASK-082, already shipped): the
+# rows) plus `"workstreams that could get their own folder"` (TASK-082, already shipped): the
 # seven check names a `build_complete_install` fixture produces before this
 # task's row exists. The new row is whichever check name a run adds beyond
 # that set - the same elimination `non_baseline_rows` uses to isolate the
 # unit-promotion row itself, applied one task later so this class never
 # hardcodes a name the plan does not fix.
 
-PRE_TASK_093_CHECKS = KNOWN_BASELINE_CHECKS | {"unit-promotion candidates"}
+PRE_TASK_093_CHECKS = KNOWN_BASELINE_CHECKS | {"workstreams that could get their own folder"}
 
 # Sanctioned collateral edit for TASK-093: doctor's new "worker ledger" row
 # makes `UnitPromotionCandidateTests.non_baseline_rows()` return two rows
@@ -746,12 +746,12 @@ PRE_TASK_093_CHECKS = KNOWN_BASELINE_CHECKS | {"unit-promotion candidates"}
 # of `ledger_rows`; `non_baseline_rows` re-reads the module global at call
 # time (test methods run long after import), so it sees the addition and
 # keeps isolating the unit-promotion row as the older class's own row.
-KNOWN_BASELINE_CHECKS.add("worker ledger")
+KNOWN_BASELINE_CHECKS.add("background helper log")
 # The host-roster row (PLAN-017) appears in every run and is baseline;
 # the dsh-only rows appear only in dsh-rostered fixtures, which never
 # use these counting helpers.
-KNOWN_BASELINE_CHECKS.add("host roster")
-PRE_TASK_093_CHECKS.add("host roster")
+KNOWN_BASELINE_CHECKS.add("tools in use")
+PRE_TASK_093_CHECKS.add("tools in use")
 # The session-retention row also appears in every run.
 KNOWN_BASELINE_CHECKS.add("session retention")
 PRE_TASK_093_CHECKS.add("session retention")
@@ -1206,7 +1206,7 @@ class HostChecksTests(unittest.TestCase):
         self._dsh_home()
         project = self._dsh_project()
         checks = doctor._host_checks(project / ".compass", project)
-        host = next(c for c in checks if c.name == "host materializations")
+        host = next(c for c in checks if c.name == "install for each tool")
         self.assertEqual(host.status, "FAIL")
         self.assertIn(".dsh/hooks.json", host.detail)
 
@@ -1223,7 +1223,7 @@ class HostChecksTests(unittest.TestCase):
         (bundle / "package.json").write_text(
             '{"name": "compass-dsh-bundle", "version": "0.1.0"}', encoding="utf-8")
         checks = doctor._host_checks(project / ".compass", project)
-        host = next(c for c in checks if c.name == "host materializations")
+        host = next(c for c in checks if c.name == "install for each tool")
         self.assertEqual(host.status, "FAIL")
         self.assertIn("skew", host.detail)
 
@@ -1249,9 +1249,9 @@ class HostChecksTests(unittest.TestCase):
         hostlib.materialize_dsh_instructions(
             project, self.PLUGIN_SRC / "templates" / "rules")
         checks = doctor._host_checks(project / ".compass", project)
-        host = next(c for c in checks if c.name == "host materializations")
+        host = next(c for c in checks if c.name == "install for each tool")
         self.assertEqual(host.status, "OK", host.detail)
-        posture = next(c for c in checks if c.name == "capture posture")
+        posture = next(c for c in checks if c.name == "how lesson recording is set up")
         self.assertIn(posture.status, ("OK", "WARN"))
 
     def test_machine_without_dsh_reports_roster_without_dsh_rows(self):
@@ -1501,7 +1501,7 @@ class NonObjectSettingsTests(unittest.TestCase):
         self.assertEqual(len(checks), 13)
         self.assertFalse([c for c in checks if c["check"] == "doctor"])
         self.assertNotIn("internal error", out)
-        hook_row = [c for c in checks if c["check"] == "hook registration"][0]
+        hook_row = [c for c in checks if c["check"] == "automatic step registration"][0]
         self.assertIn("settings.local.json", hook_row["detail"])
         self.assertEqual(code, 0)
 
@@ -1517,7 +1517,7 @@ class NonObjectSettingsTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         checks = json.loads(out)["checks"]
         self.assertFalse([c for c in checks if c["check"] == "doctor"])
-        hook_row = [c for c in checks if c["check"] == "hook registration"][0]
+        hook_row = [c for c in checks if c["check"] == "automatic step registration"][0]
         self.assertEqual(hook_row["status"], "FAIL")
         self.assertIn("settings.json", hook_row["detail"])
         self.assertEqual(code, 1)
@@ -1544,7 +1544,7 @@ class WrongShapedHooksEntryTests(unittest.TestCase):
                 code, out = run_doctor(["--json"])
                 checks = json.loads(out)["checks"]
                 self.assertFalse([c for c in checks if c["check"] == "doctor"], out[:300])
-                self.assertEqual(len([c for c in checks if c["check"] == "hook registration"]), 1)
+                self.assertEqual(len([c for c in checks if c["check"] == "automatic step registration"]), 1)
 
 
 class BomSettingsHookTests(unittest.TestCase):
@@ -1560,7 +1560,7 @@ class BomSettingsHookTests(unittest.TestCase):
         path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes())
         code, out = run_doctor(["--json"])
         checks = json.loads(out)["checks"]
-        hook_row = [c for c in checks if c["check"] == "hook registration"][0]
+        hook_row = [c for c in checks if c["check"] == "automatic step registration"][0]
         self.assertEqual(hook_row["status"], "OK", hook_row["detail"])
         self.assertNotIn("not valid JSON", hook_row["detail"])
         self.assertEqual(code, 0)

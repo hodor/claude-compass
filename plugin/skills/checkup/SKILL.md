@@ -14,7 +14,7 @@ Scans your project's Compass installation and reports problems with actionable f
 
 ### 1. Install (`compass doctor`)
 
-Run `compass doctor` first. Its six checks are install-drift checks - whether the plugin landed the way `/compass:setup` or `/compass:update` intended - not vault content: `plugin.yaml` has a version, hooks are registered in a settings file Claude Code actually reads (plus the informational `TeammateIdle` row), `.claude/cli/` has a module for every command `maincli.py` declares, `.claude/agents/` is present and non-empty, `.claude/skills/` is present and non-empty, `.compass/meta/lessons-catalog.yaml` exists. Report its table verbatim under Install; a FAIL row already names its own fix command, so don't re-derive one.
+Run `compass doctor` first. Its six checks are install-drift checks - whether the plugin landed the way `/compass:setup` or `/compass:update` intended - not vault content: `plugin.yaml` has a version, the automatic steps (hooks) are registered in a settings file Claude Code actually reads (plus the informational `TeammateIdle` row), `.claude/cli/` has a module for every command `maincli.py` declares, `.claude/agents/` is present and non-empty, `.claude/skills/` is present and non-empty, `.compass/meta/lessons-catalog.yaml` exists. Report its table verbatim under Install; a FAIL row already names its own fix command, so don't re-derive one.
 
 ### 2. Agents
 
@@ -55,7 +55,7 @@ In `.compass/handoffs/`:
 
 ### 7. Hooks
 
-Delegates entirely to `compass doctor`'s hook-registration check, reported under Install (section 1): the required `PostToolUse`, `Stop`, and `SubagentStop` registrations in a settings file, plus the informational `TeammateIdle` row. Nothing here duplicates that check.
+Delegates entirely to `compass doctor`'s automatic step registration check, reported under Install (section 1): the required `PostToolUse`, `Stop`, and `SubagentStop` registrations in a settings file, plus the informational `TeammateIdle` row. Nothing here duplicates that check.
 
 ### 8. Rules
 
@@ -72,8 +72,8 @@ Uncommitted vault files (handoffs, specs, plans) are invisible to other sessions
 
 ### Install (compass doctor)
 - [x] plugin.yaml: version 0.4.1
-- [x] hook registration: PostToolUse, Stop, SubagentStop all registered
-- [ ] hook registration (TeammateIdle): not registered (WARN)
+- [x] automatic step registration: PostToolUse, Stop, SubagentStop all registered
+- [ ] automatic step registration (TeammateIdle): not registered (WARN)
 - [x] CLI completeness: 24 commands, all modules present
 - [x] agents: 13 present
 - [x] skills: 19 present

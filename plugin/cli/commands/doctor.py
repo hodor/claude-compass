@@ -1,16 +1,17 @@
 """`compass doctor [--json]` - install-drift and vault-health diagnosis.
 
 Checks the drift classes RESEARCH-lesson-capture-failure Finding 5 found
-across the vault fleet: a missing `plugin.yaml`, hooks that are not actually
-registered where Claude Code reads them, a `.claude/cli/` missing a module
-for a command the installed `maincli.py` declares, and missing or empty
-agents/skills directories. Alongside install drift, it also surfaces
-unit-promotion candidates - root-level artifact groups that have outgrown
-the flat vault layout - as an advisory row, since `compass unit-check` exists
-but nothing else prompts a human to run it, and reconciles the detached
-capture worker's ledger (ADR-013 D-10): spawn/finish/failure counts, a
-started worker with no end row past its grace period, fallback-channel
-firings, the last failure reason, and the no-headless latch's date when set.
+across the vault fleet: a missing `plugin.yaml`, automatic steps (Claude Code
+hooks) that are not actually registered where Claude Code reads them, a
+`.claude/cli/` missing a module for a command the installed `maincli.py`
+declares, and missing or empty agents/skills directories. Alongside install
+drift, it also surfaces workstreams that could get their own folder -
+root-level artifact groups that have outgrown the flat vault layout - as an
+advisory row, since `compass unit-check` exists but nothing else prompts a
+human to run it, and reconciles the background helper's log (ADR-013 D-10):
+start/finish/failure counts, a started helper with no end row past its grace
+period, fallback-channel firings, the last failure reason, and the date the
+no-headless latch was set, when set.
 It also reports the effective session retention (`cleanupPeriodDays`), warning
 when Claude Code would delete sessions after 30 days or fewer, and the state
 of the Compass Review Obsidian plugin in the vault's Obsidian vault, with the
@@ -18,16 +19,17 @@ steps to turn it on when it is off.
 
 Claude Code loads hooks only from a settings file's `hooks` key
 (`.claude/settings.json`, `.claude/settings.local.json`, `~/.claude/settings.json`)
-or a registered plugin, never from a bare `.claude/hooks/hooks.json`. The hook
-check therefore parses settings files for the three registered command
-entries rather than checking file existence, so an installed-but-unregistered
-hooks.json is reported as the defect it is.
+or a registered plugin, never from a bare `.claude/hooks/hooks.json`. The
+automatic-step check therefore parses settings files for the registered
+command entries rather than checking file existence, so an
+installed-but-unregistered hooks.json is reported as the defect it is.
 
 Each check reports OK, WARN, or FAIL with a one-line fix command. WARN never
 fails the run - it flags something worth knowing but not broken (TeammateIdle
-registration, whose lifecycle may not exist in every harness; unit-promotion
-candidates, which are the human's call to act on; worker-ledger conditions,
-which reflect the capture worker's own health rather than an install defect).
+registration, whose lifecycle may not exist in every harness; workstream
+candidates, which are the human's call to act on; background helper log
+conditions, which reflect the helper's own health rather than an install
+defect).
 Read-only: doctor mutates no file on disk. Exit 1 on any FAIL, 0 otherwise,
 never 2.
 """
@@ -75,12 +77,12 @@ class Check:
 
 
 def _host_checks(vault_root, project_root):
-    """Per-host install rows (SPEC-006 D-04/D-05). Hosts are detected, not
+    """Per-tool install rows (SPEC-006 D-04/D-05). Tools are detected, not
     read from a roster question: a machine without dsh gets one OK line. A
-    machine with dsh is checked for every materialization the apply writes,
-    for version skew between the generated bundle and plugin.yaml, and the
-    project's capture posture is named so no degradation is silent:
-    `claude` worker where present, `dsh` headless worker where the machine
+    machine with dsh is checked for every file the install writes for that
+    tool, for version skew between the generated bundle and plugin.yaml, and
+    the way lesson recording is set up is named so no degradation is silent:
+    `claude` helper where present, `dsh` headless helper where the machine
     has dsh, else the rendered-block fallback."""
     import shutil as _shutil
     from pathlib import Path as _Path
@@ -89,7 +91,7 @@ def _host_checks(vault_root, project_root):
 
     hosts = hostlib.effective_hosts(vault_root)
     if "dsh" not in hosts:
-        return [Check("host roster", OK, f"hosts: {', '.join(hosts)}")]
+        return [Check("tools in use", OK, f"tools: {', '.join(hosts)}")]
 
     checks = []
     project = _Path(project_root)
@@ -147,24 +149,24 @@ def _host_checks(vault_root, project_root):
                 f"profile(s) without the bundle installed: {', '.join(stale)}")
 
     if problems:
-        checks.append(Check("host materializations", FAIL, "; ".join(problems), fix))
+        checks.append(Check("install for each tool", FAIL, "; ".join(problems), fix))
     else:
         checks.append(Check(
-            "host materializations", OK,
-            f"hosts: {', '.join(hosts)}; dsh hooks, skills, bundle "
+            "install for each tool", OK,
+            f"tools: {', '.join(hosts)}; dsh automatic steps, skills, bundle "
             f"({plugin_version}), rules section all present"))
 
     if _shutil.which("claude"):
-        checks.append(Check("capture posture", OK,
-                            "claude on PATH - detached worker via claude"))
+        checks.append(Check("how lesson recording is set up", OK,
+                            "claude on PATH - background helper runs through claude"))
     elif _shutil.which("dsh"):
-        checks.append(Check("capture posture", OK,
-                            "dsh on PATH - detached worker via dsh headless"))
+        checks.append(Check("how lesson recording is set up", OK,
+                            "dsh on PATH - background helper runs through dsh headless"))
     else:
         checks.append(Check(
-            "capture posture", WARN,
-            "no headless host on PATH - capture falls back to the rendered "
-            "block at the stop boundary"))
+            "how lesson recording is set up", WARN,
+            "no headless tool on PATH - lesson recording falls back to the "
+            "rendered block at the stop boundary"))
     return checks
 
 
@@ -254,8 +256,9 @@ def _hooks_checks(project_root):
     ]
 
     fix = (
-        'register hooks in .claude/settings.json under a top-level "hooks" key '
-        "(a bare .claude/hooks/hooks.json is never read by Claude Code)"
+        "register the automatic steps in .claude/settings.json under a "
+        'top-level `"hooks"` key (Claude Code never reads a bare '
+        "`.claude/hooks/hooks.json`)"
     )
 
     if missing:
@@ -264,20 +267,20 @@ def _hooks_checks(project_root):
             parts.append("; ".join(malformed))
         if hooks_json_exists and not any_hooks_key:
             parts.append(
-                f"{hooks_json_path} exists but no settings file registers its hooks; "
-                "Claude Code never reads a bare hooks.json"
+                "a hooks.json file exists but no settings file registers its "
+                "automatic steps; Claude Code never reads a bare hooks.json"
             )
         parts.append(f"missing registration for: {', '.join(missing)}")
-        return [Check("hook registration", FAIL, "; ".join(parts), fix)]
+        return [Check("automatic step registration", FAIL, "; ".join(parts), fix)]
 
     detail = "PreToolUse, PostToolUse, Stop, SubagentStop all registered"
     if malformed:
         detail += f" (unreadable settings skipped: {'; '.join(malformed)})"
-    checks = [Check("hook registration", OK, detail)]
+    checks = [Check("automatic step registration", OK, detail)]
     teammate_event, teammate_needle = OPTIONAL_HOOK_EVENT
     if not _event_registered(commands_by_event, teammate_event, teammate_needle):
         checks.append(Check(
-            "hook registration (TeammateIdle)", WARN,
+            "automatic step registration (TeammateIdle)", WARN,
             "TeammateIdle not registered; teammate lifecycles may not emit SubagentStop, "
             "so this is informational, not a defect",
         ))
@@ -335,37 +338,37 @@ def _lessons_catalog_check(vault_root):
 
 
 def _overlay_check(vault_root):
-    """Advisory row for project-local overlays (ADR-020): OK naming how many
+    """Advisory row for project-local additions (ADR-020): OK naming how many
     are applied, WARN when one names a target that no longer ships - an
-    overlay that matches nothing must not silently do nothing."""
+    addition that matches nothing must not silently do nothing."""
     try:
         from commands import overlay as overlay_mod
 
         report = overlay_mod.apply_overlays(vault_root, apply=False)
     except Exception as exc:
-        return Check("local overlays", WARN, f"overlay scan failed: {exc}")
+        return Check("local additions", WARN, f"local additions scan failed: {exc}")
     live = len(report["applied"]) + len(report["skipped"])
     if report["orphans"]:
         return Check(
-            "local overlays", WARN,
-            f"{len(report['orphans'])} overlay(s) name an uninstalled target: "
+            "local additions", WARN,
+            f"{len(report['orphans'])} local addition(s) name an uninstalled target: "
             f"{', '.join(report['orphans'])}",
             "run `compass overlay` to list them; rename or remove the stale file",
         )
     if not live:
-        return Check("local overlays", OK, "none")
-    return Check("local overlays", OK, f"{live} applied")
+        return Check("local additions", OK, "none")
+    return Check("local additions", OK, f"{live} applied")
 
 
 MEASUREMENT_WINDOW_DAYS = 14
 
 
 def _usage_check(vault_root):
-    """Advisory row for the invocation record (ADR-017). A zero minutes into
-    measurement is not a finding, so never-used commands WARN only once the
-    record is at least MEASUREMENT_WINDOW_DAYS old; younger records and a
-    missing file report OK with the state named. Scan failure degrades to
-    WARN, never FAIL."""
+    """Advisory row for the invocation record (ADR-017). Zero minutes into
+    measurement is not a finding, so commands that were never run WARN only
+    once the record is at least MEASUREMENT_WINDOW_DAYS old; younger records
+    and a missing file report OK with the state named. Scan failure degrades
+    to WARN, never FAIL."""
     try:
         import datetime
 
@@ -375,7 +378,7 @@ def _usage_check(vault_root):
         path = vault_root / usage_mod.RECORD_FILE
         if not path.is_file():
             return Check(
-                "capability usage", OK,
+                "commands you have not run", OK,
                 "no invocation record yet; it starts with the next compass command",
             )
         since, rows = usage_mod._parse(vaultlib.read_vault_text(path))
@@ -384,22 +387,22 @@ def _usage_check(vault_root):
             if rows.get(name, {"count": 0})["count"] == 0
         ]
         if not dead:
-            return Check("capability usage", OK, "every command has recorded usage")
+            return Check("commands you have not run", OK, "every command has recorded usage")
         try:
             age = (datetime.date.today() - datetime.date.fromisoformat(since)).days
         except (TypeError, ValueError):
             age = 0
         if age < MEASUREMENT_WINDOW_DAYS:
             return Check(
-                "capability usage", OK,
-                f"measuring since {since}; {len(dead)} command(s) unused so far",
+                "commands you have not run", OK,
+                f"measuring since {since}; {len(dead)} command(s) not run so far",
             )
     except Exception as exc:
-        return Check("capability usage", WARN, f"usage scan failed: {exc}")
+        return Check("commands you have not run", WARN, f"usage scan failed: {exc}")
     return Check(
-        "capability usage", WARN,
-        f"{len(dead)} command(s) never used in {age} days of measurement",
-        "run `compass usage` for the NEVER USED list",
+        "commands you have not run", WARN,
+        f"{len(dead)} command(s) not run in {age} days of measurement",
+        "run `compass usage` for the list of commands you have not run",
     )
 
 
@@ -414,22 +417,22 @@ def _unit_candidates_check(vault_root):
         candidates = unit_check.find_candidates(vault_root)
     except Exception as exc:
         return Check(
-            "unit-promotion candidates", WARN,
-            f"unit-promotion scan failed: {exc}",
+            "workstreams that could get their own folder", WARN,
+            f"workstream scan failed: {exc}",
         )
     if not candidates:
-        return Check("unit-promotion candidates", OK, "no unit-promotion candidates")
+        return Check("workstreams that could get their own folder", OK, "none")
     labels = sorted(
         unit_check._suggested_name(vault_root / spec_rel)
         for spec_rel, _members, _types in candidates
     )
     detail = f"{len(candidates)} candidate(s): {', '.join(labels)}"
     fix = "run `compass unit-check` for the member list"
-    return Check("unit-promotion candidates", WARN, detail, fix)
+    return Check("workstreams that could get their own folder", WARN, detail, fix)
 
 
 def _flatten(value):
-    """`str(value)` with embedded newlines collapsed to spaces. Ledger rows
+    """`str(value)` with embedded newlines collapsed to spaces. Run-log rows
     are hand-editable JSON (`LedgerReadFailureTests`/`CorruptLogLineTests`
     exercise this file's tolerance of exactly that), so any field spliced
     into a one-line `detail` string - an id, a failure reason, a fallback
@@ -438,14 +441,14 @@ def _flatten(value):
 
 
 def _worker_ledger_check(vault_root):
-    """Advisory row reconciling `capturelib.read_log`'s worker vocabulary
+    """Advisory row reconciling `capturelib.read_log`'s background helper vocabulary
     (`worker-started`, `worker-finished`, `worker-failed`, `fallback-fired`)
     against `load_config`'s `worker_grace_seconds` and the state's
     `no_headless_at` latch (ADR-013 D-10). Reports started/finished/failed
     counts, any started row whose id has no later finished or failed row and
     is aged past grace (naming the id and age), fallback firings by channel,
     the most recently logged failure reason, and the no-headless latch's date
-    when set - a worker path silently latched off is exactly what this row
+    when set - a helper path silently latched off is exactly what this row
     exists to surface. WARNs on an unfinished spawn past grace, the latch
     being set, or the last three completed spawns all failing; OK otherwise;
     never FAIL, since the invisible machinery's own health never moves
@@ -534,9 +537,9 @@ def _worker_ledger_check(vault_root):
 
         detail = "; ".join(parts)
         fix = "check .compass/tmp/worker-logs/<opp-id>.log; re-run by hand with `compass capture-worker <opp-id>`"
-        return Check("worker ledger", status, detail, fix if status != OK else None)
+        return Check("background helper log", status, detail, fix if status != OK else None)
     except Exception as exc:
-        return Check("worker ledger", WARN, f"ledger reconciliation failed: {_flatten(exc)}")
+        return Check("background helper log", WARN, f"log reconciliation failed: {_flatten(exc)}")
 
 
 RETENTION_FIX = (
