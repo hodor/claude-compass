@@ -65,7 +65,6 @@ Plan: [[PLAN-021-control-loops]].
 
 - [ ] TASK-190: Trial B, Mermaid charts
 - [ ] TASK-191: Trial C, bundled Vega-Lite
-- [ ] TASK-192: Trial D, reading a ledger
 ## PLAN-022: review documents in Obsidian
 
 Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).

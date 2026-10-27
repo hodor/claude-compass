@@ -29,7 +29,7 @@ flowchart LR
     T189["189 Trial A: drawing while editing"]:::done
     T190["190 Trial B: Mermaid charts"]:::open
     T191["191 Trial C: Vega-Lite size"]:::open
-    T192["192 Trial D: reading non-note files"]:::open
+    T192["192 Trial D: reading non-note files"]:::done
     T193["193 Trial E: a rewritten canvas"]:::done
     T194["194 Words mockup"]:::done
     T195["195 Documents mockup"]:::done
@@ -101,7 +101,7 @@ Obsidian with this vault registered and Compass Review on (`compass review` repo
 - [ ] TASK-191: Trial C, Vega-Lite bundled into the review plugin: a trial build draws the same chart from vault files only; records `main.js` size, load time, both views, and whether a URL outside the vault is refused; then `compass review --install` restores the shipped copy - complexity: M, depends_on: TASK-189, files: [.compass/tmp/trials/compass-review-vega/build.py, .compass/tmp/trials/compass-review-vega/main.js, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]
   - Automated verification: `node --check` on the trial build; the recorded size matches `wc -c`; the out-of-vault URL is logged as refused; after restoring, `diff -r plugin/obsidian/compass-review .compass/.obsidian/plugins/compass-review` is empty.
   - Manual verification: the human compares this chart with Trial B's and says which reads better.
-- [ ] TASK-192: Trial D, reading files that are not notes: Dataview's `dv.io.load` and the plugin's vault adapter each count the rows of the same `ledger.jsonl`; Dataview is turned off afterwards - complexity: S, depends_on: TASK-189, files: [.compass/tmp/trials/compass-trials/main.js, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]
+- [x] TASK-192: Trial D, reading files that are not notes: Dataview's `dv.io.load` and the plugin's vault adapter each count the rows of the same `ledger.jsonl`; Dataview is turned off afterwards - complexity: S, depends_on: TASK-189, files: [.compass/tmp/trials/compass-trials/main.js, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]
   - Automated verification: both counts equal `wc -l` of the file, or the failing route records its error; `community-plugins.json` lists no Dataview afterwards.
   - Manual verification: none.
 - [x] TASK-193: Trial E, a canvas Compass rewrites: with a scratch canvas open, rewrite the file with a card moved, then rename a note outside Obsidian; record whether Obsidian keeps the new position and whether it rewrites the card's path - complexity: S, depends_on: TASK-192, files: [.compass/tmp/trials/canvas/trial.canvas, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]

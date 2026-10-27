@@ -1,7 +1,7 @@
 ---
 title: "Visual Trials in Obsidian"
 type: research
-status: in-progress
+status: complete
 confidence: medium
 area: methodology
 tags: [obsidian, trials, charts, mermaid, dataview, human-surface]
@@ -18,7 +18,7 @@ author: "builder"
 
 ## Question
 
-Can a Compass plugin draw inside a running Obsidian, in both Reading view and Live Preview? Each trial tests one way of drawing or reading data that [[RESEARCH-working-in-compass-is-visual]] section J found only in documentation: a code block the plugin draws (A), Mermaid charts (B), Vega-Lite bundled into a plugin (C), reading `.jsonl` files (D), and a canvas Compass rewrites (E). Each trial states its setup and its result. Trial C has not run.
+Can a Compass plugin draw inside a running Obsidian, in both Reading view and Live Preview? Each trial tests one way of drawing or reading data that [[RESEARCH-working-in-compass-is-visual]] section J found only in documentation: a code block the plugin draws (A), Mermaid charts (B), Vega-Lite bundled into a plugin (C), reading `.jsonl` files (D), and a canvas Compass rewrites (E). Each trial states its setup and its result.
 
 ## Setup shared by the trials
 
@@ -70,7 +70,7 @@ Pass: both counts equal `wc -l` of the ledger, or the failing route records its 
 Result:
 
 - Plugin route: pass. 407 rows in Reading view and in Live Preview on all three runs, equal to `wc -l`. Confidence: high.
-- Dataview route: not run; Dataview is not installed in this vault.
+- Dataview route: pass. Dataview 0.5.70, installed into this vault with JavaScript queries on, counted 407 rows through `dv.io.load` in Reading view and again while the tab was in Live Preview, on one run at 19:58 UTC. The block reports its view as Reading view both times, so which view drew the second count rests on the time it was written. Dataview was turned off afterwards. Confidence: high for the count, medium for the view.
 
 ## Trial E: a canvas Compass rewrites
 
@@ -85,3 +85,21 @@ Result:
 
 - An open canvas reloads a file rewritten outside Obsidian and writes nothing of its own back, so Compass can regenerate a canvas while the human has it open. Confidence: high.
 - A note renamed outside Obsidian leaves its card pointing at the old path, so `compass move` has to rewrite card paths itself. Confidence: high.
+
+## Trial C: Vega-Lite bundled into the review plugin
+
+Setup: a trial build of the review plugin holds the shipped `main.js` with Vega 6.4.0, Vega-Lite 6.5.0 and vega-embed 7.3.0 pasted in, built by `.compass/tmp/trials/compass-review-vega/build.py` and installed in place of the shipped copy. It registers a `vega-lite` block whose loader reads vault files only. The trial note `.compass/tmp/trials/vega-note.md` holds two blocks: the Trial B chart with its data read from `ledger.jsonl`, and a chart whose data is `https://example.com/data.json`. The plugin opens the note in Reading view, then Live Preview, and records each draw in `.compass/tmp/trials/vega-draws.jsonl`. One run, 2026-10-27 at 19:58 UTC; afterwards `compass review --install` restored the shipped plugin.
+
+Result:
+
+| Measure | Value |
+|---|---|
+| `main.js` size | 869,992 bytes (the shipped one is 17,376) |
+| Library evaluation at load | 25 ms |
+| Ledger chart, Reading view | draws an svg of 50 points in 642 to 679 ms |
+| Ledger chart, Live Preview | no draw recorded |
+| Outside URL, both views | refused by the loader: "is not vault file (it names a scheme or drive)" |
+
+- Vega draws the ledger chart in Reading view and refuses data from outside the vault. Confidence: high.
+- In Live Preview the ledger block recorded nothing, on one run; a rerun with the note already open drew no block in either view. The cause is not established. Confidence: low.
+- The bundle makes the plugin 50 times larger. The `loadMermaid()` route of Trial B draws the same chart in both views with nothing added.

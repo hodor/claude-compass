@@ -375,3 +375,6 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 
 ### [[PLAN-025-review-across-files-and-sessions]]
 - [x] TASK-212: PLAN-024 TASK-206 points here
+
+### [[PLAN-024-working-in-compass-is-visual]]
+- [x] TASK-192: Trial D, reading a ledger
