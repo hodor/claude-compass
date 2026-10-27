@@ -124,8 +124,14 @@ def _one_line(text):
     return " ".join(text.split()) if isinstance(text, str) else ""
 
 
+def _key(name):
+    """The identity of a file named on the command line: its resolved,
+    case-normalized path."""
+    return os.path.normcase(str(Path(name).resolve()))
+
+
 def _reasons(files, whys):
-    """`{file argument: one-line reason}` from the `--why <path>=<line>`
+    """`{_key(file): one-line reason}` from the `--why <path>=<line>`
     values. A value names the file it belongs to by the path as given on the
     command line or as it resolves; the path ends at the `=` that follows it,
     so a reason may contain `=`."""
@@ -135,7 +141,7 @@ def _reasons(files, whys):
             matched = next((name for name in (given, str(Path(given).resolve()))
                             if raw.startswith(name + "=")), None)
             if matched:
-                reasons[given] = _one_line(raw[len(matched) + 1:])
+                reasons[_key(given)] = _one_line(raw[len(matched) + 1:])
                 break
         else:
             raise ValueError(f"--why needs <path>=<line> with a path among the files, got {raw!r}")
@@ -276,8 +282,13 @@ def _prepare(given):
 def run(args):
     try:
         opts = _parse(list(args))
-        given = list(dict.fromkeys(opts["files"]))
-        reasons = _reasons(given, opts["whys"])
+        given = []
+        seen = set()
+        for name in opts["files"]:
+            if _key(name) not in seen:
+                seen.add(_key(name))
+                given.append(name)
+        reasons = _reasons(opts["files"], opts["whys"])
         if reasons and len(given) < 2:
             raise ValueError("--why needs several files")
     except ValueError as exc:
@@ -313,7 +324,7 @@ def run(args):
     request, request_path = reviewlib.write_request(
         compass_vault, surface.NAME, context["root"], documents[0], opts["title"],
         step_aside=not surface.has_focus(), commit=commit,
-        documents=[(d, reasons.get(g)) for d, g in zip(documents, given)] if several else None,
+        documents=[(d, reasons.get(_key(g))) for d, g in zip(documents, given)] if several else None,
         session=os.environ.get("CLAUDE_CODE_SESSION_ID") or "",
         project=Path(compass_vault).parent.name)
     surface.deliver(context, request_path)
