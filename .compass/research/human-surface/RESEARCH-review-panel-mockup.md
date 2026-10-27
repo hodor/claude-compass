@@ -1,7 +1,7 @@
 ---
 title: "Review Panel: Mockup"
 type: research
-status: draft
+status: complete
 confidence: low
 area: methodology
 tags: [obsidian, plugin, mockup, review, side-panel, human-surface]
