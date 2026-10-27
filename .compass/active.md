@@ -59,7 +59,6 @@ Plan: [[PLAN-021-control-loops]].
 
 - [ ] TASK-208: Live check: right window per project
 - [ ] TASK-209: Live check: whose writes are edits, after 208
-- [ ] TASK-210: Mockup: panel over several files
 - [ ] TASK-211: one review of several files
 ## PLAN-022: review documents in Obsidian
 

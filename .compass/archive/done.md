@@ -383,3 +383,6 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 
 - [x] TASK-190: Trial B, Mermaid charts
 - [x] TASK-191: Trial C, bundled Vega-Lite
+
+### [[PLAN-025-review-across-files-and-sessions]]
+- [x] TASK-210: Mockup: panel over several files
