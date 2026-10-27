@@ -36,13 +36,13 @@ Where do the wall of text and the jargon come from, in the terminal and in the d
 
 Five researchers ran in parallel, one axis each, on 2026-10-26, and this document consolidates them.
 
-| Axis | Question | Method |
-|---|---|---|
-| 1 | Where the wall of text and jargon come from | Repository mining: ran 22 CLI commands, measured output and documents, counted terms |
-| 2 | What Obsidian can show | DESMET feature analysis: official docs, GitHub renderer trials (`gh api markdown`), CLI parsers run on probe files |
-| 3 | Claude artifacts and artifact-like pages in Obsidian | DESMET feature analysis: vendor docs, Obsidian 1.14.5 bundle and `obsidian.d.ts` read, plugin sources |
-| 4 | What Claude Code and the CLI can show | Systematic mapping: Claude Code docs as raw markdown, CLI code read and run, clig.dev |
-| 5 | Plain language, brevity, readability measurement | Systematic mapping: government style guides, peer-reviewed studies with OpenAlex/Crossref marks, Vale and textstat code |
+| Axis | Question                                             | Method                                                                                                                  |
+| ---- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 1    | Where the wall of text and jargon come from          | Repository mining: ran 22 CLI commands, measured output and documents, counted terms                                    |
+| 2    | What Obsidian can show                               | DESMET feature analysis: official docs, GitHub renderer trials (`gh api markdown`), CLI parsers run on probe files      |
+| 3    | Claude artifacts and artifact-like pages in Obsidian | DESMET feature analysis: vendor docs, Obsidian 1.14.5 bundle and `obsidian.d.ts` read, plugin sources                   |
+| 4    | What Claude Code and the CLI can show                | Systematic mapping: Claude Code docs as raw markdown, CLI code read and run, clig.dev                                   |
+| 5    | Plain language, brevity, readability measurement     | Systematic mapping: government style guides, peer-reviewed studies with OpenAlex/Crossref marks, Vale and textstat code |
 
 **Grading: allowed.** Each finding carries its confidence (how sure the claim is) and a grade (how much its kind of evidence should weigh for this topic). Executed probes, code read and official docs weigh high; forum posts, directory blurbs and search-engine summaries weigh low.
 
