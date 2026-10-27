@@ -407,7 +407,7 @@ class Install(ReviewProject):
 
 class Usage(ReviewProject):
     def test_usage_errors_exit_1_never_2(self):
-        for args in (["--status", "--install"], [], ["--timeout"], ["--timeout", "x", "f"], ["--timeout", "0", "f"], ["--bogus", "f"], ["a", "b"]):
+        for args in (["--status", "--install"], [], ["--timeout"], ["--timeout", "x", "f"], ["--timeout", "0", "f"], ["--bogus", "f"], ["a", "--why"]):
             code, _, err = self.review(*args)
             self.assertEqual(code, 1, args)
             self.assertIn("usage:", err)
