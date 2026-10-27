@@ -17,17 +17,6 @@ summary: "five trials in Obsidian and three agreed mockups first; then documents
 t he
 # Working in Compass Is Visual
 
-> [!IMPORTANT]
-> You decide: should Compass build one more task, TASK-226 (under "Wave 3" below)?
->
-> Today two approvals still happen only in the terminal:
-> - **Taxonomy** (`/compass:consolidate`): when folders get too full, Compass proposes new topic folders and which files move into them.
-> - **Bulk vault fix** (`/compass:vault-health`): one fix applied to many files at once.
->
-> TASK-226 makes both reach you in Obsidian, like specs and plans: the taxonomy proposal becomes a document with a picture of the folders before and after and one checkbox per new folder (ticked: create it; unticked: leave those files where they are).
->
-> Approve to build it. Handoff, retroactive, guide and learned also still ask in the terminal, but only short choices with no document behind them, so they stay there; say so if you want those moved too.
-
 ## Goal
 
 This plan implements [[specs/human-surface/SPEC-031-working-in-compass-is-visual]] from the evidence in [[research/human-surface/RESEARCH-working-in-compass-is-visual]]. Compass documents show diagrams, charts, callouts, embeds, block links, footnotes, a task table and a spec canvas where these replace text, and none grows heavier than its text-only version. Compass Review, Compass's own Obsidian plugin ("the plugin" below), draws what Obsidian cannot. A visual stays only if it removes at least as many bytes of text as it adds, or the human keeps it knowing its cost. The approval loop runs in the markdown editor and the terminal says one line.
@@ -197,4 +186,4 @@ How each Wave 2 task differs from its one-line sketch in the plan as first appro
 - 2026-10-27: Plan shortened for reading, detail moved to the archive file; the human's review asked for it.
 - 2026-10-27: TASK-206 leaves the walk through several files to the review panel of [[plans/PLAN-025-review-across-files-and-sessions]] and takes project and session names from its TASK-211.
 - 2026-10-27: Wave 2 approved; the "You decide" box left the plan at approval.
-- 2026-10-27: TASK-226 added: the review of Wave 2's checks asked that every document Compass needs reviewed, the taxonomy proposal included, open in the editor.
+- 2026-10-27: TASK-226 added and approved: the review of Wave 2's checks asked that every document Compass needs reviewed, the taxonomy proposal included, open in the editor.
