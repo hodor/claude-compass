@@ -1,12 +1,18 @@
 """Tests for the three-outcome decision parser."""
 
+import io
 import os
+import shutil
 import sys
+import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import decisionslib  # noqa: E402
+from commands import coverage, decisions as decisions_command  # noqa: E402
 
 
 def extract(text):
@@ -362,6 +368,211 @@ class QualifiedCrossReferenceTests(unittest.TestCase):
         wrongly qualify this and swallow a bare D-02."""
         text = "## Decisions\n\nSee XSPEC-015 D-02 in the other document.\n"
         self.assertEqual(extract(text), ([], "could-not-parse"))
+
+
+class CalloutDecisionTests(unittest.TestCase):
+    def test_bullets_in_a_callout_parse_at_any_depth(self):
+        """Adversarial where: the parser matches `- **D-NN:**` only at line
+        start, so a bullet behind one or more `>` markers reads as prose and
+        a callout holding every decision of a spec is `none-present` or
+        `could-not-parse`. Rows vary the quote depth, the spacing after the
+        marker, continuation lines, mixing with plain bullets and CRLF,
+        since each is a different way a prefix strip can be off by one."""
+        head = "## Decisions\n\n"
+        rows = [
+            ("one level, header line above",
+             head + "> [!important] You decide\n"
+             "> - **D-01:** First.\n> - **D-02:** Second.\n> - **D-03:** Third.\n",
+             ["D-01", "D-02", "D-03"], ["First.", "Second.", "Third."], [4, 5, 6]),
+            ("two levels, spaced",
+             head + "> > - **D-01:** Deep.\n", ["D-01"], ["Deep."], [3]),
+            ("two levels, compact",
+             head + ">> - **D-01:** Deep.\n", ["D-01"], ["Deep."], [3]),
+            ("three levels, mixed spacing",
+             head + "> >> - **D-01:** Deeper.\n", ["D-01"], ["Deeper."], [3]),
+            ("no space after the marker",
+             head + ">- **D-01:** Tight.\n", ["D-01"], ["Tight."], [3]),
+            ("continuation line inside the callout joins the text",
+             head + "> - **D-01:** First line\n>   continues here.\n",
+             ["D-01"], ["First line continues here."], [3]),
+            ("bullet outside and bullet inside the same section",
+             head + "- **D-01:** Plain.\n\n> - **D-02:** Quoted.\n",
+             ["D-01", "D-02"], ["Plain.", "Quoted."], [3, 5]),
+            ("CRLF line endings",
+             "## Decisions\r\n\r\n> - **D-01:** Windows.\r\n",
+             ["D-01"], ["Windows."], [3]),
+        ]
+        for name, text, ids, texts, lines in rows:
+            with self.subTest(name=name):
+                found, outcome = extract(text)
+                self.assertEqual(outcome, "parsed")
+                self.assertEqual([d["id"] for d in found], ids)
+                self.assertEqual([d["text"] for d in found], texts)
+                self.assertEqual([d["line"] for d in found], lines)
+
+    def test_callout_bullet_keeps_tags_and_stops_at_the_section_end(self):
+        """Adversarial where: a callout reader that scans the whole document
+        for quoted bullets would collect a `> - **D-99:**` that sits under a
+        later heading, and one that drops tag handling would leave a
+        `[deferred]` callout decision trackable, so a plan is failed for
+        not covering a parked ruling."""
+        text = (
+            "## Decisions\n\n"
+            "> - **D-01:** Tracked.\n"
+            "> - **D-02 [deferred]:** Parked.\n"
+            "\n"
+            "## Alternatives considered\n\n"
+            "> - **D-99:** outside the section.\n"
+        )
+        found, outcome = extract(text)
+        self.assertEqual(outcome, "parsed")
+        self.assertEqual([d["id"] for d in found], ["D-01", "D-02"])
+        self.assertEqual([d["trackable"] for d in found], [True, False])
+        self.assertEqual(found[1]["tags"], ["deferred"])
+
+    def test_trailing_block_id_is_dropped_from_the_decision_text(self):
+        """Adversarial where: a cited line carries ` ^d-01` so the link
+        `[[doc#^d-01]]` can reach it; if the id stays in the text, every
+        listing sees `Ship it. ^d-01` instead of the ruling. Rows bound the
+        strip: only an id at the very end of the decision goes, a caret
+        inside the sentence stays, and trailing spaces or a continuation
+        line ending in the id do not hide it."""
+        head = "## Decisions\n\n"
+        rows = [
+            ("plain bullet", head + "- **D-01:** Ship it. ^d-01\n", "Ship it."),
+            ("callout bullet", head + "> - **D-01:** Ship it. ^d-01\n", "Ship it."),
+            ("trailing spaces after the id",
+             head + "- **D-01:** Ship it. ^d-01   \n", "Ship it."),
+            ("id on the last continuation line",
+             head + "- **D-01:** Ship it\n  in two lines. ^d-01\n",
+             "Ship it in two lines."),
+            ("id with digits and hyphens only",
+             head + "- **D-01:** Ship it. ^a-9-b\n", "Ship it."),
+            ("caret glued to a word is not an id",
+             head + "- **D-01:** Raise x^2 on the way.\n", "Raise x^2 on the way."),
+            ("id mid-sentence is not trailing",
+             head + "- **D-01:** Ship ^d-01 it.\n", "Ship ^d-01 it."),
+            ("no id at all", head + "- **D-01:** Ship it.\n", "Ship it."),
+        ]
+        for name, text, expected in rows:
+            with self.subTest(name=name):
+                found, outcome = extract(text)
+                self.assertEqual(outcome, "parsed")
+                self.assertEqual(found[0]["text"], expected)
+
+    def test_callout_inside_a_code_fence_is_not_a_decision(self):
+        """Adversarial where: stripping the `>` prefix before the fence mask
+        is applied would make an authoring example (a callout shown inside
+        a fenced block) read as a real decision, or as an unparsed one that
+        fails the file. A fenced callout beside a real one must leave only
+        the real one."""
+        callout = "> [!important] You decide\n> - **D-01:** Example only.\n"
+        rows = [
+            ("backtick fence, no heading",
+             "# Guide\n\n```markdown\n" + callout + "```\n"),
+            ("backtick fence under a Decisions heading",
+             "## Decisions\n\n```markdown\n" + callout + "```\n"),
+            ("tilde fence under a Decisions heading",
+             "## Decisions\n\n~~~\n" + callout + "~~~\n"),
+        ]
+        for name, text in rows:
+            with self.subTest(name=name):
+                self.assertEqual(extract(text)[1], "none-present")
+        mixed = (
+            "## Decisions\n\n> - **D-01:** Real.\n\n"
+            "```markdown\n> - **D-99:** Example.\n```\n"
+        )
+        found, outcome = extract(mixed)
+        self.assertEqual(outcome, "parsed")
+        self.assertEqual([d["id"] for d in found], ["D-01"])
+
+    def test_malformed_callout_bullet_poisons_good_neighbours(self):
+        """Adversarial where: the malformed-bullet check runs on unquoted
+        lines only, so a `> - **D-` with a broken bold close inside a callout
+        passes silently and the decision vanishes from coverage without a
+        failure. One bad bullet among good ones, in and out of the callout,
+        must fail loud and still report the good ones."""
+        rows = [
+            ("one bad among good callout bullets",
+             "## Decisions\n\n> - **D-01:** Good.\n> - **D-02:* Broken close.\n"
+             "> - **D-03:** Also good.\n", ["D-01", "D-03"]),
+            ("bad callout bullet beside a good plain bullet",
+             "## Decisions\n\n- **D-01:** Good.\n> - **D-02 no separator\n",
+             ["D-01"]),
+            ("every callout bullet malformed",
+             "## Decisions\n\n> - **D-01 no separator\n", []),
+        ]
+        for name, text, ids in rows:
+            with self.subTest(name=name):
+                found, outcome = extract(text)
+                self.assertEqual(outcome, "could-not-parse")
+                self.assertEqual([d["id"] for d in found], ids)
+
+
+class CalloutCommandTests(unittest.TestCase):
+    CALLOUT_SPEC = (
+        "---\ntitle: Source spec\ntype: spec\nstatus: approved\n---\n\n"
+        "## Decisions\n\n"
+        "> [!important] You decide\n"
+        "> - **D-01:** first ruling ^d-01\n"
+        "> - **D-02:** second ruling\n"
+        "> - **D-03:** third ruling\n"
+    )
+
+    def setUp(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / ".compass").mkdir()
+        self.root = tmp / ".compass"
+        old = os.environ.get("CLAUDE_PROJECT_DIR")
+        os.environ["CLAUDE_PROJECT_DIR"] = str(tmp)
+        if old is None:
+            self.addCleanup(os.environ.pop, "CLAUDE_PROJECT_DIR", None)
+        else:
+            self.addCleanup(os.environ.__setitem__, "CLAUDE_PROJECT_DIR", old)
+
+    def write(self, rel, body):
+        path = self.root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body, encoding="utf-8")
+
+    def plan(self, cited):
+        items = ", ".join(f"SPEC-001-src/{d}" for d in cited)
+        return (
+            "---\ntitle: P\ntype: plan\nstatus: approved\n"
+            'depends_on: ["[[SPEC-001-src]]"]\n---\n\n## Phases\n\n'
+            f"- [ ] TASK-001: a - decisions: [{items}]\n"
+        )
+
+    def run_command(self, module, args):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = module.run(args)
+        return code, out.getvalue(), err.getvalue()
+
+    def test_plan_citing_callout_decisions_is_judged_by_coverage(self):
+        """Adversarial where: the spec's decisions are all in a callout, so
+        a reader blind to callouts reports `no decisions present` and
+        `compass coverage` passes a plan that cites none of them, and the
+        listing shows `^d-01` glued to the ruling. Citing all three must
+        pass; citing two must fail naming the third."""
+        self.write("specs/SPEC-001-src.md", self.CALLOUT_SPEC)
+
+        code, out, _ = self.run_command(decisions_command, ["SPEC-001-src"])
+        self.assertEqual(code, 0)
+        self.assertIn("3 decision(s)", out)
+        self.assertNotIn("^d-01", out)
+
+        self.write("plans/PLAN-001-p.md", self.plan(["D-01", "D-02", "D-03"]))
+        code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 0)
+        self.assertIn("3 covered, 0 scoped, 0 uncovered", out)
+
+        self.write("plans/PLAN-001-p.md", self.plan(["D-01", "D-02"]))
+        code, out, _ = self.run_command(coverage, ["PLAN-001-p"])
+        self.assertEqual(code, 1)
+        d3 = next(line for line in out.splitlines() if "D-03" in line)
+        self.assertIn("NOT COVERED", d3)
 
 
 if __name__ == "__main__":
