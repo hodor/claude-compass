@@ -5,19 +5,25 @@ A review is two JSON files in the Compass vault's `tmp/review/`:
 - `<id>.request.json`, written here:
   `{"id", "surface", "file", "title", "return", "commit"}`. `surface` names
   the interface the request went to; `file` is the reviewed document's path
-  relative to that surface's root, forward slashes. `return` asks the
+  relative to that surface's root, forward slashes. A request for several
+  files also carries `files`, `[{"file", "why"}]` in the order given, `why`
+  being a one-line reason or null and `files[0].file` equal to `file`;
+  `session`, the id of the session that asked (empty when unknown); and
+  `project`, the name of the folder holding the vault. `return` asks the
   surface to step aside after the verdict, set when it did not have focus
   as the request was made. `commit` is the full sha of the git HEAD the
   document was committed at when the request went out; the changes made
   during the review are everything that differs from it.
 - `<id>.verdict.json`, written by the surface on the human's answer:
   `{"id", "file", "verdict": "approved"|"changes", "notes", "at"}`, plus
-  two optional lists: `comments`, `{"file", "note"}` entries for notes the
-  human left on other files while reviewing, and `edited`, the paths of
-  other files the human changed.
+  three optional lists: `comments`, `{"file", "note"}` entries for notes the
+  human left on other files while reviewing, `edited`, the paths of other
+  files the human changed, and `files`, `{"file", "read", "note"}` entries
+  marking each listed file read or unread (`read` a boolean, `note` a string
+  or absent).
 
-A request with no verdict is pending; while it is pending the document
-belongs to the human. Removing a pending request's file withdraws it: its
+A request with no verdict is pending; while it is pending every file it
+lists belongs to the human. Removing a pending request's file withdraws it: its
 waiter ends and the surface drops the review. The surfaces themselves live
 in `review_surfaces`.
 """
@@ -62,14 +68,24 @@ def new_id():
     return time.strftime("%Y%m%dT%H%M%S") + "-" + secrets.token_hex(3)
 
 
-def write_request(compass_vault, surface, root, document, title=None, step_aside=True, commit=None):
+def _relative(document, root):
+    return Path(document).resolve().relative_to(Path(root).resolve()).as_posix()
+
+
+def write_request(compass_vault, surface, root, document, title=None, step_aside=True, commit=None,
+                  documents=None, session="", project=""):
     """Write a request for `document` on `surface` (its `NAME`), `file`
     relative to `root`, recording the git `commit` it was sent at; return
-    `(request, request_path)`."""
-    rel = Path(document).resolve().relative_to(Path(root).resolve()).as_posix()
+    `(request, request_path)`. `documents`, a list of `(path, why)` starting
+    with `document`, makes it a request for several files that also carries
+    `files`, `session` and `project`."""
     rid = new_id()
-    request = {"id": rid, "surface": surface, "file": rel, "title": title, "return": bool(step_aside),
-               "commit": commit}
+    request = {"id": rid, "surface": surface, "file": _relative(document, root)}
+    if documents:
+        request["files"] = [{"file": _relative(path, root), "why": why or None} for path, why in documents]
+        request["session"] = session or ""
+        request["project"] = project or ""
+    request.update({"title": title, "return": bool(step_aside), "commit": commit})
     directory = review_dir(compass_vault)
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"{rid}.request.json"
@@ -187,12 +203,23 @@ def verdict_path(request_path):
     return Path(request_path).with_name(name)
 
 
+def _valid_mark(entry):
+    return (
+        isinstance(entry, dict)
+        and isinstance(entry.get("file"), str)
+        and isinstance(entry.get("read"), bool)
+        and (entry.get("note") is None or isinstance(entry["note"], str))
+    )
+
+
 def valid_verdict(verdict, request):
     return (
         isinstance(verdict, dict)
         and verdict.get("id") == request["id"]
         and verdict.get("verdict") in VERDICTS
         and all(isinstance(verdict.get(key, []), list) for key in CARRIED_LISTS)
+        and isinstance(verdict.get("files", []), list)
+        and all(_valid_mark(entry) for entry in verdict.get("files", []))
     )
 
 
@@ -232,17 +259,29 @@ def _same_path(a, b):
     return os.path.normcase(os.path.normpath(str(a))) == os.path.normcase(os.path.normpath(str(b)))
 
 
+def request_files(request):
+    """The paths a request lists, in order: its `files` entries, else its
+    `file`."""
+    entries = request.get("files")
+    if isinstance(entries, list):
+        names = [e.get("file") for e in entries if isinstance(e, dict) and isinstance(e.get("file"), str)]
+        if names:
+            return names
+    return [request["file"]] if isinstance(request.get("file"), str) else []
+
+
 def under_review(compass_vault, target):
-    """The pending request whose document is `target`, or None. A request
-    naming no surface, or one that is not registered, is resolved by every
-    registered surface."""
+    """The pending request that lists `target` among its documents, or None.
+    A request naming no surface, or one that is not registered, is resolved
+    by every registered surface."""
     target = Path(target).resolve()
     for request in pending(compass_vault):
         surface = review_surfaces.named(request.get("surface"))
-        for candidate in [surface] if surface else review_surfaces.SURFACES:
-            path = candidate.resolve(request, compass_vault)
-            if path is not None and _same_path(Path(path).resolve(), target):
-                return request
+        for name in request_files(request):
+            for candidate in [surface] if surface else review_surfaces.SURFACES:
+                path = candidate.resolve({**request, "file": name}, compass_vault)
+                if path is not None and _same_path(Path(path).resolve(), target):
+                    return request
     return None
 
 

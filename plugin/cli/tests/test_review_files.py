@@ -344,5 +344,312 @@ class AfterTheAnswer(MultiFileProject):
         self.assertEqual(lines[header], self.changes_header)
 
 
+
+class SupersedeAcrossShapes(MultiFileProject):
+    def pending_ids(self):
+        return {r["id"] for r in self.requests()}
+
+    def test_a_new_request_withdraws_every_pending_request_it_overlaps_whatever_the_shapes(self):
+        """Adversarial where: the supersede loop looks only at a pending
+        request's first file (`file`), so a new request sharing only a later
+        file of a several-file request leaves both pending; or a one-file
+        request cannot withdraw a several-file one; or a disjoint request is
+        withdrawn along with the overlapping one."""
+        rows = [
+            ("single replaces multi through its last file", [self.plan, self.doc, self.spec2], [self.spec2]),
+            ("multi replaces single", [self.doc], [self.plan, self.doc]),
+            ("multi replaces multi through a middle file", [self.plan, self.doc], [self.spec2, self.doc]),
+        ]
+        for name, first, second in rows:
+            with self.subTest(name):
+                old = self.send(*map(str, first))
+                new = self.send(*map(str, second))
+                self.assertEqual(self.pending_ids(), {new["id"]})
+                self.assertNotEqual(old["id"], new["id"])
+                self.assertEqual(self.review("--cancel", new["id"])[0], 0)
+
+    def test_a_disjoint_request_leaves_the_pending_several_file_request_alone(self):
+        """Adversarial where: any new request withdraws every pending one, or
+        a several-file request is withdrawn by a request for a file it does
+        not list."""
+        old = self.send(str(self.plan), str(self.doc))
+        new = self.send(str(self.spec2))
+        self.assertEqual(self.pending_ids(), {old["id"], new["id"]})
+
+    def test_a_request_overlapping_two_pending_requests_withdraws_both(self):
+        """Adversarial where: the supersede loop stops after the first older
+        request it finds, because it iterates files and not pending requests."""
+        first = self.send(str(self.plan))
+        second = self.send(str(self.spec2))
+        new = self.send(str(self.plan), str(self.spec2))
+        self.assertEqual(self.pending_ids(), {new["id"]})
+        self.assertNotIn(first["id"], self.pending_ids())
+        self.assertNotIn(second["id"], self.pending_ids())
+
+
+class FileListSpelling(MultiFileProject):
+    def test_one_file_spelled_two_ways_is_listed_once(self):
+        """Adversarial where: dedup compares the strings on the command line,
+        so `x.md` and `./x.md` (or the same path in another letter case on
+        Windows) list one document twice, doubling its per-file line and
+        making a one-file review a several-file one."""
+        doc = str(self.doc)
+        before = os.getcwd()
+        os.chdir(self.vault)
+        self.addCleanup(os.chdir, before)
+        spellings = [os.path.join(os.path.dirname(doc), ".", os.path.basename(doc)),
+                     os.path.join("specs", "..", "specs", self.doc.name)]
+        if sys.platform == "win32":
+            spellings.append(doc.upper())
+        for spelling in spellings:
+            with self.subTest(spelling=spelling):
+                request = self.send(doc, spelling)
+                self.assertNotIn("files", request, "one document is a one-file review")
+                self.assertEqual(request["file"], "specs/SPEC-001-x.md")
+                self.assertEqual(self.review("--cancel", request["id"])[0], 0)
+
+    def test_a_repeated_path_among_several_keeps_first_position_and_its_reason(self):
+        """Adversarial where: a repeat moves the file to the end of the list,
+        or the repeat's absence of a reason overwrites the first one's."""
+        request = self.send(str(self.plan), str(self.doc), str(self.plan), str(self.spec2),
+                            "--why", f"{self.plan}=kept")
+        self.assertEqual([f["file"] for f in request["files"]],
+                         ["plans/PLAN-001-z.md", "specs/SPEC-001-x.md", "specs/SPEC-002-y.md"])
+        self.assertEqual(request["files"][0]["why"], "kept")
+
+    def test_why_for_a_path_not_among_the_files_is_refused_and_sends_nothing(self):
+        """Adversarial where: a reason for a committed file that is not in the
+        list is silently dropped (or attached to the nearest file), or the
+        refusal happens only after the request has gone out."""
+        outsider = self.vault / "specs" / "SPEC-009-outside.md"
+        outsider.write_text("# o\n", encoding="utf-8")
+        for name, raw in [("a real file not listed", f"{outsider}=why"),
+                          ("a path that exists nowhere", "nowhere.md=why"),
+                          ("a listed path with no equals sign after it", str(self.doc))]:
+            with self.subTest(name):
+                code, out, err = self.review(str(self.plan), str(self.doc), "--why", raw, "--no-wait")
+                self.assertEqual(code, 1, out)
+                self.assertIn("--why", err)
+                self.assertEqual(out, "")
+                self.assertEqual(self.requests(), [])
+                self.assertEqual(self.opened, [])
+
+    def test_why_alone_with_one_file_is_a_usage_error(self):
+        """Adversarial where: a one-file review accepts `--why` and writes
+        `files`, `session` and `project` for it, breaking the one-file shape."""
+        code, out, err = self.review(str(self.doc), "--why", f"{self.doc}=because", "--no-wait")
+        self.assertEqual(code, 1)
+        self.assertIn("several files", err)
+        self.assertEqual(self.requests(), [])
+
+    def test_why_matching_picks_the_longest_listed_path_and_keeps_later_equals_signs(self):
+        """Adversarial where: when one listed path is a prefix of another
+        (`a.md` and `a.md.bak`) the reason for the longer one is cut at the
+        shorter name, or a reason shaped like `<path>=text` is read as a
+        second path; an empty reason becomes a reason; whitespace in the
+        reason is not collapsed to one line."""
+        short = self.vault / "specs" / "a.md"
+        long = self.vault / "specs" / "a.md.bak"
+        short.write_text("s\n", encoding="utf-8")
+        long.write_text("l\n", encoding="utf-8")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "prefix names")
+        request = self.send(str(short), str(long),
+                            "--why", f"{long}={short}=nested  and\tspaced",
+                            "--why", f"{short}=")
+        whys = {f["file"]: f["why"] for f in request["files"]}
+        self.assertEqual(whys["specs/a.md.bak"], f"{short}=nested and spaced")
+        self.assertIsNone(whys["specs/a.md"], "an empty reason is no reason")
+
+
+class RefusalAcrossRepositories(MultiFileProject):
+    def other_project(self, name="other"):
+        import subprocess
+        from review_surfaces import obsidian
+        root = self.base / name
+        vault = root / ".compass"
+        (vault / "specs").mkdir(parents=True)
+        doc = vault / "specs" / "SPEC-001-o.md"
+        doc.write_text("# O\n", encoding="utf-8")
+        for args in (["init", "-q"], ["config", "user.name", "T"], ["config", "user.email", "t@e.invalid"],
+                     ["config", "core.autocrlf", "false"], ["add", "-A"], ["commit", "-q", "-m", "o"]):
+            subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+        listed = json.loads(self.config.read_text(encoding="utf-8"))
+        listed["vaults"][name] = {"path": str(vault)}
+        self.config.write_text(json.dumps(listed), encoding="utf-8")
+        plugin = vault / ".obsidian" / "plugins" / obsidian.PLUGIN_ID
+        plugin.mkdir(parents=True)
+        (plugin / "main.js").write_text("//", encoding="utf-8")
+        (vault / ".obsidian" / "community-plugins.json").write_text(json.dumps([obsidian.PLUGIN_ID]), encoding="utf-8")
+        return doc
+
+    def test_a_file_from_another_vault_and_repository_refuses_the_whole_review(self):
+        """Adversarial where: both files are individually configured and
+        committed, so each passes its own check, yet one request cannot hold
+        paths relative to two roots; the refusal must name the second file and
+        write nothing."""
+        other = self.other_project()
+        code, out, _ = self.review(str(self.doc), str(other), "--timeout", "2")
+        self.assertEqual(code, 1, out)
+        first = out.splitlines()[0]
+        self.assertTrue(first.startswith("not configured: "), first)
+        self.assertIn(str(other), first)
+        self.assertEqual(self.requests(), [])
+        self.assertEqual(self.opened, [])
+
+
+class AfterTheAnswerEdges(MultiFileProject):
+    def reviewed(self, files, during=None, extra=None):
+        self.answer(files, extra=extra, during=during)
+        return self.review(*map(str, self.trio), "--timeout", "5")
+
+    def test_a_verdict_entry_for_an_unlisted_file_prints_no_line_and_no_reprint(self):
+        """Adversarial where: the per-file lines follow the verdict's entries
+        instead of the request's list, so a stray entry (or a duplicate of a
+        listed one) adds a `file` line or reprints a file outside the request;
+        a listed file the verdict never marks is dropped instead of unread."""
+        files = [
+            {"file": "specs/SPEC-001-x.md", "read": True},
+            {"file": "specs/SPEC-001-x.md", "read": False},
+            {"file": "specs/ghost.md", "read": True, "note": "ghost note"},
+        ]
+        code, out, _ = self.reviewed(files)
+        self.assertEqual(code, 0, out)
+        file_lines = [ln for ln in out.splitlines() if ln.startswith("file ")]
+        self.assertEqual(len(file_lines), 3, file_lines)
+        self.assertEqual([ln.split()[1] for ln in file_lines],
+                         ["plans/PLAN-001-z.md", "specs/SPEC-001-x.md", "specs/SPEC-002-y.md"])
+        self.assertEqual(file_lines[0], "file plans/PLAN-001-z.md unread")
+        self.assertEqual(file_lines[2], "file specs/SPEC-002-y.md unread")
+        self.assertNotIn("as the human left it", out)
+
+    def test_a_listed_file_deleted_or_renamed_during_the_review_is_reported_not_raised(self):
+        """Adversarial where: reprinting a noted or edited file that no longer
+        exists raises out of the waiter (exit code 2 or a traceback) and loses
+        the notes and the change report, or the reprint of the files that
+        remain is skipped after the first failure."""
+        renamed = self.spec2.with_name("SPEC-002-renamed.md")
+        for name, change, restore in [
+            ("deleted", self.spec2.unlink, lambda: self.git("checkout", "--", ".")),
+            ("renamed", lambda: self.spec2.rename(renamed), lambda: renamed.rename(self.spec2)),
+        ]:
+            with self.subTest(name):
+                files = [{"file": "specs/SPEC-001-x.md", "read": True, "note": "keep"},
+                         {"file": "specs/SPEC-002-y.md", "read": True, "note": "gone"}]
+                code, out, _ = self.reviewed(files, during=change)
+                restore()
+                self.assertEqual(code, 0, out)
+                lines = out.splitlines()
+                gone = lines.index("--- specs/SPEC-002-y.md as the human left it ---")
+                self.assertIn("can no longer be read", lines[gone + 1])
+                self.assertIn("--- specs/SPEC-001-x.md as the human left it ---", lines)
+                self.assertIn("file specs/SPEC-002-y.md read note: gone", lines)
+                self.assertTrue(any(ln.startswith("--- changes since ") for ln in lines))
+
+    def test_a_whitespace_only_note_is_neither_shown_nor_a_reason_to_reprint(self):
+        """Adversarial where: the reprint test looks at the raw note while the
+        printed line looks at the collapsed one, so a note of spaces and
+        newlines reprints the file under a per-file line with no note."""
+        files = [{"file": "specs/SPEC-001-x.md", "read": True, "note": " \n\t "}]
+        code, out, _ = self.reviewed(files)
+        self.assertEqual(code, 0, out)
+        self.assertIn("file specs/SPEC-001-x.md read", out.splitlines())
+        self.assertNotIn("note:", out)
+        self.assertNotIn("as the human left it", out)
+
+    def test_a_reprinted_file_with_no_trailing_newline_does_not_swallow_the_next_marker(self):
+        """Adversarial where: the several-file reprint concatenates documents,
+        so a file whose text lacks a final newline leaves the next
+        `--- <file> as the human left it ---` marker glued to its last line."""
+        self.plan.write_text("# Plan Z\nno-newline-tail", encoding="utf-8")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "tail")
+        self.commit = self.git("rev-parse", "HEAD").stdout.strip()
+        files = [{"file": "plans/PLAN-001-z.md", "read": True, "note": "a"},
+                 {"file": "specs/SPEC-001-x.md", "read": True, "note": "b"}]
+        code, out, _ = self.reviewed(files)
+        self.assertEqual(code, 0, out)
+        lines = out.splitlines()
+        self.assertIn("no-newline-tail", lines)
+        self.assertIn("--- specs/SPEC-001-x.md as the human left it ---", lines)
+
+    def test_a_single_file_reprint_is_byte_for_byte_the_document(self):
+        """Adversarial where: the one-file review gains the several-file
+        trailing newline, so a document without a final newline is reprinted
+        with an extra one."""
+        self.doc.write_text("# X\nlast-line-no-newline", encoding="utf-8")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "tail")
+        self.commit = self.git("rev-parse", "HEAD").stdout.strip()
+        self.answer(None)
+        code, out, _ = self.review(str(self.doc), "--timeout", "5")
+        self.assertEqual(code, 0, out)
+        self.assertTrue(out.endswith("last-line-no-newline"), repr(out[-40:]))
+
+
+class GuardCoversEveryListedFile(MultiFileProject):
+    def denied(self, path, tool="Write"):
+        from commands import guard
+        return guard.decide(tool, {"file_path": str(path)}, str(self.tmp))[0]
+
+    def test_the_guard_denies_writes_to_every_listed_file_and_only_those(self):
+        """Adversarial where: the guard resolves only a request's `file`, so
+        files two and three of a several-file review stay writable; or an
+        unlisted file in the same folder is denied."""
+        unlisted = self.vault / "specs" / "SPEC-009-free.md"
+        unlisted.write_text("# f\n", encoding="utf-8")
+        request = self.send(str(self.plan), str(self.doc), str(self.spec2))
+        for tool in ("Write", "Edit", "MultiEdit"):
+            for path in self.trio:
+                with self.subTest(tool=tool, path=path.name):
+                    self.assertTrue(self.denied(path, tool))
+            with self.subTest(tool=tool, path="unlisted"):
+                self.assertFalse(self.denied(unlisted, tool))
+        self.assertEqual(self.review("--cancel", request["id"])[0], 0)
+        for path in self.trio:
+            with self.subTest(after="cancel", path=path.name):
+                self.assertFalse(self.denied(path))
+
+    def test_the_guard_matches_a_listed_file_spelled_with_other_separators_or_case(self):
+        """Adversarial where: the guard compares path strings, so a backslash
+        spelling, a `..` detour, or (on Windows) another letter case of a
+        listed file is writable while it is under review."""
+        self.send(str(self.plan), str(self.doc), str(self.spec2))
+        target = str(self.spec2)
+        spellings = [("dot-dot detour", str(self.vault / "plans" / ".." / "specs" / self.spec2.name))]
+        if sys.platform == "win32":
+            spellings += [("backslashes", target.replace("/", "\\")),
+                          ("forward slashes", target.replace("\\", "/")),
+                          ("upper case", target.upper()),
+                          ("lower case", target.lower())]
+        for name, spelling in spellings:
+            with self.subTest(name):
+                self.assertTrue(self.denied(spelling))
+
+    def test_the_guard_skips_a_request_whose_files_list_is_malformed(self):
+        """Adversarial where: a hand-edited or foreign request whose `files`
+        holds non-objects or entries without a `file` raises out of the guard
+        (a crash that blocks every write), or an empty `files` hides `file`."""
+        directory = reviewlib.review_dir(self.vault)
+        directory.mkdir(parents=True, exist_ok=True)
+        rows = [
+            ("entries are strings", ["specs/SPEC-002-y.md"]),
+            ("entries lack file", [{"why": "x"}, {"file": 3}]),
+            ("empty list keeps file", []),
+            ("files is not a list", "specs/SPEC-002-y.md"),
+        ]
+        for name, files in rows:
+            with self.subTest(name):
+                for old in directory.glob("*.json"):
+                    old.unlink()
+                (directory / "m1.request.json").write_text(json.dumps(
+                    {"id": "m1", "surface": "obsidian", "file": "specs/SPEC-001-x.md", "files": files}), encoding="utf-8")
+                self.assertTrue(self.denied(self.doc))
+                self.assertFalse(self.denied(self.spec2))
+                code, out, _ = self.review("--status")
+                self.assertEqual(code, 0)
+                self.assertEqual(out.splitlines(), ["pending m1 specs/SPEC-001-x.md"])
+
+
 if __name__ == "__main__":
     unittest.main()
