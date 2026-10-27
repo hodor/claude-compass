@@ -144,6 +144,15 @@ The words come from [[research/human-surface/RESEARCH-plain-words-mockup]], the 
 
 **Pause point:** when automated verification passes, the human confirms the manual checks before Wave 3 is detailed.
 
+### Wave 3 (detailed): every document Compass asks about opens in the editor
+
+> [!IMPORTANT]
+> You decide: add TASK-226 so the taxonomy proposal and the bulk vault fix reach you in Obsidian like specs and plans do? The other skills that still ask in the terminal (handoff, retroactive, guide, learned) ask short choices about no document, so they keep the terminal.
+
+- [ ] TASK-226: The approval points of `/compass:consolidate` and `/compass:vault-health` go through `compass review` when a review surface is set: consolidate writes its structure proposal (one section per proposed topic folder: the folder, the files that move, the index line that replaces theirs, the reason) as a draft document under `.compass/tmp/proposals/`, opening with a picture of the folders before and after and a "You decide" callout, with a checkbox per folder; a ticked box approves that folder, an unticked one leaves its files flat, and a note revises it. Vault-health writes its bulk fix as a document listing each file and the change, sent the same way. Without a review surface, the `AskUserQuestion` gates hold as they are - complexity: M, depends_on: none, files: [plugin/skills/consolidate/SKILL.md, plugin/skills/vault-health/SKILL.md, plugin/cli/tests/test_review_maintenance_text.py], decisions: [SPEC-030-review-documents-open-in-obsidian/D-04]
+  - Automated verification: tests: each skill sends its approval through `compass review` when a surface is set and keeps its `AskUserQuestion` fallback; the consolidate skill names the per-folder checkbox and the proposal's place under `.compass/tmp/proposals/`; neither file grows by more lines than it removes plus ten; `python -m pytest plugin/cli/tests` passes.
+  - Manual verification: the human approves the next real taxonomy proposal in Obsidian and says whether it reads as easily as a plan.
+
 ## Later (intent only)
 
 - [x] TASK-197: Mockup of what the plugin draws: a plan's task table and dependency graph, a loop's readings and cost over time, the spec tree canvas - files: [.compass/research/human-surface/RESEARCH-plugin-visuals-mockup.md], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-031-working-in-compass-is-visual/D-02]
@@ -180,3 +189,4 @@ How each Wave 2 task differs from its one-line sketch in the plan as first appro
 - 2026-10-27: Plan shortened for reading, detail moved to the archive file; the human's review asked for it.
 - 2026-10-27: TASK-206 leaves the walk through several files to the review panel of [[plans/PLAN-025-review-across-files-and-sessions]] and takes project and session names from its TASK-211.
 - 2026-10-27: Wave 2 approved; the "You decide" box left the plan at approval.
+- 2026-10-27: TASK-226 added: the review of Wave 2's checks asked that every document Compass needs reviewed, the taxonomy proposal included, open in the editor.
