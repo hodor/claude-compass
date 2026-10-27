@@ -360,3 +360,6 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 
 ### PLAN-024: working in Compass is visual
 - [x] TASK-189: Trial A, a plugin code block draws while editing
+
+### PLAN-024: working in Compass is visual
+- [x] TASK-194: Mockup: plain words

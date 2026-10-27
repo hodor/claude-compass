@@ -1,7 +1,7 @@
 ---
 title: "Plain Words: Mockup"
 type: research
-status: draft
+status: complete
 confidence: low
 area: methodology
 tags: [jargon, plain-language, mockup, cli, documents, human-surface]
