@@ -59,9 +59,6 @@ Plan: [[PLAN-021-control-loops]].
 
 - [ ] TASK-208: Live check: right window per project
 - [ ] TASK-209: Live check: whose writes are edits, after 208
-## [[PLAN-024-working-in-compass-is-visual]]
-
-- [ ] TASK-200: plain words in validate, hook lines
 ## PLAN-022: review documents in Obsidian
 
 Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).

@@ -399,3 +399,7 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 
 ### [[PLAN-024-working-in-compass-is-visual]]
 - [x] TASK-201: approval loop in the editor, after 199
+
+### [[PLAN-024-working-in-compass-is-visual]]
+
+- [x] TASK-200: plain words in validate, hook lines
