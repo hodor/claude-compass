@@ -378,3 +378,8 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 
 ### [[PLAN-024-working-in-compass-is-visual]]
 - [x] TASK-192: Trial D, reading a ledger
+
+### [[PLAN-024-working-in-compass-is-visual]]
+
+- [x] TASK-190: Trial B, Mermaid charts
+- [x] TASK-191: Trial C, bundled Vega-Lite

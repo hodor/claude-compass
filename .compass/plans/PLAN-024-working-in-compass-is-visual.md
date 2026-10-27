@@ -27,8 +27,8 @@ This plan implements [[specs/human-surface/SPEC-031-working-in-compass-is-visual
 flowchart LR
   subgraph W1["Wave 1: find out and agree"]
     T189["189 Trial A: drawing while editing"]:::done
-    T190["190 Trial B: Mermaid charts"]:::open
-    T191["191 Trial C: Vega-Lite size"]:::open
+    T190["190 Trial B: Mermaid charts"]:::done
+    T191["191 Trial C: Vega-Lite size"]:::done
     T192["192 Trial D: reading non-note files"]:::done
     T193["193 Trial E: a rewritten canvas"]:::done
     T194["194 Words mockup"]:::done
@@ -95,10 +95,10 @@ Obsidian with this vault registered and Compass Review on (`compass review` repo
 - [x] TASK-189: Trial A, does a code block draw while editing: a throwaway plugin registers a `compass-trial` block and logs each draw in Reading view and Live Preview; creates the trials document [[research/human-surface/RESEARCH-visual-trials-in-obsidian]] - complexity: S, depends_on: none, files: [.compass/tmp/trials/compass-trials/main.js, .compass/tmp/trials/compass-trials/manifest.json, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]
   - Automated verification: `node --check` on the trial plugin; `draws.jsonl` holds a draw for each view mode, or records which mode drew nothing; the trials document records the Obsidian version and the result; `compass validate` adds no warning.
   - Manual verification: none.
-- [ ] TASK-190: Trial B, charts through Obsidian's own Mermaid: the plugin builds an `xychart-beta` from the run log of [[LOOP-001-visual-questions]] and hands it to Obsidian's renderer; it passes when the chart draws in both views, and the result decides the chart renderer - complexity: S, depends_on: TASK-189, files: [.compass/tmp/trials/compass-trials/main.js, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]
+- [x] TASK-190: Trial B, charts through Obsidian's own Mermaid: the plugin builds an `xychart-beta` from the run log of [[LOOP-001-visual-questions]] and hands it to Obsidian's renderer; it passes when the chart draws in both views, and the result decides the chart renderer - complexity: S, depends_on: TASK-189, files: [.compass/tmp/trials/compass-trials/main.js, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]
   - Automated verification: `draws.jsonl` shows an SVG or a recorded error for each of the four cases; the readings in the drawn chart equal those parsed from `ledger.jsonl` by a script.
   - Manual verification: the human judges whether the chart reads as a metrics chart at pane width.
-- [ ] TASK-191: Trial C, Vega-Lite bundled into the review plugin: a trial build draws the same chart from vault files only; records `main.js` size, load time, both views, and whether a URL outside the vault is refused; then `compass review --install` restores the shipped copy - complexity: M, depends_on: TASK-189, files: [.compass/tmp/trials/compass-review-vega/build.py, .compass/tmp/trials/compass-review-vega/main.js, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]
+- [x] TASK-191: Trial C, Vega-Lite bundled into the review plugin: a trial build draws the same chart from vault files only; records `main.js` size, load time, both views, and whether a URL outside the vault is refused; then `compass review --install` restores the shipped copy - complexity: M, depends_on: TASK-189, files: [.compass/tmp/trials/compass-review-vega/build.py, .compass/tmp/trials/compass-review-vega/main.js, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]
   - Automated verification: `node --check` on the trial build; the recorded size matches `wc -c`; the out-of-vault URL is logged as refused; after restoring, `diff -r plugin/obsidian/compass-review .compass/.obsidian/plugins/compass-review` is empty.
   - Manual verification: the human compares this chart with Trial B's and says which reads better.
 - [x] TASK-192: Trial D, reading files that are not notes: Dataview's `dv.io.load` and the plugin's vault adapter each count the rows of the same `ledger.jsonl`; Dataview is turned off afterwards - complexity: S, depends_on: TASK-189, files: [.compass/tmp/trials/compass-trials/main.js, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]

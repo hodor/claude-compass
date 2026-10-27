@@ -61,10 +61,6 @@ Plan: [[PLAN-021-control-loops]].
 - [ ] TASK-209: Live check: whose writes are edits, after 208
 - [ ] TASK-210: Mockup: panel over several files
 - [ ] TASK-211: one review of several files
-## [[PLAN-024-working-in-compass-is-visual]]
-
-- [ ] TASK-190: Trial B, Mermaid charts
-- [ ] TASK-191: Trial C, bundled Vega-Lite
 ## PLAN-022: review documents in Obsidian
 
 Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
