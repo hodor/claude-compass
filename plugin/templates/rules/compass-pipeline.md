@@ -25,7 +25,7 @@ The test binds everything an agent writes, not only vault documents: code commen
 
 Before presenting any document, have fresh eyes read it: a cheap sub-agent holding only the document and these rules, never the conversation. A sentence the fresh reader cannot justify from the document alone is conversation residue; it goes.
 
-Compass documents should be a pleasure to read. Easy to read, short, sweet. Long only when needed. Never verbose.
+Compass documents should be a pleasure to read. Easy to read, short, sweet. Long only when needed. Never verbose. The `obsidian` skill holds the forms (opening picture, callouts, embeds) and the plain words a human reads.
 
 Brevity binds your own prose only. The human's captured words (spec problems, vision goals, quoted rulings) are content, and they stay in his sentences at whatever length he spoke them.
 
