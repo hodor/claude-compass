@@ -14,8 +14,19 @@ author: "planner"
 depends_on: ["[[specs/human-surface/SPEC-031-working-in-compass-is-visual]]", "[[research/human-surface/RESEARCH-working-in-compass-is-visual]]"]
 summary: "five trials in Obsidian and three agreed mockups first; then documents gain callouts, embeds, block links and footnotes, Compass's plugin draws task tables, graphs, charts and the spec canvas, and the CLI speaks short plain words, every visual earning its bytes"
 ---
-
+t he
 # Working in Compass Is Visual
+
+> [!IMPORTANT]
+> You decide: should Compass build one more task, TASK-226 (under "Wave 3" below)?
+>
+> Today two approvals still happen only in the terminal:
+> - **Taxonomy** (`/compass:consolidate`): when folders get too full, Compass proposes new topic folders and which files move into them.
+> - **Bulk vault fix** (`/compass:vault-health`): one fix applied to many files at once.
+>
+> TASK-226 makes both reach you in Obsidian, like specs and plans: the taxonomy proposal becomes a document with a picture of the folders before and after and one checkbox per new folder (ticked: create it; unticked: leave those files where they are).
+>
+> Approve to build it. Handoff, retroactive, guide and learned also still ask in the terminal, but only short choices with no document behind them, so they stay there; say so if you want those moved too.
 
 ## Goal
 
@@ -145,9 +156,6 @@ The words come from [[research/human-surface/RESEARCH-plain-words-mockup]], the 
 **Pause point:** when automated verification passes, the human confirms the manual checks before Wave 3 is detailed.
 
 ### Wave 3 (detailed): every document Compass asks about opens in the editor
-
-> [!IMPORTANT]
-> You decide: add TASK-226 so the taxonomy proposal and the bulk vault fix reach you in Obsidian like specs and plans do? The other skills that still ask in the terminal (handoff, retroactive, guide, learned) ask short choices about no document, so they keep the terminal.
 
 - [ ] TASK-226: The approval points of `/compass:consolidate` and `/compass:vault-health` go through `compass review` when a review surface is set: consolidate writes its structure proposal (one section per proposed topic folder: the folder, the files that move, the index line that replaces theirs, the reason) as a draft document under `.compass/tmp/proposals/`, opening with a picture of the folders before and after and a "You decide" callout, with a checkbox per folder; a ticked box approves that folder, an unticked one leaves its files flat, and a note revises it. Vault-health writes its bulk fix as a document listing each file and the change, sent the same way. Without a review surface, the `AskUserQuestion` gates hold as they are - complexity: M, depends_on: none, files: [plugin/skills/consolidate/SKILL.md, plugin/skills/vault-health/SKILL.md, plugin/cli/tests/test_review_maintenance_text.py], decisions: [SPEC-030-review-documents-open-in-obsidian/D-04]
   - Automated verification: tests: each skill sends its approval through `compass review` when a surface is set and keeps its `AskUserQuestion` fallback; the consolidate skill names the per-folder checkbox and the proposal's place under `.compass/tmp/proposals/`; neither file grows by more lines than it removes plus ten; `python -m pytest plugin/cli/tests` passes.
