@@ -72,9 +72,9 @@ def _report_vault_health(vault_root):
         return
     sys.stdout.write(f"  validate: {len(errors)} error(s), {len(warnings)} warning(s)\n")
     for finding in errors:
-        sys.stdout.write(f"    ERROR   {finding}\n")
+        sys.stdout.write(f"    ERROR   {validate_command.plain_finding(finding)}\n")
     for finding in warnings:
-        sys.stdout.write(f"    warning {finding}\n")
+        sys.stdout.write(f"    warning {validate_command.plain_finding(finding)}\n")
 
 
 def _check_target(vault_root, name, resolve):

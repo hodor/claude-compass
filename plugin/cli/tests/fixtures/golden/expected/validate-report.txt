@@ -1,13 +1,13 @@
 compass validate: 0 error(s), 12 warning(s)
-  warning frontmatter_missing_field: decisions/ADR-001-flat-vault-layout.md: summary
-  warning frontmatter_missing_field: handoffs/2026-06-14_09-00-00_foundation-session.md: summary
-  warning frontmatter_missing_field: plans/PLAN-001-foundation-build.md: summary
-  warning frontmatter_missing_field: research/RESEARCH-tiling-landscape.md: updated
-  warning frontmatter_missing_field: research/RESEARCH-tiling-landscape.md: summary
-  warning frontmatter_missing_field: specs/SPEC-001-vault-foundation.md: summary
-  warning frontmatter_missing_field: specs/SPEC-002-tile-editor/SPEC-001-master-material.md: summary
-  warning frontmatter_missing_field: specs/SPEC-002-tile-editor/SPEC-002-brush-system/SPEC-001-stroke-rendering.md: summary
-  warning frontmatter_missing_field: specs/SPEC-003-retired-experiment.md: summary
-  warning broken_wikilink: active.md:9: [[SPEC-999-mythical]]
-  warning sizing_unrecorded: specs/SPEC-002-tile-editor: predates the sizing log, no sizing_id recorded
-  warning sizing_unrecorded: specs/SPEC-002-tile-editor/SPEC-002-brush-system: predates the sizing log, no sizing_id recorded
+  warning decisions/ADR-001-flat-vault-layout.md: the document lacks the property summary its type needs. (frontmatter_missing_field)
+  warning handoffs/2026-06-14_09-00-00_foundation-session.md: the document lacks the property summary its type needs. (frontmatter_missing_field)
+  warning plans/PLAN-001-foundation-build.md: the document lacks the property summary its type needs. (frontmatter_missing_field)
+  warning research/RESEARCH-tiling-landscape.md: the document lacks the property updated its type needs. (frontmatter_missing_field)
+  warning research/RESEARCH-tiling-landscape.md: the document lacks the property summary its type needs. (frontmatter_missing_field)
+  warning specs/SPEC-001-vault-foundation.md: the document lacks the property summary its type needs. (frontmatter_missing_field)
+  warning specs/SPEC-002-tile-editor/SPEC-001-master-material.md: the document lacks the property summary its type needs. (frontmatter_missing_field)
+  warning specs/SPEC-002-tile-editor/SPEC-002-brush-system/SPEC-001-stroke-rendering.md: the document lacks the property summary its type needs. (frontmatter_missing_field)
+  warning specs/SPEC-003-retired-experiment.md: the document lacks the property summary its type needs. (frontmatter_missing_field)
+  warning active.md:9: a link to [[SPEC-999-mythical]] points to a document that does not exist. (broken_wikilink)
+  warning specs/SPEC-002-tile-editor: this folder was made before the shape record existed. (sizing_unrecorded)
+  warning specs/SPEC-002-tile-editor/SPEC-002-brush-system: this folder was made before the shape record existed. (sizing_unrecorded)

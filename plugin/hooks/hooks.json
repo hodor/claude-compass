@@ -31,7 +31,7 @@
           {
             "type": "command",
             "if": "Write(.compass/**/*.md)",
-            "statusMessage": "Syncing .compass index",
+            "statusMessage": "Updating the document index",
             "timeout": 30,
             "command": "[ -f \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" ] || exit 0; if command -v python3 >/dev/null 2>&1; then python3 \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" sync --hook; else python \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" sync --hook; fi"
           }
@@ -43,7 +43,7 @@
           {
             "type": "command",
             "if": "Edit(.compass/**/*.md)",
-            "statusMessage": "Syncing .compass index",
+            "statusMessage": "Updating the document index",
             "timeout": 30,
             "command": "[ -f \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" ] || exit 0; if command -v python3 >/dev/null 2>&1; then python3 \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" sync --hook; else python \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" sync --hook; fi"
           }
@@ -55,7 +55,7 @@
           {
             "type": "command",
             "if": "MultiEdit(.compass/**/*.md)",
-            "statusMessage": "Syncing .compass index",
+            "statusMessage": "Updating the document index",
             "timeout": 30,
             "command": "[ -f \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" ] || exit 0; if command -v python3 >/dev/null 2>&1; then python3 \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" sync --hook; else python \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" sync --hook; fi"
           }
@@ -78,7 +78,7 @@
         "hooks": [
           {
             "type": "command",
-            "statusMessage": "Picking up any stranded capture opportunity",
+            "statusMessage": "Picking up a lesson check an earlier session left unfinished",
             "timeout": 30,
             "command": "[ -f \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" ] || exit 0; if command -v python3 >/dev/null 2>&1; then python3 \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" capture-check --hook; else python \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" capture-check --hook; fi"
           }
@@ -90,7 +90,7 @@
         "hooks": [
           {
             "type": "command",
-            "statusMessage": "Checking for a capture opportunity",
+            "statusMessage": "Checking whether a lesson is worth recording",
             "timeout": 30,
             "command": "[ -f \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" ] || exit 0; if command -v python3 >/dev/null 2>&1; then python3 \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" capture-check --hook; else python \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" capture-check --hook; fi"
           }
@@ -102,7 +102,7 @@
         "hooks": [
           {
             "type": "command",
-            "statusMessage": "Recording teammate idle signal",
+            "statusMessage": "Noting that a teammate went idle",
             "timeout": 30,
             "command": "[ -f \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" ] || exit 0; if command -v python3 >/dev/null 2>&1; then python3 \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" capture-signal --hook; else python \"$CLAUDE_PROJECT_DIR/.claude/cli/compass\" capture-signal --hook; fi"
           }

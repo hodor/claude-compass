@@ -19,7 +19,7 @@ Two layers: the `compass` CLI does the deterministic checks (frontmatter, wikili
 python3 "$CLAUDE_PLUGIN_ROOT/cli/compass" validate
 ```
 
-`compass validate` checks required frontmatter per type, resolves every `[[wikilink]]` (skipping code blocks and inline code), and flags hot-path cap breaches. It exits 0 when clean, 1 with a per-defect report otherwise. Surface its output. Each finding is one of: `frontmatter_error`, `frontmatter_missing_field`, `broken_wikilink`, `cap_exceeded`.
+`compass validate` checks required frontmatter per type, resolves every `[[wikilink]]` (skipping code blocks and inline code), and flags hot-path cap breaches. It exits 0 when clean, 1 with a per-defect report otherwise. Surface its output. Each finding is a sentence ending with its code in brackets, one of: `frontmatter_error`, `frontmatter_missing_field`, `broken_wikilink`, `cap_exceeded`.
 
 ## 2. Orphan detection (`orphans`)
 

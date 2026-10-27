@@ -844,7 +844,11 @@ class MakeUnitTests(unittest.TestCase):
         with redirect_stdout(out):
             self.assertEqual(make_unit.run(["core", "--reason", "grouping the tile work", "--apply"]), 0)
         self.assertIn("validate:", out.getvalue())
-        self.assertIn("unclassified_root_folder: weird_folder", out.getvalue())
+        self.assertNotIn("unclassified_root_folder: weird_folder", out.getvalue())
+        self.assertRegex(
+            out.getvalue(),
+            r"weird_folder: .*workstream folder.*\(unclassified_root_folder\)",
+        )
 
     def test_reserved_name_precedes_stem_collision(self):
         """Adversarial where: the resolve-collision branch added by this

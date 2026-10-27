@@ -18,8 +18,8 @@ Read `.compass/index.md` and `.compass/meta/lessons-catalog.yaml`, and run `comp
 - `<!-- WARNING: index.md exceeded hot-path cap.` (in index.md)
 - `<!-- WARNING: hot path ` (in index.md)
 - `# WARNING: catalog exceeded cap.` (in the catalog)
-- a `folder_over_ceiling` warning from validate
-- a `taxonomy_hints: N pending` warning from validate
+- a `folder_over_ceiling` warning from validate (printed as a sentence ending `(folder_over_ceiling)`)
+- a `taxonomy_hints` warning from validate (printed as "N documents carry filing hints waiting for a decision. (taxonomy_hints)")
 - the human asking for a grouping proposal - in the invocation's arguments, in the conversation, or by invoking /compass:consolidate again right after a no-trigger exit. The ask IS the trigger: run the Structure pass; never answer an ask with another confirmation question.
 
 If none present, exit: `no consolidation needed (no trigger standing)`. A trigger is the contract; do not run unprompted.

@@ -330,6 +330,145 @@ def check_vault(vault_root):
     return errors, warnings
 
 
+# A finding as `check_vault` returns it: `<code>: <details>`.
+FINDING = re.compile(r"^([a-z]+(?:_[a-z]+)+): (.*)$", re.DOTALL)
+
+
+def _split_location(details):
+    """Split `details` at its first `: ` into (location, remainder); a
+    details string with no `: ` is all location."""
+    location, sep, rest = details.partition(": ")
+    return location, rest if sep else ""
+
+
+def _link_sentence(details):
+    location, rest = _split_location(details)
+    target = f" to {rest}" if rest else ""
+    return f"{location}: a link{target} points to a document that does not exist."
+
+
+def _ambiguous_sentence(details):
+    location, rest = _split_location(details)
+    link, _, matches = rest.partition(" -> ")
+    named = f" {link}" if link else ""
+    listed = f" ({matches})" if matches else ""
+    return (f"{location}: the link{named} could mean more than one document{listed}; "
+            f"write the longer form.")
+
+
+def _unreadable_sentence(details):
+    location, rest = _split_location(details)
+    why = f": {rest.rstrip('.')}" if rest else ""
+    return f"{location}: the properties at the top of this document cannot be read{why}."
+
+
+def _missing_property_sentence(details):
+    location, rest = _split_location(details)
+    which = f" {rest}" if rest else ""
+    return f"{location}: the document lacks the property{which} its type needs."
+
+
+def _size_limit_sentence(details):
+    named = details.replace("hot path", "start-here files")
+    return f"The start-here files are over their size limit: {named}."
+
+
+def _active_done_sentence(details):
+    count = re.match(r"(\d+) ", details)
+    if count:
+        return (f"Finished tasks are still in the active list ({count.group(1)} of "
+                f"them); compass sync moves them to the done list.")
+    return (f"{details}: finished tasks are still in the active list; compass sync "
+            f"moves them to the done list.")
+
+
+def _unrecorded_shape_sentence(details):
+    location, _ = _split_location(details)
+    return f"{location}: this folder was made before the shape record existed."
+
+
+def _orphaned_shape_sentence(details):
+    location, rest = _split_location(details)
+    named = re.match(r"sizing_id (\S+)", rest)
+    which = f" ({named.group(1)})" if named else ""
+    return f"{location}: this document names a shape record{which} that is missing."
+
+
+def _over_ceiling_sentence(details):
+    location, rest = _split_location(details)
+    counts = re.match(r"(\d+) direct children \(ceiling (\d+)\)", rest)
+    held = (f"holds {counts.group(1)} items, more than the {counts.group(2)} that read easily"
+            if counts else "holds more items than read easily")
+    return f"{location}: this folder {held}; Compass will propose topic folders."
+
+
+def _empty_scope_sentence(details):
+    location, _ = _split_location(details)
+    return f"{location}: a topic folder says nothing about what belongs in it."
+
+
+def _filing_hints_sentence(details):
+    counts = re.match(r"(\d+) pending(?: - (.*))?$", details)
+    if not counts:
+        return f"{details}: some documents carry filing hints waiting for a decision."
+    names = f": {counts.group(2)}" if counts.group(2) else ""
+    return (f"{counts.group(1)} documents carry filing hints waiting for a "
+            f"decision{names}.")
+
+
+def _unmarked_folder_sentence(details):
+    location, _ = _split_location(details)
+    return (f"{location}: this top-level folder holds notes but is not marked as a "
+            f"workstream folder; Compass skips it.")
+
+
+def _misshapen_loop_sentence(details):
+    location, _ = _split_location(details)
+    return (f"{location}: this loop folder is not laid out as a LOOP-NNN-name folder "
+            f"holding index.md; Compass skips it.")
+
+
+def _block_link_sentence(details):
+    location, rest = _split_location(details)
+    link, _, why = rest.partition(" - ")
+    named = f" {link}" if link else ""
+    reason = f": {why}" if why else ""
+    return f"{location}: the link{named} points to a marked line that is missing{reason}."
+
+
+# Each known code maps to a function turning its details into the sentence a
+# person reads. The sentence leads with the location; `plain_finding` appends
+# the code in brackets.
+PLAIN_SENTENCES = {
+    "broken_wikilink": _link_sentence,
+    "ambiguous_wikilink": _ambiguous_sentence,
+    "frontmatter_error": _unreadable_sentence,
+    "frontmatter_missing_field": _missing_property_sentence,
+    "cap_exceeded": _size_limit_sentence,
+    "active_done": _active_done_sentence,
+    "sizing_unrecorded": _unrecorded_shape_sentence,
+    "sizing_orphaned_id": _orphaned_shape_sentence,
+    "folder_over_ceiling": _over_ceiling_sentence,
+    "empty_scope": _empty_scope_sentence,
+    "taxonomy_hints": _filing_hints_sentence,
+    "unclassified_root_folder": _unmarked_folder_sentence,
+    "loop_misshapen": _misshapen_loop_sentence,
+    "broken_block_link": _block_link_sentence,
+}
+
+
+def plain_finding(finding):
+    """The text a person reads for one `check_vault` finding: a sentence that
+    names the location and ends with the code in brackets, so searches still
+    find the code. A finding whose code is not in `PLAIN_SENTENCES` (an exact
+    match, never a prefix) comes back unchanged."""
+    match = FINDING.match(finding)
+    if not match or match.group(1) not in PLAIN_SENTENCES:
+        return finding
+    code, details = match.groups()
+    return f"{PLAIN_SENTENCES[code](details)} ({code})"
+
+
 def run(args):
     errors, warnings = check_vault(vaultlib.find_vault_root())
     if not errors and not warnings:
@@ -337,7 +476,7 @@ def run(args):
         return 0
     sys.stderr.write(f"compass validate: {len(errors)} error(s), {len(warnings)} warning(s)\n")
     for finding in errors:
-        sys.stderr.write(f"  ERROR   {finding}\n")
+        sys.stderr.write(f"  ERROR   {plain_finding(finding)}\n")
     for finding in warnings:
-        sys.stderr.write(f"  warning {finding}\n")
+        sys.stderr.write(f"  warning {plain_finding(finding)}\n")
     return 1 if errors else 0
