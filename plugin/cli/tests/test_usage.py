@@ -122,13 +122,13 @@ class DoctorUsageRowTests(UsageFixture):
         return buf.getvalue()
 
     def test_row_present_when_record_missing(self):
-        self.assertIn("capability usage", self._doctor_output())
+        self.assertIn("commands you have not run", self._doctor_output())
 
     def test_young_record_stays_ok_with_state_named(self):
         usage_cmd.record("sync")
         out = self._doctor_output()
-        self.assertIn("unused so far", out)
-        self.assertNotIn("never used in", out)
+        self.assertIn("not run so far", out)
+        self.assertNotIn("not run in", out)
 
     def test_dead_commands_warn_once_record_is_old(self):
         usage_cmd.record("sync")
@@ -138,7 +138,7 @@ class DoctorUsageRowTests(UsageFixture):
         path.write_text(
             re.sub(r"since: \S+", "since: 2026-01-01", text), encoding="utf-8"
         )
-        self.assertIn("never used in", self._doctor_output())
+        self.assertIn("not run in", self._doctor_output())
 
 
 if __name__ == "__main__":

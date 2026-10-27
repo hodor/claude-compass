@@ -1,9 +1,9 @@
-"""`compass unit-check` - report unit-promotion candidates.
+"""`compass unit-check` - report workstreams that could get their own folder.
 
 Groups root-level artifacts by the spec they reach through `depends_on`
 wikilinks, followed transitively. When 3 or more distinct artifact types
-(the spec's own type included) trace to one spec, that group has type-spread
-and is printed as a candidate unit with its member list and a suggested
+(the spec's own type included) trace to one spec, that group is printed as a
+candidate workstream folder with its member list and a suggested
 `compass make-unit` invocation. Detection is mechanical; whether to promote
 is the human's decision, so the command only reports and always exits 0.
 """
@@ -16,9 +16,9 @@ import vaultlib
 TYPE_SPREAD_THRESHOLD = 3
 
 # A spec this many artifacts depend on directly is a vault-wide hub, not a
-# unit seed: half the vault tracing to it is dominance, not cohesion, and it
-# drowns the real candidates (SPEC-001 measured 17 inbound; genuine unit
-# seeds measure well under this).
+# workstream seed: half the vault tracing to it is dominance, not cohesion, and
+# it drowns the real candidates (SPEC-001 measured 17 inbound; genuine
+# workstream seeds measure well under this).
 HUB_INBOUND_CAP = 10
 
 WIKILINK = re.compile(r"\[\[([^\]]+)\]\]")
@@ -63,7 +63,7 @@ def _reachable_specs(rel, edges, by_path):
 
 
 def _suggested_name(spec_path):
-    """Unit-folder name suggestion: the spec's descriptive slug (the
+    """Workstream folder name suggestion: the spec's descriptive slug (the
     `SPEC-NNN-` prefix dropped), falling back to the full stem. A folder
     spec's document is its own `index.md`, so the folder carries the name."""
     stem = spec_path.stem
@@ -122,12 +122,16 @@ def find_candidates(vault_root):
 
 def format_report(vault_root, candidates):
     if not candidates:
-        return "compass unit-check: no candidates (no spec with type-spread >= 3)"
+        return ("compass unit-check: no candidates (no spec has 3 or more kinds of "
+                "document tied to it)")
     lines = [f"compass unit-check: {len(candidates)} candidate(s)"]
     for spec_rel, members, types in candidates:
         name = _suggested_name(vault_root / spec_rel)
         lines.append("")
-        lines.append(f"candidate: {name} (type-spread {len(types)}: {', '.join(types)})")
+        lines.append(
+            f"candidate: {name} ({len(types)} kinds of document tied to one spec: "
+            f"{', '.join(types)})"
+        )
         lines.append(f"  spec: {spec_rel}")
         lines.append("  members:")
         for member in members:

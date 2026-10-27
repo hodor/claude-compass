@@ -384,7 +384,7 @@ class UnitCheckTests(unittest.TestCase):
         with redirect_stdout(out):
             self.assertEqual(unit_check.run([]), 0)
         text = out.getvalue()
-        self.assertIn("candidate: core (type-spread 3: decision, plan, spec)", text)
+        self.assertIn("candidate: core (3 kinds of document tied to one spec: decision, plan, spec)", text)
         self.assertIn("- plans/PLAN-001-impl.md", text)
         self.assertIn(
             "compass make-unit core decisions/ADR-001-choice.md "
