@@ -23,13 +23,13 @@ Three documents as the human reads them to approve them: [[specs/human-surface/S
 | Document | Real file | Text replaced | Mocked text | Of which pictures | Real file after the change |
 |---|---|---|---|---|---|
 | Spec: SPEC-031 | 1696 | 1335 | 2153 | 539 | 2514 |
-| Plan: PLAN-024 | 19191 | 5571 | 4041 | 1163 | 17661 |
+| Plan: PLAN-024 | 20684 | 6005 | 4203 | 1166 | 18882 |
 | Research: working in Compass is visual | 64940 | 2508 | 2771 | 814 | 65203 |
-| Total | 85827 | 9414 | 8965 | 2516 | 85378 |
+| Total | 87320 | 9848 | 9127 | 2519 | 86599 |
 
 Bytes with LF endings. "Real file" is the whole vault file. "Text replaced" is the part the mock rewrites: for the spec everything under its title, for the plan Goal through "How D-02 is measured", for the research the opening summary up to Question. "Mocked text" is its replacement and "Of which pictures" the Mermaid blocks inside it. "Real file after the change" is Real file minus Text replaced plus Mocked text. The text replaced, the mocked text and the pictures are saved in `.compass/tmp/mockups/documents/` as `spec`, `plan` and `research` with `.before.md`, `.after.md` and `.visual.md` endings; `wc -c` on them reproduces the table. The folded blocks are not counted: they stand for sections the document keeps as written.
 
-Net change: spec +818, plan -1530, research +263, total -449. The plan shrinks because its choices become a table; the spec and research pictures add bytes and remove none, so the human decides whether they earn them.
+Net change: spec +818, plan -1802, research +263, total -721. The plan shrinks because its choices become a table; the spec and research pictures add bytes and remove none, so the human decides whether they earn them.
 
 ## Working in Compass Is Visual (SPEC-031), a spec
 
@@ -75,11 +75,11 @@ flowchart LR
     T193["193 Trial E: a canvas Compass rewrites"]:::open
     T194["194 Mockup: plain words"]:::done
     T195["195 Mockup: documents"]:::open
-    T196["196 Mockup: terminal output"]:::open
+    T196["196 Mockup: approval loop"]:::open
   end
   subgraph S2["Stage 2: build what was agreed"]
     T197["197 Mockup: what the plugin draws"]:::later
-    B["198 to 201 Build the agreed parts<br/>decisions reader, writing rules, words, terminal"]:::later
+    B["198 to 201 Build the agreed parts<br/>decisions reader, writing rules, words, approval loop"]:::later
   end
   subgraph S3["Stage 3: the plugin draws"]
     V["202 to 204 Task table, charts, spec canvas"]:::later
@@ -116,7 +116,7 @@ Numbers are task ids. Trials are experiments run in Obsidian; mockups are pages 
 | Spec canvas | Compass owns which cards exist, the human owns where they sit |
 | Pages like Claude artifacts | inside Obsidian, drawn by the plugin |
 | Coined terms | plain words; a short definition at first use; no glossary file |
-| Terminal visuals | none: no color or glyphs, shorter plain text instead |
+| Terminal visuals | none: no color or glyphs; one line in the terminal when the markdown editor holds the document, shorter plain text otherwise |
 | Lowest Obsidian version | 1.9.0, raised only if a trial needs more |
 | Where visuals live | plugin-drawn blocks inside documents; Bases (Obsidian's tables of notes) for lists of whole notes |
 | Chart format | a small Compass block drawn with Obsidian's Mermaid; Vega-Lite, a heavier chart library, only if Trial B fails |
@@ -129,7 +129,7 @@ Numbers are task ids. Trials are experiments run in Obsidian; mockups are pages 
 
 ### Goal
 
-This plan implements [[specs/human-surface/SPEC-031-working-in-compass-is-visual|Working in Compass Is Visual (SPEC-031)]], whose rulings are D-01 (use these forms) and D-02 (do not bloat), from the evidence in [[research/human-surface/RESEARCH-working-in-compass-is-visual|the research]]. Compass documents show diagrams, charts, callouts, embeds, block links, footnotes, a task table and a spec canvas where these replace text. Compass Review, the Obsidian plugin Compass ships, draws what Obsidian cannot. The terminal says less, in plain words. No document grows heavier than the same document written without pictures.
+This plan implements [[specs/human-surface/SPEC-031-working-in-compass-is-visual|Working in Compass Is Visual (SPEC-031)]], whose rulings are D-01 (use these forms) and D-02 (do not bloat), from the evidence in [[research/human-surface/RESEARCH-working-in-compass-is-visual|the research]]. Compass documents show diagrams, charts, callouts, embeds, block links, footnotes, a task table and a spec canvas where these replace text. Compass Review, the Obsidian plugin Compass ships, draws what Obsidian cannot. The approval loop runs in the markdown editor, where the terminal says one line; plain words in the terminal are the fallback. No document grows heavier than the same document written without pictures.
 
 ### How the plan keeps documents light
 
