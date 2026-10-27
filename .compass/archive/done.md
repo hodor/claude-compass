@@ -386,3 +386,10 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 
 ### [[PLAN-025-review-across-files-and-sessions]]
 - [x] TASK-210: Mockup: panel over several files
+
+### [[PLAN-025-review-across-files-and-sessions]]
+- [x] TASK-211: one review of several files
+
+### [[PLAN-024-working-in-compass-is-visual]]
+- [x] TASK-198: decisions read inside callouts
+- [x] TASK-199: writing rules: forms, bytes, words

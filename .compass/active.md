@@ -59,11 +59,8 @@ Plan: [[PLAN-021-control-loops]].
 
 - [ ] TASK-208: Live check: right window per project
 - [ ] TASK-209: Live check: whose writes are edits, after 208
-- [ ] TASK-211: one review of several files
 ## [[PLAN-024-working-in-compass-is-visual]]
 
-- [ ] TASK-198: decisions read inside callouts
-- [x] TASK-199: writing rules: forms, bytes, words
 - [ ] TASK-200: plain words in validate, hook lines
 - [ ] TASK-225: plain words in doctor, command list
 - [ ] TASK-201: approval loop in the editor, after 199
