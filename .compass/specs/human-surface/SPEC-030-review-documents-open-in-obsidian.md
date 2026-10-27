@@ -7,7 +7,7 @@ area: methodology
 tags: [obsidian, review, human-gates]
 summary: "when configured, Compass always opens the thing the human should review in Obsidian instead of just asking"
 created: 2026-10-24
-updated: 2026-10-25
+updated: 2026-10-27
 approved: 2026-10-24
 ---
 
@@ -32,3 +32,4 @@ Related: [[SPEC-029-questions-to-the-human-are-clear-and-visual]].
 - **D-03:** For embeds and navigating inside Obsidian, the review tracks it properly, so the human doesn't lose track of the original question, and he also has the possibility to give feedback on other files he is navigating. The review lives in one panel at the side (layout B of [[RESEARCH-review-mockup]]).
 - **D-04:** When the human approves something on Obsidian through the plugin, he does NOT have to approve again in the terminal.
 - **D-05:** Committing to git and reviewing git after should be a required step. It's how you'll really know the deltas.
+- **D-06:** We should also be able to have multiple projects with multiple Compass running multiple Obsidians, and those Obsidians' plugin should guide the users through multiple files if needed.
