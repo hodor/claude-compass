@@ -37,7 +37,11 @@ flowchart LR
   end
   subgraph W2["Wave 2: build what was agreed"]
     T197["197 Plugin drawings mockup"]:::done
-    B["198 to 201 Decisions reader, writing rules, plain words, approval loop"]:::later
+    T198["198 Decisions read inside callouts"]:::open
+    T199["199 Writing rules: forms, bytes, words"]:::open
+    T200["200 Plain words: validate, hook lines"]:::open
+    T225["225 Plain words: doctor, command list"]:::open
+    T201["201 Approval loop in the editor"]:::open
   end
   subgraph W3["Wave 3: the plugin draws"]
     V["202 to 204, 206, 207 Task table, charts, spec canvas, views"]:::later
@@ -45,28 +49,30 @@ flowchart LR
   end
   T189 --> T190 & T191 & T192
   T192 --> T193
-  T194 --> T195 & T196
+  T194 --> T195 & T196 & T200 & T225
   T190 & T191 & T192 & T193 & T197 --> V
-  T195 & T196 --> B
-  V & B --> A
+  T195 --> T199
+  T198 --> T200
+  T196 & T199 --> T201
+  V & T198 & T200 & T225 & T201 --> A
   classDef done fill:#cfc,color:#000
   classDef open fill:#ffa,color:#000
   classDef later fill:#eee,color:#000
 ```
 
-Numbers are task ids; a wave is a group of tasks planned in detail together; later waves stay sketched until the one before is verified. Green is done, yellow is detailed and not started, grey is sketched under Later.
+Numbers are task ids; a wave is a group of tasks planned in detail together; later waves stay sketched until the one before is verified. Green is done, yellow is detailed and not started, grey is sketched under Later. TASK-197, done ahead of its wave, is listed under Later.
 
 > [!IMPORTANT]
-> You decide: approve the plan and the 15 choices below, all recommended, or comment on a row to change that choice.
+> You decide: approve Wave 2, the five yellow tasks detailed under "Wave 2 (detailed)" and the changes listed under "Wave 2 elaborated", or comment on a task to change it. The 15 choices below were approved with the plan on 2026-10-27, all as recommended; comment on a row to reopen that choice.
 
 | Choice                      | The plan's answer (recommended)                                                                                                   |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Charts of metrics           | drawn by the plugin from a short block naming a data file                                                                         |
+| Charts of metrics           | drawn by the plugin from a short code block naming a data file                                                                    |
 | Decisions in callouts       | decisions sit in callouts (highlighted boxes); `compass decisions` learns to read them                                            |
 | Embeds                      | embed a section instead of copying it                                                                                             |
 | Task table                  | drawn by the plugin from the task lines, never written into the file                                                              |
 | Spec canvas                 | the spec tree as a canvas (a board of cards): Compass owns which cards exist, the human owns where they sit                       |
-| Pages like Claude artifacts | inside Obsidian, through the plugin                                                                                               |
+| Pages like Claude artifacts | interactive pages like those Claude builds on claude.ai, drawn inside Obsidian through the plugin                                 |
 | Coined terms                | plain words, a short definition at first use, no glossary file                                                                    |
 | Terminal visuals            | none; one line when the markdown editor holds the document, shorter plain text otherwise                                          |
 | Lowest Obsidian version     | 1.9.0, raised only if a trial needs more                                                                                          |
@@ -74,7 +80,7 @@ Numbers are task ids; a wave is a group of tasks planned in detail together; lat
 | Chart format                | a small Compass block drawn by Obsidian's Mermaid (diagrams from text); Vega-Lite, a heavier chart library, only if Trial B fails |
 | Chart library loading       | no library is bundled into the plugin unless Trial B fails                                                                        |
 | Data that is not notes      | the plugin reads run logs and task lines directly                                                                                 |
-| Views                       | the seven template views of [[research/human-surface/RESEARCH-plugin-ui-mockup]]; an agent writes its own when none fits          |
+| Views                       | the seven ready-made (template) views of [[research/human-surface/RESEARCH-plugin-ui-mockup]]; an agent writes its own when none fits |
 | How much a drawing may do   | template views read vault files only; an agent's own view is a script, reviewed in the `git diff`                                 |
 
 The reasons behind each choice, how the byte rule is measured, the full task text and the earlier log entries are in [[archive/PLAN-024-working-in-compass-is-visual-detail]].
@@ -119,19 +125,47 @@ Obsidian with this vault registered and Compass Review on (`compass review` repo
 
 **Pause point:** when automated verification passes and every mockup has a verdict, the human confirms the trial results before Wave 2 is detailed.
 
+### Wave 2 (detailed): build what was agreed
+
+The words come from [[research/human-surface/RESEARCH-plain-words-mockup]], the document shape from [[research/human-surface/RESEARCH-visual-documents-mockup]], the approval loop from [[research/human-surface/RESEARCH-terminal-output-mockup]]. Every check of a `plugin/` change greps or tests `plugin/` itself, since `compass doctor` and `compass validate` run from the local install in `.claude/`, which holds the older copy until `/compass:update` refreshes it.
+
+- [ ] TASK-198: `compass decisions` reads decision bullets inside a callout (lines opened by `>`, at any depth) under a Decisions heading, and drops a trailing block id (`^id`) from the decision text; `compass validate` warns `broken_block_link` when `[[doc#^id]]` names an id its target lacks - complexity: M, depends_on: none, files: [plugin/cli/decisionslib.py, plugin/cli/commands/validate.py, plugin/cli/tests/test_decisionslib.py, plugin/cli/tests/test_validate_block_links.py], decisions: [SPEC-031-working-in-compass-is-visual/D-01], lessons: [LESSON-wikilink-validator-skip-code]
+  - Automated verification: tests, where `parsed`, `none-present` and `could-not-parse` are the parse statuses `compass decisions` reports: three decisions in a callout parse as `parsed` and a plan citing them passes `compass coverage`; the same callout inside a code fence is `none-present`; a malformed `> - **D-` beside good ones is `could-not-parse`; a trailing ` ^d-01` is dropped from the decision text; a block link to a present id is clean, to a missing id warns, inside inline code is skipped; `python -m pytest plugin/cli/tests` passes; `compass coverage` gives every plan in this vault the verdict it gave before.
+  - Manual verification: none.
+- [ ] TASK-199: The obsidian skill teaches the forms and words the human agreed in the documents and plain-words mockups: each spec, plan and research template opens with a picture of what is approved and a "You decide" callout; callouts use only the five types GitHub draws (note, tip, important, warning, caution); decision bullets sit in a callout under the Decisions heading and a document citing a decision links that heading, while block ids mark cited lines outside callouts; a section is embedded, never copied; a visual stays only when it removes as many bytes as it adds or the human keeps it knowing its cost; the agreed word list joins the skill, with words a program reads (field names, codes, heading grammar) kept unchanged in the files that hold them; one line in the Document Writing section of the pipeline rules (`compass-pipeline.md`) points to the skill - complexity: M, depends_on: none (PLAN-021 TASK-163 also edits the obsidian skill: whichever lands second rebases), files: [plugin/skills/obsidian/SKILL.md, plugin/templates/rules/compass-pipeline.md, plugin/cli/tests/test_writing_rules.py], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-031-working-in-compass-is-visual/D-02], lessons: [LESSON-remove-context-before-adding, LESSON-obsidian-bare-link-creates-stray-note]
+  - Automated verification: tests: the skill names the five callout types and no other, states the byte rule, and carries every "Say instead" word of the Terms table in [[research/human-surface/RESEARCH-plain-words-mockup]]; the pipeline rules file has no more lines than before; `python -m pytest plugin/cli/tests` passes.
+  - Manual verification: the human reads the skill's new section and says whether it describes the documents he approved in the documents mockup.
+- [ ] TASK-200: `compass validate` and the hook status lines speak the agreed words: each finding prints a plain sentence with its details first and its code last in brackets, worded as the Warning codes table of [[research/human-surface/RESEARCH-plain-words-mockup]]; the findings `check_vault` returns keep their code-first form for the programs that read them, and `make-unit`'s report prints the same sentences; each hook status text with a coined term takes the agreed words, and the two status texts shown in moment 10 ("Hook lines in the loop") of [[research/human-surface/RESEARCH-terminal-output-mockup]], the index update and the lesson check, take that wording verbatim - complexity: M, depends_on: TASK-198 (validate.py), files: [plugin/cli/commands/validate.py, plugin/cli/commands/make_unit.py, plugin/hooks/hooks.json, plugin/cli/tests/test_validate_plain.py]
+  - Automated verification: tests: every code `validate.py` can emit, collected from its source, renders as a sentence ending in `(code)`; an unknown code prints unchanged; `check_vault` results still start with their code; no `hooks.json` status text contains "capture opportunity", "signal" or ".compass index"; `python -m pytest plugin/cli/tests` passes.
+  - Manual verification: the human reads one `compass validate` run and says whether it reads plainly.
+- [ ] TASK-225: `compass doctor`, `compass unit-check` and the command list speak the agreed words: doctor's row names and details, which use terms such as unit-promotion candidates, capture posture, worker ledger, host materializations, overlay and NEVER USED, and each command's one-line help use the words of [[research/human-surface/RESEARCH-plain-words-mockup]]; command names stay - complexity: M, depends_on: none (PLAN-022 TASK-168 edits doctor.py and test_doctor.py; PLAN-021 TASK-161 and this plan's TASK-204 edit maincli.py: whichever lands second rebases and adds no line in the old words), files: [plugin/cli/commands/doctor.py, plugin/cli/commands/unit_check.py, plugin/cli/maincli.py, plugin/cli/tests/test_plain_words.py]
+  - Automated verification: tests: no doctor row, unit-check line or help line contains a term the mockup replaces; `doctor`'s exit codes are unchanged on a clean and a broken fixture; every command name in `COMMAND_SPECS` is unchanged; `python -m pytest plugin/cli/tests` passes.
+  - Manual verification: the human reads one `compass doctor` run and says whether it reads plainly.
+- [ ] TASK-201: The approval loop runs in the markdown editor as agreed in [[research/human-surface/RESEARCH-terminal-output-mockup]]: with a review surface (a markdown editor set up to receive reviews), a spec, plan or research reaches the human as the document itself, opening with its picture and "You decide" callout, any guess the agent made marked inline; the planned research axes, the human's own questions and a checkbox for whether findings get graded are a draft research document sent for review; a document sent back after a changes verdict opens with a "Since your last review" callout; the "You decide" callout leaves the file at approval; the terminal says one line naming the document's title, id and commit; without a review surface, the mockup's plain-text fallback and `AskUserQuestion` gates hold - complexity: L, depends_on: TASK-199 (pipeline rules; PLAN-025 TASK-218 edits the pipeline rules, the plan skill and the planner: whichever lands second rebases), files: [plugin/templates/rules/compass-pipeline.md, plugin/skills/spec/SKILL.md, plugin/skills/plan/SKILL.md, plugin/skills/research/SKILL.md, plugin/templates/agents/planner.md, plugin/cli/tests/test_approval_loop_text.py], decisions: [SPEC-030-review-documents-open-in-obsidian/D-04], lessons: [LESSON-walkthroughs-in-the-humans-words, LESSON-remove-context-before-adding]
+  - Automated verification: tests: the spec, plan and research skills each send their gate through `compass review` when a surface is set and keep the `AskUserQuestion` fallback; the research skill names "Your questions" and the grading checkbox; the pipeline rules state the one terminal line; no edited file grows by more lines than it removes; `python -m pytest plugin/cli/tests` passes.
+  - Manual verification: the human approves one real spec, plan or research in Obsidian after this ships and says whether the terminal line and the document match the mockup.
+
+**Pause point:** when automated verification passes, the human confirms the manual checks before Wave 3 is detailed.
+
 ## Later (intent only)
 
 - [x] TASK-197: Mockup of what the plugin draws: a plan's task table and dependency graph, a loop's readings and cost over time, the spec tree canvas - files: [.compass/research/human-surface/RESEARCH-plugin-visuals-mockup.md], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-031-working-in-compass-is-visual/D-02]
-- [ ] TASK-198: `compass decisions` reads decision bullets inside a callout and drops a trailing block id from the decision text; `compass validate` resolves block links - files: [plugin/cli/decisionslib.py, plugin/cli/commands/validate.py, plugin/cli/tests/test_decisionslib.py], decisions: [SPEC-031-working-in-compass-is-visual/D-01]
-- [ ] TASK-199: The writing rules teach the agreed forms and the byte rule - files: [plugin/skills/obsidian/SKILL.md, plugin/skills/spec/SKILL.md, plugin/skills/plan/SKILL.md, plugin/skills/research/SKILL.md, plugin/templates/agents/planner.md], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-031-working-in-compass-is-visual/D-02]
-- [ ] TASK-200: The agreed plain words replace the coined terms wherever the human reads them - files: [plugin/cli/commands/doctor.py, plugin/cli/commands/validate.py, plugin/cli/commands/sync.py, plugin/templates/rules/compass-pipeline.md]
-- [ ] TASK-201: The approval loop runs in the markdown editor by default and the terminal says one line; plain terminal text and `AskUserQuestion` gates are the fallback when no review surface is configured - files: [plugin/templates/rules/compass-pipeline.md, plugin/skills/spec/SKILL.md, plugin/skills/plan/SKILL.md, plugin/skills/research/SKILL.md, plugin/templates/agents/planner.md]
 - [ ] TASK-202: The plugin draws a plan's task table and dependency graph from its task lines - files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/tests/test_main.js], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-031-working-in-compass-is-visual/D-02]
 - [ ] TASK-203: The plugin draws charts of a loop's readings and cost from the file a chart block names, vault files only - files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/manifest.json, plugin/obsidian/tests/test_main.js], decisions: [SPEC-031-working-in-compass-is-visual/D-01]
 - [ ] TASK-204: `compass canvas` writes the spec tree as a canvas that keeps the human's card positions, and `compass move` rewrites card paths - files: [plugin/cli/commands/canvas.py, plugin/cli/commands/move.py, plugin/cli/maincli.py], decisions: [SPEC-031-working-in-compass-is-visual/D-01]
 - [ ] TASK-206: The plugin ships the template views of [[research/human-surface/RESEARCH-plugin-ui-mockup]], each a code block reading vault files only; the walk through several files is the review panel of [[plans/PLAN-025-review-across-files-and-sessions]], and the list of reviews across projects takes its project and session names from that plan's TASK-211 - files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/styles.css, plugin/obsidian/tests/test_main.js], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-030-review-documents-open-in-obsidian/D-06]
 - [ ] TASK-207: An agent writes its own view when no template fits: a script file in the vault that a code block names and the plugin runs, plus writing rules for when to use which - files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/tests/test_main.js, plugin/skills/obsidian/SKILL.md], decisions: [SPEC-031-working-in-compass-is-visual/D-01]
 - [ ] TASK-205: Live acceptance: the next plan Compass writes uses the forms, the human reviews it in Obsidian, and its bytes and `compass hot-path` are compared with its text-only twin - decisions: [SPEC-031-working-in-compass-is-visual/D-02]
+
+## Wave 2 elaborated
+
+How each Wave 2 task differs from its one-line sketch in the plan as first approved, and why.
+
+- TASK-198: the same intent as its sketch.
+- TASK-199: the agreed word list joins the obsidian skill as a writing rule, because [[research/human-surface/RESEARCH-plain-words-mockup]] keeps words programs read unchanged in their files; the documents mockup, which the human approved as "much better", fixes the opening picture and "You decide" callout; a citation links the Decisions heading because a block id cannot sit inside a callout (finding 55 of [[research/human-surface/RESEARCH-working-in-compass-is-visual]]). The spec, plan and research skills and the planner move to TASK-201.
+- TASK-200: split; it keeps `validate` and the hook lines (moment 10 of [[research/human-surface/RESEARCH-terminal-output-mockup]]); the word list moves to TASK-199, doctor and the command list to TASK-225. `compass tree` and `index.md` keep naming links by file name: agents write links from them, and titles would push `index.md` past the size limit on the files every session reads first.
+- TASK-225: split from TASK-200 so the doctor and help edits merge separately from PLAN-022's changes to doctor (its TASK-168).
+- TASK-201: the human's approval of the terminal mockup settles its open questions as the mockup draws them: a "Since your last review" callout, research axes in the draft research document, the review panel (the review card in the editor) with two buttons, Approve and Needs changes, and a terminal line that names the commit; the "You decide" callout leaves the file at approval, since an approved document states what is. Reviews of several files at once go through the review panel of [[plans/PLAN-025-review-across-files-and-sessions]], which walks the files one by one (its TASK-210, mockup approved).
 
 ## Risks
 
