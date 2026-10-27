@@ -24,9 +24,9 @@ Triggered by a live failure in another project: a vision session produced seven 
 
 Plan: [[PLAN-018-research-covers-the-whole-spec]]. Wave 1 shipped as v0.24.0 on 2026-09-14; its manual checks await the human. Wave 2 starts on his word.
 
-- [ ] TASK-129: Run the completeness scorer against a real spec and a real research document and record whether it detects a gap a human agrees is a gap - files: [.compass/research/pipeline/RESEARCH-spec-coverage-experiment.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-05], commit-upfront: the experiment's shape is inferred from the code contract and fixed now, because a later change to it would invalidate everything written against its result
-- [ ] TASK-131: Exercise every shipped retriever against its live source and record the result beside the entry - complexity: S, depends_on: none, files: [plugin/cli/sources.yaml, plugin/cli/tests/test_sourceslib.py], decisions: [SPEC-023-research-covers-the-whole-spec/D-09, SPEC-023-research-covers-the-whole-spec/D-03]
-- [ ] TASK-135: Make the autopilot research step call the entry point, so a pipeline run gets the derivation, the axis gate and the grading disclosure - complexity: S, depends_on: none, files: [plugin/skills/autopilot/SKILL.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-01, SPEC-023-research-covers-the-whole-spec/D-05]
+- [ ] TASK-129: Run the completeness scorer on a real spec and research
+- [ ] TASK-131: Exercise every shipped retriever against its live source
+- [ ] TASK-135: Autopilot research calls the research entry point
 
 ## PLAN-019: stop and suggest a handoff at 80% context
 
@@ -55,13 +55,19 @@ Plan: [[PLAN-021-control-loops]].
 - [ ] [[SPEC-006-multi-host-agent-cli-support]] hosts: hermes first, then deepseek-harness (dsh; fit assessed in [[research/distribution/RESEARCH-deepseek-harness-fit]], 2026-09-04), then Kimi Code / Codex.
 - [ ] Blinded rerun of the test-bar experiment ([[LESSON-blind-the-author-in-self-validation]]).
 
-## PLAN-024: working in Compass is visual
+## [[PLAN-025-review-across-files-and-sessions]]
 
-Plan: [[PLAN-024-working-in-compass-is-visual]].
+- [ ] TASK-208: Live check: right window per project
+- [ ] TASK-209: Live check: whose writes are edits, after 208
+- [ ] TASK-210: Mockup: panel over several files
+- [ ] TASK-211: one review of several files
+- [ ] TASK-212: PLAN-024 TASK-206 points here
 
-- [ ] TASK-190: Trial B, Mermaid charts - after: TASK-189
-- [ ] TASK-191: Trial C, bundled Vega-Lite - after: TASK-189
-- [ ] TASK-192: Trial D, reading a `.jsonl` ledger - after: TASK-189
+## [[PLAN-024-working-in-compass-is-visual]]
+
+- [ ] TASK-190: Trial B, Mermaid charts
+- [ ] TASK-191: Trial C, bundled Vega-Lite
+- [ ] TASK-192: Trial D, reading a ledger
 ## PLAN-022: review documents in Obsidian
 
 Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).

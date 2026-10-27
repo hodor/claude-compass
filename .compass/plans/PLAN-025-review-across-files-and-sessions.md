@@ -1,7 +1,8 @@
 ---
 title: "Review Across Files and Sessions"
 type: plan
-status: draft
+status: approved
+approved: 2026-10-27
 confidence: medium
 area: methodology
 tags: [obsidian, review, multi-file, sessions, vscode, human-surface]
