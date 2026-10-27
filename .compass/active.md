@@ -59,7 +59,6 @@ Plan: [[PLAN-021-control-loops]].
 
 Plan: [[PLAN-024-working-in-compass-is-visual]].
 
-- [ ] TASK-189: Trial A, a plugin code block draws while editing
 - [ ] TASK-190: Trial B, Mermaid charts - after: TASK-189
 - [ ] TASK-191: Trial C, bundled Vega-Lite - after: TASK-189
 - [ ] TASK-192: Trial D, reading a `.jsonl` ledger - after: TASK-189

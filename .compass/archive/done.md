@@ -355,3 +355,8 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 ### PLAN-022: review documents in Obsidian
 - [x] TASK-187: the review moves into one side panel (layout B) - complexity: M, depends_on: none
 - [x] TASK-188: `compass review` requires a commit and prints the git diff after the verdict - complexity: S, depends_on: none
+
+## 2026-10-27
+
+### PLAN-024: working in Compass is visual
+- [x] TASK-189: Trial A, a plugin code block draws while editing

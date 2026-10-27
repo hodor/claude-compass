@@ -2,7 +2,7 @@
 title: "Visual Trials in Obsidian"
 type: research
 status: in-progress
-confidence: low
+confidence: medium
 area: methodology
 tags: [obsidian, trials, charts, mermaid, dataview, human-surface]
 depends_on: ["[[PLAN-024-working-in-compass-is-visual]]"]
@@ -10,7 +10,7 @@ summary: "runs of a throwaway Obsidian plugin that draw a code block, a Mermaid 
 created: 2026-10-27
 updated: 2026-10-27
 git_branch: "master"
-git_commit: "8025594"
+git_commit: "6cddd82"
 author: "builder"
 ---
 
@@ -18,42 +18,56 @@ author: "builder"
 
 ## Question
 
-What does a running Obsidian draw for the routes [[RESEARCH-working-in-compass-is-visual]] section J could only read about? Each trial below states its setup and records its result from the run.
+Can a Compass plugin draw inside a running Obsidian, in both Reading view and Live Preview? Each trial tests one way of drawing or reading data that [[RESEARCH-working-in-compass-is-visual]] section J found only in documentation: a code block the plugin draws (A), Mermaid charts (B), Vega-Lite bundled into a plugin (C), reading `.jsonl` files (D), and a canvas Compass rewrites (E). Each trial states its setup and its result. Trials C and E have not run.
 
 ## Setup shared by the trials
 
 - Plugin `compass-trials`: source `.compass/tmp/trials/compass-trials/` (`main.js`, `manifest.json`, `minAppVersion` 1.9.0), copied into `.compass/.obsidian/plugins/compass-trials/` and listed in `community-plugins.json`.
 - Trial note: `.compass/tmp/trials/trial-note.md`, written by `.compass/tmp/trials/build_trial_note.py`.
-- On layout ready the plugin opens the note in Reading view, waits for the render, switches the same leaf to Live Preview and waits again.
-- Each render appends one JSON line to `.compass/tmp/trials/draws.jsonl`: `trial`, `mode`, `at`, `svg`, `error`, `count`, `phase`.
-- The Obsidian version is recorded once per run in the `env` line.
+- When Obsidian finishes loading, the plugin opens the note in Reading view, waits for the render, switches the same tab to Live Preview and waits again. Creating or changing `.compass/tmp/trials/rerun` runs the sequence again without reloading Obsidian.
+- Each render appends one JSON line to `.compass/tmp/trials/draws.jsonl`: the trial, the view it drew in, the time, whether an `<svg>` appeared, any error, the row count (Trial D), and the view the sequence had switched to.
+- Obsidian version: 1.14.5.
 
-Result: pending the first run.
+Runs: three, on 2026-10-27, at 15:17, 15:54 and 16:43 UTC. The 15:17 run waited 3 seconds for a chart, the later two 15 seconds. The `loadMermaid()` chart in Trial B exists in the 16:43 run only.
 
 ## Trial A: a code block drawing while editing
 
-Setup: the note holds a `compass-trial` block. The plugin registers that language and draws a bordered box; each draw is one line with the view mode it was drawn in. Pass: `draws.jsonl` holds a draw for each mode, or records which mode drew nothing.
+Setup: the note holds a `compass-trial` block. The plugin registers that language and draws a bordered box; each draw is one line with the view it was drawn in. Pass: a draw for each view, or a record of which view drew nothing.
 
-Result: pending the first run.
+Result: pass. The box drew in Reading view and in Live Preview on all three runs. Confidence: high.
 
 ## Trial B: charts through Obsidian's own Mermaid
 
-Setup: the note holds two charts of the reading after each run in the ledger of [[LOOP-001-visual-questions]], 50 points from the runs that carry a reading.
+Setup: the note holds three line charts of the same 50 numbers: the ledger of [[LOOP-001-visual-questions]] records, for each run of that loop, a reading (the number of places in the shipped skills and rules where Compass still asks the human a question outside `AskUserQuestion`), and 50 of its 52 runs carry one.
 
-- A hand-written `mermaid` fence with an `xychart-beta` body, built by `build_trial_note.py` from `ledger.jsonl` so the numbers are exact.
-- A `compass-trial-chart` block that builds the same fence from `ledger.jsonl` at render time and hands it to `MarkdownRenderer.render`.
+- A hand-written `mermaid` fence with an `xychart-beta` body, its numbers copied from `ledger.jsonl` by `build_trial_note.py`.
+- A `compass-trial-chart` block that builds the same fence from `ledger.jsonl` when it renders and hands it to `MarkdownRenderer.render`, Obsidian's general markdown renderer.
+- A `compass-trial-chart-direct` block that builds the same fence and draws it with Obsidian's own Mermaid instance, `loadMermaid()` then `mermaid.render`, inserting the returned svg.
 
-The plugin records, for each chart in each mode, whether an `<svg>` appeared within 3 seconds, or the text that appeared instead. The plugin-built line also carries the readings it drew. Pass: the plugin-built chart draws in both modes; the result decides the chart renderer.
+The plugin records, for each chart in each view, whether an `<svg>` appeared within the wait and how long it took, or the text that appeared instead. Pass: a chart built by the plugin draws in both views, which makes that route the one Compass charts use.
 
-Result: pending the first run.
+Result:
+
+| Chart | Reading view | Live Preview |
+|---|---|---|
+| Hand-written `mermaid` fence | draws | draws |
+| Plugin, `MarkdownRenderer.render` | draws | stays raw text |
+| Plugin, `loadMermaid()` + `mermaid.render` | draws, 155 ms | draws, 329 ms |
+
+- Every chart that drew shows the 50 readings of the ledger.
+- `MarkdownRenderer.render` left the fence as raw text in Live Preview on all three runs. The block element was outside the page when the render started and inside it when the wait ended. The cause is not established. Confidence: high for the outcome.
+- `loadMermaid()` drew in both views on its one run. Confidence: medium.
 
 ## Trial D: reading files that are not notes
 
-Setup: a count of the rows of `ledger.jsonl` (407 lines at build time) by two routes.
+Setup: a count of the rows of `ledger.jsonl` (407 lines) by two routes.
 
 - Plugin route: a `compass-trial-count` block reads the file through `app.vault.adapter.read` and records the count.
-- Dataview route: a `dataviewjs` block in the note counts the same rows through `dv.io.load` and appends its own line. It needs the Dataview plugin installed with JavaScript queries on, which this document does not do; until then the block shows as plain code.
+- Dataview route: a `dataviewjs` block counts the same rows through `dv.io.load` and appends its own line. It runs only with the Dataview community plugin installed and its JavaScript queries on; without them Obsidian shows it as plain code.
 
 Pass: both counts equal `wc -l` of the ledger, or the failing route records its error.
 
-Result: pending the first run (plugin route); the Dataview route waits for Dataview to be installed.
+Result:
+
+- Plugin route: pass. 407 rows in Reading view and in Live Preview on all three runs, equal to `wc -l`. Confidence: high.
+- Dataview route: not run; Dataview is not installed in this vault.
