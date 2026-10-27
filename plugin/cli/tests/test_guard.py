@@ -275,6 +275,51 @@ class UnderReviewTests(GuardFixture):
         self.assertEqual((code, out.getvalue()), (0, ""))
 
 
+class UnderReviewSeveralFilesTests(GuardFixture):
+    """A request listing several files holds every one of them for the human."""
+
+    def setUp(self):
+        super().setUp()
+        (self.vault / ".obsidian").mkdir()
+        (self.vault / "plans").mkdir()
+        self.listed = [self.vault / "plans" / "PLAN-001-z.md",
+                       self.vault / "specs" / "SPEC-001-x.md",
+                       self.vault / "specs" / "SPEC-002-y.md"]
+        for path in self.listed:
+            path.write_text("# T\n\nbody\n", encoding="utf-8")
+        self.unlisted = self.vault / "specs" / "SPEC-003-w.md"
+        self.unlisted.write_text("# W\n\nbody\n", encoding="utf-8")
+        self.review_dir = self.vault / "tmp" / "review"
+        self.review_dir.mkdir(parents=True)
+        (self.review_dir / "r7.request.json").write_text(json.dumps({
+            "id": "r7", "surface": "obsidian", "file": "plans/PLAN-001-z.md",
+            "files": [{"file": "plans/PLAN-001-z.md", "why": None},
+                      {"file": "specs/SPEC-001-x.md", "why": "the change"},
+                      {"file": "specs/SPEC-002-y.md", "why": None}],
+            "session": "s1", "project": self.project.name, "title": None, "return": True, "commit": "abc",
+        }), encoding="utf-8")
+
+    def test_a_write_to_any_listed_file_is_denied_and_an_unlisted_one_stays_open(self):
+        """Adversarial where: the guard reads only `file` (so only the first
+        listed file is held), stops before the last entry, loses an entry
+        reached by relative path, or holds a file the request never listed."""
+        for path in self.listed:
+            rel = path.relative_to(self.project).as_posix()
+            with self.subTest(path.name):
+                self.assert_denied(self.decide("Write", {"file_path": str(path), "content": "# T\n\nbody\nmore\n"}),
+                                   "under review", "r7")
+                self.assert_denied(self.decide("Edit", {"file_path": rel, "old_string": "body", "new_string": "BODY"}), "r7")
+        self.assert_allowed(self.decide("Edit", {"file_path": str(self.unlisted), "old_string": "body", "new_string": "BODY"}))
+
+    def test_an_answered_several_file_request_frees_every_file(self):
+        """Adversarial where: the verdict frees only the first listed file and
+        the rest stay locked."""
+        (self.review_dir / "r7.verdict.json").write_text("{}", encoding="utf-8")
+        for path in self.listed:
+            with self.subTest(path.name):
+                self.assert_allowed(self.decide("Edit", {"file_path": str(path), "old_string": "body", "new_string": "BODY"}))
+
+
 class HookContractTests(GuardFixture):
     def _run(self, payload):
         sys.stdin = io.StringIO(json.dumps(payload))
