@@ -4,163 +4,201 @@ type: research
 status: draft
 confidence: low
 area: methodology
-tags: [mockup, documents, callouts, embeds, block-links, footnotes, mermaid, human-surface]
+tags: [mockup, documents, callouts, embeds, mermaid, human-surface]
 depends_on: ["[[PLAN-024-working-in-compass-is-visual]]"]
-summary: "five real passages from a spec, a plan and a research document shown as they read today and rewritten with callouts, block links, a section embed, footnotes and a Mermaid status flow, with a byte count for each"
+summary: "a spec, a plan and a research document as the human reads them to approve them: a picture of what is decided first, then the text in plain words, with byte counts"
 created: 2026-10-27
 updated: 2026-10-27
 git_branch: "master"
-git_commit: "7a19724"
+git_commit: "9a519d2"
 author: "builder"
 ---
 
 # Visual Documents: Mockup
 
-Five passages from [[specs/human-surface/SPEC-030-review-documents-open-in-obsidian]], [[PLAN-022-review-in-obsidian]] and [[research/human-surface/RESEARCH-working-in-compass-is-visual]], each shown as written (quoted) and rewritten (below it) with the forms [[specs/human-surface/SPEC-031-working-in-compass-is-visual]] D-01 asks for, using the plain wording set out in [[research/human-surface/RESEARCH-plain-words-mockup]]. Judge each form on what it costs in bytes and what it shows.
-
-Headings are left out of the passages; the text is otherwise verbatim except where the rewrite changes it. Passage 1 adds block ids to the decisions, and the links below point at them. A spec carrying block ids would write the fourth as `^d-04`; this page uses `^s30-d04` so ids stay unique.
+Three documents as the human reads them to approve them: [[specs/human-surface/SPEC-031-working-in-compass-is-visual|the spec]], [[PLAN-024-working-in-compass-is-visual|the plan]] and [[research/human-surface/RESEARCH-working-in-compass-is-visual|the research]] for [[specs/human-surface/SPEC-031-working-in-compass-is-visual|Working in Compass Is Visual (SPEC-031)]]. Each opens with a picture of what is being approved and what the human decides, then its text in plain words (no coined terms; the word list is [[research/human-surface/RESEARCH-plain-words-mockup]]). Only forms Obsidian renders natively are used: Mermaid, callouts, tables, embeds. Each mocked document is a `##` section here. The plan and the research end with a folded block that embeds the sections the mock does not show.
 
 ## Byte table
 
-| # | Passage | Forms | Before | After | Change |
+| Document | Real file | Text replaced | Mocked text | Of which pictures | Real file after the change |
 |---|---|---|---|---|---|
-| 1 | SPEC-030: the decisions | callout per decision, block id | 954 | 1068 | +114 |
-| 2 | PLAN-022: the goal | section embed | 409 | 382 | -27 |
-| 3 | PLAN-022: the stages | Mermaid status flow | 984 | 1393 | +409 |
-| 4 | PLAN-022: the risks | callout, block link | 588 | 704 | +116 |
-| 5 | Research: do visuals help | footnotes | 918 | 1009 | +91 |
-| | Total | | 3853 | 4556 | +703 |
+| Spec: SPEC-031 | 1696 | 1335 | 2153 | 539 | 2514 |
+| Plan: PLAN-024 | 19191 | 5571 | 4041 | 1163 | 17661 |
+| Research: working in Compass is visual | 64940 | 2508 | 2771 | 814 | 65203 |
+| Total | 85827 | 9414 | 8965 | 2516 | 85378 |
 
-Counts are bytes of each passage's quoted text (Before) and rewritten text (After), measured with `wc -c`.
+Bytes with LF endings. "Real file" is the whole vault file. "Text replaced" is the part the mock rewrites: for the spec everything under its title, for the plan Goal through "How D-02 is measured", for the research the opening summary up to Question. "Mocked text" is its replacement and "Of which pictures" the Mermaid blocks inside it. "Real file after the change" is Real file minus Text replaced plus Mocked text. The text replaced, the mocked text and the pictures are saved in `.compass/tmp/mockups/documents/` as `spec`, `plan` and `research` with `.before.md`, `.after.md` and `.visual.md` endings; `wc -c` on them reproduces the table. The folded blocks are not counted: they stand for sections the document keeps as written.
 
-## 1. SPEC-030: the decisions
+Net change: spec +818, plan -1530, research +263, total -449. The plan shrinks because its choices become a table; the spec and research pictures add bytes and remove none, so the human decides whether they earn them.
 
-From [[specs/human-surface/SPEC-030-review-documents-open-in-obsidian]], the five decisions. Forms: callout per decision, block id. 954 bytes before, 1068 after (+114). Each decision is its own callout so it can carry an id; the human's sentences are unchanged. The id follows its callout on a line of its own.
-
-**Before**
-
-> - **D-01:** Obsidian is one of many possible visual md interfaces for Compass. Compass builds a generic one and Obsidian implements that one; in the future one could be built for VS Code.
-> - **D-02:** Obsidian just opens, and if the human is doing something else he does whatever he needs there, clicks a button, and it takes him back where he was; he does not even need to come to Claude Code.
-> - **D-03:** For embeds and navigating inside Obsidian, the review tracks it properly, so the human doesn't lose track of the original question, and he also has the possibility to give feedback on other files he is navigating. The review lives in one panel at the side (layout B of [[RESEARCH-review-mockup]]).
-> - **D-04:** When the human approves something on Obsidian through the plugin, he does NOT have to approve again in the terminal.
-> - **D-05:** Committing to git and reviewing git after should be a required step. It's how you'll really know the deltas.
-
-**After**
-
-> [!NOTE]
-> - **D-01:** Obsidian is one of many possible visual md interfaces for Compass. Compass builds a generic one and Obsidian implements that one; in the future one could be built for VS Code.
-
-^s30-d01
-
-> [!NOTE]
-> - **D-02:** Obsidian just opens, and if the human is doing something else he does whatever he needs there, clicks a button, and it takes him back where he was; he does not even need to come to Claude Code.
-
-^s30-d02
-
-> [!NOTE]
-> - **D-03:** For embeds and navigating inside Obsidian, the review tracks it properly, so the human doesn't lose track of the original question, and he also has the possibility to give feedback on other files he is navigating. The review lives in one panel at the side (layout B of [[RESEARCH-review-mockup]]).
-
-^s30-d03
-
-> [!NOTE]
-> - **D-04:** When the human approves something on Obsidian through the plugin, he does NOT have to approve again in the terminal.
-
-^s30-d04
-
-> [!NOTE]
-> - **D-05:** Committing to git and reviewing git after should be a required step. It's how you'll really know the deltas.
-
-^s30-d05
-
-## 2. PLAN-022: the goal
-
-From [[PLAN-022-review-in-obsidian]], the goal. Forms: section embed. 409 bytes before, 382 after (-27). The embed shows the spec's own outcome in place of the plan's paraphrase of it. A reader of the raw file sees the embed line only.
-
-**Before**
-
-> This plan implements [[SPEC-030-review-documents-open-in-obsidian]] based on [[RESEARCH-review-in-obsidian]]. When a project's vault is open in Obsidian with the Compass Review plugin on, every document Compass asks the human to review comes forward in Obsidian with Approve and Needs changes buttons; the click hands the verdict and the human's edits to the session and returns him to whatever he was doing.
-
-**After**
-
-This plan implements [[SPEC-030-review-documents-open-in-obsidian]] based on [[RESEARCH-review-in-obsidian]]. Its outcome is the spec's:
-
-![[SPEC-030-review-documents-open-in-obsidian#Desired Outcome]]
-
-Here every review comes forward with Approve and Needs changes buttons; the click hands the verdict and the human's edits to the session and returns him to whatever he was doing.
-
-## 3. PLAN-022: the stages
-
-From [[PLAN-022-review-in-obsidian]], the waves, written as stages. Forms: Mermaid status flow. 984 bytes before, 1393 after (+409). The flow adds a third stage and the task counts, taken from the plan's task lines.
-
-**Before**
-
-> **Wave 1** turns the prototype that passed the live round trip into shipped parts: the plugin itself, a `compass review` command that sends a document and waits for the verdict, an install path through setup and update, a doctor check that walks the human through turning the plugin on, a guard rule that keeps agents out of a file while it is under review, and two Bases views (a review inbox and a lessons table) that need no plugin code. Compass speaks one review protocol to any visual md interface; Obsidian is its first implementation, and a VS Code extension plugs in the same way. It also runs one experiment: whether a verdict that lands while a terminal question is open reaches the session, which decides how gates ask. Wave 1 ends when the human has run one real review through the shipped parts.
->
-> **Wave 2** wires the review into every gate whose subject is a document, in the shape the experiment chose, and closes with a live spec approval done entirely from Obsidian.
-
-**After**
+## Working in Compass Is Visual (SPEC-031), a spec
 
 ```mermaid
 flowchart LR
-  S1["Stage 1: shipped parts and the experiment<br/>5 of 7 tasks done"]:::partial --> S2["Stage 2: every approval point<br/>3 of 3 done"]:::done
-  S2 --> S3["Stage 3: review panel and git changes<br/>2 of 2 done"]:::done
-  S3 --> L["Later: live acceptance, dashboards, chat<br/>0 of 6 done"]:::open
-  classDef done fill:#cfc,color:#000
-  classDef partial fill:#ffa,color:#000
-  classDef open fill:#eee,color:#000
+  P["Problem<br/>Compass is a wall of text and jargon,<br/>in the terminal and in documents"]:::need --> O["Outcome<br/>graphs, images, colored code:<br/>see at a glance what the AI means"]:::goal
+  O --> D1["Ruling D-01: use these forms<br/>diagrams, charts, callouts, embeds, block links,<br/>task table, footnotes, spec canvas"]:::rule
+  O --> D2["Ruling D-02: do not bloat the documents"]:::rule
+  classDef need fill:#fcc,color:#000
+  classDef goal fill:#cfc,color:#000
+  classDef rule fill:#cdf,color:#000
 ```
 
-**Stage 1** turns the prototype that passed the live round trip into shipped parts: the plugin, a `compass review` command that sends a document and waits for the verdict, an install step in setup and update, a `doctor` check that walks the human through turning the plugin on, a guard rule that keeps agents out of a file under review, and two Bases views (a review inbox and a lessons table) that need no plugin code. Compass speaks one review protocol to any visual markdown interface; Obsidian is the first, and a VS Code extension plugs in the same way. One experiment decides how approval points ask: does a verdict that lands while a terminal question is open reach the session? Stage 1 ends when the human has run one real review through the shipped parts.
+> [!IMPORTANT]
+> You decide: is this the problem, and are D-01 and D-02 (numbered rulings) the rules every later plan follows? Approving moves the spec from draft to approved and makes them binding on those plans.
 
-**Stage 2** wires the review into every approval point whose subject is a document, in the shape the experiment chose, and closes with a live spec approval done entirely from Obsidian.
+### Problem
 
-## 4. PLAN-022: the risks
+Right now everything in using Compass is a wall of text. A wall of text on both the CLI but also on the markdown files. It's very hard for humans to follow up and let them know what they think because there's also a lot of jargon that Compass puts in place.
 
-From [[PLAN-022-review-in-obsidian]], the risks. Forms: callout, block link. 588 bytes before, 704 after (+116). The link points at the copy of SPEC-030 D-04 in passage 1.
+### Desired Outcome
 
-**Before**
+Working in Compass is a bliss for anyone, not like reading the phone book. We can see graphs, images and code snippets with colors, and in a very intuitive and visual way, understand exactly what the AI means.
 
-> - Obsidian auto-merges external writes into an open note: TASK-167 keeps agents out of a file under review.
-> - An Obsidian update removes `electron.remote` access from plugins: the raise and step-aside fail with a notice and the review still completes by clicking; doctor reports the Obsidian version.
-> - The experiment shows a verdict cannot land while a question is open: gates then send the review and end the turn, taking the terminal answer as plain text, which conflicts with [[SPEC-029-questions-to-the-human-are-clear-and-visual]] and goes to the human before TASK-171 is detailed.
+This could also be something that we do using Claude artifacts, doesn't have to be only on Obsidian, in fact if we can get something like the artifacts working on Obsidian we should.
 
-**After**
+Related: [[specs/human-surface/SPEC-029-questions-to-the-human-are-clear-and-visual]], [[specs/human-surface/SPEC-030-review-documents-open-in-obsidian]].
 
-> [!WARNING]
-> - Obsidian auto-merges external writes into an open note: TASK-167 keeps agents out of a file under review.
-> - An Obsidian update removes `electron.remote` access from plugins: the raise and step-aside fail with a notice and the review still completes by clicking; `doctor` reports the Obsidian version.
-> - The experiment shows a verdict cannot land while a question is open ([[research/human-surface/RESEARCH-visual-documents-mockup#^s30-d04|SPEC-030 D-04]]): approval points then send the review and end the turn, taking the terminal answer as plain text, which conflicts with [[SPEC-029-questions-to-the-human-are-clear-and-visual]] and goes to the human before TASK-171 is detailed.
+### Decisions
 
-## 5. Research: do visuals help
+- **D-01:** Documents use every one of these: diagrams (a plan's task dependencies, the pipeline and status flow, key metrics over time as charts), callouts for risks, open questions and decisions, embeds that show another document's section in place, block references so a cited decision is one click away, a table of a plan's tasks inside the plan, footnotes for research sources, and a canvas of the spec tree the human rearranges.
+- **D-02:** Make sure we don't bloat the documents.
 
-From [[research/human-surface/RESEARCH-working-in-compass-is-visual]], findings 39 to 41. Forms: footnotes. 918 bytes before, 1009 after (+91). The findings stay; two column headers are spelled out and the full citations move to footnotes. Obsidian shows footnote text at the foot of the page.
+## Working in Compass Is Visual (PLAN-024), a plan
 
-**Before**
+```mermaid
+flowchart LR
+  subgraph S1["Stage 1: find out and agree"]
+    T189["189 Trial A: a block draws while editing"]:::done
+    T190["190 Trial B: Mermaid charts"]:::open
+    T191["191 Trial C: Vega-Lite size"]:::open
+    T192["192 Trial D: read files that are not notes"]:::open
+    T193["193 Trial E: a canvas Compass rewrites"]:::open
+    T194["194 Mockup: plain words"]:::done
+    T195["195 Mockup: documents"]:::open
+    T196["196 Mockup: terminal output"]:::open
+  end
+  subgraph S2["Stage 2: build what was agreed"]
+    T197["197 Mockup: what the plugin draws"]:::later
+    B["198 to 201 Build the agreed parts<br/>decisions reader, writing rules, words, terminal"]:::later
+  end
+  subgraph S3["Stage 3: the plugin draws"]
+    V["202 to 204 Task table, charts, spec canvas"]:::later
+    A["205 Acceptance: a real plan reviewed in Obsidian"]:::later
+  end
+  T189 --> T190
+  T189 --> T191
+  T189 --> T192
+  T192 --> T193
+  T194 --> T195
+  T194 --> T196
+  T190 & T191 & T192 & T193 --> T197
+  T195 & T196 --> B
+  T197 --> V
+  V & B --> A
+  classDef done fill:#cfc,color:#000
+  classDef open fill:#ffa,color:#000
+  classDef later fill:#eee,color:#000
+```
 
-> | # | Finding | Conf. | Grade | Evidence |
-> |---|---|---|---|---|
-> | 39 | Graphics improve text comprehension by g about 0.3 to 0.4, with no difference among pictures, diagrams and flow diagrams. Organizational pictures g=0.52; purely informational pictures no significant effect; no effect on reading time. | high | high | Guo et al. 2020, AERA Open, doi:10.1177/2332858420901696 (86 citations); Hu et al. 2021, doi:10.1007/s10648-021-09610-z (summary only) |
-> | 40 | A meta-analysis of Mayer's own studies finds g=0.37 overall, shrinking each year; text plus diagrams is "large and consistent". | medium | medium | Cromley & Chen 2025, doi:10.1016/j.edurev.2025.100730 (Mayer-only corpus; 9 citations) |
-> | 41 | A diagram's advantage is conditional ("sometimes worth ten thousand words"). Only title and citation count read. | medium | medium | Larkin & Simon 1987, doi:10.1016/s0364-0213(87)80026-5 (3,735 citations) |
+Numbers are task ids. Trials are experiments run in Obsidian; mockups are pages the human approves. Green is done, yellow is detailed and not started, grey is sketched.
 
-**After**
+> [!IMPORTANT]
+> You decide: approve the plan and the 14 choices below, all recommended, or comment on a row to change that choice. Stage 1 is detailed; Stages 2 and 3 are sketched.
 
-| # | Finding | Confidence | Weight of evidence | Evidence |
-|---|---|---|---|---|
-| 39 | Graphics improve text comprehension by g about 0.3 to 0.4, with no difference among pictures, diagrams and flow diagrams. Organizational pictures g=0.52; purely informational pictures no significant effect; no effect on reading time. | high | high | [^guo], [^hu] |
-| 40 | A meta-analysis of Mayer's own studies finds g=0.37 overall, shrinking each year; text plus diagrams is "large and consistent". | medium | medium | [^cromley] |
-| 41 | A diagram's advantage is conditional ("sometimes worth ten thousand words"). Only title and citation count read. | medium | medium | [^larkin] |
+### Choices to approve
 
-[^guo]: Guo et al. 2020, AERA Open, doi:10.1177/2332858420901696. 86 citations.
-[^hu]: Hu et al. 2021, doi:10.1007/s10648-021-09610-z. Summary only.
-[^cromley]: Cromley & Chen 2025, doi:10.1016/j.edurev.2025.100730. Mayer-only corpus; 9 citations.
-[^larkin]: Larkin & Simon 1987, doi:10.1016/s0364-0213(87)80026-5. 3,735 citations.
+| Choice | The plan's answer (recommended) |
+|---|---|
+| Charts of metrics | Compass Review, the Obsidian plugin Compass ships, draws them from a short block naming a data file |
+| Decisions in callouts | yes, and `compass decisions` learns to read them |
+| Embeds | embed a section instead of copying it |
+| Task table | drawn inside the plan by the plugin from the task lines; the file stores no table |
+| Spec canvas | Compass owns which cards exist, the human owns where they sit |
+| Pages like Claude artifacts | inside Obsidian, drawn by the plugin |
+| Coined terms | plain words; a short definition at first use; no glossary file |
+| Terminal visuals | none: no color or glyphs, shorter plain text instead |
+| Lowest Obsidian version | 1.9.0, raised only if a trial needs more |
+| Where visuals live | plugin-drawn blocks inside documents; Bases (Obsidian's tables of notes) for lists of whole notes |
+| Chart format | a small Compass block drawn with Obsidian's Mermaid; Vega-Lite, a heavier chart library, only if Trial B fails |
+| Library loading | no chart library is added unless Trial B fails |
+| Data that is not notes | read ledgers and task lines directly |
+| How much a drawing may do | declarative only: vault files, no script, no network |
 
-## What the counts say
+> [!NOTE]- Why each choice
+> ![[PLAN-024-working-in-compass-is-visual#Choices to approve]]
 
-- Decisions as callouts with ids (1) adds 114 bytes and removes no text; the id is what makes each decision linkable.
-- The section embed (2) saves 27 bytes; the reader sees the spec's whole outcome in place.
-- The Mermaid flow (3) adds 409 bytes; it adds the stage order and task counts, which the prose did not carry.
-- The risk callout with a block link (4) adds 116 bytes, mostly the link text.
-- Footnotes (5) adds 91 bytes; the table gets narrower and the citations keep their full text.
-- Outside Obsidian, a callout reads as a quoted bullet, an embed and a block link as bare links, and footnotes and Mermaid are plain text in the file and render on GitHub ([[research/human-surface/RESEARCH-working-in-compass-is-visual]] findings 46 and 56).
+### Goal
+
+This plan implements [[specs/human-surface/SPEC-031-working-in-compass-is-visual|Working in Compass Is Visual (SPEC-031)]], whose rulings are D-01 (use these forms) and D-02 (do not bloat), from the evidence in [[research/human-surface/RESEARCH-working-in-compass-is-visual|the research]]. Compass documents show diagrams, charts, callouts, embeds, block links, footnotes, a task table and a spec canvas where these replace text. Compass Review, the Obsidian plugin Compass ships, draws what Obsidian cannot. The terminal says less, in plain words. No document grows heavier than the same document written without pictures.
+
+### How the plan keeps documents light
+
+- Every mockup carries a byte table: the bytes a visual adds against the bytes of text it removes.
+- A visual stays when it removes as many bytes as it adds, or when the human keeps it knowing its cost. A visual that only decorates goes.
+- A drawn block costs only the bytes of its source block in the file. After the build the files every session loads (`index.md`, `active.md` and the rules) are no larger than before.
+
+> [!NOTE]- The rest of the plan
+> ![[PLAN-024-working-in-compass-is-visual#Prerequisites]]
+>
+> ![[PLAN-024-working-in-compass-is-visual#Desired End State]]
+>
+> ![[PLAN-024-working-in-compass-is-visual#What We're NOT Doing]]
+>
+> ![[PLAN-024-working-in-compass-is-visual#Phases]]
+>
+> ![[PLAN-024-working-in-compass-is-visual#Later (intent only)]]
+>
+> ![[PLAN-024-working-in-compass-is-visual#Risks]]
+
+## Working in Compass Is Visual: Evidence (research)
+
+```mermaid
+xychart-beta
+  title "Findings by confidence (140 in all)"
+  x-axis [high, medium, low]
+  y-axis "findings" 0 --> 100
+  bar [95, 42, 3]
+```
+
+```mermaid
+flowchart LR
+  S["What SPEC-031 asks for"] --> OK["Works as it is"]:::ok
+  S --> CH["Needs a Compass change"]:::fix
+  S --> OP["Needs a choice"]:::open
+  OK --> a["diagrams (Mermaid)<br/>footnotes<br/>embeds"]
+  CH --> b["decisions in callouts: the decisions reader fails on them<br/>block links: the id leaks into the decision text<br/>spec canvas: the command line never reads it"]
+  OP --> c["charts: Obsidian has none built in<br/>task table: it would duplicate the task lines<br/>pages like Claude artifacts: gated outside Obsidian"]
+  classDef ok fill:#cfc,color:#000
+  classDef fix fill:#ffa,color:#000
+  classDef open fill:#fcc,color:#000
+```
+
+> [!IMPORTANT]
+> You decide: do these findings, the evidence for [[specs/human-surface/SPEC-031-working-in-compass-is-visual|Working in Compass Is Visual (SPEC-031)]], answer the spec well enough to plan from? Confidence in the research is medium: it rests on reading source code and documentation, and the plan's trials check the drawing claims in a running Obsidian.
+
+### In short
+
+- **Where the wall comes from.** Three `compass` commands print almost all terminal text; one prints 503 lines. Plans and research run about 2,400 words, and one task line reaches 1,910 characters. Dozens of coined terms (hot path, unit, sweep, rolling wave) appear with no glossary. Findings 1, 9, 10; high.
+- **What Obsidian can show.** Everything D-01 lists is built in except charts, at a few dozen bytes per form. Three forms collide with the `compass` command: a decision inside a callout becomes unreadable to it, a block id leaks into the decision text, a canvas is invisible. A task table would duplicate the task lines. Findings 42, 53, 55, 59; high.
+- **What a plugin can draw.** Community plugins already draw boards, timelines, charts and heat maps. Compass Review, Compass's Obsidian plugin, could draw charts from a short block an agent (a Claude session) writes. Findings 107, 121; high.
+- **Claude artifacts.** A web page published to claude.ai and opened in a browser. It needs a paid plan and a login, and is off in runs with no screen. Findings 67, 71; high.
+- **The terminal.** Plain text only. Color or glyphs would reach the model as raw bytes, and on Windows a glyph prints as a literal `\uXXXX`. Findings 4, 102, 103; high and medium.
+- **Does visual help.** Pictures and diagrams improve reading comprehension by about a third of a standard deviation; decorative extras hurt. Every study measured learners, none measured people reviewing project documents. Findings 39, 40; high and medium.
+
+
+> [!NOTE]- The rest of the document
+> ![[research/human-surface/RESEARCH-working-in-compass-is-visual#Question]]
+>
+> ![[research/human-surface/RESEARCH-working-in-compass-is-visual#Methodology]]
+>
+> ![[research/human-surface/RESEARCH-working-in-compass-is-visual#Convergence matrix]]
+>
+> ![[research/human-surface/RESEARCH-working-in-compass-is-visual#Findings]]
+>
+> ![[research/human-surface/RESEARCH-working-in-compass-is-visual#Partial and split]]
+>
+> ![[research/human-surface/RESEARCH-working-in-compass-is-visual#Where the evidence meets the spec's decisions]]
+>
+> ![[research/human-surface/RESEARCH-working-in-compass-is-visual#Defects the probes exposed]]
+>
+> ![[research/human-surface/RESEARCH-working-in-compass-is-visual#Gaps]]
