@@ -1,7 +1,7 @@
 ---
 title: "Plugin UI: Mockup"
 type: research
-status: draft
+status: complete
 confidence: low
 area: methodology
 tags: [obsidian, plugin, mockup, approval, review, human-surface]
