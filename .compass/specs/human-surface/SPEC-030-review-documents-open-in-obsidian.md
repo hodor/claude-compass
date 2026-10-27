@@ -19,7 +19,11 @@ Deeper integration with Obsidian: Compass (if configured) always opens the thing
 
 ## Desired Outcome
 
-[guess: When Compass reaches a point where the human reviews something, that thing is already open in Obsidian when the question arrives. A project without the configuration sees no change.]
+- Whenever compass needs a document reviewed, it should open in Obsidian/their configured md editor
+- UX for it should be frictionless
+- Compass should use visual artifacts when possible to communicate properly 
+- Needs to work if we have multiple files to review on the same md editor. Needs to be incredibly easy to navigate them all.
+- Needs to work if we have multiple claude code sessions, each with their own instance of md editors
 
 KPI: [guess: every point where Compass asks the human to review a document opens that document in Obsidian first, when configured.]
 
