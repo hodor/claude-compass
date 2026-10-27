@@ -30,7 +30,7 @@ flowchart LR
     T190["190 Trial B: Mermaid charts"]:::open
     T191["191 Trial C: Vega-Lite size"]:::open
     T192["192 Trial D: reading non-note files"]:::open
-    T193["193 Trial E: a rewritten canvas"]:::open
+    T193["193 Trial E: a rewritten canvas"]:::done
     T194["194 Words mockup"]:::done
     T195["195 Documents mockup"]:::done
     T196["196 Approval loop mockup"]:::done
@@ -104,7 +104,7 @@ Obsidian with this vault registered and Compass Review on (`compass review` repo
 - [ ] TASK-192: Trial D, reading files that are not notes: Dataview's `dv.io.load` and the plugin's vault adapter each count the rows of the same `ledger.jsonl`; Dataview is turned off afterwards - complexity: S, depends_on: TASK-189, files: [.compass/tmp/trials/compass-trials/main.js, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]
   - Automated verification: both counts equal `wc -l` of the file, or the failing route records its error; `community-plugins.json` lists no Dataview afterwards.
   - Manual verification: none.
-- [ ] TASK-193: Trial E, a canvas Compass rewrites: with a scratch canvas open, rewrite the file with a card moved, then rename a note outside Obsidian; record whether Obsidian keeps the new position and whether it rewrites the card's path - complexity: S, depends_on: TASK-192, files: [.compass/tmp/trials/canvas/trial.canvas, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]
+- [x] TASK-193: Trial E, a canvas Compass rewrites: with a scratch canvas open, rewrite the file with a card moved, then rename a note outside Obsidian; record whether Obsidian keeps the new position and whether it rewrites the card's path - complexity: S, depends_on: TASK-192, files: [.compass/tmp/trials/canvas/trial.canvas, .compass/research/human-surface/RESEARCH-visual-trials-in-obsidian.md]
   - Automated verification: a script compares the positions and paths read back after each step with those written, and the trials document records its output.
   - Manual verification: none.
 - [x] TASK-194: Mockup of plain words: every house term a human reads, its plain replacement or first-use gloss and where it shows, with three real lines rewritten; sent through `compass review` - complexity: S, depends_on: none, files: [.compass/research/human-surface/RESEARCH-plain-words-mockup.md], lessons: [LESSON-ui-change-needs-agreed-mockup-before-build, LESSON-walkthroughs-in-the-humans-words]

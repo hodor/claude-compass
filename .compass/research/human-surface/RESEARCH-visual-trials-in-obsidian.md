@@ -18,7 +18,7 @@ author: "builder"
 
 ## Question
 
-Can a Compass plugin draw inside a running Obsidian, in both Reading view and Live Preview? Each trial tests one way of drawing or reading data that [[RESEARCH-working-in-compass-is-visual]] section J found only in documentation: a code block the plugin draws (A), Mermaid charts (B), Vega-Lite bundled into a plugin (C), reading `.jsonl` files (D), and a canvas Compass rewrites (E). Each trial states its setup and its result. Trials C and E have not run.
+Can a Compass plugin draw inside a running Obsidian, in both Reading view and Live Preview? Each trial tests one way of drawing or reading data that [[RESEARCH-working-in-compass-is-visual]] section J found only in documentation: a code block the plugin draws (A), Mermaid charts (B), Vega-Lite bundled into a plugin (C), reading `.jsonl` files (D), and a canvas Compass rewrites (E). Each trial states its setup and its result. Trial C has not run.
 
 ## Setup shared by the trials
 
@@ -71,3 +71,17 @@ Result:
 
 - Plugin route: pass. 407 rows in Reading view and in Live Preview on all three runs, equal to `wc -l`. Confidence: high.
 - Dataview route: not run; Dataview is not installed in this vault.
+
+## Trial E: a canvas Compass rewrites
+
+Setup: `.compass/tmp/trials/canvas/trial.canvas` holds two cards, one per scratch note (`note-a.md`, `note-b.md`), joined by one edge. With the canvas open in Obsidian, a script outside Obsidian first rewrites the file with card B moved from (500, 0) to (500, 400), then renames `note-b.md` to `note-b-renamed.md`. After each step the plugin records the cards the open canvas view holds, read through the view's own data, beside the file on disk. Run on 2026-10-27 at 19:14 UTC, Obsidian 1.14.5.
+
+Result:
+
+| Step | Open canvas view | File on disk |
+|---|---|---|
+| Card B moved in the file | shows (500, 400) | (500, 400), unchanged by Obsidian 10 s later |
+| `note-b.md` renamed outside Obsidian | card B still names `note-b.md` | still names `note-b.md` |
+
+- An open canvas reloads a file rewritten outside Obsidian and writes nothing of its own back, so Compass can regenerate a canvas while the human has it open. Confidence: high.
+- A note renamed outside Obsidian leaves its card pointing at the old path, so `compass move` has to rewrite card paths itself. Confidence: high.

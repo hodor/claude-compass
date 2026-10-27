@@ -62,7 +62,6 @@ Plan: [[PLAN-024-working-in-compass-is-visual]].
 - [ ] TASK-190: Trial B, Mermaid charts - after: TASK-189
 - [ ] TASK-191: Trial C, bundled Vega-Lite - after: TASK-189
 - [ ] TASK-192: Trial D, reading a `.jsonl` ledger - after: TASK-189
-- [ ] TASK-193: Trial E, a canvas Compass rewrites - after: TASK-192
 ## PLAN-022: review documents in Obsidian
 
 Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).

@@ -369,3 +369,6 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 
 ### PLAN-024: working in Compass is visual
 - [x] TASK-195: Mockup: documents as read for approval - after: TASK-194
+
+### PLAN-024: working in Compass is visual
+- [x] TASK-193: Trial E, a canvas Compass rewrites - after: TASK-192
