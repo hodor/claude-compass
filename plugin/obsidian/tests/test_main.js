@@ -100,7 +100,9 @@ function makeApp(files) {
   const leaves = [];
   const panelLeaves = [];
   const revealed = [];
-  const listeners = {};
+  // Vault events by name; `modify` is the file-changed event, which the plugin
+  // does not subscribe to, so firing it reaches no handler.
+  const listeners = { async modify() {} };
   const wsListeners = {};
   const fire = (name, ...args) => { if (wsListeners[name]) wsListeners[name](...args); };
   const app = {
@@ -474,7 +476,8 @@ test("On this file shows on a card only while a markdown file other than its rev
 // bar note or an emptied note, or words the entries differently.
 test("the feedback list shows each note and each edited file once, updating as they happen", async () => {
   const { app, plugin } = await loaded({
-    "a.md": "x", "b.md": "y", "z.md": "q", "tmp/review/1.request.json": req("1", "a.md") });
+    "a.md": "x", "b.md": "y", "z.md": "q",
+    "tmp/review/1.request.json": req("1", "a.md", { files: [{ file: "a.md", why: "" }, { file: "z.md", why: "" }] }) });
   await plugin.handler({ request: "tmp/review/1.request.json" });
   assert.deepEqual(feedbackOf(cardFor(app, "1")), []);
   show(app, app.leaves[0], "b.md");
@@ -482,9 +485,9 @@ test("the feedback list shows each note and each edited file once, updating as t
   assert.deepEqual(feedbackOf(cardFor(app, "1")), ["b.md: merge D-03"]);
   typeInto(notesIn(cardFor(app, "1")), "overall note");
   assert.deepEqual(feedbackOf(cardFor(app, "1")), ["b.md: merge D-03"], "the notes field is not feedback");
-  await app.listeners.modify(mdFile("z.md"));
-  await app.listeners.modify(mdFile("z.md"));
-  await app.listeners.modify(mdFile("a.md"));
+  typedIn(app, "z.md");
+  typedIn(app, "z.md");
+  typedIn(app, "a.md");
   assert.deepEqual([...feedbackOf(cardFor(app, "1"))].sort(), ["b.md: merge D-03", "edited: a.md", "edited: z.md"]);
   typeInto(fileNoteIn(cardFor(app, "1")), "");
   assert.deepEqual([...feedbackOf(cardFor(app, "1"))].sort(), ["edited: a.md", "edited: z.md"], "a cleared note leaves the list");
@@ -538,12 +541,12 @@ test("events with no panel open do not throw or open one, and the edits they car
   await closePanel(app);
   app.wsListeners["file-open"](mdFile("b.md"));
   app.wsListeners["layout-change"]();
-  await app.listeners.modify(mdFile("z.md"));
+  typedIn(app, "a.md");
   app.listeners.rename({ path: "b.md" }, "b.md");
   await plugin.recheck();
   assert.equal(app.panelLeaves.length, 0, "no panel conjured by events");
   await plugin.openPanel();
-  assert.ok(feedbackOf(cardFor(app, "1")).includes("edited: z.md"));
+  assert.ok(feedbackOf(cardFor(app, "1")).includes("edited: a.md"));
 });
 
 // ---- Wave 2 behavior, now through the panel ----
@@ -580,15 +583,16 @@ test("notes on other files land in comments, empty ones are omitted, and the ver
 // Adversarial where: edit tracking misses the reviewed file itself, counts
 // non-markdown files, double-lists an autosaved file, or leaks edits made
 // before the review existed into its verdict.
-test("markdown files modified while the review is pending land in edited, once each", async () => {
+test("listed markdown files typed in while the review is pending land in edited, once each", async () => {
   const { app, plugin } = await loaded({
-    "a.md": "x", "b.md": "y", "z.md": "q", "tmp/review/1.request.json": req("1", "a.md") });
-  await app.listeners.modify(mdFile("z.md"));
+    "a.md": "x", "b.md": "y", "z.md": "q",
+    "tmp/review/1.request.json": req("1", "a.md", { files: [{ file: "a.md", why: "" }, { file: "b.md", why: "" }] }) });
+  typedIn(app, "z.md");
   await plugin.handler({ request: "tmp/review/1.request.json" });
-  await app.listeners.modify(mdFile("b.md"));
-  await app.listeners.modify(mdFile("b.md"));
-  await app.listeners.modify(mdFile("a.md"));
-  await app.listeners.modify({ path: "data.json", basename: "data", extension: "json" });
+  typedIn(app, "b.md");
+  typedIn(app, "b.md");
+  typedIn(app, "a.md");
+  app.wsListeners["editor-change"]({}, { file: { path: "data.json", basename: "data", extension: "json" } });
   await click(cardBtn(app, "1", "Approve"));
   await sleep();
   const v = verdictOf(app, "tmp/review/1.verdict.json");
@@ -636,7 +640,7 @@ test("Needs changes stays disabled until a note, a note on another file, or an e
   });
   await t.test("an edit to a file", async () => {
     const { app } = await setup();
-    await app.listeners.modify(mdFile("b.md"));
+    typedIn(app, "a.md");
     await sleep();
     assert.equal(changes(app).disabled, false);
   });
@@ -644,7 +648,7 @@ test("Needs changes stays disabled until a note, a note on another file, or an e
     const { app, plugin } = await setup();
     app.store.set("tmp/review/2.request.json", req("2", "b.md"));
     await plugin.handler({ request: "tmp/review/2.request.json" });
-    await app.listeners.modify(mdFile("z.md"));
+    typedIn(app, "b.md");
     assert.equal(changes(app, "2").disabled, false);
     assert.equal(changes(app, "1").disabled, true);
   });
@@ -693,27 +697,28 @@ const verdictWrites = (app) => {
 const gate = () => { let release; const wait = new Promise((r) => { release = r; }); return { wait, release }; };
 
 // Adversarial where: an edit event is attributed to a review it does not
-// belong to. An edit to a reviewed file belongs to that file's review; an
-// edit to any other file belongs to the newest pending review (the top card),
-// even after the older review's file is opened, and moves to the remaining
-// review once the newest is answered.
+// belong to. An edit to a reviewed file belongs to that file's review, even
+// after the other review's file is opened; an edit to a file no review lists
+// belongs to none, and an edit after a review is answered reaches only the
+// review left.
 test("with two reviews pending, an edit lands only in the review it belongs to", async () => {
   const { app, plugin } = await loaded({
     "a.md": "x", "b.md": "y", "z.md": "q",
     "tmp/review/1.request.json": req("1", "a.md"), "tmp/review/2.request.json": req("2", "b.md") });
   await plugin.handler({ request: "tmp/review/1.request.json" });
   await plugin.handler({ request: "tmp/review/2.request.json" });
-  await app.listeners.modify(mdFile("z.md"));
-  await app.listeners.modify(mdFile("a.md"));
+  typedIn(app, "z.md");
+  typedIn(app, "a.md");
   show(app, app.leaves[0], "a.md");
-  await app.listeners.modify(mdFile("y.md"));
+  typedIn(app, "b.md");
   await click(cardBtn(app, "2", "Approve"));
   await sleep();
-  assert.deepEqual([...verdictOf(app, "tmp/review/2.verdict.json").edited].sort(), ["y.md", "z.md"], "other files' edits go to the newest review, whichever reviewed file is in view");
-  await app.listeners.modify(mdFile("w.md"));
+  assert.deepEqual(verdictOf(app, "tmp/review/2.verdict.json").edited, ["b.md"], "an unlisted file's edit goes to no review, whichever reviewed file is in view");
+  typedIn(app, "w.md");
+  typedIn(app, "b.md");
   await click(cardBtn(app, "1", "Approve"));
   await sleep();
-  assert.deepEqual([...verdictOf(app, "tmp/review/1.verdict.json").edited].sort(), ["a.md", "w.md"], "a reviewed file's edit goes to its own review, and later edits to the one left");
+  assert.deepEqual(verdictOf(app, "tmp/review/1.verdict.json").edited, ["a.md"], "a reviewed file's edit goes to its own review, and later edits to other files to none");
 });
 
 // Adversarial where: with two reviews pending, a page shows the other
@@ -748,33 +753,33 @@ test("on the reviewed file of a second pending review its own bar shows, and ans
 
 // Adversarial where: the plugin's own save of the reviewed file (made so
 // Compass reads the human's text) is lost, or counted twice, or breaks the
-// verdict when the resulting modify event fires while the verdict is built.
+// verdict when the resulting editor-change event fires while the verdict is built.
 test("the save made for the verdict counts as the human's edit once; a clean save adds nothing", async (t) => {
-  const run = async (fireModifyOnSave) => {
+  const run = async (fireEditOnSave) => {
     const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md") });
     await plugin.handler({ request: "tmp/review/1.request.json" });
     const leaf = app.leaves[0];
-    leaf.view.save = async () => { if (fireModifyOnSave) await app.listeners.modify(mdFile("a.md")); };
+    leaf.view.save = async () => { if (fireEditOnSave) typedIn(app, "a.md"); };
     await click(cardBtn(app, "1", "Approve"));
     await sleep();
     return verdictOf(app, "tmp/review/1.verdict.json");
   };
-  await t.test("dirty document: modify fires during save", async () => {
+  await t.test("dirty document: editor-change fires during save", async () => {
     assert.deepEqual((await run(true)).edited, ["a.md"]);
   });
-  await t.test("clean document: no modify event", async () => {
+  await t.test("clean document: no editor-change event", async () => {
     assert.deepEqual((await run(false)).edited, []);
   });
 });
 
-// Adversarial where: a modify event arriving after the verdict is written
-// throws or resurrects the review.
-test("a modify event after the verdict is written is ignored and leaves no review behind", async () => {
+// Adversarial where: an editor-change event arriving after the verdict is
+// written throws or resurrects the review.
+test("an editor-change event after the verdict is written is ignored and leaves no review behind", async () => {
   const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md") });
   await plugin.handler({ request: "tmp/review/1.request.json" });
   await click(cardBtn(app, "1", "Approve"));
   await sleep();
-  await app.listeners.modify(mdFile("a.md"));
+  typedIn(app, "a.md");
   assert.equal(plugin.pending.size, 0);
   assert.deepEqual(cardIds(app), []);
   assert.equal(verdictOf(app, "tmp/review/1.verdict.json").edited.length, 0);
@@ -847,7 +852,7 @@ test("renaming a noted and edited file moves both to the new path, and the card'
   const leaf = app.leaves[0];
   show(app, leaf, "b.md");
   typeInto(fileNoteIn(cardFor(app, "1")), "tidy");
-  await app.listeners.modify(mdFile("b.md"));
+  typedIn(app, "a.md");
   app.store.set("b2.md", app.store.get("b.md"));
   app.store.delete("b.md");
   app.listeners.rename({ path: "b2.md" }, "b.md");
@@ -856,14 +861,14 @@ test("renaming a noted and edited file moves both to the new path, and the card'
   app.listeners.rename({ path: "a2.md" }, "a.md");
   show(app, leaf, "b2.md");
   assert.equal(fileNoteIn(cardFor(app, "1")).value, "tidy", "the note follows the file");
-  assert.deepEqual([...feedbackOf(cardFor(app, "1"))].sort(), ["b2.md: tidy", "edited: b2.md"]);
+  assert.deepEqual([...feedbackOf(cardFor(app, "1"))].sort(), ["b2.md: tidy", "edited: a2.md"]);
   await click(linkIn(cardFor(app, "1")));
   assert.ok(app.leaves.some((l) => l.view.file && l.view.file.path === "a2.md"), "the link opens the renamed reviewed file");
   await click(cardBtn(app, "1", "Approve"));
   await sleep();
   const v = verdictOf(app, "tmp/review/1.verdict.json");
   assert.deepEqual(v.comments, [{ file: "b2.md", note: "tidy" }]);
-  assert.deepEqual(v.edited, ["b2.md"]);
+  assert.deepEqual(v.edited, ["a2.md"]);
   assert.equal(v.file, "a2.md");
 });
 
@@ -929,7 +934,7 @@ test("typing survives panel events: the same field stays in place, and a rebuilt
   app.wsListeners["layout-change"]();
   app.wsListeners["file-open"](mdFile("a.md"));
   await plugin.recheck();
-  await app.listeners.modify(mdFile("a.md"));
+  typedIn(app, "a.md");
   assert.equal(notesIn(cardFor(app, "1")), field, "the notes field is the same element");
   assert.equal(field.value, "half a senten");
   show(app, app.leaves[0], "b.md");
@@ -940,7 +945,7 @@ test("typing survives panel events: the same field stays in place, and a rebuilt
 
 // Adversarial where: with many pending reviews the cards are not newest
 // first, an answer removes a neighbour's card, or an edit is credited to every
-// card instead of the one for that file (or the newest for any other file).
+// card instead of the one for that file (or to the newest for an unlisted file).
 test("thirty pending reviews: newest first, one answer removes only its card, edits go to one card", async () => {
   const files = { "other.md": "o" };
   const n = 30;
@@ -952,10 +957,10 @@ test("thirty pending reviews: newest first, one answer removes only its card, ed
   for (let i = 1; i <= n; i++) await plugin.handler({ request: `tmp/review/${String(i).padStart(2, "0")}.request.json` });
   const ids = (k) => Array.from({ length: k }, (_, i) => String(i + 1).padStart(2, "0"));
   assert.deepEqual(cardIds(app), ids(n).reverse());
-  await app.listeners.modify(mdFile("d7.md"));
-  await app.listeners.modify(mdFile("other.md"));
+  typedIn(app, "d7.md");
+  typedIn(app, "other.md");
   const edited = cards(app).filter((c) => feedbackOf(c).length > 0).map((c) => c.dataset.id).sort();
-  assert.deepEqual(edited, ["07", "30"]);
+  assert.deepEqual(edited, ["07"]);
   await click(cardBtn(app, "15", "Approve"));
   await sleep();
   assert.equal(cardIds(app).length, n - 1);
@@ -1328,7 +1333,7 @@ test("Needs changes in a multi-file review is enabled by a note on any listed fi
   });
   await t.test("an edit to a listed file", async () => {
     const { app } = await openSet();
-    await app.listeners.modify(mdFile("plan.md"));
+    typedIn(app, "plan.md");
     await sleep();
     assert.equal(cardBtn(app, "1", "Needs changes").disabled, false);
   });

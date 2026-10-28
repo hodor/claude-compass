@@ -19,8 +19,10 @@
 //               documents, one `<name>: <note>` line per noted document
 //     comments  one note per file outside the review that the human
 //               annotated from the card (empty notes are left out)
-//     edited    every markdown file modified in the vault while the review
-//               was pending, each listed once
+//     edited    every file of the review typed in while it was pending, each
+//               listed once; an edit counts when Obsidian's `editor-change`
+//               event fires for the file, so writes from other programs are
+//               not listed
 //     files     for several documents only: every listed document in request
 //               order with its read mark and its note, when it has one
 // <dir> is the Compass vault's tmp/review folder: `tmp/review` when the
@@ -128,7 +130,7 @@ class CompassReview extends Plugin {
     this.registerEvent(this.app.workspace.on("file-open", (file) => this.onFileOpen(file)));
     this.registerEvent(this.app.workspace.on("layout-change", () => this.refresh()));
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => this.onRename(file, oldPath)));
-    this.registerEvent(this.app.vault.on("modify", (file) => this.onModify(file)));
+    this.registerEvent(this.app.workspace.on("editor-change", (editor, info) => this.onEditorChange(info)));
     this.registerInterval(
       window.setInterval(() => this.recheck().catch((e) => console.error("[compass-review] recheck failed", e)), RECHECK_MS)
     );
@@ -321,13 +323,16 @@ class CompassReview extends Plugin {
     this.refresh();
   }
 
-  // An edit belongs to the review that lists the file, else to the newest review.
-  onModify(file) {
+  // Typing in an editor is an edit to the file it shows. It lands on every
+  // pending review that lists the file; a file no review lists lands on none.
+  onEditorChange(info) {
+    const file = info && info.file;
     if (!file || typeof file.path !== "string" || !file.path.endsWith(".md")) return;
-    const entry = this.entryFor(file.path) || this.newest();
-    if (!entry) return;
-    entry.edited.add(file.path);
-    this.refreshCard(entry);
+    for (const entry of this.pending.values()) {
+      if (!entry.files.some((f) => f.file === file.path)) continue;
+      entry.edited.add(file.path);
+      this.refreshCard(entry);
+    }
   }
 
   // Drops reviews whose request file was removed or whose verdict another
@@ -370,12 +375,6 @@ class CompassReview extends Plugin {
   entryFor(path) {
     for (const entry of this.pending.values()) if (entry.files.some((f) => f.file === path)) return entry;
     return null;
-  }
-
-  newest() {
-    let target = null;
-    for (const entry of this.pending.values()) target = entry;
-    return target;
   }
 
   refresh() {
