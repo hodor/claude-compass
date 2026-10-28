@@ -351,15 +351,16 @@ class CompassReview extends Plugin {
       if (!(await adapter.exists(entry.path)) || (await adapter.exists(verdictPathFor(entry.path)))) dead.push(id);
     }
     for (const id of dead) this.pending.delete(id);
+    if (this.pending.size === 0) this.asideOwed = false;
     this.refresh();
   }
 
-  // Whether this Obsidian window has focus; null when it cannot be read.
+  // Whether this Obsidian window has focus; null when it cannot be read, in
+  // which case the review follows its request's `return`.
   windowHasFocus() {
     try {
       return !!electronRemote().getCurrentWindow().isFocused();
     } catch (e) {
-      this.fail("read focus", e);
       return null;
     }
   }
@@ -739,6 +740,7 @@ class CompassReview extends Plugin {
     }
     if (!(await this.app.vault.adapter.exists(path))) {
       this.pending.delete(request.id);
+      if (this.pending.size === 0) this.asideOwed = false;
       this.refresh();
       new Notice("This review was withdrawn - nothing was sent");
       return;
@@ -749,7 +751,8 @@ class CompassReview extends Plugin {
     this.refresh();
     new Notice(verdict === "approved" ? "Approved - sent to Claude" : "Changes requested - sent to Claude");
     // Obsidian steps aside once no review is left, when any review answered
-    // since the window was raised arrived without focus. A review with no
+    // since the window was raised arrived without focus; a pending set that
+    // empties by withdrawal clears the debt instead. A review with no
     // recorded arrival (found at start-up) follows its request's `return`.
     const owes = entry.arrivedUnfocused === undefined ? !!request.return : entry.arrivedUnfocused;
     this.asideOwed = this.asideOwed || owes;

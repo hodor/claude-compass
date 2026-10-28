@@ -1887,3 +1887,25 @@ test("a start-up review pending beside a focused link review steps aside only wh
     assert.equal(win.minimized, row.aside, `${row.name}: after the start-up review is answered`);
   }
 });
+
+// Adversarial where: an unfocused review answered while a second card is still
+// pending leaves its step-aside debt behind when that second card is withdrawn
+// (the terminal answered), so a focused review that arrives and is answered
+// later hides the window although nothing about it arrived unfocused.
+test("a step-aside debt does not outlive a withdrawn card into a later focused review", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x", "b.md": "y", "c.md": "z",
+    "tmp/review/1.request.json": req("1", "a.md"),
+    "tmp/review/2.request.json": req("2", "b.md"),
+    "tmp/review/3.request.json": req("3", "c.md"),
+  });
+  await arriveByLink(plugin, "1", false);
+  await arriveByLink(plugin, "2", true);
+  await approve(app, "1");
+  app.store.delete("tmp/review/2.request.json");
+  await plugin.recheck();
+  assert.equal(plugin.pending.size, 0, "the withdrawn card is gone");
+  await arriveByLink(plugin, "3", true);
+  await approve(app, "3");
+  assert.equal(win.minimized, 0, "the focused review leaves the window in front");
+});
