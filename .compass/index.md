@@ -37,7 +37,6 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[research/human-surface/index|human-surface]] (folder, 11 children) - how Compass puts things in front of the human: the questions it asks, the documents it hands over for review, and how all of it reads
 - [[RESEARCH-review-in-obsidian]] - a small Obsidian plugin takes the verdict and returns the human; proven on Windows; ranks Compass features for an Obsidian UI
 - [[RESEARCH-review-mockup]] - the review lives in one side panel that follows the human through links
-- [[research/human-surface/RESEARCH-vscode-review-mockup]] - the Obsidian review card drawn as a VS Code panel in its own Activity Bar icon, over the same four files; the clicks match the Obsidian panel, and VS Code cannot raise its window or show the card beside the Explorer
 
 ## Plans
 

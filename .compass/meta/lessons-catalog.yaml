@@ -364,3 +364,17 @@ lessons:
     tags: [plans, verification, planner, manual-verification]
     score: 5
     summary: "Plan manual verification holds only judgment calls; mechanical checks go in automated verification or the orchestrator's own check"
+  - file: "LESSON-subscription-cost-is-an-estimate-not-a-budget.md"
+    status: active
+    category: domain
+    area: architecture
+    tags: [loops, budget, cost, subscription, flow-control]
+    score: 5
+    summary: "On a Claude Code subscription total_cost_usd is an estimate, not a charge; loop flow control needs plan usage or rate-limit measures, not USD budgets"
+  - file: "LESSON-ui-change-needs-agreed-mockup-before-build.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [ui, mockup, plan-approval, human-gate]
+    score: 5
+    summary: "A UI change gets a mockup the human agrees on before any builder runs; a UI built without one gets the plan declined."

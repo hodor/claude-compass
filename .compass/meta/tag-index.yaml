@@ -53,6 +53,7 @@ tags:
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
+  - research/human-surface/RESEARCH-plugin-ui-mockup.md
   architecture:
   - specs/SPEC-001-compass-vision-and-architecture.md
   archive:
@@ -148,6 +149,8 @@ tags:
   - specs/vault-structure/SPEC-019-active-holds-only-active-work.md
   call-sites:
   - lessons/LESSON-verify-wiring-by-call-site-grep.md
+  callouts:
+  - research/human-surface/RESEARCH-visual-documents-mockup.md
   capture:
   - decisions/learning/ADR-013-detached-worker-quiet-fallback.md
   - decisions/learning/ADR-016-capture-by-extraction.md
@@ -172,6 +175,9 @@ tags:
   census:
   - lessons/experiments/LESSON-pin-the-motivating-datum.md
   - research/test-quality/RESEARCH-fleet-test-census.md
+  charts:
+  - plans/PLAN-024-working-in-compass-is-visual.md
+  - research/human-surface/RESEARCH-visual-trials-in-obsidian.md
   churn:
   - lessons/platform/LESSON-autocrlf-churns-lf-writers.md
   ci:
@@ -214,8 +220,12 @@ tags:
   - plans/PLAN-012-self-update.md
   - plans/PLAN-014-capability-usage.md
   - plans/PLAN-015-graph-queries.md
+  - plans/PLAN-024-working-in-compass-is-visual.md
   - research/distribution/RESEARCH-model-resolution-impl.md
   - research/distribution/RESEARCH-self-update-surfaces.md
+  - research/human-surface/RESEARCH-plain-output-checks.md
+  - research/human-surface/RESEARCH-plain-words-mockup.md
+  - research/human-surface/RESEARCH-terminal-output-mockup.md
   - research/human-surface/RESEARCH-working-in-compass-is-visual.md
   - research/pipeline/RESEARCH-decision-coverage-impl.md
   - research/test-quality/RESEARCH-test-quality-bar-validation.md
@@ -336,6 +346,8 @@ tags:
   - specs/pipeline/SPEC-009-configurable-pipeline-workflows.md
   data-loss:
   - lessons/distribution/LESSON-installer-removes-only-what-it-installed.md
+  dataview:
+  - research/human-surface/RESEARCH-visual-trials-in-obsidian.md
   dblp:
   - specs/pipeline/SPEC-024-walled-sources-through-the-browser.md
   dead-code:
@@ -420,6 +432,10 @@ tags:
   documentation-drift:
   - research/pipeline/RESEARCH-code-as-primary-source.md
   documents:
+  - plans/PLAN-024-working-in-compass-is-visual.md
+  - research/human-surface/RESEARCH-plain-output-checks.md
+  - research/human-surface/RESEARCH-plain-words-mockup.md
+  - research/human-surface/RESEARCH-visual-documents-mockup.md
   - specs/human-surface/SPEC-031-working-in-compass-is-visual.md
   domain:
   - decisions/distribution/index.md
@@ -469,6 +485,8 @@ tags:
   - plans/PLAN-008-rolling-wave.md
   embeddings:
   - research/vault-structure/RESEARCH-rag-fit-for-large-vaults.md
+  embeds:
+  - research/human-surface/RESEARCH-visual-documents-mockup.md
   empirical:
   - lessons/experiments/LESSON-blind-the-author-in-self-validation.md
   - lessons/experiments/LESSON-measure-the-procedures-intermediates.md
@@ -500,6 +518,8 @@ tags:
   - lessons/experiments/LESSON-deterministic-fixtures-survive-scratch-wipes.md
   - lessons/experiments/LESSON-measure-the-procedures-intermediates.md
   - lessons/experiments/index.md
+  extension:
+  - research/human-surface/RESEARCH-vscode-review-mockup.md
   extension-surface:
   - research/hermes/RESEARCH-hermes-agent-capabilities.md
   faceted:
@@ -758,6 +778,18 @@ tags:
   human-priority:
   - research/pipeline/REVIEW-spec-023-research-consolidation.md
   human-surface:
+  - plans/PLAN-024-working-in-compass-is-visual.md
+  - plans/PLAN-025-review-across-files-and-sessions.md
+  - research/human-surface/RESEARCH-plain-output-checks.md
+  - research/human-surface/RESEARCH-plain-words-mockup.md
+  - research/human-surface/RESEARCH-plugin-ui-mockup.md
+  - research/human-surface/RESEARCH-review-across-files-and-sessions.md
+  - research/human-surface/RESEARCH-review-live-checks.md
+  - research/human-surface/RESEARCH-review-panel-mockup.md
+  - research/human-surface/RESEARCH-terminal-output-mockup.md
+  - research/human-surface/RESEARCH-visual-documents-mockup.md
+  - research/human-surface/RESEARCH-visual-trials-in-obsidian.md
+  - research/human-surface/RESEARCH-vscode-review-mockup.md
   - research/human-surface/RESEARCH-working-in-compass-is-visual.md
   - research/human-surface/index.md
   - specs/human-surface/index.md
@@ -833,6 +865,8 @@ tags:
   - research/pipeline/RESEARCH-research-spawning-research.md
   jargon:
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
+  - plans/PLAN-024-working-in-compass-is-visual.md
+  - research/human-surface/RESEARCH-plain-words-mockup.md
   - research/human-surface/RESEARCH-working-in-compass-is-visual.md
   - specs/human-surface/SPEC-031-working-in-compass-is-visual.md
   jit:
@@ -903,6 +937,8 @@ tags:
   literature-import:
   - lessons/experiments/LESSON-human-practice-rationing-assumes-human-scarcity.md
   - lessons/vault-structure/LESSON-hierarchical-placement-tolerate-disagreement.md
+  live-check:
+  - research/human-surface/RESEARCH-review-live-checks.md
   live-verification:
   - research/distribution/RESEARCH-dsh-live-probes.md
   llm-judge:
@@ -979,6 +1015,9 @@ tags:
   - specs/learning/SPEC-002-lessons-and-index-subsystem.md
   - specs/learning/SPEC-028-agent-memory-is-good-enough.md
   - specs/vault-structure/index.md
+  mermaid:
+  - research/human-surface/RESEARCH-visual-documents-mockup.md
+  - research/human-surface/RESEARCH-visual-trials-in-obsidian.md
   methodology:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   - decisions/pipeline/index.md
@@ -1007,7 +1046,14 @@ tags:
   - specs/vault-structure/SPEC-010-universal-hybrid-hierarchy.md
   mockup:
   - lessons/pipeline/LESSON-ui-change-needs-agreed-mockup-before-build.md
+  - plans/PLAN-024-working-in-compass-is-visual.md
   - research/RESEARCH-review-mockup.md
+  - research/human-surface/RESEARCH-plain-words-mockup.md
+  - research/human-surface/RESEARCH-plugin-ui-mockup.md
+  - research/human-surface/RESEARCH-review-panel-mockup.md
+  - research/human-surface/RESEARCH-terminal-output-mockup.md
+  - research/human-surface/RESEARCH-visual-documents-mockup.md
+  - research/human-surface/RESEARCH-vscode-review-mockup.md
   model-policy:
   - decisions/distribution/ADR-008-model-resolution-table.md
   - plans/PLAN-005-model-table.md
@@ -1017,6 +1063,9 @@ tags:
   - lessons/subagents/LESSON-long-agents-stall-resume-them.md
   multi-agent:
   - research/pipeline/RESEARCH-research-spawning-research.md
+  multi-file:
+  - plans/PLAN-025-review-across-files-and-sessions.md
+  - research/human-surface/RESEARCH-review-across-files-and-sessions.md
   multi-host:
   - handoffs/PLAN-017-dsh-host-support/2026-09-05_21-30-00_wave6-zero-decision-queued.md
   - plans/PLAN-017-dsh-host-support.md
@@ -1059,8 +1108,15 @@ tags:
   - decisions/vault-structure/ADR-022-domains-scope-notes-shallow-when-unsure.md
   - lessons/vault-structure/LESSON-obsidian-bare-link-creates-stray-note.md
   - plans/PLAN-022-review-in-obsidian.md
+  - plans/PLAN-024-working-in-compass-is-visual.md
+  - plans/PLAN-025-review-across-files-and-sessions.md
   - research/RESEARCH-review-in-obsidian.md
   - research/RESEARCH-review-mockup.md
+  - research/human-surface/RESEARCH-plugin-ui-mockup.md
+  - research/human-surface/RESEARCH-review-across-files-and-sessions.md
+  - research/human-surface/RESEARCH-review-live-checks.md
+  - research/human-surface/RESEARCH-review-panel-mockup.md
+  - research/human-surface/RESEARCH-visual-trials-in-obsidian.md
   - research/human-surface/RESEARCH-working-in-compass-is-visual.md
   - specs/human-surface/SPEC-030-review-documents-open-in-obsidian.md
   - specs/human-surface/SPEC-031-working-in-compass-is-visual.md
@@ -1147,6 +1203,9 @@ tags:
   - plans/PLAN-023-taxonomy-review-at-spec-creation.md
   plain-language:
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
+  - research/human-surface/RESEARCH-plain-output-checks.md
+  - research/human-surface/RESEARCH-plain-words-mockup.md
+  - research/human-surface/RESEARCH-terminal-output-mockup.md
   - research/human-surface/RESEARCH-working-in-compass-is-visual.md
   plan-approval:
   - lessons/pipeline/LESSON-ui-change-needs-agreed-mockup-before-build.md
@@ -1178,6 +1237,8 @@ tags:
   plugin:
   - plans/PLAN-022-review-in-obsidian.md
   - research/RESEARCH-review-in-obsidian.md
+  - research/human-surface/RESEARCH-plugin-ui-mockup.md
+  - research/human-surface/RESEARCH-review-panel-mockup.md
   plugin-config:
   - lessons/hooks/LESSON-hook-if-clause-no-or.md
   plugin-yaml:
@@ -1357,8 +1418,15 @@ tags:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   - lessons/pipeline/LESSON-adversarial-plan-review-before-build.md
   - plans/PLAN-022-review-in-obsidian.md
+  - plans/PLAN-025-review-across-files-and-sessions.md
   - research/RESEARCH-review-in-obsidian.md
   - research/RESEARCH-review-mockup.md
+  - research/human-surface/RESEARCH-plugin-ui-mockup.md
+  - research/human-surface/RESEARCH-review-across-files-and-sessions.md
+  - research/human-surface/RESEARCH-review-live-checks.md
+  - research/human-surface/RESEARCH-review-panel-mockup.md
+  - research/human-surface/RESEARCH-terminal-output-mockup.md
+  - research/human-surface/RESEARCH-vscode-review-mockup.md
   - research/pipeline/REVIEW-spec-023-research-consolidation.md
   - specs/human-surface/SPEC-030-review-documents-open-in-obsidian.md
   - specs/human-surface/SPEC-031-working-in-compass-is-visual.md
@@ -1429,6 +1497,8 @@ tags:
   - specs/distribution/SPEC-020-compass-updates-itself.md
   sessions:
   - plans/PLAN-020-clone-old-sessions.md
+  - plans/PLAN-025-review-across-files-and-sessions.md
+  - research/human-surface/RESEARCH-review-across-files-and-sessions.md
   - research/learning/RESEARCH-clone-old-sessions.md
   - specs/learning/SPEC-022-clone-old-sessions.md
   settings:
@@ -1440,6 +1510,9 @@ tags:
   - research/pipeline/RESEARCH-source-inventory.md
   shape-up:
   - research/rolling-wave/RESEARCH-rolling-wave-software-practice.md
+  side-panel:
+  - research/human-surface/RESEARCH-review-panel-mockup.md
+  - research/human-surface/RESEARCH-vscode-review-mockup.md
   signals:
   - decisions/learning/ADR-019-subagentstop-redelivery-and-teammate-typing.md
   silent-failure:
@@ -1596,6 +1669,7 @@ tags:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   - lessons/vault-structure/LESSON-template-shape-vs-template-precondition.md
   terminal:
+  - research/human-surface/RESEARCH-terminal-output-mockup.md
   - research/human-surface/RESEARCH-working-in-compass-is-visual.md
   test-checkpoint:
   - decisions/pipeline/ADR-012-test-checkpoint-py-membership-git-authoritative.md
@@ -1680,6 +1754,8 @@ tags:
   - research/pipeline/RESEARCH-context-threshold-stop.md
   transcription:
   - research/learning/RESEARCH-humans-words-fidelity.md
+  trials:
+  - research/human-surface/RESEARCH-visual-trials-in-obsidian.md
   trigger-vs-criterion:
   - lessons/instructions/LESSON-threshold-in-prose-becomes-the-criterion.md
   triggers:
@@ -1795,6 +1871,9 @@ tags:
   - specs/vault-structure/SPEC-016-sizing-work-beyond-one-spec.md
   voice:
   - specs/learning/SPEC-021-capture-in-the-humans-words.md
+  vscode:
+  - plans/PLAN-025-review-across-files-and-sessions.md
+  - research/human-surface/RESEARCH-vscode-review-mockup.md
   walkthroughs:
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   wave-sizing:
