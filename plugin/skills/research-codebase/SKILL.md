@@ -149,7 +149,7 @@ Replace `file:line` refs with `https://github.com/{owner}/{repo}/blob/{commit}/{
 
 Summarize the findings inline and point to the saved document: "Saved to [[RESEARCH-name]]."
 
-When a review surface is configured, the finished research document goes through the review rule in the pipeline rules (`compass review <research file> --title "Follow-up questions, or move to planning?"`) and nothing is asked here. Otherwise ask through `AskUserQuestion`, exactly one question per call: "Follow-up questions, or move to planning?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+When a review surface is configured, the finished research document goes through the review rule in the pipeline rules (`compass review <research file> <spec file> --title "Follow-up questions, or move to planning?" --why "<research file>=<the findings to check>" --why "<spec file>=<the need they answer>"`), the research and the spec it traces to going as one review, and nothing is asked here. Otherwise ask through `AskUserQuestion`, exactly one question per call: "Follow-up questions, or move to planning?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
 
 - **Move to planning (Recommended):** starts the plan from this research.
 - **Follow-up questions:** you ask; I append the answers to this document.
