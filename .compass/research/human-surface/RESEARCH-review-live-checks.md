@@ -75,3 +75,21 @@ A throwaway plugin in the second vault logged every file-changed event (`vault.o
 The review's answer listed `note-a.md` and `note-b.md` as edited: today's plugin counts the script's write as the human's edit.
 
 **Result:** an editor-changed event comes only from typing in Obsidian, including the table editor's padding that follows the human's own edit; writes from outside Obsidian fire a file-changed event alone. A review can list as edits only the files with an editor-changed event, which is the "only edits typed in Obsidian's editor" choice of [[PLAN-025-review-across-files-and-sessions]].
+
+## Two projects and two sessions at once (TASK-219)
+
+Run on Compass 0.30.0 with the review panel. Three reviews were sent in the same second: three files from this repository, one file from a second session id in this repository, and three files from the second project.
+
+| Review | Sent from | Answer written in | Session on the card | Files in the answer |
+| --- | --- | --- | --- | --- |
+| 20261027T231502-362a8d | this repository | this vault | this session | all three, read |
+| 20261027T231503-06247c | this repository, second session id | this vault | `other-` | one-file answer, no `files` list |
+| 20261027T231502-b136d4 | second project | the second vault | `second` | all three, unread: approved without walking |
+| 20261027T232835-553ad3 | second project, sent again with Obsidian closed | the second vault | `second` | all three, read; the renamed file under its new path `step-3-renamed.md` |
+
+- Obsidian, closed, started by itself when the last review was sent.
+- Each answer was written by its own vault's plugin, and the two cards in this vault carried different sessions.
+- The panel followed the rename: the answer names `step-3-renamed.md`. The terminal then printed the old name as unread; `compass review` now matches a renamed file to its place in the request and prints `file step-3-renamed.md read (renamed from step-3-rename-me.md)`.
+- Each change report printed full diffs only for its own review's files and named every other file.
+
+Not yet confirmed: no answer carried a note on the outside file or a note on how each window was reached, so whether the "On this file" note travels in a real answer, and how long each walk took, are still open.
