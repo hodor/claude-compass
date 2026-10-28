@@ -45,6 +45,7 @@ SHORT_SHA = 10
 MAX_DIFF_LINES = 2000
 EDITOR_SETTING = "review_editor"
 PER_USER_EDITORS = ("vscode", "cursor")
+YAML_NULLS = ("null", "Null", "NULL", "~")
 _SETTING_LINE = re.compile(rf"^{EDITOR_SETTING}[ \t]*:[ \t]*(.*)$")
 
 
@@ -55,7 +56,7 @@ class GitUnavailable(Exception):
 def _setting_value(text):
     """The `review_editor` value in the text of a plugin.yaml: the first
     top-level line naming it, with its quotes and trailing comment removed;
-    None when absent or empty."""
+    None when absent, empty or a YAML null written without quotes."""
     for line in text.splitlines():
         found = _SETTING_LINE.match(line)
         if not found:
@@ -65,7 +66,9 @@ def _setting_value(text):
             end = value.find(value[0], 1)
             value = value[1:end] if end > 0 else value[1:]
         else:
-            value = re.split(r"(?:^|\s)#", value, maxsplit=1)[0]
+            value = re.split(r"(?:^|\s)#", value, maxsplit=1)[0].strip()
+            if value in YAML_NULLS:
+                return None
         return value.strip() or None
     return None
 
