@@ -66,6 +66,6 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
 Plan: [[PLAN-025-review-across-files-and-sessions]].
 
-- [ ] TASK-222: a project setting picks the review editor - complexity: S, depends_on: none
+- [x] TASK-222: a project setting picks the review editor - complexity: S, depends_on: none
 - [ ] TASK-223: a VS Code surface, also serving Cursor - complexity: L, depends_on: none
 - [ ] TASK-224: live acceptance in VS Code and Cursor - complexity: S, depends_on: TASK-222, TASK-223
