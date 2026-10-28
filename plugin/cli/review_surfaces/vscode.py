@@ -71,6 +71,17 @@ def _no_console():
     return getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
 
 
+def _command_line(command, folder):
+    """What to run to hand `folder` to the editor: an argument list, except for
+    a Windows `.cmd` or `.bat` shim, where it is a command line with the folder
+    in double quotes so cmd.exe reads `&`, `^` and the like as part of the
+    name."""
+    if sys.platform == "win32" and command.lower().endswith((".cmd", ".bat")):
+        quoted = folder + "\\" if folder.endswith("\\") else folder
+        return f'{subprocess.list2cmdline([command])} "{quoted}"'
+    return [command, folder]
+
+
 def _first_line(*texts):
     for text in texts:
         for line in (text or "").splitlines():
@@ -104,7 +115,7 @@ class Editor:
         """Raise the editor window holding the folder, or open one on it. The
         extension in that window finds the request on its own."""
         subprocess.Popen(
-            [context["command"], str(context["root"])],
+            _command_line(context["command"], str(context["root"])),
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             creationflags=_no_console(),
         )

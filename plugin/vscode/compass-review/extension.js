@@ -697,6 +697,13 @@ class CompassReview {
         return;
       }
       const target = verdictPathFor(entry.path);
+      if (exists(target)) {
+        this.reviews.delete(id);
+        this.retired.add(id);
+        this.push();
+        vscode.window.showInformationMessage("This review was already answered, so nothing was sent");
+        return;
+      }
       const staged = target.replace(/\.json$/, ".tmp");
       fs.writeFileSync(staged, JSON.stringify(this.buildAnswer(entry, verdict), null, 2));
       fs.renameSync(staged, target);
