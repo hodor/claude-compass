@@ -149,9 +149,10 @@ class GitReviewBase(unittest.TestCase):
         directory = reviewlib.review_dir(self.vault)
         return sorted(directory.glob("*.request.json")) if directory.is_dir() else []
 
-    def run_review(self, during=None, extra=None, delay=0.3):
-        """Review `self.doc`; a helper thread runs `during` (the human's edits)
-        and then writes an approved verdict plus `extra` for the new request."""
+    def run_review(self, during=None, extra=None, delay=0.3, files=None):
+        """Review `files` (default: `self.doc`); a helper thread runs `during`
+        (the human's edits) and then writes an approved verdict plus `extra`
+        for the new request."""
         known = set(self.requests())
 
         def answer():
@@ -175,10 +176,34 @@ class GitReviewBase(unittest.TestCase):
 
         thread = threading.Thread(target=answer, daemon=True)
         thread.start()
-        result = self.review(str(self.doc), "--timeout", "20")
+        result = self.review(*(str(f) for f in (files or [self.doc])), "--timeout", "20")
         thread.join(5)
         self.assertEqual(self.thread_errors, [])
         return result
+
+    def vault_rel(self, path):
+        """`path` as the Obsidian vault names it, the form `edited` entries take."""
+        return Path(path).relative_to(self.vault).as_posix()
+
+    def expected_report(self, commit, shown):
+        """The report lines git yields for `commit`: the full diff of the repo
+        paths in `shown`, then `changed <path>` for each other changed path in
+        git's own order."""
+        shown = [self.rel(p) for p in shown]
+        diff = self.git("-c", "color.ui=never", "diff", "--no-ext-diff", commit, "--", *shown)
+        names = self.git("-c", "core.quotepath=false", "diff", "--name-only", "-z", commit).stdout
+        others = [n for n in names.split("\0") if n and n not in shown]
+        return diff.stdout.splitlines() + [f"changed {n}" for n in others]
+
+    def report(self, out):
+        """The change report of a several-file review: the lines after the
+        header up to the first document text, or the end of the output."""
+        lines = out.splitlines()
+        headers = [i for i, line in enumerate(lines) if HEADER.match(line)]
+        self.assertEqual(len(headers), 1, out)
+        rest = lines[headers[0] + 1:]
+        stops = [i for i, line in enumerate(rest) if line.startswith("--- ") and line.endswith(" as the human left it ---")]
+        return rest[:stops[0]] if stops else rest
 
     def sections(self, out):
         """`(lines, header_index, marker_index, short_sha)` of a finished review."""
@@ -285,10 +310,11 @@ class GitReview(GitReviewBase):
         self.assertEqual(lines[header + 1:marker], expected)
         self.assertEqual("\n".join(lines[marker + 1:]), (DOC_TEXT + "\nhuman edit\n").rstrip("\n"))
 
-    def test_diff_covers_the_whole_repository_and_is_taken_against_the_request_commit(self):
-        """Adversarial where: the diff is limited to the reviewed file or the
-        vault, or is taken against the moving HEAD so a commit made during the
-        review hides everything the human changed."""
+    def test_diff_is_taken_against_the_request_commit_and_an_unlisted_file_is_only_named(self):
+        """Adversarial where: the diff is taken against the moving HEAD so a
+        commit made during the review hides everything the human changed, or a
+        change outside the review's files still prints its diff lines instead
+        of the single `changed <path>` line."""
         original = DOC_TEXT
 
         def edit_outside_the_vault():
@@ -306,14 +332,89 @@ class GitReview(GitReviewBase):
                 self.assertEqual(code, 0, out)
                 lines, header, marker, short = self.sections(out)
                 self.assertTrue(before.startswith(short), (name, before, short))
-                expected = self.diff_lines(before)
-                self.assertTrue(expected, name)
-                self.assertEqual(lines[header + 1:marker], expected)
                 if name == "edit outside the vault":
-                    self.assertIn("diff --git a/src/app.py b/src/app.py", lines)
+                    self.assertEqual(lines[header + 1:marker], ["changed src/app.py"])
                     self.commit_all("clean up after the row")
                 else:
+                    expected = self.diff_lines(before)
+                    self.assertTrue(expected, name)
+                    self.assertEqual(lines[header + 1:marker], expected)
                     self.assertNotEqual(self.head(), before)
+
+    def test_full_diff_covers_reviewed_and_edited_files_and_every_other_change_is_one_line(self):
+        """Adversarial where: a changed file outside the request's files and
+        the answer's `edited` list (a name-prefix sibling, a deleted file, a
+        non-ASCII path git would quote) leaks diff lines or loses its
+        `changed` line, or a reviewed file after the first, or an edited one,
+        gets no diff."""
+        spec = self.vault / "specs"
+        listed = spec / "SPEC-010-a.md"
+        edited = spec / "SPEC-011-b.md"
+        sibling = spec / "SPEC-001-xy.md"
+        accented = self.root / "notes" / "na\u00efve file.md"
+        self.put(accented, "a\n")
+        self.commit_all("add a non-ASCII path")
+        before = self.head()
+
+        def change():
+            self.put(self.doc, DOC_TEXT + "\nREVIEWED-MARK\n")
+            self.put(listed, "# listed\nLISTED-MARK\n")
+            self.put(edited, "# edited\nEDITED-MARK\n")
+            self.put(sibling, "# sibling\nOTHER-MARK\n")
+            self.put(self.root / "src" / "app.py", "OTHER-MARK\n")
+            self.put(accented, "OTHER-MARK\n")
+            os.remove(self.root / "README.md")
+
+        code, out, _ = self.run_review(during=change, files=[self.doc, listed],
+                                       extra={"edited": [self.vault_rel(edited)]})
+        self.assertEqual(code, 0, out)
+        section = self.report(out)
+        self.assertEqual(section, self.expected_report(before, [self.doc, listed, edited]))
+        self.assertEqual(sorted(line for line in section if line.startswith("changed ")), sorted([
+            f"changed {self.rel(sibling)}", "changed src/app.py", "changed README.md",
+            "changed notes/na\u00efve file.md"]))
+        self.assertFalse([line for line in section if "OTHER-MARK" in line], section)
+        for mark in ("REVIEWED-MARK", "LISTED-MARK", "EDITED-MARK"):
+            self.assertIn(f"+{mark}", section)
+
+    def test_an_edited_file_with_no_change_prints_nothing_and_an_untracked_one_is_only_named(self):
+        """Adversarial where: an `edited` entry that did not change prints a
+        `changed` line or an empty diff header, an entry git never saw makes
+        the diff fail with an ambiguous-path error, or an untracked edited
+        file is listed as both untracked and changed."""
+        listed = self.vault / "specs" / "SPEC-010-a.md"
+        fresh = self.vault / "specs" / "SPEC-099-new.md"
+        rows = [
+            ("edited but unchanged", [self.vault_rel(listed)], None, []),
+            ("edited path git never saw", ["specs/SPEC-404-gone.md"], None, []),
+            ("edited and untracked", [self.vault_rel(fresh)],
+             lambda: self.put(fresh, "new\n"), [f"untracked {self.rel(fresh)}"]),
+        ]
+        for name, edited, during, expected in rows:
+            with self.subTest(name):
+                code, out, _ = self.run_review(during=during, extra={"edited": edited})
+                self.assertEqual(code, 0, out)
+                lines, header, marker, _ = self.sections(out)
+                self.assertEqual(lines[header + 1:marker], expected, out)
+                if fresh.exists():
+                    os.remove(fresh)
+
+    def test_the_line_cap_bounds_the_diff_and_the_changed_and_untracked_lines_still_follow(self):
+        """Adversarial where: a reviewed file changed by thousands of lines
+        floods the report, or the cap line swallows the `changed` and
+        `untracked` lines that come after the diff."""
+        def change():
+            self.put(self.doc, "".join(f"line {n}\n" for n in range(reviewlib.MAX_DIFF_LINES * 2)))
+            self.put(self.root / "src" / "app.py", "print('other')\n")
+            self.put(self.root / "stray.txt", "s\n")
+
+        code, out, _ = self.run_review(during=change)
+        self.assertEqual(code, 0, out)
+        lines, header, marker, _ = self.sections(out)
+        section = lines[header + 1:marker]
+        cap = reviewlib.MAX_DIFF_LINES
+        self.assertRegex(section[cap], r"^\(\d+ more diff lines: git diff .*\)$")
+        self.assertEqual(section[cap + 1:], ["changed src/app.py", "untracked stray.txt"])
 
     def test_every_untracked_file_is_named_repo_relative_after_the_diff(self):
         """Adversarial where: untracked files in a new directory are collapsed
@@ -362,24 +463,30 @@ class GitReview(GitReviewBase):
 class NestedVault(GitReviewBase):
     SUB = "proj"
 
-    def test_paths_and_diff_are_repo_relative_when_the_vault_is_below_the_repo_root(self):
-        """Adversarial where: untracked names are listed relative to the vault
-        or the working directory (so files outside the project folder vanish),
-        or the diff is limited to the folder the vault sits in."""
+    def test_edited_paths_and_report_names_are_repo_relative_when_the_vault_is_below_the_repo_root(self):
+        """Adversarial where: an `edited` path relative to the vault is handed
+        to git unchanged (so it matches nothing and the diff vanishes), or
+        untracked and changed names are listed relative to the vault or the
+        working directory, so files outside the project folder go missing."""
+        edited = self.vault / "specs" / "SPEC-010-a.md"
+
         def create():
             self.put(self.root / "stray.txt", "s\n")
             self.put(self.vault / "specs" / "SPEC-099-new.md", "n\n")
             self.put(self.root / "README.md", "readme edited\n")
+            self.put(edited, "# edited below the repo root\n")
+            self.put(self.doc, DOC_TEXT + "\nreviewed edit\n")
 
         before = self.head()
-        code, out, _ = self.run_review(during=create)
+        code, out, _ = self.run_review(during=create, extra={"edited": [self.vault_rel(edited)]})
         self.assertEqual(code, 0, out)
         lines, header, marker, _ = self.sections(out)
         section = lines[header + 1:marker]
-        expected_diff = self.diff_lines(before)
-        self.assertIn("diff --git a/README.md b/README.md", expected_diff)
-        self.assertEqual(section[:len(expected_diff)], expected_diff)
-        self.assertEqual(sorted(section[len(expected_diff):]), sorted([
+        expected = self.expected_report(before, [self.doc, edited])
+        self.assertIn(f"diff --git a/{self.rel(edited)} b/{self.rel(edited)}", expected)
+        self.assertIn("changed README.md", expected)
+        self.assertEqual(section[:len(expected)], expected)
+        self.assertEqual(sorted(section[len(expected):]), sorted([
             "untracked stray.txt",
             "untracked proj/.compass/specs/SPEC-099-new.md",
         ]))
