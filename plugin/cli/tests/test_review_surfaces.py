@@ -378,6 +378,34 @@ class InstallWordingForPerUserEditors(SurfaceProject):
         code, out, _ = self.run_cli("review", "--install")
         self.assertEqual((code, out.splitlines()), (0, lines))
 
+    def test_an_update_installs_a_per_user_extension_only_for_the_editor_the_setting_picks(self):
+        """Adversarial where: every self-update puts the VS Code and Cursor
+        extensions into the user's editors for a project that reviews in
+        Obsidian, or the setting stops the asked-for `--install` too."""
+        surfaces = [editor(n, self.tmp) for n in ("obsidian", "vscode", "cursor")]
+        installed = []
+        for surface in surfaces:
+            surface.install = (lambda name: lambda vault, root=None: installed.append(name) or "installed")(surface.NAME)
+        self.register(*surfaces)
+        settings = {
+            "no setting": (PLUGIN_YAML, ["obsidian"]),
+            "picks vscode": ("review_editor: vscode\n" + PLUGIN_YAML, ["obsidian", "vscode"]),
+            "picks cursor": ("review_editor: cursor\n" + PLUGIN_YAML, ["obsidian", "cursor"]),
+            "picks obsidian": ("review_editor: obsidian\n" + PLUGIN_YAML, ["obsidian"]),
+        }
+        path = self.vault / "meta" / "plugin.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        for label, (text, expected) in settings.items():
+            with self.subTest(label):
+                path.write_text(text, encoding="utf-8")
+                installed.clear()
+                lines = reviewlib.install(self.vault, "ROOT", automatic=True)
+                self.assertEqual(installed, expected)
+                self.assertEqual([line.split(":")[0] for line in lines], ["obsidian", "vscode", "cursor"])
+                installed.clear()
+                reviewlib.install(self.vault, "ROOT")
+                self.assertEqual(installed, ["obsidian", "vscode", "cursor"])
+
 
 class CoreHoldsNoSurface(unittest.TestCase):
     def test_reviewlib_names_no_surface(self):

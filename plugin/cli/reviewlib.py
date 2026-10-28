@@ -400,11 +400,19 @@ def under_review(compass_vault, target):
     return None
 
 
-def install(compass_vault, shipped_root=None):
+def install(compass_vault, shipped_root=None, automatic=False):
     """Run every surface's install; one `<name>: <what was done>` line each.
-    The line for an editor that installs its extension once per user says so."""
+    The line for an editor that installs its extension once per user says so.
+    An `automatic` install, run by an update rather than asked for, installs a
+    per-user editor's extension only when the vault's `review_editor` names
+    that editor, since the extension lands in the user's editor for every
+    project."""
     lines = []
+    picked = review_editor(compass_vault) if automatic else None
     for surface in review_surfaces.SURFACES:
+        if automatic and surface.NAME in PER_USER_EDITORS and surface.NAME != picked:
+            lines.append(f"{surface.NAME}: installed nothing ({EDITOR_SETTING} does not pick it)")
+            continue
         line = f"{surface.NAME}: {surface.install(compass_vault, shipped_root)}"
         if surface.NAME in PER_USER_EDITORS:
             line += " (the extension installs once per user)"

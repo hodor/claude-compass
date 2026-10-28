@@ -284,7 +284,7 @@ def _apply(src, project_root, apply_models):
         try:
             import reviewlib
 
-            reviewlib.install(Path(project_root) / ".compass", claude)
+            reviewlib.install(Path(project_root) / ".compass", claude, automatic=True)
         except Exception:
             pass
     hooks_dir = claude / "hooks"
