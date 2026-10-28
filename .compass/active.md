@@ -57,12 +57,7 @@ Plan: [[PLAN-021-control-loops]].
 
 ## [[PLAN-025-review-across-files-and-sessions]]
 
-- [x] TASK-208: Live check: right window per project
-- [ ] TASK-209: Live check: whose writes are edits, after 208
-
-## [[PLAN-024-working-in-compass-is-visual]]
-
-- [x] TASK-226: taxonomy proposal and bulk vault fix reviewed in the editor - complexity: M, depends_on: none
+- [x] TASK-209: Live check: whose writes are edits, after 208
 
 ## PLAN-022: review documents in Obsidian
 
