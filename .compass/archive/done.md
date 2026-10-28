@@ -418,3 +418,8 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 ### PLAN-025 Wave 2: the review panel across files and sessions
 - [x] TASK-213: the panel as the approved mockup - complexity: L, depends_on: none
 - [x] TASK-217: change report, full diff for the review's files only - complexity: M, depends_on: none
+
+### PLAN-025 Wave 2: the review panel across files and sessions
+- [x] TASK-214: only typed edits count - complexity: S, depends_on: TASK-213
+- [x] TASK-215: each window steps aside on its own - complexity: S, depends_on: TASK-214
+- [x] TASK-218: gates send several documents; release 0.30.0 - complexity: S, depends_on: TASK-213, TASK-214, TASK-215, TASK-217

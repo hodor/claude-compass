@@ -59,9 +59,6 @@ Plan: [[PLAN-021-control-loops]].
 
 Plan: [[PLAN-025-review-across-files-and-sessions]].
 
-- [x] TASK-214: only typed edits count - complexity: S, depends_on: TASK-213
-- [x] TASK-215: each window steps aside on its own - complexity: S, depends_on: TASK-214
-- [ ] TASK-218: gates send several documents; release 0.30.0 - complexity: S, depends_on: TASK-213, TASK-214, TASK-215, TASK-217
 - [ ] TASK-219: live acceptance, two projects - complexity: S, depends_on: TASK-218
 
 ## PLAN-022: review documents in Obsidian
