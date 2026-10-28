@@ -26,33 +26,37 @@ This plan implements the outcomes of [[specs/human-surface/SPEC-030-review-docum
 ```mermaid
 flowchart LR
   subgraph W1["Wave 1: find out, agree, lay the ground"]
-    T208["208 Live check: right window, two projects"]:::open
-    T209["209 Live check: whose writes count as edits"]:::open
-    T210["210 Mockup: review panel, several files and sessions"]:::open
-    T211["211 compass review takes several files"]:::open
-    T212["212 PLAN-024 views point here"]:::open
+    T208["208 Live check: right window, two projects"]:::done
+    T209["209 Live check: whose writes count as edits"]:::done
+    T210["210 Mockup: review panel, several files and sessions"]:::done
+    T211["211 compass review takes several files"]:::done
+    T212["212 PLAN-024 views point here"]:::done
   end
   subgraph W2["Wave 2: build what was agreed"]
-    B["213 to 218 Walk in the panel, edits, stepping aside, delivery, gates, change report"]:::later
-    A["219 Acceptance: two projects, several files"]:::later
+    T213["213 The panel as the mockup"]:::open
+    T214["214 Only typed edits count"]:::open
+    T215["215 Each window steps aside on its own"]:::open
+    T217["217 Change report: full diff for the review's files"]:::open
+    T218["218 Gates send several documents, release"]:::open
+    T219["219 Acceptance: two projects, several files"]:::open
   end
   subgraph W3["Wave 3: VS Code"]
     V["220 to 223 Live check, mockup, editor choice, surface"]:::later
     VA["224 Acceptance in VS Code"]:::later
   end
-  T210 & T211 --> B
   T208 --> T209
-  T208 & T209 --> B
-  B --> A
-  A --> V --> VA
+  W1 --> T213 & T217
+  T213 --> T214 --> T215
+  T215 & T217 --> T218 --> T219
+  T219 --> V --> VA
+  classDef done fill:#bfb,color:#000
   classDef open fill:#ffa,color:#000
   classDef later fill:#eee,color:#000
 ```
 
-Numbers are task ids. A wave is a stage: a group of tasks planned in detail together; later waves stay sketched until the one before is checked. Yellow is detailed and not started, grey is sketched under Later.
+Numbers are task ids. A wave is a stage: a group of tasks planned in detail together; later waves stay sketched until the one before is checked. Green is done, yellow is detailed and not started, grey is sketched under Later. TASK-216 was dropped: every link reached its own window.
 
-> [!IMPORTANT]
-> You decide: approve the plan and the 15 choices below, all recommended, or comment on a row to change that choice. Two rows give less than the spec asks: the change report (the git diff Compass prints after an answer) gives other changed files by name only, and VS Code may stay in front after an answer.
+The 15 choices below are approved. Two rows give less than the spec asks: the change report (the git diff Compass prints after an answer) gives other changed files by name only, and VS Code may stay in front after an answer.
 
 | Choice | The plan's answer (recommended) |
 | --- | --- |
@@ -106,15 +110,33 @@ Obsidian with this vault and one scratch vault registered, Compass Review on in 
 
 **Pause point:** when automated verification passes and the human has approved the mockup, the human confirms the live check results before Wave 2 is detailed.
 
+### Wave 2 (detailed): build what was agreed
+
+TASK-213, TASK-214 and TASK-215 run one after another, since all three edit the plugin and its test harness; TASK-217 touches only the command line side and runs beside them. TASK-218 waits for all four because it ships them as a release, and TASK-219 runs on that release. The full text of each task is in [[archive/PLAN-025-review-across-files-and-sessions-detail#Wave 2 task text]].
+
+- [ ] TASK-213: The review panel becomes the approved mockup of [[research/human-surface/RESEARCH-review-panel-mockup]]: one card per review walks its files (File i of n, Previous, Next, Next unread, arrow keys, a row per file with its read mark, reason and note count, a note field that follows the walk), names its project and session, shows "On this file" for an open file outside the review, and closes with one Approve and one Needs changes whose answer carries each file's mark and note - complexity: L, depends_on: none, files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/styles.css, plugin/obsidian/tests/test_main.js], decisions: [SPEC-030-review-documents-open-in-obsidian/D-03, SPEC-030-review-documents-open-in-obsidian/D-06, SPEC-030-review-documents-open-in-obsidian/D-04], lessons: [LESSON-ui-change-needs-agreed-mockup-before-build]
+  - Automated verification: `node --test plugin/obsidian/tests/test_main.js` and `python -m pytest plugin/cli/tests` pass, with harness tests for: a four-file request drawing one card at "File 1 of 4" with four rows in request order; Next opening file 2 and marking it read; Previous off on the first file and Next off on the last; Next unread skipping read files and off when none is left; opening a listed file by hand moving the walk and marking it read; an outside file showing "On this file" with its note sent in `comments`; the answer's `files` list in request order with `read` and `note`; Needs changes off until a note or an edit exists; two requests from two sessions giving two cards, each showing its project and the first six characters of its session; a one-file request answered with `id`, `file`, `verdict`, `notes`, `comments`, `edited` and `at` and no `files` list; a renamed listed file keeping its mark and note; a withdrawn request sending nothing.
+  - Manual verification: the human approves a real review of four files, sent with `compass review` and `--why`, through the panel in Obsidian, and says it matches the mockup.
+- [ ] TASK-214: A file counts as edited only when Obsidian's editor-changed event fires for it during the review; the edit goes to every card that lists the file, and an edit to a file no card lists goes to no card - complexity: S, depends_on: TASK-213, files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/tests/test_main.js], decisions: [SPEC-030-review-documents-open-in-obsidian/D-03]
+  - Automated verification: harness tests show a file-changed event with no editor-changed event listing nothing; an editor-changed event on a file one of two cards lists, landing on that card only; on a file both cards list, landing on both; on an unlisted file, on none; after the answer, on none; `node --test plugin/obsidian/tests/test_main.js` and `python -m pytest plugin/cli/tests` pass.
+  - Manual verification: during a real review of two files, `compass sync` runs and a script rewrites one listed file while the human types a word in the other; the answer's `edited` names only the typed file.
+- [ ] TASK-215: Each window decides its own stepping aside: a review arriving by link records whether its own Obsidian window had focus before it was raised, and after the last answer in that window Obsidian steps aside only when an answered review arrived without focus; a review found at start-up keeps the request's `return` - complexity: S, depends_on: TASK-214, files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/tests/test_main.js], decisions: [SPEC-030-review-documents-open-in-obsidian/D-02, SPEC-030-review-documents-open-in-obsidian/D-06]
+  - Automated verification: harness tests with a window stub that reports focus show a review arriving with focus leaving the window in front after the answer, even with `return` true; arriving without focus stepping aside, even with `return` false; two cards stepping aside only after the second answer; a review found at start-up following `return`; `node --test plugin/obsidian/tests/test_main.js` and `python -m pytest plugin/cli/tests` pass.
+  - Manual verification: with both vaults open and the human working in the Compass vault's window, a script sends a review from the second project; after his answer the second window steps aside and the Compass window stays in front. A review sent to the Compass vault while he works in that window leaves it in front after the answer.
+- [ ] TASK-217: The change report after an answer prints the full diff only for the review's files and the files the answer lists as edited, and one `changed <path>` line for every other changed file; untracked files stay named one per line - complexity: M, depends_on: none, files: [plugin/cli/reviewlib.py, plugin/cli/commands/review.py, plugin/cli/tests/test_review_git.py], decisions: [SPEC-030-review-documents-open-in-obsidian/D-05]
+  - Automated verification: tests show a change to a reviewed file printing its diff; a change to a file in the answer's `edited` printing its diff; another file changed during the review giving one `changed` line and none of its diff lines; an `edited` path relative to an Obsidian vault below the repository root reaching the right file; an edited file with no change printing nothing for it; untracked files still named one `untracked <path>` line each and the diff still cut at 2,000 lines; the whole-repository diff test rewritten to these rules; `python -m pytest plugin/cli/tests` passes.
+  - Manual verification: after a real review during which another file changed, the human reads the printed report and confirms that file appears by name only.
+- [ ] TASK-218: The approval points that judge a document with the one it answers send both as one review: `/compass:research-codebase` sends the research with its spec, and the wave pause of `/compass:build` sends the plan with the wave's result documents; then the release, Compass 0.30.0 with the Obsidian plugin at 0.2.0, refreshes this repo's install and both vaults' plugin - complexity: S, depends_on: TASK-213, TASK-214, TASK-215, TASK-217, files: [plugin/skills/research-codebase/SKILL.md, plugin/skills/build/SKILL.md, plugin/cli/tests/test_approval_loop_text.py, plugin/.claude-plugin/plugin.json, plugin/obsidian/compass-review/manifest.json, .compass/meta/plugin.yaml], decisions: [SPEC-030-review-documents-open-in-obsidian/D-06, SPEC-030-review-documents-open-in-obsidian/D-04]
+  - Automated verification: a text test finds `compass review` with two files on both approval points, and each edited skill within the line ceiling the test file sets for it; `compass review --install` reports the plugin installed, and both vaults' `main.js` match `plugin/obsidian/compass-review/main.js` byte for byte; `.claude/skills/` matches `plugin/skills/` for the two skills; `python -m pytest plugin/cli/tests` passes; `compass validate` adds no warning.
+  - Manual verification: none; TASK-219 runs on this install.
+- [ ] TASK-219: Live acceptance: this repo and the second project each send a review of three files, and a second session in this repo sends a one-file review at the same time; the human walks each in its own window, opens a second pane, a file outside the review and renames a listed file, answers all three, and the clicks and minutes go into [[research/human-surface/RESEARCH-review-live-checks]] - complexity: S, depends_on: TASK-218, files: [.compass/research/human-surface/RESEARCH-review-live-checks.md], decisions: [SPEC-030-review-documents-open-in-obsidian/D-06]
+  - Automated verification: a script reads both vaults' `tmp/review/` and shows one answer per review, written by its own vault's plugin, each three-file answer with a `files` list naming all three and the renamed file under its new path; each printed report shows full diffs only for its own review's files; `compass validate` adds no warning.
+  - Manual verification: the human says each walk kept its place across the second pane, the outside file and the rename, that the two cards in this vault were told apart by session, and how he reached each window.
+
+**Pause point:** when automated verification passes, the human confirms each manual check; TASK-219's result is what Wave 3 is detailed from.
+
 ## Later (intent only)
 
-- [ ] TASK-213: The review panel's card walks several files as the mockup agreed, sends one answer with each file's mark and note, and names its project and session - files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/styles.css, plugin/obsidian/tests/test_main.js], decisions: [SPEC-030-review-documents-open-in-obsidian/D-03, SPEC-030-review-documents-open-in-obsidian/D-06, SPEC-030-review-documents-open-in-obsidian/D-04]
-- [ ] TASK-214: A review lists only the edits TASK-209 shows the human made, and an edit outside every review goes to no card - files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/tests/test_main.js], decisions: [SPEC-030-review-documents-open-in-obsidian/D-03]
-- [ ] TASK-215: Each card decides its own stepping aside from its own window's focus, so another project's Obsidian no longer counts - files: [plugin/obsidian/compass-review/main.js, plugin/cli/review_surfaces/obsidian.py, plugin/obsidian/tests/test_main.js, plugin/cli/tests/test_review_surfaces.py], decisions: [SPEC-030-review-documents-open-in-obsidian/D-02, SPEC-030-review-documents-open-in-obsidian/D-06]
-- [ ] TASK-216: The plugin confirms receipt of a review; without it Compass sends again, then asks in the terminal; dropped if TASK-208 finds every link arrives - files: [plugin/cli/reviewlib.py, plugin/cli/commands/review.py, plugin/obsidian/compass-review/main.js, plugin/cli/tests/test_review.py, plugin/obsidian/tests/test_main.js], decisions: [SPEC-030-review-documents-open-in-obsidian/D-02, SPEC-030-review-documents-open-in-obsidian/D-06]
-- [ ] TASK-217: The change report after an answer shows full changes for the reviewed and edited files and names other changed files only - files: [plugin/cli/reviewlib.py, plugin/cli/commands/review.py, plugin/cli/tests/test_review_git.py], decisions: [SPEC-030-review-documents-open-in-obsidian/D-05]
-- [ ] TASK-218: Approval points with several documents send them as one review, and the release refreshes this repo's install - files: [plugin/templates/rules/compass-pipeline.md, plugin/skills/plan/SKILL.md, plugin/templates/agents/planner.md, plugin/skills/research-codebase/SKILL.md, plugin/.claude-plugin/plugin.json], decisions: [SPEC-030-review-documents-open-in-obsidian/D-06, SPEC-030-review-documents-open-in-obsidian/D-04]
-- [ ] TASK-219: Live acceptance: two sessions in two projects each send a review of several files; the human walks both, opens a second pane, a file outside the review and renames one, and the clicks and minutes are recorded - decisions: [SPEC-030-review-documents-open-in-obsidian/D-06]
 - [ ] TASK-220: Live check of VS Code: which window a `code` command and a `vscode://` link reach with several folders open or none, whether an extension can raise or minimize its window, and whether Cursor's older engine has the needed calls - files: [.compass/research/human-surface/RESEARCH-review-live-checks.md], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
 - [ ] TASK-221: Mockup of the review panel in VS Code - files: [.compass/research/human-surface/RESEARCH-vscode-review-mockup.md], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
 - [ ] TASK-222: A project setting picks the review editor when two are set up, and install and doctor wording allow an editor installed per user - files: [plugin/cli/reviewlib.py, plugin/cli/review_surfaces/__init__.py, plugin/cli/commands/doctor.py, plugin/cli/tests/test_review_surfaces.py], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
@@ -124,6 +146,16 @@ Obsidian with this vault and one scratch vault registered, Compass Review on in 
 ## Risks
 
 - TASK-213 and PLAN-024's TASK-206 both edit `main.js` and its harness: TASK-213 merges first and TASK-206 rebases onto it.
-- TASK-218 and PLAN-024's TASK-201 both edit the pipeline rules and the plan skill: whichever lands second rebases onto the first; neither rewrites the other's paragraph.
+- TASK-218 adds to the approval text PLAN-024's TASK-201 wrote and rewrites none of it.
 - An old plugin gets a review of several files: it shows the first file as today, and the answer carries no marks per file.
 - A link reaches no Obsidian window: the answer still arrives when the human opens the vault, since the plugin scans for waiting reviews at start-up.
+
+## Wave 2 elaborated
+
+- TASK-213 changed: the human, approving the live checks, asked that the approval part be the better UI drawn earlier, so the task builds every part of the approved mockup ([[research/human-surface/RESEARCH-review-panel-mockup]], TASK-210) and its manual check is the human approving a real review through the panel against it. Needs changes is also enabled by an edit, as the card in `plugin/obsidian/compass-review/main.js` is; the mockup enabled it on a note only.
+- TASK-214 changed: "the edits TASK-209 shows the human made" became files with an editor-changed event during the review. [[research/human-surface/RESEARCH-review-live-checks]] found that only typing in Obsidian fires that event, the table editor's padding after the human's own edit included, and that writes from outside fire a file-changed event alone.
+- TASK-215 changed: Compass's own focus check stays, read only for a review the plugin finds at start-up, which has no arrival of its own to measure; `plugin/cli/review_surfaces/obsidian.py` and `plugin/cli/tests/test_review_surfaces.py` drop out of the task's files.
+- TASK-216 dropped: TASK-208 saw every link reach its own vault, two vaults in the same second, a closed vault and an open one, each into the running Obsidian. Its decisions stay carried by TASK-215.
+- TASK-217: unchanged - intent held.
+- TASK-218 changed: the pipeline rules, the plan skill and the planner already send a plan with its detail file as one review (TASK-201), so they drop out of the task's files; the task adds the form to the research and wave-pause approval points, and the release also bumps the Obsidian plugin's version.
+- TASK-219 changed: a second session in this repo joins, since TASK-211 now puts session names on requests, so one vault shows two cards told apart by session; the results go into the live checks document TASK-208 created.
