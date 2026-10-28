@@ -567,6 +567,31 @@ class FindVaultRootTests(unittest.TestCase):
             if old is not None:
                 os.environ["CLAUDE_PROJECT_DIR"] = old
 
+    def test_a_vault_at_the_drive_root_is_found_only_from_the_root_itself(self):
+        # Defect class: a stray `.compass` at a drive root becomes the vault
+        # of every folder under it with none of its own, so hooks running in
+        # temp folders fill it with captures and state.
+        tmp = make_tempdir(self)
+        nested = (tmp / "a").resolve()
+        nested.mkdir()
+        root_vault = Path(nested.anchor) / ".compass"
+        real_is_dir = Path.is_dir
+
+        def is_dir(path):
+            return path == root_vault or real_is_dir(path)
+
+        old = os.environ.pop("CLAUDE_PROJECT_DIR", None)
+        try:
+            with mock.patch.object(Path, "is_dir", is_dir):
+                with self.assertRaises(FileNotFoundError):
+                    vaultlib.find_vault_root(start=nested)
+                self.assertEqual(
+                    vaultlib.find_vault_root(start=Path(nested.anchor)), root_vault
+                )
+        finally:
+            if old is not None:
+                os.environ["CLAUDE_PROJECT_DIR"] = old
+
 
 
 class WriteTextLfResilienceTests(unittest.TestCase):

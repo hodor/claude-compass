@@ -183,7 +183,10 @@ def find_vault_root(start=None, honor_env=True):
     `honor_env` is false, then walks up from `start` (or cwd) looking for a
     `.compass` directory. The
     user's Compass home (`COMPASS_HOME`, default `~/.compass`), which holds
-    kept session clones and private stores, is never a project vault.
+    kept session clones and private stores, is never a project vault. The
+    walk stops below a drive root: a `.compass` there is a vault only for a
+    session started in the root itself, so a folder under it with no vault
+    of its own finds none.
     Raises FileNotFoundError if none is found.
     """
     homes = _compass_homes()
@@ -194,6 +197,8 @@ def find_vault_root(start=None, honor_env=True):
             return candidate
     current = Path(start or os.getcwd()).resolve()
     for directory in [current, *current.parents]:
+        if directory != current and directory.parent == directory:
+            break
         candidate = directory / ".compass"
         if candidate.is_dir() and not _is_compass_home(candidate, homes):
             return candidate
