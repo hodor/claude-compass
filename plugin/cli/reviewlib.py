@@ -162,17 +162,19 @@ def repo_paths(root, base, names):
     """The entries of `names`, paths relative to the directory `base`, as
     paths relative to the repository `root`, forward slashes, in order and
     without repeats; an absolute entry is taken as it is. An entry that is not
-    a string or leads outside the repository is left out."""
+    a string, names a directory, or leads outside the repository is left
+    out."""
     top = Path(root).resolve()
     found = []
     for name in names:
         if not isinstance(name, str) or not name:
             continue
         try:
-            rel = (Path(base) / name).resolve().relative_to(top).as_posix()
+            full = (Path(base) / name).resolve()
+            rel = full.relative_to(top).as_posix()
         except (OSError, ValueError):
             continue
-        if rel != "." and rel not in found:
+        if rel != "." and not full.is_dir() and rel not in found:
             found.append(rel)
     return found
 
@@ -191,7 +193,7 @@ def changes_since(root, commit, show=(), skip=None):
     failure = None
     if show:
         diff = _git(root, "--literal-pathspecs", "-c", "color.ui=never", "diff", "--no-ext-diff",
-                    commit, "--", *show)
+                    "--no-renames", commit, "--", *show)
         if diff.returncode == 0:
             body = _text(diff.stdout).split("\n")
             if body and body[-1] == "":
@@ -204,7 +206,7 @@ def changes_since(root, commit, show=(), skip=None):
             lines.append(failure)
     hidden = _inside(root, skip) if skip else None
     shown = {os.path.normcase(path) for path in show}
-    changed = _git(root, "-c", "core.quotepath=false", "diff", "--name-only", "-z", commit)
+    changed = _git(root, "-c", "core.quotepath=false", "diff", "--name-only", "--no-renames", "-z", commit)
     if changed.returncode == 0:
         names = [name for name in _text(changed.stdout).split("\0") if name]
         lines.extend(f"changed {name}" for name in names

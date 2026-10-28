@@ -156,5 +156,38 @@ class UndecodableDocument(GitReviewBase):
         self.assertIn("stray", out.split(" as the human left it ---", 1)[1])
 
 
+class RenamedFilesAreNamedOnBothSides(GitReviewBase):
+    def test_a_renamed_unlisted_file_reports_its_old_path_as_changed_too(self):
+        """Adversarial where: `git diff --name-only` collapses a rename into
+        its new name, so the old path, which no longer exists, is never
+        reported and a deletion vanishes from the change report."""
+        old = self.vault / "specs" / "SPEC-010-a.md"
+        new = self.vault / "specs" / "SPEC-010-renamed.md"
+
+        def rename():
+            self.git("mv", str(old), str(new))
+
+        code, out, _ = self.run_review(during=rename)
+        self.assertEqual(code, 0, out)
+        report = _changes_block(out).splitlines()[1:]
+        self.assertEqual(sorted(report), sorted([
+            f"changed {self.rel(old)}", f"changed {self.rel(new)}"]))
+
+
+class EditedDirectoryEntry(GitReviewBase):
+    def test_an_edited_entry_naming_a_directory_shows_nothing_for_its_files(self):
+        """Adversarial where: an `edited` entry that is a directory is handed
+        to git as a pathspec, so every changed file under it prints its full
+        diff instead of one `changed` line."""
+        other = self.vault / "specs" / "SPEC-010-a.md"
+
+        def change():
+            self.put(other, "# changed\nOTHER-MARK\n")
+
+        code, out, _ = self.run_review(during=change, extra={"edited": ["specs"]})
+        self.assertEqual(code, 0, out)
+        self.assertEqual(_changes_block(out).splitlines()[1:], [f"changed {self.rel(other)}"])
+
+
 if __name__ == "__main__":
     unittest.main()
