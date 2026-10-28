@@ -546,6 +546,23 @@ class AfterTheAnswerEdges(MultiFileProject):
                 self.assertIn("file specs/SPEC-002-y.md read note: gone", lines)
                 self.assertTrue(any(ln.startswith("--- changes since ") for ln in lines))
 
+    def test_a_file_renamed_in_obsidian_is_reported_under_its_new_name_with_its_mark(self):
+        """Adversarial where: the per-file lines look the answer up only by the
+        request's names, so a listed file the human renamed in Obsidian (the
+        answer's entry at its place carries the new path) prints as unread
+        under its old name and its note and reprint are lost."""
+        renamed = self.spec2.with_name("SPEC-002-renamed.md")
+        files = [{"file": "plans/PLAN-001-z.md", "read": True},
+                 {"file": "specs/SPEC-001-x.md", "read": True},
+                 {"file": "specs/SPEC-002-renamed.md", "read": True, "note": "moved"}]
+        code, out, _ = self.reviewed(files, during=lambda: self.spec2.rename(renamed))
+        renamed.rename(self.spec2)
+        self.assertEqual(code, 0, out)
+        lines = out.splitlines()
+        self.assertIn("file specs/SPEC-002-renamed.md read note: moved (renamed from specs/SPEC-002-y.md)", lines)
+        self.assertNotIn("file specs/SPEC-002-y.md unread", lines)
+        self.assertIn("--- specs/SPEC-002-renamed.md as the human left it ---", lines)
+
     def test_a_whitespace_only_note_is_neither_shown_nor_a_reason_to_reprint(self):
         """Adversarial where: the reprint test looks at the raw note while the
         printed line looks at the collapsed one, so a note of spaces and

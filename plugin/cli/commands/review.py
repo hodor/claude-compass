@@ -18,7 +18,9 @@ When the surface writes the verdict, it prints the verdict JSON, then
 one `comment <file>: <note>` line per note the human left on another file,
 one `edited <file>` line per file the human changed, and, for a several-file
 review, one `file <path> read|unread [note: <note>]` line per listed file in
-request order (a file the verdict does not mark counts as unread), then a
+request order (a file the verdict does not mark counts as unread; a file
+renamed during the review prints under its new path, ending
+`(renamed from <old path>)`), then a
 `--- changes since <short sha> ---` line followed by `git diff <sha>` for the
 reviewed files and the files the verdict lists as edited, one `changed <path>`
 line per other file that differs from `<sha>`, and one `untracked <path>` line
@@ -189,11 +191,32 @@ def _marks(verdict):
             for entry in verdict.get("files") or []}
 
 
-def _print_file_lines(documents, marks):
-    for rel, _ in documents:
+def _walked(documents, verdict, surface_root):
+    """The request's documents as the answer left them: `(rel, path, old_rel)`
+    per listed file, in request order. A listed file that no longer exists,
+    where the answer's entry at the same place names a different file that
+    does, was renamed during the review; it takes the entry's path, with its
+    request name as `old_rel`. Every other file keeps its own, `old_rel`
+    None."""
+    entries = verdict.get("files") or []
+    walked = []
+    for i, (rel, path) in enumerate(documents):
+        entry = entries[i] if i < len(entries) else None
+        name = entry.get("file") if isinstance(entry, dict) else None
+        moved = Path(surface_root) / name if isinstance(name, str) and name != rel else None
+        if moved is not None and not Path(path).exists() and moved.is_file():
+            walked.append((name, moved, rel))
+        else:
+            walked.append((rel, path, None))
+    return walked
+
+
+def _print_file_lines(walked, marks):
+    for rel, _, old_rel in walked:
         read, note = marks.get(rel, (False, ""))
         suffix = f" note: {_one_line(note)}" if _one_line(note) else ""
-        print(f"file {rel} {'read' if read else 'unread'}{suffix}")
+        renamed = f" (renamed from {old_rel})" if old_rel else ""
+        print(f"file {rel} {'read' if read else 'unread'}{suffix}{renamed}")
 
 
 def _print_changes(root, commit, show, skip):
@@ -227,15 +250,17 @@ def _print_answer(request, verdict, documents, root, vault, surface_root):
     _print_carried(verdict)
     several = len(documents) > 1
     marks = _marks(verdict)
+    walked = _walked(documents, verdict, surface_root) if several else [(r, p, None) for r, p in documents]
     if several:
-        _print_file_lines(documents, marks)
-    _print_changes(root, request["commit"], _shown_paths(verdict, documents, root, surface_root),
+        _print_file_lines(walked, marks)
+    shown = documents + [(rel, path) for rel, path, old_rel in walked if old_rel]
+    _print_changes(root, request["commit"], _shown_paths(verdict, shown, root, surface_root),
                    reviewlib.review_dir(vault))
     if not several:
         _print_document(request["file"], documents[0][1], newline=False)
         return
     edited = {path for path in verdict.get("edited", []) if isinstance(path, str)}
-    for rel, path in documents:
+    for rel, path, _ in walked:
         if _one_line(marks.get(rel, (False, ""))[1]) or rel in edited:
             _print_document(rel, path, newline=True)
 
