@@ -312,6 +312,7 @@ A spec, plan or research document is read by a person who decides. It opens unde
 - **Decisions in a callout.** The `- **D-NN:**` bullets sit in a callout under the Decisions heading. A callout cannot hold a block id a link could reach, so a document citing a decision links that heading (`[[SPEC-001-name#Decisions]]`).
 - **Block ids.** A line cited from another document that sits outside a callout gets a block id, ` ^d-01`, at its end, and the citation links `[[doc#^d-01]]`. A block id inside a callout is not reachable by a link; link the heading instead.
 - **Embed, never copy.** A section another document holds appears through `![[doc#Heading]]`, never copied, so one source stays true. A folded `> [!NOTE]-` callout holding embeds carries the rest of a long document below its opening.
+- **Code blocks.** Every fence names the language of what it holds (` ```python`, ` ```cpp`, ` ```json`, ` ```markdown`, ` ```text` for plain output), so Obsidian and GitHub highlight it; a language that only a plugin draws is kept for blocks that plugin renders.
 - **Bytes.** A visual stays when it removes as many bytes as it adds, or when the human keeps it knowing its cost. A visual that only decorates is cut. A table that replaces prose passes this test; a diagram that restates a paragraph the reader still needs does not. A mockup of a document carries a byte table: bytes added against bytes removed.
 
 ### Plain words

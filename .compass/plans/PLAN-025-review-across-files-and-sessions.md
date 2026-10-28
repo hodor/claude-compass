@@ -17,10 +17,6 @@ summary: "two live checks in Obsidian and an agreed mockup first; then one revie
 
 # Review Across Files and Sessions
 
-> [!question] You decide
-> Wave 2 is built and checked live: the panel walks several files, and each card names its project and session. Approve to start Wave 3, detailed below: a live check of which VS Code or Cursor window a link reaches, and a VS Code mockup of the same panel, opened for you to try. Needs changes holds Wave 3 back.
-> One live check of Wave 2 never showed a result: a note on a file outside the review. Before answering, open [[archive/PLAN-025-review-across-files-and-sessions-detail|the detail file]], which this review does not list, and type any word in the panel's "On this file" box; the answer then shows whether that note arrives.
-
 ## Goal
 
 This plan implements the outcomes of [[specs/human-surface/SPEC-030-review-documents-open-in-obsidian|Review Documents Open in Obsidian (SPEC-030)]] that the review plugin does not meet yet, from the evidence in [[research/human-surface/RESEARCH-review-across-files-and-sessions]]. One review walks the human through several files and closes with one answer. Several Claude Code sessions, in one project or several, each reach their own Obsidian and get their own answer back, and nothing from one review leaks into another. The review lives in the side panel of Obsidian, one card (box) per review, and approving stays one click. After an answer Obsidian steps aside: it goes to the background so the human is back where he was. A VS Code version follows, using the same request and answer files. Earlier work: [[PLAN-022-review-in-obsidian]] built the one-file review.
@@ -183,11 +179,11 @@ TASK-220 and TASK-221 run side by side: one checks VS Code and Cursor live, the 
 
 - TASK-220 changed: Cursor joins the check, since it is installed here and runs an older engine (finding 3.17 of [[research/human-surface/RESEARCH-review-across-files-and-sessions]]); the check uses a throwaway extension that logs which window took each link, so the answer is read from a file. It also decides D-02 on VS Code: a raise or minimize that works keeps stepping aside, otherwise VS Code stays in front after an answer. The superseded intent line:
 
-  ```
+  ```markdown
   - [ ] TASK-220: Live check of VS Code: which window a `code` command and a `vscode://` link reach with several folders open or none, whether an extension can raise or minimize its window, and whether Cursor's older engine has the needed calls - files: [.compass/research/human-surface/RESEARCH-review-live-checks.md], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
   ```
 - TASK-221 changed: the human approved the Obsidian card in a real four-file review (TASK-213) and walked it again in TASK-219, so the VS Code panel copies that card; the smaller form hypothesis H14 of the research allowed, modal buttons and an input box with no notes on other files, is set aside. The superseded intent line:
 
-  ```
+  ```markdown
   - [ ] TASK-221: Mockup of the review panel in VS Code - files: [.compass/research/human-surface/RESEARCH-vscode-review-mockup.md], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
   ```
