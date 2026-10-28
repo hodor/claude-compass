@@ -286,11 +286,14 @@ test("approve from the panel while another file is in view saves the editor, wri
   assert.equal(bar(app), undefined, "bar removed after the verdict");
 });
 
-// Adversarial where: Needs changes from the panel ignores `return: false` and
-// steps Obsidian aside anyway, or writes the wrong verdict word.
-test("return false keeps Obsidian in front after the verdict", async () => {
+// Adversarial where: Needs changes from the panel ignores `return: false` on a
+// review found at start-up and steps Obsidian aside anyway, or writes the wrong
+// verdict word.
+test("return false keeps Obsidian in front after the verdict of a review found at start-up", async () => {
   const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/2.request.json": req("2", "a.md", { return: false }) });
-  await plugin.handler({ request: "tmp/review/2.request.json" });
+  await app.workspace.ready();
+  await sleep();
+  await plugin.openPanel();
   typeInto(notesIn(cardFor(app, "2")), "redo");
   await click(cardBtn(app, "2", "Needs changes"));
   await sleep();
@@ -1883,4 +1886,26 @@ test("a start-up review pending beside a focused link review steps aside only wh
     await approve(app, "1");
     assert.equal(win.minimized, row.aside, `${row.name}: after the start-up review is answered`);
   }
+});
+
+// Adversarial where: an unfocused review answered while a second card is still
+// pending leaves its step-aside debt behind when that second card is withdrawn
+// (the terminal answered), so a focused review that arrives and is answered
+// later hides the window although nothing about it arrived unfocused.
+test("a step-aside debt does not outlive a withdrawn card into a later focused review", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x", "b.md": "y", "c.md": "z",
+    "tmp/review/1.request.json": req("1", "a.md"),
+    "tmp/review/2.request.json": req("2", "b.md"),
+    "tmp/review/3.request.json": req("3", "c.md"),
+  });
+  await arriveByLink(plugin, "1", false);
+  await arriveByLink(plugin, "2", true);
+  await approve(app, "1");
+  app.store.delete("tmp/review/2.request.json");
+  await plugin.recheck();
+  assert.equal(plugin.pending.size, 0, "the withdrawn card is gone");
+  await arriveByLink(plugin, "3", true);
+  await approve(app, "3");
+  assert.equal(win.minimized, 0, "the focused review leaves the window in front");
 });
