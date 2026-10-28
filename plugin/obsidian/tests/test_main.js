@@ -148,6 +148,13 @@ function makeApp(files) {
       on(name, fn) { wsListeners[name] = fn; },
       onLayoutReady(fn) { this.ready = fn; },
     },
+    // The `title` property of a file, as Obsidian's metadata cache reports it.
+    metadataCache: {
+      getFileCache(f) {
+        const m = /^---\ntitle: "?([^"\n]*)"?\n---/.exec(store.get(f.path) || "");
+        return m ? { frontmatter: { title: m[1] } } : {};
+      },
+    },
     listeners,
     wsListeners,
     leaves,
@@ -1003,4 +1010,474 @@ test("unloading the plugin removes every bar from the panes", async () => {
   plugin.onunload();
   assert.equal(document.querySelectorAll(".compass-review-bar").length, 0);
   document.children.length = 0;
+});
+
+// ---- a review of several files: one card walks them and one answer covers them ----
+
+const SET = ["spec.md", "plan.md", "detail.md", "study.md"];
+const WHY = ["The need", "What gets built in what order", "The long text of each task", "The evidence behind the plan"];
+const filesOf = (names = SET, whys = WHY) => names.map((file, i) => ({ file, why: whys[i] }));
+const SESSION_A = "7f3a91c2-4d1b-4e8a-9b2f-5c06d83e1a47";
+const SESSION_B = "b20e44aa-1c5d-4f60-8a37-90de12c4f5b1";
+
+// A four-file review whose request lists SET in an order no sort would give.
+async function openSet(extra = {}, vault = {}) {
+  const store = {
+    "elsewhere.md": "e",
+    "tmp/review/1.request.json": req("1", SET[0], { files: filesOf(), project: "orchard", session: SESSION_A, ...extra }),
+    ...Object.fromEntries(SET.map((f) => [f, "x"])),
+    ...vault,
+  };
+  const r = await loaded(store);
+  await r.plugin.handler({ request: "tmp/review/1.request.json" });
+  return r;
+}
+const rowsIn = (card) => card.querySelectorAll(".compass-review-row");
+const textOf = (el) => el.all().map((e) => e.text).join(" ");
+const positionOf = (card) => { const e = card.all().find((x) => /^File \d+ of \d+$/.test(x.text)); return e ? e.text : null; };
+const markOf = (row) => { const e = row.all().find((x) => x.text === "read" || x.text === "unread"); return e ? e.text : null; };
+const summaryOf = (card) => { const e = card.all().find((x) => /files read/.test(x.text)); return e ? e.text : null; };
+const labelIn = (card, text) => card.all().find((e) => e.text === text);
+const marks = (app, id = "1") => rowsIn(cardFor(app, id)).map(markOf);
+async function step(app, name, id = "1") { await click(cardBtn(app, id, name)); await sleep(); }
+async function goToRow(app, i, id = "1") { await click(rowsIn(cardFor(app, id))[i]); await sleep(); }
+
+// A key pressed on an element reaches the keydown handlers of it and of its ancestors.
+async function press(el, key) {
+  for (let n = el; n; n = n.parent) {
+    for (const fn of [n.onkeydown, ...(n.handlers.keydown || [])].filter(Boolean)) {
+      fn.call(n, { key, target: el, preventDefault() {}, stopPropagation() {} });
+    }
+  }
+  await sleep();
+}
+
+// Adversarial where: the card lists files in a sorted or reversed order
+// instead of the request's, drops a row's reason, marks every file read or
+// none, counts the first file's opening wrongly, or omits the heading.
+test("a four-file request draws one card at File 1 of 4 with a row per file in request order", async () => {
+  const { app } = await openSet();
+  assert.deepEqual(cardIds(app), ["1"]);
+  assert.ok(panelEl(app).all().some((e) => e.text === "Reviews waiting on you"), "panel heading");
+  const card = cardFor(app, "1");
+  assert.equal(positionOf(card), "File 1 of 4");
+  const rows = rowsIn(card);
+  assert.equal(rows.length, 4);
+  assert.deepEqual(rows.map((r) => WHY.findIndex((w) => textOf(r).includes(w))), [0, 1, 2, 3]);
+  assert.deepEqual(marks(app), ["read", "unread", "unread", "unread"]);
+  assert.match(summaryOf(card), /^1 of 4 files read, 0 notes/);
+  assert.ok(button(card, "Approve") && button(card, "Needs changes"));
+  assert.equal(button(card, "Previous").disabled, true);
+});
+
+// Adversarial where: Next opens the file but leaves it unread or leaves the
+// position unchanged, Previous does not go back, or the buttons stay on at
+// the ends of the list.
+test("Next and Previous move through the files in request order, mark each read, and switch off at the ends", async (t) => {
+  await t.test("Next opens the second file and marks it read", async () => {
+    const { app } = await openSet();
+    await step(app, "Next");
+    assert.equal(positionOf(cardFor(app, "1")), "File 2 of 4");
+    assert.equal(app.active.path, "plan.md");
+    assert.deepEqual(marks(app), ["read", "read", "unread", "unread"]);
+  });
+  await t.test("Previous returns to the first file", async () => {
+    const { app } = await openSet();
+    await step(app, "Next");
+    await step(app, "Previous");
+    assert.equal(positionOf(cardFor(app, "1")), "File 1 of 4");
+    assert.equal(app.active.path, "spec.md");
+  });
+  await t.test("Previous is off on the first file and Next is on", async () => {
+    const { app } = await openSet();
+    assert.equal(cardBtn(app, "1", "Previous").disabled, true);
+    assert.notEqual(cardBtn(app, "1", "Next").disabled, true);
+  });
+  await t.test("Next is off on the last file and Previous is on", async () => {
+    const { app } = await openSet();
+    await goToRow(app, 3);
+    assert.equal(cardBtn(app, "1", "Next").disabled, true);
+    assert.notEqual(cardBtn(app, "1", "Previous").disabled, true);
+  });
+  await t.test("one step from the last file, Next is still on", async () => {
+    const { app } = await openSet();
+    await goToRow(app, 2);
+    assert.notEqual(cardBtn(app, "1", "Next").disabled, true);
+  });
+});
+
+// Adversarial where: Next unread stops on a read file, ignores the files
+// before the current one when none after it is unread, or stays on once every
+// file is read.
+test("Next unread jumps to the next file not yet read and switches off when none is left", async (t) => {
+  await t.test("it skips a read file that lies between", async () => {
+    const { app } = await openSet();
+    await goToRow(app, 2);
+    await goToRow(app, 0);
+    await step(app, "Next unread");
+    assert.equal(positionOf(cardFor(app, "1")), "File 2 of 4");
+    await step(app, "Next unread");
+    assert.equal(positionOf(cardFor(app, "1")), "File 4 of 4", "detail is read, so the jump passes it");
+    assert.equal(app.active.path, "study.md");
+    assert.equal(cardBtn(app, "1", "Next unread").disabled, true, "every file is read");
+  });
+  await t.test("with only earlier files unread it goes back to the first of them", async () => {
+    const { app } = await openSet();
+    await goToRow(app, 3);
+    await step(app, "Next unread");
+    assert.equal(positionOf(cardFor(app, "1")), "File 2 of 4");
+  });
+  await t.test("it is on while any file is unread", async () => {
+    const { app } = await openSet();
+    assert.notEqual(cardBtn(app, "1", "Next unread").disabled, true);
+  });
+});
+
+// Adversarial where: opening a listed file from a link or the file explorer
+// leaves the walk on the old file or leaves the new one unread, or shows it
+// as an outside file.
+test("opening a listed file by hand moves the walk to it, marks it read, and is not an outside file", async () => {
+  const { app } = await openSet();
+  show(app, app.leaves[0], "detail.md");
+  const card = cardFor(app, "1");
+  assert.equal(positionOf(card), "File 3 of 4");
+  assert.deepEqual(marks(app), ["read", "unread", "read", "unread"]);
+  assert.equal(thisFileIn(card), null);
+});
+
+// Adversarial where: a click on a row does not open the file, opens it in a
+// new pane although one already shows it, or does not mark it read.
+test("a click on a row opens that file in the pane that shows it, else in a pane, and marks it read", async (t) => {
+  await t.test("a file already shown in a pane gets no second pane", async () => {
+    const { app } = await openSet();
+    const other = app.workspace.getLeaf(true);
+    await other.openFile(mdFile("plan.md"));
+    const panes = app.leaves.length;
+    await goToRow(app, 0);
+    assert.equal(app.leaves.length, panes);
+    assert.equal(app.active.path, "spec.md");
+    assert.equal(positionOf(cardFor(app, "1")), "File 1 of 4");
+  });
+  await t.test("a file shown nowhere opens and is marked read", async () => {
+    const { app } = await openSet();
+    await goToRow(app, 3);
+    assert.ok(app.leaves.some((l) => l.view.file && l.view.file.path === "study.md"));
+    assert.equal(app.active.path, "study.md");
+    assert.equal(positionOf(cardFor(app, "1")), "File 4 of 4");
+    assert.equal(marks(app)[3], "read");
+  });
+});
+
+// Adversarial where: the arrow keys do nothing, run the wrong way, walk past
+// either end, or react to other keys.
+test("Right and Left arrow keys on the card step to the next and previous file and stop at the ends", async () => {
+  const { app } = await openSet();
+  const at = () => positionOf(cardFor(app, "1"));
+  await press(cardFor(app, "1"), "ArrowLeft");
+  assert.equal(at(), "File 1 of 4", "Left on the first file stays");
+  await press(cardFor(app, "1"), "ArrowRight");
+  assert.equal(at(), "File 2 of 4");
+  assert.equal(app.active.path, "plan.md");
+  await press(cardFor(app, "1"), "x");
+  assert.equal(at(), "File 2 of 4", "other keys do nothing");
+  await press(cardFor(app, "1"), "ArrowRight");
+  await press(cardFor(app, "1"), "ArrowRight");
+  await press(cardFor(app, "1"), "ArrowRight");
+  assert.equal(at(), "File 4 of 4", "Right on the last file stays");
+  await press(cardFor(app, "1"), "ArrowLeft");
+  assert.equal(at(), "File 3 of 4");
+});
+
+// Adversarial where: the row shows a path or the file name although the file
+// has a `title` property (quoted or not), or the note field is labelled with
+// something other than the current file's title.
+test("rows and the note label use the title property, else the file name", async () => {
+  const { app } = await openSet({}, { "spec.md": '---\ntitle: "Combat spec"\n---\nbody', "plan.md": "---\ntitle: Build order\n---\nbody" });
+  const rows = rowsIn(cardFor(app, "1"));
+  assert.ok(textOf(rows[0]).includes("Combat spec"));
+  assert.ok(textOf(rows[1]).includes("Build order"));
+  assert.ok(textOf(rows[2]).includes("detail"));
+  assert.ok(labelIn(cardFor(app, "1"), "Note on Combat spec"));
+  await step(app, "Next");
+  assert.ok(labelIn(cardFor(app, "1"), "Note on Build order"));
+  await step(app, "Next");
+  assert.ok(labelIn(cardFor(app, "1"), "Note on detail"));
+});
+
+// Adversarial where: the note field is shared by all files (text typed on
+// one file shows on the next), a note is lost when the walk moves away, a
+// whitespace-only note counts, or the row and summary counts lag the typing.
+test("each file keeps its own note as the walk moves, and the rows and the summary count them", async () => {
+  const { app } = await openSet();
+  await step(app, "Next");
+  typeInto(notesIn(cardFor(app, "1")), "reorder the tasks");
+  const planRow = () => rowsIn(cardFor(app, "1"))[1];
+  assert.match(textOf(planRow()), /\b1 note\b/);
+  assert.match(summaryOf(cardFor(app, "1")), /^2 of 4 files read, 1 note\b/);
+  await step(app, "Next");
+  assert.equal(notesIn(cardFor(app, "1")).value, "", "the next file starts with its own empty note");
+  typeInto(notesIn(cardFor(app, "1")), "   ");
+  assert.match(summaryOf(cardFor(app, "1")), /^3 of 4 files read, 1 note\b/, "a whitespace-only note is no note");
+  await step(app, "Previous");
+  assert.equal(notesIn(cardFor(app, "1")).value, "reorder the tasks", "the note stays with its file");
+  assert.doesNotMatch(textOf(rowsIn(cardFor(app, "1"))[0]), /\b[1-9]\d* notes?\b/);
+});
+
+// Adversarial where: the "On this file" box shows for a listed file, lacks
+// the path, loses its note, or an outside note does not count toward the
+// summary, enable Needs changes or travel in `comments`.
+test("a file outside the review shows On this file with its own note, which counts and travels in comments", async () => {
+  const { app } = await openSet();
+  const card0 = () => cardFor(app, "1");
+  assert.equal(thisFileIn(card0()), null);
+  show(app, app.leaves[0], "elsewhere.md");
+  assert.ok(textOf(thisFileIn(card0())).includes("On this file: elsewhere.md"));
+  assert.equal(cardBtn(app, "1", "Needs changes").disabled, true);
+  typeInto(fileNoteIn(card0()), "typo on line 3");
+  assert.match(summaryOf(card0()), /^1 of 4 files read, 0 notes/);
+  assert.match(summaryOf(card0()), /outside/);
+  assert.equal(cardBtn(app, "1", "Needs changes").disabled, false);
+  show(app, app.leaves[0], "plan.md");
+  assert.equal(thisFileIn(card0()), null, "opening a listed file hides the box");
+  assert.equal(positionOf(card0()), "File 2 of 4");
+  await click(cardBtn(app, "1", "Needs changes"));
+  await sleep();
+  const v = verdictOf(app, "tmp/review/1.verdict.json");
+  assert.deepEqual(v.comments, [{ file: "elsewhere.md", note: "typo on line 3" }]);
+  assert.equal(v.verdict, "changes");
+  assert.equal(v.notes, "");
+  assert.equal(v.files.length, 4);
+});
+
+// Adversarial where: the answer lists files in the order they were visited
+// or noted instead of the request's, writes `read` as a string or omits it,
+// writes an empty `note`, puts the notes in another format, names the wrong
+// `file`, or leaves an editor unsaved.
+test("the answer lists every file in request order with read and note, saves each editor, and puts the notes in notes", async () => {
+  const { app } = await openSet();
+  await goToRow(app, 3);
+  typeInto(notesIn(cardFor(app, "1")), "check source 2");
+  await goToRow(app, 1);
+  typeInto(notesIn(cardFor(app, "1")), "reorder");
+  await goToRow(app, 2);
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
+  const v = verdictOf(app, "tmp/review/1.verdict.json");
+  assert.deepEqual(Object.keys(v).sort(), ["at", "comments", "edited", "file", "files", "id", "notes", "verdict"]);
+  assert.equal(v.id, "1");
+  assert.equal(v.file, "spec.md");
+  assert.equal(v.verdict, "approved");
+  assert.deepEqual(v.files, [
+    { file: "spec.md", read: true },
+    { file: "plan.md", read: true, note: "reorder" },
+    { file: "detail.md", read: true },
+    { file: "study.md", read: true, note: "check source 2" },
+  ]);
+  const lines = v.notes.split("\n");
+  assert.equal(lines.length, 2);
+  assert.match(lines[0], /^plan(\.md)?: reorder$/);
+  assert.match(lines[1], /^study(\.md)?: check source 2$/);
+  assert.deepEqual(v.comments, []);
+  assert.deepEqual(v.edited, []);
+  assert.equal(typeof v.at, "string");
+  const shown = app.leaves.filter((l) => l.view.file && SET.includes(l.view.file.path));
+  assert.ok(shown.length >= 4);
+  for (const l of shown) assert.ok(l.view.saved >= 1, `${l.view.file.path} saved`);
+});
+
+// Adversarial where: a file never opened is recorded as read (the first-file
+// mark leaking to all), or an unread file's entry carries a note key.
+test("an answer given without reading marks the unopened files unread and carries no notes", async () => {
+  const { app } = await openSet();
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
+  const v = verdictOf(app, "tmp/review/1.verdict.json");
+  assert.deepEqual(v.files, [
+    { file: "spec.md", read: true },
+    { file: "plan.md", read: false },
+    { file: "detail.md", read: false },
+    { file: "study.md", read: false },
+  ]);
+  assert.equal(v.notes, "");
+});
+
+// Adversarial where: Needs changes is enabled with nothing written, looks
+// only at the note of the file in view, stays off after an edit, or never
+// switches off again when the note is cleared.
+test("Needs changes in a multi-file review is enabled by a note on any listed file or an edit, and Approve never waits", async (t) => {
+  await t.test("nothing written", async () => {
+    const { app } = await openSet();
+    assert.equal(cardBtn(app, "1", "Needs changes").disabled, true);
+    assert.notEqual(cardBtn(app, "1", "Approve").disabled, true);
+  });
+  await t.test("a note on a file other than the one in view, then cleared", async () => {
+    const { app } = await openSet();
+    await goToRow(app, 2);
+    typeInto(notesIn(cardFor(app, "1")), "see this");
+    await goToRow(app, 0);
+    assert.equal(cardBtn(app, "1", "Needs changes").disabled, false);
+    await goToRow(app, 2);
+    typeInto(notesIn(cardFor(app, "1")), "");
+    assert.equal(cardBtn(app, "1", "Needs changes").disabled, true);
+  });
+  await t.test("a whitespace-only note", async () => {
+    const { app } = await openSet();
+    await goToRow(app, 1);
+    typeInto(notesIn(cardFor(app, "1")), "  ");
+    assert.equal(cardBtn(app, "1", "Needs changes").disabled, true);
+  });
+  await t.test("an edit to a listed file", async () => {
+    const { app } = await openSet();
+    await app.listeners.modify(mdFile("plan.md"));
+    await sleep();
+    assert.equal(cardBtn(app, "1", "Needs changes").disabled, false);
+  });
+});
+
+const SECOND = { "tmp/review/2.request.json": req("2", "detail.md", { files: filesOf(["detail.md", "study.md"], WHY.slice(2)), project: "harbor", session: SESSION_B }) };
+
+// Adversarial where: the project line shows the full session id, a session
+// code of the wrong length, another card's names, or a Session label with
+// nothing after it; the project falls back to the wrong folder.
+test("each card names its project and the first six characters of its session, and leaves Session out when there is none", async (t) => {
+  await t.test("two sessions give two cards that tell themselves apart", async () => {
+    const { app, plugin } = await openSet({}, SECOND);
+    await plugin.handler({ request: "tmp/review/2.request.json" });
+    assert.deepEqual(cardIds(app), ["2", "1"]);
+    const one = textOf(cardFor(app, "1"));
+    const two = textOf(cardFor(app, "2"));
+    assert.ok(labelIn(cardFor(app, "1"), "Project") && labelIn(cardFor(app, "1"), "Session"));
+    assert.ok(one.includes("orchard") && one.includes("7f3a91") && !one.includes("7f3a91c") && !one.includes("harbor") && !one.includes("b20e44"));
+    assert.ok(two.includes("harbor") && two.includes("b20e44") && !two.includes("b20e44a") && !two.includes("orchard") && !two.includes("7f3a91"));
+  });
+  await t.test("an empty session leaves the Session label out", async () => {
+    const { app } = await openSet({ session: "" });
+    assert.ok(labelIn(cardFor(app, "1"), "Project"));
+    assert.equal(labelIn(cardFor(app, "1"), "Session"), undefined);
+  });
+  await t.test("with no project on the request, the folder holding the vault is named", async () => {
+    for (const base of ["F:/work/orchard/.compass", "F:\\work\\orchard\\.compass"]) {
+      const store = { "spec.md": "x", "tmp/review/1.request.json": req("1", "spec.md", { files: filesOf(["spec.md"], ["The need"]) }) };
+      const r = await loaded(store);
+      r.app.vault.adapter.getBasePath = () => base;
+      await r.plugin.handler({ request: "tmp/review/1.request.json" });
+      assert.ok(labelIn(cardFor(r.app, "1"), "Project"));
+      assert.ok(textOf(cardFor(r.app, "1")).includes("orchard"), base);
+      assert.ok(!textOf(cardFor(r.app, "1")).includes(".compass"), base);
+    }
+  });
+});
+
+// Adversarial where: the walk state is shared between cards, so stepping or
+// answering one review moves or answers the other.
+test("two cards walk and answer independently", async () => {
+  const { app, plugin } = await openSet({}, SECOND);
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  await step(app, "Next", "2");
+  assert.equal(positionOf(cardFor(app, "2")), "File 2 of 2");
+  assert.equal(positionOf(cardFor(app, "1")), "File 1 of 4");
+  assert.deepEqual(marks(app, "1"), ["read", "unread", "unread", "unread"]);
+  assert.deepEqual(marks(app, "2"), ["read", "read"]);
+  await click(cardBtn(app, "2", "Approve"));
+  await sleep();
+  assert.deepEqual(verdictOf(app, "tmp/review/2.verdict.json").files, [{ file: "detail.md", read: true }, { file: "study.md", read: true }]);
+  assert.equal(app.store.has("tmp/review/1.verdict.json"), false);
+  assert.deepEqual(cardIds(app), ["1"]);
+});
+
+// Adversarial where: a request without a `files` list draws a card without
+// the position line, leaves navigation on, or answers with a `files` list or
+// a note prefixed with a file name, so an old reader of the answer breaks.
+test("a one-file request draws File 1 of 1 and its answer has no files list and the note as written", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  const card = cardFor(app, "1");
+  assert.equal(positionOf(card), "File 1 of 1");
+  assert.equal(rowsIn(card).length, 1);
+  for (const name of ["Previous", "Next", "Next unread"]) assert.equal(button(card, name).disabled, true, name);
+  typeInto(notesIn(card), "fine");
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
+  const v = verdictOf(app, "tmp/review/1.verdict.json");
+  assert.equal("files" in v, false);
+  assert.equal(v.notes, "fine");
+});
+
+// Adversarial where: an overlapping newer request leaves the older card
+// beside it (only a request with the same first file replaces), or a request
+// sharing no file replaces a live review.
+test("a newer request listing any file of an older one replaces it, and one listing none leaves it", async () => {
+  const { app, plugin } = await loaded({
+    "spec.md": "x", "plan.md": "x", "detail.md": "x", "study.md": "x",
+    "tmp/review/1.request.json": req("1", "spec.md", { files: filesOf(["spec.md", "plan.md"]) }),
+    "tmp/review/2.request.json": req("2", "study.md", { files: filesOf(["study.md", "plan.md"]) }),
+    "tmp/review/3.request.json": req("3", "detail.md", { files: filesOf(["detail.md"]) }) });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  assert.deepEqual(cardIds(app), ["2"], "the shared file was second in both lists");
+  assert.deepEqual([...plugin.pending.keys()], ["2"]);
+  await plugin.handler({ request: "tmp/review/3.request.json" });
+  assert.deepEqual(cardIds(app), ["3", "2"]);
+});
+
+// Adversarial where: a bar says the position the walk is at instead of the
+// file's place in the list, drops the question, or sits on only the first file.
+test("each listed file carries a bar reading Review: question, file i of n, and an outside file carries none", async () => {
+  const { app } = await openSet({ title: "Spec set", files: filesOf(SET.slice(0, 3), WHY) });
+  const barOf = (leaf) => { const b = barIn(leaf); return b ? b.all().map((e) => e.text).join("") : null; };
+  const first = app.leaves[0];
+  assert.match(barOf(first), /Review: Spec set, file 1 of 3/);
+  await step(app, "Next");
+  const second = app.leaves[app.leaves.length - 1];
+  assert.equal(second.view.file.path, "plan.md");
+  assert.match(barOf(second), /Review: Spec set, file 2 of 3/);
+  assert.match(barOf(first), /Review: Spec set, file 1 of 3/, "the walk's position does not change the first file's bar");
+  show(app, first, "elsewhere.md");
+  assert.equal(barIn(first), null);
+});
+
+// Adversarial where: a rename drops the walk's mark or note for the listed
+// file (leaving it unread and unnoted under the new path), marks a renamed
+// unread file read, or the answer names the old path.
+test("a renamed listed file keeps its mark and note under the new path", async () => {
+  const { app } = await openSet();
+  await goToRow(app, 1);
+  typeInto(notesIn(cardFor(app, "1")), "reorder");
+  for (const [from, to] of [["plan.md", "plan2.md"], ["study.md", "study2.md"]]) {
+    app.store.set(to, app.store.get(from));
+    app.store.delete(from);
+    app.listeners.rename({ path: to }, from);
+  }
+  const rows = rowsIn(cardFor(app, "1"));
+  assert.deepEqual(marks(app), ["read", "read", "unread", "unread"]);
+  assert.match(textOf(rows[1]), /\b1 note\b/);
+  await goToRow(app, 1);
+  assert.equal(app.active.path, "plan2.md");
+  assert.equal(notesIn(cardFor(app, "1")).value, "reorder");
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
+  assert.deepEqual(verdictOf(app, "tmp/review/1.verdict.json").files, [
+    { file: "spec.md", read: true },
+    { file: "plan2.md", read: true, note: "reorder" },
+    { file: "detail.md", read: false },
+    { file: "study2.md", read: false },
+  ]);
+});
+
+// Adversarial where: an answer click waiting on the save of a later file's
+// editor writes a verdict for a review withdrawn meanwhile.
+test("a four-file review withdrawn while an editor is saving gets no answer", async () => {
+  const { app, plugin } = await openSet();
+  await step(app, "Next");
+  const held = gate();
+  const planLeaf = app.leaves.find((l) => l.view.file && l.view.file.path === "plan.md");
+  planLeaf.view.save = () => held.wait;
+  const pending = click(cardBtn(app, "1", "Approve"));
+  app.store.delete("tmp/review/1.request.json");
+  await plugin.recheck();
+  assert.equal(cardFor(app, "1"), undefined);
+  held.release();
+  await pending;
+  assert.equal(app.store.has("tmp/review/1.verdict.json"), false);
+  assert.ok(!notices.some((n) => /sent to Claude/.test(n)));
 });
