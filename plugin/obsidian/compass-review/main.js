@@ -49,9 +49,11 @@
 //
 // Each listed document carries a one-line bar naming the review and the file's
 // place in it, with a button that opens the panel. A click on a card saves the
-// editors of the listed files, writes the verdict and, when the request says
-// `return`, steps Obsidian aside (minimize, or hide on macOS) so focus falls
-// back to the window that had it before. Everything the human types lives on
+// editors of the listed files and writes the verdict. Once no review is left,
+// Obsidian steps aside (minimize, or hide on macOS) so focus falls back to the
+// window that had it before: when a review that arrived by link found this
+// window without focus, or, for a review the plugin found at start-up, when
+// its request says `return`. Everything the human types lives on
 // the review's entry, so redrawing the panel keeps it. A periodic recheck drops
 // a review whose request file is gone or whose verdict already exists.
 
@@ -212,6 +214,7 @@ class CompassReview extends Plugin {
       edited: new Set(),
     };
     for (const old of replaced) {
+      if (old.arrivedUnfocused) created.arrivedUnfocused = true;
       for (const f of files) if (old.states.has(f.file)) created.states.set(f.file, old.states.get(f.file));
       for (const [file, note] of old.comments) created.comments.set(file, note);
       for (const file of old.edited) created.edited.add(file);
@@ -223,9 +226,13 @@ class CompassReview extends Plugin {
     if (!path) throw new Error("the compass-review link names no request");
     const request = await this.readRequest(path);
     if (!this.app.vault.getAbstractFileByPath(request.file)) throw new Error(`file not in this vault: ${request.file}`);
+    // Read before anything raises the window.
+    const hadFocus = this.windowHasFocus();
     this.track(request, path);
+    const entry = this.pending.get(request.id);
+    if (hadFocus !== null) entry.arrivedUnfocused = entry.arrivedUnfocused === true || !hadFocus;
     await this.openPanel();
-    await this.visit(this.pending.get(request.id), 0, true);
+    await this.visit(entry, 0, true);
     this.raise();
     this.refresh();
   }
@@ -345,6 +352,16 @@ class CompassReview extends Plugin {
     }
     for (const id of dead) this.pending.delete(id);
     this.refresh();
+  }
+
+  // Whether this Obsidian window has focus; null when it cannot be read.
+  windowHasFocus() {
+    try {
+      return !!electronRemote().getCurrentWindow().isFocused();
+    } catch (e) {
+      this.fail("read focus", e);
+      return null;
+    }
   }
 
   // A brief always-on-top lifts the window over the foreground one, which a
@@ -732,10 +749,12 @@ class CompassReview extends Plugin {
     this.refresh();
     new Notice(verdict === "approved" ? "Approved - sent to Claude" : "Changes requested - sent to Claude");
     // Obsidian steps aside once no review is left, when any review answered
-    // since it was raised came with `return`.
-    this.returnOwed = this.returnOwed || !!request.return;
-    if (this.pending.size === 0 && this.returnOwed) {
-      this.returnOwed = false;
+    // since the window was raised arrived without focus. A review with no
+    // recorded arrival (found at start-up) follows its request's `return`.
+    const owes = entry.arrivedUnfocused === undefined ? !!request.return : entry.arrivedUnfocused;
+    this.asideOwed = this.asideOwed || owes;
+    if (this.pending.size === 0 && this.asideOwed) {
+      this.asideOwed = false;
       this.stepAside();
     }
   }
