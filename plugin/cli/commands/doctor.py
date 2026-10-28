@@ -586,6 +586,13 @@ def _review_surface_checks(vault_root):
             for name, status, detail, fix in reviewlib.doctor_rows(vault_root)]
 
 
+def _review_editor_check(vault_root):
+    """The `review editor` row: which editor reviews open in."""
+    import reviewlib
+
+    return Check("review editor", *reviewlib.editor_report(vault_root))
+
+
 def _run_checks():
     try:
         vault_root = vaultlib.find_vault_root()
@@ -611,6 +618,7 @@ def _run_checks():
     checks.append(_worker_ledger_check(vault_root))
     checks.append(_retention_check())
     checks.extend(_review_surface_checks(vault_root))
+    checks.append(_review_editor_check(vault_root))
     checks.extend(_host_checks(vault_root, project_root))
     return checks
 

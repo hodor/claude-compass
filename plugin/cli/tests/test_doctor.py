@@ -537,9 +537,9 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        # 13 rows: the baseline checks (session retention, obsidian review
+        # 14 rows: the baseline checks (session retention, obsidian review
         # and the host-roster row included) plus unit-promotion.
-        self.assertEqual(len(payload["checks"]), 13)
+        self.assertEqual(len(payload["checks"]), 14)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         row = new_rows[0]
@@ -568,9 +568,9 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        # 13 rows: the baseline checks (session retention, obsidian review
+        # 14 rows: the baseline checks (session retention, obsidian review
         # and the host-roster row included) plus unit-promotion.
-        self.assertEqual(len(payload["checks"]), 13)
+        self.assertEqual(len(payload["checks"]), 14)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         self.assertEqual(new_rows[0]["status"], "OK")
@@ -628,9 +628,9 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        # 13 rows: the baseline checks (session retention, obsidian review
+        # 14 rows: the baseline checks (session retention, obsidian review
         # and the host-roster row included) plus unit-promotion.
-        self.assertEqual(len(payload["checks"]), 13)
+        self.assertEqual(len(payload["checks"]), 14)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         self.assertEqual(new_rows[0]["status"], "WARN")
@@ -755,9 +755,11 @@ PRE_TASK_093_CHECKS.add("tools in use")
 # The session-retention row also appears in every run.
 KNOWN_BASELINE_CHECKS.add("session retention")
 PRE_TASK_093_CHECKS.add("session retention")
-# The obsidian-review row also appears in every run.
+# The obsidian-review and review-editor rows also appear in every run.
 KNOWN_BASELINE_CHECKS.add("obsidian review")
 PRE_TASK_093_CHECKS.add("obsidian review")
+KNOWN_BASELINE_CHECKS.add("review editor")
+PRE_TASK_093_CHECKS.add("review editor")
 
 
 def ledger_rows(payload):
@@ -1398,7 +1400,7 @@ class SessionRetentionRowTests(unittest.TestCase):
     def test_unparseable_user_settings_degrade_to_a_row_not_a_crash(self):
         """Adversarial where: a user settings file that does not parse must
         not collapse doctor into its one generic 'internal error' FAIL row.
-        Every other row is still produced (12 in total), the retention row is
+        Every other row is still produced (14 in total), the retention row is
         present on a single line and is not a FAIL, and the exit code stays
         0 for an otherwise complete install."""
         for name, content in (("not json", "{oops"), ("array", "[1, 2]"), ("empty", "")):
@@ -1406,7 +1408,7 @@ class SessionRetentionRowTests(unittest.TestCase):
                 set_user_retention(content)
                 code, out = run_doctor(["--json"])
                 payload = json.loads(out)
-                self.assertEqual(len(payload["checks"]), 13)
+                self.assertEqual(len(payload["checks"]), 14)
                 row = retention_row(payload)
                 self.assertNotEqual(row["status"], "FAIL")
                 self.assertNotIn("\n", row["detail"])
@@ -1477,7 +1479,7 @@ class SessionRetentionPostBuildTests(unittest.TestCase):
                 local.write_text(content, encoding="utf-8")
                 code, out = run_doctor(["--json"])
                 payload = json.loads(out)
-                self.assertEqual(len(payload["checks"]), 13)
+                self.assertEqual(len(payload["checks"]), 14)
                 row = retention_row(payload)
                 self.assertNotEqual(row["status"], "FAIL")
                 self.assertNotIn("\n", row["detail"])
@@ -1488,7 +1490,7 @@ class NonObjectSettingsTests(unittest.TestCase):
     def test_array_settings_file_is_unreadable_for_the_hook_row_only(self):
         """Adversarial where: a settings file whose JSON is an array has no
         `hooks` key to read. The hook row must name the file and keep every
-        other row (12 in total) instead of collapsing doctor into one
+        other row (14 in total) instead of collapsing doctor into one
         'internal error' FAIL row. Asymmetric: the project settings.json is
         valid and registers the hooks; only settings.local.json is bad."""
         project = make_project(self)
@@ -1498,7 +1500,7 @@ class NonObjectSettingsTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         checks = payload["checks"]
-        self.assertEqual(len(checks), 13)
+        self.assertEqual(len(checks), 14)
         self.assertFalse([c for c in checks if c["check"] == "doctor"])
         self.assertNotIn("internal error", out)
         hook_row = [c for c in checks if c["check"] == "automatic step registration"][0]
