@@ -55,11 +55,12 @@ Plan: [[PLAN-021-control-loops]].
 - [ ] [[SPEC-006-multi-host-agent-cli-support]] hosts: hermes first, then deepseek-harness (dsh; fit assessed in [[research/distribution/RESEARCH-deepseek-harness-fit]], 2026-09-04), then Kimi Code / Codex.
 - [ ] Blinded rerun of the test-bar experiment ([[LESSON-blind-the-author-in-self-validation]]).
 
-## PLAN-025 Wave 2: the review panel across files and sessions
+## PLAN-025 Wave 3: VS Code, checked and drawn
 
 Plan: [[PLAN-025-review-across-files-and-sessions]].
 
-- [x] TASK-219: live acceptance, two projects - complexity: S, depends_on: TASK-218
+- [ ] TASK-220: live check of VS Code and Cursor windows - complexity: S, depends_on: none
+- [ ] TASK-221: mockup of the review panel in VS Code - complexity: M, depends_on: none
 
 ## PLAN-022: review documents in Obsidian
 

@@ -7,7 +7,7 @@ confidence: medium
 area: methodology
 tags: [obsidian, review, multi-file, sessions, vscode, human-surface]
 created: 2026-10-27
-updated: 2026-10-27
+updated: 2026-10-28
 git_branch: "master"
 git_commit: "1ead728"
 author: "planner"
@@ -16,6 +16,10 @@ summary: "two live checks in Obsidian and an agreed mockup first; then one revie
 ---
 
 # Review Across Files and Sessions
+
+> [!question] You decide
+> Wave 2 is built and checked live: the panel walks several files, and each card names its project and session. Approve to start Wave 3, detailed below: a live check of which VS Code or Cursor window a link reaches, and a VS Code mockup of the same panel, opened for you to try. Needs changes holds Wave 3 back.
+> One live check of Wave 2 never showed a result: a note on a file outside the review. Before answering, open [[archive/PLAN-025-review-across-files-and-sessions-detail|the detail file]], which this review does not list, and type any word in the panel's "On this file" box; the answer then shows whether that note arrives.
 
 ## Goal
 
@@ -33,22 +37,26 @@ flowchart LR
     T212["212 PLAN-024 views point here"]:::done
   end
   subgraph W2["Wave 2: build what was agreed"]
-    T213["213 The panel as the mockup"]:::open
-    T214["214 Only typed edits count"]:::open
-    T215["215 Each window steps aside on its own"]:::open
-    T217["217 Change report: full diff for the review's files"]:::open
-    T218["218 Gates send several documents, release"]:::open
-    T219["219 Acceptance: two projects, several files"]:::open
+    T213["213 The panel as the mockup"]:::done
+    T214["214 Only typed edits count"]:::done
+    T215["215 Each window steps aside on its own"]:::done
+    T217["217 Change report: full diff for the review's files"]:::done
+    T218["218 Gates send several documents, release"]:::done
+    T219["219 Acceptance: two projects, several files"]:::done
   end
-  subgraph W3["Wave 3: VS Code"]
-    V["220 to 223 Live check, mockup, editor choice, surface"]:::later
+  subgraph W3["Wave 3: VS Code, checked and drawn"]
+    T220["220 Live check: VS Code and Cursor windows"]:::open
+    T221["221 Mockup: the panel in VS Code"]:::open
+  end
+  subgraph L["Later"]
+    V["222 223 Editor choice, VS Code surface"]:::later
     VA["224 Acceptance in VS Code"]:::later
   end
   T208 --> T209
   W1 --> T213 & T217
   T213 --> T214 --> T215
   T215 & T217 --> T218 --> T219
-  T219 --> V --> VA
+  T219 --> T220 & T221 --> V --> VA
   classDef done fill:#bfb,color:#000
   classDef open fill:#ffa,color:#000
   classDef later fill:#eee,color:#000
@@ -135,10 +143,21 @@ TASK-213, TASK-214 and TASK-215 run one after another, since all three edit the 
 
 **Pause point:** when automated verification passes, the human confirms each manual check; TASK-219's result is what Wave 3 is detailed from.
 
+### Wave 3 (detailed): VS Code, checked and drawn
+
+TASK-220 and TASK-221 run side by side: one checks VS Code and Cursor live, the other draws the panel. TASK-222 to TASK-224 stay intent until the human agrees the drawing and the live check says whether VS Code can step aside. The full text of each task is in [[archive/PLAN-025-review-across-files-and-sessions-detail#Wave 3 task text]].
+
+- [ ] TASK-220: Live check of VS Code 1.143 and Cursor on this machine: which window `code <folder>`, `code -r` and a `vscode://` or `cursor://` link reach with two windows open on two folders, by `code <folder>` and `code -r <folder>` while the other window is in front, and with the editor closed; whether a throwaway extension can raise or minimize its own window; whether Cursor's older engine accepts the same extension; the results go into [[research/human-surface/RESEARCH-review-live-checks]] - complexity: S, depends_on: none, files: [.compass/research/human-surface/RESEARCH-review-live-checks.md], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01, SPEC-030-review-documents-open-in-obsidian/D-02]
+  - Automated verification: the throwaway extension under `.compass/tmp/trials/vscode-probe/` logs each link it receives with its window's folder, and each call it tries on its own window with whether the window moved, to `events.jsonl`; a script lines every sent link up with the window that logged it; `compass validate` adds no warning.
+  - Manual verification: the human says which window came forward for each case, and the result is in the live checks document.
+- [ ] TASK-221: Mockup of the review panel in VS Code: a webview in the Activity Bar holding the approved Obsidian card (File i of n, Previous, Next, Next unread, a row per file with its read mark and note count, "On this file", one Approve and one Needs changes) over the same four real files, drawn in a throwaway extension that Compass opens in VS Code for the human; the write-up counts the clicks beside the Obsidian panel - complexity: M, depends_on: none, files: [.compass/research/human-surface/RESEARCH-vscode-review-mockup.md], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01, SPEC-030-review-documents-open-in-obsidian/D-03], lessons: [LESSON-ui-change-needs-agreed-mockup-before-build]
+  - Automated verification: `node --check` on the throwaway extension; every Send it writes under `.compass/tmp/mockups/vscode/verdicts/` parses as the verdict shape of TASK-211, at least one Send included; `compass validate` adds no warning.
+  - Manual verification: the human approves the mockup in VS Code, or says what to change.
+
+**Pause point:** when automated verification passes, the human has approved the VS Code mockup and the live check is recorded, TASK-222 to TASK-224 are detailed from both.
+
 ## Later (intent only)
 
-- [ ] TASK-220: Live check of VS Code: which window a `code` command and a `vscode://` link reach with several folders open or none, whether an extension can raise or minimize its window, and whether Cursor's older engine has the needed calls - files: [.compass/research/human-surface/RESEARCH-review-live-checks.md], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
-- [ ] TASK-221: Mockup of the review panel in VS Code - files: [.compass/research/human-surface/RESEARCH-vscode-review-mockup.md], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
 - [ ] TASK-222: A project setting picks the review editor when two are set up, and install and doctor wording allow an editor installed per user - files: [plugin/cli/reviewlib.py, plugin/cli/review_surfaces/__init__.py, plugin/cli/commands/doctor.py, plugin/cli/tests/test_review_surfaces.py], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
 - [ ] TASK-223: A VS Code surface: each window claims the reviews under its own folder and shows the agreed panel, installed from a `.vsix` - files: [plugin/cli/review_surfaces/vscode.py, plugin/vscode/compass-review/package.json, plugin/vscode/compass-review/extension.js, plugin/cli/tests/test_review_vscode.py], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
 - [ ] TASK-224: Live acceptance: a review of several files answered in VS Code - decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
@@ -159,3 +178,16 @@ TASK-213, TASK-214 and TASK-215 run one after another, since all three edit the 
 - TASK-217: unchanged - intent held.
 - TASK-218 changed: the pipeline rules, the plan skill and the planner already send a plan with its detail file as one review (TASK-201), so they drop out of the task's files; the task adds the form to the research and wave-pause approval points, and the release also bumps the Obsidian plugin's version.
 - TASK-219 changed: a second session in this repo joins, since TASK-211 now puts session names on requests, so one vault shows two cards told apart by session; the results go into the live checks document TASK-208 created.
+
+## Wave 3 elaborated
+
+- TASK-220 changed: Cursor joins the check, since it is installed here and runs an older engine (finding 3.17 of [[research/human-surface/RESEARCH-review-across-files-and-sessions]]); the check uses a throwaway extension that logs which window took each link, so the answer is read from a file. It also decides D-02 on VS Code: a raise or minimize that works keeps stepping aside, otherwise VS Code stays in front after an answer. The superseded intent line:
+
+  ```
+  - [ ] TASK-220: Live check of VS Code: which window a `code` command and a `vscode://` link reach with several folders open or none, whether an extension can raise or minimize its window, and whether Cursor's older engine has the needed calls - files: [.compass/research/human-surface/RESEARCH-review-live-checks.md], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
+  ```
+- TASK-221 changed: the human approved the Obsidian card in a real four-file review (TASK-213) and walked it again in TASK-219, so the VS Code panel copies that card; the smaller form hypothesis H14 of the research allowed, modal buttons and an input box with no notes on other files, is set aside. The superseded intent line:
+
+  ```
+  - [ ] TASK-221: Mockup of the review panel in VS Code - files: [.compass/research/human-surface/RESEARCH-vscode-review-mockup.md], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
+  ```
