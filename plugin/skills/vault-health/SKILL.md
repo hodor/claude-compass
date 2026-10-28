@@ -66,7 +66,9 @@ Report first. If the human says "fix it":
 - **Orphans:** add to `index.md` (run `compass sync`) or archive.
 - **Bare references:** wrap in `[[...]]`.
 
-Before a bulk fix, confirm through `AskUserQuestion`, exactly one question per call: "Apply this fix to all N files?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+Before a bulk fix, with a review surface configured, write the fix as a document under `.compass/tmp/proposals/` listing each file and the change it gets, and send it through the review rule in the pipeline rules (`compass review <fix file> --title "Apply this fix to all N files?"`); nothing is asked here.
+
+Without a review surface, confirm through `AskUserQuestion`, exactly one question per call: "Apply this fix to all N files?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
 
 - **Apply to all (Recommended):** runs the fix on every listed file.
 - **Review one by one:** shows each change and waits for your answer.

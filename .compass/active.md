@@ -62,7 +62,7 @@ Plan: [[PLAN-021-control-loops]].
 
 ## [[PLAN-024-working-in-compass-is-visual]]
 
-- [ ] TASK-226: taxonomy proposal and bulk vault fix reviewed in the editor - complexity: M, depends_on: none
+- [x] TASK-226: taxonomy proposal and bulk vault fix reviewed in the editor - complexity: M, depends_on: none
 
 ## PLAN-022: review documents in Obsidian
 
