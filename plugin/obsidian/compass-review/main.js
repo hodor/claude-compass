@@ -494,6 +494,7 @@ class CompassReview extends Plugin {
       const target = event.target;
       const tag = String((target && target.tagName) || "").toLowerCase();
       if (tag === "textarea" || tag === "input") return;
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
       if (event.key === "ArrowRight") {
         event.preventDefault();
         this.stepBy(entry, 1);
@@ -572,6 +573,10 @@ class CompassReview extends Plugin {
         else entry.comments.delete(other.path);
         this.refreshCard(entry);
       });
+      block.createDiv({
+        cls: "compass-review-fine",
+        text: "This file is not in the review; the note goes with your answer.",
+      });
     }
 
     const feedback = card.createDiv({ cls: "compass-review-feedback-block" });
@@ -586,6 +591,16 @@ class CompassReview extends Plugin {
     parts.changes = actions.createEl("button", { cls: "compass-review-changes", text: "Needs changes" });
     approve.onclick = () => this.verdict(entry, "approved").catch((e) => this.fail("verdict", e));
     parts.changes.onclick = () => this.verdict(entry, "changes").catch((e) => this.fail("verdict", e));
+    foot.createDiv({
+      cls: "compass-review-fine",
+      text: "Project is the folder holding the vault. Session is the first six characters of the Claude Code session id.",
+    });
+    if (entry.files.length > 1) {
+      foot.createDiv({
+        cls: "compass-review-fine",
+        text: "Left and right arrow keys move between files when this card has focus.",
+      });
+    }
   }
 
   noteCount(entry) {
@@ -642,6 +657,7 @@ class CompassReview extends Plugin {
     for (const item of items) parts.feedback.createEl("li", { text: item });
     setClass(parts.feedbackBlock, "is-empty", items.length === 0);
     parts.changes.disabled = !this.hasFeedback(entry);
+    parts.changes.title = parts.changes.disabled ? "Write a note first" : "";
   }
 
   refreshCardIn(root, entry) {
@@ -675,7 +691,7 @@ class CompassReview extends Plugin {
       file: entry.files[0].file,
       verdict,
       notes: "",
-      comments: [...entry.comments].map(([file, note]) => ({ file, note })),
+      comments: [...entry.comments].map(([file, note]) => ({ file, note: note.trim() })),
       edited: [...entry.edited],
       at: new Date().toISOString(),
     };
