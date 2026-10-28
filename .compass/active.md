@@ -59,7 +59,7 @@ Plan: [[PLAN-021-control-loops]].
 
 Plan: [[PLAN-025-review-across-files-and-sessions]].
 
-- [ ] TASK-213: the panel as the approved mockup - complexity: L, depends_on: none
+- [x] TASK-213: the panel as the approved mockup - complexity: L, depends_on: none
 - [ ] TASK-214: only typed edits count - complexity: S, depends_on: TASK-213
 - [ ] TASK-215: each window steps aside on its own - complexity: S, depends_on: TASK-214
 - [x] TASK-217: change report, full diff for the review's files only - complexity: M, depends_on: none

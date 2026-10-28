@@ -1334,7 +1334,11 @@ test("Needs changes in a multi-file review is enabled by a note on any listed fi
   });
 });
 
-const SECOND = { "tmp/review/2.request.json": req("2", "detail.md", { files: filesOf(["detail.md", "study.md"], WHY.slice(2)), project: "harbor", session: SESSION_B }) };
+const SECOND = {
+  "dock-a.md": "x",
+  "dock-b.md": "x",
+  "tmp/review/2.request.json": req("2", "dock-a.md", { files: filesOf(["dock-a.md", "dock-b.md"], WHY.slice(2)), project: "harbor", session: SESSION_B }),
+};
 
 // Adversarial where: the project line shows the full session id, a session
 // code of the wrong length, another card's names, or a Session label with
@@ -1380,7 +1384,7 @@ test("two cards walk and answer independently", async () => {
   assert.deepEqual(marks(app, "2"), ["read", "read"]);
   await click(cardBtn(app, "2", "Approve"));
   await sleep();
-  assert.deepEqual(verdictOf(app, "tmp/review/2.verdict.json").files, [{ file: "detail.md", read: true }, { file: "study.md", read: true }]);
+  assert.deepEqual(verdictOf(app, "tmp/review/2.verdict.json").files, [{ file: "dock-a.md", read: true }, { file: "dock-b.md", read: true }]);
   assert.equal(app.store.has("tmp/review/1.verdict.json"), false);
   assert.deepEqual(cardIds(app), ["1"]);
 });
@@ -1480,4 +1484,128 @@ test("a four-file review withdrawn while an editor is saving gets no answer", as
   await pending;
   assert.equal(app.store.has("tmp/review/1.verdict.json"), false);
   assert.ok(!notices.some((n) => /sent to Claude/.test(n)));
+});
+
+// ---- post-build probes: branches the panel implementation introduced ----
+
+// Adversarial where: the card's keydown handler steps on a modified arrow
+// (Alt+Left is Obsidian's "navigate back" hotkey, Shift+Right selects), or on
+// an arrow pressed inside either note field, so a keystroke meant for the
+// editor or the text moves the walk.
+test("arrow keys with a modifier, or typed inside a note field, do not move the walk", async () => {
+  const { app } = await openSet();
+  show(app, app.leaves[0], "elsewhere.md");
+  const card = cardFor(app, "1");
+  const at = () => positionOf(cardFor(app, "1"));
+  const rows = [
+    { name: "ArrowRight in the file note", el: notesIn(card), mods: {} },
+    { name: "ArrowRight in the On this file note", el: fileNoteIn(card), mods: {} },
+    { name: "Alt+ArrowRight on the card", el: card, mods: { altKey: true } },
+    { name: "Ctrl+ArrowRight on the card", el: card, mods: { ctrlKey: true } },
+    { name: "Meta+ArrowRight on the card", el: card, mods: { metaKey: true } },
+    { name: "Shift+ArrowRight on the card", el: card, mods: { shiftKey: true } },
+  ];
+  for (const row of rows) {
+    row.el.tagName = row.el.tag.toUpperCase();
+    for (let n = row.el; n; n = n.parent) {
+      for (const fn of [n.onkeydown, ...(n.handlers.keydown || [])].filter(Boolean)) {
+        fn.call(n, { key: "ArrowRight", target: row.el, preventDefault() {}, stopPropagation() {}, ...row.mods });
+      }
+    }
+    await sleep();
+    assert.equal(at(), "File 1 of 4", row.name);
+  }
+});
+
+// Adversarial where: a card rebuilt because an outside file came into view
+// loses the note typed on the current listed file, or shows the previous
+// file's note after the walk has moved, so the answer carries a stale note.
+test("a note typed on a listed file survives an outside file coming into view and the walk moving on and back", async () => {
+  const { app } = await openSet();
+  await goToRow(app, 2);
+  typeInto(notesIn(cardFor(app, "1")), "detail needs a table");
+  show(app, app.leaves[0], "elsewhere.md");
+  assert.equal(notesIn(cardFor(app, "1")).value, "detail needs a table");
+  await goToRow(app, 0);
+  assert.equal(notesIn(cardFor(app, "1")).value, "", "the first file has no note");
+  await goToRow(app, 2);
+  assert.equal(notesIn(cardFor(app, "1")).value, "detail needs a table");
+  await click(cardBtn(app, "1", "Needs changes"));
+  await sleep();
+  const v = verdictOf(app, "tmp/review/1.verdict.json");
+  assert.deepEqual(v.files.map((f) => f.note), [undefined, undefined, "detail needs a table", undefined]);
+});
+
+// Adversarial where: a request for the same id rewritten with a shorter file
+// list keeps the walk index or note field of the old list, so the note field
+// shows (and writes to) a file that is no longer in the review.
+test("the same request id rewritten with fewer files redraws the walk on the first file and drops the removed files from the answer", async () => {
+  const { app, plugin } = await openSet();
+  await goToRow(app, 3);
+  typeInto(notesIn(cardFor(app, "1")), "study note");
+  app.store.set("tmp/review/1.request.json", req("1", SET[0], { files: filesOf(SET.slice(0, 2), WHY.slice(0, 2)), project: "orchard" }));
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  await sleep();
+  const card = cardFor(app, "1");
+  assert.equal(positionOf(card), "File 1 of 2");
+  assert.equal(rowsIn(card).length, 2);
+  assert.equal(notesIn(card).value, "");
+  typeInto(notesIn(card), "spec note");
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
+  const v = verdictOf(app, "tmp/review/1.verdict.json");
+  assert.deepEqual(v.files.map((f) => f.file), ["spec.md", "plan.md"]);
+  assert.equal(v.notes, "spec: spec note");
+});
+
+// Adversarial where: every file switch or outside-file redraw leaves the old
+// card's elements attached to the panel, so cards pile up and the panel grows
+// without bound.
+test("repeated redraws leave one heading and one card in the panel", async () => {
+  const { app } = await openSet();
+  for (let k = 0; k < 25; k++) {
+    show(app, app.leaves[0], k % 2 ? "elsewhere.md" : SET[k % 4]);
+    await sleep();
+  }
+  const root = panelEl(app);
+  assert.equal(root.children.length, 2);
+  assert.equal(root.querySelectorAll(".compass-review-card").length, 1);
+});
+
+// ---- the card carries the mockup's hints ----
+
+// Adversarial where: the outside-file box lacks its hint, a note padded with
+// blanks reaches the answer as typed, or the footer hints are missing or shown
+// on a card with nothing to step through.
+test("the outside-file box, the Needs changes tooltip and the arrow-key hint read as the mockup draws them, and outside notes are trimmed in the answer", async (t) => {
+  await t.test("outside-file hint and trimmed comment", async () => {
+    const { app } = await openSet();
+    show(app, app.leaves[0], "elsewhere.md");
+    const box = thisFileIn(cardFor(app, "1"));
+    assert.ok(textOf(box).includes("This file is not in the review; the note goes with your answer."));
+    typeInto(fileNoteIn(cardFor(app, "1")), "  fix the date \n");
+    await click(cardBtn(app, "1", "Needs changes"));
+    await sleep();
+    assert.deepEqual(verdictOf(app, "tmp/review/1.verdict.json").comments, [{ file: "elsewhere.md", note: "fix the date" }]);
+  });
+  await t.test("Needs changes tooltip while disabled", async () => {
+    const { app } = await openSet();
+    const changes = cardBtn(app, "1", "Needs changes");
+    assert.equal(changes.title, "Write a note first");
+    typeInto(notesIn(cardFor(app, "1")), "x");
+    assert.equal(cardBtn(app, "1", "Needs changes").title, "");
+  });
+  await t.test("arrow-key hint on a walk of several files only", async () => {
+    const { app } = await openSet();
+    assert.ok(textOf(cardFor(app, "1")).includes("Left and right arrow keys move between files when this card has focus."));
+    const one = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md") });
+    await one.plugin.handler({ request: "tmp/review/1.request.json" });
+    assert.ok(!textOf(cardFor(one.app, "1")).includes("arrow keys"));
+  });
+});
+
+// Adversarial where: the card says nothing about what Project and Session mean.
+test("a card explains what Project and Session are", async () => {
+  const { app } = await openSet();
+  assert.ok(textOf(cardFor(app, "1")).includes("Project is the folder holding the vault. Session is the first six characters of the Claude Code session id."));
 });

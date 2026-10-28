@@ -24,6 +24,11 @@
   padding: 8px;
 }
 
+.compass-review-heading {
+  font-weight: var(--font-semibold, 600);
+  font-size: var(--font-ui-medium);
+}
+
 .compass-review-empty {
   color: var(--text-muted);
   font-size: var(--font-ui-small);
@@ -33,20 +38,114 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px;
+  padding: 10px 12px;
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);
   background: var(--background-primary);
+}
+
+.compass-review-card:focus-visible {
+  outline: 1px solid var(--interactive-accent);
 }
 
 .compass-review-question {
   font-weight: 600;
 }
 
+.compass-review-who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+}
+
+.compass-review-who .compass-review-label {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.compass-review-who strong {
+  margin-right: 8px;
+}
+
+.compass-review-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.compass-review-nav button {
+  font-size: var(--font-ui-smaller);
+}
+
+.compass-review-pos {
+  margin-right: auto;
+  font-weight: 600;
+}
+
+.compass-review-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.compass-review-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+}
+
+.compass-review-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.compass-review-row.is-current {
+  border-color: var(--interactive-accent);
+  background: var(--background-secondary);
+}
+
+.compass-review-mark {
+  flex: none;
+  min-width: 46px;
+  padding: 0 6px;
+  border-radius: 10px;
+  text-align: center;
+  font-size: var(--font-ui-smaller);
+  line-height: 18px;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+}
+
+.compass-review-mark.is-read {
+  background: rgba(var(--color-green-rgb), 0.2);
+  color: var(--color-green);
+}
+
+.compass-review-row-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .compass-review-file {
+  font-weight: 600;
+  color: var(--text-normal);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.compass-review-fine {
   font-size: var(--font-ui-smaller);
   color: var(--text-muted);
-  overflow-wrap: anywhere;
+}
+
+.compass-review-row-count {
+  flex: none;
+  white-space: nowrap;
 }
 
 .compass-review-card textarea {
@@ -59,8 +158,9 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-top: 6px;
-  border-top: 1px solid var(--background-modifier-border);
+  padding: 6px 8px;
+  border-left: 3px solid var(--color-orange);
+  background: var(--background-secondary);
 }
 
 .compass-review-label {
@@ -80,8 +180,22 @@
   overflow-wrap: anywhere;
 }
 
+.compass-review-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
 .compass-review-actions {
   display: flex;
   justify-content: flex-end;
   gap: 6px;
+}
+
+.compass-review-card button[disabled] {
+  opacity: 0.45;
+  cursor: default;
 }
