@@ -43,7 +43,7 @@
 // notes, and one Approve and one "Needs changes" end the review. "Needs
 // changes" is enabled once there is something to send: a note on a listed or
 // outside file, or an edit. A newer request that lists a file of an older one
-// replaces it, unless it lists only some of that review's files.
+// replaces it.
 //
 // Each listed document carries a one-line bar naming the review and the file's
 // place in it, with a button that opens the panel. A click on a card saves the
@@ -176,9 +176,8 @@ class CompassReview extends Plugin {
     this.refresh();
   }
 
-  // A newer request that lists a file of an older one replaces the older one,
-  // whose request file `compass review` has already removed, unless it lists
-  // only some of the older review's files, in which case it sits beside it.
+  // A newer request that lists any file of an older one replaces the older one,
+  // whose request file `compass review` has already removed.
   track(request, path) {
     const files = filesOf(request);
     const replaced = [];
@@ -186,8 +185,7 @@ class CompassReview extends Plugin {
       if (id === request.id) continue;
       const held = new Set(entry.files.map((f) => f.file));
       const shared = files.some((f) => held.has(f.file));
-      const part = files.length < held.size && files.every((f) => held.has(f.file));
-      if (shared && !part) {
+      if (shared) {
         replaced.push(entry);
         this.pending.delete(id);
       }

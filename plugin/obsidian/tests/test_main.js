@@ -1334,7 +1334,11 @@ test("Needs changes in a multi-file review is enabled by a note on any listed fi
   });
 });
 
-const SECOND = { "tmp/review/2.request.json": req("2", "detail.md", { files: filesOf(["detail.md", "study.md"], WHY.slice(2)), project: "harbor", session: SESSION_B }) };
+const SECOND = {
+  "dock-a.md": "x",
+  "dock-b.md": "x",
+  "tmp/review/2.request.json": req("2", "dock-a.md", { files: filesOf(["dock-a.md", "dock-b.md"], WHY.slice(2)), project: "harbor", session: SESSION_B }),
+};
 
 // Adversarial where: the project line shows the full session id, a session
 // code of the wrong length, another card's names, or a Session label with
@@ -1380,7 +1384,7 @@ test("two cards walk and answer independently", async () => {
   assert.deepEqual(marks(app, "2"), ["read", "read"]);
   await click(cardBtn(app, "2", "Approve"));
   await sleep();
-  assert.deepEqual(verdictOf(app, "tmp/review/2.verdict.json").files, [{ file: "detail.md", read: true }, { file: "study.md", read: true }]);
+  assert.deepEqual(verdictOf(app, "tmp/review/2.verdict.json").files, [{ file: "dock-a.md", read: true }, { file: "dock-b.md", read: true }]);
   assert.equal(app.store.has("tmp/review/1.verdict.json"), false);
   assert.deepEqual(cardIds(app), ["1"]);
 });
