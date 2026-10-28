@@ -537,9 +537,9 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        # 14 rows: the baseline checks (session retention, obsidian review
-        # and the host-roster row included) plus unit-promotion.
-        self.assertEqual(len(payload["checks"]), 14)
+        # 16 rows: the baseline checks (session retention, the review-surface rows,
+        # the review-editor row and the host-roster row included) plus unit-promotion.
+        self.assertEqual(len(payload["checks"]), 16)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         row = new_rows[0]
@@ -568,9 +568,9 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        # 14 rows: the baseline checks (session retention, obsidian review
-        # and the host-roster row included) plus unit-promotion.
-        self.assertEqual(len(payload["checks"]), 14)
+        # 16 rows: the baseline checks (session retention, the review-surface rows,
+        # the review-editor row and the host-roster row included) plus unit-promotion.
+        self.assertEqual(len(payload["checks"]), 16)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         self.assertEqual(new_rows[0]["status"], "OK")
@@ -628,9 +628,9 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        # 14 rows: the baseline checks (session retention, obsidian review
-        # and the host-roster row included) plus unit-promotion.
-        self.assertEqual(len(payload["checks"]), 14)
+        # 16 rows: the baseline checks (session retention, the review-surface rows,
+        # the review-editor row and the host-roster row included) plus unit-promotion.
+        self.assertEqual(len(payload["checks"]), 16)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         self.assertEqual(new_rows[0]["status"], "WARN")
@@ -755,11 +755,10 @@ PRE_TASK_093_CHECKS.add("tools in use")
 # The session-retention row also appears in every run.
 KNOWN_BASELINE_CHECKS.add("session retention")
 PRE_TASK_093_CHECKS.add("session retention")
-# The obsidian-review and review-editor rows also appear in every run.
-KNOWN_BASELINE_CHECKS.add("obsidian review")
-PRE_TASK_093_CHECKS.add("obsidian review")
-KNOWN_BASELINE_CHECKS.add("review editor")
-PRE_TASK_093_CHECKS.add("review editor")
+# The review-surface rows and the review-editor row also appear in every run.
+for _surface_row in ("obsidian review", "vscode review", "cursor review", "review editor"):
+    KNOWN_BASELINE_CHECKS.add(_surface_row)
+    PRE_TASK_093_CHECKS.add(_surface_row)
 
 
 def ledger_rows(payload):
@@ -1408,7 +1407,7 @@ class SessionRetentionRowTests(unittest.TestCase):
                 set_user_retention(content)
                 code, out = run_doctor(["--json"])
                 payload = json.loads(out)
-                self.assertEqual(len(payload["checks"]), 14)
+                self.assertEqual(len(payload["checks"]), 16)
                 row = retention_row(payload)
                 self.assertNotEqual(row["status"], "FAIL")
                 self.assertNotIn("\n", row["detail"])
@@ -1479,7 +1478,7 @@ class SessionRetentionPostBuildTests(unittest.TestCase):
                 local.write_text(content, encoding="utf-8")
                 code, out = run_doctor(["--json"])
                 payload = json.loads(out)
-                self.assertEqual(len(payload["checks"]), 14)
+                self.assertEqual(len(payload["checks"]), 16)
                 row = retention_row(payload)
                 self.assertNotEqual(row["status"], "FAIL")
                 self.assertNotIn("\n", row["detail"])
@@ -1500,7 +1499,7 @@ class NonObjectSettingsTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         checks = payload["checks"]
-        self.assertEqual(len(checks), 14)
+        self.assertEqual(len(checks), 16)
         self.assertFalse([c for c in checks if c["check"] == "doctor"])
         self.assertNotIn("internal error", out)
         hook_row = [c for c in checks if c["check"] == "automatic step registration"][0]

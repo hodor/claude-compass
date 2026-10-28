@@ -283,6 +283,7 @@ class Deliver(EditorFakes):
 class Install(EditorFakes):
     def shipped_root(self, with_vsix=True):
         root = self.tmp / "claude"
+        shutil.rmtree(root, ignore_errors=True)
         for folder in (root / "vscode", root / "vscode" / "compass-review"):
             folder.mkdir(parents=True, exist_ok=True)
             if with_vsix:
@@ -552,6 +553,42 @@ class ExtensionHarness(unittest.TestCase):
         result = subprocess.run(["node", "--test", str(harness)], capture_output=True, text=True, timeout=300)
         self.assertEqual(result.returncode, 0, result.stdout[-4000:] + result.stderr[-2000:])
         self.assertIn("# fail 0", result.stdout)
+
+
+SHIM_SOURCE = '@echo off\necho ARGS=[%*]>>"%~dp0args.log"\n'
+
+
+@unittest.skipUnless(sys.platform == "win32", "the editor command is a .cmd shim only on Windows")
+class DeliverThroughTheWindowsShim(unittest.TestCase):
+    def test_a_folder_name_with_cmd_metacharacters_reaches_the_editor_unchanged(self):
+        """Adversarial where: `deliver` hands the folder to the editor's `.cmd`
+        shim unquoted, so cmd.exe reads `&` as a command separator and drops
+        `^`, and the editor opens (or runs) something other than the folder
+        holding the vault. The shim is a stand-in that logs its argument and
+        is the only `code` the lookup returns, so no editor is started."""
+        import time
+
+        for folder_name in ("R&D", "R^D", "R&D plain"):
+            with self.subTest(folder=folder_name), tempfile.TemporaryDirectory() as raw:
+                tmp = Path(raw)
+                shim_dir = tmp / "bin"
+                shim_dir.mkdir()
+                log = shim_dir / "args.log"
+                shim = shim_dir / "code.cmd"
+                shim.write_text(SHIM_SOURCE, encoding="ascii", newline="\r\n")
+                folder = tmp / folder_name
+                (folder / ".compass").mkdir(parents=True)
+                with mock.patch.object(shutil, "which", lambda cmd, *a, **k: str(shim) if cmd == "code" else None):
+                    context, reason = surface("vscode").configuration(folder / ".compass" / "note.md")
+                    self.assertIsNone(reason)
+                    self.assertEqual(context["command"], str(shim))
+                    surface("vscode").deliver(context, folder / ".compass" / "tmp" / "review" / "r.request.json")
+                deadline = time.time() + 15
+                while time.time() < deadline and not (log.exists() and log.read_text().strip()):
+                    time.sleep(0.1)
+                received = log.read_text().strip() if log.exists() else ""
+                self.assertTrue(received.startswith("ARGS=[") and received.endswith("]"), received)
+                self.assertEqual(received[len("ARGS=["):-1].strip('"'), str(folder))
 
 
 if __name__ == "__main__":

@@ -275,11 +275,12 @@ def _apply(src, project_root, apply_models):
         if retired_dir.is_dir():
             shutil.rmtree(retired_dir, ignore_errors=True)
     _copy_tree_best_effort(src / "cli", claude / "cli")
-    if (src / "obsidian").is_dir():
-        _copy_tree_best_effort(src / "obsidian", claude / "obsidian")
-        # Each review surface installs what it needs into the project, from
-        # the files just copied; best-effort, so an odd vault never fails the
-        # apply.
+    review_assets = [name for name in ("obsidian", "vscode") if (src / name).is_dir()]
+    for name in review_assets:
+        _copy_tree_best_effort(src / name, claude / name)
+    if review_assets:
+        # Each review surface installs what it needs, from the files just
+        # copied; best-effort, so an odd vault never fails the apply.
         try:
             import reviewlib
 
