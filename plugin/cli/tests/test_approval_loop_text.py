@@ -19,15 +19,20 @@ SPEC_SKILL = REPO / "plugin" / "skills" / "spec" / "SKILL.md"
 PLAN_SKILL = REPO / "plugin" / "skills" / "plan" / "SKILL.md"
 RESEARCH_SKILL = REPO / "plugin" / "skills" / "research" / "SKILL.md"
 PLANNER = REPO / "plugin" / "templates" / "agents" / "planner.md"
+RESEARCH_CODEBASE_SKILL = REPO / "plugin" / "skills" / "research-codebase" / "SKILL.md"
+BUILD_SKILL = REPO / "plugin" / "skills" / "build" / "SKILL.md"
 
-# Line counts of the five edited files before the approval-loop change: an
-# edit may remove more lines than it adds, never the reverse.
+# Line counts of the edited files before the approval-loop change, plus a
+# margin of four lines for the two skills that gain a multi-file review: an
+# edit may remove more lines than it adds, never grow a file beyond its ceiling.
 LINE_CEILINGS = {
     PIPELINE: 141,
     SPEC_SKILL: 126,
     PLAN_SKILL: 158,
     RESEARCH_SKILL: 84,
     PLANNER: 172,
+    RESEARCH_CODEBASE_SKILL: 212,
+    BUILD_SKILL: 109,
 }
 
 # A phrase that qualifies text as belonging to the case with no review surface.
@@ -55,6 +60,13 @@ def has_block(text, *patterns):
 def section(text, heading, next_heading):
     """The text from `heading` up to the next `next_heading` at the same level."""
     return text.split(heading, 1)[1].split(next_heading, 1)[0]
+
+
+def review_command_files(text):
+    """The words between `compass review` and `--title` in the first review
+    command of `text`, lowercased: the files the command sends."""
+    match = re.search(r"compass review([^`]*?)--title", text)
+    return squash(match.group(1)) if match else None
 
 
 def gate_sections():
@@ -153,6 +165,34 @@ class ApprovalLoopTextTest(unittest.TestCase):
         self.assertIn("title", clause)
         self.assertRegex(clause, r"\bid\b|identifier|\b(spec|plan|research)-\d+")
         self.assertIn("commit", clause)
+
+    def test_research_codebase_gate_sends_the_research_with_its_spec_as_one_review(self):
+        """Adversarial where: the research gate of `/compass:research-codebase`
+        still sends the research file alone, so the human judges findings
+        without the spec they answer; or the two files go as two reviews; or
+        the files carry no per-file `--why` saying what to check in each."""
+        body = section(read(RESEARCH_CODEBASE_SKILL), "### 10. Present and offer follow-up", "\n### ")
+        files = review_command_files(body)
+        self.assertIsNotNone(files, "the gate has no compass review command")
+        self.assertIn("research", files, "the research file is not sent")
+        self.assertIn("spec", files, "the spec is not sent with the research")
+        self.assertEqual(len(re.findall(r"compass review", body)), 1, "the gate sends more than one review")
+        self.assertIn("--why", body, "no per-file --why")
+        self.assertIn("AskUserQuestion", body, "gate lost its fallback")
+
+    def test_build_wave_pause_sends_the_plan_with_the_result_documents_as_one_review(self):
+        """Adversarial where: step 7c of `/compass:build` still sends the plan
+        file alone, so the documents the wave's tasks wrote results into never
+        reach the human at the pause; or the files go as separate reviews; or
+        the files carry no per-file `--why`."""
+        pause = next(b for b in re.split(r"\n\s*\n", read(BUILD_SKILL)) if "**7c." in b)
+        files = review_command_files(pause)
+        self.assertIsNotNone(files, "the pause has no compass review command")
+        self.assertIn("plan", files, "the plan file is not sent")
+        self.assertRegex(files, r"result|document", "the wave's result documents are not sent")
+        self.assertEqual(len(re.findall(r"compass review", pause)), 1, "the pause sends more than one review")
+        self.assertIn("--why", pause, "no per-file --why")
+        self.assertIn("AskUserQuestion", pause, "pause lost its fallback")
 
     def test_no_edited_file_grows_beyond_its_line_ceiling(self):
         """Adversarial where: the loop is described by adding text on top of
