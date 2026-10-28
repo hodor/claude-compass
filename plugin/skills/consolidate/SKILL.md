@@ -166,9 +166,11 @@ While proposing, also flag tag-vocabulary repairs (synonyms to one canonical for
 
 ### S3. Present the proposal as a diff, and stop
 
-One block per proposed domain: the folder to create, the files that move into it (exact `compass move` invocations), the one index line that replaces their N lines, and the rationale. Domains are the human's knowledge's shape - only his approval moves files. Without approval this pass is read-only.
+One section per proposed domain: the folder to create, the files that move into it (exact `compass move` invocations), the one index line that replaces their N lines, and the reason. Domains are the human's knowledge's shape - only his approval moves files. Without approval this pass is read-only.
 
-Then ask for approval through `AskUserQuestion`, exactly one question per call, one domain block per question, in order: "Create the `<domain>` domain and move these files?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
+With a review surface configured, write the proposal as a draft document under `.compass/tmp/proposals/`, opening with a Mermaid picture of the folders before and after and a "You decide" callout, with one checkbox per proposed folder. Send it through the review rule in the pipeline rules (`compass review <proposal file> --title "Approve these domains?"`); nothing is asked here. A ticked box approves that folder, an unticked box leaves its files flat, and a note beside a folder revises that folder's section.
+
+Without a review surface, ask for approval through `AskUserQuestion`, exactly one question per call, one domain block per question, in order: "Create the `<domain>` domain and move these files?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
 
 - **Approve (Recommended):** the domain is created and its files move in.
 - **Needs changes:** you say what to change; I revise the block and ask again.
