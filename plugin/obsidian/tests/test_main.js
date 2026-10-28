@@ -55,8 +55,11 @@ global.window = globalThis;
 
 // ---- obsidian and electron stubs ----
 const notices = [];
-const win = { minimized: 0, focused: 0, onTop: [], restore() {}, isMinimized: () => false,
-  setAlwaysOnTop(v) { this.onTop.push(v); }, show() {}, focus() { this.focused++; }, minimize() { this.minimized++; } };
+// `hasFocus` is what the window reports before anything raises it; raising it
+// (`focus()`) gives it focus, as Electron does.
+const win = { minimized: 0, focused: 0, hasFocus: false, onTop: [], restore() {}, isMinimized: () => false,
+  isFocused() { return this.hasFocus; },
+  setAlwaysOnTop(v) { this.onTop.push(v); }, show() {}, focus() { this.focused++; this.hasFocus = true; }, minimize() { this.minimized++; } };
 class Plugin {
   constructor(app) { this.app = app; this.intervals = []; }
   registerEvent() {}
@@ -178,7 +181,7 @@ const req = (id, file, extra = {}) => JSON.stringify({ id, file, title: "T", ret
 const bar = (app) => app.leaves.map((l) => l.view.containerEl.querySelector(".compass-review-bar")).find(Boolean);
 const button = (root, text) => root.all().find((c) => c.tag === "button" && c.text === text);
 
-test.beforeEach(() => { notices.length = 0; win.minimized = 0; win.focused = 0; win.onTop = []; });
+test.beforeEach(() => { notices.length = 0; win.minimized = 0; win.focused = 0; win.hasFocus = false; win.onTop = []; });
 
 const sleep = () => new Promise((r) => setImmediate(r));
 const mdFile = (p) => ({ path: p, basename: path.posix.basename(p, ".md"), extension: "md" });
@@ -1709,4 +1712,175 @@ test("an editor-change event with no file lists nothing and does not throw", asy
     await t.test(`info ${JSON.stringify(info)}`, () => { fn({}, info); });
   }
   assert.deepEqual(feedbackOf(cardFor(app, "1")), []);
+});
+
+// ---- stepping aside is decided per window from how each review arrived ----
+
+// Sends a request through the link handler with the window holding or lacking
+// focus at that moment, as it stands before the plugin raises it.
+async function arriveByLink(plugin, id, windowHasFocus) {
+  win.hasFocus = windowHasFocus;
+  await plugin.handler({ request: `tmp/review/${id}.request.json` });
+}
+async function approve(app, id) {
+  await click(cardBtn(app, id, "Approve"));
+  await sleep();
+}
+
+// Adversarial where: the window's focus is read after the plugin raises it
+// (always true by then), or `return` still decides a review that arrived by
+// link, so a human working in the window is hidden, or one working elsewhere
+// is left looking at a window that never steps aside.
+test("a review arriving by link steps aside after the answer only when the window lacked focus on arrival, whatever `return` says", async () => {
+  const rows = [
+    { name: "focused with return true", focus: true, ret: true, aside: 0 },
+    { name: "focused with return false", focus: true, ret: false, aside: 0 },
+    { name: "unfocused with return true", focus: false, ret: true, aside: 1 },
+    { name: "unfocused with return false", focus: false, ret: false, aside: 1 },
+    { name: "unfocused with no return field", focus: false, ret: undefined, aside: 1 },
+    { name: "focused with no return field", focus: true, ret: undefined, aside: 0 },
+  ];
+  for (const row of rows) {
+    win.minimized = 0;
+    const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md", { return: row.ret }) });
+    await arriveByLink(plugin, "1", row.focus);
+    assert.equal(win.minimized, 0, `${row.name}: nothing steps aside before the answer`);
+    await approve(app, "1");
+    assert.equal(win.minimized, row.aside, row.name);
+  }
+});
+
+// Adversarial where: the window is left in front forever, or hidden on every
+// later answer, because the arrival record survives a step aside; or a focused
+// arrival is stepped aside for on account of an earlier unfocused review that
+// was already stepped aside for.
+test("the arrival record is spent by a step aside, so a later focused review leaves the window in front", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x", "b.md": "y", "c.md": "z",
+    "tmp/review/1.request.json": req("1", "a.md"),
+    "tmp/review/2.request.json": req("2", "b.md"),
+    "tmp/review/3.request.json": req("3", "c.md"),
+  });
+  await arriveByLink(plugin, "1", false);
+  await approve(app, "1");
+  assert.equal(win.minimized, 1, "the unfocused review stepped aside");
+  await arriveByLink(plugin, "2", true);
+  await approve(app, "2");
+  assert.equal(win.minimized, 1, "the focused review after it leaves the window in front");
+  await arriveByLink(plugin, "3", false);
+  await approve(app, "3");
+  assert.equal(win.minimized, 2, "a later unfocused review steps aside again");
+});
+
+// Adversarial where: stepping aside fires after the first of two answers, or
+// the last answered card alone decides it, so a focused review answered last
+// hides an unfocused one answered first (or the reverse).
+test("with two cards the window steps aside only after the second answer, and only if either arrived without focus", async () => {
+  const rows = [
+    { name: "both unfocused", first: false, second: false, aside: 1 },
+    { name: "first unfocused, second focused", first: false, second: true, aside: 1 },
+    { name: "first focused, second unfocused", first: true, second: false, aside: 1 },
+    { name: "both focused", first: true, second: true, aside: 0 },
+  ];
+  for (const row of rows) {
+    win.minimized = 0;
+    const { app, plugin } = await loaded({
+      "a.md": "x", "b.md": "y",
+      "tmp/review/1.request.json": req("1", "a.md", { return: !row.first }),
+      "tmp/review/2.request.json": req("2", "b.md", { return: !row.second }),
+    });
+    await arriveByLink(plugin, "1", row.first);
+    await arriveByLink(plugin, "2", row.second);
+    await approve(app, "1");
+    assert.equal(win.minimized, 0, `${row.name}: a review is still pending after the first answer`);
+    await approve(app, "2");
+    assert.equal(win.minimized, row.aside, `${row.name}: after the second answer`);
+  }
+});
+
+// Adversarial where: the order of answering matters, so answering the
+// unfocused card first and the focused card last (or the reverse) gives a
+// different outcome from the same two arrivals.
+test("two cards answered in either order give the same step aside", async () => {
+  for (const order of [["1", "2"], ["2", "1"]]) {
+    win.minimized = 0;
+    const { app, plugin } = await loaded({
+      "a.md": "x", "b.md": "y",
+      "tmp/review/1.request.json": req("1", "a.md"),
+      "tmp/review/2.request.json": req("2", "b.md"),
+    });
+    await arriveByLink(plugin, "1", false);
+    await arriveByLink(plugin, "2", true);
+    await approve(app, order[0]);
+    assert.equal(win.minimized, 0, `order ${order}: one review still pending`);
+    await approve(app, order[1]);
+    assert.equal(win.minimized, 1, `order ${order}: after both answers`);
+  }
+});
+
+// Adversarial where: a review found by the start-up scan has no arrival to
+// measure, so the plugin reads the window's focus at answer time (or treats
+// it as unfocused) instead of following the request's `return`.
+test("a review found at start-up follows the request's `return`, whatever the window's focus", async () => {
+  const rows = [
+    { name: "return true, window focused", ret: true, focus: true, aside: 1 },
+    { name: "return true, window unfocused", ret: true, focus: false, aside: 1 },
+    { name: "return false, window focused", ret: false, focus: true, aside: 0 },
+    { name: "return false, window unfocused", ret: false, focus: false, aside: 0 },
+  ];
+  for (const row of rows) {
+    win.minimized = 0;
+    const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md", { return: row.ret }) });
+    win.hasFocus = row.focus;
+    await app.workspace.ready();
+    await sleep();
+    await plugin.openPanel();
+    await approve(app, "1");
+    assert.equal(win.minimized, row.aside, row.name);
+  }
+});
+
+// Adversarial where: a review the start-up scan already tracked is skipped
+// when its link then arrives, so the arrival's focus is never recorded and
+// `return` keeps deciding.
+test("a link for a review the start-up scan already tracked records its own arrival", async () => {
+  const rows = [
+    { name: "return true, arrived focused", ret: true, focus: true, aside: 0 },
+    { name: "return false, arrived unfocused", ret: false, focus: false, aside: 1 },
+  ];
+  for (const row of rows) {
+    win.minimized = 0;
+    const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md", { return: row.ret }) });
+    await app.workspace.ready();
+    await sleep();
+    assert.deepEqual([...plugin.pending.keys()], ["1"], `${row.name}: tracked at start-up`);
+    await arriveByLink(plugin, "1", row.focus);
+    await approve(app, "1");
+    assert.equal(win.minimized, row.aside, row.name);
+  }
+});
+
+// Adversarial where: a start-up review pending beside a focused link review is
+// decided by the link review's focus alone, so the start-up review's `return`
+// is lost, or is applied when it said false.
+test("a start-up review pending beside a focused link review steps aside only when the start-up review asked for return", async () => {
+  const rows = [
+    { name: "start-up return true", ret: true, aside: 1 },
+    { name: "start-up return false", ret: false, aside: 0 },
+  ];
+  for (const row of rows) {
+    win.minimized = 0;
+    const { app, plugin } = await loaded({
+      "a.md": "x", "b.md": "y",
+      "tmp/review/1.request.json": req("1", "a.md", { return: row.ret }),
+    });
+    await app.workspace.ready();
+    await sleep();
+    app.store.set("tmp/review/2.request.json", req("2", "b.md", { return: false }));
+    await arriveByLink(plugin, "2", true);
+    await approve(app, "2");
+    assert.equal(win.minimized, 0, `${row.name}: the start-up review is still pending`);
+    await approve(app, "1");
+    assert.equal(win.minimized, row.aside, `${row.name}: after the start-up review is answered`);
+  }
 });
