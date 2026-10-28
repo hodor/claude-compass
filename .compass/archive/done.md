@@ -438,3 +438,13 @@ Plan: [[PLAN-025-review-across-files-and-sessions]].
 
 - [x] TASK-220: live check of VS Code and Cursor windows - complexity: S, depends_on: none
 - [x] TASK-221: mockup of the review panel in VS Code - complexity: M, depends_on: none
+
+### PLAN-025 Wave 4: the review in VS Code and Cursor
+- [x] TASK-222: a project setting picks the review editor - complexity: S, depends_on: none
+
+### PLAN-025 Wave 4: the review in VS Code and Cursor
+
+Plan: [[PLAN-025-review-across-files-and-sessions]].
+
+- [x] TASK-223: a VS Code surface, also serving Cursor - complexity: L, depends_on: none
+- [x] TASK-224: live acceptance in VS Code and Cursor - complexity: S, depends_on: TASK-222, TASK-223

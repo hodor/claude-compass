@@ -154,3 +154,18 @@ VS Code: not run. The human's VS Code was open, and closing it was not allowed. 
 | Window-state calls | same `state` API; `workbench.action.focusWindow` is not registered; `toggleFullScreen` changed nothing; 50 matching commands |
 
 Not run: remote and WSL windows (G13), VS Code with the editor closed (G11), and a higher engine floor against Cursor.
+
+## A review of three files in VS Code and Cursor (TASK-224)
+
+Compass 0.31.0, `review_editor` set in `.compass/meta/plugin.yaml`, the extension installed with `compass review --install`. Both editors were closed when each review was sent.
+
+| Review | Editor | What came forward | Answer |
+| --- | --- | --- | --- |
+| 20261028T115644-5ce09b | VS Code (`review_editor: vscode`) | VS Code started on the repository folder with the first file open | approved 35 s after the send, all three files read |
+| 20261028T115738-8f3e88 | Cursor (`review_editor: cursor`) | Cursor started on the repository folder | approved about 100 s after the send, all three files read |
+
+- Each answer was written by the editor's extension beside its request, in the Obsidian panel's shape, with the three files in request order.
+- `compass doctor` named the editor reviews went to, and with the setting removed it names Obsidian again.
+- A self-update with no setting installed nothing into VS Code or Cursor.
+
+Not observed: neither answer carried a note on a file outside the review, though each review's steps asked for one, so whether the "On this file" box shows in the editors is unconfirmed. Across this document no real answer, in Obsidian or in the editors, has carried such a note; the harness tests for it pass in both.

@@ -61,11 +61,3 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
 - [ ] TASK-168: setup/update install the plugin; doctor walks the human through enabling it - complexity: M, depends_on: TASK-165
 - [ ] TASK-169: review inbox and lessons table as Bases - complexity: S, depends_on: none
-
-## PLAN-025 Wave 4: the review in VS Code and Cursor
-
-Plan: [[PLAN-025-review-across-files-and-sessions]].
-
-- [x] TASK-222: a project setting picks the review editor - complexity: S, depends_on: none
-- [ ] TASK-223: a VS Code surface, also serving Cursor - complexity: L, depends_on: none
-- [ ] TASK-224: live acceptance in VS Code and Cursor - complexity: S, depends_on: TASK-222, TASK-223
