@@ -1565,3 +1565,21 @@ test("notes, marks and position survive the panel being hidden, shown, closed an
   assert.deepEqual(env.verdict(ID).files.map((f) => f.note), [undefined, "keep me", undefined]);
   assert.deepEqual(env.verdict(ID).comments, [{ file: OUTSIDE, note: "and me" }]);
 });
+
+// ---- an answer already given elsewhere ----
+
+// Adversarial where: another window (the same folder open in both VS Code and
+// Cursor claims one request) or another surface answered since the last
+// recheck, and the click rewrites that verdict, so Compass acts on one answer
+// while the human saw another.
+test("a click after another surface already answered leaves that answer as it is", async (t) => {
+  const env = await openSet(t);
+  const first = { id: ID, file: SPEC, verdict: "changes", notes: "answered first", comments: [], edited: [], at: "2026-10-28T10:16:00.000Z" };
+  fs.writeFileSync(env.verdictFile(ID), JSON.stringify(first));
+  verdictWrites.length = 0;
+  dispatch(env.button("Approve"), "click");
+  await env.settle();
+  await sleep(100);
+  assert.deepEqual(env.verdict(ID), first);
+  assert.deepEqual(verdictWrites, []);
+});
