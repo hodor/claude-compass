@@ -1609,3 +1609,99 @@ test("a card explains what Project and Session are", async () => {
   const { app } = await openSet();
   assert.ok(textOf(cardFor(app, "1")).includes("Project is the folder holding the vault. Session is the first six characters of the Claude Code session id."));
 });
+
+// ---- edits come from the editor-change event alone ----
+
+// Fires the event Obsidian raises when the human types in an editor: the editor
+// first, then an info object whose `file` is the document being edited.
+const typedIn = (app, p) => {
+  const fn = app.wsListeners["editor-change"];
+  assert.ok(fn, "the plugin listens to the workspace editor-change event");
+  fn({}, { file: mdFile(p) });
+};
+const approveBoth = async (app) => {
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
+  await click(cardBtn(app, "2", "Approve"));
+  await sleep();
+};
+
+// Adversarial where: a write from a script or from Compass, which reaches the
+// plugin as a file-changed (modify) event with no editor-change event, is
+// listed as the human's edit, in the feedback list, in the answer's `edited`,
+// or by enabling Needs changes.
+test("a file-changed event with no editor-change event lists no edit", async () => {
+  const { app } = await openSet();
+  await app.listeners.modify(mdFile("spec.md"));
+  await app.listeners.modify(mdFile("elsewhere.md"));
+  await sleep();
+  assert.deepEqual(feedbackOf(cardFor(app, "1")), []);
+  assert.equal(cardBtn(app, "1", "Needs changes").disabled, true);
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
+  assert.deepEqual(verdictOf(app, "tmp/review/1.verdict.json").edited, []);
+});
+
+// Adversarial where: an editor-change event is credited to the wrong cards. A
+// file one card lists reaches that card only, a file both list reaches both,
+// and a file no card lists (which the earlier rule gave to the newest card)
+// reaches none; the same file typed in twice is listed once.
+test("an editor-change event lands on the cards that list the file and on no other", async (t) => {
+  const rows = [
+    { name: "a file only the first card lists", typed: ["spec.md"], first: ["spec.md"], second: [] },
+    { name: "a file only the second card lists, typed twice", typed: ["dock-b.md", "dock-b.md"], first: [], second: ["dock-b.md"] },
+    { name: "a file neither card lists", typed: ["elsewhere.md"], first: [], second: [] },
+    { name: "a file both cards list", shared: true, typed: ["plan.md"], first: ["plan.md"], second: ["plan.md"] },
+  ];
+  for (const row of rows) {
+    await t.test(row.name, async () => {
+      const { app, plugin } = await openSet({}, SECOND);
+      await plugin.handler({ request: "tmp/review/2.request.json" });
+      // Renaming the second card's dock-b.md to plan.md leaves plan.md listed by both cards.
+      if (row.shared) app.listeners.rename({ path: "plan.md" }, "dock-b.md");
+      for (const p of row.typed) typedIn(app, p);
+      await sleep();
+      assert.deepEqual(feedbackOf(cardFor(app, "1")), row.first.map((f) => `edited: ${f}`), "first card feedback");
+      assert.deepEqual(feedbackOf(cardFor(app, "2")), row.second.map((f) => `edited: ${f}`), "second card feedback");
+      assert.equal(cardBtn(app, "1", "Needs changes").disabled, row.first.length === 0);
+      assert.equal(cardBtn(app, "2", "Needs changes").disabled, row.second.length === 0);
+      await approveBoth(app);
+      assert.deepEqual(verdictOf(app, "tmp/review/1.verdict.json").edited, row.first);
+      assert.deepEqual(verdictOf(app, "tmp/review/2.verdict.json").edited, row.second);
+    });
+  }
+});
+
+// Adversarial where: an editor-change event after a card's answer reopens its
+// edited list or rewrites its answer, or is handed to a card still pending
+// that does not list the file.
+test("an editor-change event after a card's answer reaches neither its answer nor another card", async () => {
+  const { app, plugin } = await openSet({}, SECOND);
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
+  const before = app.store.get("tmp/review/1.verdict.json");
+  const writes = verdictWrites(app);
+  typedIn(app, "spec.md");
+  typedIn(app, "elsewhere.md");
+  await sleep();
+  assert.equal(app.store.get("tmp/review/1.verdict.json"), before, "the written answer is unchanged");
+  assert.deepEqual(writes, [], "no answer is rewritten");
+  assert.deepEqual(feedbackOf(cardFor(app, "2")), [], "the pending card lists neither file");
+  typedIn(app, "dock-a.md");
+  await click(cardBtn(app, "2", "Approve"));
+  await sleep();
+  assert.deepEqual(verdictOf(app, "tmp/review/2.verdict.json").edited, ["dock-a.md"], "a listed file still counts on the pending card");
+});
+
+// Adversarial where: an editor-change event whose info carries no file (an
+// editor not backed by a file) throws, or is credited to the newest card.
+test("an editor-change event with no file lists nothing and does not throw", async (t) => {
+  const { app } = await openSet();
+  const fn = app.wsListeners["editor-change"];
+  assert.ok(fn, "the plugin listens to the workspace editor-change event");
+  for (const info of [undefined, null, {}, { file: null }]) {
+    await t.test(`info ${JSON.stringify(info)}`, () => { fn({}, info); });
+  }
+  assert.deepEqual(feedbackOf(cardFor(app, "1")), []);
+});
