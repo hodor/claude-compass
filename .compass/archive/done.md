@@ -431,3 +431,10 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 Plan: [[PLAN-025-review-across-files-and-sessions]].
 
 - [x] TASK-219: live acceptance, two projects - complexity: S, depends_on: TASK-218
+
+### PLAN-025 Wave 3: VS Code, checked and drawn
+
+Plan: [[PLAN-025-review-across-files-and-sessions]].
+
+- [x] TASK-220: live check of VS Code and Cursor windows - complexity: S, depends_on: none
+- [x] TASK-221: mockup of the review panel in VS Code - complexity: M, depends_on: none

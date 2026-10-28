@@ -8,7 +8,7 @@ tags: [obsidian, review, live-check, human-surface]
 depends_on: ["[[PLAN-025-review-across-files-and-sessions]]"]
 summary: "live runs of compass review with two projects open in one Obsidian: each review reaches its own window, a closed vault reopens, and only typing in Obsidian marks a file as edited"
 created: 2026-10-27
-updated: 2026-10-27
+updated: 2026-10-28
 git_branch: "master"
 author: "orchestrator"
 ---
@@ -93,3 +93,64 @@ Run on Compass 0.30.0 with the review panel. Three reviews were sent in the same
 - Each change report printed full diffs only for its own review's files and named every other file.
 
 Not observed: no answer carried a note on the outside file, and the human did not recall whether one was written or how each window was reached. Whether an "On this file" note travels in a real answer is checked at the Wave 2 pause of [[plans/PLAN-025-review-across-files-and-sessions]]; the harness test for it passes.
+
+## VS Code and Cursor windows (TASK-220)
+
+Run on VS Code 1.143.1 and Cursor 1.1.3 (engine 1.96.2), Windows 11, with a throwaway extension (`compasstrial.probe`, engine `^1.85.0`, packaged by `vsce` as a `.vsix`) installed with `code --install-extension` and `cursor --install-extension` and removed with `--uninstall-extension` afterwards. It registers a URI handler and appends `{"at","uri","folder","app"}` plus the window's `focused` state to `.compass/tmp/trials/vscode-probe/events.jsonl`. `probe.py` sent each link or command and recorded the desktop (foreground window, every editor window, minimized or not) before and 4 to 5 seconds after into `sent.jsonl`; `lineup.py` lines each send up with the window that logged it. Two windows of mine were open, one on this repository ("repo") and one on `.compass/tmp/trials/second-project/` ("second-project"). The human's own VS Code windows (`projects-md` and the `.compass` vault) stayed open and were never closed or driven.
+
+The human worked in a browser and Slack during the run, so the desktop's foreground often moved within seconds of a send. "Came forward" below is read from the window's own `focused: true` event right after the send, with the desktop's foreground in the first seconds as the second signal.
+
+### First link (VS Code)
+
+The first link a window receives shows a dialog: "Allow 'Compass window probe' extension to open this URI?" with Open, Cancel and a "Do not ask me again for this extension" box. The link was logged only after Enter pressed Open, 100.8 s after the send. Every later link, in either window, was logged within 0.5 s with no dialog, though the box stayed unticked.
+
+### Case 1: a link naming a folder (G10, 3.10)
+
+Every link carried `folder=<other window's folder>`; no window used it.
+
+| Link | Window in front when sent | Window that logged it | Came forward |
+| --- | --- | --- | --- |
+| c1a, names repo | second-project | second-project, after the dialog | already in front |
+| c1b, names second-project | repo | repo, 0.5 s | already in front |
+| c1c, names second-project | the human's Slack; repo was the last VS Code window used | repo, 0.5 s | yes: `focused` went true 0.05 s later and the desktop's front became the repo window |
+| c1d, names repo | the human's Slack; second-project was the last used; both of mine minimized | second-project, 0.4 s | yes: restored from minimized and in front; repo stayed minimized; the human's visible `.compass` window did not take it |
+
+A link goes to the last VS Code window used, whatever its folder, and brings it forward, restoring it if minimized.
+
+### Case 2: `code <folder>` and `code -r <folder>` (G10, 3.15)
+
+| Command | Window in front when sent | Window that logged `focused: true` | Result |
+| --- | --- | --- | --- |
+| `code <repo>` | second-project | repo, +0.5 s | existing window raised; still four VS Code windows |
+| `code <second-project>` | repo (the human's browser had taken the front) | second-project, +0.6 s | existing window raised; four windows |
+| `code -r <repo>` | second-project | repo, +0.6 s | repo window raised; second-project kept its folder; four windows |
+| `code -r <second-project>` | repo | second-project, +0.6 s | second-project window raised; repo kept its folder; four windows |
+
+With the folder already open in a window, `code` and `code -r` both raise that window and replace nothing.
+
+### Case 3: editor closed (G11)
+
+VS Code: not run. The human's VS Code was open, and closing it was not allowed. The last-used-window behaviour above is what a link does while VS Code runs.
+
+### Window-state calls (G12, 3.12)
+
+`vscode.window` offers `state` (`focused`, `active`) and `onDidChangeWindowState`; `vscode.env` offers nothing for windows. Of 65 registered commands matching window, raise, minimize, maximize, front or fullscreen, two touch the operating system window: `workbench.action.toggleFullScreen` and `workbench.action.focusWindow`. The probe called each on a window that was not in front, timed, with a one-second watcher on the desktop.
+
+| Window state | Call | `focused` before, after | Desktop |
+| --- | --- | --- | --- |
+| behind another window or app (3 runs) | `focusWindow` | false, true | the window reported itself focused; the desktop's front stayed on the other app in the two watched runs |
+| minimized (2 runs) | `focusWindow` | false, true in one run; true, true in the other | restored from minimized in both; in front in one run, in the other the human's browser took the front at the same second |
+| behind, and minimized | `toggleFullScreen` | unchanged | no effect on focus; a minimized window stayed minimized |
+| any | no call minimizes a window | - | - |
+
+### Cursor 1.1.3 (G14)
+
+| Check | Result |
+| --- | --- |
+| Extension with engine `^1.85.0` | installed, activated, logged links |
+| `cursor://` link with Cursor closed | Cursor started and opened one window with no folder; the extension activated there and logged the link 0.05 s later, no dialog, window focused |
+| Link naming a folder, other window in front (2 sends) | the window in front logged it, 20.9 s and 11.1 s after the send; no dialog |
+| `cursor <folder>` and `cursor -r <folder>`, both directions (4 sends) | the window holding that folder logged `focused: true` at +2.0 to +2.2 s; no window opened or replaced |
+| Window-state calls | same `state` API; `workbench.action.focusWindow` is not registered; `toggleFullScreen` changed nothing; 50 matching commands |
+
+Not run: remote and WSL windows (G13), VS Code with the editor closed (G11), and a higher engine floor against Cursor.
