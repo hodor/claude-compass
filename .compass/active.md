@@ -59,7 +59,7 @@ Plan: [[PLAN-021-control-loops]].
 
 Plan: [[PLAN-025-review-across-files-and-sessions]].
 
-- [ ] TASK-219: live acceptance, two projects - complexity: S, depends_on: TASK-218
+- [x] TASK-219: live acceptance, two projects - complexity: S, depends_on: TASK-218
 
 ## PLAN-022: review documents in Obsidian
 

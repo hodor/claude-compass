@@ -92,4 +92,4 @@ Run on Compass 0.30.0 with the review panel. Three reviews were sent in the same
 - The panel followed the rename: the answer names `step-3-renamed.md`. The terminal then printed the old name as unread; `compass review` now matches a renamed file to its place in the request and prints `file step-3-renamed.md read (renamed from step-3-rename-me.md)`.
 - Each change report printed full diffs only for its own review's files and named every other file.
 
-Not yet confirmed: no answer carried a note on the outside file or a note on how each window was reached, so whether the "On this file" note travels in a real answer, and how long each walk took, are still open.
+Not observed: no answer carried a note on the outside file, and the human did not recall whether one was written or how each window was reached. Whether an "On this file" note travels in a real answer is checked at the Wave 2 pause of [[plans/PLAN-025-review-across-files-and-sessions]]; the harness test for it passes.
