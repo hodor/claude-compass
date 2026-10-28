@@ -61,3 +61,14 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
 - [ ] TASK-168: setup/update install the plugin; doctor walks the human through enabling it - complexity: M, depends_on: TASK-165
 - [ ] TASK-169: review inbox and lessons table as Bases - complexity: S, depends_on: none
+
+## PLAN-024 Wave 4: the plugin draws
+
+Plan: [[PLAN-024-working-in-compass-is-visual]]. Where the drawings live awaits the human's review of the plan.
+
+- [ ] TASK-202: A Compass view panel and the plan board - complexity: M
+- [ ] TASK-206: Spec and research cards in the view panel - complexity: M, depends_on: TASK-202
+- [ ] TASK-227: What changed since a review - complexity: M, depends_on: TASK-206
+- [ ] TASK-228: Each spec's pipeline strip - complexity: S, depends_on: TASK-227
+- [ ] TASK-203: A loop's charts - complexity: M, depends_on: TASK-228
+- [ ] TASK-204: `compass canvas` writes the spec tree and `compass move` rewrites card paths - complexity: M

@@ -7,15 +7,22 @@ confidence: medium
 area: methodology
 tags: [obsidian, documents, cli, jargon, charts, mockup, human-surface]
 created: 2026-10-26
-updated: 2026-10-27
+updated: 2026-10-28
 git_branch: "master"
 git_commit: "d8fbd46"
 author: "planner"
 depends_on: ["[[specs/human-surface/SPEC-031-working-in-compass-is-visual]]", "[[research/human-surface/RESEARCH-working-in-compass-is-visual]]"]
 summary: "five trials in Obsidian and three agreed mockups first; then documents gain callouts, embeds, block links and footnotes, Compass's plugin draws task tables, graphs, charts and the spec canvas, and the CLI speaks short plain words, every visual earning its bytes"
 ---
-t he
+
 # Working in Compass Is Visual
+
+> [!important] You decide
+> Wave 4 is detailed below: the plugin draws the plan board, the spec and research cards, what changed since a review, each spec's pipeline strip and a loop's charts, and `compass canvas` writes the spec tree.
+> One choice is open: where those drawings live. The choices table below ("Where visuals live") puts a short code block in each document, such as a `compass-plan` fence, yet the obsidian skill's rule is that every code fence names a real language (`python`, `c++`), and a `compass-plan` fence names none.
+> - **Recommended:** a Compass view panel in the right sidebar follows the open document and draws the view its `type:` picks (plan, spec, research, loop). Files carry no block, so they add no bytes, and GitHub shows nothing odd. Trade-off: the drawing sits beside the text, never inside it.
+> - **Alternative:** a `compass-*` code block inside each document, drawn in place. Trade-off: every document that shows a drawing carries the block, and GitHub and agents see it as an unknown code fence.
+> The tasks below are written for the recommended answer; a note saying "blocks" switches them to the alternative.
 
 ## Goal
 
@@ -37,30 +44,44 @@ flowchart LR
   end
   subgraph W2["Wave 2: build what was agreed"]
     T197["197 Plugin drawings mockup"]:::done
-    T198["198 Decisions read inside callouts"]:::open
-    T199["199 Writing rules: forms, bytes, words"]:::open
-    T200["200 Plain words: validate, hook lines"]:::open
-    T225["225 Plain words: doctor, command list"]:::open
-    T201["201 Approval loop in the editor"]:::open
+    T198["198 Decisions read inside callouts"]:::done
+    T199["199 Writing rules: forms, bytes, words"]:::done
+    T200["200 Plain words: validate, hook lines"]:::done
+    T225["225 Plain words: doctor, command list"]:::done
+    T201["201 Approval loop in the editor"]:::done
   end
-  subgraph W3["Wave 3: the plugin draws"]
-    V["202 to 204, 206, 207 Task table, charts, spec canvas, views"]:::later
+  subgraph W3["Wave 3: every review opens in the editor"]
+    T226["226 Consolidate and vault-health reviews"]:::done
+  end
+  subgraph W4["Wave 4: the plugin draws"]
+    T202["202 View panel and plan board"]:::open
+    T206["206 Spec and research cards"]:::open
+    T227["227 What changed since a review"]:::open
+    T228["228 Each spec's pipeline strip"]:::open
+    T203["203 A loop's charts"]:::open
+    T204["204 Spec tree canvas"]:::open
+  end
+  subgraph L["Later"]
+    T207["207 Views agents write"]:::later
     A["205 Acceptance: a real plan in Obsidian"]:::later
   end
   T189 --> T190 & T191 & T192
   T192 --> T193
   T194 --> T195 & T196 & T200 & T225
-  T190 & T191 & T192 & T193 & T197 --> V
+  T190 --> T203
+  T193 --> T204
+  T197 --> T202
   T195 --> T199
   T198 --> T200
   T196 & T199 --> T201
-  V & T198 & T200 & T225 & T201 --> A
+  T202 --> T206 --> T227 --> T228 --> T203
+  T203 & T204 --> T207 --> A
   classDef done fill:#cfc,color:#000
   classDef open fill:#ffa,color:#000
   classDef later fill:#eee,color:#000
 ```
 
-Numbers are task ids; a wave is a group of tasks planned in detail together; later waves stay sketched until the one before is verified. Green is done, yellow is detailed and not started, grey is sketched under Later. TASK-197, done ahead of its wave, is listed under Later.
+Numbers are task ids; a wave is a group of tasks planned in detail together; later waves stay sketched until the one before is verified. Green is done, yellow is detailed and not started, grey is sketched under Later. TASK-197, done ahead of its wave, is listed under Later. Wave 4's plugin tasks run one after another because they all edit the plugin's one `main.js`; TASK-204 runs beside them.
 
 | Choice                      | The plan's answer (recommended)                                                                                                   |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
@@ -150,13 +171,34 @@ The words come from [[research/human-surface/RESEARCH-plain-words-mockup]], the 
   - Automated verification: tests: each skill sends its approval through `compass review` when a surface is set and keeps its `AskUserQuestion` fallback; the consolidate skill names the per-folder checkbox and the proposal's place under `.compass/tmp/proposals/`; neither file grows by more lines than it removes plus ten; `python -m pytest plugin/cli/tests` passes.
   - Manual verification: the human approves the next real taxonomy proposal in Obsidian and says whether it reads as easily as a plan.
 
+### Wave 4 (detailed): the plugin draws
+
+Every view ports its drawing from the agreed mockup plugin, `.compass/.obsidian/plugins/compass-ui-mockups/main.js` ([[research/human-surface/RESEARCH-plugin-ui-mockup]]), reads vault files only, and uses Obsidian's color variables so it follows the theme. The plugin's tests run under `node --test plugin/obsidian/tests/`. The two mockup views a review of several files needs, the walk through the files and the reviews waiting across projects, already ship in the review panel ([[plans/PLAN-025-review-across-files-and-sessions]]).
+
+- [ ] TASK-202: A Compass view panel and the plan board: a view in the right sidebar follows the open document and draws the view its `type:` frontmatter picks, and shows one plain line for a type with no view; for a plan it draws the task table (id, task, wave, status, depends on) and the dependency graph colored by status, both parsed from the plan's task lines, and a click on a task opens its line. When a review of the plan is pending, each row of the plan's choices table takes Agree or Change with a note, and the answers join the review's note as one `<choice>: <note>` line per changed choice; the board writes nothing into the plan - complexity: M, depends_on: none, files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/styles.css, plugin/obsidian/tests/test_main.js], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-031-working-in-compass-is-visual/D-02], lessons: [LESSON-ui-change-needs-agreed-mockup-before-build]
+  - Automated verification: tests: the task parser reads every task line of this plan and of [[plans/PLAN-025-review-across-files-and-sessions]] with its id, status and depends_on, and skips task-shaped lines inside fences and under a `## Wave N elaborated` heading; the panel picks no view for a file with no `type:`; Agree on every choice adds no line to the note and Change adds one; no file under `.compass/` changes when the board opens; `node --test plugin/obsidian/tests/` and `python -m pytest plugin/cli/tests` pass.
+  - Manual verification: the human opens this plan in Obsidian and says whether the board reads as the mockup's did.
+- [ ] TASK-206: Spec and research cards in the view panel: a spec shows its Problem and Desired Outcome in the human's words and one card per decision; a research document shows bars counting findings per section, filters by confidence, and rows that open the finding's line. During a pending review each decision card takes Agree or Change with a note, joining the review's note as `D-NN: <note>` lines - complexity: M, depends_on: TASK-202 (main.js), files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/styles.css, plugin/obsidian/tests/test_main.js], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-030-review-documents-open-in-obsidian/D-06]
+  - Automated verification: tests: decisions parse from plain bullets and from bullets inside a callout, matching `compass decisions` on every spec in this vault; findings tables parse with number, confidence and evidence from [[research/human-surface/RESEARCH-working-in-compass-is-visual]]; a Change with an empty note is refused; `node --test plugin/obsidian/tests/` passes.
+  - Manual verification: the human approves the next real spec in Obsidian through the cards and says whether answering per decision was easier than one note.
+- [ ] TASK-227: What changed since a review: when a review lists a document already reviewed before, `compass review` saves `git diff` of each file against the commit that review showed as `<id>.changes.diff` beside the request; the view panel shows those changes grouped under the heading each sits in, with the changed words marked, and a click opens the line - complexity: M, depends_on: TASK-206 (main.js), files: [plugin/cli/reviewlib.py, plugin/cli/commands/review.py, plugin/cli/tests/test_review_changes_file.py, plugin/obsidian/compass-review/main.js, plugin/obsidian/tests/test_main.js], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-030-review-documents-open-in-obsidian/D-05]
+  - Automated verification: tests: a second review of a changed file writes a diff equal to `git diff <sha> -- <file>`; a first review and an unchanged file write none; the diff file is removed with the request; the parser groups hunks by the heading above them and marks changed words; `node --test plugin/obsidian/tests/` and `python -m pytest plugin/cli/tests` pass.
+  - Manual verification: the human reviews a revised document and says whether the changes view shows what moved.
+- [ ] TASK-228: Each spec's pipeline strip: the view for a spec also shows spec, research, plan, build and validate as one strip, each stage read from the frontmatter of the documents that link the spec and the plan's task lines, with what waits on the human and what runs next - complexity: S, depends_on: TASK-227 (main.js), files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/styles.css, plugin/obsidian/tests/test_main.js], decisions: [SPEC-031-working-in-compass-is-visual/D-01]
+  - Automated verification: tests: for [[specs/human-surface/SPEC-031-working-in-compass-is-visual]] the strip names this plan as approved with its done and open task counts equal to a count of its task lines; a spec no document links shows only the spec stage; `node --test plugin/obsidian/tests/` passes.
+  - Manual verification: none.
+- [ ] TASK-203: A loop's charts: the view for a loop (`type: loop`) charts each run's reading and its estimated cost from the loop's `ledger.jsonl`, drawn through Obsidian's own Mermaid (`loadMermaid()` then `mermaid.render`, the route Trial B found drawing in both views); the cost axis is labelled an estimate, since on a subscription `cost_usd` is not a charge; the manifest's lowest Obsidian version is raised only if `loadMermaid` needs it - complexity: M, depends_on: TASK-228 (main.js), files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/manifest.json, plugin/obsidian/tests/test_main.js], decisions: [SPEC-031-working-in-compass-is-visual/D-01], lessons: [LESSON-subscription-cost-is-an-estimate-not-a-budget]
+  - Automated verification: tests: the chart source built from [[loops/LOOP-001-visual-questions/index|LOOP-001]]'s ledger holds the 50 readings the `run` records carry, in order; malformed ledger lines are skipped and counted; a ledger with no `run` record draws one plain line; `node --test plugin/obsidian/tests/` passes.
+  - Manual verification: the human opens LOOP-001 in Obsidian and says whether the chart reads as a metrics chart at pane width.
+- [ ] TASK-204: `compass canvas` writes the spec tree as `.compass/specs.canvas`, one card per spec file and an edge from each folder spec to its children; a rerun adds and removes cards for specs that appeared or left and keeps every remaining card's position and size; `compass move` rewrites the card paths of moved files, since Obsidian leaves a card naming the old path (Trial E) - complexity: M, depends_on: none, files: [plugin/cli/commands/canvas.py, plugin/cli/commands/move.py, plugin/cli/maincli.py, plugin/cli/tests/test_canvas.py, plugin/cli/tests/test_move.py], decisions: [SPEC-031-working-in-compass-is-visual/D-01]
+  - Automated verification: tests: the canvas holds one card per spec under `specs/`; a card moved by hand keeps its position across a rerun; a deleted spec's card goes and a new spec's card appears; `compass move --apply` rewrites the moved file's card path; the file parses as JSON Canvas; `python -m pytest plugin/cli/tests` passes.
+  - Manual verification: the human rearranges the canvas in Obsidian, reruns `compass canvas`, and says whether the cards stayed put.
+
+**Pause point:** when automated verification passes, the human runs the manual checks before TASK-207 is detailed.
+
 ## Later (intent only)
 
 - [x] TASK-197: Mockup of what the plugin draws: a plan's task table and dependency graph, a loop's readings and cost over time, the spec tree canvas - files: [.compass/research/human-surface/RESEARCH-plugin-visuals-mockup.md], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-031-working-in-compass-is-visual/D-02]
-- [ ] TASK-202: The plugin draws a plan's task table and dependency graph from its task lines - files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/tests/test_main.js], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-031-working-in-compass-is-visual/D-02]
-- [ ] TASK-203: The plugin draws charts of a loop's readings and cost from the file a chart block names, vault files only - files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/manifest.json, plugin/obsidian/tests/test_main.js], decisions: [SPEC-031-working-in-compass-is-visual/D-01]
-- [ ] TASK-204: `compass canvas` writes the spec tree as a canvas that keeps the human's card positions, and `compass move` rewrites card paths - files: [plugin/cli/commands/canvas.py, plugin/cli/commands/move.py, plugin/cli/maincli.py], decisions: [SPEC-031-working-in-compass-is-visual/D-01]
-- [ ] TASK-206: The plugin ships the template views of [[research/human-surface/RESEARCH-plugin-ui-mockup]], each a code block reading vault files only; the walk through several files is the review panel of [[plans/PLAN-025-review-across-files-and-sessions]], and the list of reviews across projects takes its project and session names from that plan's TASK-211 - files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/styles.css, plugin/obsidian/tests/test_main.js], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-030-review-documents-open-in-obsidian/D-06]
 - [ ] TASK-207: An agent writes its own view when no template fits: a script file in the vault that a code block names and the plugin runs, plus writing rules for when to use which - files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/tests/test_main.js, plugin/skills/obsidian/SKILL.md], decisions: [SPEC-031-working-in-compass-is-visual/D-01]
 - [ ] TASK-205: Live acceptance: the next plan Compass writes uses the forms, the human reviews it in Obsidian, and its bytes and `compass hot-path` are compared with its text-only twin - decisions: [SPEC-031-working-in-compass-is-visual/D-02]
 
@@ -169,6 +211,24 @@ How each Wave 2 task differs from its one-line sketch in the plan as first appro
 - TASK-200: split; it keeps `validate` and the hook lines (moment 10 of [[research/human-surface/RESEARCH-terminal-output-mockup]]); the word list moves to TASK-199, doctor and the command list to TASK-225. `compass tree` and `index.md` keep naming links by file name: agents write links from them, and titles would push `index.md` past the size limit on the files every session reads first.
 - TASK-225: split from TASK-200 so the doctor and help edits merge separately from PLAN-022's changes to doctor (its TASK-168).
 - TASK-201: the human's approval of the terminal mockup settles its open questions as the mockup draws them: a "Since your last review" callout, research axes in the draft research document, the review panel (the review card in the editor) with two buttons, Approve and Needs changes, and a terminal line that names the commit; the "You decide" callout leaves the file at approval, since an approved document states what is. Reviews of several files at once go through the review panel of [[plans/PLAN-025-review-across-files-and-sessions]], which walks the files one by one (its TASK-210, mockup approved).
+
+## Wave 4 elaborated
+
+How each Wave 4 task differs from its one-line sketch, and why. The sketches read:
+
+```markdown
+- [ ] TASK-202: The plugin draws a plan's task table and dependency graph from its task lines - files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/tests/test_main.js], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-031-working-in-compass-is-visual/D-02]
+- [ ] TASK-203: The plugin draws charts of a loop's readings and cost from the file a chart block names, vault files only - files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/manifest.json, plugin/obsidian/tests/test_main.js], decisions: [SPEC-031-working-in-compass-is-visual/D-01]
+- [ ] TASK-204: `compass canvas` writes the spec tree as a canvas that keeps the human's card positions, and `compass move` rewrites card paths - files: [plugin/cli/commands/canvas.py, plugin/cli/commands/move.py, plugin/cli/maincli.py], decisions: [SPEC-031-working-in-compass-is-visual/D-01]
+- [ ] TASK-206: The plugin ships the template views of [[research/human-surface/RESEARCH-plugin-ui-mockup]], each a code block reading vault files only; the walk through several files is the review panel of [[plans/PLAN-025-review-across-files-and-sessions]], and the list of reviews across projects takes its project and session names from that plan's TASK-211 - files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/styles.css, plugin/obsidian/tests/test_main.js], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-030-review-documents-open-in-obsidian/D-06]
+```
+
+- TASK-202: the task table and the graph draw in a Compass view panel that follows the open document, so a plan carries no block and adds no bytes; the panel is the recommended answer to the open choice at the top of the plan. From the plan board of [[research/human-surface/RESEARCH-plugin-ui-mockup]], approved with all seven views: answering the plan's choices with Agree or Change. The mockup left open whether Mark done writes the checkbox; the board writes nothing, and the agent checks tasks off as before.
+- TASK-206: narrowed to the spec cards and research reading of the mockup. Its walk through several files and its list of reviews across projects shipped in the review panel of [[plans/PLAN-025-review-across-files-and-sessions]]. The mockup's What changed and Where each spec stands views become TASK-227 and TASK-228, each its own merge.
+- TASK-227: new, from the mockup's What changed view, which needs `compass review` to save the diff, since a plugin cannot run git portably.
+- TASK-228: new, from the mockup's Where each spec stands view.
+- TASK-203: the chart draws through Obsidian's own Mermaid, the route Trial B found drawing in both views with nothing bundled; Trial C's Vega-Lite made the plugin 50 times larger. The cost axis reads as an estimate, from [[lessons/pipeline/LESSON-subscription-cost-is-an-estimate-not-a-budget]].
+- TASK-204: Trial E found that an open canvas reloads a file rewritten outside Obsidian and keeps the new positions, and that a note renamed outside Obsidian leaves its card naming the old path, so `compass move` rewrites card paths.
 
 ## Risks
 
@@ -187,3 +247,4 @@ How each Wave 2 task differs from its one-line sketch in the plan as first appro
 - 2026-10-27: TASK-206 leaves the walk through several files to the review panel of [[plans/PLAN-025-review-across-files-and-sessions]] and takes project and session names from its TASK-211.
 - 2026-10-27: Wave 2 approved; the "You decide" box left the plan at approval.
 - 2026-10-27: TASK-226 added and approved: the review of Wave 2's checks asked that every document Compass needs reviewed, the taxonomy proposal included, open in the editor.
+- 2026-10-28: Wave 4 detailed (TASK-202, TASK-206, TASK-227, TASK-228, TASK-203, TASK-204); where the drawings live is put to the human, since the approved answer used `compass-*` fences.
