@@ -17,6 +17,9 @@ summary: "two live checks in Obsidian and an agreed mockup first; then one revie
 
 # Review Across Files and Sessions
 
+> [!IMPORTANT]
+> You decide: start Wave 4, the review in VS Code and Cursor? The live check found that a link reaches whichever VS Code window was used last, while `code <folder>` raises the window holding that folder, so Compass uses the command and each window's extension picks up the reviews under its own folder. No VS Code call can minimize a window, so VS Code stays in front after you answer. Approving builds the panel you approved, a project setting that picks the editor, and a live try in VS Code and Cursor.
+
 ## Goal
 
 This plan implements the outcomes of [[specs/human-surface/SPEC-030-review-documents-open-in-obsidian|Review Documents Open in Obsidian (SPEC-030)]] that the review plugin does not meet yet, from the evidence in [[research/human-surface/RESEARCH-review-across-files-and-sessions]]. One review walks the human through several files and closes with one answer. Several Claude Code sessions, in one project or several, each reach their own Obsidian and get their own answer back, and nothing from one review leaks into another. The review lives in the side panel of Obsidian, one card (box) per review, and approving stays one click. After an answer Obsidian steps aside: it goes to the background so the human is back where he was. A VS Code version follows, using the same request and answer files. Earlier work: [[PLAN-022-review-in-obsidian]] built the one-file review.
@@ -41,12 +44,12 @@ flowchart LR
     T219["219 Acceptance: two projects, several files"]:::done
   end
   subgraph W3["Wave 3: VS Code, checked and drawn"]
-    T220["220 Live check: VS Code and Cursor windows"]:::open
-    T221["221 Mockup: the panel in VS Code"]:::open
+    T220["220 Live check: VS Code and Cursor windows"]:::done
+    T221["221 Mockup: the panel in VS Code"]:::done
   end
-  subgraph L["Later"]
-    V["222 223 Editor choice, VS Code surface"]:::later
-    VA["224 Acceptance in VS Code"]:::later
+  subgraph W4["Wave 4: the review in VS Code and Cursor"]
+    V["222 223 Editor choice, VS Code surface"]:::open
+    VA["224 Acceptance in VS Code and Cursor"]:::open
   end
   T208 --> T209
   W1 --> T213 & T217
@@ -152,11 +155,24 @@ TASK-220 and TASK-221 run side by side: one checks VS Code and Cursor live, the 
 
 **Pause point:** when automated verification passes, the human has approved the VS Code mockup and the live check is recorded, TASK-222 to TASK-224 are detailed from both.
 
+### Wave 4 (detailed): the review in VS Code and Cursor
+
+TASK-222 and TASK-223 touch different files and run side by side; TASK-224 tries the release live. The full text of each task is in [[archive/PLAN-025-review-across-files-and-sessions-detail#Wave 4 task text]].
+
+- [ ] TASK-222: A project setting, `review_editor: obsidian | vscode | cursor` in `.compass/meta/plugin.yaml`, picks the review editor when more than one is set up; without it the first set up wins, as today; `compass doctor` names the editor picked and says that a VS Code or Cursor extension installs once per user - complexity: S, depends_on: none, files: [plugin/cli/reviewlib.py, plugin/cli/commands/doctor.py, plugin/cli/tests/test_review_surfaces.py], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
+  - Automated verification: tests show two editors set up and no setting picking the first; the setting picking the second; a setting naming an editor not set up falling back to the first with one doctor warning naming it; a setting naming an unknown editor reported by doctor as an error; `python -m pytest plugin/cli/tests` passes.
+  - Manual verification: none.
+- [ ] TASK-223: A VS Code surface, also serving Cursor: the extension of the approved mockup ([[research/human-surface/RESEARCH-vscode-review-mockup]]) watches `tmp/review/` under its window's folder and claims every request there; Compass brings the window forward with `code <folder>` or `cursor <folder>`, which raises the window holding the folder or opens one; the answer has the Obsidian panel's shape; after an answer VS Code stays in front, since no extension call minimizes a window - complexity: L, depends_on: none, files: [plugin/cli/review_surfaces/__init__.py, plugin/cli/review_surfaces/vscode.py, plugin/vscode/compass-review/package.json, plugin/vscode/compass-review/extension.js, plugin/vscode/compass-review/media/card.js, plugin/vscode/tests/test_extension.js, plugin/cli/tests/test_review_vscode.py], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01, SPEC-030-review-documents-open-in-obsidian/D-03, SPEC-030-review-documents-open-in-obsidian/D-06], lessons: [LESSON-ui-change-needs-agreed-mockup-before-build]
+  - Automated verification: Python tests show the surface found when the editor's command is on the path, `deliver` running `code <folder>` (Cursor: `cursor <folder>`) with the folder holding the vault, `install` running `--install-extension` on the shipped `.vsix`, and `doctor` reporting the extension missing; node tests drive the card with a stubbed `vscode` module through the Obsidian harness's cases (walk, read marks, Next unread, outside-file note, edits only from typing in a listed file, one answer per review, a withdrawn request sending nothing); `node --test plugin/vscode/tests/test_extension.js` and `python -m pytest plugin/cli/tests` pass.
+  - Manual verification: none; TASK-224 tries it live.
+- [ ] TASK-224: Live acceptance: with `review_editor: vscode`, this repo sends a three-file review; the window holding the repo comes forward, the human walks the files in the panel, leaves a note on a file outside the review and answers; the same in Cursor; the results go into [[research/human-surface/RESEARCH-review-live-checks]] - complexity: S, depends_on: TASK-222, TASK-223, files: [.compass/research/human-surface/RESEARCH-review-live-checks.md], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
+  - Automated verification: a script reads `tmp/review/` and shows one answer per review with a `files` list naming all three files and the outside note in `comments`; `compass validate` adds no warning.
+  - Manual verification: the human says the right window came forward and the panel matched the mockup.
+
+**Pause point:** when automated verification passes and the human confirms TASK-224, the plan is done.
+
 ## Later (intent only)
 
-- [ ] TASK-222: A project setting picks the review editor when two are set up, and install and doctor wording allow an editor installed per user - files: [plugin/cli/reviewlib.py, plugin/cli/review_surfaces/__init__.py, plugin/cli/commands/doctor.py, plugin/cli/tests/test_review_surfaces.py], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
-- [ ] TASK-223: A VS Code surface: each window claims the reviews under its own folder and shows the agreed panel, installed from a `.vsix` - files: [plugin/cli/review_surfaces/vscode.py, plugin/vscode/compass-review/package.json, plugin/vscode/compass-review/extension.js, plugin/cli/tests/test_review_vscode.py], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
-- [ ] TASK-224: Live acceptance: a review of several files answered in VS Code - decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
 
 ## Risks
 
@@ -186,4 +202,22 @@ TASK-220 and TASK-221 run side by side: one checks VS Code and Cursor live, the 
 
   ```markdown
   - [ ] TASK-221: Mockup of the review panel in VS Code - files: [.compass/research/human-surface/RESEARCH-vscode-review-mockup.md], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
+  ```
+
+## Wave 4 elaborated
+
+- TASK-222 changed: the setting lives in `.compass/meta/plugin.yaml`, the file Compass already reads for this project's install; `review_surfaces/__init__.py` moved to TASK-223, which registers the new surface there. The superseded intent line:
+
+  ```markdown
+  - [ ] TASK-222: A project setting picks the review editor when two are set up, and install and doctor wording allow an editor installed per user - files: [plugin/cli/reviewlib.py, plugin/cli/review_surfaces/__init__.py, plugin/cli/commands/doctor.py, plugin/cli/tests/test_review_surfaces.py], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
+  ```
+- TASK-223 changed: [[research/human-surface/RESEARCH-review-live-checks]] found that a `vscode://` link goes to the last VS Code window used whatever folder it names, and asks for permission on first use, while `code <folder>` raises the window holding that folder. So Compass brings the window forward with the command, and each window's extension claims the requests under its own folder. No call minimizes a VS Code window, so after an answer VS Code stays in front, as the approved row "Stepping aside on VS Code" allows. Cursor accepted the same extension, so one surface serves both. The human approved the panel in [[research/human-surface/RESEARCH-vscode-review-mockup]]. The superseded intent line:
+
+  ```markdown
+  - [ ] TASK-223: A VS Code surface: each window claims the reviews under its own folder and shows the agreed panel, installed from a `.vsix` - files: [plugin/cli/review_surfaces/vscode.py, plugin/vscode/compass-review/package.json, plugin/vscode/compass-review/extension.js, plugin/cli/tests/test_review_vscode.py], decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
+  ```
+- TASK-224 changed: Cursor joins, and the note on a file outside the review, never seen arriving in Obsidian, is checked here too. The superseded intent line:
+
+  ```markdown
+  - [ ] TASK-224: Live acceptance: a review of several files answered in VS Code - decisions: [SPEC-030-review-documents-open-in-obsidian/D-01]
   ```
