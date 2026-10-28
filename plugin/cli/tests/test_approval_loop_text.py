@@ -176,7 +176,7 @@ class ApprovalLoopTextTest(unittest.TestCase):
         self.assertIsNotNone(files, "the gate has no compass review command")
         self.assertIn("research", files, "the research file is not sent")
         self.assertIn("spec", files, "the spec is not sent with the research")
-        self.assertEqual(len(re.findall(r"compass review", body)), 1, "the gate sends more than one review")
+        self.assertEqual(len(re.findall(r"compass review", body)), 1, "the gate sends more than one review")
         self.assertIn("--why", body, "no per-file --why")
         self.assertIn("AskUserQuestion", body, "gate lost its fallback")
 
@@ -190,7 +190,7 @@ class ApprovalLoopTextTest(unittest.TestCase):
         self.assertIsNotNone(files, "the pause has no compass review command")
         self.assertIn("plan", files, "the plan file is not sent")
         self.assertRegex(files, r"result|document", "the wave's result documents are not sent")
-        self.assertEqual(len(re.findall(r"compass review", pause)), 1, "the pause sends more than one review")
+        self.assertEqual(len(re.findall(r"compass review", pause)), 1, "the pause sends more than one review")
         self.assertIn("--why", pause, "no per-file --why")
         self.assertIn("AskUserQuestion", pause, "pause lost its fallback")
 
