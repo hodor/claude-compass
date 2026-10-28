@@ -39,14 +39,14 @@ class DiffTextIsKeptVerbatim(GitReviewBase):
         }
         for name, (rel, before, after, expected) in rows.items():
             with self.subTest(name):
-                path = self.root / rel
+                path = self.vault / "specs" / rel
                 self.put(path, before)
                 self.commit_all(f"add {rel}")
 
                 def edit(path=path, after=after):
                     self.put(path, after)
 
-                code, out, _ = self.run_review(during=edit)
+                code, out, _ = self.run_review(during=edit, extra={"edited": [self.vault_rel(path)]})
                 self.assertEqual(code, 0, out)
                 self.assertIn(expected, _changes_block(out))
 
@@ -129,9 +129,7 @@ class DiffOutputIsBounded(GitReviewBase):
         """Adversarial where: a change of thousands of lines floods the
         session; the diff stops at the cap and one line names what is left."""
         import reviewlib
-        path = self.root / "big.md"
-        self.put(path, "start\n")
-        self.commit_all("add big.md")
+        path = self.doc
 
         def edit(path=path):
             self.put(path, "".join(f"line {n}\n" for n in range(reviewlib.MAX_DIFF_LINES * 2)))

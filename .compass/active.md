@@ -62,7 +62,7 @@ Plan: [[PLAN-025-review-across-files-and-sessions]].
 - [ ] TASK-213: the panel as the approved mockup - complexity: L, depends_on: none
 - [ ] TASK-214: only typed edits count - complexity: S, depends_on: TASK-213
 - [ ] TASK-215: each window steps aside on its own - complexity: S, depends_on: TASK-214
-- [ ] TASK-217: change report, full diff for the review's files only - complexity: M, depends_on: none
+- [x] TASK-217: change report, full diff for the review's files only - complexity: M, depends_on: none
 - [ ] TASK-218: gates send several documents; release 0.30.0 - complexity: S, depends_on: TASK-213, TASK-214, TASK-215, TASK-217
 - [ ] TASK-219: live acceptance, two projects - complexity: S, depends_on: TASK-218
 
