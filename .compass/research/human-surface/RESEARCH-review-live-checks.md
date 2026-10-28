@@ -1,7 +1,7 @@
 ---
 title: "Review Live Checks"
 type: research
-status: draft
+status: complete
 confidence: medium
 area: methodology
 tags: [obsidian, review, live-check, human-surface]
@@ -23,9 +23,6 @@ flowchart LR
   T[Typing in Obsidian] --> E[counts as an edit]
   X[A script or Compass writing a file] --> N[does not count]
 ```
-
-> [!IMPORTANT]
-> You decide: do these results hold as you saw them? Each review reached its own project's window, a closed vault reopened by itself, and only typing in Obsidian fires the event that marks an edit. Approving lets Compass detail the next stage of [[PLAN-025-review-across-files-and-sessions]]: the review panel that walks several files, edits counted from typing only, and each window stepping aside on its own.
 
 Runs of `compass review` with this vault and a scratch second project's vault open in the same Obsidian, checking whether each review reaches its own project's window ([[PLAN-025-review-across-files-and-sessions]], open checks G1 to G4 of [[research/human-surface/RESEARCH-review-across-files-and-sessions]]).
 
