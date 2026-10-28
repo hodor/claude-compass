@@ -20,9 +20,10 @@ one `edited <file>` line per file the human changed, and, for a several-file
 review, one `file <path> read|unread [note: <note>]` line per listed file in
 request order (a file the verdict does not mark counts as unread), then a
 `--- changes since <short sha> ---` line followed by `git diff <sha>` for the
-whole repository and one `untracked <path>` line per untracked file, and the
-current text of the documents under a `--- <file> as the human left it ---`
-line each: the one file of a one-file review, and in a several-file review
+reviewed files and the files the verdict lists as edited, one `changed <path>`
+line per other file that differs from `<sha>`, and one `untracked <path>` line
+per untracked file, and the current text of the documents under a
+`--- <file> as the human left it ---` line each: the one file of a one-file review, and in a several-file review
 only the files with a note or an edit, in request order. The caller thus
 reads the human's notes and edits and every change made during the review.
 `<sha>` is the commit the request was sent at, recorded in the request as
@@ -195,8 +196,8 @@ def _print_file_lines(documents, marks):
         print(f"file {rel} {'read' if read else 'unread'}{suffix}")
 
 
-def _print_changes(root, commit, skip):
-    for line in reviewlib.changes_since(root, commit, skip):
+def _print_changes(root, commit, show, skip):
+    for line in reviewlib.changes_since(root, commit, show, skip):
         print(line)
 
 
@@ -212,14 +213,24 @@ def _print_document(rel, path, newline):
         print()
 
 
-def _print_answer(request, verdict, documents, root, vault):
+def _shown_paths(verdict, documents, root, surface_root):
+    """The repository-relative paths whose full diff is printed: the request's
+    documents and the verdict's `edited` entries, which are relative to
+    `surface_root`, the review surface's root."""
+    shown = reviewlib.repo_paths(root, root, [str(path) for _, path in documents])
+    edited = reviewlib.repo_paths(root, surface_root, verdict.get("edited", []))
+    return shown + [path for path in edited if path not in shown]
+
+
+def _print_answer(request, verdict, documents, root, vault, surface_root):
     print(json.dumps(verdict, indent=2))
     _print_carried(verdict)
     several = len(documents) > 1
     marks = _marks(verdict)
     if several:
         _print_file_lines(documents, marks)
-    _print_changes(root, request["commit"], reviewlib.review_dir(vault))
+    _print_changes(root, request["commit"], _shown_paths(verdict, documents, root, surface_root),
+                   reviewlib.review_dir(vault))
     if not several:
         _print_document(request["file"], documents[0][1], newline=False)
         return
@@ -229,14 +240,14 @@ def _print_answer(request, verdict, documents, root, vault):
             _print_document(rel, path, newline=True)
 
 
-def _wait(request, request_path, documents, timeout, root, vault):
+def _wait(request, request_path, documents, timeout, root, vault, surface_root):
     target = reviewlib.verdict_path(request_path)
     deadline = None if timeout is None else time.monotonic() + timeout
     while deadline is None or time.monotonic() < deadline:
         if target.exists():
             verdict = reviewlib.read_json(target)
             if reviewlib.valid_verdict(verdict, request):
-                _print_answer(request, verdict, documents, root, vault)
+                _print_answer(request, verdict, documents, root, vault, surface_root)
                 return 0
         if not Path(request_path).exists():
             print(f"withdrawn {request['id']}")
@@ -332,4 +343,5 @@ def run(args):
     if not opts["wait"]:
         return 0
     rels = [entry["file"] for entry in request["files"]] if several else [request["file"]]
-    return _wait(request, request_path, list(zip(rels, documents)), opts["timeout"], root, compass_vault)
+    return _wait(request, request_path, list(zip(rels, documents)), opts["timeout"], root, compass_vault,
+                 context["root"])

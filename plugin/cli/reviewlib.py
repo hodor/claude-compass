@@ -158,29 +158,63 @@ def _inside(root, directory):
     return prefix if result.returncode == 0 and prefix else None
 
 
-def changes_since(root, commit, skip=None):
-    """The lines that show everything in the repository that differs from
-    `commit`: the `--- changes since <short sha> ---` header, `git diff
-    <commit>` up to MAX_DIFF_LINES lines and a line naming the rest, then
-    `untracked <path>` for each untracked file outside the directory `skip`,
-    where the review's own request and verdict files sit. Diff lines split on
-    newlines only, so a carriage return or a Unicode separator stays inside
-    its line."""
+def repo_paths(root, base, names):
+    """The entries of `names`, paths relative to the directory `base`, as
+    paths relative to the repository `root`, forward slashes, in order and
+    without repeats; an absolute entry is taken as it is. An entry that is not
+    a string, names a directory, or leads outside the repository is left
+    out."""
+    top = Path(root).resolve()
+    found = []
+    for name in names:
+        if not isinstance(name, str) or not name:
+            continue
+        try:
+            full = (Path(base) / name).resolve()
+            rel = full.relative_to(top).as_posix()
+        except (OSError, ValueError):
+            continue
+        if rel != "." and not full.is_dir() and rel not in found:
+            found.append(rel)
+    return found
+
+
+def changes_since(root, commit, show=(), skip=None):
+    """The lines that report what differs from `commit` in the repository:
+    the `--- changes since <short sha> ---` header; `git diff <commit>` for
+    the repository-relative paths in `show`, up to MAX_DIFF_LINES lines and a
+    line naming the rest; `changed <path>` for every other changed path; then
+    `untracked <path>` for each untracked file. Paths inside the directory
+    `skip`, where the review's own request and verdict files sit, are left
+    out of the `changed` and `untracked` lines. Diff lines split on newlines
+    only, so a carriage return or a Unicode separator stays inside its
+    line."""
     lines = [f"--- changes since {commit[:SHORT_SHA]} ---"]
-    diff = _git(root, "-c", "color.ui=never", "diff", "--no-ext-diff", commit)
-    if diff.returncode == 0:
-        text = _text(diff.stdout)
-        body = text.split("\n")
-        if body and body[-1] == "":
-            body.pop()
-        lines.extend(body[:MAX_DIFF_LINES])
-        if len(body) > MAX_DIFF_LINES:
-            lines.append(f"({len(body) - MAX_DIFF_LINES} more diff lines: git diff {commit[:SHORT_SHA]})")
-    else:
-        lines.append(f"(git diff failed: {_text(diff.stderr).strip()})")
+    failure = None
+    if show:
+        diff = _git(root, "--literal-pathspecs", "-c", "color.ui=never", "diff", "--no-ext-diff",
+                    "--no-renames", commit, "--", *show)
+        if diff.returncode == 0:
+            body = _text(diff.stdout).split("\n")
+            if body and body[-1] == "":
+                body.pop()
+            lines.extend(body[:MAX_DIFF_LINES])
+            if len(body) > MAX_DIFF_LINES:
+                lines.append(f"({len(body) - MAX_DIFF_LINES} more diff lines: git diff {commit[:SHORT_SHA]})")
+        else:
+            failure = f"(git diff failed: {_text(diff.stderr).strip()})"
+            lines.append(failure)
+    hidden = _inside(root, skip) if skip else None
+    shown = {os.path.normcase(path) for path in show}
+    changed = _git(root, "-c", "core.quotepath=false", "diff", "--name-only", "--no-renames", "-z", commit)
+    if changed.returncode == 0:
+        names = [name for name in _text(changed.stdout).split("\0") if name]
+        lines.extend(f"changed {name}" for name in names
+                     if os.path.normcase(name) not in shown and not (hidden and name.startswith(hidden)))
+    elif failure is None:
+        lines.append(f"(git diff failed: {_text(changed.stderr).strip()})")
     others = _git(root, "ls-files", "--others", "--exclude-standard", "-z")
     if others.returncode == 0:
-        hidden = _inside(root, skip) if skip else None
         names = [name for name in _text(others.stdout).split("\0") if name]
         lines.extend(f"untracked {name}" for name in names if not (hidden and name.startswith(hidden)))
     else:
