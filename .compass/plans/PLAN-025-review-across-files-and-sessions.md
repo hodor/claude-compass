@@ -17,10 +17,6 @@ summary: "two live checks in Obsidian and an agreed mockup first; then one revie
 
 # Review Across Files and Sessions
 
-> [!IMPORTANT]
-> You decide: start Wave 4, reviews answered in VS Code or Cursor? Approving builds three things: the VS Code panel drawn in [[research/human-surface/RESEARCH-vscode-review-mockup]], a project setting that picks which editor gets reviews (Obsidian stays the default), and a live try in both editors.
-> One limit: after you answer, VS Code stays in front, since nothing lets it hide its own window.
-
 ## Goal
 
 This plan implements the outcomes of [[specs/human-surface/SPEC-030-review-documents-open-in-obsidian|Review Documents Open in Obsidian (SPEC-030)]] that the review plugin does not meet yet, from the evidence in [[research/human-surface/RESEARCH-review-across-files-and-sessions]]. One review walks the human through several files and closes with one answer. Several Claude Code sessions, in one project or several, each reach their own Obsidian and get their own answer back, and nothing from one review leaks into another. The review lives in the side panel of Obsidian, one card (box) per review, and approving stays one click. After an answer Obsidian steps aside: it goes to the background so the human is back where he was. A VS Code version follows, using the same request and answer files. Earlier work: [[PLAN-022-review-in-obsidian]] built the one-file review.
