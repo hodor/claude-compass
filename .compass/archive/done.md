@@ -414,3 +414,7 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 ### [[PLAN-025-review-across-files-and-sessions]]
 
 - [x] TASK-209: Live check: whose writes are edits, after 208
+
+### PLAN-025 Wave 2: the review panel across files and sessions
+- [x] TASK-213: the panel as the approved mockup - complexity: L, depends_on: none
+- [x] TASK-217: change report, full diff for the review's files only - complexity: M, depends_on: none
