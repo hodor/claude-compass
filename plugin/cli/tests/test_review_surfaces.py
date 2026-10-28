@@ -397,5 +397,21 @@ class CoreHoldsNoSurface(unittest.TestCase):
                 self.assertTrue(hasattr(surface, attr), f"{surface.NAME} lacks {attr}")
 
 
+class ReviewEditorSettingYamlNull(SurfaceProject):
+    def test_a_yaml_null_setting_is_no_setting_for_doctor(self):
+        """Adversarial where: `review_editor: null` or `~` (YAML for "unset")
+        is read as an editor called `null` or `~`, so doctor reports an error
+        for a plugin.yaml that sets nothing."""
+        path = self.vault / "meta" / "plugin.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.register(*[editor(n, self.tmp) for n in ("obsidian", "vscode", "cursor")])
+        for spelling in ("null", "~", "Null", "NULL"):
+            with self.subTest(spelling):
+                path.write_text(PLUGIN_YAML + f"review_editor: {spelling}\n", encoding="utf-8")
+                _, out, _ = self.run_cli("doctor", "--json")
+                rows = [r for r in json.loads(out)["checks"] if r["check"] == "review editor"]
+                self.assertEqual([r["status"] for r in rows], ["OK"], rows)
+
+
 if __name__ == "__main__":
     unittest.main()

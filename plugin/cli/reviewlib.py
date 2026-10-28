@@ -30,6 +30,7 @@ in `review_surfaces`.
 
 import json
 import os
+import re
 import secrets
 import subprocess
 import time
@@ -42,22 +43,102 @@ VERDICTS = ("approved", "changes")
 CARRIED_LISTS = ("comments", "edited")
 SHORT_SHA = 10
 MAX_DIFF_LINES = 2000
+EDITOR_SETTING = "review_editor"
+PER_USER_EDITORS = ("vscode", "cursor")
+YAML_NULLS = ("null", "Null", "NULL", "~")
+_SETTING_LINE = re.compile(rf"^{EDITOR_SETTING}[ \t]*:[ \t]*(.*)$")
 
 
 class GitUnavailable(Exception):
     """The review cannot be tied to a commit; the message is the reason."""
 
 
+def _setting_value(text):
+    """The `review_editor` value in the text of a plugin.yaml: the first
+    top-level line naming it, with its quotes and trailing comment removed;
+    None when absent, empty or a YAML null written without quotes."""
+    for line in text.splitlines():
+        found = _SETTING_LINE.match(line)
+        if not found:
+            continue
+        value = found.group(1).strip()
+        if value[:1] in ("'", '"'):
+            end = value.find(value[0], 1)
+            value = value[1:end] if end > 0 else value[1:]
+        else:
+            value = re.split(r"(?:^|\s)#", value, maxsplit=1)[0].strip()
+            if value in YAML_NULLS:
+                return None
+        return value.strip() or None
+    return None
+
+
+def review_editor(compass_vault):
+    """The surface name `review_editor` gives in the vault's
+    `meta/plugin.yaml`, or None when the file or the setting is missing or
+    unreadable."""
+    try:
+        data = (Path(compass_vault) / "meta" / "plugin.yaml").read_bytes()
+    except OSError:
+        return None
+    return _setting_value(data.decode("utf-8-sig", errors="replace"))
+
+
+def _vault_of(document):
+    """The `.compass` directory holding `document`, or None when it sits in
+    none."""
+    try:
+        parents = Path(document).resolve().parents
+    except OSError:
+        return None
+    return next((parent for parent in parents if parent.name == ".compass"), None)
+
+
+def _in_order(preferred):
+    """The registered surfaces with the one named `preferred` first, the rest
+    in registration order."""
+    first = review_surfaces.named(preferred) if preferred else None
+    return ([first] if first else []) + [s for s in review_surfaces.SURFACES if s is not first]
+
+
 def choose(document):
     """`(surface, context, None)` for the first surface configured for
-    `document`, else `(None, None, reason)` joining every surface's reason."""
+    `document`, else `(None, None, reason)` joining every surface's reason.
+    The surface named by `review_editor` in the document's own vault is tried
+    first."""
+    vault = _vault_of(document)
     reasons = []
-    for surface in review_surfaces.SURFACES:
+    for surface in _in_order(review_editor(vault) if vault else None):
         context, reason = surface.configuration(document)
         if context is not None:
             return surface, context, None
         reasons.append(reason)
     return None, None, "; ".join(reasons) or "no review surface is registered"
+
+
+def editor_report(compass_vault):
+    """`(status, detail, fix)` saying which editor reviews open in, status
+    `OK`, `WARN` or `FAIL`. No editor set up is `OK`, since reviews then go
+    through the terminal. A `review_editor` setting naming an editor that is
+    not set up is a `WARN`; one naming no registered surface is a `FAIL`."""
+    probe = Path(compass_vault) / "index.md"
+    named = review_editor(compass_vault)
+    where = f"set {EDITOR_SETTING} in .compass/meta/plugin.yaml"
+    chosen = review_surfaces.named(named) if named else None
+    if named and chosen is None:
+        known = ", ".join(s.NAME for s in review_surfaces.SURFACES) or "none"
+        return ("FAIL", f"{EDITOR_SETTING} names {named}, which is not a review editor (known: {known})",
+                f"{where} to one of: {known}")
+    ready = next((s for s in review_surfaces.SURFACES if s.configuration(probe)[0] is not None), None)
+    if chosen and chosen.configuration(probe)[0] is None:
+        fallback = f"reviews open in {ready.NAME}" if ready else "no review editor is set up"
+        return ("WARN", f"{EDITOR_SETTING} names {named}, which is not set up; {fallback}",
+                f"run compass review --install, or {where}")
+    if named:
+        return "OK", f"reviews open in {named} ({EDITOR_SETTING} in plugin.yaml)", None
+    if ready:
+        return "OK", f"reviews open in {ready.NAME}", None
+    return "OK", "no review editor is set up; reviews are asked in the terminal", None
 
 
 def review_dir(compass_vault):
@@ -320,8 +401,15 @@ def under_review(compass_vault, target):
 
 
 def install(compass_vault, shipped_root=None):
-    """Run every surface's install; one `<name>: <what was done>` line each."""
-    return [f"{s.NAME}: {s.install(compass_vault, shipped_root)}" for s in review_surfaces.SURFACES]
+    """Run every surface's install; one `<name>: <what was done>` line each.
+    The line for an editor that installs its extension once per user says so."""
+    lines = []
+    for surface in review_surfaces.SURFACES:
+        line = f"{surface.NAME}: {surface.install(compass_vault, shipped_root)}"
+        if surface.NAME in PER_USER_EDITORS:
+            line += " (the extension installs once per user)"
+        lines.append(line)
+    return lines
 
 
 def doctor_rows(compass_vault):
