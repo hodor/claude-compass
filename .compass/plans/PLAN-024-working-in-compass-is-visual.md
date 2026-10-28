@@ -17,13 +17,6 @@ summary: "five trials in Obsidian and three agreed mockups first; then documents
 
 # Working in Compass Is Visual
 
-> [!important] You decide
-> Wave 4 is detailed below: the plugin draws the plan board, the spec and research cards, what changed since a review, each spec's pipeline strip and a loop's charts, and `compass canvas` writes the spec tree.
-> One choice is open: where those drawings live. The choices table below ("Where visuals live") puts a short code block in each document, such as a `compass-plan` fence, yet the obsidian skill's rule is that every code fence names a real language (`python`, `c++`), and a `compass-plan` fence names none.
-> - **Recommended:** a Compass view panel in the right sidebar follows the open document and draws the view its `type:` picks (plan, spec, research, loop). Files carry no block, so they add no bytes, and GitHub shows nothing odd. Trade-off: the drawing sits beside the text, never inside it.
-> - **Alternative:** a `compass-*` code block inside each document, drawn in place. Trade-off: every document that shows a drawing carries the block, and GitHub and agents see it as an unknown code fence.
-> The tasks below are written for the recommended answer; a note saying "blocks" switches them to the alternative.
-
 ## Goal
 
 This plan implements [[specs/human-surface/SPEC-031-working-in-compass-is-visual]] from the evidence in [[research/human-surface/RESEARCH-working-in-compass-is-visual]]. Compass documents show diagrams, charts, callouts, embeds, block links, footnotes, a task table and a spec canvas where these replace text, and none grows heavier than its text-only version. Compass Review, Compass's own Obsidian plugin ("the plugin" below), draws what Obsidian cannot. A visual stays only if it removes at least as many bytes of text as it adds, or the human keeps it knowing its cost. The approval loop runs in the markdown editor and the terminal says one line.
@@ -85,7 +78,7 @@ Numbers are task ids; a wave is a group of tasks planned in detail together; lat
 
 | Choice                      | The plan's answer (recommended)                                                                                                   |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Charts of metrics           | drawn by the plugin from a short code block naming a data file                                                                    |
+| Charts of metrics           | drawn by the plugin from the loop's own `ledger.jsonl` |
 | Decisions in callouts       | decisions sit in callouts (highlighted boxes); `compass decisions` learns to read them                                            |
 | Embeds                      | embed a section instead of copying it                                                                                             |
 | Task table                  | drawn by the plugin from the task lines, never written into the file                                                              |
@@ -94,7 +87,7 @@ Numbers are task ids; a wave is a group of tasks planned in detail together; lat
 | Coined terms                | plain words, a short definition at first use, no glossary file                                                                    |
 | Terminal visuals            | none; one line when the markdown editor holds the document, shorter plain text otherwise                                          |
 | Lowest Obsidian version     | 1.9.0, raised only if a trial needs more                                                                                          |
-| Where visuals live          | plugin-drawn blocks in documents; Bases (Obsidian's tables of notes) only for lists of whole notes                                |
+| Where visuals live          | a Compass view panel beside the document draws the view its `type:` picks; Bases (Obsidian's tables of notes) only for lists of whole notes |
 | Chart format                | a small Compass block drawn by Obsidian's Mermaid (diagrams from text); Vega-Lite, a heavier chart library, only if Trial B fails |
 | Chart library loading       | no library is bundled into the plugin unless Trial B fails                                                                        |
 | Data that is not notes      | the plugin reads run logs and task lines directly                                                                                 |
@@ -223,7 +216,7 @@ How each Wave 4 task differs from its one-line sketch, and why. The sketches rea
 - [ ] TASK-206: The plugin ships the template views of [[research/human-surface/RESEARCH-plugin-ui-mockup]], each a code block reading vault files only; the walk through several files is the review panel of [[plans/PLAN-025-review-across-files-and-sessions]], and the list of reviews across projects takes its project and session names from that plan's TASK-211 - files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/compass-review/styles.css, plugin/obsidian/tests/test_main.js], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-030-review-documents-open-in-obsidian/D-06]
 ```
 
-- TASK-202: the task table and the graph draw in a Compass view panel that follows the open document, so a plan carries no block and adds no bytes; the panel is the recommended answer to the open choice at the top of the plan. From the plan board of [[research/human-surface/RESEARCH-plugin-ui-mockup]], approved with all seven views: answering the plan's choices with Agree or Change. The mockup left open whether Mark done writes the checkbox; the board writes nothing, and the agent checks tasks off as before.
+- TASK-202: the task table and the graph draw in a Compass view panel that follows the open document, so a plan carries no block and adds no bytes; the human's review of Wave 4 chose the panel over a `compass-*` block in each document, since every code fence names a real language. From the plan board of [[research/human-surface/RESEARCH-plugin-ui-mockup]], approved with all seven views: answering the plan's choices with Agree or Change. The mockup left open whether Mark done writes the checkbox; the board writes nothing, and the agent checks tasks off as before.
 - TASK-206: narrowed to the spec cards and research reading of the mockup. Its walk through several files and its list of reviews across projects shipped in the review panel of [[plans/PLAN-025-review-across-files-and-sessions]]. The mockup's What changed and Where each spec stands views become TASK-227 and TASK-228, each its own merge.
 - TASK-227: new, from the mockup's What changed view, which needs `compass review` to save the diff, since a plugin cannot run git portably.
 - TASK-228: new, from the mockup's Where each spec stands view.
@@ -248,3 +241,4 @@ How each Wave 4 task differs from its one-line sketch, and why. The sketches rea
 - 2026-10-27: Wave 2 approved; the "You decide" box left the plan at approval.
 - 2026-10-27: TASK-226 added and approved: the review of Wave 2's checks asked that every document Compass needs reviewed, the taxonomy proposal included, open in the editor.
 - 2026-10-28: Wave 4 detailed (TASK-202, TASK-206, TASK-227, TASK-228, TASK-203, TASK-204); where the drawings live is put to the human, since the approved answer used `compass-*` fences.
+- 2026-10-28: Wave 4 approved: drawings live in a view panel beside the document.

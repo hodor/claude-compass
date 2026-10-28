@@ -64,7 +64,7 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
 ## PLAN-024 Wave 4: the plugin draws
 
-Plan: [[PLAN-024-working-in-compass-is-visual]]. Where the drawings live awaits the human's review of the plan.
+Plan: [[PLAN-024-working-in-compass-is-visual]]. Approved; drawings live in a view panel.
 
 - [ ] TASK-202: A Compass view panel and the plan board - complexity: M
 - [ ] TASK-206: Spec and research cards in the view panel - complexity: M, depends_on: TASK-202
