@@ -5,8 +5,11 @@ the core holds nothing specific to any one surface.
 
 Adversarial themes: a surface that is configured only for some documents,
 every surface unconfigured, a request naming an unregistered surface, a
-surface that raises its focus flag, and requests from two surfaces pending
-for different files at once.
+surface that raises its focus flag, requests from two surfaces pending
+for different files at once, and a project setting that names the surface
+reviews go to: spelled in every way a YAML file allows, naming a surface that
+is not set up or that does not exist, read from the document's own project,
+and reported by `compass doctor`.
 """
 
 import importlib
@@ -202,6 +205,178 @@ class InstallAndDoctor(SurfaceProject):
         self.assertEqual([r["check"] for r in rows], ["obsidian review", "vscode review"])
         self.assertEqual(rows[1], {"check": "vscode review", "status": "WARN",
                                    "detail": "vscode is not running", "fix": "start vscode"})
+
+
+def editor(name, root, set_up=True):
+    """A review surface called `name` that shows every document under `root`
+    when `set_up`, else none. Its doctor row never mentions its own name."""
+    surface = fake_surface(name, "nowhere")
+    surface.configuration = (
+        (lambda document: ({"root": root}, None)) if set_up
+        else (lambda document: (None, f"{name} is not set up")))
+    surface.doctor = lambda compass_vault: ("OK", "ready", None)
+    return surface
+
+
+PLUGIN_YAML = (
+    "plugin:\n"
+    "  name: compass\n"
+    "  version: 0.30.0\n"
+    "  installed_mode: auto-update\n"
+    "  notes: |\n"
+    "    This vault is the Compass plugin's own development vault.\n"
+)
+
+
+class ReviewEditorSetting(SurfaceProject):
+    def setUp(self):
+        super().setUp()
+        self.obsidian = editor("obsidian", self.tmp)
+        self.vscode = editor("vscode", self.tmp)
+        self.cursor = editor("cursor", self.tmp)
+
+    def write_setting(self, content, vault=None):
+        path = Path(vault or self.vault) / "meta" / "plugin.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content if isinstance(content, bytes) else content.encode("utf-8"))
+
+    def sent_to(self, *surfaces):
+        """The names of the surfaces `compass review` delivered to."""
+        for surface in surfaces:
+            surface.delivered.clear()
+        self.register(*surfaces)
+        code, out, _ = self.run_cli("review", str(self.spec), "--no-wait")
+        self.assertEqual(code, 0, out)
+        return [s.NAME for s in surfaces if s.delivered]
+
+    def test_the_setting_picks_the_editor_among_those_set_up(self):
+        """Adversarial where: `review_editor` is read by a pattern that misses
+        a legal spelling of the line (quotes, a trailing comment, CRLF line
+        ends, a byte-order mark, no final newline, a position before the
+        `plugin:` block) or that counts a commented-out line, so reviews go
+        to the first editor, or to the wrong one, with the setting in place."""
+        rows = {
+            "no setting picks the first set up": (PLUGIN_YAML, "obsidian"),
+            "setting naming the third": (PLUGIN_YAML + "review_editor: cursor\n", "cursor"),
+            "setting naming the second": (PLUGIN_YAML + "review_editor: vscode\n", "vscode"),
+            "setting before the plugin block": ("review_editor: cursor\n" + PLUGIN_YAML, "cursor"),
+            "double quoted value": (PLUGIN_YAML + 'review_editor: "cursor"\n', "cursor"),
+            "single quoted value": (PLUGIN_YAML + "review_editor: 'cursor'\n", "cursor"),
+            "trailing comment": (PLUGIN_YAML + "review_editor: cursor   # for the demo\n", "cursor"),
+            "CRLF line endings": ((PLUGIN_YAML + "review_editor: cursor\n").replace("\n", "\r\n"), "cursor"),
+            "byte-order mark on the first line": ("﻿review_editor: cursor\n" + PLUGIN_YAML, "cursor"),
+            "no newline after the setting": (PLUGIN_YAML + "review_editor: cursor", "cursor"),
+            "commented-out setting": (PLUGIN_YAML + "# review_editor: cursor\n", "obsidian"),
+        }
+        for name, (content, expected) in rows.items():
+            with self.subTest(name):
+                self.write_setting(content)
+                self.assertEqual(self.sent_to(self.obsidian, self.vscode, self.cursor), [expected])
+
+    def test_a_setting_that_cannot_be_honoured_leaves_the_usual_order(self):
+        """Adversarial where: a setting naming an editor that is not set up,
+        one no surface has, one set up only for other documents, or a
+        plugin.yaml that cannot be read raises or sends nothing instead of
+        falling back to the first editor set up."""
+        cursor_off = editor("cursor", self.tmp, set_up=False)
+        rows = {
+            "names an editor that is not set up": (
+                PLUGIN_YAML + "review_editor: cursor\n", [self.obsidian, self.vscode, cursor_off], "obsidian"),
+            "names an editor no surface has": (
+                PLUGIN_YAML + "review_editor: emacs\n", [self.obsidian, self.vscode, self.cursor], "obsidian"),
+            "names an editor set up for other documents only": (
+                PLUGIN_YAML + "review_editor: vscode\n",
+                [fake_surface("vscode", "plans"), fake_surface("cursor", "specs")], "cursor"),
+        }
+        for name, (content, surfaces, expected) in rows.items():
+            with self.subTest(name):
+                self.write_setting(content)
+                self.assertEqual(self.sent_to(*surfaces), [expected])
+        with self.subTest("a plugin.yaml that is not text"):
+            self.write_setting(b"\xff\xfe\x00review_editor: cursor\n\x80\x81")
+            self.register(self.obsidian, self.vscode, self.cursor)
+            surface, _, reason = reviewlib.choose(self.spec)
+            self.assertIsNone(reason)
+            self.assertIn(surface.NAME, ("obsidian", "cursor"))
+
+    def test_the_setting_is_read_from_the_documents_own_project(self):
+        """Adversarial where: the setting is looked up from the session's
+        project (`CLAUDE_PROJECT_DIR`) instead of the vault holding the
+        reviewed document, so one project's editor choice applies to another
+        project's reviews; a document outside any vault raises instead of
+        reaching the 'outside a .compass vault' report."""
+        other = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, other, ignore_errors=True)
+        (other / ".compass" / "specs").mkdir(parents=True)
+        other_doc = other / ".compass" / "specs" / "SPEC-001-o.md"
+        other_doc.write_text("# O\n", encoding="utf-8")
+        outside = other / "loose.md"
+        outside.write_text("# L\n", encoding="utf-8")
+        self.register(editor("obsidian", other.parent), editor("cursor", other.parent))
+        with self.subTest("the session's project names cursor, the document's project does not"):
+            self.write_setting(PLUGIN_YAML + "review_editor: cursor\n")
+            self.write_setting(PLUGIN_YAML, vault=other / ".compass")
+            self.assertEqual(reviewlib.choose(other_doc)[0].NAME, "obsidian")
+        with self.subTest("the document's project names cursor, the session's project does not"):
+            self.write_setting(PLUGIN_YAML)
+            self.write_setting(PLUGIN_YAML + "review_editor: cursor\n", vault=other / ".compass")
+            self.assertEqual(reviewlib.choose(other_doc)[0].NAME, "cursor")
+        with self.subTest("a document outside any vault"):
+            self.assertEqual(reviewlib.choose(outside)[0].NAME, "obsidian")
+
+
+class DoctorNamesTheReviewEditor(SurfaceProject):
+    def checks_mentioning(self, name, content, off=()):
+        """Doctor rows whose detail mentions `name`, with plugin.yaml as
+        `content` and the editors in `off` not set up."""
+        path = self.vault / "meta" / "plugin.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        self.register(*[editor(n, self.tmp, set_up=n not in off) for n in ("obsidian", "vscode", "cursor")])
+        _, out, _ = self.run_cli("doctor", "--json")
+        return [row for row in json.loads(out)["checks"] if name in row["detail"]]
+
+    def test_doctor_names_the_editor_reviews_go_to(self):
+        """Adversarial where: doctor stays silent about the editor, or names
+        the first set up while a setting picked another, so the human cannot
+        tell where a review will open."""
+        for name, content, picked in (
+            ("no setting", PLUGIN_YAML, "obsidian"),
+            ("setting names the third", PLUGIN_YAML + "review_editor: cursor\n", "cursor"),
+        ):
+            with self.subTest(name):
+                rows = self.checks_mentioning(picked, content)
+                self.assertTrue([r for r in rows if r["status"] == "OK"], rows)
+                self.assertEqual([r for r in rows if r["status"] != "OK"], [])
+
+    def test_doctor_warns_once_for_an_editor_not_set_up_and_errors_for_an_unknown_one(self):
+        """Adversarial where: a setting naming an editor that is not set up is
+        reported as an error (or twice, or not at all), and a name no surface
+        has is only a warning, so a typo in plugin.yaml goes unseen."""
+        with self.subTest("named editor not set up"):
+            rows = self.checks_mentioning("vscode", PLUGIN_YAML + "review_editor: vscode\n", off=("vscode",))
+            self.assertEqual([r["status"] for r in rows], ["WARN"], rows)
+        with self.subTest("named editor does not exist"):
+            rows = self.checks_mentioning("emacs", PLUGIN_YAML + "review_editor: emacs\n")
+            self.assertEqual([r["status"] for r in rows], ["FAIL"], rows)
+
+
+class InstallWordingForPerUserEditors(SurfaceProject):
+    def test_a_vscode_family_install_line_says_the_extension_installs_once_per_user(self):
+        """Adversarial where: the install line for VS Code or Cursor reads like
+        the project-level Obsidian install, so the human runs it in every
+        project, or the wording leaks onto surfaces that do install per
+        project."""
+        self.register(*[editor(n, self.tmp) for n in ("obsidian", "vscode", "cursor")])
+        lines = reviewlib.install(self.vault, "ROOT")
+        self.assertEqual(lines[0], "obsidian: installed nothing")
+        for line, name in zip(lines[1:], ("vscode", "cursor")):
+            with self.subTest(name):
+                self.assertTrue(line.startswith(f"{name}:"), line)
+                self.assertRegex(line, re.compile(r"\bonce\b", re.IGNORECASE))
+                self.assertRegex(line, re.compile(r"\buser\b", re.IGNORECASE))
+        code, out, _ = self.run_cli("review", "--install")
+        self.assertEqual((code, out.splitlines()), (0, lines))
 
 
 class CoreHoldsNoSurface(unittest.TestCase):
