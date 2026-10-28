@@ -403,3 +403,14 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]] (files and verification per 
 ### [[PLAN-024-working-in-compass-is-visual]]
 
 - [x] TASK-200: plain words in validate, hook lines
+
+### [[PLAN-025-review-across-files-and-sessions]]
+- [x] TASK-208: Live check: right window per project
+
+### [[PLAN-024-working-in-compass-is-visual]]
+
+- [x] TASK-226: taxonomy proposal and bulk vault fix reviewed in the editor - complexity: M, depends_on: none
+
+### [[PLAN-025-review-across-files-and-sessions]]
+
+- [x] TASK-209: Live check: whose writes are edits, after 208
