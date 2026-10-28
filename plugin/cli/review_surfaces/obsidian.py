@@ -19,6 +19,8 @@ import sys
 import urllib.parse
 from pathlib import Path
 
+from review_surfaces import foreground
+
 NAME = "obsidian"
 PLUGIN_ID = "compass-review"
 PLUGIN_FILES = ("main.js", "manifest.json", "styles.css")
@@ -122,27 +124,7 @@ def resolve(request, compass_vault):
 def has_focus():
     """True when the foreground window belongs to Obsidian. Windows only;
     elsewhere False, so the plugin always steps aside after a verdict."""
-    if sys.platform != "win32":
-        return False
-    try:
-        import ctypes
-        from ctypes import wintypes
-        user32, kernel32 = ctypes.windll.user32, ctypes.windll.kernel32
-        pid = wintypes.DWORD()
-        user32.GetWindowThreadProcessId(user32.GetForegroundWindow(), ctypes.byref(pid))
-        handle = kernel32.OpenProcess(0x1000, False, pid.value)  # PROCESS_QUERY_LIMITED_INFORMATION
-        if not handle:
-            return False
-        try:
-            buf = ctypes.create_unicode_buffer(1024)
-            size = wintypes.DWORD(len(buf))
-            if not kernel32.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
-                return False
-            return os.path.basename(buf.value).lower() == "obsidian.exe"
-        finally:
-            kernel32.CloseHandle(handle)
-    except (AttributeError, OSError):
-        return False
+    return foreground.executable() == "obsidian.exe"
 
 
 def open_uri(uri):

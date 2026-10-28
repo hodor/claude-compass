@@ -1,6 +1,6 @@
 """The visual md interfaces a review can open in.
 
-Each surface is a module with:
+Each surface is a module (or an object) with:
 
 - `NAME`: the surface's word in output and in a request's `surface` field.
 - `configuration(document)`: `(context, None)` when the surface can show
@@ -18,9 +18,9 @@ Each surface is a module with:
 `SURFACES` lists them in the order a review tries them.
 """
 
-from review_surfaces import obsidian
+from review_surfaces import obsidian, vscode
 
-SURFACES = [obsidian]
+SURFACES = [obsidian, vscode, vscode.CURSOR]
 
 
 def named(name):

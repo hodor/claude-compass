@@ -283,6 +283,7 @@ class Deliver(EditorFakes):
 class Install(EditorFakes):
     def shipped_root(self, with_vsix=True):
         root = self.tmp / "claude"
+        shutil.rmtree(root, ignore_errors=True)
         for folder in (root / "vscode", root / "vscode" / "compass-review"):
             folder.mkdir(parents=True, exist_ok=True)
             if with_vsix:

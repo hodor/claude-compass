@@ -1,0 +1,31 @@
+{
+  "name": "compass-review",
+  "displayName": "Compass Review",
+  "description": "Shows the documents Compass asks you to review in a panel beside the editor and hands your verdict back.",
+  "version": "0.1.0",
+  "publisher": "compass-plugin",
+  "license": "UNLICENSED",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "main": "./extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "capabilities": {
+    "untrustedWorkspaces": { "supported": true },
+    "virtualWorkspaces": false
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        { "id": "compassReview", "title": "Compass Review", "icon": "media/icon.svg" }
+      ]
+    },
+    "views": {
+      "compassReview": [
+        { "type": "webview", "id": "compassReview.panel", "name": "Reviews waiting on you" }
+      ]
+    },
+    "commands": [
+      { "command": "compassReview.reveal", "title": "Compass Review: show the panel" }
+    ]
+  }
+}
