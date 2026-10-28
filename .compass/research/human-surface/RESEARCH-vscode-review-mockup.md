@@ -1,7 +1,7 @@
 ---
 title: "Review Panel in VS Code: Mockup"
 type: research
-status: draft
+status: complete
 confidence: low
 area: methodology
 tags: [vscode, extension, mockup, review, side-panel, human-surface]
@@ -26,11 +26,6 @@ flowchart LR
   O --> C
   C -->|Approve or Needs changes| V[One answer file]
 ```
-
-> [!IMPORTANT]
-> You decide: is the VS Code panel below the one to build for reviews answered in VS Code? Approving makes this card, in its own Activity Bar icon and with the limits listed under "What VS Code cannot do", the panel that the VS Code review surface of [[PLAN-025-review-across-files-and-sessions]] builds.
->
-> To try it: switch to the VS Code window titled ".compass - Visual Studio Code" (open now), click the "Compass Review" icon in the left-hand icon bar, walk the four files and press Approve or Needs changes. Its answer is only a sample; your answer to this review is given in Obsidian.
 
 The panel is a throwaway extension, `compass-mockup.compass-review-mockup`, installed in VS Code for this user. A window opened on the vault folder shows it in the Activity Bar under the icon "Compass Review". The card is the one the Obsidian panel shows, drawn from the same parts: heading "Reviews waiting on you", question, Project and Session, "File i of n" with Previous, Next and Next unread, one row per file, a note field, "On this file", and one Approve and one Needs changes. It reads this vault's real documents and sends nothing to Claude. Approve and Needs changes write one sample answer under `.compass/tmp/mockups/vscode/verdicts/`, in the answer shape of the Obsidian panel: the review id, the verdict, the notes, the comments on outside files, the edited files and, per file, whether it was read and its note.
 

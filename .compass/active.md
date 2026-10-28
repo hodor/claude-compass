@@ -60,7 +60,7 @@ Plan: [[PLAN-021-control-loops]].
 Plan: [[PLAN-025-review-across-files-and-sessions]].
 
 - [ ] TASK-220: live check of VS Code and Cursor windows - complexity: S, depends_on: none
-- [ ] TASK-221: mockup of the review panel in VS Code - complexity: M, depends_on: none
+- [x] TASK-221: mockup of the review panel in VS Code - complexity: M, depends_on: none
 
 ## PLAN-022: review documents in Obsidian
 
