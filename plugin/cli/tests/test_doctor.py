@@ -1565,3 +1565,172 @@ class BomSettingsHookTests(unittest.TestCase):
         self.assertEqual(hook_row["status"], "OK", hook_row["detail"])
         self.assertNotIn("not valid JSON", hook_row["detail"])
         self.assertEqual(code, 0)
+
+
+class LocalAdditionsRowTests(unittest.TestCase):
+    """The `local additions` row reads each addition's state from the target:
+    only a current block is OK."""
+
+    def setUp(self):
+        self.project = make_project(self)
+        with_project_env(self, self.project)
+        build_complete_install(self.project)
+        self.vault = self.project / ".compass"
+
+    def add(self, rel, text):
+        path = self.vault / "meta" / "local" / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def apply(self):
+        from commands import overlay
+        overlay.apply_overlays(self.vault, apply=True)
+
+    def reset(self):
+        shutil.rmtree(self.vault / "meta" / "local", True)
+        for target in ("builder.md", "debug.md"):
+            (self.project / ".claude" / "agents" / target).write_text(
+                "", encoding="utf-8")
+
+    def row(self, args=("--json",)):
+        code, out = run_doctor(list(args))
+        rows = [r for r in json.loads(out)["checks"] if r["check"] == "local additions"]
+        self.assertEqual(len(rows), 1, out)
+        return code, rows[0]
+
+    def test_row_is_ok_only_when_every_addition_is_current(self):
+        """Adversarial where: the row reports OK because a target exists
+        (today's check counts any addition whose target ships as live) while
+        the addition was never applied or has since changed. Rows: one
+        current addition, two current additions, and the same two with the
+        second edited after it was applied (asymmetric: one current, one
+        stale)."""
+        cases = {
+            "one current": ({"agents/builder.md": "A\n"}, {}, "OK"),
+            "two current": (
+                {"agents/builder.md": "A\n", "agents/debug.md": "B\n"}, {}, "OK"),
+            "second edited after apply": (
+                {"agents/builder.md": "A\n", "agents/debug.md": "B\n"},
+                {"agents/debug.md": "B changed\n"}, "WARN"),
+        }
+        for name, (initial, edits, expected) in cases.items():
+            with self.subTest(case=name):
+                self.reset()
+                for rel, text in initial.items():
+                    self.add(rel, text)
+                self.apply()
+                for rel, text in edits.items():
+                    self.add(rel, text)
+                code, row = self.row()
+                self.assertEqual(row["status"], expected, row)
+                self.assertEqual(code, 0)
+                if expected == "WARN":
+                    self.assertIn("agents/debug.md", row["detail"])
+                    self.assertNotIn("agents/builder.md", row["detail"])
+
+    def test_not_applied_out_of_date_and_unreadable_additions_warn_with_the_fix(self):
+        """Adversarial where: an addition whose target ships but whose block
+        is missing, differs, or cannot be read passes as OK, or WARNs without
+        naming the addition or the command that fixes it. Rows: never
+        applied (the case today's row gets wrong), edited after apply,
+        emptied after apply (block left behind), and a local file that is
+        not valid UTF-8."""
+        def never_applied(test):
+            test.add("agents/builder.md", "Addition.\n")
+
+        def edited(test):
+            test.add("agents/builder.md", "Addition.\n")
+            test.apply()
+            test.add("agents/builder.md", "Addition, edited.\n")
+
+        def emptied(test):
+            test.add("agents/builder.md", "Addition.\n")
+            test.apply()
+            test.add("agents/builder.md", "")
+
+        def undecodable(test):
+            path = test.add("agents/builder.md", "")
+            path.write_bytes(b"\xff\xfe\x80 not utf-8 \xc3\x28")
+
+        cases = {
+            "never applied": (never_applied, "not applied"),
+            "edited after apply": (edited, "out of date"),
+            "emptied after apply": (emptied, "out of date"),
+            "undecodable local file": (undecodable, None),
+        }
+        for name, (build, phrase) in cases.items():
+            with self.subTest(case=name):
+                self.reset()
+                build(self)
+                code, row = self.row()
+                self.assertEqual(row["status"], "WARN", row)
+                self.assertIn("agents/builder.md", row["detail"])
+                if phrase:
+                    self.assertIn(phrase, row["detail"])
+                self.assertIn("compass overlay --apply", row["fix"])
+                self.assertEqual(code, 0)
+                _, listing = run_doctor([])
+                self.assertIn("compass overlay --apply", listing)
+
+    def test_every_stale_addition_is_named_and_a_project_without_additions_keeps_its_row(self):
+        """Adversarial where: the row names only the first stale addition, or
+        names a current one alongside, or a project with no additions
+        changes its row. Rows: no additions at all, then three additions
+        (one current, one edited, one never applied)."""
+        with self.subTest(case="no additions"):
+            code, row = self.row()
+            self.assertEqual((row["status"], row["detail"]), ("OK", "none"))
+            self.assertNotIn("fix", row)
+        self.add("agents/builder.md", "One.\n")
+        self.add("agents/debug.md", "Two.\n")
+        self.apply()
+        self.add("agents/debug.md", "Two, edited.\n")
+        rules = self.project / ".claude" / "rules"
+        rules.mkdir(parents=True, exist_ok=True)
+        (rules / "extra.md").write_text("# Shipped\n", encoding="utf-8")
+        self.add("rules/extra.md", "Three.\n")
+        with self.subTest(case="three additions, two stale"):
+            code, row = self.row()
+            self.assertEqual(row["status"], "WARN", row)
+            self.assertIn("agents/debug.md", row["detail"])
+            self.assertIn("rules/extra.md", row["detail"])
+            self.assertNotIn("agents/builder.md", row["detail"])
+
+    def test_no_shipped_file_and_scan_failure_rows_keep_their_text(self):
+        """Adversarial where: reading four states replaces the two WARNs that
+        already work. An addition naming a target that does not ship keeps
+        its text and fix; a scan that raises still degrades to a WARN naming
+        the failure rather than crashing doctor. An orphan next to a
+        never-applied addition names both."""
+        self.add("agents/ghost.md", "Nowhere to go.\n")
+        with self.subTest(case="no shipped file"):
+            code, row = self.row()
+            self.assertEqual(row["status"], "WARN")
+            self.assertEqual(
+                row["detail"],
+                "1 local addition(s) name an uninstalled target: agents/ghost.md")
+            self.assertEqual(
+                row["fix"],
+                "run `compass overlay` to list them; rename or remove the stale file")
+            self.assertEqual(code, 0)
+        self.add("agents/builder.md", "Addition.\n")
+        with self.subTest(case="orphan beside a never-applied addition"):
+            code, row = self.row()
+            self.assertEqual(row["status"], "WARN")
+            self.assertIn("agents/ghost.md", row["detail"])
+            self.assertIn("agents/builder.md", row["detail"])
+            self.assertIn("compass overlay --apply", row["fix"])
+        with self.subTest(case="scan failure"):
+            from commands import overlay
+            self.addCleanup(setattr, overlay, "find_overlays", overlay.find_overlays)
+
+            def broken(vault_root):
+                raise PermissionError("denied")
+
+            overlay.find_overlays = broken
+            code, row = self.row()
+            self.assertEqual(row["status"], "WARN")
+            self.assertTrue(row["detail"].startswith("local additions scan failed"), row)
+            self.assertIn("denied", row["detail"])
+            self.assertEqual(code, 0)
