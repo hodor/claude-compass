@@ -350,14 +350,15 @@ The same check from GitHub, after the push of 2026-10-29: a scratch project pinn
 
 ## A hand edit through a real update (0.34.0)
 
-A scratch project installed Compass 0.34.0 from a copy of the plugin inside it. The human's line was then appended to `.claude/agents/researcher.md` by hand, and the project updated again:
+A scratch project installed Compass 0.34.0 from a copy of the plugin inside it. A line was then appended to its `.claude/agents/researcher.md` by hand ("When researching, record every source in the vault before answering."), and the project's recorded version was set back to 0.0.1 so the next run updates again. The script is `hand_edit_demo.sh` in the session scratchpad.
 
 | Step | What Compass did |
 |---|---|
 | Update | printed `Compass updated 0.0.1 -> 0.34.0 (local source); hand edits saved to meta/local/kept: agents/researcher.md` |
 | Saved copy | `.compass/meta/local/kept/agents/researcher.md`, the edited file byte for byte |
-| `compass overlay --extract agents/researcher.md` | `agents/researcher.md: local addition written and applied`; the addition holds the appended line alone |
+| `compass overlay --extract agents/researcher.md` | printed `agents/researcher.md: local addition written and applied`; the addition holds the appended line alone |
 | Installed `researcher.md` | ends with `<!-- project-local overlay: meta/local/agents/researcher.md -->` and the line |
-| Update again | printed `local additions re-applied: agents/researcher.md`; no second copy saved |
+| A further update | printed `local additions re-applied: agents/researcher.md` and saved no second copy |
 
-Confidence: high. `meta/installed.json` describes the project's own `.claude/` install, so it belongs in git exactly when `.claude/` does ([Finding 6](#Finding%206%20%60.claude/%60%20gitignore%20treatment%20differs%20from%20%60.compass/%60%20and%20differs%20per%20project)); this repo ignores both.
+- A hand-edited file is saved before an update replaces it, and `--extract` turns its appended line into a local addition that later updates re-apply. Confidence: high.
+- `meta/installed.json` records the project's own `.claude/` install, so a project commits it exactly when it commits `.claude/` ([Finding 6](#Finding%206%20%60.claude/%60%20gitignore%20treatment%20differs%20from%20%60.compass/%60%20and%20differs%20per%20project)). The Compass repository ignores both. Confidence: high.

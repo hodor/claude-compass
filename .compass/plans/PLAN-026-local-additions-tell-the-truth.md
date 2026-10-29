@@ -37,10 +37,10 @@ flowchart LR
 ```
 
 > [!important] You decide
-> Stage 2 is built, tested and installed here as Compass 0.34.0: an update saves a file you edited by hand under `.compass/meta/local/kept/` before replacing it, and `compass overlay --extract <name>` turns the lines you added into a local addition. Approving confirms the check below and pushes `master` to GitHub, which publishes 0.34.0 to every project that updates from there.
-> - The table in [[research/distribution/RESEARCH-update-safe-customization#A hand edit through a real update (0.34.0)]]: do the update notice and the `--extract` line make the next step clear?
+> Stage 2 (TASK-234 and TASK-235) is built, tested, and installed in this repository as Compass 0.34.0. An update now saves a file you edited by hand under `.compass/meta/local/kept/` before replacing it, and `compass overlay --extract <name>` turns the lines you added into a local addition.
+> - Read the table in [[research/distribution/RESEARCH-update-safe-customization#A hand edit through a real update (0.34.0)]]: do the update notice and the `--extract` line make your next step clear?
 >
-> Approve to push and close the plan; Needs changes with a note holds the push.
+> Approve if they do: `master` is pushed to GitHub, which publishes 0.34.0 to every project that updates from there, and the plan closes. Needs changes with a note holds the push.
 
 ## Goal
 
