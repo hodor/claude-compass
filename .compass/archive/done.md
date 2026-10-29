@@ -463,3 +463,6 @@ Plan: [[PLAN-025-review-across-files-and-sessions]].
 Plan: [[PLAN-024-working-in-compass-is-visual]]. Approved; drawings live in a view panel.
 
 - [x] TASK-203: A loop's charts - complexity: M, depends_on: TASK-228
+
+### PLAN-024 Wave 5: views agents write, and a real plan
+- [x] TASK-205: Live acceptance on the next plan Compass writes - complexity: M, depends_on: TASK-207
