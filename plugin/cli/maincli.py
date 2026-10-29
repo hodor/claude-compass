@@ -28,6 +28,7 @@ COMMAND_SPECS = [
     ("graph", "orphans | hubs [--top N] | impact <name> [--depth N] - link-graph queries computed from the markdown at invocation, every answer naming its edges."),
     ("overlay", "List or re-apply local additions from .compass/meta/local/ onto shipped agents, rules, and skills (list-only; --apply to write)."),
     ("tree", "Render every artifact under every type dir and workstream folder with its summary, indented by depth - the whole vault at a glance, computed at invocation."),
+    ("canvas", "Draw the spec tree as a board in Obsidian (.compass/specs.canvas): one card per spec and a line from each folder spec to its parts; running it again keeps your card positions."),
     ("hot-path", "Print the start-here files' token count against the limit."),
     ("promote", "Turn a spec file into a folder and rewrite inbound links (dry-run; --apply to write)."),
     ("demote", "Turn a childless spec folder back into a file, the inverse of promote (dry-run; --apply to write)."),
