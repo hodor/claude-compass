@@ -3202,3 +3202,193 @@ test("drawing spec and research cards, answering decisions and clicking findings
   assert.deepEqual(writes, []);
   assert.deepEqual(Object.fromEntries(app.store), before);
 });
+
+// ---- post-build probes: the spec and research views against real text ----
+
+const verdictOfId = (app, id) => verdictOf(app, `tmp/review/${id}.verdict.json`);
+const REQ2 = "tmp/review/2.request.json";
+const SPEC_B = ".compass/specs/SPEC-901-fixture-b.md";
+const TAGS_ALLOWED = new Set(["div", "span", "code", "strong", "ul", "li", "pre", "h4", "button", "textarea", "table", "thead", "tbody", "tr", "th", "td", "a", "view-container", "svg", "path", "g", "circle", "line", "rect", "text"]);
+
+// Adversarial where: one decision answer lands in the verdict of a different
+// review because two specs number their decisions alike (D-01 in both), or
+// because the answers hang on the document instead of on the review that lists it.
+test("a Change on D-01 of one spec never reaches the review of another spec that also has a D-01", async (t) => {
+  await t.test("two pending reviews, two specs: the answer goes only to its own review", async () => {
+    const { app, plugin } = await loaded({ [SP]: CALLOUT, [SPEC_B]: CALLOUT, [REQ1]: req("1", SP), [REQ2]: req("2", SPEC_B) });
+    await plugin.handler({ request: REQ1 });
+    await plugin.handler({ request: REQ2 });
+    await openDoc(app, SP);
+    await plugin.openViewPanel();
+    await settle();
+    await changeDecision(app, "D-01", "only for spec A");
+    await openDoc(app, SPEC_B);
+    assert.equal(decisionCards(app).length, 6);
+    assert.doesNotMatch(cardArea(decisionCard(app, "D-01")).value, /only for spec A/, "spec B's card starts blank");
+    await changeDecision(app, "D-01", "only for spec B");
+    await click(cardBtn(app, "2", "Needs changes"));
+    await click(cardBtn(app, "1", "Needs changes"));
+    await settle();
+    assert.equal(verdictOfId(app, "2").notes, "D-01: only for spec B");
+    assert.equal(verdictOfId(app, "1").notes, "D-01: only for spec A");
+  });
+  await t.test("one review listing two specs: each D-01 answer stays with its own file", async () => {
+    const both = req("1", SP, { files: [{ file: SP, why: "" }, { file: SPEC_B, why: "" }] });
+    const { app, plugin } = await loaded({ [SP]: CALLOUT, [SPEC_B]: CALLOUT, [REQ1]: both });
+    await plugin.handler({ request: REQ1 });
+    await openDoc(app, SP);
+    await plugin.openViewPanel();
+    await settle();
+    await changeDecision(app, "D-01", "first spec");
+    await openDoc(app, SPEC_B);
+    assert.equal(cardArea(decisionCard(app, "D-01")).value, "", "the second spec's D-01 starts blank");
+    await click(button(decisionCard(app, "D-01"), "Agree"));
+    await openDoc(app, SP);
+    assert.match(decisionCard(app, "D-01").cls, /is-change/, "the first spec keeps its Change");
+    await click(cardBtn(app, "1", "Needs changes"));
+    await settle();
+    const sent = verdictOfId(app, "1");
+    assert.deepEqual(sent.files.map((f) => f.note), ["D-01: first spec", undefined], "only the first spec's file carries the line");
+  });
+});
+
+// Adversarial where: text a spec or research document holds is parsed as
+// markup, so an element or an attribute appears that the plugin never made
+// (an img with onerror, a script, an anchor with a javascript: target), or the
+// literal characters are lost.
+test("markup in a spec's text and a research row is drawn as literal text, never as elements", async (t) => {
+  const evil = "<img src=x onerror=\"alert(1)\"> <script>alert(2)</script> <a href=\"javascript:alert(3)\">x</a>";
+  const quoted = evil.replace(/"/g, "'");
+  const spec = [
+    "---", "type: spec", `title: "${quoted}"`, `status: "${quoted}"`, "---", "# S", "",
+    "## Problem", evil, "", `- bullet ${evil}`, "", "## Desired Outcome", `**${evil}** and \`${evil}\``, "",
+    "## Decisions", "", `- **D-01 [${evil.replace(/[\[\]]/g, "")}]:** ${evil}`, "",
+  ].join("\n");
+  const research = [
+    "---", "type: research", "---", "# R", "", `## ${evil}`, "",
+    "| # | Finding | Conf. | Grade | Evidence |", "|---|---|---|---|---|",
+    `| 1 | ${evil} | ${evil} | ${evil} | ${evil} |`, "",
+  ].join("\n");
+  for (const [name, p, text] of [["spec", SP, spec], ["research", RP, research]]) {
+    await t.test(name, async () => {
+      const { app, plugin } = await loaded({ [p]: text, [REQ1]: req("1", p) });
+      await plugin.handler({ request: REQ1 });
+      await openDoc(app, p);
+      await plugin.openViewPanel();
+      await settle();
+      const els = viewEl(app).all();
+      for (const tag of new Set(els.map((e) => e.tag))) assert.ok(TAGS_ALLOWED.has(tag), `unexpected <${tag}> element`);
+      for (const e of els) {
+        assert.doesNotMatch(String(e.href || ""), /javascript:/i, `href on <${e.tag}>`);
+        assert.ok(!Object.keys(e.attrs).some((k) => /^on/i.test(k)), `an on* attribute on <${e.tag}>`);
+        assert.ok(!("innerHTML" in e), "innerHTML was assigned");
+      }
+      assert.match(textOfEl(viewEl(app)), /<img src=x onerror="alert\(1\)">/, "the angle brackets are drawn literally");
+    });
+  }
+});
+
+// Adversarial where: a line in the Problem that merely contains three
+// backticks (an inline span, or a fence word after text) opens a code block and
+// swallows the rest of the section, so the human's following paragraphs vanish.
+test("a Problem line that starts with an inline triple-backtick span does not swallow the paragraphs after it", async () => {
+  const text = ["---", "type: spec", "---", "# S", "", "## Problem", "```inline``` is how a span starts here.", "",
+    "The second paragraph must stay visible.", "", "## Desired Outcome", "Done.", ""].join("\n");
+  const { app, plugin } = await loaded({ [SP]: text });
+  await openDoc(app, SP);
+  await plugin.openViewPanel();
+  await settle();
+  const problem = viewEl(app).querySelector(".compass-spec-problem");
+  const shown = problem.querySelectorAll(".compass-prose-p").map((p) => textOfEl(p)).join("|");
+  assert.match(shown, /The second paragraph must stay visible\./);
+});
+
+// Adversarial where: a spec with no Decisions heading, or only a prose mention
+// of a decision id, throws, hides its Problem, or reads differently from the
+// CLI (none-present for no mention, could-not-parse for a bare D-NN token).
+test("a spec without a Decisions heading draws its words and says whether the decisions could be read", async (t) => {
+  await t.test("no heading, no mention: records no decisions", async () => {
+    const text = "---\ntype: spec\n---\n# S\n\n## Problem\nWords.\n\n## Desired Outcome\nMore.\n";
+    assert.equal(CompassReview.parseSpec(text).decisionState, "none-present");
+    const { app, plugin } = await loaded({ [SP]: text });
+    await openDoc(app, SP);
+    await plugin.openViewPanel();
+    await settle();
+    assert.equal(decisionCards(app).length, 0);
+    assert.match(textOfEl(viewEl(app)), /records no decisions/);
+    assert.match(textOfEl(viewEl(app)), /Words\./);
+  });
+  await t.test("no heading but a D-NN token in the prose: could not read, says so", async () => {
+    const text = "---\ntype: spec\n---\n# S\n\n## Problem\nSee D-03 in the old spec.\n";
+    assert.equal(CompassReview.parseSpec(text).decisionState, "could-not-parse");
+    const { app, plugin } = await loaded({ [SP]: text });
+    await openDoc(app, SP);
+    await plugin.openViewPanel();
+    await settle();
+    assert.match(textOfEl(viewEl(app)), /could not read every decision/);
+  });
+  await t.test("a document with no Problem and no Desired Outcome headings says so for both", async () => {
+    const { app, plugin } = await loaded({ [SP]: "---\ntype: spec\n---\n# S\n\nJust text.\n" });
+    await openDoc(app, SP);
+    await plugin.openViewPanel();
+    await settle();
+    assert.match(textOfEl(viewEl(app)), /no Problem section/);
+    assert.match(textOfEl(viewEl(app)), /no Desired Outcome section/);
+  });
+});
+
+// Adversarial where: research with no findings table (or findings only inside a
+// fence, or a table lacking a Finding column) throws or draws phantom bars and
+// rows; a `\|` in a cell splits the finding in two; an unmatched backtick in a
+// cell swallows the cells after it.
+test("a research document with no readable findings table draws an empty view, and cells with pipes or a lone backtick keep their columns", async (t) => {
+  const head = "---\ntype: research\n---\n# R\n\n## Findings\n\n";
+  const table = (rows) => ["| # | Finding | Conf. | Grade | Evidence |", "|---|---|---|---|---|", ...rows, ""].join("\n");
+  const rows = [
+    ["prose only", head + "Nothing tabulated yet.\n"],
+    ["table in a fence", head + "```\n" + table(["| 1 | Hidden | high | high | e |"]) + "```\n"],
+    ["table without a Finding column", head + "| # | Claim | Conf. |\n|---|---|---|\n| 1 | X | high |\n"],
+    ["rows without a numeric first cell", head + table(["| a | Word | high | high | e |"])],
+  ];
+  for (const [name, text] of rows) {
+    await t.test(name, async () => {
+      assert.deepEqual(CompassReview.parseResearchFindings(text), []);
+      const { app, plugin } = await loaded({ [RP]: text });
+      await openDoc(app, RP);
+      await plugin.openViewPanel();
+      await settle();
+      assert.equal(viewEl(app).querySelectorAll(".compass-research-view").length, 1);
+      assert.equal(findingRows(app).length, 0);
+      assert.equal(viewEl(app).querySelectorAll(".compass-section-bar").length, 0);
+    });
+  }
+  await t.test("an escaped pipe and a pipe in a code span keep the finding in one cell", () => {
+    const f = CompassReview.parseResearchFindings(head + table(["| 1 | a \\| b and `x|y` | medium | low | ev |"]));
+    assert.equal(f.length, 1);
+    assert.equal(f[0].conf, "medium");
+    assert.equal(f[0].evidence, "ev");
+  });
+  await t.test("a backtick left open in the finding cell does not eat the confidence", () => {
+    const f = CompassReview.parseResearchFindings(head + table(["| 1 | uses the ` key | high | high | ev |"]));
+    assert.equal(f.length, 1);
+    assert.equal(f[0].conf, "high");
+  });
+});
+
+// Adversarial where: showing a spec or research document leaves the plan board
+// broken: a plan opened after them keeps their cards, draws no board, or the
+// board loses its rows after a round trip through the other two views.
+test("the plan board still draws after the view has shown a spec and a research document", async () => {
+  const { app, plugin } = await loaded({ [P24]: PLAN_24, [SP]: CALLOUT, [RP]: SMALL_RESEARCH });
+  await openDoc(app, P24);
+  await plugin.openViewPanel();
+  await settle();
+  const rowsBefore = taskRows(app).map((r) => r.dataset.id || textOfEl(r));
+  assert.ok(rowsBefore.length > 0);
+  await openDoc(app, SP);
+  await openDoc(app, RP);
+  await openDoc(app, P24);
+  assert.deepEqual(taskRows(app).map((r) => r.dataset.id || textOfEl(r)), rowsBefore);
+  assert.equal(viewEl(app).querySelectorAll(".compass-spec-view").length, 0);
+  assert.equal(viewEl(app).querySelectorAll(".compass-research-view").length, 0);
+});
