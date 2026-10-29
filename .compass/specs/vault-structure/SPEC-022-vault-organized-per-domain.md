@@ -7,7 +7,7 @@ confidence: high
 area: methodology
 tags: [taxonomy, hierarchy, domains, index, consolidation, hot-path]
 created: 2026-08-30
-updated: 2026-10-24
+updated: 2026-10-29
 depends_on: ["[[SPEC-003-hierarchical-vault-organization]]", "[[SPEC-010-universal-hybrid-hierarchy]]", "[[SPEC-005-index-auto-maintained-and-mirrored-per-folder]]"]
 summary: "similar specs and research group into domain folders, recursively; the root index says one line per broad area instead of dropping every artifact flat (approved 2026-08-30)"
 ---
@@ -29,6 +29,7 @@ Organization is per domain, the way mathematics is organized into subdomains and
 - Consolidation includes this grouping: when the index is over cap and the weight is structural, the move is taxonomy - group and point - never trimming entries. It's ok for the trigger to be token size that is needed to operate. The real metric that we need is to understand how much "useless" tokens we're getting for a specific task. The goal of this spec is to bring that useless token to 0.
 - As everything else in compass, this spec should also run on this vault, not just ships as capability. And we use this vault as the first alpha tester.
 - We should never delete or lose information when optimizing the way information is distributed.
+- Taxonomy needs to be really good and perfect without the user needing to do anything, and also while keeping token usage minimal ([[SPEC-027-compass-uses-fewer-tokens]]) and documents easy to read ([[specs/human-surface/SPEC-031-working-in-compass-is-visual]]).
 
 The goal: two things at once - how humans organize topics and how machines find topics and how to minimize cache misses - there shouldn't be ambiguity about which area holds the information you need.
 
@@ -40,7 +41,7 @@ The goal: two things at once - how humans organize topics and how machines find 
 - **D-04:** Taxonomize could apply at spec creation. Making a new spec is a possible reorganization point: place it, or at least leave a hint for the next consolidation - recorded by the authoring agent, which understands the spec better than any later pass. So the system should take advantage of this. Compass NEVER creates child specs, and all specs are 100% flat; this needs to change: Compass goes through a taxonomy review when creating a new spec, to organize and add depth if needed.
 - **D-05:** Each folder has its own index doc. Similar to [[SPEC-005-index-auto-maintained-and-mirrored-per-folder]].
 - **D-06:** The classification-science research (how humans and machines organize topics; placement without ambiguity) is an important reference. Research into how computer-science applies classification science is the most critical for us. 
-- **D-07:** Reorganization moves are suggested to the human, never something the human must remember to trigger. The harness notices the trigger - ceiling breach, pending hints, cap warning - and puts the proposal forward; approval applies it.
+- **D-07:** Reorganization happens automatically; the human checks in like once in a while to ensure it's all good. The harness notices the trigger - ceiling breach, pending hints, cap warning - and applies the move itself, never deleting or losing information. [guess: the check-in is the human's choice and nothing waits on it; what moved since the last check-in is shown at that check-in.]
 - **D-10:** As simple as possible but no simpler: a spec is just a file, and single-file specs at the root are completely fine. A folder exists only when a subject holds 2 or more specs; updating Compass in a vault that moved to one-spec-per-folder undoes it - folder with 2+ members, single file otherwise. Supersedes the born-folder rule of [[SPEC-016-sizing-work-beyond-one-spec]].
 - **D-12:** Lessons and ADRs should also be taxonomized the same way. Supersedes the lessons Non-Goal below.
 - **D-13:** Agents should be able to grep as well in all indexes in an easy way - that's probably how to minimize waste - making that the most obvious thing for them to do.
@@ -51,5 +52,5 @@ The goal: two things at once - how humans organize topics and how machines find 
 ## Non-Goals
 
 - Losing anything - covered by the resident Data rule; grouping moves files, wikilinks keep resolving.
-- Inventing domains speculatively, just because there is a rule to invent domains. Domains come from what the artifacts already are; the human approves the grouping of his own knowledge.
+- Inventing domains speculatively, just because there is a rule to invent domains. Domains come from what the artifacts already are; the human checks the grouping of his own knowledge at the check-ins of D-07.
 - Lessons - the catalog is their index; they group by tags already. (Superseded by D-12: lessons and ADRs taxonomize the same way.)

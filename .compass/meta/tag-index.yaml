@@ -40,6 +40,8 @@ tags:
   - research/rolling-wave/RESEARCH-rolling-wave-software-practice.md
   agreement:
   - lessons/experiments/LESSON-measure-the-procedures-intermediates.md
+  anonymization:
+  - specs/learning/SPEC-029-human-verdicts-reach-compass.md
   anti-list:
   - decisions/learning/ADR-002-retrospective-lessons-subsystem.md
   append-only:
@@ -555,6 +557,7 @@ tags:
   feedback:
   - plans/PLAN-021-control-loops.md
   - research/pipeline/RESEARCH-control-theory-for-loops.md
+  - specs/learning/SPEC-029-human-verdicts-reach-compass.md
   - specs/pipeline/SPEC-026-control-theory-for-loops.md
   feedback-loop:
   - specs/pipeline/SPEC-015-rolling-wave-planning.md
@@ -1282,6 +1285,7 @@ tags:
   - research/vault-structure/RESEARCH-okf-improvements-for-compass.md
   privacy:
   - loops/LOOP-002-no-private-data/index.md
+  - specs/learning/SPEC-029-human-verdicts-reach-compass.md
   probe:
   - lessons/vault-structure/LESSON-scope-notes-are-load-bearing.md
   probes:
@@ -1319,6 +1323,7 @@ tags:
   python-cli:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   quality:
+  - specs/learning/SPEC-029-human-verdicts-reach-compass.md
   - specs/pipeline/SPEC-031-a-loop-improves-spec-quality.md
   queries:
   - decisions/vault-structure/ADR-018-graph-queries-jit-over-markdown.md
@@ -1335,6 +1340,8 @@ tags:
   - specs/vault-structure/SPEC-003-hierarchical-vault-organization.md
   rater-bias:
   - lessons/experiments/LESSON-outputs-must-span-the-decision-space.md
+  ratings:
+  - specs/learning/SPEC-029-human-verdicts-reach-compass.md
   rationing:
   - lessons/experiments/LESSON-human-practice-rationing-assumes-human-scarcity.md
   react-doctor:
@@ -1441,6 +1448,7 @@ tags:
   - research/pipeline/REVIEW-spec-023-research-consolidation.md
   - specs/human-surface/SPEC-030-review-documents-open-in-obsidian.md
   - specs/human-surface/SPEC-031-working-in-compass-is-visual.md
+  - specs/learning/SPEC-029-human-verdicts-reach-compass.md
   ripple:
   - research/vault-structure/RESEARCH-taxonomy-for-unambiguous-placement.md
   rolling-wave:
@@ -1586,6 +1594,7 @@ tags:
   - lessons/experiments/LESSON-pin-the-motivating-datum.md
   - lessons/pipeline/LESSON-adversarial-plan-review-before-build.md
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
+  - specs/learning/SPEC-029-human-verdicts-reach-compass.md
   - specs/pipeline/SPEC-030-a-loop-moves-specs-through-the-pipeline.md
   - specs/pipeline/SPEC-031-a-loop-improves-spec-quality.md
   speculation:

@@ -7,7 +7,7 @@ area: methodology
 tags: [obsidian, review, documents, markdown, cli, jargon, artifacts]
 summary: "working in Compass, in the CLI and in the documents, is visual and easy to follow instead of a wall of jargon"
 created: 2026-10-25
-updated: 2026-10-26
+updated: 2026-10-29
 approved: 2026-10-25
 ---
 
@@ -16,6 +16,8 @@ approved: 2026-10-25
 ## Problem
 
 Right now everything in using Compass is a wall of text. A wall of text on both the CLI but also on the markdown files. It's very hard for humans to follow up and let them know what they think because there's also a lot of jargon that Compass puts in place.
+
+The documents are usually insanely bloated and hard for humans to read; we need to make it so that it's easy.
 
 ## Desired Outcome
 

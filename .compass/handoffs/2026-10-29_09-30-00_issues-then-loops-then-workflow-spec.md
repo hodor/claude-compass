@@ -5,6 +5,8 @@ status: active
 created: 2026-10-29
 updated: 2026-10-29
 git_branch: master
+area: methodology
+tags: [handoff, release, issues, loops, workflow-scripts]
 git_commit: 42a52b5
 summary: "PLAN-026 shipped as 0.34.0 and pushed; next: fix the four open GitHub issues, finish PLAN-021 Wave 2 (control loops), then spec Claude Code workflow scripts to keep Compass runs off the context"
 ---
