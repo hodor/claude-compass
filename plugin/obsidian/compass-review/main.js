@@ -85,8 +85,22 @@
 //     `<choice>: <note>` line in table order (for a review of several files,
 //     in the note of the plan's file). Agree adds no line. The answers live on
 //     the review, so redrawing the panel keeps them.
-// The view for `type: spec` shows the spec's Problem and Desired Outcome as the
-// human wrote them and one card per decision:
+// The view for `type: spec` opens with the spec's pipeline strip, then shows
+// the spec's Problem and Desired Outcome as the human wrote them and one card
+// per decision. The strip draws spec, research, plan, build and validate as one
+// row of stages, read from the properties of the plan and research documents
+// whose `depends_on` links the spec (the vault's markdown documents are listed
+// and read, never written) and from the first such plan's task lines:
+//   - a spec that no plan or research document links shows the spec stage alone
+//   - each stage has a state (done, current, ready, waiting, todo, none) and a
+//     line in plain words; a stage that has a document opens it on a click
+//   - a spec or plan whose status is not approved, active or done is a wait;
+//     "Waits on you" lists each with an Open button
+//   - "Next for Claude" lists the plan's tasks that are ready to run, each
+//     opening the plan at its line
+//   - a change to any markdown document while the spec is in view redraws the
+//     strip
+// The decision cards:
 //   - the decisions are the `- **D-NN:** text` bullets that `compass decisions`
 //     reports, read by the same rules (plain or in a callout, continuation
 //     lines, a trailing block id left out, `[deferred]` / `[informational]`
@@ -1062,6 +1076,141 @@ function parseChanges(diffText, docText, docPath) {
   return [...groups.entries()].sort((x, y) => x[0] - y[0]).map(([, group]) => group);
 }
 
+// ---- where a spec stands: spec, research, plan, build, validate ----
+
+const APPROVED = ["approved", "active", "done"];
+const PIPE_NEXT_SHOWN = 6;
+const READ_BATCH = 4;
+
+// The link targets of a document's `depends_on` property, whether written
+// inline (`[a, b]`) or as a block list: each target without `#heading`,
+// `|alias` and `.md`.
+function dependsLinksOf(text) {
+  const lines = linesOf(text);
+  const { end } = propertiesOf(lines);
+  if (end === 0) return [];
+  const block = lines.slice(1, end - 1);
+  const at = block.findIndex((l) => /^depends_on:/.test(l));
+  if (at < 0) return [];
+  let value = block[at].replace(/^depends_on:/, "");
+  for (let i = at + 1; i < block.length && /^(\s+|-\s)/.test(block[i]); i++) value += "\n" + block[i];
+  const targets = [];
+  for (const m of value.matchAll(/\[\[([^\]]+)\]\]/g)) {
+    targets.push(m[1].split("|")[0].split("#")[0].trim().replace(/\.md$/, ""));
+  }
+  return targets;
+}
+
+// A path as links name it: without `.md`, a folder spec (`<folder>/index.md`)
+// by its folder.
+function specIdentity(path) {
+  return path.replace(/\.md$/, "").replace(/(^|\/)index$/, "");
+}
+
+// True when a link target names the spec: the two paths are equal, or the
+// spec's path ends with the link on a folder boundary. A bare `index` names no
+// spec, and a link longer than the spec's path names another document.
+function linkNamesSpec(target, specPath) {
+  const link = specIdentity(target);
+  const spec = specIdentity(specPath);
+  if (!link || !spec) return false;
+  return link === spec || spec.endsWith(`/${link}`);
+}
+
+// The strip of one spec: {stages, waits, next, plans, research}. `docs` is
+// [{path, text}], every markdown document of the vault. The plans and research
+// documents whose `depends_on` links the spec are the sources of the stages;
+// the first linked plan gives the plan, build and validate stages and the
+// tasks that run next.
+function pipelineFor(specPath, docs) {
+  const specDoc = docs.find((d) => d.path === specPath);
+  const specStatus = specDoc ? propertiesOf(linesOf(specDoc.text)).props.status || "" : "";
+  const plans = [];
+  const research = [];
+  const planTasks = [];
+  for (const doc of docs) {
+    if (doc.path === specPath) continue;
+    const { props } = propertiesOf(linesOf(doc.text));
+    if (props.type !== "plan" && props.type !== "research") continue;
+    if (!dependsLinksOf(doc.text).some((target) => linkNamesSpec(target, specPath))) continue;
+    if (props.type === "research") {
+      research.push({ path: doc.path, status: props.status || "" });
+      continue;
+    }
+    const tasks = parsePlanTasks(doc.text);
+    const done = tasks.filter((t) => t.done).length;
+    const id = /PLAN-\d+/.exec(baseName(doc.path));
+    plans.push({
+      path: doc.path,
+      id: id ? id[0] : baseName(doc.path).replace(/\.md$/, ""),
+      status: props.status || "",
+      done,
+      open: tasks.length - done,
+    });
+    planTasks.push(tasks);
+  }
+
+  const specOk = APPROVED.includes(specStatus);
+  const stages = [
+    {
+      key: "spec",
+      name: "Spec",
+      state: specOk ? "done" : "waiting",
+      line: specOk ? specStatus : `${specStatus || "draft"}: waits for your approval`,
+      path: specPath,
+    },
+  ];
+  const waits = [];
+  if (!specOk) waits.push({ text: "Approve the spec", path: specPath });
+  let next = [];
+  if (plans.length > 0 || research.length > 0) {
+    const finished = research.filter((r) => ["complete", "approved", "done"].includes(r.status)).length;
+    stages.push({
+      key: "research",
+      name: "Research",
+      state: research.length === 0 ? "none" : finished === research.length ? "done" : "current",
+      line: research.length === 0 ? "none written" : `${plural(research.length, "document")}, ${finished} complete`,
+      path: research.length > 0 ? research[0].path : null,
+    });
+    const plan = plans[0];
+    const planOk = !!plan && APPROVED.includes(plan.status);
+    const total = plan ? plan.done + plan.open : 0;
+    const buildDone = planOk && total > 0 && plan.open === 0;
+    stages.push({
+      key: "plan",
+      name: "Plan",
+      state: !plan ? "todo" : planOk ? "done" : "waiting",
+      line: !plan
+        ? "not written"
+        : planOk
+          ? `${plan.id} ${plan.status}, ${plural(total, "task")}`
+          : `${plan.id} ${plan.status || "draft"}: waits for your approval`,
+      path: plan ? plan.path : null,
+    });
+    stages.push({
+      key: "build",
+      name: "Build",
+      state: !planOk ? "todo" : buildDone ? "done" : plan.done > 0 ? "current" : "ready",
+      line: planOk ? `${plan.done} of ${total} tasks done` : "not started",
+      path: plan ? plan.path : null,
+    });
+    stages.push({
+      key: "validate",
+      name: "Validate",
+      state: buildDone ? "ready" : "todo",
+      line: buildDone ? "ready to check" : "after the build",
+      path: null,
+    });
+    if (plan && !planOk) waits.push({ text: `Approve ${plan.id}`, path: plan.path });
+    if (plan) {
+      next = planTasks[0]
+        .filter((t) => t.status === "ready")
+        .map((t) => ({ id: t.id, title: t.title, line: t.line, path: plan.path }));
+    }
+  }
+  return { stages, waits, next, plans, research };
+}
+
 class CompassReview extends Plugin {
   async onload() {
     // request id -> {request, path, files: [{file, why}], states: Map(file ->
@@ -1369,10 +1518,44 @@ class CompassReview extends Plugin {
     this.renderViewPanel();
   }
 
-  // The board follows the file it shows when that file changes on disk.
+  // The board follows the file it shows when that file changes on disk. While
+  // a spec is in view, a change to any markdown document redraws it too, since
+  // the plans and research that link the spec feed its strip.
   onModify(file) {
+    if (!file) return;
     const active = this.app.workspace.getActiveFile();
-    if (file && active && file.path === active.path) this.renderViewPanel();
+    if (active && file.path === active.path) {
+      this.renderViewPanel();
+      return;
+    }
+    const specInView = this.app.workspace.getLeavesOfType(VIEW_TYPE).some((leaf) => leaf.view && leaf.view.specPath);
+    if (specInView && /\.md$/.test(file.path)) this.renderViewPanel();
+  }
+
+  // The vault's markdown documents as [{path, text}] for the strip of the spec
+  // at `specPath`, whose own text is `specText`. A document that cannot be
+  // read is left out. The documents are read a few at a time and `current()`
+  // is asked before each batch: once it is false the reading stops and the
+  // result is null, so a draw that a newer one superseded stops costing reads.
+  async vaultDocuments(specPath, specText, current) {
+    const vault = this.app.vault;
+    const files = typeof vault.getMarkdownFiles === "function" ? vault.getMarkdownFiles() : [];
+    const docs = [{ path: specPath, text: specText }];
+    const others = files.filter((f) => f.path !== specPath);
+    for (let i = 0; i < others.length; i += READ_BATCH) {
+      if (!current()) return null;
+      const batch = await Promise.all(
+        others.slice(i, i + READ_BATCH).map(async (f) => {
+          try {
+            return { path: f.path, text: await vault.adapter.read(f.path) };
+          } catch (e) {
+            return null;
+          }
+        })
+      );
+      docs.push(...batch.filter(Boolean));
+    }
+    return current() ? docs : null;
   }
 
   // The `title` property of a file, else its name.
@@ -1734,12 +1917,24 @@ class CompassReview extends Plugin {
     const kind = text === null ? null : viewFor(text);
     const entry = file && (kind === "plan" || kind === "spec") ? this.entryFor(file.path) : null;
     const saved = file && kind ? await this.savedChanges(file.path) : null;
+    let pipeline = null;
+    if (kind === "spec") {
+      try {
+        const docs = await this.vaultDocuments(file.path, text, () => seq === view.drawSeq);
+        if (docs === null) return;
+        pipeline = pipelineFor(file.path, docs);
+      } catch (e) {
+        console.error("[compass-review] reading the pipeline failed", e);
+      }
+    }
     if (seq !== view.drawSeq) return;
+    view.specPath = kind === "spec" ? file.path : null;
     const signature = JSON.stringify([
       file && file.path,
       text === null ? null : textHash(text),
       entry && entry.request.id,
       saved && [saved.id, textHash(saved.diff)],
+      pipeline,
     ]);
     if (root.dataset.signature === signature) return;
     root.dataset.signature = signature;
@@ -1752,7 +1947,7 @@ class CompassReview extends Plugin {
     } else if (kind === "plan") {
       this.drawPlanBoard(root, file, text, entry, changes);
     } else if (kind === "spec") {
-      this.drawSpecView(root, file, text, entry, changes);
+      this.drawSpecView(root, file, text, entry, changes, pipeline);
     } else if (kind === "research") {
       this.drawResearchView(root, view, file, text, changes);
     } else {
@@ -2002,13 +2197,14 @@ class CompassReview extends Plugin {
   // The spec as the human wrote it: Problem and Desired Outcome side by side,
   // then one card per decision. While a review of the spec is pending the
   // cards take answers in place, so a redraw of the panel keeps what was typed.
-  drawSpecView(root, file, text, entry, changes) {
+  drawSpecView(root, file, text, entry, changes, pipeline) {
     const spec = parseSpec(text);
     const { props } = propertiesOf(linesOf(text));
     const view = root.createDiv({ cls: "compass-spec-view" });
     const head = view.createDiv({ cls: "compass-doc-head" });
     head.createSpan({ cls: "compass-doc-title", text: this.titleOf(file.path) });
     if (props.status) head.createSpan({ cls: "compass-chip", text: props.status });
+    if (pipeline) this.drawPipeline(view, pipeline);
     this.drawChanges(view, file.path, changes);
 
     const words = view.createDiv({ cls: "compass-spec-words" });
@@ -2043,6 +2239,48 @@ class CompassReview extends Plugin {
     }
     const answers = entry ? this.decisionAnswersFor(entry, file.path) : null;
     for (const d of spec.decisions) this.drawDecisionCard(view, d, file.path, entry, answers);
+  }
+
+  // The strip of a spec: one chevron per stage (a stage with a document opens
+  // it), what waits on the human with an Open button for each, and the tasks
+  // that run next, each opening the plan at its line.
+  drawPipeline(parent, pipeline) {
+    const box = parent.createDiv({ cls: "compass-pipeline" });
+    const strip = box.createDiv({ cls: "compass-pipe-strip" });
+    for (const s of pipeline.stages) {
+      const stage = strip.createDiv({ cls: `compass-pipe-stage is-${s.state}` });
+      stage.dataset.key = s.key;
+      stage.dataset.state = s.state;
+      stage.createDiv({ cls: "compass-pipe-name", text: s.name });
+      stage.createDiv({ cls: "compass-pipe-line", text: s.line });
+      if (s.path) {
+        stage.addClass("is-link");
+        stage.onclick = () => this.showFile(s.path, true).catch((e) => this.fail("open stage", e));
+      }
+    }
+
+    const waits = box.createDiv({ cls: "compass-pipe-waits" });
+    waits.createDiv({ cls: "compass-pipe-label", text: "Waits on you" });
+    if (pipeline.waits.length === 0) waits.createDiv({ cls: "compass-fine", text: "Nothing: every approval is given." });
+    for (const w of pipeline.waits) {
+      const row = waits.createDiv({ cls: "compass-pipe-wait" });
+      row.createSpan({ text: w.text });
+      const open = row.createEl("button", { cls: "mod-cta", text: "Open" });
+      open.onclick = () => this.showFile(w.path, true).catch((e) => this.fail("open document", e));
+    }
+
+    const next = box.createDiv({ cls: "compass-pipe-next" });
+    next.createDiv({ cls: "compass-pipe-label", text: "Next for Claude" });
+    if (pipeline.next.length === 0) next.createDiv({ cls: "compass-fine", text: "No task is ready." });
+    for (const t of pipeline.next.slice(0, PIPE_NEXT_SHOWN)) {
+      const row = next.createDiv({ cls: "compass-pipe-task compass-open-line" });
+      row.dataset.id = t.id;
+      row.createEl("strong", { text: t.id });
+      row.appendText(` ${t.title}`);
+      row.onclick = () => this.openTask(t.path, t.line);
+    }
+    const hidden = pipeline.next.length - PIPE_NEXT_SHOWN;
+    if (hidden > 0) next.createDiv({ cls: "compass-fine", text: `and ${plural(hidden, "more task")} ready` });
   }
 
   drawDecisionCard(parent, d, path, entry, answers) {
@@ -2305,6 +2543,7 @@ class CompassReview extends Plugin {
 module.exports = CompassReview;
 module.exports.verdictPathFor = verdictPathFor;
 module.exports.parsePlanTasks = parsePlanTasks;
+module.exports.pipelineFor = pipelineFor;
 module.exports.parsePlanChoices = parsePlanChoices;
 module.exports.viewFor = viewFor;
 module.exports.choiceNoteLines = choiceNoteLines;

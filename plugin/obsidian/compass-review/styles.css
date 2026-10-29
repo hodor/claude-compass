@@ -819,3 +819,94 @@ button.compass-conf-filter.is-on {
   border-radius: 2px;
   text-decoration: line-through;
 }
+
+/* Pipeline strip of a spec */
+
+.compass-pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.compass-pipe-strip {
+  display: flex;
+}
+
+.compass-pipe-stage {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  margin-right: -8px;
+  padding: 8px 20px 8px 22px;
+  background: var(--background-modifier-hover);
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%, 14px 50%);
+}
+
+.compass-pipe-stage:first-child {
+  padding-left: 12px;
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%);
+}
+
+.compass-pipe-stage.is-link {
+  cursor: pointer;
+}
+
+.compass-pipe-stage.is-link:hover {
+  filter: brightness(1.08);
+}
+
+.compass-pipe-name {
+  font-weight: var(--font-semibold, 600);
+}
+
+.compass-pipe-line {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.25;
+}
+
+.compass-pipe-stage.is-done {
+  background: rgba(var(--color-green-rgb), 0.25);
+}
+
+.compass-pipe-stage.is-current,
+.compass-pipe-stage.is-ready {
+  background: rgba(var(--color-blue-rgb), 0.25);
+}
+
+.compass-pipe-stage.is-waiting {
+  background: rgba(var(--color-orange-rgb), 0.3);
+}
+
+.compass-pipe-stage.is-todo,
+.compass-pipe-stage.is-none {
+  opacity: 0.8;
+}
+
+.compass-pipe-waits,
+.compass-pipe-next {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+}
+
+.compass-pipe-label {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.compass-pipe-wait {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.compass-pipe-task {
+  font-size: var(--font-ui-small);
+}
