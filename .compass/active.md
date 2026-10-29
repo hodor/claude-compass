@@ -61,9 +61,3 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
 - [ ] TASK-168: setup/update install the plugin; doctor walks the human through enabling it - complexity: M, depends_on: TASK-165
 - [ ] TASK-169: review inbox and lessons table as Bases - complexity: S, depends_on: none
-
-## PLAN-026 Stage 2: the release from GitHub, and old hand edits
-
-Plan: [[PLAN-026-local-additions-tell-the-truth]].
-
-- [x] TASK-235: Keep old hand edits: save a hand-edited file before update replaces it, and `compass overlay --extract` - complexity: M, depends_on: TASK-234

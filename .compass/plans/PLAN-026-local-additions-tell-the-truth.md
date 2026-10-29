@@ -112,7 +112,7 @@ How each Stage 2 task differs from its one-line sketch, and why. The sketches re
 
 ```markdown
 - [ ] TASK-234: Push the release (the human's approval point), then update a scratch project pinned to the previous release's commit from GitHub: the notice names its addition, `CLAUDE.md` is unchanged, the doctor row is OK - files: [.compass/research/distribution/RESEARCH-update-safe-customization.md], decisions: [SPEC-014-update-safe-customizations/D-02]
-- [x] TASK-235: Keep old hand edits: update records a hash of each file it installs, saves a file changed since then before replacing it, names it in the notice, and `compass overlay --extract` turns its added lines into a local addition, naming lines it cannot express - files: [plugin/cli/commands/self_update.py, plugin/cli/commands/overlay.py, plugin/skills/update/SKILL.md], decisions: [SPEC-014-update-safe-customizations/D-02]
+- [ ] TASK-235: Keep old hand edits: update records a hash of each file it installs, saves a file changed since then before replacing it, names it in the notice, and `compass overlay --extract` turns its added lines into a local addition, naming lines it cannot express - files: [plugin/cli/commands/self_update.py, plugin/cli/commands/overlay.py, plugin/skills/update/SKILL.md], decisions: [SPEC-014-update-safe-customizations/D-02]
 ```
 
 - TASK-234: the scratch project pins 0.30.0, the last release before Stage 1, so the update crosses every change Stage 1 made; the push is the approval of this stage.

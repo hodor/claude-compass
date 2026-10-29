@@ -487,3 +487,11 @@ Plan: [[PLAN-026-local-additions-tell-the-truth]].
 
 ### PLAN-026 Stage 2: the release from GitHub, and old hand edits
 - [x] TASK-234: Push to GitHub and update a scratch project from it - complexity: S, depends_on: TASK-233
+
+## 2026-10-29
+
+### PLAN-026 Stage 2: the release from GitHub, and old hand edits
+
+Plan: [[PLAN-026-local-additions-tell-the-truth]].
+
+- [x] TASK-235: Keep old hand edits: save a hand-edited file before update replaces it, and `compass overlay --extract` - complexity: M, depends_on: TASK-234
