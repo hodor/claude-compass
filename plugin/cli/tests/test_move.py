@@ -381,5 +381,91 @@ class CanvasCardTests(MoveFixture):
         self.assertFalse(self.canvas_path.exists())
 
 
+class CanvasCardEncodingTests(MoveFixture):
+    """Card rewriting works on the canvas text, so the way Obsidian and
+    Windows tools spell the file decides whether a card is found."""
+
+    def setUp(self):
+        super().setUp()
+        self.write("specs/net/index.md", domain_body("net"))
+        self.canvas_path = self.root / "specs.canvas"
+
+    def test_escaped_unicode_slash_crlf_and_bom_forms_of_a_card_path_are_rewritten(self):
+        """Adversarial where: a pattern that matches only the literal bytes
+        of the path misses a card whose path a JSON writer spelled with a
+        backslash-u escape or an escaped slash, or with spaces around the
+        colon; a rewrite that re-serializes the file instead of the field
+        drops the BOM and CRLF and every byte of the surrounding text."""
+        self.write("specs/SPEC-001-café.md", spec_body("Cafe", "cafe spec"))
+        self.write("specs/SPEC-002-x.md", spec_body("X", "x spec"))
+        raw = (
+            '﻿{"nodes":[\r\n'
+            '{"id":"a","type":"file","file":"specs/SPEC-001-caf\\u00e9.md","x":1,"y":2,"width":3,"height":4},'
+            '{"id":"b","type":"file","file" : "specs\\/SPEC-002-x.md","x":1,"y":2,"width":3,"height":4,"subpath":"#H"}'
+            '],"edges":[]}\r\n'
+        )
+        self.canvas_path.write_bytes(raw.encode("utf-8"))
+        for stem in ("SPEC-001-café", "SPEC-002-x"):
+            code, _, err = self.run_cmd([stem, "specs/net", "--apply"])
+            self.assertEqual(code, 0, err)
+        expected = (
+            '﻿{"nodes":[\r\n'
+            '{"id":"a","type":"file","file":"specs/net/SPEC-001-café.md","x":1,"y":2,"width":3,"height":4},'
+            '{"id":"b","type":"file","file" : "specs/net/SPEC-002-x.md","x":1,"y":2,"width":3,"height":4,"subpath":"#H"}'
+            '],"edges":[]}\r\n'
+        )
+        self.assertEqual(self.canvas_path.read_bytes(), expected.encode("utf-8"))
+
+    def test_workstream_folder_specs_and_a_moved_topic_folder_rewrite_cards(self):
+        """Adversarial where: vault-relative paths inside a workstream folder
+        carry a `<unit>/specs/` prefix, and a topic folder moved whole carries
+        descendants two levels below it; a rename table built from type-dir
+        relative paths, or from the folder alone, leaves those cards naming
+        paths that no longer exist."""
+        (self.root / "cli").mkdir()
+        (self.root / "cli" / "index.md").write_text(
+            "---\ntitle: U\ntype: unit\nstatus: active\ntags: []\n---\n",
+            encoding="utf-8")
+        self.write("cli/specs/net/index.md", domain_body("net"))
+        self.write("cli/specs/SPEC-002-p/index.md", spec_body("P", "p spec"))
+        self.write("cli/specs/SPEC-002-p/SPEC-001-k.md", spec_body("K", "k spec"))
+        self.write("specs/a/index.md", domain_body("a"))
+        self.write("specs/a/SPEC-001-s.md", spec_body("S", "s spec"))
+        cards = [
+            {"id": "p", "type": "file", "file": "cli/specs/SPEC-002-p/index.md"},
+            {"id": "k", "type": "file", "file": "cli/specs/SPEC-002-p/SPEC-001-k.md"},
+            {"id": "s", "type": "file", "file": "specs/a/SPEC-001-s.md"},
+        ]
+        self.canvas_path.write_text(
+            json.dumps({"nodes": cards, "edges": []}), encoding="utf-8")
+        code, _, err = self.run_cmd(["cli/specs/SPEC-002-p", "cli/specs/net", "--apply"])
+        self.assertEqual(code, 0, err)
+        code, _, err = self.run_cmd(["specs/a", "specs/net", "--apply"])
+        self.assertEqual(code, 0, err)
+        files = {n["id"]: n["file"]
+                 for n in json.loads(self.canvas_path.read_text(encoding="utf-8"))["nodes"]}
+        self.assertEqual(files, {
+            "p": "cli/specs/net/SPEC-002-p/index.md",
+            "k": "cli/specs/net/SPEC-002-p/SPEC-001-k.md",
+            "s": "specs/net/a/SPEC-001-s.md",
+        })
+        for rel in files.values():
+            self.assertTrue((self.root / rel).is_file(), rel)
+
+    def test_undecodable_canvas_is_left_byte_identical_and_the_move_still_lands(self):
+        """Adversarial where: a canvas saved as UTF-16 cannot be rewritten
+        as text; a sweep that lets the decode error escape aborts the command
+        after the files already moved, leaving links unrewritten and the index
+        unhealed, and one that writes a lossy decode corrupts the board."""
+        self.write("specs/SPEC-002-cache.md", spec_body("Cache", "cache spec"))
+        original = '{"nodes": [{"id": "a", "type": "file", "file": "specs/SPEC-002-cache.md"}], "edges": []}'.encode("utf-16")
+        self.canvas_path.write_bytes(original)
+        code, out, err = self.run_cmd(["SPEC-002-cache", "specs/net", "--apply"])
+        self.assertEqual(code, 0, err)
+        self.assertTrue((self.root / "specs/net/SPEC-002-cache.md").is_file())
+        self.assertEqual(self.canvas_path.read_bytes(), original)
+        self.assertIn("specs.canvas", err)
+
+
 if __name__ == "__main__":
     unittest.main()

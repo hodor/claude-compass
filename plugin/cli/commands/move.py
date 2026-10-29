@@ -11,8 +11,11 @@ entry-line description lifts into its missing `summary:`, a description
 the artifact's summary contradicts is preserved into its body, and sync
 then prunes every line - each is provably covered by the destination's
 folder pointer with its text surviving in the artifact (ADR-021: a
-folder's children are never listed at the root). Vault health is
-reported last.
+folder's children are never listed at the root). The file cards of
+`.compass/specs.canvas` that name a moved file are rewritten to its new
+path, since Obsidian leaves a card naming the old path when a note is
+renamed outside the app; the canvas is never created and its other bytes
+stay as they were. Vault health is reported last.
 
 The destination must already exist inside the same type dir as each
 artifact: the type dir itself, or a domain folder (its own `index.md`
@@ -24,16 +27,19 @@ subtree, or an artifact already sitting in the destination.
 """
 
 import datetime
+import json
 import re
 import sys
 
 import vaultlib
 from commands import sync as sync_command
+from commands.canvas import CANVAS_NAME
 from commands.make_unit import _report_vault_health, _resolve_one
 from commands.promote import git_mv
 
 WIKILINK = re.compile(r"\[\[([^\]]+)\]\]")
 INLINE_CODE_SPLIT = re.compile(r"(`[^`\n]*`)")
+CANVAS_FILE_FIELD = re.compile(r'("file"\s*:\s*)("(?:[^"\\]|\\.)*")')
 
 
 def _type_root(vault_root, parts, layout):
@@ -130,6 +136,62 @@ def _renames_for(vault_root, moves):
             if f.name == "index.md":
                 renames[old_rel.rsplit("/", 1)[0]] = new_rel.rsplit("/", 1)[0]
     return renames
+
+
+def _file_renames_for(vault_root, moves):
+    """Old vault-relative path -> new vault-relative path for every file the
+    moves carry, whatever its extension."""
+    renames = {}
+    for node, dest_node in moves:
+        if not node.is_dir():
+            renames[node.relative_to(vault_root).as_posix()] = (
+                dest_node.relative_to(vault_root).as_posix())
+            continue
+        for f in sorted(node.rglob("*")):
+            if f.is_file():
+                renames[f.relative_to(vault_root).as_posix()] = (
+                    dest_node / f.relative_to(node)).relative_to(
+                    vault_root).as_posix()
+    return renames
+
+
+def _rewrite_canvas_text(text, file_renames):
+    """Rewrite the `"file"` values of `text` (a canvas) found in
+    `file_renames`, leaving every other byte as it was. Returns
+    (new_text, cards_rewritten)."""
+    changed = 0
+
+    def repl(match):
+        nonlocal changed
+        try:
+            old = json.loads(match.group(2))
+        except ValueError:
+            return match.group(0)
+        new = file_renames.get(old)
+        if new is None:
+            return match.group(0)
+        changed += 1
+        return match.group(1) + json.dumps(new, ensure_ascii=False)
+
+    return CANVAS_FILE_FIELD.sub(repl, text), changed
+
+
+def _sweep_canvas(vault_root, file_renames, apply):
+    """Point the cards of `specs.canvas` at the moved files' new paths (or
+    count them, when `apply` is false). Returns the number of cards; zero
+    when the vault holds no canvas."""
+    canvas = vault_root / CANVAS_NAME
+    if not canvas.is_file():
+        return 0
+    try:
+        text = canvas.read_bytes().decode("utf-8")
+        new_text, changed = _rewrite_canvas_text(text, file_renames)
+        if changed and apply:
+            canvas.write_bytes(new_text.encode("utf-8"))
+    except (OSError, UnicodeDecodeError) as exc:
+        sys.stderr.write(f"compass move: cannot rewrite {CANVAS_NAME}: {exc}\n")
+        return 0
+    return changed
 
 
 def _rewrite_links(text, renames):
@@ -303,6 +365,8 @@ def run(args):
 
     if not apply:
         links, files = _sweep_rewrites(vault_root, renames, apply=False)
+        cards = _sweep_canvas(
+            vault_root, _file_renames_for(vault_root, moves), apply=False)
         sys.stdout.write(
             f"compass move: would move {len(moves)} artifact(s) into {dest_rel} "
             "(dry-run; pass --apply to write)\n"
@@ -312,12 +376,16 @@ def run(args):
         sys.stdout.write(
             f"  wikilinks to rewrite: {links} across {files} file(s)\n"
         )
+        if cards:
+            sys.stdout.write(f"  canvas cards to rewrite: {cards}\n")
         return 0
 
+    file_renames = _file_renames_for(vault_root, moves)
     for node, dest_node in moves:
         if not git_mv(vault_root.parent, node, dest_node):
             node.rename(dest_node)
     links, files = _sweep_rewrites(vault_root, renames, apply=True)
+    cards = _sweep_canvas(vault_root, file_renames, apply=True)
 
     sys.stdout.write(
         f"compass move: moved {len(moves)} artifact(s) into {dest_rel}\n"
@@ -327,6 +395,8 @@ def run(args):
     sys.stdout.write(
         f"  wikilinks rewritten: {links} across {files} file(s)\n"
     )
+    if cards:
+        sys.stdout.write(f"  canvas cards rewritten: {cards}\n")
     lifted, preserved, pruned, kept = _heal_index(vault_root, moves)
     if lifted:
         sys.stdout.write(

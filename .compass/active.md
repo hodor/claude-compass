@@ -71,4 +71,4 @@ Plan: [[PLAN-024-working-in-compass-is-visual]]. Approved; drawings live in a vi
 - [ ] TASK-227: What changed since a review - complexity: M, depends_on: TASK-206
 - [ ] TASK-228: Each spec's pipeline strip - complexity: S, depends_on: TASK-227
 - [ ] TASK-203: A loop's charts - complexity: M, depends_on: TASK-228
-- [ ] TASK-204: `compass canvas` writes the spec tree and `compass move` rewrites card paths - complexity: M
+- [x] TASK-204: `compass canvas` writes the spec tree and `compass move` rewrites card paths - complexity: M

@@ -261,5 +261,164 @@ class MoveRoundTripTests(CanvasFixture):
                          "rerun should keep the moved card's geometry")
 
 
+class UnitAndIdentityTests(CanvasFixture):
+    def make_unit(self, name):
+        (self.root / name).mkdir()
+        (self.root / name / "index.md").write_text(
+            f"---\ntitle: {name}\ntype: unit\nstatus: active\ntags: []\n---\n",
+            encoding="utf-8")
+
+    def test_unit_specs_get_cards_and_edges_that_never_cross_into_root_specs(self):
+        """Adversarial where: root and unit numbering are both local, so
+        `specs/SPEC-002-pack/index.md` and `cli/specs/SPEC-002-pack/index.md`
+        share every name part; a parent lookup keyed by stem or by path
+        within the type dir wires a unit child to the root folder spec (or
+        drops the unit's specs altogether)."""
+        self.make_unit("cli")
+        unit_pack = "cli/specs/SPEC-002-pack/index.md"
+        unit_inner = "cli/specs/SPEC-002-pack/SPEC-001-inner.md"
+        unit_flat = "cli/specs/SPEC-001-flat.md"
+        self.write_tree()
+        for rel in (unit_pack, unit_inner, unit_flat):
+            self.write_spec(rel)
+        code, _, err = self.cli("canvas")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(set(self.cards()), TREE_FILES | {unit_pack, unit_inner, unit_flat})
+        self.assertEqual(self.edges(), TREE_EDGES | {(unit_pack, unit_inner)})
+
+    def test_node_id_that_equals_a_generated_one_is_not_reused(self):
+        """Adversarial where: a hand-made node already holding the id the
+        hash of a new card's path would produce makes two nodes share an id,
+        and Obsidian then binds every edge of one to the other."""
+        import hashlib
+        self.write_spec(FLAT)
+        taken = hashlib.sha1(FLAT.encode("utf-8")).hexdigest()[:16]
+        self.canvas_path.write_text(json.dumps({
+            "nodes": [{"id": taken, "type": "text", "text": "mine",
+                       "x": 9, "y": 9, "width": 50, "height": 50}],
+            "edges": [],
+        }), encoding="utf-8")
+        code, _, err = self.cli("canvas")
+        self.assertEqual(code, 0, err)
+        nodes = self.canvas()["nodes"]
+        ids = [n["id"] for n in nodes]
+        self.assertEqual(len(ids), len(set(ids)))
+        text = [n for n in nodes if n["type"] == "text"]
+        self.assertEqual(text[0]["id"], taken)
+        self.assertEqual(text[0]["text"], "mine")
+
+    def test_unicode_filename_is_written_unescaped_and_a_rerun_is_byte_identical(self):
+        """Adversarial where: a writer that ASCII-escapes card paths
+        (backslash-u00e9) differs from what Obsidian writes, and one whose
+        output varies run to run (set ordering, regenerated ids) rewrites the
+        file, and its sync conflict, on every invocation."""
+        rel = "specs/SPEC-001-café-テスト.md"
+        self.write_spec(rel)
+        self.write_spec(PACK)
+        self.write_spec(INNER)
+        self.cli("canvas")
+        first = self.canvas_path.read_bytes()
+        self.assertIn(rel.encode("utf-8"), first)
+        self.assertNotIn(b"\\u00e9", first)
+        self.cli("canvas")
+        self.assertEqual(self.canvas_path.read_bytes(), first)
+
+
+class ObsidianKeysTests(CanvasFixture):
+    def test_rerun_keeps_keys_the_tool_does_not_own_on_cards_and_canvas(self):
+        """Adversarial where: a rerun that rebuilds each card from a fixed
+        field list drops the `color`, `subpath` and any unknown key Obsidian
+        stored on a card, and the canvas-level keys, so recolouring a card
+        or pinning it to a heading is undone by the next `compass canvas`."""
+        self.write_tree()
+        self.cli("canvas")
+        data = self.canvas()
+        for node in data["nodes"]:
+            node["color"] = "3"
+            node["subpath"] = "#Problem"
+            node["futureKey"] = {"k": [1, 2]}
+        data["metadata"] = {"version": "1.0", "frontmatter": {}}
+        self.canvas_path.write_text(json.dumps(data, indent="\t"), encoding="utf-8")
+        code, _, err = self.cli("canvas")
+        self.assertEqual(code, 0, err)
+        after = self.canvas()
+        self.assertEqual(after["metadata"], data["metadata"])
+        for node in after["nodes"]:
+            with self.subTest(card=node["file"]):
+                self.assertEqual(node["color"], "3")
+                self.assertEqual(node["subpath"], "#Problem")
+                self.assertEqual(node["futureKey"], {"k": [1, 2]})
+
+    def test_rerun_keeps_color_label_and_sides_the_human_set_on_a_tree_line(self):
+        """Adversarial where: lines between spec cards are regenerated from
+        the folder structure, so a line the human recoloured, labelled or
+        re-anchored in Obsidian is rebuilt bare on the next run, and the
+        styling is lost although the line it styles still exists."""
+        self.write_tree()
+        self.cli("canvas")
+        data = self.canvas()
+        styled = {"color": "4", "label": "owns", "fromSide": "right", "toSide": "left"}
+        for edge in data["edges"]:
+            edge.update(styled)
+        self.canvas_path.write_text(json.dumps(data, indent="\t"), encoding="utf-8")
+        self.cli("canvas")
+        for edge in self.canvas()["edges"]:
+            with self.subTest(edge=edge["id"]):
+                for key, value in styled.items():
+                    self.assertEqual(edge.get(key), value, key)
+
+    def test_hand_drawn_line_survives_while_one_to_a_departed_card_goes(self):
+        """Adversarial where: a rerun that clears every edge not prefixed
+        `tree-` is fine for generated lines but erases lines the human drew;
+        one that keeps all of them leaves a line to a card that left, which
+        Obsidian draws to nowhere."""
+        self.write_tree()
+        self.write_spec("specs/SPEC-009-gone.md")
+        self.cli("canvas")
+        data = self.canvas()
+        ids = {n["file"]: n["id"] for n in data["nodes"]}
+        data["nodes"].append({"id": "note", "type": "text", "text": "n",
+                              "x": 1, "y": 1, "width": 10, "height": 10})
+        data["edges"] += [
+            {"id": "mine-keep", "fromNode": "note", "toNode": ids[FLAT]},
+            {"id": "mine-dead", "fromNode": "note", "toNode": ids["specs/SPEC-009-gone.md"]},
+        ]
+        self.canvas_path.write_text(json.dumps(data), encoding="utf-8")
+        (self.root / "specs" / "SPEC-009-gone.md").unlink()
+        self.cli("canvas")
+        edge_ids = {e["id"] for e in self.canvas()["edges"]}
+        self.assertIn("mine-keep", edge_ids)
+        self.assertNotIn("mine-dead", edge_ids)
+
+
+class CanvasEncodingTests(CanvasFixture):
+    def test_bom_canvas_is_read_and_written_back_without_the_bom(self):
+        """Adversarial where: PowerShell's `Out-File` and some editors save
+        JSON with a UTF-8 BOM; a reader that does not strip it reports the
+        canvas as invalid and never reconciles it, and a writer that keeps
+        it makes Obsidian's JSON parser reject the file."""
+        self.write_spec(FLAT)
+        self.canvas_path.write_bytes(
+            "﻿{\"nodes\": [], \"edges\": []}".encode("utf-8"))
+        code, _, err = self.cli("canvas")
+        self.assertEqual(code, 0, err)
+        raw = self.canvas_path.read_bytes()
+        self.assertFalse(raw.startswith(b"\xef\xbb\xbf"))
+        self.assertEqual(set(self.cards()), {FLAT})
+
+    def test_utf16_canvas_is_refused_and_left_byte_identical(self):
+        """Adversarial where: a canvas saved as UTF-16 (Windows PowerShell 5
+        redirection) is not decodable as UTF-8; a command that falls back to
+        an empty canvas overwrites the human's arrangement instead of
+        reporting the file."""
+        self.write_spec(FLAT)
+        original = '{"nodes": [], "edges": []}'.encode("utf-16")
+        self.canvas_path.write_bytes(original)
+        code, _, err = self.cli("canvas")
+        self.assertEqual(code, 1)
+        self.assertIn("specs.canvas", err)
+        self.assertEqual(self.canvas_path.read_bytes(), original)
+
+
 if __name__ == "__main__":
     unittest.main()
