@@ -23,6 +23,9 @@ installed file with that record before replacing it, and saves a file that
 differs (ignoring its own local-addition block) byte-for-byte under
 `.compass/meta/local/kept/`, naming it in the notice. A project with no
 record counts every file as unedited.
+`--keep-edits <src>` does the same save and record without copying
+anything; `/compass:update` runs it before its own copy step, and it exits
+1 when `src` holds no plugin.
 
 Every path exits 0 and stays silent unless an update landed - SessionStart
 stdout enters model context, so the single "updated X -> Y" line reaches the
@@ -618,7 +621,39 @@ def _perform(vault_root, project_root, force, apply_models):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def keep_edits(project_root, src):
+    """Save every hand-edited agent, rule, and skill file under
+    `meta/local/kept/` and record the hashes `src` ships, without copying
+    anything. `/compass:update` runs this before its own copy step. Returns
+    the names saved."""
+    project_root = Path(project_root)
+    vault_root = project_root / ".compass"
+    files = _shipped_files(Path(src), project_root / ".claude")
+    kept = _keep_hand_edits(vault_root, files)
+    _write_installed(vault_root, files)
+    return kept
+
+
 def run(args):
+    if "--keep-edits" in args:
+        i = args.index("--keep-edits")
+        src = Path(args[i + 1]) if i + 1 < len(args) else None
+        if src is None or not (src / ".claude-plugin" / "plugin.json").is_file():
+            sys.stderr.write("compass self-update --keep-edits: no plugin at that path\n")
+            return 1
+        try:
+            vault_root = vaultlib.find_vault_root()
+        except Exception:
+            sys.stderr.write("compass self-update --keep-edits: no vault here\n")
+            return 1
+        kept = keep_edits(vault_root.parent, src)
+        if kept:
+            sys.stdout.write(
+                "hand edits saved to meta/local/kept: "
+                + ", ".join(map(_one_line, kept))
+                + "\n"
+            )
+        return 0
     force = "--force" in args
     try:
         vault_root = vaultlib.find_vault_root()

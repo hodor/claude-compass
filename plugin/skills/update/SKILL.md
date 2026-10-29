@@ -41,6 +41,9 @@ Never put several questions in one message or one call. If the clone is newer, p
 ### 4. Copy everything from the clone (one Bash call)
 
 ```bash
+# Save any shipped file edited by hand before the copy replaces it, and record
+# what this release ships; the clone's own CLI does it, so it runs the new code
+python "$SRC/cli/compass" self-update --keep-edits "$SRC" || exit 1
 # Agents, rules, skills, slash commands
 mkdir -p .claude/agents .claude/rules .claude/commands
 cp "$SRC/templates/agents/"*.md .claude/agents/

@@ -468,9 +468,6 @@ class NeverBlocksTests(SelfUpdateFixture):
         self.assertEqual(len(out.strip().splitlines()), 1)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class NormalizeFlatSpecsTests(SelfUpdateFixture):
     """A spec is a file until its second member: update flattens any folder
@@ -1119,3 +1116,64 @@ class LocalAdditionBlockTests(HandEditFixture):
         loud = self.reinstall(agent="agent v3")
         self.assertEqual(self.kept_names(loud["notice"]), ["agents/builder.md"])
         self.assertEqual((self.kept_dir / "agents" / "builder.md").read_bytes(), edited)
+
+
+class ManualUpdateKeepsEditsTests(HandEditFixture):
+    """`/compass:update` copies the clone into `.claude/` with `cp`; it first
+    runs `compass self-update --keep-edits <clone>` so a hand-edited file is
+    saved and the install record written, the same as an automatic update."""
+
+    def keep_edits(self, src):
+        cwd = os.getcwd()
+        os.chdir(self.project)
+        buf = io.StringIO()
+        try:
+            with redirect_stdout(buf):
+                code = self_update.run(["--keep-edits", str(src)])
+        finally:
+            os.chdir(cwd)
+        return code, buf.getvalue()
+
+    def test_keep_edits_saves_an_edited_file_and_records_what_ships(self):
+        """Adversarial where: the manual path saves nothing, so the `cp` that
+        follows destroys the human's edit; saves an untouched file; leaves
+        the record describing the old release, so the next update calls the
+        fresh copy hand edited; or copies anything into `.claude/` itself,
+        which is the skill's own step. The edited agent is saved and named
+        on one line, the untouched rule is not, the record holds the hashes
+        of the new shipped text, and the installed files are unchanged."""
+        self.fake_remote()
+        self.perform()
+        self.write_installed("agents/builder.md", b"agent\nmy private rule\n")
+        self.set_shipped(self.external_src, agent="agent v2", rule="rule v2")
+
+        code, out = self.keep_edits(self.external_src)
+
+        self.assertEqual(code, 0)
+        self.assertEqual(self.kept_files(), ["agents/builder.md"])
+        self.assertEqual(
+            (self.kept_dir / "agents" / "builder.md").read_bytes(),
+            b"agent\nmy private rule\n",
+        )
+        self.assertEqual(out, KEPT + "agents/builder.md\n")
+        self.assertEqual(self.recorded_for("agents/builder.md"), sha256_hex(b"agent v2"))
+        self.assertEqual(self.recorded_for("rules/r.md"), sha256_hex(b"rule v2"))
+        self.assertEqual(
+            (self.claude / "agents" / "builder.md").read_bytes(),
+            b"agent\nmy private rule\n",
+        )
+
+    def test_keep_edits_is_silent_with_nothing_edited_and_refuses_a_missing_source(self):
+        """Adversarial where: the entry prints a line when nothing was saved,
+        so the skill's report gains noise, or a wrong source path exits 0
+        and the skill copies over edits it never checked."""
+        self.fake_remote()
+        self.perform()
+        code, out = self.keep_edits(self.external_src)
+        self.assertEqual((code, out), (0, ""))
+        code, out = self.keep_edits(self.project / "no-such-clone")
+        self.assertNotEqual(code, 0)
+        self.assertEqual(self.kept_files(), [])
+
+if __name__ == "__main__":
+    unittest.main()
