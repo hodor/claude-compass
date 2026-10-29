@@ -66,7 +66,7 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
 Plan: [[PLAN-024-working-in-compass-is-visual]]. Approved; drawings live in a view panel.
 
-- [ ] TASK-202: A Compass view panel and the plan board - complexity: M
+- [x] TASK-202: A Compass view panel and the plan board - complexity: M
 - [ ] TASK-206: Spec and research cards in the view panel - complexity: M, depends_on: TASK-202
 - [ ] TASK-227: What changed since a review - complexity: M, depends_on: TASK-206
 - [ ] TASK-228: Each spec's pipeline strip - complexity: S, depends_on: TASK-227

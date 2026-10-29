@@ -2406,3 +2406,227 @@ test("opening the board, answering its choices and clicking a task write nothing
   assert.deepEqual(writes, []);
   assert.deepEqual(Object.fromEntries(app.store), before);
 });
+
+// ---- the view panel read against the implementation ----
+
+const planWith = (body, head = "type: plan\ntitle: P") => `---\n${head}\n---\n# P\n\n${body}`;
+const choiceTable = (...names) => `| Choice | Answer |\n|---|---|\n${names.map((n) => `| ${n} | answer |`).join("\n")}\n`;
+const REQ1 = "tmp/review/1.request.json";
+const countNodes = (el) => el.all().length;
+
+// Adversarial where: a dependency cycle, a task that depends on itself or on a
+// task the plan does not hold sends the layout into endless recursion, drops
+// the task from the board, or leaves a task waiting on a parent that cannot
+// finish.
+test("cycles, self-dependencies and parents absent from the plan still draw every task", async () => {
+  const body = [
+    "### Wave 1",
+    "- [ ] TASK-1: a - files: [x], complexity: S, depends_on: TASK-2",
+    "- [ ] TASK-2: b - files: [x], complexity: S, depends_on: TASK-1",
+    "- [ ] TASK-3: c - files: [x], complexity: S, depends_on: TASK-3",
+    "- [ ] TASK-4: d - files: [x], complexity: S, depends_on: TASK-999",
+    "- [ ] TASK-5: e - files: [x], complexity: S, depends_on: TASK-4, TASK-999",
+  ].join("\n");
+  const { app, plugin } = await loaded({ "p.md": planWith(body) });
+  await openDoc(app, "p.md");
+  await plugin.openViewPanel();
+  await settle();
+  const status = Object.fromEntries(taskRows(app).map((r) => [r.dataset.id, r.dataset.status]));
+  assert.deepEqual(status, { "TASK-1": "waiting", "TASK-2": "waiting", "TASK-3": "waiting", "TASK-4": "ready", "TASK-5": "waiting" });
+  assert.equal(viewEl(app).querySelectorAll(".compass-graph-node").length, 5);
+  const edges = viewEl(app).querySelectorAll(".compass-graph-edge").map((e) => `${e.dataset.from}>${e.dataset.to}`).sort();
+  assert.deepEqual(edges, ["TASK-1>TASK-2", "TASK-2>TASK-1", "TASK-3>TASK-3", "TASK-4>TASK-5"]);
+});
+
+// Adversarial where: a plan with thousands of tasks, listed so each depends on
+// the task after it, blows the stack of the depth walk or takes seconds to draw.
+test("a plan of 3000 tasks chained against file order draws every row and node in under 5 seconds", async () => {
+  const n = 3000;
+  const lines = ["### Wave 1"];
+  for (let i = 1; i <= n; i++) lines.push(`- [ ] TASK-${i}: t${i} - files: [x], complexity: S, depends_on: ${i < n ? `TASK-${i + 1}` : "none"}`);
+  const { app, plugin } = await loaded({ "p.md": planWith(lines.join("\n")) });
+  await openDoc(app, "p.md");
+  const started = Date.now();
+  await plugin.openViewPanel();
+  await settle();
+  assert.equal(taskRows(app).length, n);
+  assert.equal(viewEl(app).querySelectorAll(".compass-graph-node").length, n);
+  assert.ok(Date.now() - started < 5000, `drew in ${Date.now() - started} ms`);
+});
+
+// Adversarial where: a plan saved with CRLF line ends, or a byte order mark,
+// leaves a carriage return in a task title, a choice name or the verdict note,
+// or loses the property block and so the board.
+test("a CRLF plan with a byte order mark reads like its LF twin and its verdict carries no carriage return", async () => {
+  const crlf = "﻿" + PLAN_24.replace(/\n/g, "\r\n");
+  assert.deepEqual(shape(CompassReview.parsePlanTasks(crlf)), shape(CompassReview.parsePlanTasks(PLAN_24)));
+  assert.deepEqual(CompassReview.parsePlanChoices(crlf), CompassReview.parsePlanChoices(PLAN_24));
+  const { app, plugin } = await loaded({ [P24]: crlf, [REQ1]: req("1", P24) });
+  await plugin.handler({ request: REQ1 });
+  await plugin.openViewPanel();
+  await settle();
+  assert.equal(taskRows(app).length, EXPECT_24.length);
+  await answerChange(app, "Task table", "reword it");
+  await click(cardBtn(app, "1", "Needs changes"));
+  await settle();
+  assert.equal(verdictNotes(app), "Task table: reword it");
+  for (const row of taskRows(app)) assert.ok(!/\r/.test(row.all().map((e) => e.text).join("")), row.dataset.id);
+});
+
+// Adversarial where: two table rows with the same choice name share one answer,
+// so one Change is sent to Claude twice.
+test("a choices table that names two rows alike sends one line for the one answer", () => {
+  const lines = CompassReview.choiceNoteLines(
+    CompassReview.parsePlanChoices(planWith(choiceTable("Views", "Views"))),
+    Object.assign(Object.create(null), { Views: { state: "change", note: "n" } })
+  );
+  assert.deepEqual(lines, ["Views: n"]);
+});
+
+// Adversarial where: a choice named like an Object.prototype member
+// (`constructor`, `__proto__`, `hasOwnProperty`) reads as already answered, or
+// a note holding a newline breaks one answer into two lines of the note.
+test("choice names that are Object members and notes holding newlines give exactly one line each", async () => {
+  const names = ["constructor", "__proto__", "hasOwnProperty", "toString"];
+  const { app, plugin } = await loaded({ "p.md": planWith(choiceTable(...names)), [REQ1]: req("1", "p.md") });
+  await plugin.handler({ request: REQ1 });
+  await openDoc(app, "p.md");
+  await plugin.openViewPanel();
+  await settle();
+  assert.deepEqual(plugin.changedChoiceLines(plugin.pending.get("1")), [], "nothing answered yet");
+  await answerChange(app, "toString", "first line\nsecond: line\r\n  third");
+  await answerChange(app, "constructor", "  padded  ");
+  await click(cardBtn(app, "1", "Needs changes"));
+  await settle();
+  assert.equal(verdictNotes(app), "constructor: padded\ntoString: first line second: line third");
+});
+
+// Adversarial where: a changed choice stays in the answers after the plan
+// drops its row, so Needs changes is enabled yet sends a note with no feedback.
+test("Needs changes never sends an empty verdict when the answered choice vanished from the plan", async () => {
+  const { app, plugin } = await loaded({ "p.md": planWith(choiceTable("Views", "Embeds")), [REQ1]: req("1", "p.md") });
+  await plugin.handler({ request: REQ1 });
+  await openDoc(app, "p.md");
+  await plugin.openViewPanel();
+  await settle();
+  await answerChange(app, "Views", "add a diagram");
+  app.store.set("p.md", planWith(choiceTable("Embeds")));
+  const btn = cardBtn(app, "1", "Needs changes");
+  if (btn.disabled) return;
+  await click(btn);
+  await settle();
+  const sent = verdictOf(app, "tmp/review/1.verdict.json");
+  assert.ok(sent.notes.trim() !== "", `Needs changes went out with notes ${JSON.stringify(sent.notes)}`);
+});
+
+// Adversarial where: in a review of several files the choice lines land in the
+// first file's note (or none) instead of the plan's, or a whitespace-only
+// typed note leaves a blank line ahead of them.
+test("in a three-file review the plan's choice lines join the plan's own note and the combined notes", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "---\ntype: spec\n---\nx\n",
+    "p.md": planWith(choiceTable("Views")),
+    "b.md": "---\ntype: spec\n---\ny\n",
+    [REQ1]: JSON.stringify({ id: "1", file: "a.md", title: "T", return: true, files: [{ file: "a.md", why: "w" }, { file: "p.md", why: "w" }, { file: "b.md", why: "w" }] }),
+  });
+  await plugin.handler({ request: REQ1 });
+  await openDoc(app, "p.md");
+  await plugin.openViewPanel();
+  await settle();
+  await answerChange(app, "Views", "add a diagram");
+  await click(cardBtn(app, "1", "Needs changes"));
+  await settle();
+  const sent = verdictOf(app, "tmp/review/1.verdict.json");
+  assert.deepEqual(sent.files.map((f) => f.note), [undefined, "Views: add a diagram", undefined]);
+  assert.equal(sent.notes, "p: Views: add a diagram");
+});
+
+// Adversarial where: the review panel changes when the view panel is open:
+// the same review sends another answer, or an Approve after only Agree
+// answers carries text.
+test("with the view panel open an Approve on a plan answered only with Agree equals the answer sent with no view panel", async () => {
+  const strip = (v) => { const { at, ...rest } = v; return rest; };
+  const without = await loaded({ [P24]: PLAN_24, [REQ1]: req("1", P24) });
+  await without.plugin.handler({ request: REQ1 });
+  await click(cardBtn(without.app, "1", "Approve"));
+  await settle();
+  const withPanel = await loaded({ [P24]: PLAN_24, [REQ1]: req("1", P24) });
+  await withPanel.plugin.handler({ request: REQ1 });
+  await withPanel.plugin.openViewPanel();
+  await settle();
+  for (const row of choiceRows(withPanel.app)) await click(button(row, "Agree"));
+  await click(cardBtn(withPanel.app, "1", "Approve"));
+  await settle();
+  assert.deepEqual(strip(verdictOf(withPanel.app, "tmp/review/1.verdict.json")), strip(verdictOf(without.app, "tmp/review/1.verdict.json")));
+});
+
+// Adversarial where: the choices table of a second plan that no review lists
+// takes answers because a review of the first plan is pending.
+test("a review of one plan gives another plan's choices table no controls", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": planWith(choiceTable("Views")),
+    "b.md": planWith(choiceTable("Views")),
+    [REQ1]: req("1", "a.md"),
+  });
+  await plugin.handler({ request: REQ1 });
+  await openDoc(app, "a.md");
+  await plugin.openViewPanel();
+  await settle();
+  assert.equal(choiceRows(app).length, 1);
+  await openDoc(app, "b.md");
+  assert.equal(choiceButtons(app).length, 0);
+  assert.equal(choiceRows(app).length, 0);
+  await openDoc(app, "a.md");
+  assert.equal(choiceRows(app).length, 1, "the first plan's controls return");
+});
+
+// Adversarial where: a slow read of the plan finishes after the human has moved
+// to another document and paints the plan's board over that document's note.
+test("a plan read that finishes after the human opened another document does not repaint the board", async () => {
+  const { app, plugin } = await loaded({ "p.md": planWith(choiceTable("Views")), "l.md": "---\ntype: lesson\n---\nx\n" });
+  await openDoc(app, "l.md");
+  await plugin.openViewPanel();
+  await settle();
+  const held = gate();
+  const read = app.vault.adapter.read;
+  app.vault.adapter.read = async (p) => { if (p === "p.md") await held.wait; return read.call(app.vault.adapter, p); };
+  await app.workspace.getLeaf().openFile(mdFile("p.md"));
+  app.vault.adapter.read = read;
+  await app.workspace.getLeaf().openFile(mdFile("l.md"));
+  await settle();
+  held.release();
+  await settle();
+  assert.equal(taskRows(app).length, 0);
+  assert.match(viewEl(app).all().map((e) => e.text).join(" "), /type lesson/);
+});
+
+// Adversarial where: every file save or workspace event adds nodes or handlers
+// to the panel instead of replacing them, so a long session leaks elements.
+test("fifty saves of the open plan leave the panel the size of one board", async () => {
+  const { app, plugin } = await loaded({ [P24]: PLAN_24, [REQ1]: req("1", P24) });
+  await plugin.handler({ request: REQ1 });
+  await openDoc(app, P24);
+  await plugin.openViewPanel();
+  await settle();
+  const size = countNodes(viewEl(app));
+  for (let i = 0; i < 50; i++) {
+    app.store.set(P24, PLAN_24 + `\n<!-- ${i} -->\n`);
+    await app.listeners.modify(mdFile(P24));
+    app.wsListeners["layout-change"]();
+    await settle();
+  }
+  assert.equal(countNodes(viewEl(app)), size);
+  assert.equal(app.panelLeaves.filter((l) => l.view && l.view.getViewType() === VIEW_TYPE).length, 1);
+});
+
+// Adversarial where: unloading the plugin throws, or a file saved after the
+// unload still draws into a panel the plugin no longer owns.
+test("unloading the plugin and then saving the open plan throws nothing", async () => {
+  const { app, plugin } = await loaded({ [P24]: PLAN_24 });
+  await openDoc(app, P24);
+  await plugin.openViewPanel();
+  await settle();
+  plugin.onunload();
+  await app.listeners.modify(mdFile(P24));
+  await settle();
+});
