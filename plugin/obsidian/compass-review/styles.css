@@ -730,3 +730,92 @@ button.compass-conf-filter.is-on {
   margin-left: 3em;
   overflow-wrap: anywhere;
 }
+
+/* What changed since the last review */
+
+.compass-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.compass-changes-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.compass-changes-heading {
+  font-weight: var(--font-semibold, 600);
+  overflow-wrap: anywhere;
+}
+
+.compass-change-hunk {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m, 8px);
+  background: var(--background-primary);
+  overflow: hidden;
+  padding-bottom: 2px;
+}
+
+.compass-change-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 10px;
+  background: var(--background-secondary);
+}
+
+.compass-change-open {
+  font-size: var(--font-ui-smaller);
+}
+
+.compass-change-row {
+  position: relative;
+  min-height: 1.4em;
+  padding: 0 10px 0 22px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--font-ui-small);
+}
+
+.compass-change-row.is-ctx {
+  color: var(--text-faint);
+}
+
+.compass-change-row.is-add {
+  background: rgba(var(--color-green-rgb), 0.14);
+}
+
+.compass-change-row.is-del {
+  background: rgba(var(--color-red-rgb), 0.14);
+}
+
+.compass-change-row.is-add::before,
+.compass-change-row.is-del::before {
+  position: absolute;
+  left: 8px;
+  font-family: var(--font-monospace);
+}
+
+.compass-change-row.is-add::before {
+  content: "+";
+  color: var(--color-green);
+}
+
+.compass-change-row.is-del::before {
+  content: "-";
+  color: var(--color-red);
+}
+
+.compass-change-row.is-add .compass-change-word {
+  background: rgba(var(--color-green-rgb), 0.4);
+  border-radius: 2px;
+}
+
+.compass-change-row.is-del .compass-change-word {
+  background: rgba(var(--color-red-rgb), 0.4);
+  border-radius: 2px;
+  text-decoration: line-through;
+}

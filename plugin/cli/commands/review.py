@@ -43,6 +43,15 @@ The request goes to the `.compass` vault that holds the documents. A new
 request for a document already waiting withdraws the older request, several
 files or not, whose waiter ends with `withdrawn <id>`.
 
+When a listed document was listed by an earlier request in the vault, the
+request is joined by `<id>.changes.diff` in `tmp/review/`: `git diff <sha> --
+<file>` for each listed document that differs from the commit its own latest
+earlier request was sent at, joined in listed order. It is saved before
+`requested` prints, so the surface can show what changed since the human last
+saw the document. A first review and an unchanged document add nothing; with
+nothing to add there is no file. Withdrawing the request, by `--cancel` or by
+a newer request for the same document, removes it.
+
 `--no-wait` returns after the request line. The wait has no limit: the
 human may answer hours later. `--timeout S` bounds it and prints
 `timeout <id>` when it runs out. `--status`
@@ -357,12 +366,13 @@ def run(args):
             if not reviewlib.cancel(compass_vault, older.get("id")):
                 break
     several = len(documents) > 1
+    changes = reviewlib.changes_record(compass_vault, root, documents)
     request, request_path = reviewlib.write_request(
         compass_vault, surface.NAME, context["root"], documents[0], opts["title"],
         step_aside=not surface.has_focus(), commit=commit,
         documents=[(d, reasons.get(_key(g))) for d, g in zip(documents, given)] if several else None,
         session=os.environ.get("CLAUDE_CODE_SESSION_ID") or "",
-        project=Path(compass_vault).parent.name)
+        project=Path(compass_vault).parent.name, changes=changes)
     surface.deliver(context, request_path)
     print(f"requested {request['id']} {request['file']}", flush=True)
     if not opts["wait"]:
