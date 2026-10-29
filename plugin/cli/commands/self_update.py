@@ -246,7 +246,9 @@ def _apply(src, project_root, apply_models):
     (mirroring /compass:update step 4-5), and on a machine with dsh, the
     generated dsh materializations - detected, never asked. One run, every
     host - two hosts of one project can never sit on different Compass
-    versions."""
+    versions. Returns the overlay report of the project's local additions
+    (see overlay.apply_overlays); a raise while applying them is reported as
+    a `failed` entry."""
     src = Path(src)
     claude = Path(project_root) / ".claude"
     agents = claude / "agents"
@@ -308,13 +310,14 @@ def _apply(src, project_root, apply_models):
         except OSError:
             pass
     # The shipped files above were just replaced wholesale; re-apply the
-    # project's own additions on top of them (ADR-020).
+    # project's own additions on top of them (ADR-020). A raise is recorded
+    # as a failure in the returned report.
     try:
         from commands import overlay
 
-        overlay.apply_overlays(Path(project_root) / ".compass")
-    except Exception:
-        pass
+        additions = overlay.apply_overlays(Path(project_root) / ".compass")
+    except Exception as exc:
+        additions = {"failed": {"*": str(exc) or type(exc).__name__}}
     if apply_models:
         python = sys.executable or "python"
         try:
@@ -326,6 +329,22 @@ def _apply(src, project_root, apply_models):
             )
         except (OSError, subprocess.TimeoutExpired):
             pass
+    return additions
+
+
+def _additions_clause(report):
+    """The `; `-prefixed notice text for an overlay report: the additions
+    re-applied, those with no shipped file, and a pointer to `compass
+    doctor` when any failed. Empty when there is nothing to say."""
+    report = report or {}
+    clause = ""
+    if report.get("applied"):
+        clause += "; local additions re-applied: " + ", ".join(report["applied"])
+    if report.get("orphans"):
+        clause += "; no shipped file: " + ", ".join(report["orphans"])
+    if report.get("failed"):
+        clause += "; local additions not applied (run compass doctor)"
+    return clause
 
 
 def _normalize_flat_specs(vault_root):
@@ -408,7 +427,7 @@ def _perform(vault_root, project_root, force, apply_models):
             inside = False
         if inside and (src_dir / ".claude-plugin" / "plugin.json").is_file():
             new_version = _plugin_version(src_dir) or "?"
-            _apply(src_dir, project_root, apply_models)
+            additions = _apply(src_dir, project_root, apply_models)
             _normalize_flat_specs(vault_root)
             notice = None
             if new_version != installed:
@@ -422,8 +441,12 @@ def _perform(vault_root, project_root, force, apply_models):
                             "installed_mode": "auto-update",
                         },
                     )
-                notice = f"Compass updated {installed} -> {new_version} (local source)"
-                _log(vault_root, f"applied-local {installed} -> {new_version}")
+                clause = _additions_clause(additions)
+                notice = (
+                    f"Compass updated {installed} -> {new_version} (local source)"
+                    + clause
+                )
+                _log(vault_root, f"applied-local {installed} -> {new_version}{clause}")
             return {"status": "applied-local", "notice": notice}
 
     if not repository or raw is None:
@@ -445,7 +468,7 @@ def _perform(vault_root, project_root, force, apply_models):
         if new_version is None:
             _log(vault_root, f"bad-source {repository}")
             return {"status": "bad-source", "notice": None}
-        _apply(src, project_root, apply_models)
+        additions = _apply(src, project_root, apply_models)
         _normalize_flat_specs(vault_root)
         _write_plugin_yaml(
             vault_root,
@@ -457,10 +480,11 @@ def _perform(vault_root, project_root, force, apply_models):
                 "installed_mode": "auto-update",
             },
         )
-        _log(vault_root, f"updated {installed} -> {new_version} ({sha[:12]})")
+        clause = _additions_clause(additions)
+        _log(vault_root, f"updated {installed} -> {new_version} ({sha[:12]}){clause}")
         return {
             "status": "updated",
-            "notice": f"Compass updated {installed} -> {new_version}",
+            "notice": f"Compass updated {installed} -> {new_version}{clause}",
         }
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
