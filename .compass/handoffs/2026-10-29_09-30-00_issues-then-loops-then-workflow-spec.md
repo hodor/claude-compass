@@ -44,7 +44,7 @@ PLAN-024 (visual Compass) and PLAN-026 (local additions tell the truth) are done
 Only Obsidian's own state and the usage counter (`.compass/.obsidian/app.json`, `workspace.json`, `.compass/meta/usage.yaml`), as all session; never commit them.
 
 ## Action Items
-1. [ ] Read each open issue (`gh issue view <n>`), reproduce, fix with a failing test first, close it with the fixing commit.
+1. [x] Read each open issue (`gh issue view <n>`), reproduce, fix with a failing test first, close it with the fixing commit.
 2. [ ] Ask the human which repository TASK-161's loop runs on, then build PLAN-021 Wave 2 in order: 161, 160, 162, 163.
 3. [ ] Write the spec with `/compass:spec`: Compass uses Claude Code features such as workflow scripts so a run fills less context and agents need fewer instructions. Problem and need only, no solution.
 
