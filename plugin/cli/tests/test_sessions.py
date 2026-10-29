@@ -94,6 +94,7 @@ import io
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import time
@@ -427,6 +428,45 @@ class ListArgumentTests(SessionsCase):
                 code, out, err = run_sessions(args)
                 self.assertEqual(code, 1)
                 self.assertTrue(err.strip())
+
+
+class ListWorktreeTests(SessionsCase):
+    def git(self, cwd, *args):
+        subprocess.run(["git", *args], cwd=str(cwd), check=True, capture_output=True)
+
+    def make_worktree(self):
+        """A git main checkout at `self.project` and a linked worktree under
+        its `.claude/worktrees/`, each with a vault; returns the worktree."""
+        (self.project / ".compass" / "meta" / ".keep").write_text("", encoding="utf-8")
+        self.git(self.project, "init", "-q")
+        self.git(self.project, "add", ".compass")
+        self.git(self.project, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "vault")
+        worktree = self.project / ".claude" / "worktrees" / "builder-1"
+        self.git(self.project, "worktree", "add", "-q", str(worktree))
+        return worktree
+
+    def test_list_from_a_linked_worktree_reads_the_main_checkout_sessions(self):
+        """Adversarial where: run inside `.claude/worktrees/<name>`, the
+        project root is the worktree, whose own transcript folder is empty,
+        so every session of the project is missing (GitHub #46)."""
+        self.make_session("main10", commits=10)
+        worktree = self.make_worktree()
+        os.environ["CLAUDE_PROJECT_DIR"] = str(worktree)
+        self.assertEqual(self.ids(), ["main10"])
+
+    def test_list_from_the_main_checkout_is_unchanged_by_its_worktrees(self):
+        self.make_session("main10", commits=10)
+        self.make_worktree()
+        self.assertEqual(self.ids(), ["main10"])
+
+    def test_empty_list_names_the_folder_it_searched(self):
+        """Adversarial where: an empty result is indistinguishable from a
+        lookup in the wrong folder, since `[]` names no folder."""
+        for flags in ([], ["--json"]):
+            with self.subTest(flags=flags):
+                code, out, err = run_sessions(["list", *flags])
+                self.assertEqual(code, 0, err)
+                self.assertIn(str(self.folder), err)
 
 
 class ShowTests(SessionsCase):

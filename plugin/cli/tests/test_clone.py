@@ -507,6 +507,28 @@ class ChildInvocationTests(CloneHarness):
         self.assertEqual(norm(env.get("CLAUDE_CONFIG_DIR")), norm(self.cfg))
         self.assertEqual(norm(marker["cwd"]), norm(self.project))
 
+    def test_run_from_a_linked_worktree_resumes_the_main_checkout_session(self):
+        """Adversarial where: run inside `.claude/worktrees/<name>`, the
+        project root is the worktree, so the original transcript is looked up
+        under the worktree's key and the fork runs where `--resume` cannot
+        find the session (GitHub #46)."""
+        def git(cwd, *args):
+            subprocess.run(["git", *args], cwd=str(cwd), check=True, capture_output=True)
+
+        (self.project / ".compass" / ".keep").write_text("", encoding="utf-8")
+        git(self.project, "init", "-q")
+        git(self.project, "add", ".compass")
+        git(self.project, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "vault")
+        worktree = self.project / ".claude" / "worktrees" / "builder-1"
+        git(self.project, "worktree", "add", "-q", str(worktree))
+        self.add_session(SID_A)
+        os.environ["CLAUDE_PROJECT_DIR"] = str(worktree)
+
+        code, out, err = self.invoke(SID_A, "--run-id", "wt1")
+        self.assertEqual(code, 0, out + err)
+        self.assertEqual(self.row("wt1", SID_A)["status"], "done")
+        self.assertEqual(norm(self.call(SID_A)["cwd"]), norm(self.project))
+
     def test_prompt_arrives_whole_on_stdin_with_the_output_path_filled_in(self):
         """Adversarial where: the prompt is built with `str.format` (crashing
         on or eating other brace text), written in text mode (newlines become

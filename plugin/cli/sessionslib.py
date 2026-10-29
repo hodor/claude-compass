@@ -68,6 +68,30 @@ def config_dir():
     return _dir_from_env("CLAUDE_CONFIG_DIR", ".claude")
 
 
+def main_checkout(project_path):
+    """The main checkout of `project_path` when it is a linked git worktree,
+    else `project_path` itself. A linked worktree's `.git` is a file naming
+    `<main>/.git/worktrees/<name>`, whose `commondir` file leads back to the
+    main `.git`. Sessions started in the main checkout are kept under its
+    key, so a worktree reads and clones them from there."""
+    project_path = Path(project_path)
+    try:
+        pointer = (project_path / ".git").read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeDecodeError):
+        return project_path
+    if not pointer.startswith("gitdir:"):
+        return project_path
+    gitdir = project_path / pointer[len("gitdir:"):].strip()
+    try:
+        common = gitdir / (gitdir / "commondir").read_text(encoding="utf-8").strip()
+        common = common.resolve()
+    except (OSError, UnicodeDecodeError, ValueError):
+        return project_path
+    if common.name != ".git" or not common.is_dir():
+        return project_path
+    return common.parent
+
+
 def transcripts_dir(project_path):
     return config_dir() / "projects" / project_key(project_path)
 

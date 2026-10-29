@@ -7,7 +7,9 @@ Code transcript folder. A session is a feature session when its entrypoint is
 every session. Each row carries the facts a human needs to pick sessions to
 clone: commits, plan and task ids, model, tokens used, headroom against the
 model's window, last modified time, and whether the session is still active.
-`--json` prints the rows as one JSON list.
+`--json` prints the rows as one JSON list. Run from a linked git worktree,
+`list` reads the main checkout's folder, where the project's sessions live.
+An empty result names the folder it read on stderr.
 
 `show` prints a transcript as plain text: assistant words verbatim and each
 tool call as one `[tool] <Name> <input>` line. It takes a file path, or
@@ -65,7 +67,7 @@ def _count(raw, option):
 
 
 def _project_root():
-    return vaultlib.find_vault_root().parent
+    return sessionslib.main_checkout(vaultlib.find_vault_root().parent)
 
 
 def _iso(epoch):
@@ -172,6 +174,9 @@ def _table(rows):
 def _list(args):
     options = _parse_list(args)
     rows = _session_rows(options)
+    if not rows:
+        folder = sessionslib.transcripts_dir(_project_root())
+        sys.stderr.write(f"compass sessions: no sessions listed from {folder}\n")
     if options["json"]:
         sys.stdout.write(json.dumps(rows, ensure_ascii=False) + "\n")
     else:

@@ -4,7 +4,8 @@ Claude Code sessions so each one writes down the lessons it learned.
 
 Each session is resumed with `claude -p --resume <id> --fork-session
 --no-session-persistence`, which forks the history in memory and leaves no
-session file behind. The fork runs with cwd at the project root, the
+session file behind. The fork runs with cwd at the project root (the main
+checkout when run from a linked git worktree, where its sessions live), the
 inherited environment plus `DISABLE_AUTO_COMPACT=1` and
 `COMPASS_WORKER_SESSION=1`, and only the tools `Read,Glob,Grep,Write,Edit`
 (`--tools` removes every other tool, MCP servers included). `--add-dir` gives
@@ -612,7 +613,7 @@ def _start(args):
         vault_root = vaultlib.find_vault_root()
     except FileNotFoundError as exc:
         raise Refusal(str(exc))
-    project = vault_root.parent
+    project = sessionslib.main_checkout(vault_root.parent)
 
     binary, host_kind = capture_worker._resolve_binary(_capture_config(vault_root), vault_root)
     if host_kind == "dsh":
