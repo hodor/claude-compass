@@ -34,10 +34,19 @@ Shipped content comes first and the addendum last, so a local instruction
 that contradicts shipped prose wins by position - the same rule Claude Code's
 own CLAUDE.md concatenation uses.
 
+A shipped file that was edited by hand is saved by update under
+`meta/local/kept/<name>`, `<name>` being the addition's path
+(`agents/researcher.md`). `compass overlay --extract <name>` reads that saved
+copy against the installed shipped text: the lines it holds after the whole
+shipped text become the local addition, applied at once. A reworded, removed,
+or mid-file inserted shipped line has no form as an addition, so each is
+printed on a line of its own and left in the saved copy.
+
 `CLAUDE.md` is never read, written, or moved here or anywhere else in the
 CLI (SPEC-014 D-02).
 """
 
+import difflib
 import os
 import re
 import sys
@@ -46,6 +55,7 @@ from pathlib import Path
 import vaultlib
 
 LOCAL_DIR = "meta/local"
+KEPT_DIR = LOCAL_DIR + "/kept"
 MARKER = "<!-- project-local overlay: {source} -->"
 
 NOT_APPLIED = "not applied"
@@ -85,6 +95,37 @@ def _target_path(vault_root, rel):
 
 def _lf(text):
     return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def addition_name(installed_rel):
+    """The addition's path under `meta/local/` for an installed path under
+    `.claude/`: `agents/builder.md` stays, `skills/lessons/SKILL.md` becomes
+    `skills/lessons.md`. Any other file in a skill folder keeps its path."""
+    parts = installed_rel.split("/")
+    if len(parts) == 3 and parts[0] == "skills" and parts[2] == "SKILL.md":
+        return f"skills/{parts[1]}.md"
+    return installed_rel
+
+
+def shipped_forms(rel, data):
+    """Return the byte strings the installed file `data` can have been
+    shipped as, once the block of its own addition `rel` is removed. A file
+    with no such block can only be itself. Applying an addition rewrites the
+    newlines between the shipped text and its marker, so the text above the
+    marker comes back as it stands, with its trailing newlines trimmed, with
+    one newline, and with one two-byte line ending."""
+    try:
+        raw = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return [data]
+    marker = MARKER.format(source=f"{LOCAL_DIR}/{rel}")
+    index = _block_start(raw, marker, "")
+    if index < 0:
+        return [data]
+    above = raw[:index]
+    bare = above.rstrip("\r\n")
+    forms = [above, bare, bare + "\n", bare + "\r\n"]
+    return [form.encode("utf-8") for form in forms]
 
 
 def _block_start(raw, marker, block):
@@ -235,9 +276,127 @@ def apply_overlays(vault_root, apply=True):
     return report
 
 
+def _split_kept_name(vault_root, name):
+    """Return (addition rel, target) for a saved copy's `name`. A later saved
+    copy of one file carries a numeric suffix (`builder.2.md`); the suffix is
+    dropped when no installed file answers to the full stem. Returns
+    (None, None) for a name that is not `<agents|rules|skills>/<file>.md`."""
+    parts = name.split("/")
+    if (
+        len(parts) != 2
+        or parts[0] not in TARGETS
+        or not parts[1].endswith(".md")
+        or parts[1] == ".md"
+        or ".." in parts
+    ):
+        return None, None
+    target = _target_path(vault_root, name)
+    stripped = re.sub(r"\.\d+\.md$", ".md", parts[1])
+    if not target.is_file() and stripped != parts[1]:
+        name = f"{parts[0]}/{stripped}"
+        target = _target_path(vault_root, name)
+    return name, target
+
+
+def _above_block(rel, raw):
+    """The text of `raw` above the block of addition `rel`, LF-normalized;
+    all of it when the block is absent."""
+    marker = MARKER.format(source=f"{LOCAL_DIR}/{rel}")
+    index = _block_start(raw, marker, "")
+    return _lf(raw if index < 0 else raw[:index])
+
+
+def _compare_lines(shipped, kept):
+    """Return (added, changes): the lines `kept` holds after all of
+    `shipped`, and a sentence for each change that has no form as an
+    addition."""
+    s_lines = shipped.rstrip("\n").split("\n")
+    k_lines = kept.rstrip("\n").split("\n")
+    matcher = difflib.SequenceMatcher(None, s_lines, k_lines, autojunk=False)
+    added, changes = [], []
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag in ("delete", "replace"):
+            for n in range(i1, i2):
+                changes.append(
+                    f"shipped line {n + 1} is reworded or removed: {s_lines[n]}"
+                )
+        elif tag == "insert":
+            if i1 == len(s_lines):
+                added.extend(k_lines[j1:j2])
+            else:
+                for line in k_lines[j1:j2]:
+                    changes.append(f"line inserted after shipped line {i1}: {line}")
+    return added, changes
+
+
+def _append_addition(vault_root, rel, text):
+    """Add `text` to the local addition `rel`: a new file, or after the
+    existing text. Text the file already holds is not added again. Returns
+    the path."""
+    path = vault_root / LOCAL_DIR / rel
+    existing = vaultlib.read_vault_text(path).strip() if path.is_file() else ""
+    if text in existing:
+        return path
+    joined = f"{existing}\n\n{text}" if existing else text
+    path.parent.mkdir(parents=True, exist_ok=True)
+    vaultlib.write_text_lf(path, joined + "\n")
+    return path
+
+
+def extract(vault_root, name, out=None):
+    """Turn the saved copy `name` into a local addition and apply it. Prints
+    what was done and, one per line, each change that has no form as an
+    addition. Creates nothing when there is no saved copy, no installed
+    shipped file, or no appended line. Returns the exit code."""
+    out = out or sys.stdout
+    rel, target = _split_kept_name(vault_root, name)
+    if rel is None:
+        out.write(f"compass overlay: {name} is not <agents|rules|skills>/<file>.md\n")
+        return 1
+    kept_path = vault_root / KEPT_DIR / name
+    if not kept_path.is_file():
+        out.write(f"{name}: no saved copy under {KEPT_DIR}/\n")
+        return 0
+    if not target.is_file():
+        out.write(f"{rel}: no shipped file to compare the saved copy with\n")
+        return 0
+    try:
+        shipped = _above_block(rel, target.read_bytes().decode("utf-8"))
+        kept = _above_block(rel, kept_path.read_bytes().decode("utf-8"))
+    except (OSError, UnicodeDecodeError) as exc:
+        out.write(f"{name}: not read ({exc})\n")
+        return 1
+    added, changes = _compare_lines(shipped, kept)
+    for change in changes:
+        out.write(change.replace("\r", "\\r") + "\n")
+    text = "\n".join(added).strip()
+    if not text:
+        if not changes:
+            out.write(
+                f"{name}: the saved copy matches the shipped text; nothing to extract\n"
+            )
+        return 0
+    try:
+        path = _append_addition(vault_root, rel, text)
+        state, tgt, raw, index, block, empty = _classify(vault_root, rel, path)
+        if state in (NOT_APPLIED, OUT_OF_DATE):
+            _write_block(tgt, raw, index, block, empty)
+    except (OSError, ValueError) as exc:
+        out.write(f"{rel}: not written ({exc})\n")
+        return 1
+    out.write(f"{rel}: local addition written and applied\n")
+    return 0
+
+
 def run(args):
     apply = "--apply" in args
     vault_root = vaultlib.find_vault_root()
+    if "--extract" in args:
+        at = args.index("--extract")
+        if at + 1 >= len(args):
+            sys.stdout.write("compass overlay: --extract needs the saved file's name\n")
+            return 1
+        return extract(vault_root, args[at + 1])
     states = addition_states(vault_root)
     if not states:
         sys.stdout.write(
