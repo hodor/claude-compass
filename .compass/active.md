@@ -66,5 +66,5 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
 Plan: [[PLAN-024-working-in-compass-is-visual]].
 
-- [ ] TASK-207: A view an agent writes, named by `view:` and kept under `views/` - complexity: M
+- [x] TASK-207: A view an agent writes, named by `view:` and kept under `views/` - complexity: M
 - [ ] TASK-205: Live acceptance on the next plan Compass writes - complexity: M, depends_on: TASK-207

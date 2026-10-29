@@ -85,6 +85,20 @@
 //     `<choice>: <note>` line in table order (for a review of several files,
 //     in the note of the plan's file). Agree adds no line. The answers live on
 //     the review, so redrawing the panel keeps them.
+// A document whose properties hold `view: views/<name>.js` gets that script's
+// drawing in place of the view its `type:` picks. Only a path of the form
+// `views/<segments>` (forward slashes, no `.` or `..` segment, no drive) is
+// read, with the vault adapter. The script text is evaluated as a CommonJS-style
+// module whose `module.exports` (or its `default`) is a function, possibly
+// async, called with `{app, file, text, el, open}`: `file` is the open
+// document, `text` its text, `el` the element to draw into, and `open(path,
+// line)` opens a document at a 1-based line. It runs with the vault's full
+// access. The script's path stands above the drawing; a refused path or a
+// script that is missing, does not parse, throws, rejects or exports no
+// function leaves one plain line naming it. Each redraw reads the script again
+// and replaces the drawing; a script still running for a document that is no
+// longer in view draws nothing on the panel. A document that `open` shows
+// leaves the drawing in place while it is the file in view.
 // The view for `type: spec` opens with the spec's pipeline strip, then shows
 // the spec's Problem and Desired Outcome as the human wrote them and one card
 // per decision. The strip draws spec, research, plan, build and validate as one
@@ -217,6 +231,8 @@ class ViewPanelView extends ItemView {
     super(leaf);
     this.plugin = plugin;
     this.drawSeq = 0;
+    this.heldPath = null;
+    this.scriptPath = null;
     // the draw whose Mermaid charts may still land on the panel
     this.chartToken = null;
     // research path -> {high, medium, low}: the confidence filters switched on
@@ -276,6 +292,34 @@ function typeOf(text) {
 function viewFor(text) {
   const type = typeOf(text);
   return type === "plan" || type === "spec" || type === "research" || type === "loop" ? type : null;
+}
+
+// The vault path a document's `view:` property names, or null when it has
+// none.
+function viewScriptOf(text) {
+  const { props } = propertiesOf(linesOf(text));
+  return props.view ? props.view : null;
+}
+
+// Whether a `view:` value may be read and run: a vault path of the form
+// `views/<segments>` with forward slashes, no `.` or `..` segment, no empty
+// segment and no drive.
+function viewScriptAllowed(path) {
+  if (!path.startsWith("views/") || path.includes("\\") || path.includes(":")) return false;
+  return path.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..");
+}
+
+// The function a view script exports. The script text is the body of a
+// CommonJS-style module: `module.exports`, or its `default` property, is the
+// function. Throws when the text does not parse, throws while loading, or
+// exports no function.
+function loadViewScript(source) {
+  const module = { exports: {} };
+  new Function("module", "exports", source)(module, module.exports);
+  const out = module.exports;
+  if (typeof out === "function") return out;
+  if (out && typeof out.default === "function") return out.default;
+  throw new Error("the script exports no function");
 }
 
 // ---- a loop's ledger: readings and costs by run ----
@@ -1656,6 +1700,11 @@ class CompassReview extends Plugin {
       this.renderViewPanel();
       return;
     }
+    const scriptInView = this.app.workspace.getLeavesOfType(VIEW_TYPE).some((leaf) => leaf.view && leaf.view.scriptPath === file.path);
+    if (scriptInView) {
+      this.renderViewPanel();
+      return;
+    }
     const specInView = this.app.workspace.getLeavesOfType(VIEW_TYPE).some((leaf) => leaf.view && leaf.view.specPath);
     if (specInView && /\.md$/.test(file.path)) this.renderViewPanel();
   }
@@ -2027,12 +2076,18 @@ class CompassReview extends Plugin {
 
   // Draws the view for the markdown file in view. A panel whose drawing would
   // come out the same is left alone, so a note being typed keeps its focus and
-  // caret; of two draws in flight only the later one lands.
+  // caret; of two draws in flight only the later one lands. A document an
+  // agent's view opened (`view.heldPath`) leaves the drawing in place while it
+  // is the file in view.
   async drawViewPanel(view) {
     const seq = ++view.drawSeq;
     const root = view.contentEl;
     const active = this.app.workspace.getActiveFile();
     const file = active && active.extension === "md" ? active : null;
+    if (view.heldPath !== null) {
+      if (file && file.path === view.heldPath) return;
+      view.heldPath = null;
+    }
     let text = null;
     if (file) {
       try {
@@ -2042,7 +2097,18 @@ class CompassReview extends Plugin {
       }
     }
     if (seq !== view.drawSeq) return;
-    const kind = text === null ? null : viewFor(text);
+    const viewPath = text === null ? null : viewScriptOf(text);
+    const kind = text === null ? null : viewPath !== null ? "custom" : viewFor(text);
+    let script = null;
+    if (kind === "custom" && viewScriptAllowed(viewPath)) {
+      try {
+        script = { source: await this.app.vault.adapter.read(viewPath) };
+      } catch (e) {
+        script = { error: e };
+      }
+      if (seq !== view.drawSeq) return;
+    }
+    view.scriptPath = script ? viewPath : null;
     let ledgerText = null;
     if (kind === "loop") {
       try {
@@ -2053,7 +2119,7 @@ class CompassReview extends Plugin {
       if (seq !== view.drawSeq) return;
     }
     const entry = file && (kind === "plan" || kind === "spec") ? this.entryFor(file.path) : null;
-    const saved = file && kind ? await this.savedChanges(file.path) : null;
+    const saved = file && kind && kind !== "custom" ? await this.savedChanges(file.path) : null;
     let pipeline = null;
     if (kind === "spec") {
       try {
@@ -2073,6 +2139,7 @@ class CompassReview extends Plugin {
       saved && [saved.id, textHash(saved.diff)],
       pipeline,
       ledgerText === null ? null : textHash(ledgerText),
+      script && (script.error ? "unreadable" : textHash(script.source)),
     ]);
     if (root.dataset.signature === signature) return;
     root.dataset.signature = signature;
@@ -2083,6 +2150,10 @@ class CompassReview extends Plugin {
       root.createDiv({ cls: "compass-view-note", text: "Open a document to see its view." });
     } else if (text === null) {
       root.createDiv({ cls: "compass-view-note", text: "This document could not be read." });
+    } else if (kind === "custom") {
+      this.drawAgentView(root, view, seq, file, text, viewPath, script).catch((e) =>
+        console.error("[compass-review] drawing the view script failed", e)
+      );
     } else if (kind === "plan") {
       this.drawPlanBoard(root, file, text, entry, changes);
     } else if (kind === "spec") {
@@ -2099,6 +2170,51 @@ class CompassReview extends Plugin {
           ? `Compass has no view for a document of type ${type}.`
           : "This document has no type property, so Compass has no view for it.",
       });
+    }
+  }
+
+  // The view a document's `view:` property names. `script` is the read of the
+  // script ({source} or {error}), null when the path is refused. The script's
+  // path stands above its drawing, which goes into its own element; a script
+  // that cannot be loaded or run leaves one plain line naming it. The script
+  // runs on its own, so a slow one does not hold up the panel; a run whose
+  // draw was replaced while the script worked draws into an element that is no
+  // longer on the panel and adds nothing else. A document the script opens
+  // with `open` keeps the drawing in view for as long as it is the file in
+  // view, so a list of links stays usable.
+  async drawAgentView(root, view, seq, file, text, viewPath, script) {
+    const note = (reason) => {
+      if (seq !== view.drawSeq) return;
+      root.createDiv({ cls: "compass-view-note", text: `The view script ${viewPath} ${reason}.` });
+    };
+    if (script === null) {
+      note("is outside the views/ folder, so it was not run");
+      return;
+    }
+    root.createDiv({ cls: "compass-view-script compass-fine", text: viewPath });
+    if (script.error) {
+      console.error("[compass-review] reading the view script failed", script.error);
+      note("could not be read");
+      return;
+    }
+    const el = root.createDiv({ cls: "compass-view-custom" });
+    try {
+      const draw = loadViewScript(script.source);
+      await draw({
+        app: this.app,
+        file,
+        text,
+        el,
+        open: (path, line) => {
+          view.heldPath = path;
+          this.openLine(path, line, "open from a view");
+        },
+      });
+    } catch (e) {
+      console.error("[compass-review] the view script failed", e);
+      if (seq !== view.drawSeq) return;
+      el.remove();
+      note(`failed: ${e && e.message ? e.message : e}`);
     }
   }
 
