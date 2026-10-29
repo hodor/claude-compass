@@ -21,6 +21,7 @@ sense of yields None or an empty result, never an exception.
 
 import os
 import re
+import subprocess
 import time
 from pathlib import Path
 
@@ -71,9 +72,13 @@ def config_dir():
 def main_checkout(project_path):
     """The main checkout of `project_path` when it is a linked git worktree,
     else `project_path` itself. A linked worktree's `.git` is a file naming
-    `<main>/.git/worktrees/<name>`, whose `commondir` file leads back to the
-    main `.git`. Sessions started in the main checkout are kept under its
-    key, so a worktree reads and clones them from there."""
+    its private git dir, which holds a `commondir` file leading to the shared
+    git dir; a submodule's `.git` file names a git dir without one. The main
+    checkout is the shared dir's `core.worktree` when set (a submodule's
+    `.git/modules/<name>`), else the shared dir's parent when it is named
+    `.git`. A repo made with `--separate-git-dir` records neither, and the
+    worktree's own path is returned. Sessions started in the main checkout
+    are kept under its key, so a worktree reads and clones them from there."""
     project_path = Path(project_path)
     try:
         pointer = (project_path / ".git").read_text(encoding="utf-8").strip()
@@ -84,12 +89,37 @@ def main_checkout(project_path):
     gitdir = project_path / pointer[len("gitdir:"):].strip()
     try:
         common = gitdir / (gitdir / "commondir").read_text(encoding="utf-8").strip()
-        common = common.resolve()
+        common = Path(os.path.normpath(common))
     except (OSError, UnicodeDecodeError, ValueError):
         return project_path
-    if common.name != ".git" or not common.is_dir():
-        return project_path
-    return common.parent
+    configured = _core_worktree(common)
+    if configured is not None:
+        return configured
+    if common.name == ".git" and common.is_dir():
+        return common.parent
+    return project_path
+
+
+def _core_worktree(common):
+    """The checkout named by `core.worktree` in the git dir `common`,
+    resolved against that dir, when it holds a `.git` entry; else None,
+    also when git is absent or fails."""
+    try:
+        result = subprocess.run(
+            ["git", "--git-dir", str(common), "config", "--get", "core.worktree"],
+            capture_output=True, timeout=30,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    value = result.stdout.decode("utf-8", errors="replace").strip()
+    if result.returncode != 0 or not value:
+        return None
+    try:
+        checkout = Path(os.path.normpath(common / value))
+    except ValueError:
+        return None
+    return checkout if (checkout / ".git").exists() else None
 
 
 def transcripts_dir(project_path):

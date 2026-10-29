@@ -665,6 +665,15 @@ class EndClassificationTests(CloneHarness):
         self.assertIsNotNone(self.row("cost1", SID_B)["cost_usd"])
         self.assertIsNone(self.row("cost1", SID_C)["cost_usd"])
 
+    def test_row_records_the_tokens_the_clone_inherited(self):
+        """Adversarial where: a row carries cost but not the inherited
+        tokens, so no later run can calibrate its cost estimate, or a
+        missing transcript invents a count."""
+        self.add_session(SID_A, used=123456)
+        self.invoke(SID_A, SID_B, "--run-id", "used1")
+        self.assertEqual(self.row("used1", SID_A)["used"], 123456)
+        self.assertIsNone(self.row("used1", SID_B)["used"])
+
     def test_unstartable_binary_is_a_failed_clone_not_a_crash(self):
         """Adversarial where: a missing binary raises out of the runner, so
         the run folder, `run.json` and the other clones' rows are lost."""

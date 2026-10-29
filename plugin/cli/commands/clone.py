@@ -447,6 +447,7 @@ class _Run:
             "reason": reason,
             "exit_code": None,
             "cost_usd": None,
+            "used": None,
             "lesson_file": str(self.run_folder / f"{sid}.md"),
             "kept": False,
             "transcript": None,
@@ -518,6 +519,7 @@ class _Run:
 
         before = _fingerprint(original)
         model = sessionslib.model_id(original)
+        used = sessionslib.used_tokens(original)
         note = None
         if model is None:
             note = "no model found in the session; Claude Code's default model was used"
@@ -591,6 +593,7 @@ class _Run:
             sid, status, reason,
             exit_code=proc.returncode,
             cost_usd=cost,
+            used=used,
             kept=transcript is not None,
             transcript=str(transcript) if transcript is not None else None,
             original_before=before,

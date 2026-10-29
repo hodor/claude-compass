@@ -112,7 +112,8 @@ EXTENDED_MODEL = "claude-opus-4-8"
 TABLE_HEADER = ["SESSION", "ENTRYPOINT", "COMMITS", "PLANS", "TASKS", "MODEL", "USED",
                 "HEADROOM", "MODIFIED", "ACTIVE", "FEATURE"]
 JSON_KEYS = {"session_id", "entrypoint", "commits", "plans", "tasks", "model", "used",
-             "window", "headroom", "modified", "active", "feature"}
+             "window", "headroom", "modified", "active", "feature",
+             "est_cost_usd", "est_basis"}
 RUN_ROW_KEYS = {"event", "run_id", "at", "written", "merged", "written_count",
                 "merged_count", "rejected"}
 
@@ -454,6 +455,44 @@ class ListWorktreeTests(SessionsCase):
         os.environ["CLAUDE_PROJECT_DIR"] = str(worktree)
         self.assertEqual(self.ids(), ["main10"])
 
+    def test_list_from_a_worktree_of_a_submodule_reads_the_submodule_checkout(self):
+        """Adversarial where: the shared git dir of a submodule is
+        `<super>/.git/modules/<name>`, not a `.git` folder, so a path rule
+        that takes the git dir's parent finds no checkout."""
+        inner = self.tmp / "inner"
+        inner.mkdir()
+        self.git(inner, "init", "-q")
+        self.git(inner, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "--allow-empty", "-qm", "x")
+        outer = self.tmp / "outer"
+        outer.mkdir()
+        self.git(outer, "init", "-q")
+        self.git(outer, "-c", "protocol.file.allow=always", "submodule", "add", "-q", str(inner), "sub")
+        submodule = outer / "sub"
+        (submodule / ".compass").mkdir()
+        self.make_session("sub10", commits=10, folder=sessionslib.transcripts_dir(submodule.resolve()))
+        worktree = self.tmp / "sub-wt"
+        self.git(submodule, "worktree", "add", "-q", str(worktree))
+        (worktree / ".compass").mkdir()
+        os.environ["CLAUDE_PROJECT_DIR"] = str(worktree)
+        self.assertEqual(self.ids(), ["sub10"])
+
+    def test_list_from_a_worktree_of_a_separate_git_dir_repo_names_the_folder_it_read(self):
+        """Adversarial where: git records no main checkout for a repo made
+        with `--separate-git-dir` and lists the git dir itself, which a
+        resolver must not take for a checkout."""
+        gitdir = self.tmp / "store.git"
+        self.git(self.tmp, "init", "-q", "--separate-git-dir", str(gitdir), str(self.project))
+        (self.project / ".compass" / "meta" / ".keep").write_text("", encoding="utf-8")
+        self.git(self.project, "add", ".compass")
+        self.git(self.project, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "keep")
+        worktree = self.project / ".claude" / "worktrees" / "builder-2"
+        self.git(self.project, "worktree", "add", "-q", str(worktree))
+        self.assertEqual(sessionslib.main_checkout(worktree), worktree)
+        os.environ["CLAUDE_PROJECT_DIR"] = str(worktree)
+        code, out, err = run_sessions(["list", "--json"])
+        self.assertEqual((code, json.loads(out)), (0, []))
+        self.assertIn(str(sessionslib.transcripts_dir(worktree)), err)
+
     def test_list_from_the_main_checkout_is_unchanged_by_its_worktrees(self):
         self.make_session("main10", commits=10)
         self.make_worktree()
@@ -467,6 +506,116 @@ class ListWorktreeTests(SessionsCase):
                 code, out, err = run_sessions(["list", *flags])
                 self.assertEqual(code, 0, err)
                 self.assertIn(str(self.folder), err)
+
+
+class ListTopicTests(SessionsCase):
+    def test_grep_keeps_sessions_whose_transcript_mentions_the_topic(self):
+        """Adversarial where: the topic is ignored (GitHub #46), matched
+        case-sensitively, or only searched in the first record; a session
+        whose subagents alone did the topic's work is dropped."""
+        self.make_session("pod", commits=10, extra=[assistant(text_block("deploy to RunPod"))])
+        self.make_session("pod_lower", commits=10, text="the runpod endpoint")
+        self.make_session("side", commits=10)
+        side = self.folder / "side" / "subagents" / "agent-a1.jsonl"
+        self.write_raw(side, json.dumps(assistant(text_block("RUNPOD worker"))).encode("utf-8"))
+        self.make_session("other", commits=10, text="unrelated work")
+        self.assertEqual(sorted(self.ids("--grep", "runpod")), ["pod", "pod_lower", "side"])
+
+    def test_grep_reads_conversation_text_not_record_metadata(self):
+        """Adversarial where: the pattern runs over raw JSON lines, so a word
+        in every record's `cwd` or `gitBranch` (the project's own name)
+        matches every session, and `^` anchors to the JSON line."""
+        quiet = {"type": "user", "cwd": "/work/runpod-tools", "gitBranch": "runpod",
+                 "message": {"role": "user", "content": "unrelated work"}}
+        self.make_session("meta_only", commits=10, text="unrelated work", extra=[quiet])
+        self.make_session("said", commits=10, text="runpod at the start")
+        result = {"type": "user", "message": {"role": "user", "content": [
+            {"type": "tool_result", "tool_use_id": "t", "content": "pod 7 on RunPod"}]}}
+        self.make_session("tool_said", commits=10, extra=[result])
+        call = assistant(tool_block("Bash", command="runpodctl get pods"))
+        self.make_session("call_said", commits=10, extra=[call])
+        self.assertEqual(sorted(self.ids("--grep", "runpod")), ["call_said", "said", "tool_said"])
+        self.assertEqual(self.ids("--grep", "^runpod"), ["said"])
+
+    def test_grep_with_an_invalid_pattern_returns_one(self):
+        self.make_session("c10", commits=10)
+        code, _, err = run_sessions(["list", "--grep", "(unclosed"])
+        self.assertEqual(code, 1)
+        self.assertIn("--grep", err)
+
+    def test_grep_without_a_pattern_returns_one(self):
+        code, _, err = run_sessions(["list", "--grep"])
+        self.assertEqual(code, 1)
+        self.assertTrue(err.strip())
+
+
+class ListCostEstimateTests(SessionsCase):
+    def write_run(self, project_key, run_id, clones):
+        folder = self.home / "sessions" / project_key / run_id
+        folder.mkdir(parents=True)
+        (folder / "run.json").write_text(json.dumps({"run_id": run_id, "clones": clones}),
+                                         encoding="utf-8")
+
+    def test_estimate_without_history_uses_the_default_rate(self):
+        """Adversarial where: no past run exists and the estimate is zero or
+        missing, so a costly run goes ahead unflagged (GitHub #46)."""
+        self.make_session("c10", commits=10, used=800000)
+        module = importlib.import_module("commands.sessions")
+        row = self.list_json()[0]
+        self.assertEqual(row["est_cost_usd"], round(800000 * module.DEFAULT_USD_PER_MTOK / 1e6, 2))
+        self.assertEqual(row["est_basis"], "default")
+
+    def test_estimate_calibrates_from_past_runs_of_every_project(self):
+        """Adversarial where: past clones' cost per inherited token is
+        ignored, rows without `used` or `cost_usd` skew the rate, or only
+        this project's runs count."""
+        self.write_run("other-project", "r1", [
+            {"session_id": "a", "used": 1000000, "cost_usd": 100.0},
+            {"session_id": "b", "used": 1000000, "cost_usd": 300.0},
+            {"session_id": "c", "used": None, "cost_usd": 999.0},
+            {"session_id": "d", "used": 500000, "cost_usd": None},
+            {"session_id": "e", "used": 0, "cost_usd": 50.0},
+        ])
+        self.make_session("c10", commits=10, used=500000)
+        row = self.list_json()[0]
+        self.assertEqual(row["est_cost_usd"], 100.0)
+        self.assertEqual(row["est_basis"], "2 past clones")
+
+    def test_a_corrupt_run_record_falls_back_to_the_default(self):
+        folder = self.home / "sessions" / "p" / "bad"
+        folder.mkdir(parents=True)
+        (folder / "run.json").write_bytes(b"\xff not json")
+        self.make_session("c10", commits=10, used=1000)
+        self.assertEqual(self.list_json()[0]["est_basis"], "default")
+
+    def test_hostile_past_rows_never_skew_or_crash_the_estimate(self):
+        """Adversarial where: a run.json carries NaN, Infinity, a negative
+        or float-overflowing cost, a huge `used`, or nesting deep enough to
+        exhaust the parser; any one of them crashes `list`, prints invalid
+        JSON (NaN), or drags the rate below zero."""
+        folder = self.home / "sessions" / "p" / "hostile"
+        folder.mkdir(parents=True)
+        (folder / "run.json").write_text(
+            '{"clones": [{"used": 1000, "cost_usd": NaN},'
+            ' {"used": 1000, "cost_usd": Infinity},'
+            ' {"used": 1000, "cost_usd": -5},'
+            ' {"used": 1000, "cost_usd": 1' + "0" * 400 + '},'
+            ' {"used": 1' + "0" * 400 + ', "cost_usd": 1},'
+            ' {"used": 1000000, "cost_usd": 200}]}', encoding="utf-8")
+        deep = self.home / "sessions" / "p" / "deep"
+        deep.mkdir(parents=True)
+        (deep / "run.json").write_text('{"clones":' + "[" * 100000, encoding="utf-8")
+        self.make_session("c10", commits=10, used=500000)
+        code, out, err = run_sessions(["list", "--json"])
+        self.assertEqual(code, 0, err)
+        (row,) = json.loads(out, parse_constant=lambda name: self.fail(f"{name} in output"))
+        self.assertEqual(row["est_cost_usd"], 100.0)
+        self.assertEqual(row["est_basis"], "1 past clone")
+
+    def test_unknown_usage_has_no_estimate(self):
+        self.make_session("c10", commits=10)
+        row = self.list_json()[0]
+        self.assertIsNone(row["est_cost_usd"])
 
 
 class ShowTests(SessionsCase):

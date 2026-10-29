@@ -7,6 +7,20 @@ Code transcript folder. A session is a feature session when its entrypoint is
 every session. Each row carries the facts a human needs to pick sessions to
 clone: commits, plan and task ids, model, tokens used, headroom against the
 model's window, last modified time, and whether the session is still active.
+`--grep PATTERN` keeps only sessions whose conversation matches the regular
+expression, case-insensitively: the text of user and assistant messages, tool
+call inputs and tool results, in the session and its subagents. Record
+metadata such as `cwd` and `gitBranch` is never searched, and `^` and `$`
+anchor to one piece of text.
+
+Each row estimates what cloning the session costs: `est_cost_usd` is `used`
+times a dollar rate per million inherited tokens. A clone re-reads its whole
+inherited context on every turn, so the rate is measured, never priced: it is
+total cost over total inherited tokens across every past clone recorded in a
+`run.json` under `<compass-home>/sessions/`, and `est_basis` names how many
+clones it rests on. With no such clone the rate is `DEFAULT_USD_PER_MTOK` and
+`est_basis` is `default`.
+
 `--json` prints the rows as one JSON list. Run from a linked git worktree,
 `list` reads the main checkout's folder, where the project's sessions live.
 An empty result names the folder it read on stderr.
@@ -23,6 +37,7 @@ stderr and returns 1; the command never exits 2.
 """
 
 import json
+import math
 import re
 import sys
 from datetime import datetime, timezone
@@ -38,12 +53,16 @@ DEFAULT_MIN_COMMITS = 10
 # very long digit strings.
 MAX_DIGITS = 9
 CLONE_LOG = Path("meta") / "clone-log.jsonl"
+# Dollars per million inherited tokens when no past clone is recorded. A
+# ten-clone run of 0.7M to 0.9M-token sessions measured $378 per million
+# overall and $167 to $656 per clone.
+DEFAULT_USD_PER_MTOK = 400
 
 TABLE_COLUMNS = ["SESSION", "ENTRYPOINT", "COMMITS", "PLANS", "TASKS", "MODEL", "USED",
                  "HEADROOM", "MODIFIED", "ACTIVE", "FEATURE"]
 
 USAGE = (
-    "usage: compass sessions list [--json] [--min-commits N] [--all]\n"
+    "usage: compass sessions list [--json] [--min-commits N] [--all] [--grep PATTERN]\n"
     "       compass sessions show <path | run-id/session-id>\n"
     "       compass sessions record <run-id> [--written NAME...] [--merged NAME...] [--rejected N]\n"
 )
@@ -86,7 +105,7 @@ def _cell(value):
 # list ------------------------------------------------------------------
 
 def _parse_list(args):
-    options = {"json": False, "all": False, "min_commits": DEFAULT_MIN_COMMITS}
+    options = {"json": False, "all": False, "min_commits": DEFAULT_MIN_COMMITS, "grep": None}
     index = 0
     while index < len(args):
         arg = args[index]
@@ -99,10 +118,97 @@ def _parse_list(args):
             options["min_commits"] = _count(args[index] if index < len(args) else None, "--min-commits")
         elif arg.startswith("--min-commits="):
             options["min_commits"] = _count(arg[len("--min-commits="):], "--min-commits")
+        elif arg == "--grep":
+            index += 1
+            options["grep"] = _pattern(args[index] if index < len(args) else None)
+        elif arg.startswith("--grep="):
+            options["grep"] = _pattern(arg[len("--grep="):])
         else:
             raise UsageError(f"unknown argument {arg[:40]!r}")
         index += 1
     return options
+
+
+def _pattern(raw):
+    """`raw` compiled as a case-insensitive regular expression, or UsageError."""
+    if not raw:
+        raise UsageError("--grep needs a pattern")
+    try:
+        return re.compile(raw, re.IGNORECASE)
+    except re.error as exc:
+        raise UsageError(f"--grep pattern {raw[:40]!r} is invalid: {exc}") from exc
+
+
+def _texts(content):
+    """Every piece of conversation text in a message's `content`: plain
+    strings, text blocks, tool call inputs as compact JSON, and tool
+    results, which nest content of their own."""
+    if isinstance(content, str):
+        yield content
+        return
+    if not isinstance(content, list):
+        return
+    for block in content:
+        if isinstance(block, str):
+            yield block
+        elif not isinstance(block, dict):
+            continue
+        elif block.get("type") == "text" and isinstance(block.get("text"), str):
+            yield block["text"]
+        elif block.get("type") == "tool_use":
+            yield _compact(block.get("input", {}))
+        elif block.get("type") == "tool_result":
+            yield from _texts(block.get("content"))
+
+
+def _mentions(path, pattern):
+    """True when any message text of the transcript at `path`, or of one of
+    its subagent transcripts, matches `pattern`."""
+    for transcript in (path, *sessionslib.subagent_transcripts(path)):
+        for record in sessionslib.records(transcript):
+            if record.get("type") not in ("user", "assistant"):
+                continue
+            message = record.get("message")
+            content = message.get("content") if isinstance(message, dict) else None
+            if any(pattern.search(text) for text in _texts(content)):
+                return True
+    return False
+
+
+def _amount(value):
+    """`value` as a finite float of 0 or more, else None. JSON booleans,
+    NaN, Infinity and integers too large for a float are refused."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        value = float(value)
+    except OverflowError:
+        return None
+    return value if math.isfinite(value) and value >= 0 else None
+
+
+def _cost_rate():
+    """`(usd_per_million_tokens, basis)` measured from every past clone row
+    holding both a positive `used` and a `cost_usd` of 0 or more, each a
+    finite number."""
+    cost = used = clones = 0
+    root = sessionslib.compass_home() / "sessions"
+    for record in sorted(root.glob("*/*/run.json")) if root.is_dir() else ():
+        try:
+            rows = json.loads(record.read_bytes()).get("clones")
+        except (OSError, ValueError, AttributeError, RecursionError):
+            continue
+        for row in rows if isinstance(rows, list) else ():
+            if not isinstance(row, dict):
+                continue
+            row_used, row_cost = _amount(row.get("used")), _amount(row.get("cost_usd"))
+            if row_used and row_cost is not None and math.isfinite(used + row_used):
+                cost += row_cost
+                used += row_used
+                clones += 1
+    if not clones:
+        return DEFAULT_USD_PER_MTOK, "default"
+    return cost / used * 1_000_000, f"{clones} past clone{'s' if clones != 1 else ''}"
 
 
 def _session_row(path, mtime, min_commits):
@@ -132,6 +238,7 @@ def _session_rows(options):
     folder = sessionslib.transcripts_dir(_project_root())
     if not folder.is_dir():
         return []
+    rate, basis = _cost_rate()
     found = []
     for path in folder.glob("*.jsonl"):
         try:
@@ -146,8 +253,17 @@ def _session_rows(options):
             row = _session_row(path, mtime, options["min_commits"])
         except OSError:
             continue
-        if options["all"] or row["feature"]:
-            rows.append(row)
+        if not (options["all"] or row["feature"]):
+            continue
+        if options["grep"] is not None:
+            try:
+                if not _mentions(path, options["grep"]):
+                    continue
+            except OSError:
+                continue
+        row["est_cost_usd"] = None if row["used"] is None else round(row["used"] * rate / 1_000_000, 2)
+        row["est_basis"] = basis
+        rows.append(row)
     return rows
 
 
