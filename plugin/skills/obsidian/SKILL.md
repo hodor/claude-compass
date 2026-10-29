@@ -315,6 +315,15 @@ A spec, plan or research document is read by a person who decides. It opens unde
 - **Code blocks.** Every fence names the language of what it holds (` ```python`, ` ```cpp`, ` ```json`, ` ```markdown`, ` ```text` for plain output), so Obsidian and GitHub highlight it; a language that only a plugin draws is kept for blocks that plugin renders.
 - **Bytes.** A visual stays when it removes as many bytes as it adds, or when the human keeps it knowing its cost. A visual that only decorates is cut. A table that replaces prose passes this test; a diagram that restates a paragraph the reader still needs does not. A mockup of a document carries a byte table: bytes added against bytes removed.
 
+### A view an agent writes
+
+The Compass view panel draws a ready-made view for a plan, spec, research or loop document. A document whose properties carry `view: views/<name>.js` gets that script's drawing instead.
+
+- **Order of choice.** A ready-made view comes first. An agent writes its own view only for a picture none of them draws.
+- **Where it lives.** The script sits in the vault's `views/` folder and exports one function taking `{app, file, text, el, open}`; `open(path, line)` opens a document at a line. The panel shows the script's path above the drawing.
+- **Full access.** The script runs with the vault's full access, so it is written plainly and kept short.
+- **Committed with the document.** The script is committed in the same commit as the document that names it, so the human reads it in the review's `git diff`.
+
 ### Plain words
 
 Coined terms reach the human as plain words. Where a program reads a word, the files that hold it stay unchanged: field names (`complexity:`, `depends_on:`), warning codes, heading grammar (`## Decisions`, `Automated verification`) and command names. A view or a report shows the plain word; the file keeps the one the program parses. A warning prints as a sentence first and its code last in brackets: "A link points to a document that does not exist. (broken_wikilink)".
