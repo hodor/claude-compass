@@ -3392,3 +3392,276 @@ test("the plan board still draws after the view has shown a spec and a research 
   assert.equal(viewEl(app).querySelectorAll(".compass-spec-view").length, 0);
   assert.equal(viewEl(app).querySelectorAll(".compass-research-view").length, 0);
 });
+
+// ---- what changed since a review ----
+//
+// When the review of a document was sent before, `compass review` saves
+// `git diff <sha> -- <file>` for each listed file as `<id>.changes.diff` beside
+// the request. The view panel reads it for the open file and draws the changes.
+//
+//   CompassReview.changesPathFor(requestPath) -> path of the diff beside a request
+//   CompassReview.parseChanges(diffText, docText, docPath) -> groups
+//       diffText: git's unified diff, one or more files (paths from the
+//       repository top); docText: the document as it is now; docPath: its path in
+//       the Obsidian vault, which equals the diff's path or ends it on a "/"
+//       boundary. Only that file's hunks are read.
+//       groups: [{ heading, line, hunks: [{ line, rows }] }] in document order,
+//       one group per heading line (heading: its title, line: its 1-based
+//       line; both null for changes above the first heading), hunks in diff order,
+//       hunk.line the first changed line in the new text (1-based), rows
+//       [{ kind: "ctx" | "del" | "add", parts: [{ text, changed }] }] with
+//       the line's text split into parts whose texts join back to the line.
+//
+// DOM in the view panel for a document whose pending review has the diff:
+//   .compass-changes          the section, one per view
+//   .compass-changes-group    one per group, its .compass-changes-heading
+//                             holding the heading title
+//   .compass-change-hunk      one per hunk, with a .compass-change-open control
+//                             that opens the document at hunk.line
+//   .compass-change-row       one per row, class is-ctx | is-del | is-add,
+//                             .compass-change-word spans holding the changed parts
+
+// A unified diff of `rel` between two line arrays of equal length, git's default
+// three lines of context, hunks merged where their context touches.
+function replDiff(rel, oldLines, newLines, tab = "") {
+  const spans = [];
+  oldLines.forEach((l, i) => {
+    if (l === newLines[i]) return;
+    const lo = Math.max(0, i - 3);
+    const hi = Math.min(oldLines.length - 1, i + 3);
+    const last = spans[spans.length - 1];
+    if (last && lo <= last.hi + 1) last.hi = hi; else spans.push({ lo, hi });
+  });
+  const out = [`diff --git a/${rel} b/${rel}`, "index 1111111..2222222 100644", `--- a/${rel}${tab}`, `+++ b/${rel}${tab}`];
+  for (const { lo, hi } of spans) {
+    out.push(`@@ -${lo + 1},${hi - lo + 1} +${lo + 1},${hi - lo + 1} @@`);
+    for (let i = lo; i <= hi; i++) {
+      if (oldLines[i] === newLines[i]) out.push(" " + oldLines[i]);
+      else out.push("-" + oldLines[i], "+" + newLines[i]);
+    }
+  }
+  return out.join("\n") + "\n";
+}
+const fileHead = (rel) => [`diff --git a/${rel} b/${rel}`, "index 1111111..2222222 100644", `--- a/${rel}`, `+++ b/${rel}`];
+const joined = (lines) => lines.join("\n") + "\n";
+const changeSummary = (groups) => groups.map((g) => [g.heading, g.line, g.hunks.length]);
+const rowText = (r) => r.parts.map((p) => p.text).join("");
+const marked = (r) => r.parts.filter((p) => p.changed).map((p) => p.text);
+const rowsOf = (groups) => groups.flatMap((g) => g.hunks.flatMap((h) => h.rows));
+const SPEC_REL = ".compass/specs/a.md";
+
+// Adversarial where: a hunk is filed under the heading nearest its start or its
+// end instead of the one above its first changed line (git's context lines
+// reach into the next section and back into the previous one); a deletion
+// directly before a heading moves under that heading; a heading-looking line in
+// a code fence, or a heading the change itself adds, is mishandled; changes
+// above the first heading get a phantom group; two headings with one title merge,
+// or two hunks under one heading split; CRLF text leaves "\r" in titles and rows.
+test("the parser groups each hunk under the heading above its first changed line", async (t) => {
+  const filler = (n) => Array.from({ length: n }, (_, i) => `f${i + 1}`);
+  const crlf = (s) => s.replace(/\n/g, "\r\n");
+  const sameTitleOld = ["## Notes", "n1", ...filler(10), "## Notes", "n2", "tail"];
+  const sameTitleNew = sameTitleOld.map((l) => (l === "n1" || l === "n2" ? l + " new" : l));
+  const oneHeadOld = ["## N", "x1", ...filler(12), "x2"];
+  const oneHeadNew = oneHeadOld.map((l) => (l === "x1" || l === "x2" ? l + " new" : l));
+  const rows = [
+    ["a heading inside the trailing context belongs to the next section",
+      replDiff(SPEC_REL, ["# T", "## A", "a1", "a2 old", "## B", "b1"], ["# T", "## A", "a1", "a2", "## B", "b1"]),
+      joined(["# T", "## A", "a1", "a2", "## B", "b1"]), [["A", 2, 1]]],
+    ["a heading inside the leading context is above the change",
+      replDiff(SPEC_REL, ["# T", "intro", "## B", "b1", "b2 old", "b3"], ["# T", "intro", "## B", "b1", "b2", "b3"]),
+      joined(["# T", "intro", "## B", "b1", "b2", "b3"]), [["B", 3, 1]]],
+    ["a deletion right before a heading sits under the heading it was deleted from",
+      joined([...fileHead(SPEC_REL), "@@ -1,6 +1,5 @@", " # T", " ## A", " keep", "-gone", " ## B", " text"]),
+      joined(["# T", "## A", "keep", "## B", "text"]), [["A", 2, 1]]],
+    ["a change above the first heading has no heading",
+      replDiff(SPEC_REL, ["---", "type: spec", "---", "intro old", "## A", "x"], ["---", "type: spec", "---", "intro", "## A", "x"]),
+      joined(["---", "type: spec", "---", "intro", "## A", "x"]), [[null, null, 1]]],
+    ["a heading-like line in a code fence is not a heading",
+      replDiff(SPEC_REL, ["## A", "a1", "```", "# not a heading", "old code", "```"], ["## A", "a1", "```", "# not a heading", "code", "```"]),
+      joined(["## A", "a1", "```", "# not a heading", "code", "```"]), [["A", 1, 1]]],
+    ["an added heading line groups under itself",
+      joined([...fileHead(SPEC_REL), "@@ -1,2 +1,4 @@", " ## A", " a1", "+## New", "+n1"]),
+      joined(["## A", "a1", "## New", "n1"]), [["New", 3, 1]]],
+    ["two headings with one title are two groups", replDiff(SPEC_REL, sameTitleOld, sameTitleNew),
+      joined(sameTitleNew), [["Notes", 1, 1], ["Notes", 13, 1]]],
+    ["two hunks under one heading are one group", replDiff(SPEC_REL, oneHeadOld, oneHeadNew), joined(oneHeadNew), [["N", 1, 2]]],
+    ["CRLF text leaves no carriage return in the title", crlf(replDiff(SPEC_REL, ["## A", "a1", "a2 old"], ["## A", "a1", "a2"])),
+      crlf(joined(["## A", "a1", "a2"])), [["A", 1, 1]]],
+  ];
+  for (const [name, diff, doc, expected] of rows) {
+    await t.test(name, () => {
+      const groups = CompassReview.parseChanges(diff, doc, SPEC_REL);
+      assert.deepEqual(changeSummary(groups), expected);
+      for (const r of rowsOf(groups)) assert.ok(!/[\r\n]/.test(rowText(r)), `row text holds a line break: ${JSON.stringify(rowText(r))}`);
+    });
+  }
+});
+
+// Adversarial where: the changed words of a replaced line are the whole line
+// (or none), the unchanged words around them are marked, a pipe or a punctuation
+// mark glues two words so the neighbour is marked too, or a context row is marked.
+test("the parser marks the changed words of a replaced line on both sides", async (t) => {
+  const rows = [
+    ["one word", ["# T", "The quick fox jumps.", "x"], ["# T", "The slow fox jumps.", "x"], ["quick"], ["slow"]],
+    ["two separate words", ["# T", "red car stops", "x"], ["# T", "blue car starts", "x"], ["red", "stops"], ["blue", "starts"]],
+    ["a table cell between pipes", ["# T", "| a | b |", "x"], ["# T", "| a | c |", "x"], ["b"], ["c"]],
+  ];
+  for (const [name, oldLines, newLines, del, add] of rows) {
+    await t.test(name, () => {
+      const groups = CompassReview.parseChanges(replDiff(SPEC_REL, oldLines, newLines), joined(newLines), SPEC_REL);
+      const all = rowsOf(groups);
+      assert.deepEqual(all.map((r) => r.kind), ["ctx", "del", "add", "ctx"]);
+      assert.deepEqual(all.map(rowText), [oldLines[0], oldLines[1], newLines[1], oldLines[2]]);
+      assert.deepEqual(marked(all[1]), del);
+      assert.deepEqual(marked(all[2]), add);
+      assert.deepEqual(marked(all[0]).concat(marked(all[3])), []);
+    });
+  }
+});
+
+// Adversarial where: the diff of a file is looked for by exact path (the vault
+// sits below the repository top, so a vault path is shorter than git's), by a
+// plain suffix that also matches "myspecs/a.md" for "specs/a.md", or a name with
+// a space (git ends the ---/+++ lines of such a name with a tab) finds nothing;
+// the hunks of another file in the same diff are read as this file's.
+test("the parser reads only the hunks of the file whose path ends the diff's path on a folder boundary", async (t) => {
+  const aOld = ["## A", "a1 old"];
+  const aNew = ["## A", "a1"];
+  const docA = joined(aNew);
+  const bOld = ["b1", "b2"];
+  const bNew = ["b1", "b2 new"];
+  const cases = [
+    ["a vault path shorter than the repository path", replDiff(".compass/specs/b.md", bOld, bNew) + replDiff(SPEC_REL, aOld, aNew), "specs/a.md", ["a1 old", "a1"]],
+    ["the full path", replDiff(SPEC_REL, aOld, aNew), SPEC_REL, ["a1 old", "a1"]],
+    ["a name with a space and tab-ended header lines", replDiff(".compass/specs/my doc.md", aOld, aNew, "\t"), "specs/my doc.md", ["a1 old", "a1"]],
+    ["a file the diff does not hold", replDiff(".compass/specs/b.md", bOld, bNew), "specs/a.md", []],
+    ["a longer folder name that ends the same", replDiff(".compass/myspecs/a.md", aOld, aNew), "specs/a.md", []],
+  ];
+  for (const [name, diff, docPath, texts] of cases) {
+    await t.test(name, () => {
+      const groups = CompassReview.parseChanges(diff, docA, docPath);
+      assert.deepEqual(rowsOf(groups).filter((r) => r.kind !== "ctx").map(rowText), texts);
+    });
+  }
+  await t.test("the diff path beside a request", () => {
+    assert.equal(CompassReview.changesPathFor("tmp/review/1.request.json"), "tmp/review/1.changes.diff");
+    assert.equal(CompassReview.changesPathFor(".compass/tmp/review/20261028T010101-ab12cd.request.json"), ".compass/tmp/review/20261028T010101-ab12cd.changes.diff");
+  });
+});
+
+// Adversarial where: a removed line "-- y" prints as "--- y" and an added
+// line "++ x" as "+++ x", which a parser reads as file headers, so the hunk
+// ends early, a file starts, or the rows vanish; git's "\ No newline at end of
+// file" marker becomes a row.
+test("the parser keeps lines that look like file headers and skips the no-newline marker", () => {
+  const diff = replDiff(SPEC_REL, ["## A", "-- y", "z"], ["## A", "++ x", "z"]) + "\\ No newline at end of file\n";
+  assert.ok(diff.includes("\n--- y\n") && diff.includes("\n+++ x\n"), "fixture error: the lookalike lines are missing");
+  const groups = CompassReview.parseChanges(diff, joined(["## A", "++ x", "z"]), SPEC_REL);
+  assert.deepEqual(changeSummary(groups), [["A", 1, 1]]);
+  const all = rowsOf(groups);
+  assert.deepEqual(all.map((r) => r.kind), ["ctx", "del", "add", "ctx"]);
+  assert.deepEqual(all.map(rowText), ["## A", "-- y", "++ x", "z"]);
+});
+
+// ---- the changes in the view panel ----
+
+const SPEC_CHANGED_OLD = [
+  "---", "type: spec", "title: S", "---", "# S", "", "## Problem", "", "The quick fox jumps.", "", "## Desired Outcome", "",
+  "Line one", "Line two", "Line three", "", "## Notes", "", "A note.",
+];
+const SPEC_CHANGED_NEW = SPEC_CHANGED_OLD.map((l) => (l === "The quick fox jumps." ? "The slow fox jumps." : l === "A note." ? "A memo." : l));
+const SPEC_A = "specs/a.md";
+const REVIEW_DIR = "tmp/review";
+const reviewFiles = (id, main, extra = {}) => ({ [`${REVIEW_DIR}/${id}.request.json`]: req(id, main, extra) });
+const sectionsIn = (app) => viewEl(app).querySelectorAll(".compass-changes");
+const groupEls = (app) => viewEl(app).querySelectorAll(".compass-changes-group");
+const headingOfGroup = (g) => textOfEl(g.querySelector(".compass-changes-heading")).trim();
+const wordsIn = (el, kind) => el.querySelectorAll(".compass-change-row").filter((r) => r.cls.split(" ").includes(kind))
+  .flatMap((r) => r.querySelectorAll(".compass-change-word").map((w) => w.text));
+async function viewWith(files, open) {
+  const r = await loaded(files);
+  await openDoc(r.app, open);
+  await r.plugin.openViewPanel();
+  await settle();
+  return r;
+}
+
+// Adversarial where: the saved diff is never read, the changes are listed flat
+// instead of under the heading each sits in (the hunk's leading context holds
+// the title above and its trailing context the title below), the changed words
+// are not marked or the whole line is, a document vault-relative to a shorter
+// path than git's is not matched, or a click opens the hunk's first context line
+// or the line 1-based instead of the first changed line, 0-based.
+test("a spec with a pending review and a saved diff shows its changes under their headings, with the changed words marked, and a click opens the line", async () => {
+  const diff = replDiff(SPEC_REL, SPEC_CHANGED_OLD, SPEC_CHANGED_NEW);
+  const { app } = await viewWith({
+    [SPEC_A]: joined(SPEC_CHANGED_NEW), ...reviewFiles("1", SPEC_A), [`${REVIEW_DIR}/1.changes.diff`]: diff,
+  }, SPEC_A);
+  assert.equal(sectionsIn(app).length, 1);
+  const groups = groupEls(app);
+  assert.deepEqual(groups.map(headingOfGroup), ["Problem", "Notes"]);
+  assert.deepEqual([wordsIn(groups[0], "is-del"), wordsIn(groups[0], "is-add")], [["quick"], ["slow"]]);
+  assert.deepEqual([wordsIn(groups[1], "is-del"), wordsIn(groups[1], "is-add")], [["note"], ["memo"]]);
+  assert.equal(groups.every((g) => g.querySelectorAll(".compass-change-hunk").length === 1), true);
+  for (const [group, line] of [[groups[0], 9], [groups[1], 19]]) {
+    const before = app.opened.length;
+    await clickOn(group.querySelector(".compass-change-hunk").querySelector(".compass-change-open"));
+    await settle();
+    assert.equal(app.opened.length, before + 1);
+    const last = app.opened[app.opened.length - 1];
+    assert.equal(last.path, SPEC_A);
+    assert.equal(last.state && last.state.eState && last.state.eState.line, line - 1);
+  }
+});
+
+// Adversarial where: the section appears with no saved diff, outlives the answer
+// to its review, or fills with the changes of another file of a several-file
+// review.
+test("no changes are shown without a saved diff, after the review is answered, or for a file the diff does not hold", async (t) => {
+  const text = joined(SPEC_CHANGED_NEW);
+  const diff = replDiff(SPEC_REL, SPEC_CHANGED_OLD, SPEC_CHANGED_NEW);
+  const rows = [
+    ["no diff file", { [SPEC_A]: text, ...reviewFiles("1", SPEC_A) }, true],
+    ["a verdict already written", { [SPEC_A]: text, ...reviewFiles("1", SPEC_A), [`${REVIEW_DIR}/1.changes.diff`]: diff,
+      [`${REVIEW_DIR}/1.verdict.json`]: JSON.stringify({ id: "1", file: SPEC_A, verdict: "approved", notes: "", at: "t" }) }, true],
+    ["a diff of the other file in a two-file review", { [SPEC_A]: text, "specs/b.md": "---\ntype: spec\n---\n# B\n",
+      ...reviewFiles("1", "specs/b.md", { files: [{ file: "specs/b.md", why: null }, { file: SPEC_A, why: null }] }),
+      [`${REVIEW_DIR}/1.changes.diff`]: replDiff(".compass/specs/b.md", ["b1", "b2"], ["b1", "b2 new"]) }, false],
+  ];
+  for (const [name, files, noSection] of rows) {
+    await t.test(name, async () => {
+      const { app } = await viewWith(files, SPEC_A);
+      assert.equal(viewEl(app).querySelectorAll(".compass-change-hunk").length, 0);
+      assert.equal(viewEl(app).querySelectorAll(".compass-change-row").length, 0);
+      if (noSection) assert.equal(sectionsIn(app).length, 0);
+    });
+  }
+});
+
+// Adversarial where: the changes are wired to the spec view alone, so a plan or
+// a research document under review shows none; a long document's heading is
+// taken from the wrong line; the trailing context of a research table reaches
+// the next section's heading.
+test("a plan and a research document with a pending review show their changes under the heading each sits in", async (t) => {
+  const planOld = PLAN_24.split("\n");
+  const planNew = planOld.map((l, i) => (i === 176 ? l.replace("complexity: M,", "complexity: L,") : l));
+  assert.notEqual(planOld[176], planNew[176], "fixture error: line 177 is not the TASK-227 line");
+  const resOld = SMALL_RESEARCH.split("\n");
+  const resNew = resOld.map((l) => (l === "| 3 | Third | high | high | ev-3 |" ? "| 3 | Third | high | high | ev-9 |" : l));
+  const rows = [
+    ["plan", P24, planOld, planNew, "Wave 4 (detailed): the plugin draws", ["M"], ["L"]],
+    ["research", RP, resOld, resNew, "A. First (axis 1)", ["ev-3"], ["ev-9"]],
+  ];
+  for (const [name, doc, oldLines, newLines, heading, del, add] of rows) {
+    await t.test(name, async () => {
+      const { app } = await viewWith({
+        [doc]: newLines.join("\n"), ...reviewFiles("1", doc), [`${REVIEW_DIR}/1.changes.diff`]: replDiff(doc, oldLines, newLines),
+      }, doc);
+      assert.equal(sectionsIn(app).length, 1);
+      const groups = groupEls(app);
+      assert.deepEqual(groups.map(headingOfGroup), [heading]);
+      assert.deepEqual([wordsIn(groups[0], "is-del"), wordsIn(groups[0], "is-add")], [del, add]);
+    });
+  }
+});
