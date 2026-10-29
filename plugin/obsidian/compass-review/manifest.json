@@ -1,7 +1,7 @@
 {
   "id": "compass-review",
   "name": "Compass Review",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "minAppVersion": "1.4.0",
   "description": "Brings a document Compass wants reviewed to the front, with Approve and Needs changes buttons that hand the verdict back to Compass.",
   "author": "Compass",
