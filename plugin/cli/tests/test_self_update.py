@@ -526,3 +526,194 @@ class NormalizeFlatSpecsTests(SelfUpdateFixture):
         self.forbid_network()
         self.perform()
         self.assertTrue((self.vault / "specs" / "network" / "index.md").is_file())
+
+
+BASE_NOTICE = "Compass updated 0.9.0 -> 9.9.9"
+REAPPLIED = "local additions re-applied: "
+NO_SHIPPED = "no shipped file: "
+NOT_APPLIED_NOTICE = "local additions not applied (run compass doctor)"
+
+
+class UpdateNoticeAdditionsTests(SelfUpdateFixture):
+    """The update notice and log report what happened to the project's local
+    additions: re-applied, no shipped file, or failed."""
+
+    def add(self, rel, text="Always cite sources.\n", raw=None):
+        path = self.vault / "meta" / "local" / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if raw is not None:
+            path.write_bytes(raw)
+        else:
+            path.write_text(text, encoding="utf-8")
+        return path
+
+    def clause(self, notice, label):
+        """The text of the `; `-separated clause that starts with `label`,
+        without the label, or None."""
+        for part in notice.split("; "):
+            if part.startswith(label):
+                return part[len(label):]
+        return None
+
+    def update_log(self):
+        return (self.vault / "tmp" / "self-update.log").read_text(encoding="utf-8")
+
+    def test_reapplied_additions_are_named_in_notice_and_log(self):
+        """Adversarial where: `_apply` discards the overlay report, so an
+        update that re-applied additions says nothing about them. One
+        addition gives the exact line; two give both names in the clause,
+        and the log row carries the same clause."""
+        self.fake_remote()
+        self.add("agents/builder.md")
+        result = self.perform()
+        self.assertEqual(result["status"], "updated")
+        self.assertEqual(
+            result["notice"], BASE_NOTICE + "; " + REAPPLIED + "agents/builder.md"
+        )
+        self.assertIn(REAPPLIED + "agents/builder.md", self.update_log())
+
+        self.add("rules/r.md", "Rule addition.\n")
+        result = self.perform(force=True)
+        named = self.clause(result["notice"], REAPPLIED)
+        self.assertIsNotNone(named)
+        self.assertIn("agents/builder.md", named)
+        self.assertIn("rules/r.md", named)
+
+    def test_addition_with_no_shipped_file_is_named_apart_from_reapplied(self):
+        """Adversarial where: the orphan list is lumped into the re-applied
+        list (claiming a write that never happened) or dropped. A ghost with
+        no installed target must appear under `no shipped file`, a sibling
+        that applied must appear under re-applied, and neither name may
+        leak into the other clause."""
+        self.fake_remote()
+        self.add("agents/builder.md")
+        self.add("agents/ghost.md")
+        notice = self.perform()["notice"]
+        self.assertEqual(self.clause(notice, REAPPLIED), "agents/builder.md")
+        self.assertEqual(self.clause(notice, NO_SHIPPED), "agents/ghost.md")
+
+    def test_only_orphan_additions_claim_nothing_reapplied(self):
+        """Adversarial where: boundary of the re-applied list at zero
+        entries. An update whose only addition has no shipped file prints
+        the orphan clause and no `re-applied` clause at all, and an
+        addition with an empty local file (state current, nothing written)
+        leaves the notice exactly as an update with no additions."""
+        self.fake_remote()
+        ghost = self.add("agents/ghost.md")
+        notice = self.perform()["notice"]
+        self.assertEqual(notice, BASE_NOTICE + "; " + NO_SHIPPED + "agents/ghost.md")
+
+        ghost.unlink()
+        self.add("agents/builder.md", text="\n")
+        self.assertEqual(self.perform(force=True)["notice"], BASE_NOTICE)
+
+    def test_raising_overlay_apply_still_finishes_update_and_reports_failure(self):
+        """Adversarial where: the try/except around the overlay call hides a
+        raise from the notice, or a raise aborts the update before the
+        version is recorded. The update must record its version and commit,
+        and the notice and log must carry the failure text."""
+        from commands import overlay
+
+        self.fake_remote(sha="abc123")
+        self.add("agents/builder.md")
+
+        def boom(*a, **k):
+            raise RuntimeError("overlay exploded")
+
+        self.addCleanup(setattr, overlay, "apply_overlays", overlay.apply_overlays)
+        overlay.apply_overlays = boom
+        result = self.perform()
+        self.assertEqual(result["status"], "updated")
+        self.assertEqual(result["notice"], BASE_NOTICE + "; " + NOT_APPLIED_NOTICE)
+        self.assertIn("version: 9.9.9", self.plugin_yaml())
+        self.assertIn("commit: abc123", self.plugin_yaml())
+        self.assertIn(NOT_APPLIED_NOTICE, self.update_log())
+
+    def test_one_failed_addition_among_good_ones_reports_both(self):
+        """Adversarial where: asymmetric failure. One addition whose local
+        file is not valid UTF-8 lands in the overlay report's `failed`
+        entry while a sibling applies; the notice must name the sibling as
+        re-applied and also carry the failure text, rather than reporting
+        only the clean half."""
+        self.fake_remote()
+        self.add("agents/builder.md")
+        self.add("rules/r.md", raw=b"\xff\xfe\x00bad bytes \xc3\x28")
+        notice = self.perform()["notice"]
+        self.assertEqual(self.clause(notice, REAPPLIED), "agents/builder.md")
+        self.assertIn(NOT_APPLIED_NOTICE, notice)
+
+    def test_update_without_additions_prints_the_unchanged_notice(self):
+        """Adversarial where: the additions clause leaks onto every update.
+        With no `meta/local` at all, and with an empty `meta/local/agents`
+        directory, the notice is byte-identical to the one the update has
+        always printed, and the log row has no additions text."""
+        self.fake_remote()
+        self.assertEqual(self.perform()["notice"], BASE_NOTICE)
+        self.assertNotIn("local additions", self.update_log())
+
+        (self.vault / "meta" / "local" / "agents").mkdir(parents=True)
+        self.write_plugin_yaml(source="nowhere")
+        self.assertEqual(self.perform(force=True)["notice"], BASE_NOTICE)
+
+    def test_cli_prints_one_line_naming_the_addition(self):
+        """Adversarial where: the clause is joined with a newline, or
+        printed as a second line, so the session-start context gains an
+        extra line per update."""
+        self.fake_remote()
+        self.add("agents/builder.md")
+        cwd = os.getcwd()
+        os.chdir(self.project)
+        buf = io.StringIO()
+        try:
+            with redirect_stdout(buf):
+                code = self_update.run(["--force"])
+        finally:
+            os.chdir(cwd)
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            buf.getvalue(),
+            BASE_NOTICE + "; " + REAPPLIED + "agents/builder.md\n",
+        )
+
+    def test_updates_that_print_nothing_still_print_nothing_with_additions(self):
+        """Adversarial where: the re-apply result forces a notice onto a
+        run that had none. Throttled, sha-current and offline runs apply
+        nothing, so they stay silent with additions present; a local-source
+        run at an unchanged version re-applies every session start and also
+        stays silent, with no additions text in the log."""
+        self.add("agents/builder.md")
+        check = self.vault / "tmp" / ".self-update-check"
+        check.write_text("", encoding="utf-8")
+        self.forbid_network()
+        self.assertIsNone(self.perform()["notice"])
+
+        check.unlink()
+        self.write_plugin_yaml(source="nowhere", commit="abc123")
+        self_update._ls_remote = lambda repo, timeout=5: "abc123"
+        current = self.perform()
+        self.assertEqual((current["status"], current["notice"]), ("current", None))
+
+        self_update._ls_remote = lambda repo, timeout=5: None
+        offline = self.perform(force=True)
+        self.assertEqual((offline["status"], offline["notice"]), ("offline", None))
+
+        make_plugin_tree(self.project / "plugin", version="0.9.0")
+        self.write_plugin_yaml(source=str(self.project / "plugin"))
+        self.forbid_network()
+        result = self.perform(force=True)
+        self.assertEqual(result["status"], "applied-local")
+        self.assertIsNone(result["notice"])
+        log = self.vault / "tmp" / "self-update.log"
+        logged = log.read_text(encoding="utf-8") if log.exists() else ""
+        self.assertNotIn("local additions", logged)
+
+    def test_local_source_version_bump_names_the_additions(self):
+        """Adversarial where: the local-source branch builds its own notice
+        and skips the additions clause that the remote branch gained."""
+        make_plugin_tree(self.project / "plugin", version="1.0.0")
+        self.write_plugin_yaml(source=str(self.project / "plugin"))
+        self.add("agents/builder.md")
+        self.forbid_network()
+        notice = self.perform()["notice"]
+        self.assertIn("0.9.0 -> 1.0.0", notice)
+        self.assertEqual(self.clause(notice, REAPPLIED), "agents/builder.md")
