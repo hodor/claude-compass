@@ -36,13 +36,6 @@ flowchart LR
   T229 --> T235
 ```
 
-> [!important] You decide
-> Stage 1 is built, tested and installed here as Compass 0.33.0. Approving does two things: it confirms the checks below, and it pushes the 229 commits on `master` to GitHub (TASK-234), which publishes 0.31.0 to 0.33.0 to every project that updates from there.
-> - [[decisions/distribution/ADR-020-local-overlays-appended-after-refresh#Decision]]: does D-03 say what the code does, that the marker also bounds the block it replaces? D-02 changed one phrase so it no longer contradicts D-03.
-> - The table in [[research/distribution/RESEARCH-update-safe-customization#A local addition through a real update (0.33.0)]]: do the update notice and the doctor row read as one short, clear line each?
->
-> Approve to push and run Stage 2; Needs changes with a note holds the push.
-
 ## Goal
 
 This plan finishes [[specs/distribution/SPEC-014-update-safe-customizations|Project-local customizations survive update (SPEC-014)]], the spec (what we need), using [[research/distribution/RESEARCH-update-safe-customization]], its research (the evidence). Since v0.14.0 a local addition kept in `.compass/meta/local/` is appended to the fresh copy at every update, and `CLAUDE.md` is never touched. Three needs are still open: the update report and `compass doctor` must say which additions applied and which did not ([[specs/distribution/SPEC-014-update-safe-customizations#^need-report]]), a real round-trip must prove it ([[specs/distribution/SPEC-014-update-safe-customizations#^live-round-trip]]), and old hand edits must be movable into the local form ([[specs/distribution/SPEC-014-update-safe-customizations#^need-migrate]]).
@@ -135,3 +128,4 @@ How each Stage 2 task differs from its one-line sketch, and why. The sketches re
 
 - 2026-10-29: Approved in Obsidian with the recommended answers: an edited addition replaces its own block, additions reach dsh, and Stage 2 keeps old hand edits.
 - 2026-10-29: Stage 1 done; Stage 2 detailed (TASK-234, TASK-235).
+- 2026-10-29: Stage 1 checks approved in Obsidian, and with them the push to GitHub.
