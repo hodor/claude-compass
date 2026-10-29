@@ -66,4 +66,4 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
 Plan: [[PLAN-024-working-in-compass-is-visual]]. Approved; drawings live in a view panel.
 
-- [ ] TASK-203: A loop's charts - complexity: M, depends_on: TASK-228
+- [x] TASK-203: A loop's charts - complexity: M, depends_on: TASK-228

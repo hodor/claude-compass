@@ -4717,3 +4717,179 @@ test("a chart render that finishes after another document was opened draws nothi
   assert.equal(viewEl(app).querySelectorAll(".compass-loop-view").length, 0);
   assert.equal(viewEl(app).querySelectorAll(".compass-view-note").length, 1);
 });
+
+// ---- a loop's charts: values the ledger can hold that the chart source must survive ----
+
+const ledgerFile = (p = LOOP_LEDGER) => ({ path: p, basename: "ledger", extension: "jsonl" });
+const seriesOf = (values) => ({ readings: values, costs: values.map(() => 0.1), skipped: 0 });
+const yAxisOf = (source) => {
+  const m = /^\s*y-axis\s+"[^"]*"\s+(\S+)\s+-->\s+(\S+)/m.exec(source);
+  assert.ok(m, `no y-axis in the chart source:\n${source}`);
+  return [m[1], m[2]];
+};
+
+// Adversarial where: a finite but extreme reading (1e21 and up, where
+// Number#toFixed switches to exponent notation) or a span that overflows to
+// Infinity reaches the Mermaid source as `1e+21`, `NaN` or `Infinity`, which
+// Mermaid cannot read, so one outlier run costs the human both charts; a series
+// of tiny values rounds to an axis that reads `0 --> 0`.
+test("loopChartSource writes every number in plain decimal notation with an axis that has a span", async (t) => {
+  const rows = [
+    ["a reading at 1e21, the first exponent-notation value", [3, 1e21]],
+    ["a reading at 1e300", [1e300]],
+    ["readings at both extremes of a double, the span overflows", [-1e308, 1e308]],
+    ["two readings at the top of a double", [1.7e308, 1.7e308]],
+    ["a series of readings below the six decimals the source keeps", [5e-7, 4e-7]],
+  ];
+  for (const [name, values] of rows) {
+    for (const kind of ["reading", "cost"]) {
+      await t.test(`${name} (${kind})`, () => {
+        const ledger = kind === "reading" ? seriesOf(values) : { readings: values.map(() => 1), costs: values, skipped: 0 };
+        const source = CompassReview.loopChartSource(ledger, kind);
+        assert.doesNotMatch(source, /\d[eE][-+]?\d|NaN|Infinity/, source);
+        const [low, high] = yAxisOf(source).map(Number);
+        assert.ok(Number.isFinite(low) && Number.isFinite(high) && low < high, `y-axis ${low} --> ${high}`);
+      });
+    }
+  }
+});
+
+// Adversarial where: the min/max over a very long series is taken by spreading
+// it into arguments, which throws RangeError past the engine's argument limit,
+// and a ledger of many runs makes the source grow faster than the runs do.
+test("loopChartSource handles a ledger of thousands of runs without throwing and with a source linear in the runs", async (t) => {
+  for (const runs of [5000, 200000]) {
+    await t.test(`${runs} runs`, () => {
+      const values = Array.from({ length: runs }, (_, i) => (i * 7) % 100);
+      const source = CompassReview.loopChartSource(seriesOf(values), "reading");
+      assert.ok(source.length < 12 * runs + 300, `source is ${source.length} characters`);
+      assert.equal(lineValues(source).length, runs);
+      assert.equal(source.split("\n").length, 5);
+    });
+  }
+  await t.test("the 20000-line ledger is parsed and drawn through the view as one source per chart", async () => {
+    const lines = Array.from({ length: 20000 }, (_, i) => runLine(i % 50, 0.01));
+    const began = Date.now();
+    const { app } = await showLoop({ [LOOP_DOC]: loopDoc(), [LOOP_LEDGER]: ledgerOf(lines) });
+    assert.ok(Date.now() - began < 5000, "the draw took over five seconds");
+    assert.equal(mermaidState.calls.length, 2);
+    assert.equal(lineValues(drawnSource(chartOf(app, "reading"))).length, 20000);
+  });
+});
+
+// Adversarial where: a string from the ledger (run id, outcome, timestamp) with
+// quotes, newlines, a Mermaid line of its own, or markup reaches the Mermaid
+// source or the panel DOM, so a run record could add a series or an element.
+test("ledger strings with quotes, newlines, Mermaid lines and markup reach neither the chart source nor the panel", async () => {
+  const hostile = {
+    run_id: 'RUN"\n    line [999]\n<script>alert(1)</script>',
+    outcome: '"]\n    title "pwned"\n<img src=x onerror=alert(1)>',
+    ts: "</svg><script>alert(2)</script>",
+    note: 'x-axis "evil" 1 --> 2',
+  };
+  const ledger = ledgerOf([runLine(3, 0.2, hostile), runLine(4, 0.3, hostile), "<b>not json</b>"]);
+  const { app } = await showLoop({ [LOOP_DOC]: loopDoc(), [LOOP_LEDGER]: ledger });
+  for (const kind of ["reading", "cost"]) {
+    const source = drawnSource(chartOf(app, kind));
+    assert.equal(source.split("\n").length, 5, source);
+    assert.doesNotMatch(source, /pwned|evil|alert|999|script/);
+    assert.doesNotMatch(chartOf(app, kind).innerHTML, /alert|script|onerror|pwned/);
+  }
+  assert.deepEqual(lineValues(drawnSource(chartOf(app, "reading"))), [3, 4]);
+  assert.doesNotMatch(textOf(viewEl(app)), /alert|script|onerror|pwned|<b>/);
+  assert.equal(viewEl(app).querySelectorAll(".compass-loop-chart").length, 2);
+});
+
+// Adversarial where: a value that is not a number but coerces to one ("5", true,
+// [5]) is charted, or one bad field among good ones drops the whole run; a cost
+// of the wrong type must leave the reading in and give it cost 0.
+test("parseLedger takes a reading or a cost only when it is a number", async (t) => {
+  const run = (after, cost) => JSON.stringify({ type: "run", reading_after: after, cost_usd: cost });
+  const rows = [
+    ["value as a string", run({ value: "5" }, 0.1), []],
+    ["value true", run({ value: true }, 0.1), []],
+    ["value an array", run({ value: [5] }, 0.1), []],
+    ["value an object", run({ value: { v: 5 } }, 0.1), []],
+    ["value the string NaN", run({ value: "NaN" }, 0.1), []],
+    ["reading_after a bare number", run(5, 0.1), []],
+    ["reading_after a string", run("5", 0.1), []],
+    ["reading_after an array", run([5], 0.1), []],
+    ["value 1e999, which JSON reads as Infinity", '{"type":"run","reading_after":{"value":1e999},"cost_usd":0.1}', []],
+    ["a good reading with a string cost", run({ value: 6 }, "0.9"), [[6, 0]]],
+    ["a good reading with a cost of 1e999", '{"type":"run","reading_after":{"value":6},"cost_usd":1e999}', [[6, 0]]],
+    ["a good reading with a null cost", run({ value: 6 }, null), [[6, 0]]],
+  ];
+  for (const [name, line, want] of rows) {
+    await t.test(name, () => {
+      const got = CompassReview.parseLedger(ledgerOf([runLine(1, 0.5), line, runLine(2, 0.25)]));
+      const pairs = got.readings.map((r, i) => [r, got.costs[i]]);
+      assert.deepEqual(pairs, [[1, 0.5], ...want, [2, 0.25]]);
+      assert.equal(got.skipped, 0);
+    });
+  }
+});
+
+// Adversarial where: the ledger changes while a chart render is in flight and the
+// slow render lands over, or beside, the redraw the change started, leaving the
+// old series on screen or two pairs of charts.
+test("a ledger modified while its charts are rendering ends with one pair of charts holding the new series", async () => {
+  let release;
+  mermaidState.renderGate = new Promise((r) => { release = r; });
+  const before = ledgerOf([runLine(5, 0.1), runLine(4, 0.1)]);
+  const { app, plugin } = await loaded({ [LOOP_DOC]: loopDoc(), [LOOP_LEDGER]: before });
+  await openDoc(app, LOOP_DOC);
+  plugin.openViewPanel();
+  await loopSettle();
+  assert.ok(mermaidState.calls.length > 0, "the first render began");
+  app.store.set(LOOP_LEDGER, before + runLine(1, 0.1) + "\n");
+  app.listeners.modify(ledgerFile());
+  await loopSettle();
+  release();
+  await loopSettle();
+  assert.equal(chartsOf(app).length, 2, "one pair of charts");
+  assert.deepEqual(lineValues(drawnSource(chartOf(app, "reading"))), [5, 4, 1]);
+  assert.equal(viewEl(app).querySelectorAll(".compass-loop-view").length, 1);
+  const ids = mermaidState.calls.map((c) => c.id);
+  assert.equal(new Set(ids).size, ids.length, `render ids repeat: ${ids.join(", ")}`);
+});
+
+// Adversarial where: the file-changed event for `ledger.jsonl` redraws nothing
+// (the loop view goes stale while the loop runs), or redraws for any
+// `ledger.jsonl` (a sibling loop's append re-renders this loop's charts).
+test("a change to the open loop's ledger redraws its charts and a change to another loop's ledger does not", async () => {
+  const sibling = ".compass/loops/LOOP-002-other/ledger.jsonl";
+  const before = ledgerOf([runLine(5, 0.1), runLine(4, 0.1)]);
+  const { app } = await showLoop({ [LOOP_DOC]: loopDoc(), [LOOP_LEDGER]: before, [sibling]: before });
+  const drawn = mermaidState.calls.length;
+  app.store.set(sibling, before + runLine(9, 0.1) + "\n");
+  await app.listeners.modify(ledgerFile(sibling));
+  await loopSettle();
+  assert.equal(mermaidState.calls.length, drawn, "a sibling's ledger redrew this loop");
+  app.store.set(LOOP_LEDGER, before + runLine(2, 0.1) + "\n");
+  await app.listeners.modify(ledgerFile());
+  await loopSettle();
+  assert.deepEqual(lineValues(drawnSource(chartOf(app, "reading"))), [5, 4, 2]);
+  assert.equal(chartsOf(app).length, 2);
+});
+
+// Adversarial where: a `ledger.jsonl` beside a spec, a plan or a research
+// document, or a change to it, draws loop charts in a view that is not a loop's,
+// calls Mermaid, or throws out of the file-changed handler.
+test("a ledger beside a spec, plan or research document leaves that view without charts", async (t) => {
+  const docs = {
+    spec: "---\ntitle: S\ntype: spec\nstatus: draft\n---\n# S\n\n## Problem\nx\n",
+    plan: "---\ntitle: P\ntype: plan\nstatus: draft\n---\n# P\n\n## Goal\nx\n\n## Phases\n\n### Phase 1: a\n- [ ] TASK-001: do it - files: [a], complexity: S, depends_on: none\n",
+    research: "---\ntitle: R\ntype: research\nstatus: draft\n---\n# R\n\n## Question\nx\n\n## Findings\n1. **F** (confidence: high)\n",
+  };
+  for (const [type, text] of Object.entries(docs)) {
+    await t.test(type, async () => {
+      const dir = `.compass/${type}s/X-001-thing`;
+      const { app } = await showLoop({ [`${dir}/index.md`]: text, [`${dir}/ledger.jsonl`]: ledgerOf([runLine(5, 0.1)]) }, `${dir}/index.md`);
+      await app.listeners.modify(ledgerFile(`${dir}/ledger.jsonl`));
+      await loopSettle();
+      assert.equal(viewEl(app).querySelectorAll(".compass-loop-view").length, 0);
+      assert.equal(viewEl(app).querySelectorAll(".compass-loop-chart").length, 0);
+      assert.equal(mermaidState.calls.length, 0);
+    });
+  }
+});
