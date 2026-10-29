@@ -8,7 +8,7 @@ tags: [obsidian, review, live-check, human-surface]
 depends_on: ["[[PLAN-025-review-across-files-and-sessions]]"]
 summary: "live runs of compass review with two projects open in one Obsidian: each review reaches its own window, a closed vault reopens, and only typing in Obsidian marks a file as edited"
 created: 2026-10-27
-updated: 2026-10-28
+updated: 2026-10-29
 git_branch: "master"
 author: "orchestrator"
 ---
@@ -169,3 +169,17 @@ Compass 0.31.0, `review_editor` set in `.compass/meta/plugin.yaml`, the extensio
 - A self-update with no setting installed nothing into VS Code or Cursor.
 
 Not observed: neither answer carried a note on a file outside the review, though each review's steps asked for one, so whether the "On this file" box shows in the editors is unconfirmed. Across this document no real answer, in Obsidian or in the editors, has carried such a note; the harness tests for it pass in both.
+
+## A plan written in the visual forms (TASK-205)
+
+[[PLAN-026-local-additions-tell-the-truth]], the first plan written after the forms shipped, was reviewed in Obsidian on 2026-10-29 and approved with no note. The plan as reviewed and its text-only twin are saved under `.compass/tmp/acceptance/`. In the twin the picture becomes a list of which task comes before which, callouts become plain paragraphs, the embed becomes the section it shows, and each block link becomes the line it cites, quoted.
+
+| Form | Visual plan (bytes) | Text-only twin (bytes) |
+|---|---|---|
+| Whole plan | 12,427 | 14,180 |
+| Task-order picture or list | 485 | 217 |
+| Embed of ADR-020's Decision section | 82 | the section's full text |
+
+- The visual plan is 1,753 bytes (12%) smaller than its twin. The embed saves the most, since the decision it shows stays in ADR-020. Confidence: high.
+- The picture costs 268 bytes more than the list it replaces, and keeps its place only because it shows the order of stages at a glance; the review approved the plan with it. Confidence: medium.
+- `compass hot-path` reads 4,830 of 5,000 tokens with either version: plans are not on the session-start path, so the forms cost nothing there. Confidence: high.

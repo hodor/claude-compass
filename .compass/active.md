@@ -67,4 +67,14 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 Plan: [[PLAN-024-working-in-compass-is-visual]].
 
 - [ ] TASK-207: A view an agent writes, named by `view:` and kept under `views/` - complexity: M
-- [ ] TASK-205: Live acceptance on the next plan Compass writes - complexity: M, depends_on: TASK-207
+- [x] TASK-205: Live acceptance on the next plan Compass writes - complexity: M, depends_on: TASK-207
+
+## PLAN-026 Stage 1: local additions tell the truth
+
+Plan: [[PLAN-026-local-additions-tell-the-truth]].
+
+- [ ] TASK-229: `compass overlay` knows four states per addition, and `--apply` replaces an out-of-date block - complexity: M
+- [ ] TASK-230: The doctor row reads the four states - complexity: S, depends_on: TASK-229
+- [ ] TASK-231: The update notice names what it re-applied - complexity: S, depends_on: TASK-229
+- [ ] TASK-232: dsh gets local additions - complexity: M, depends_on: TASK-231
+- [ ] TASK-233: Release build and offline round-trip - complexity: S, depends_on: TASK-230, TASK-232

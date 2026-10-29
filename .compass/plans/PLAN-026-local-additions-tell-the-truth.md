@@ -1,7 +1,8 @@
 ---
 title: "Local Additions Survive Update, and Say So"
 type: plan
-status: draft
+status: approved
+approved: 2026-10-29
 confidence: medium
 area: methodology
 tags: [update, customization, overlays, doctor, self-update, dsh]
@@ -34,12 +35,6 @@ flowchart LR
   T230 & T232 --> T233 --> T234
   T229 --> T235
 ```
-
-> [!IMPORTANT]
-> You decide: approve Stage 1 as written, which makes these answers binding (recommended first):
-> - **An edited local addition:** `compass overlay --apply` replaces its own block, from its marker to the end of the file, so an edit lands at once; or the edit waits until the next release rewrites the file, which can be weeks. The first changes one rule of [[decisions/distribution/ADR-020-local-overlays-appended-after-refresh|Local overlays appended after refresh (ADR-020)]]: its marker also bounds the block it replaces.
-> - **The dsh host** (deepseek-harness, the second agent host Compass installs into, see [[research/distribution/RESEARCH-deepseek-harness-fit]]): local additions to skills and rules reach dsh as well, so both hosts follow the same project rules; or Claude Code only, which leaves dsh running the unmodified skills.
-> - **Old hand edits in shipped files:** Stage 2 keeps them and turns their added lines into a local addition, so no one's edit is lost at the first update; or the plan drops this need, since the projects checked held none.
 
 ## Goal
 
@@ -108,3 +103,7 @@ None. Every Stage 1 test runs offline.
 - Another plan releasing first takes the version number: TASK-233 bumps from whatever `plugin.json` holds when it runs.
 - Replacing an addition's block removes text a human typed below its marker in `.claude/`; the spec leaves hand edits to shipped files to update.
 - dsh is not installed on this machine, so TASK-232's manual check waits for a machine that has it.
+
+## Revision Log
+
+- 2026-10-29: Approved in Obsidian with the recommended answers: an edited addition replaces its own block, additions reach dsh, and Stage 2 keeps old hand edits.
