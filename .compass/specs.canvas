@@ -1,0 +1,311 @@
+{
+	"nodes": [
+		{
+			"id": "860b9d8f116b00d7",
+			"type": "file",
+			"file": "compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md",
+			"x": 0,
+			"y": 0,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "0d5fe0bc0b645d84",
+			"type": "file",
+			"file": "specs/SPEC-001-compass-vision-and-architecture.md",
+			"x": 0,
+			"y": 160,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "453aab512f9eb235",
+			"type": "file",
+			"file": "specs/distribution/SPEC-006-multi-host-agent-cli-support.md",
+			"x": 480,
+			"y": 320,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "500cdf56b7861048",
+			"type": "file",
+			"file": "specs/distribution/SPEC-008-central-model-resolution-table.md",
+			"x": 480,
+			"y": 480,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "af1234eb94f52d8a",
+			"type": "file",
+			"file": "specs/distribution/SPEC-014-update-safe-customizations.md",
+			"x": 480,
+			"y": 640,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "1a13ca9a2ebd8fc7",
+			"type": "file",
+			"file": "specs/distribution/SPEC-020-compass-updates-itself.md",
+			"x": 480,
+			"y": 800,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "8bb6b473fb48a732",
+			"type": "file",
+			"file": "specs/human-surface/SPEC-029-questions-to-the-human-are-clear-and-visual.md",
+			"x": 480,
+			"y": 960,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "70796833a4740cb7",
+			"type": "file",
+			"file": "specs/human-surface/SPEC-030-review-documents-open-in-obsidian.md",
+			"x": 480,
+			"y": 1120,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "8b74d8b6324cfb08",
+			"type": "file",
+			"file": "specs/human-surface/SPEC-031-working-in-compass-is-visual.md",
+			"x": 480,
+			"y": 1280,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "f0d01a2171f12fd7",
+			"type": "file",
+			"file": "specs/learning/SPEC-002-lessons-and-index-subsystem.md",
+			"x": 480,
+			"y": 1440,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "902c2e87965cb6ed",
+			"type": "file",
+			"file": "specs/learning/SPEC-012-learning-loop.md",
+			"x": 480,
+			"y": 1600,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "4aee1431387df4e6",
+			"type": "file",
+			"file": "specs/learning/SPEC-021-capture-in-the-humans-words.md",
+			"x": 480,
+			"y": 1760,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "0edb445dc6cde850",
+			"type": "file",
+			"file": "specs/learning/SPEC-022-clone-old-sessions.md",
+			"x": 480,
+			"y": 1920,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "5d7ae65866cff244",
+			"type": "file",
+			"file": "specs/learning/SPEC-028-agent-memory-is-good-enough.md",
+			"x": 480,
+			"y": 2080,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "9f1319e51ccf8ecf",
+			"type": "file",
+			"file": "specs/pipeline/SPEC-007-decision-coverage-tracing.md",
+			"x": 480,
+			"y": 2240,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "9e57de255f5f9598",
+			"type": "file",
+			"file": "specs/pipeline/SPEC-009-configurable-pipeline-workflows.md",
+			"x": 480,
+			"y": 2400,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "0c1e8bed6c39250a",
+			"type": "file",
+			"file": "specs/pipeline/SPEC-013-test-quality.md",
+			"x": 480,
+			"y": 2560,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "4b618d5a47c70e6c",
+			"type": "file",
+			"file": "specs/pipeline/SPEC-015-rolling-wave-planning.md",
+			"x": 480,
+			"y": 2720,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "ffefb55934a74e25",
+			"type": "file",
+			"file": "specs/pipeline/SPEC-023-research-covers-the-whole-spec.md",
+			"x": 480,
+			"y": 2880,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "a9bde6bfe8075de1",
+			"type": "file",
+			"file": "specs/pipeline/SPEC-024-walled-sources-through-the-browser.md",
+			"x": 480,
+			"y": 3040,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "3ebf4b74250561d5",
+			"type": "file",
+			"file": "specs/pipeline/SPEC-025-stop-and-suggest-handoff-at-80-percent-context.md",
+			"x": 480,
+			"y": 3200,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "2e3ba95adc05ff99",
+			"type": "file",
+			"file": "specs/pipeline/SPEC-026-control-theory-for-loops.md",
+			"x": 480,
+			"y": 3360,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "1b1fce222dccaf8f",
+			"type": "file",
+			"file": "specs/pipeline/SPEC-030-a-loop-moves-specs-through-the-pipeline.md",
+			"x": 480,
+			"y": 3520,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "a09f72e5642dd870",
+			"type": "file",
+			"file": "specs/pipeline/SPEC-031-a-loop-improves-spec-quality.md",
+			"x": 480,
+			"y": 3680,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "b64931614588fc2b",
+			"type": "file",
+			"file": "specs/tooling/SPEC-017-capabilities-are-reachable-and-measured.md",
+			"x": 480,
+			"y": 3840,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "b2df8ec1791432fa",
+			"type": "file",
+			"file": "specs/tooling/SPEC-018-scaffolding-invisible-to-the-human.md",
+			"x": 480,
+			"y": 4000,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "9eded19ee4cd4743",
+			"type": "file",
+			"file": "specs/tooling/SPEC-027-compass-uses-fewer-tokens.md",
+			"x": 480,
+			"y": 4160,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "9b4b3806ebaacb08",
+			"type": "file",
+			"file": "specs/vault-structure/SPEC-003-hierarchical-vault-organization.md",
+			"x": 480,
+			"y": 4320,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "fdb34d1be6a417d2",
+			"type": "file",
+			"file": "specs/vault-structure/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md",
+			"x": 480,
+			"y": 4480,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "9cd3a5869e2ab74e",
+			"type": "file",
+			"file": "specs/vault-structure/SPEC-010-universal-hybrid-hierarchy.md",
+			"x": 480,
+			"y": 4640,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "03cb299cf13af232",
+			"type": "file",
+			"file": "specs/vault-structure/SPEC-011-vault-graph-queries.md",
+			"x": 480,
+			"y": 4800,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "328275b9f01ad859",
+			"type": "file",
+			"file": "specs/vault-structure/SPEC-016-sizing-work-beyond-one-spec.md",
+			"x": 480,
+			"y": 4960,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "694115f04974c54a",
+			"type": "file",
+			"file": "specs/vault-structure/SPEC-019-active-holds-only-active-work.md",
+			"x": 480,
+			"y": 5120,
+			"width": 400,
+			"height": 120
+		},
+		{
+			"id": "33f7bc3c18c08326",
+			"type": "file",
+			"file": "specs/vault-structure/SPEC-022-vault-organized-per-domain.md",
+			"x": 480,
+			"y": 5280,
+			"width": 400,
+			"height": 120
+		}
+	],
+	"edges": []
+}

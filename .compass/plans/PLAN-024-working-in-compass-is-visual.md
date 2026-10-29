@@ -17,6 +17,15 @@ summary: "five trials in Obsidian and three agreed mockups first; then documents
 
 # Working in Compass Is Visual
 
+> [!important] You decide
+> Wave 4 is built and installed: Compass 0.32.0 with review plugin 0.3.0. Reload Obsidian once so it loads the new plugin, then open the Compass view panel from its ribbon icon (a dashboard) or the command "Open Compass view panel". The panel draws whatever document is open.
+> - This plan: does the board (task table, graph, choices) read as the mockup's did? The panel also lists what changed in this plan since your last review of it.
+> - [[specs/human-surface/SPEC-031-working-in-compass-is-visual]]: do the decision cards and the strip from spec to validate read well?
+> - [[loops/LOOP-001-visual-questions/index|LOOP-001]]: do the reading and cost charts read as metrics charts at pane width?
+> - `specs.canvas` at the vault root: move a few cards and say so in your note; I rerun `compass canvas` and report whether they stayed put. It holds 34 cards and no lines, since no spec in this vault has child specs.
+>
+> Approve if all of them read well; otherwise Needs changes, with a note per check.
+
 ## Goal
 
 This plan implements [[specs/human-surface/SPEC-031-working-in-compass-is-visual]] from the evidence in [[research/human-surface/RESEARCH-working-in-compass-is-visual]]. Compass documents show diagrams, charts, callouts, embeds, block links, footnotes, a task table and a spec canvas where these replace text, and none grows heavier than its text-only version. Compass Review, Compass's own Obsidian plugin ("the plugin" below), draws what Obsidian cannot. A visual stays only if it removes at least as many bytes of text as it adds, or the human keeps it knowing its cost. The approval loop runs in the markdown editor and the terminal says one line.
