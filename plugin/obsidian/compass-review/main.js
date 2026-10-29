@@ -308,9 +308,22 @@ function parseLedger(text) {
   return out;
 }
 
-// A number written in plain notation with at most `digits` decimals; Mermaid
-// does not read exponent notation.
-function plain(n, digits) {
+// Plotted values stay within these bounds: a larger magnitude is clamped and a
+// smaller one is drawn as 0, so every number written into a chart source is
+// finite and prints in plain decimal notation, and an axis never overflows.
+const PLOT_MAX = 1e15;
+const PLOT_MIN = 1e-12;
+
+function fit(n) {
+  if (Math.abs(n) < PLOT_MIN) return 0;
+  return Math.max(-PLOT_MAX, Math.min(PLOT_MAX, n));
+}
+
+// A number written in plain notation, with six decimals or, for a magnitude
+// under 0.1, five significant digits. Mermaid does not read exponent notation.
+function plain(n) {
+  if (n === 0) return "0";
+  const digits = Math.min(30, Math.max(6, Math.ceil(-Math.log10(Math.abs(n))) + 5));
   const text = n.toFixed(digits);
   const trimmed = text.includes(".") ? text.replace(/\.?0+$/, "") : text;
   return trimmed === "-0" || trimmed === "" ? "0" : trimmed;
@@ -318,9 +331,15 @@ function plain(n, digits) {
 
 // The y-axis range of a chart: from 0 (or the lowest value when below 0) to the
 // highest value, both rounded outward to a step of one power of ten of the span.
+// The loop reads the extremes one value at a time, so a long series is no
+// limit.
 function axisRange(values) {
-  const lowest = Math.min(0, ...values);
-  const highest = Math.max(0, ...values);
+  let lowest = 0;
+  let highest = 0;
+  for (const v of values) {
+    if (v < lowest) lowest = v;
+    if (v > highest) highest = v;
+  }
   const span = highest - lowest;
   const step = span > 0 ? Math.pow(10, Math.floor(Math.log10(span))) : 1;
   const low = Math.floor(lowest / step + 1e-9) * step;
@@ -339,11 +358,11 @@ function loopChartSource(ledger, kind) {
   if (kind === "reading") {
     title = "Reading after each run";
     yLabel = "Reading";
-    values = ledger.readings;
+    values = ledger.readings.map(fit);
   } else if (kind === "cost") {
     title = "Estimated cost of each run";
     yLabel = "Cost per run in USD (estimate)";
-    values = ledger.costs;
+    values = ledger.costs.map(fit);
   } else {
     return null;
   }
@@ -352,8 +371,8 @@ function loopChartSource(ledger, kind) {
     "xychart-beta",
     `    title "${title}"`,
     `    x-axis "Run" 1 --> ${Math.max(2, ledger.readings.length)}`,
-    `    y-axis "${yLabel}" ${plain(low, 6)} --> ${plain(high, 6)}`,
-    `    line [${values.map((v) => plain(v, 6)).join(", ")}]`,
+    `    y-axis "${yLabel}" ${plain(low)} --> ${plain(high)}`,
+    `    line [${values.map(plain).join(", ")}]`,
   ].join("\n");
 }
 
