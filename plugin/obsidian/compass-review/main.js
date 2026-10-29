@@ -252,11 +252,22 @@ function splitRow(line) {
   const body = line.trim().replace(/^\|/, "").replace(/\|$/, "");
   const cells = [];
   let cur = "";
-  let code = false;
   for (let i = 0; i < body.length; i++) {
     const ch = body[i];
-    if (ch === "`") code = !code;
-    if (ch === "|" && !code && body[i - 1] !== "\\") {
+    if (ch === "`") {
+      // A backtick run opens a code span only when a run of the same length
+      // closes it later in the row; otherwise the backticks are plain text.
+      let end = i;
+      while (body[end] === "`") end++;
+      const run = body.slice(i, end);
+      let close = body.indexOf(run, end);
+      while (close >= 0 && (body[close - 1] === "`" || body[close + run.length] === "`")) {
+        close = body.indexOf(run, close + 1);
+      }
+      const stop = close >= 0 ? close + run.length : end;
+      cur += body.slice(i, stop);
+      i = stop - 1;
+    } else if (ch === "|" && body[i - 1] !== "\\") {
       cells.push(cur.trim());
       cur = "";
     } else cur += ch;
@@ -824,7 +835,9 @@ function prose(el, text) {
   };
   for (const line of lines) {
     const fence = /^(`{3,}|~{3,})(.*)$/.exec(line.trim());
-    if (marker === null && fence) {
+    // A backtick fence's info string holds no backtick, so a line like
+    // "```x``` text" is a paragraph with an inline span.
+    if (marker === null && fence && !(fence[1][0] === "`" && fence[2].includes("`"))) {
       endPara();
       list = null;
       marker = fence[1];
