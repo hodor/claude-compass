@@ -110,6 +110,36 @@ def _block_start(raw, marker, block):
     return candidates[-1] if candidates else -1
 
 
+def _addition_block(rel, source_path):
+    """Return (block, empty) for one addition: the marker line plus the
+    addition's stripped text (the marker alone for an addition with no
+    text), and whether the addition has no text. Raises OSError or
+    ValueError when the local file cannot be read."""
+    marker = MARKER.format(source=f"{LOCAL_DIR}/{rel}")
+    addition = vaultlib.read_vault_text(source_path).strip()
+    if not addition:
+        return marker, True
+    return f"{marker}\n\n{addition}", False
+
+
+def addition_blocks(vault_root):
+    """Return {rel: block} for every addition that has text and can be read,
+    `rel` being the path under `meta/local/` (`skills/lessons.md`). The
+    block is the marker line plus the addition, LF-normalized, which is what
+    an applied addition occupies in its target. An empty or unreadable
+    addition has no entry. Never raises. A builder that writes shipped
+    content somewhere other than `.claude/` appends these blocks itself."""
+    blocks = {}
+    for rel, path in find_overlays(vault_root):
+        try:
+            block, empty = _addition_block(rel, path)
+        except (OSError, ValueError):
+            continue
+        if not empty:
+            blocks[rel] = block
+    return blocks
+
+
 def _classify(vault_root, rel, source_path):
     """Return (state, target, raw, index, block, empty) for one addition.
     `raw` is the target's text with its own line endings; `block` is the
@@ -122,9 +152,7 @@ def _classify(vault_root, rel, source_path):
     if not target.is_file():
         return NO_SHIPPED_FILE, target, "", -1, "", False
     marker = MARKER.format(source=f"{LOCAL_DIR}/{rel}")
-    addition = vaultlib.read_vault_text(source_path).strip()
-    empty = not addition
-    block = marker if empty else f"{marker}\n\n{addition}"
+    block, empty = _addition_block(rel, source_path)
     raw = target.read_bytes().decode("utf-8")
     index = _block_start(raw, marker, block)
     if index < 0:
