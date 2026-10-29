@@ -605,6 +605,9 @@ class UpdateNoticeAdditionsTests(SelfUpdateFixture):
 
         ghost.unlink()
         self.add("agents/builder.md", text="\n")
+        # the first update recorded the new version; start the second from
+        # the old one so its notice carries the same version change
+        self.write_plugin_yaml(source=str(self.project.parent / "somewhere-else"))
         self.assertEqual(self.perform(force=True)["notice"], BASE_NOTICE)
 
     def test_raising_overlay_apply_still_finishes_update_and_reports_failure(self):
