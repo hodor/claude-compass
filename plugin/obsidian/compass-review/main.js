@@ -928,7 +928,8 @@ function pathEndsWith(full, tail) {
 }
 
 // The unified diff's hunks for the one file whose path ends in `docPath` on a
-// folder boundary: [{newStart, newCount, items: [{kind: "ctx"|"del"|"add",
+// folder boundary, the shortest such path when several files end that way (a
+// deeper folder holds a file of the same name): [{newStart, newCount, items: [{kind: "ctx"|"del"|"add",
 // text}]}]. A hunk's body is read by the line counts of its header, so a
 // removed line that begins with "--" or an added one that begins with "++" is
 // a row, not a file header.
@@ -936,6 +937,7 @@ function diffHunksOf(diffText, docPath) {
   const hunks = [];
   let oldPath = null;
   let wanted = false;
+  let wantedPath = null;
   let hunk = null;
   let oldLeft = 0;
   let newLeft = 0;
@@ -956,18 +958,20 @@ function diffHunksOf(diffText, docPath) {
     } else if (raw.startsWith("+++ ")) {
       const name = diffHeaderPath(raw) || oldPath;
       wanted = name !== null && pathEndsWith(name, docPath);
+      wantedPath = name;
     } else {
       const m = /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/.exec(raw);
       if (!m) continue;
       oldLeft = m[1] === undefined ? 1 : Number(m[1]);
       newLeft = m[3] === undefined ? 1 : Number(m[3]);
       if (wanted) {
-        hunk = { newStart: Number(m[2]), newCount: newLeft, items: [] };
+        hunk = { path: wantedPath, newStart: Number(m[2]), newCount: newLeft, items: [] };
         hunks.push(hunk);
       }
     }
   }
-  return hunks;
+  const shortest = Math.min(...hunks.map((h) => h.path.length));
+  return hunks.filter((h) => h.path.length === shortest);
 }
 
 // The words of two lines that differ: [{text, changed}] for each side, the

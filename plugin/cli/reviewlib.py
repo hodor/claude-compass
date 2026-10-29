@@ -56,6 +56,7 @@ EDITOR_SETTING = "review_editor"
 PER_USER_EDITORS = ("vscode", "cursor")
 YAML_NULLS = ("null", "Null", "NULL", "~")
 _SETTING_LINE = re.compile(rf"^{EDITOR_SETTING}[ \t]*:[ \t]*(.*)$")
+_SHA = re.compile(r"[0-9a-fA-F]{7,64}")
 
 
 class GitUnavailable(Exception):
@@ -349,7 +350,7 @@ def _earlier_commits(compass_vault, documents):
         return found
     for path in sorted(directory.glob("*.request.json"), key=_order):
         request = read_json(path)
-        if request is None or not isinstance(request.get("commit"), str) or not request["commit"]:
+        if request is None or not isinstance(request.get("commit"), str) or not _SHA.fullmatch(request["commit"]):
             continue
         surface = review_surfaces.named(request.get("surface"))
         for name in request_files(request):
@@ -377,7 +378,8 @@ def changes_record(compass_vault, root, documents):
         if not names:
             continue
         diff = _git(root, "--literal-pathspecs", "-c", "color.ui=never", "-c", "core.quotepath=false",
-                    "diff", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/", commit, "--", names[0])
+                    "diff", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/", "--end-of-options", commit,
+                    "--", names[0])
         if diff.returncode == 0:
             record += diff.stdout
     return record
