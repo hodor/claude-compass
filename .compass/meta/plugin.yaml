@@ -1,10 +1,10 @@
 plugin:
   name: compass
-  version: 0.33.0
+  version: 0.34.0
   commit: c0ce45cae234927327d1fe63fe6b66fd405ed979
   source: F:/claude/plugins/compass/plugin
   repository: https://github.com/hodor/claude-compass
-  installed_at: 2026-10-28
+  installed_at: 2026-10-29
   installed_mode: auto-update
   notes: |
     This vault IS the Compass plugin's own development vault. The plugin source
