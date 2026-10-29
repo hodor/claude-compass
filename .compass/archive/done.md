@@ -466,3 +466,14 @@ Plan: [[PLAN-024-working-in-compass-is-visual]]. Approved; drawings live in a vi
 
 ### PLAN-024 Wave 5: views agents write, and a real plan
 - [x] TASK-205: Live acceptance on the next plan Compass writes - complexity: M, depends_on: TASK-207
+
+### PLAN-024 Wave 5: views agents write, and a real plan
+
+Plan: [[PLAN-024-working-in-compass-is-visual]].
+
+- [x] TASK-207: A view an agent writes, named by `view:` and kept under `views/` - complexity: M
+
+### PLAN-026 Stage 1: local additions tell the truth
+- [x] TASK-229: `compass overlay` knows four states per addition, and `--apply` replaces an out-of-date block - complexity: M
+- [x] TASK-230: The doctor row reads the four states - complexity: S, depends_on: TASK-229
+- [x] TASK-231: The update notice names what it re-applied - complexity: S, depends_on: TASK-229

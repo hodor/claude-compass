@@ -62,18 +62,9 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 - [ ] TASK-168: setup/update install the plugin; doctor walks the human through enabling it - complexity: M, depends_on: TASK-165
 - [ ] TASK-169: review inbox and lessons table as Bases - complexity: S, depends_on: none
 
-## PLAN-024 Wave 5: views agents write, and a real plan
-
-Plan: [[PLAN-024-working-in-compass-is-visual]].
-
-- [x] TASK-207: A view an agent writes, named by `view:` and kept under `views/` - complexity: M
-
 ## PLAN-026 Stage 1: local additions tell the truth
 
 Plan: [[PLAN-026-local-additions-tell-the-truth]].
 
-- [x] TASK-229: `compass overlay` knows four states per addition, and `--apply` replaces an out-of-date block - complexity: M
-- [x] TASK-230: The doctor row reads the four states - complexity: S, depends_on: TASK-229
-- [x] TASK-231: The update notice names what it re-applied - complexity: S, depends_on: TASK-229
 - [ ] TASK-232: dsh gets local additions - complexity: M, depends_on: TASK-231
 - [ ] TASK-233: Release build and offline round-trip - complexity: S, depends_on: TASK-230, TASK-232
