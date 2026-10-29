@@ -358,7 +358,10 @@ const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 // One `<choice>: <note>` line for each choice answered Change, in table order.
 function choiceNoteLines(choices, answers) {
   const lines = [];
+  const seen = new Set();
   for (const { choice } of choices) {
+    if (seen.has(choice)) continue;
+    seen.add(choice);
     if (!hasOwn(answers, choice) || answers[choice].state !== "change") continue;
     const note = String(answers[choice].note || "").trim().replace(/\s+/g, " ");
     lines.push(`${choice}: ${note || "(no note)"}`);
@@ -1320,20 +1323,23 @@ class CompassReview extends Plugin {
     }
   }
 
-  // The choice lines of each file with answers, as the file's table reads now:
-  // Map(file -> lines). A file that cannot be read keeps the order of the
-  // answers.
+  // The choice lines of each file with a changed choice, in the order of the
+  // file's table as it reads now: Map(file -> lines). Every changed choice
+  // yields a line, so this agrees with hasFeedback.
   async choiceLinesFor(entry) {
     const out = new Map();
     for (const [file, answers] of entry.choiceAnswers) {
       if (!Object.values(answers).some((a) => a.state === "change")) continue;
-      let choices;
+      let choices = [];
       try {
         choices = parsePlanChoices(await this.app.vault.adapter.read(file));
       } catch (e) {
-        choices = Object.keys(answers).map((choice) => ({ choice }));
+        choices = [];
       }
-      out.set(file, choiceNoteLines(choices, answers));
+      // A changed choice whose row has left the table is still sent, after
+      // the rows that remain.
+      const rest = Object.keys(answers).map((choice) => ({ choice }));
+      out.set(file, choiceNoteLines([...choices, ...rest], answers));
     }
     return out;
   }
