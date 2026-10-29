@@ -153,6 +153,14 @@ _RUN_HEADER_RE = re.compile(
 _RUN_TRAILER_RE = re.compile(r"\.\.\.\s+(?P<status>ok|FAIL|ERROR|skipped.*)\s*$")
 _RUN_BARE_STATUS_RE = re.compile(r"^(?P<status>ok|FAIL|ERROR|skipped.*)\s*$")
 
+# node --test TAP line at the top level: "ok 3 - name" or "not ok 3 - name",
+# an optional "# SKIP" or "# TODO" directive after the name, and "\#" for
+# a literal hash inside it. Subtests are indented and belong to their parent.
+_TAP_LINE_RE = re.compile(
+    r"^(?P<not>not )?ok \d+ - (?P<name>(?:[^#\\]|\\.)*?)\s*(?:#\s*(?P<directive>SKIP|TODO)\b.*)?$",
+    re.IGNORECASE,
+)
+
 
 # --------------------------------------------------------------------------
 # git access - the sole source of truth for checkpointed content and
@@ -742,8 +750,8 @@ def _read_evidence(path):
 
 
 def _parse_run_evidence(text):
-    """`{(class_name, test_name): status}` from unittest `-v` or pytest
-    `-v` output, status one of `ok`, `fail`, `error`, `skipped` (plus
+    """`{(class_name, test_name): status}` from unittest `-v`, pytest
+    `-v` or `node --test` TAP output (class always None for TAP), status one of `ok`, `fail`, `error`, `skipped` (plus
     pytest's `xfail`/`xpass`). A test id absent from the evidence is simply
     absent from this map - callers treat that as "not proven passed", the
     same as any status other than `ok`. An id that appears more than once
@@ -752,6 +760,16 @@ def _parse_run_evidence(text):
     statuses = {}
     pending = None  # (name, path) header awaiting its docstring-line trailer
     for line in text.splitlines():
+        tap = _TAP_LINE_RE.match(line.rstrip())
+        if tap:
+            pending = None
+            name = re.sub(r"\\(.)", r"\1", tap.group("name"))
+            if tap.group("directive"):
+                status = "skipped"
+            else:
+                status = "fail" if tap.group("not") else "ok"
+            _fold_status(statuses, None, name, status)
+            continue
         stripped = line.strip()
         pytest_match = (_PYTEST_LINE_RE.match(stripped)
                         or _PYTEST_SUMMARY_RE.match(stripped))

@@ -1074,5 +1074,44 @@ class CycleTests(unittest.TestCase):
         self.assertEqual(len(cycle_log(self.repo_root, "TASK-396")), 1)
 
 
+class NodeTapEvidenceTests(unittest.TestCase):
+    """`node --test` prints TAP: `ok N - name` and `not ok N - name` at the
+    top level, subtests indented beneath their parent."""
+
+    def test_top_level_tap_lines_parse_as_bare_names(self):
+        """Adversarial where: an indented subtest line is read as a test of
+        its own, `not ok` is read as a pass because it contains `ok`, or a
+        `# SKIP` directive is read as a pass."""
+        text = "\n".join([
+            "TAP version 13",
+            "# Subtest: a board draws",
+            "    ok 1 - inner step",
+            "ok 1 - a board draws",
+            "    not ok 1 - inner failing step",
+            "not ok 2 - Needs changes never sends an empty verdict",
+            "ok 3 - a skipped probe # SKIP no node fs",
+            "ok 4 - a name with a \\# hash",
+            "1..4",
+            "# pass 2",
+        ])
+        statuses = test_checkpoint._parse_run_evidence(text)
+        self.assertEqual(statuses[(None, "a board draws")], "ok")
+        self.assertEqual(statuses[(None, "Needs changes never sends an empty verdict")], "fail")
+        self.assertEqual(statuses[(None, "a skipped probe")], "skipped")
+        self.assertEqual(statuses[(None, "a name with a # hash")], "ok")
+        self.assertNotIn((None, "inner step"), statuses)
+        self.assertNotIn((None, "inner failing step"), statuses)
+
+    def test_cycle_accepts_node_tap_evidence(self):
+        """Adversarial where: `cycle` still refuses evidence holding only
+        TAP lines, so a fix loop on plugin tests records nothing."""
+        repo_root = make_repo_vault(self)
+        with_vault_env(self, repo_root)
+        evidence = write_file(repo_root, "ev/tap.txt", "TAP version 13\nnot ok 1 - board\n1..1\n")
+        code, out, err = run_cli(["cycle", "TASK-901", "--evidence", str(evidence)])
+        self.assertEqual(code, 0, out + err)
+        self.assertRegex(out, r"cycle 0:")
+
+
 if __name__ == "__main__":
     unittest.main()
