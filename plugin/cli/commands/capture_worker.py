@@ -321,6 +321,9 @@ def _run_child(vault_root, opp_id, opp_dir, opp_path, config):
             stderr=subprocess.PIPE,
             text=True,
             timeout=grace_seconds,
+            # The worker runs detached, without a console; on Windows a
+            # console child of such a parent opens a visible window of its own.
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
     except OSError:
         # The binary itself could not be launched - the same signal as an

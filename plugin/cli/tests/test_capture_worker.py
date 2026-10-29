@@ -603,6 +603,21 @@ class ChildInvocationTests(WorkerHarness):
         self.assertNotIn("--dangerously-skip-permissions", argv)
         self.assertNotIn("--allow-dangerously-skip-permissions", argv)
 
+    def test_child_starts_without_a_console_window(self):
+        """Adversarial where: the worker runs detached, so on Windows a
+        console child it starts opens a visible terminal window on the
+        user's screen unless it is started with CREATE_NO_WINDOW (GitHub #47)."""
+        import subprocess as subprocess_mod
+        from unittest import mock
+
+        self.close_via_stub()
+        real_run = subprocess_mod.run
+        with mock.patch.object(capture_worker.subprocess, "run", wraps=real_run) as run:
+            self.run_worker()
+        self.assertTrue(run.called, "the worker never started its child")
+        flags = run.call_args.kwargs.get("creationflags", 0)
+        self.assertEqual(flags, getattr(subprocess_mod, "CREATE_NO_WINDOW", 0))
+
     def test_child_argv_pins_model_never_inherit_and_output_format_json(self):
         with_env(self, "STUB_STDOUT", "extracted: 0 written, 0 revised, 0 rejected - ok\n")
         self.close_via_stub()
