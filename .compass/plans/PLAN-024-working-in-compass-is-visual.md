@@ -236,7 +236,7 @@ How each Wave 5 task differs from its one-line sketch, and why. The sketches rea
 
 ```markdown
 - [ ] TASK-207: An agent writes its own view when no template fits: a script file in the vault that a code block names and the plugin runs, plus writing rules for when to use which - files: [plugin/obsidian/compass-review/main.js, plugin/obsidian/tests/test_main.js, plugin/skills/obsidian/SKILL.md], decisions: [SPEC-031-working-in-compass-is-visual/D-01]
-- [x] TASK-205: Live acceptance: the next plan Compass writes uses the forms, the human reviews it in Obsidian, and its bytes and `compass hot-path` are compared with its text-only twin - decisions: [SPEC-031-working-in-compass-is-visual/D-02]
+- [ ] TASK-205: Live acceptance: the next plan Compass writes uses the forms, the human reviews it in Obsidian, and its bytes and `compass hot-path` are compared with its text-only twin - decisions: [SPEC-031-working-in-compass-is-visual/D-02]
 ```
 
 - TASK-207: the script is named by a `view:` frontmatter line, not a code block, because the review of Wave 4 put drawings in the view panel beside the document. Scripts live only under `views/` so a stray path never runs, and run with the vault's full access as the choices table decides, the script reaching the human in the review's `git diff`.
