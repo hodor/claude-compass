@@ -4134,3 +4134,228 @@ test("markup in a linked plan's task titles and statuses is drawn as literal tex
   }
   assert.match(textOfEl(viewEl(app).querySelector(".compass-pipe-next")), /<img src=x onerror="alert\(1\)">/);
 });
+
+// ---- the strip under load, races and path forms ----
+
+const PA_SPEC_ID = "SPEC-900-fixture";
+const paPlan = (status, lines, link = PA_SPEC_ID) => psPlan(status, lines, `depends_on: ["[[${link}]]"]`);
+const paReads = (app) => {
+  const reads = [];
+  const read = app.vault.adapter.read;
+  app.vault.adapter.read = async (p) => { reads.push(p); return read.call(app.vault.adapter, p); };
+  return reads;
+};
+const paQuiet = async () => { for (let i = 0; i < 12; i++) await sleep(); };
+
+// Adversarial where: every markdown change while a spec is in view re-reads the
+// whole vault with no coalescing, so a burst of saves (an agent checking off
+// tasks, a sync) costs one full-vault read per event instead of a bounded few.
+// Each read takes a tick, as disk reads do, so the draws overlap.
+test("a burst of 100 saves while a spec is in view reads the vault a bounded number of times", async () => {
+  const files = { [SP]: CALLOUT, [PS_PLAN]: paPlan("approved", psTasks([" "])) };
+  for (let i = 0; i < 60; i++) files[`notes/n${i}.md`] = PS_LESSON;
+  const { app, plugin } = await loadedListing(files);
+  await openDoc(app, SP);
+  await plugin.openViewPanel();
+  await settle();
+  const size = app.vault.getMarkdownFiles().length;
+  const read = app.vault.adapter.read;
+  app.vault.adapter.read = async (p) => { await sleep(); return read.call(app.vault.adapter, p); };
+  const reads = paReads(app);
+  for (let i = 0; i < 100; i++) {
+    app.listeners.modify(mdFile(`notes/n${i % 60}.md`));
+    await sleep();
+  }
+  await paQuiet();
+  assert.ok(reads.length <= 10 * size, `${reads.length} reads for a vault of ${size} documents`);
+});
+
+// Adversarial where: a change while a plan or research view is showing, or a
+// non-markdown change under a spec, re-reads the vault or repaints the panel.
+test("a save of an unrelated file leaves a plan board, a research view and the spec strip as drawn", async (t) => {
+  const files = { [SP]: CALLOUT, [PS_PLAN]: PLAN_24, [PS_RES]: RESEARCH_TEXT, "notes/n.md": PS_LESSON, "data/x.json": "{}" };
+  for (const [name, open, other] of [
+    ["plan board, markdown", PS_PLAN, "notes/n.md"],
+    ["research view, markdown", PS_RES, "notes/n.md"],
+    ["spec view, a json file", SP, "data/x.json"],
+  ]) {
+    await t.test(name, async () => {
+      const { app, plugin } = await loadedListing(files);
+      await openDoc(app, open);
+      await plugin.openViewPanel();
+      await settle();
+      const first = viewEl(app).children[0];
+      const seen = paReads(app);
+      await app.listeners.modify(mdFile(other));
+      await paQuiet();
+      assert.deepEqual(seen, [], "the vault was read");
+      assert.equal(viewEl(app).children[0], first, "the panel was repainted");
+    });
+  }
+  await t.test("spec view, a markdown file: not repainted", async () => {
+    const { app, plugin } = await loadedListing(files);
+    await openDoc(app, SP);
+    await plugin.openViewPanel();
+    await settle();
+    const first = viewEl(app).children[0];
+    await app.listeners.modify(mdFile("notes/n.md"));
+    await paQuiet();
+    assert.equal(viewEl(app).children[0], first, "the panel was repainted");
+  });
+});
+
+// Adversarial where: typed decision-card notes and Change answers are lost when
+// the strip redraws because a linked plan changed, or the card is rebuilt on an
+// unrelated save while the human is typing.
+test("decision-card answers and a half-typed note survive saves of the plan and of unrelated files", async () => {
+  const plan = paPlan("approved", psTasks([" ", " "]));
+  const { app, plugin } = await loadedListing({ [SP]: CALLOUT, [REQ1]: req("1", SP), [PS_PLAN]: plan, "notes/n.md": PS_LESSON });
+  await openDoc(app, SP);
+  await plugin.openViewPanel();
+  await settle();
+  await plugin.handler({ request: REQ1 });
+  await settle();
+  await changeDecision(app, "D-02", "reword it");
+  typeInto(cardArea(decisionCard(app, "D-04")), "half typed");
+  const card4 = decisionCard(app, "D-04");
+  await app.listeners.modify(mdFile("notes/n.md"));
+  await paQuiet();
+  assert.equal(decisionCard(app, "D-04"), card4, "an unrelated save rebuilt the card");
+  app.store.set(PS_PLAN, paPlan("approved", psTasks(["x", " "])));
+  await app.listeners.modify(mdFile(PS_PLAN));
+  await paQuiet();
+  assert.match(stageLine(app, "build"), /1 of 2/);
+  assert.equal(cardArea(decisionCard(app, "D-04")).value, "half typed");
+  assert.match(decisionCard(app, "D-02").cls, /is-change/);
+  assert.equal(cardArea(decisionCard(app, "D-02")).value, "reword it");
+  await click(cardBtn(app, "1", "Needs changes"));
+  await settle();
+  assert.equal(verdictNotes(app), "D-02: reword it");
+});
+
+// Adversarial where: a redraw that read the plan before it changed lands after
+// a later redraw that read it after, so the strip shows the older counts.
+test("of two redraws racing on a slow read of the plan, the later one is what stays drawn", async () => {
+  const { app } = await stripView({ [PS_SPEC]: PS_SPEC_TEXT, [PS_PLAN]: psPlan("approved", psTasks([" ", " ", " "])) }, PS_SPEC);
+  assert.match(stageLine(app, "build"), /0 of 3/);
+  const read = app.vault.adapter.read;
+  let hold = null;
+  app.vault.adapter.read = async (p) => {
+    const value = await read.call(app.vault.adapter, p);
+    if (p === PS_PLAN && hold) await hold.wait;
+    return value;
+  };
+  hold = gate();
+  app.store.set(PS_PLAN, psPlan("approved", psTasks(["x", " ", " "])));
+  app.listeners.modify(mdFile(PS_PLAN));
+  await paQuiet();
+  const slow = hold;
+  hold = null;
+  app.store.set(PS_PLAN, psPlan("approved", psTasks(["x", "x", " "])));
+  app.listeners.modify(mdFile(PS_PLAN));
+  await paQuiet();
+  assert.match(stageLine(app, "build"), /2 of 3/);
+  slow.release();
+  await paQuiet();
+  assert.match(stageLine(app, "build"), /2 of 3/);
+});
+
+// Adversarial where: the plugin attaches its vault listeners without the
+// registration that detaches them at unload, so a disabled plugin keeps
+// redrawing, or a save after unload with a spec in view throws.
+test("every vault and workspace subscription is registered for removal, and a save after unload throws nothing", async () => {
+  const app = makeApp({ [SP]: CALLOUT });
+  app.vault.getMarkdownFiles = () => [mdFile(SP)];
+  const made = [];
+  for (const target of [app.vault, app.workspace]) {
+    const on = target.on;
+    target.on = (name, fn) => { on.call(target, name, fn); const ref = { name }; made.push(ref); return ref; };
+  }
+  const plugin = new CompassReview(app);
+  const registered = [];
+  plugin.registerEvent = (ref) => registered.push(ref);
+  await plugin.onload();
+  assert.ok(made.some((r) => r.name === "modify"), "fixture error: modify was never subscribed");
+  assert.deepEqual(made.filter((r) => !registered.includes(r)).map((r) => r.name), []);
+  await openDoc(app, SP);
+  await plugin.openViewPanel();
+  await settle();
+  plugin.onunload();
+  await app.listeners.modify(mdFile(SP));
+  await app.listeners.modify(mdFile("notes/other.md"));
+  await paQuiet();
+});
+
+// Adversarial where: the cap is off by one (6 ready tasks print "and 0 more"
+// or drop one), the overflow text miscounts or mis-pluralises, or tasks that
+// wait on an open dependency are counted among the ready ones.
+test("the next list shows at most six ready tasks and counts the rest", async (t) => {
+  const ready = (n) => Array.from({ length: n }, (_, i) => `- [ ] TASK-${i + 1}: ready ${i + 1} - complexity: S, depends_on: none`);
+  const blocked = ["- [ ] TASK-90: waits - complexity: S, depends_on: TASK-1", "- [ ] TASK-91: waits too - complexity: S, depends_on: TASK-90"];
+  for (const [n, shown, more] of [[0, 0, null], [1, 1, null], [5, 5, null], [6, 6, null], [7, 6, "and 1 more task ready"], [12, 6, "and 6 more tasks ready"]]) {
+    await t.test(`${n} ready`, async () => {
+      const { app } = await stripView({ [PS_SPEC]: PS_SPEC_TEXT, [PS_PLAN]: psPlan("approved", n > 0 ? [...ready(n), ...blocked] : ready(0)) }, PS_SPEC);
+      const box = viewEl(app).querySelector(".compass-pipe-next");
+      const tasks = box.querySelectorAll(".compass-pipe-task");
+      assert.deepEqual(tasks.map((x) => x.dataset.id), Array.from({ length: shown }, (_, i) => `TASK-${i + 1}`));
+      const text = textOfEl(box);
+      if (more) assert.ok(text.includes(more), text);
+      else assert.doesNotMatch(text, /\band \d+ more\b/);
+      if (n === 0) assert.match(text, /No task is ready/);
+    });
+  }
+});
+
+// Adversarial where: a plan listing two specs shows in one of them only, a plan
+// naming the spec by its bare stem and its path (or twice) counts as two plans,
+// or a link into a workstream folder (a longer path ending in the root spec's
+// path) is taken as naming the root spec.
+test("a plan or research document counts once per spec it links and never for a spec in another folder", async (t) => {
+  const SPEC_B = "specs/SPEC-901-second.md";
+  await t.test("a plan linking two specs belongs to both strips", () => {
+    const two = paPlan("approved", psTasks([" "]), `${PA_SPEC_ID}]]", "[[SPEC-901-second`);
+    for (const spec of [SP, SPEC_B]) {
+      const r = pipe(spec, [[SP, psSpec()], [SPEC_B, psSpec()], ["plans/PLAN-001-x.md", two]]);
+      assert.deepEqual(r.plans.map((p) => p.id), ["PLAN-001"], spec);
+      assert.deepEqual(r.next.map((x) => x.id), ["TASK-1"], spec);
+    }
+  });
+  await t.test("the bare stem and the path-qualified link together, and a repeated link, count once", () => {
+    const both = paPlan("approved", psTasks([" "]), `${PA_SPEC_ID}]]", "[[specs/${PA_SPEC_ID}]]", "[[${PA_SPEC_ID}`);
+    const res = psDoc("research", "complete", `depends_on: ["[[${PA_SPEC_ID}]]", "[[${SP.replace(/\.md$/, "")}]]"]`);
+    const r = pipe(SP, [[SP, psSpec()], ["plans/PLAN-001-x.md", both], ["research/R.md", res]]);
+    assert.equal(r.plans.length, 1);
+    assert.equal(r.research.length, 1);
+    assert.ok(stageOf(r, "research").line.includes("1 document,"), stageOf(r, "research").line);
+  });
+  await t.test("a link into a workstream folder does not name the root spec of the same name", () => {
+    const root = "specs/SPEC-001-cli.md";
+    const unit = paPlan("approved", psTasks([" "]), "compass-cli/specs/SPEC-001-cli");
+    const r = pipe(root, [[root, psSpec()], ["plans/PLAN-001-x.md", unit]]);
+    assert.deepEqual(stageKeys(r), ["spec"]);
+  });
+  await t.test("a shorter suffix of the spec's path names it", () => {
+    const unitSpec = "compass-cli/specs/SPEC-001-cli.md";
+    const plan = paPlan("approved", psTasks([" "]), "specs/SPEC-001-cli");
+    const r = pipe(unitSpec, [[unitSpec, psSpec()], ["plans/PLAN-001-x.md", plan]]);
+    assert.equal(r.plans.length, 1);
+  });
+});
+
+// Adversarial where: documents saved on Windows (CRLF line ends, a byte-order
+// mark, quoted values) lose their properties, so the plan reads as missing, the
+// status as unapproved, or a block-list link as absent.
+test("plan, research and spec documents with CRLF line ends and a byte-order mark are read like LF ones", async (t) => {
+  const crlf = (s, bom) => (bom ? "﻿" : "") + s.replace(/\n/g, "\r\n");
+  for (const bom of [false, true]) {
+    await t.test(bom ? "with a byte-order mark" : "without", () => {
+      const plan = crlf(`---\ntype: plan\nstatus: "approved"\ndepends_on:\n  - "[[SPEC-001-other]]"\n  - "[[${PS_STEM}]]"\n---\n# P\n\n${psTasks(["x", " "]).join("\n")}\n`, bom);
+      const res = crlf(`---\ntype: research\nstatus: 'complete'\ndepends_on: ["[[${PS_STEM}]]"]\n---\n# R\n`, bom);
+      const spec = crlf("---\ntype: spec\nstatus: approved\n---\n# S\n", bom);
+      const r = pipe(PS_SPEC, [[PS_SPEC, spec], [PS_PLAN, plan], [PS_RES, res]]);
+      assert.deepEqual(r.stages.map((s) => [s.key, s.state]), [["spec", "done"], ["research", "done"], ["plan", "done"], ["build", "current"], ["validate", "todo"]]);
+      assert.deepEqual([r.plans[0].done, r.plans[0].open], [1, 1]);
+      assert.deepEqual(r.next.map((x) => x.id), ["TASK-2"]);
+    });
+  }
+});
