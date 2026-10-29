@@ -10,7 +10,8 @@ A rerun reconciles the file in place. A card for a spec that is still
 there keeps its id, position and size; a spec that appeared gets a card
 below the existing ones, in a column per folder depth; a card whose file
 no longer exists loses its card. Lines between spec cards are regenerated
-from the folder structure (their ids start with `tree-`); any other node,
+from the folder structure (their ids start with `tree-`) and keep any
+other keys Obsidian set on them, such as colour, label and sides; any other node,
 any card for a file that still exists, and any line the human drew stay
 when its endpoints stay. A canvas that is not valid JSON is left
 untouched and reported.
@@ -142,15 +143,22 @@ def build(existing, cards, file_exists):
         and e.get("fromNode") in live_ids
         and e.get("toNode") in live_ids
     ]
+    old_tree_edges = {
+        (e.get("fromNode"), e.get("toNode")): e
+        for e in existing["edges"]
+        if isinstance(e, dict) and str(e.get("id", "")).startswith(EDGE_PREFIX)
+    }
     for rel, _, parent in cards:
         if parent is None:
             continue
         from_id, to_id = by_file[parent]["id"], by_file[rel]["id"]
-        edges.append({
+        edge = dict(old_tree_edges.get((from_id, to_id), {}))
+        edge.update({
             "id": f"{EDGE_PREFIX}{from_id}-{to_id}",
             "fromNode": from_id,
             "toNode": to_id,
         })
+        edges.append(edge)
     canvas = dict(existing)
     canvas["nodes"] = kept
     canvas["edges"] = edges
