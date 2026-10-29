@@ -61,3 +61,10 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
 - [ ] TASK-168: setup/update install the plugin; doctor walks the human through enabling it - complexity: M, depends_on: TASK-165
 - [ ] TASK-169: review inbox and lessons table as Bases - complexity: S, depends_on: none
+
+## PLAN-024 Wave 5: views agents write, and a real plan
+
+Plan: [[PLAN-024-working-in-compass-is-visual]].
+
+- [ ] TASK-207: A view an agent writes, named by `view:` and kept under `views/` - complexity: M
+- [ ] TASK-205: Live acceptance on the next plan Compass writes - complexity: M, depends_on: TASK-207
