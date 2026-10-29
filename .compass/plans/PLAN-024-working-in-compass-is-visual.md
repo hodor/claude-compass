@@ -1,7 +1,7 @@
 ---
 title: "Working in Compass Is Visual"
 type: plan
-status: approved
+status: done
 approved: 2026-10-27
 confidence: medium
 area: methodology
@@ -202,6 +202,8 @@ Every view ports its drawing from the agreed mockup plugin, `.compass/.obsidian/
 
 - [x] TASK-197: Mockup of what the plugin draws: a plan's task table and dependency graph, a loop's readings and cost over time, the spec tree canvas - files: [.compass/research/human-surface/RESEARCH-plugin-visuals-mockup.md], decisions: [SPEC-031-working-in-compass-is-visual/D-01, SPEC-031-working-in-compass-is-visual/D-02]
 
+Nothing left: every task is detailed.
+
 ## Wave 2 elaborated
 
 How each Wave 2 task differs from its one-line sketch in the plan as first approved, and why.
@@ -263,3 +265,4 @@ How each Wave 5 task differs from its one-line sketch, and why. The sketches rea
 - 2026-10-28: Wave 4 approved: drawings live in a view panel beside the document.
 - 2026-10-29: Wave 4 manual checks approved in Obsidian: the view panel, the spec strip and decision cards, the loop charts.
 - 2026-10-29: Wave 5 detailed (TASK-207, TASK-205).
+- 2026-10-29: PLAN-024 done: TASK-207 merged and TASK-205 accepted on PLAN-026.
