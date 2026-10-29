@@ -1080,6 +1080,7 @@ function parseChanges(diffText, docText, docPath) {
 
 const APPROVED = ["approved", "active", "done"];
 const PIPE_NEXT_SHOWN = 6;
+const READ_BATCH = 4;
 
 // The link targets of a document's `depends_on` property, whether written
 // inline (`[a, b]`) or as a block list: each target without `#heading`,
@@ -1106,13 +1107,14 @@ function specIdentity(path) {
   return path.replace(/\.md$/, "").replace(/(^|\/)index$/, "");
 }
 
-// True when a link target names the spec: the two paths are equal, or one ends
-// with the other on a folder boundary. A bare `index` names no spec.
+// True when a link target names the spec: the two paths are equal, or the
+// spec's path ends with the link on a folder boundary. A bare `index` names no
+// spec, and a link longer than the spec's path names another document.
 function linkNamesSpec(target, specPath) {
   const link = specIdentity(target);
   const spec = specIdentity(specPath);
   if (!link || !spec) return false;
-  return link === spec || spec.endsWith(`/${link}`) || link.endsWith(`/${spec}`);
+  return link === spec || spec.endsWith(`/${link}`);
 }
 
 // The strip of one spec: {stages, waits, next, plans, research}. `docs` is
@@ -1162,7 +1164,7 @@ function pipelineFor(specPath, docs) {
   if (!specOk) waits.push({ text: "Approve the spec", path: specPath });
   let next = [];
   if (plans.length > 0 || research.length > 0) {
-    const finished = research.filter((r) => r.status === "complete" || r.status === "done").length;
+    const finished = research.filter((r) => ["complete", "approved", "done"].includes(r.status)).length;
     stages.push({
       key: "research",
       name: "Research",
@@ -1532,23 +1534,28 @@ class CompassReview extends Plugin {
 
   // The vault's markdown documents as [{path, text}] for the strip of the spec
   // at `specPath`, whose own text is `specText`. A document that cannot be
-  // read is left out.
-  async vaultDocuments(specPath, specText) {
+  // read is left out. The documents are read a few at a time and `current()`
+  // is asked before each batch: once it is false the reading stops and the
+  // result is null, so a draw that a newer one superseded stops costing reads.
+  async vaultDocuments(specPath, specText, current) {
     const vault = this.app.vault;
     const files = typeof vault.getMarkdownFiles === "function" ? vault.getMarkdownFiles() : [];
-    const read = await Promise.all(
-      files.map(async (f) => {
-        if (f.path === specPath) return { path: f.path, text: specText };
-        try {
-          return { path: f.path, text: await vault.adapter.read(f.path) };
-        } catch (e) {
-          return null;
-        }
-      })
-    );
-    const docs = read.filter(Boolean);
-    if (!docs.some((d) => d.path === specPath)) docs.push({ path: specPath, text: specText });
-    return docs;
+    const docs = [{ path: specPath, text: specText }];
+    const others = files.filter((f) => f.path !== specPath);
+    for (let i = 0; i < others.length; i += READ_BATCH) {
+      if (!current()) return null;
+      const batch = await Promise.all(
+        others.slice(i, i + READ_BATCH).map(async (f) => {
+          try {
+            return { path: f.path, text: await vault.adapter.read(f.path) };
+          } catch (e) {
+            return null;
+          }
+        })
+      );
+      docs.push(...batch.filter(Boolean));
+    }
+    return current() ? docs : null;
   }
 
   // The `title` property of a file, else its name.
@@ -1913,7 +1920,9 @@ class CompassReview extends Plugin {
     let pipeline = null;
     if (kind === "spec") {
       try {
-        pipeline = pipelineFor(file.path, await this.vaultDocuments(file.path, text));
+        const docs = await this.vaultDocuments(file.path, text, () => seq === view.drawSeq);
+        if (docs === null) return;
+        pipeline = pipelineFor(file.path, docs);
       } catch (e) {
         console.error("[compass-review] reading the pipeline failed", e);
       }
