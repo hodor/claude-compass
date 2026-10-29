@@ -3778,3 +3778,359 @@ test("a plan board keeps its task rows when the saved diff is empty, not a diff 
     });
   }
 });
+
+// ---- the pipeline strip of a spec ----
+//
+// The view of a spec also shows where the spec stands: spec, research, plan,
+// build and validate as one strip, each stage read from the properties of the
+// plans and research documents that list the spec in `depends_on` and from the
+// plan's task lines, with what waits on the human and what runs next.
+//
+// Statics:
+//   CompassReview.pipelineFor(specPath, docs) -> { stages, waits, next, plans, research }
+//       specPath: vault-relative path of the spec; docs: [{ path, text }], every
+//       markdown document of the vault in any order, the spec itself included.
+//       stages: [{ key, name, state, line, path }] in the order spec, research,
+//         plan, build, validate. A spec that no plan or research document lists
+//         has the spec stage alone. key is "spec" | "research" | "plan" | "build" |
+//         "validate"; state is "done" | "current" | "ready" | "waiting" | "todo" |
+//         "none"; line is the plain-words text drawn in the stage; path is the
+//         document the stage opens, or null.
+//         spec: done when status is approved, active or done, else waiting.
+//         research: done when every linked research document is complete or done,
+//           current otherwise.
+//         plan: waiting while the first linked plan's status is not approved,
+//           active or done, else done; its line names the plan id and the status.
+//         build: todo while the plan waits; ready with no task done; current with
+//           some done; done once every counted task line is done and at least one
+//           exists. validate: ready when the build is done, else todo; path null.
+//       waits: [{ text, path }] the approvals the human owes, spec first, then plan.
+//       next: [{ id, title, line, path }] the plan's tasks that are ready to run
+//         (not done, not intent-only, no open dependency), in file order.
+//       plans: [{ path, id, status, done, open }] linked plans in the order of docs;
+//         id is the PLAN-NNN of the file name; done and open count the task lines
+//         parsePlanTasks reads (fenced and "Wave n elaborated" quotations left out).
+//       research: [{ path, status }].
+//       A document is linked when its own `depends_on` property holds a link whose
+//       target is the spec: the link's path (without `#heading`, `|alias` and
+//       extension) equals the spec path or ends with it on a folder boundary, or
+//       the spec path ends with the link on a folder boundary; a folder spec
+//       (`<folder>/index.md`) answers to its folder. Only type plan and type
+//       research documents are read as stages.
+//
+// DOM (inside .compass-spec-view of the view panel):
+//   .compass-pipeline        one per spec in view
+//   .compass-pipe-stage      one per stage in order, dataset.key, dataset.state; holds
+//                            .compass-pipe-name (the stage name) and .compass-pipe-line
+//                            (its line). A stage with a path opens it when clicked; one
+//                            without has no click handler.
+//   .compass-pipe-waits      always present; one .compass-pipe-wait per wait, each with
+//                            an "Open" button that opens the wait's path
+//   .compass-pipe-next       always present; one .compass-pipe-task per next task,
+//                            dataset.id "TASK-NNN", its text holding the id and the title
+// The plugin lists the vault's documents with app.vault.getMarkdownFiles() and reads
+// each with vault.adapter.read(path). A change to any listed document redraws the
+// strip of the spec in view.
+
+const PS_STEM = "SPEC-031-working-in-compass-is-visual";
+const PS_SPEC = `specs/human-surface/${PS_STEM}.md`;
+const PS_PLAN = "plans/PLAN-024-working-in-compass-is-visual.md";
+const PS_RES = "research/human-surface/RESEARCH-working-in-compass-is-visual.md";
+const PS_SPEC_TEXT = SPEC_FILES["SPEC-031-working-in-compass-is-visual.md"];
+const PS_LESSON = "---\ntype: lesson\nstatus: active\n---\nx\n";
+const psDoc = (type, status, fm = "", body = "") => `---\ntype: ${type}\nstatus: ${status}\n${fm}\n---\n# T\n\n${body}\n`;
+const psSpec = (status = "approved") => psDoc("spec", status);
+const psTasks = (marks) => marks.map((m, i) => `- [${m}] TASK-${i + 1}: work ${i + 1} - complexity: S, depends_on: none`);
+const psPlan = (status, lines, fm = `depends_on: ["[[${PS_STEM}]]"]`) => psDoc("plan", status, fm, `## Phase 1\n\n${lines.join("\n")}\n\nSee [[${PS_STEM}]].`);
+const pipe = (specPath, docs) => CompassReview.pipelineFor(specPath, docs.map(([p, text]) => ({ path: p, text })));
+const stageOf = (r, key) => r.stages.find((s) => s.key === key);
+const stageKeys = (r) => r.stages.map((s) => s.key);
+
+// Adversarial where: the counts come from every task-shaped line instead of the
+// task lines the board reads (the four quoted lines in a fence make 12 open
+// where the plan holds 8), the stage names a plan that is not approved, the
+// next tasks include ones still waiting on an open dependency (TASK-206 waits
+// on TASK-202), or the strip depends on the order of the vault's documents.
+test("for SPEC-031 the strip names PLAN-024 as approved with its done and open counts equal to its task lines", () => {
+  const done = EXPECT_24.filter((t) => t.status === "done").length;
+  const open = EXPECT_24.length - done;
+  assert.deepEqual([done, open], [15, 8], "fixture error: expected counts");
+  const naiveOpen = PLAN_24.split("\n").filter((l) => /^- \[ \] TASK-\d+:/.test(l)).length;
+  assert.ok(naiveOpen > open, "fixture error: the plan quotes task lines in a fence");
+  const r = pipe(PS_SPEC, [["notes/n.md", PS_LESSON], [PS_RES, RESEARCH_TEXT], [PS_PLAN, PLAN_24], [PS_SPEC, PS_SPEC_TEXT]]);
+  assert.deepEqual(stageKeys(r), ["spec", "research", "plan", "build", "validate"]);
+  assert.deepEqual(r.plans, [{ path: PS_PLAN, id: "PLAN-024", status: "approved", done: 15, open: 8 }]);
+  assert.deepEqual(r.research, [{ path: PS_RES, status: "complete" }]);
+  assert.match(stageOf(r, "plan").line, /PLAN-024/);
+  assert.match(stageOf(r, "plan").line, /approved/);
+  assert.equal(stageOf(r, "plan").path, PS_PLAN);
+  assert.equal(stageOf(r, "research").path, PS_RES);
+  assert.equal(stageOf(r, "spec").path, PS_SPEC);
+  assert.match(stageOf(r, "build").line, /\b15\b/);
+  assert.deepEqual(r.stages.map((s) => [s.key, s.state]), [["spec", "done"], ["research", "done"], ["plan", "done"], ["build", "current"], ["validate", "todo"]]);
+  assert.equal(stageOf(r, "validate").path, null);
+  assert.deepEqual(r.waits, []);
+  assert.deepEqual(r.next.map((t) => [t.id, t.line, t.path]), [["TASK-202", 171, PS_PLAN], ["TASK-204", 186, PS_PLAN]]);
+  assert.ok(r.next.every((t) => typeof t.title === "string" && t.title.length > 0));
+});
+
+// Adversarial where: a document counts as linking the spec because its text
+// merely mentions the stem (a body link, the summary, `supersedes`), because the
+// stem is a prefix or a suffix of another name, because a bare `index` or the
+// same stem in another folder matches, or because the link carries an alias or
+// heading, sits last in a list, or is written as a block list and is missed.
+test("a document links the spec only through a depends_on link whose target is the spec", async (t) => {
+  const FOLDER = "specs/SPEC-002-tile-editor/index.md";
+  const CHILD = "specs/SPEC-002-tile-editor/SPEC-001-master-material.md";
+  const dep = (...links) => `depends_on: [${links.map((l) => `"[[${l}]]"`).join(", ")}]`;
+  const rows = [
+    ["a bare stem", PS_SPEC, "plan", dep(PS_STEM), true],
+    ["a path-qualified link", PS_SPEC, "plan", dep(`specs/human-surface/${PS_STEM}`), true],
+    ["a heading and an alias", PS_SPEC, "plan", dep(`specs/human-surface/${PS_STEM}#Problem|the spec`), true],
+    ["the last of three links", PS_SPEC, "plan", dep("SPEC-001-other", "RESEARCH-other", `specs/human-surface/${PS_STEM}`), true],
+    ["a block list", PS_SPEC, "plan", `depends_on:\n  - "[[SPEC-001-other]]"\n  - "[[${PS_STEM}]]"`, true],
+    ["a research document", PS_SPEC, "research", dep(PS_STEM), true],
+    ["a folder spec by its folder name", FOLDER, "plan", dep("SPEC-002-tile-editor"), true],
+    ["a folder spec by its folder path", FOLDER, "plan", dep("specs/SPEC-002-tile-editor"), true],
+    ["a folder spec by its index path and alias", FOLDER, "plan", dep("specs/SPEC-002-tile-editor/index|tile editor"), true],
+    ["a bare index names no folder spec", FOLDER, "plan", dep("index"), false],
+    ["a child by its folder-qualified path", CHILD, "plan", dep("SPEC-002-tile-editor/SPEC-001-master-material"), true],
+    ["a child by its bare stem", CHILD, "plan", dep("SPEC-001-master-material"), true],
+    ["the parent link does not reach the child", CHILD, "plan", dep("SPEC-002-tile-editor"), false],
+    ["the stem inside the summary only", PS_SPEC, "plan", `depends_on: []\nsummary: "builds on [[${PS_STEM}]]"`, false],
+    ["supersedes holds the link", PS_SPEC, "plan", `supersedes: "[[${PS_STEM}]]"`, false],
+    ["an empty depends_on", PS_SPEC, "plan", "depends_on: []", false],
+    ["a longer stem that starts with ours", PS_SPEC, "plan", dep(`${PS_STEM}-extra`), false],
+    ["a longer name that ends with our stem", PS_SPEC, "plan", dep(`OLD-${PS_STEM}`), false],
+    ["the same stem in another folder", PS_SPEC, "plan", dep(`specs/other/${PS_STEM}`), false],
+    ["a lesson that depends on the spec", PS_SPEC, "lesson", dep(PS_STEM), false],
+    ["a decision that depends on the spec", PS_SPEC, "decision", dep(PS_STEM), false],
+    ["a child spec that depends on the spec", PS_SPEC, "spec", dep(PS_STEM), false],
+  ];
+  for (const [name, specPath, type, fm, linked] of rows) {
+    await t.test(name, () => {
+      const doc = psDoc(type, "approved", fm, `${psTasks([" "]).join("\n")}\n[[${PS_STEM}]] and [[SPEC-002-tile-editor]]`);
+      const r = pipe(specPath, [[specPath, psSpec()], ["docs/x.md", doc]]);
+      assert.equal(r.plans.length + r.research.length, linked ? 1 : 0);
+      assert.equal(stageKeys(r).includes(type === "research" ? "research" : "plan"), (type === "research" || type === "plan") && linked);
+    });
+  }
+});
+
+// Adversarial where: the approval words are tested loosely so a draft or a
+// plan in review counts as approved (the boundary sits between `review` and
+// `approved`), the build stage jumps at the wrong task (0, 1 and all done are
+// the three edges), uppercase [X] is not a done box, the wait for the spec or
+// plan is missing or in the wrong order, or a task the plan quotes in an
+// elaborated section is counted.
+test("the plan, build and validate stages and the waits follow the statuses and the task boxes", async (t) => {
+  const quoted = ["## Wave 1 elaborated", "", "- [ ] TASK-90: quoted", "- [x] TASK-91: quoted"];
+  const rows = [
+    ["approved, none done", "approved", "approved", psTasks([" ", " "]), ["done", "ready", "todo"], [0, 2], []],
+    ["approved, one of two done", "approved", "approved", psTasks(["x", " "]), ["done", "current", "todo"], [1, 1], []],
+    ["approved, all done", "approved", "approved", psTasks(["x", "x"]), ["done", "done", "ready"], [2, 0], []],
+    ["an uppercase X is done", "approved", "approved", psTasks(["X"]), ["done", "done", "ready"], [1, 0], []],
+    ["quoted tasks in an elaborated section are not counted", "approved", "approved", [...psTasks(["x"]), "", ...quoted], ["done", "done", "ready"], [1, 0], []],
+    ["a plan in review waits", "approved", "review", psTasks([" "]), ["waiting", "todo", "todo"], [0, 1], [PS_PLAN]],
+    ["a draft plan waits", "approved", "draft", psTasks(["x"]), ["waiting", "todo", "todo"], [1, 0], [PS_PLAN]],
+    ["an active plan does not wait", "approved", "active", psTasks(["x", " "]), ["done", "current", "todo"], [1, 1], []],
+    ["a done plan does not wait", "approved", "done", psTasks(["x"]), ["done", "done", "ready"], [1, 0], []],
+    ["a draft spec waits and the approved plan does not", "draft", "approved", psTasks([" "]), ["done", "ready", "todo"], [0, 1], [PS_SPEC]],
+    ["a spec in review waits", "review", "approved", psTasks([" "]), ["done", "ready", "todo"], [0, 1], [PS_SPEC]],
+    ["a draft spec and a draft plan wait, the spec first", "draft", "draft", psTasks([" "]), ["waiting", "todo", "todo"], [0, 1], [PS_SPEC, PS_PLAN]],
+  ];
+  for (const [name, specStatus, planStatus, lines, [plan, build, validate], [done, open], waits] of rows) {
+    await t.test(name, () => {
+      const r = pipe(PS_SPEC, [[PS_SPEC, psSpec(specStatus)], [PS_PLAN, psPlan(planStatus, lines)]]);
+      assert.deepEqual([stageOf(r, "plan").state, stageOf(r, "build").state, stageOf(r, "validate").state], [plan, build, validate]);
+      assert.deepEqual([r.plans[0].done, r.plans[0].open], [done, open]);
+      assert.deepEqual(r.waits.map((w) => w.path), waits);
+      assert.ok(r.waits.every((w) => typeof w.text === "string" && w.text.length > 0));
+      assert.equal(stageOf(r, "spec").state, specStatus === "draft" || specStatus === "review" ? "waiting" : "done");
+    });
+  }
+});
+
+// Adversarial where: "every task done" is vacuously true for a plan whose
+// counted task lines number zero (none written, all in a fence, all in an
+// elaborated section), so the build shows finished and validation shows ready.
+test("a plan with no counted task lines is never a finished build", async (t) => {
+  const rows = [
+    ["no task lines", ["Nothing here yet."]],
+    ["task lines only in a fence", ["```markdown", ...psTasks(["x", "x"]), "```"]],
+    ["task lines only in an elaborated section", ["## Wave 2 elaborated", "", ...psTasks(["x"])]],
+  ];
+  for (const [name, lines] of rows) {
+    await t.test(name, () => {
+      const r = pipe(PS_SPEC, [[PS_SPEC, psSpec()], [PS_PLAN, psPlan("approved", lines)]]);
+      assert.deepEqual([r.plans[0].done, r.plans[0].open], [0, 0]);
+      assert.notEqual(stageOf(r, "build").state, "done");
+      assert.notEqual(stageOf(r, "validate").state, "ready");
+      assert.deepEqual(r.next, []);
+    });
+  }
+});
+
+// Adversarial where: one unfinished research document among complete ones
+// still reads as done (the first document alone is judged), a draft counts as
+// complete, or the research the strip names is another spec's.
+test("the research stage is done only when every linked research document is complete or done", async (t) => {
+  const res = (status, dep) => psDoc("research", status, `depends_on: ["[[${dep}]]"]`);
+  const rows = [
+    ["one complete", [["complete", PS_STEM]], "done", 1],
+    ["one with status done", [["done", PS_STEM]], "done", 1],
+    ["one draft", [["draft", PS_STEM]], "current", 1],
+    ["complete then draft", [["complete", PS_STEM], ["draft", PS_STEM]], "current", 2],
+    ["draft then complete", [["draft", PS_STEM], ["complete", PS_STEM]], "current", 2],
+    ["a draft research of another spec is not ours", [["complete", PS_STEM], ["draft", "SPEC-999-other"]], "done", 1],
+  ];
+  for (const [name, list, state, linked] of rows) {
+    await t.test(name, () => {
+      const docs = list.map(([status, dep], i) => [`research/R${i}.md`, res(status, dep)]);
+      const r = pipe(PS_SPEC, [[PS_SPEC, psSpec()], ...docs]);
+      assert.equal(r.research.length, linked);
+      assert.equal(stageOf(r, "research").state, state);
+    });
+  }
+});
+
+// Adversarial where: a spec that nothing links still draws a plan or research
+// stage (the mockup's five always-on chevrons), the wait for its approval is
+// lost, or plans and research of other specs leak into its strip.
+test("a spec no document links shows only the spec stage", async (t) => {
+  const others = [
+    [PS_PLAN, psPlan("approved", psTasks(["x", " "]), 'depends_on: ["[[SPEC-999-other]]"]')],
+    [PS_RES, psDoc("research", "complete", 'depends_on: ["[[SPEC-999-other]]"]')],
+    ["notes/n.md", PS_LESSON],
+  ];
+  for (const [status, state, waits] of [["approved", "done", []], ["draft", "waiting", [PS_SPEC]]]) {
+    await t.test(status, () => {
+      const r = pipe(PS_SPEC, [[PS_SPEC, psSpec(status)], ...others]);
+      assert.deepEqual(stageKeys(r), ["spec"]);
+      assert.equal(r.stages[0].state, state);
+      assert.match(r.stages[0].line, new RegExp(status));
+      assert.equal(r.stages[0].path, PS_SPEC);
+      assert.deepEqual(r.waits.map((w) => w.path), waits);
+      assert.deepEqual([r.next, r.plans, r.research], [[], [], []]);
+    });
+  }
+});
+
+// ---- the strip in the view panel ----
+
+async function loadedListing(files, ghosts = []) {
+  const app = makeApp(files);
+  app.vault.getMarkdownFiles = () => [...app.store.keys()].filter((k) => k.endsWith(".md")).concat(ghosts).map(mdFile);
+  const plugin = new CompassReview(app);
+  await plugin.onload();
+  return { app, plugin };
+}
+async function stripView(files, open, ghosts) {
+  const r = await loadedListing(files, ghosts);
+  await openDoc(r.app, open);
+  await r.plugin.openViewPanel();
+  await settle();
+  return r;
+}
+const pipeStages = (app) => viewEl(app).querySelectorAll(".compass-pipe-stage");
+const pipeStage = (app, key) => pipeStages(app).find((s) => s.dataset.key === key);
+const stageLine = (app, key) => textOfEl(pipeStage(app, key).querySelector(".compass-pipe-line"));
+const SV_FILES = { [PS_SPEC]: PS_SPEC_TEXT, [PS_PLAN]: PLAN_24, [PS_RES]: RESEARCH_TEXT, "notes/n.md": PS_LESSON };
+
+// Adversarial where: the strip is missing from the spec's view or replaces the
+// decision cards, stages come out of order or with the wrong state, a click on
+// a stage opens the wrong document (or the validate stage, which has no
+// document, reacts), the empty waits box is absent, the ready tasks are not
+// listed with their ids, or drawing and clicking write into the vault.
+test("the view of SPEC-031 draws the strip, its waits and next tasks beside the decision cards, and a stage opens its document", async () => {
+  const { app } = await stripView(SV_FILES, PS_SPEC);
+  assert.equal(viewEl(app).querySelector(".compass-spec-view").querySelectorAll(".compass-pipeline").length, 1);
+  assert.deepEqual(pipeStages(app).map((s) => [s.dataset.key, s.dataset.state]),
+    [["spec", "done"], ["research", "done"], ["plan", "done"], ["build", "current"], ["validate", "todo"]]);
+  assert.match(stageLine(app, "plan"), /PLAN-024.*approved|approved.*PLAN-024/);
+  assert.match(stageLine(app, "build"), /\b15\b/);
+  assert.equal(viewEl(app).querySelector(".compass-pipe-waits").querySelectorAll(".compass-pipe-wait").length, 0);
+  assert.deepEqual(viewEl(app).querySelector(".compass-pipe-next").querySelectorAll(".compass-pipe-task").map((t) => t.dataset.id), ["TASK-202", "TASK-204"]);
+  assert.deepEqual(decisionCards(app).map((c) => c.dataset.id), ["D-01", "D-02"]);
+  const validate = pipeStage(app, "validate");
+  assert.equal(typeof validate.onclick === "function" || (validate.handlers.click || []).length > 0, false, "validate has no document to open");
+  const before = Object.fromEntries(app.store);
+  const writes = [];
+  const write = app.vault.adapter.write;
+  app.vault.adapter.write = async (p, d) => { writes.push(p); return write.call(app.vault.adapter, p, d); };
+  for (const [key, target] of [["research", PS_RES], ["plan", PS_PLAN], ["spec", PS_SPEC]]) {
+    await openDoc(app, PS_SPEC);
+    await clickOn(pipeStage(app, key));
+    await settle();
+    assert.equal(app.opened[app.opened.length - 1].path, target, key);
+  }
+  assert.deepEqual(writes, []);
+  assert.deepEqual(Object.fromEntries(app.store), before);
+});
+
+// Adversarial where: a draft plan raises no wait row (or one that opens the
+// spec), the stage keeps reading approved, or the Open button on the wait does
+// nothing.
+test("a spec whose plan is a draft shows the plan stage waiting and a wait row that opens the plan", async () => {
+  const draft = PLAN_24.replace("status: approved", "status: draft");
+  assert.notEqual(draft, PLAN_24, "fixture error: the plan has no approved status");
+  const { app } = await stripView({ ...SV_FILES, [PS_PLAN]: draft }, PS_SPEC);
+  assert.equal(pipeStage(app, "plan").dataset.state, "waiting");
+  assert.equal(pipeStage(app, "build").dataset.state, "todo");
+  const waits = viewEl(app).querySelector(".compass-pipe-waits").querySelectorAll(".compass-pipe-wait");
+  assert.equal(waits.length, 1);
+  await clickOn(button(waits[0], "Open"));
+  await settle();
+  assert.equal(app.opened[app.opened.length - 1].path, PS_PLAN);
+});
+
+// Adversarial where: the strip appears under plans, research or other types, a
+// spec nothing links draws stages it has no documents for, or an unreadable
+// vault document stops the strip from drawing at all.
+test("a spec no document links draws one stage; other documents draw no strip; an unreadable document is skipped", async () => {
+  const alone = { [PS_SPEC]: PS_SPEC_TEXT, "notes/n.md": PS_LESSON, "plans/PLAN-900-other.md": psPlan("approved", psTasks([" "]), 'depends_on: ["[[SPEC-999-other]]"]') };
+  const first = await stripView(alone, PS_SPEC, ["plans/ghost.md"]);
+  assert.deepEqual(pipeStages(first.app).map((s) => s.dataset.key), ["spec"]);
+  assert.equal(viewEl(first.app).querySelector(".compass-pipe-next").querySelectorAll(".compass-pipe-task").length, 0);
+  const linked = await stripView({ ...SV_FILES }, PS_SPEC, ["plans/ghost.md"]);
+  assert.equal(pipeStages(linked.app).length, 5, "a document that cannot be read leaves the strip whole");
+  for (const other of [PS_PLAN, PS_RES, "notes/n.md"]) {
+    await openDoc(linked.app, other);
+    assert.equal(viewEl(linked.app).querySelectorAll(".compass-pipeline").length, 0, other);
+  }
+  await openDoc(linked.app, PS_SPEC);
+  assert.equal(viewEl(linked.app).querySelectorAll(".compass-pipeline").length, 1, "back on the spec the strip returns");
+});
+
+// Adversarial where: the spec's panel is redrawn only when the spec's own text
+// changes, so the agent checking off a task in the plan leaves the open spec
+// showing the old counts.
+test("a change to a linked plan redraws the strip of the spec in view", async () => {
+  const { app } = await stripView(SV_FILES, PS_SPEC);
+  assert.match(stageLine(app, "build"), /\b15\b/);
+  const next = PLAN_24.replace("- [ ] TASK-228:", "- [x] TASK-228:");
+  assert.notEqual(next, PLAN_24, "fixture error: TASK-228 line");
+  app.store.set(PS_PLAN, next);
+  await app.listeners.modify(mdFile(PS_PLAN));
+  await settle();
+  assert.match(stageLine(app, "build"), /\b16\b/);
+  assert.doesNotMatch(stageLine(app, "build"), /\b15\b/);
+});
+
+// Adversarial where: text from a linked plan or research document (a task
+// title, a status) is parsed as markup in the strip, so an element or an
+// event attribute appears that the plugin never made.
+test("markup in a linked plan's task titles and statuses is drawn as literal text in the strip", async () => {
+  const evil = "<img src=x onerror=\"alert(1)\"> <script>alert(2)</script>";
+  const plan = psPlan("approved", [`- [ ] TASK-1: ${evil} - complexity: S, depends_on: none`]);
+  const research = psDoc("research", "'<b>x</b>'", `depends_on: ["[[${PS_STEM}]]"]`);
+  const { app } = await stripView({ [PS_SPEC]: PS_SPEC_TEXT, [PS_PLAN]: plan, [PS_RES]: research }, PS_SPEC);
+  const allowed = new Set([...TAGS_ALLOWED, "h3", "h5", "ol", "em", "b"]);
+  const els = viewEl(app).all();
+  for (const tag of new Set(els.map((e) => e.tag))) assert.ok(allowed.has(tag), `unexpected <${tag}> element`);
+  for (const e of els) {
+    assert.ok(!Object.keys(e.attrs).some((k) => /^on/i.test(k)), `an on* attribute on <${e.tag}>`);
+    assert.ok(!("innerHTML" in e), "innerHTML was assigned");
+  }
+  assert.match(textOfEl(viewEl(app).querySelector(".compass-pipe-next")), /<img src=x onerror="alert\(1\)">/);
+});
