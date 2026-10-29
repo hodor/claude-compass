@@ -3665,3 +3665,116 @@ test("a plan and a research document with a pending review show their changes un
     });
   }
 });
+
+// ---- what changed since a review: hostile diffs and request files ----
+
+// Adversarial where: the diff's path is matched by a plain suffix, so in a
+// vault whose root sits below the repository top a unit's file
+// ".compass/unit/specs/a.md" is read as the vault's "specs/a.md" and its rows
+// are mixed into that document's changes; the shortest matching path is the
+// vault's own file.
+test("the parser keeps a document apart from a deeper file that ends in the same path", () => {
+  const old = ["## A", "a1 old"];
+  const now = ["## A", "a1"];
+  const diff = replDiff(".compass/unit/specs/a.md", ["## A", "unit old"], ["## A", "unit"]) + replDiff(".compass/specs/a.md", old, now);
+  const groups = CompassReview.parseChanges(diff, joined(now), "specs/a.md");
+  assert.deepEqual(rowsOf(groups).filter((r) => r.kind !== "ctx").map(rowText), ["a1 old", "a1"]);
+});
+
+// Adversarial where: diffs git writes without text hunks (a binary file, a pure
+// rename, a mode change) throw or draw an empty group; a new file (--- /dev/null)
+// or a hunk of a shrunken document puts the open-at line at 0 or past the end
+// of the text, so the click opens nothing.
+test("the parser draws nothing for diffs without hunks and keeps every open-at line inside the document", async (t) => {
+  const binary = `diff --git a/${SPEC_REL} b/${SPEC_REL}\nindex 1111111..2222222 100644\nBinary files a/${SPEC_REL} and b/${SPEC_REL} differ\n`;
+  const renamed = `diff --git a/old.md b/${SPEC_REL}\nsimilarity index 100%\nrename from old.md\nrename to ${SPEC_REL}\n`;
+  const mode = `diff --git a/${SPEC_REL} b/${SPEC_REL}\nold mode 100644\nnew mode 100755\n`;
+  const added = [`diff --git a/${SPEC_REL} b/${SPEC_REL}`, "new file mode 100644", "index 0000000..2222222", "--- /dev/null", `+++ b/${SPEC_REL}`,
+    "@@ -0,0 +1,2 @@", "+## A", "+a1"].join("\n") + "\n";
+  const farHunk = replDiff(SPEC_REL, [...Array(40).fill("x"), "tail old"], [...Array(40).fill("x"), "tail"]);
+  const rows = [
+    ["binary", binary, "## A\n", []],
+    ["pure rename", renamed, "## A\n", []],
+    ["mode change", mode, "## A\n", []],
+    ["new file", added, joined(["## A", "a1"]), [1]],
+    ["hunk below the end of a shrunken document", farHunk, ["## A", "a1", "tail"].join(String.fromCharCode(10)), [3]],
+    ["an empty document", farHunk, "", [1]],
+    ["empty diff text", "", "## A\n", []],
+  ];
+  for (const [name, diff, doc, lines] of rows) {
+    await t.test(name, () => {
+      const groups = CompassReview.parseChanges(diff, doc, SPEC_REL);
+      assert.deepEqual(groups.flatMap((g) => g.hunks.map((h) => h.line)), lines);
+    });
+  }
+});
+
+// Adversarial where: the word comparison drops or doubles text for lines made of
+// its own separators, non-ASCII text or very long table rows, so a row no longer
+// reads as the line git printed; the cost guard for long lines loses the line.
+test("the parser keeps the text of a replaced line whole whatever it holds", async (t) => {
+  const long = (w) => Array.from({ length: 500 }, (_, i) => `${w}${i}`).join(" ");
+  const rows = [
+    ["only separators", "|,.;:()`[]*|", "|;.,:)(`][*|"],
+    ["non-ASCII and emoji", "café ☃ 😀 naïve", "cafe ☃ 😀 naïve!"],
+    ["trailing whitespace only", "x ", "x"],
+    ["lines past the cost guard", long("a"), long("b")],
+  ];
+  for (const [name, before, after] of rows) {
+    await t.test(name, () => {
+      const groups = CompassReview.parseChanges(replDiff(SPEC_REL, ["## A", before], ["## A", after]), joined(["## A", after]), SPEC_REL);
+      const all = rowsOf(groups);
+      assert.deepEqual(all.map((r) => r.kind), ["ctx", "del", "add"]);
+      assert.equal(rowText(all[1]), before);
+      assert.equal(rowText(all[2]), after);
+    });
+  }
+});
+
+// Adversarial where: the saved diff is taken from a request that is not the
+// newest pending one for the file (a stale older request's diff shows under
+// a newer review that has none), from a request of another surface, or the
+// plugin only looks in "tmp/review" so a project-rooted Obsidian vault
+// (".compass/tmp/review", file paths led by ".compass/") shows nothing.
+test("the changes come from the newest pending request of this surface in either review folder", async (t) => {
+  const text = joined(SPEC_CHANGED_NEW);
+  const diff = replDiff(SPEC_REL, SPEC_CHANGED_OLD, SPEC_CHANGED_NEW);
+  const rows = [
+    ["a newer pending request without a diff hides an older one's diff",
+      { [SPEC_A]: text, ...reviewFiles("20260101T000001-aaaaaa", SPEC_A), [`${REVIEW_DIR}/20260101T000001-aaaaaa.changes.diff`]: diff,
+        ...reviewFiles("20260101T000002-bbbbbb", SPEC_A) }, SPEC_A, 0],
+    ["a request of another surface carries no changes for this one",
+      { [SPEC_A]: text, [`${REVIEW_DIR}/1.request.json`]: req("1", SPEC_A, { surface: "vscode" }), [`${REVIEW_DIR}/1.changes.diff`]: diff }, SPEC_A, 0],
+    ["a project-rooted vault keeps its review folder under .compass",
+      { [".compass/specs/a.md"]: text, [".compass/tmp/review/1.request.json"]: req("1", ".compass/specs/a.md"),
+        [".compass/tmp/review/1.changes.diff"]: diff }, ".compass/specs/a.md", 1],
+  ];
+  for (const [name, files, open, sections] of rows) {
+    await t.test(name, async () => {
+      const { app } = await viewWith(files, open);
+      assert.equal(sectionsIn(app).length, sections);
+    });
+  }
+});
+
+// Adversarial where: a saved diff that is not a diff (empty, text, truncated
+// mid-hunk, a hunk header with absurd counts) throws in the draw, so the plan
+// board loses its task rows instead of only losing the changes section.
+test("a plan board keeps its task rows when the saved diff is empty, not a diff or cut short", async (t) => {
+  const withDiff = (diff) => ({ [P24]: PLAN_24, ...reviewFiles("1", P24), ...(diff === null ? {} : { [`${REVIEW_DIR}/1.changes.diff`]: diff }) });
+  const base = await viewWith(withDiff(null), P24);
+  const expected = taskRows(base.app).map((r) => r.dataset.id || textOfEl(r));
+  assert.ok(expected.length > 0, "fixture error: the plan has no task rows");
+  const rows = [
+    ["an empty diff file", ""],
+    ["text that is not a diff", "this is not a diff\n\u0000\u0001 binary-ish"],
+    ["a hunk cut short", `diff --git a/${P24} b/${P24}\n--- a/${P24}\n+++ b/${P24}\n@@ -170,9 +170,9 @@\n context\n-gone`],
+    ["a hunk header with absurd counts", `diff --git a/${P24} b/${P24}\n--- a/${P24}\n+++ b/${P24}\n@@ -1,999999 +1,999999 @@\n-a\n+b\n`],
+  ];
+  for (const [name, diff] of rows) {
+    await t.test(name, async () => {
+      const { app } = await viewWith(withDiff(diff), P24);
+      assert.deepEqual(taskRows(app).map((r) => r.dataset.id || textOfEl(r)), expected);
+    });
+  }
+});

@@ -204,5 +204,129 @@ class ChangesRecordLifetime(ChangesFileProject):
         self.assertFalse(self.changes_path(second).exists())
 
 
+class ChangesRecordHostileBaselines(ChangesFileProject):
+    def forge(self, rid, commit, mtime, rel="specs/SPEC-001-x.md"):
+        """An answered request for `rel` naming `commit`, its file written at `mtime`."""
+        directory = reviewlib.review_dir(self.vault)
+        directory.mkdir(parents=True, exist_ok=True)
+        request = {"id": rid, "surface": "obsidian", "file": rel, "commit": commit}
+        path = self.request_path(rid)
+        path.write_text(json.dumps(request), encoding="utf-8")
+        os.utime(path, (mtime, mtime))
+        self.answer(rid)
+
+    def revise(self, text):
+        self.edit(self.doc, text)
+        return self.commit_all("revise")
+
+    def test_unreachable_recorded_commit_adds_no_record_and_the_review_still_goes_out(self):
+        """Adversarial where: a recorded commit that no longer exists (history
+        rewritten) makes git fail, and the failure escapes as an exception or
+        its error text is saved as the record."""
+        self.forge("20200101T000000-aaaaaa", "0" * 40, 1_600_000_000)
+        self.revise(b"---\ntitle: x\n---\n\n# X\nchanged\n")
+        rid = self.send(self.doc)
+        self.assertTrue(self.request_path(rid).exists())
+        self.assertFalse(self.changes_path(rid).exists())
+
+    def test_option_shaped_recorded_commit_is_not_run_as_a_git_option(self):
+        """Adversarial where: the recorded `commit` of a request file sits in
+        a shared folder and is handed to `git diff` as an argument, so a value
+        like `--output=<path>` makes git write the diff to that path."""
+        victim = self.base / "pwned.txt"
+        self.forge("20200101T000000-aaaaaa", f"--output={victim}", 1_600_000_000)
+        self.revise(b"---\ntitle: x\n---\n\n# X\nchanged\n")
+        self.send(self.doc)
+        self.assertFalse(victim.exists(), "git wrote the diff to the path named by a request's commit")
+
+    def test_requests_made_in_one_second_are_ordered_by_when_they_were_written(self):
+        """Adversarial where: two requests whose ids share a timestamp are
+        ordered by the random suffix of the id, so the baseline is the one
+        that sorts last by name, not the one sent last."""
+        c1 = self.revise(b"---\ntitle: x\n---\n\n# X\none\n")
+        c2 = self.revise(b"---\ntitle: x\n---\n\n# X\none\ntwo\n")
+        self.forge("20200101T000000-ffffff", c1, 1_600_000_000)
+        self.forge("20200101T000000-000000", c2, 1_600_000_100)
+        self.revise(b"---\ntitle: x\n---\n\n# X\none\ntwo\nthree\n")
+        rid = self.send(self.doc)
+        self.assertEqual(self.changes_path(rid).read_bytes(), self.git_diff(c2, DOC_REL))
+
+    def test_replacing_an_unanswered_request_leaves_the_last_answered_review_as_the_baseline(self):
+        """Adversarial where: the pending request is withdrawn before the
+        baseline is read, so the baseline is lost with it and the third
+        review shows nothing, or the record is taken against a request that
+        no longer exists."""
+        first = self.send(self.doc)
+        self.answer(first)
+        first_sha = self.recorded_commit(first)
+        self.revise(b"---\ntitle: x\n---\n\n# X\none\n")
+        second = self.send(self.doc)
+        self.assertTrue(self.changes_path(second).exists(), "fixture error: no record to replace")
+        self.revise(b"---\ntitle: x\n---\n\n# X\none\ntwo\n")
+        third = self.send(self.doc)
+        self.assertFalse(self.request_path(second).exists())
+        self.assertEqual(self.changes_path(third).read_bytes(), self.git_diff(first_sha, DOC_REL))
+
+    def test_renamed_and_deleted_earlier_documents_leave_the_next_review_without_a_record(self):
+        """Adversarial where: an earlier request lists a path that was
+        renamed or deleted since, and resolving or diffing that path raises
+        or pairs it with the wrong file; the renamed file is a new path and
+        has no baseline."""
+        first = self.send(self.doc, self.other)
+        self.answer(first)
+        self.git("mv", ".compass/specs/SPEC-001-x.md", ".compass/specs/SPEC-004-renamed.md")
+        self.git("rm", "-q", ".compass/specs/SPEC-002-y.md")
+        self.git("commit", "-q", "-m", "rename and delete")
+        renamed = self.vault / "specs" / "SPEC-004-renamed.md"
+        code, out, err = self.review(str(renamed), "--no-wait")
+        self.assertEqual(code, 0, (out, err))
+        self.assertFalse(self.changes_path(out.split()[1]).exists())
+
+    def test_names_with_spaces_and_non_ascii_letters_are_saved_unquoted(self):
+        """Adversarial where: git quotes and octal-escapes a non-ASCII name in
+        the diff header, or splits a name at its space, so the surface cannot
+        match the record to the document."""
+        name = "SPEC-003 café plan.md"
+        spaced = self.vault / "specs" / name
+        spaced.write_bytes(b"# S\nbefore\n")
+        self.commit_all("spaced document")
+        first = self.send(spaced)
+        self.answer(first)
+        self.edit(spaced, b"# S\nafter\n")
+        self.commit_all("edit spaced document")
+        second = self.send(spaced)
+        saved = self.changes_path(second).read_bytes()
+        self.assertIn(f"+++ b/.compass/specs/{name}".encode("utf-8"), saved)
+        self.assertIn(b"\n+after\n", saved)
+
+
+class ChangesRecordProjectRootedVault(ChangesFileProject):
+    def configure(self, listed=True, plugin="on"):
+        """The Obsidian vault is the project itself, so a request's file is
+        led by `.compass/`."""
+        obsidian = self.tmp / ".obsidian"
+        d = obsidian / "plugins" / "compass-review"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "main.js").write_text("//", encoding="utf-8")
+        (obsidian / "community-plugins.json").write_text(json.dumps(["compass-review"]), encoding="utf-8")
+        self.config.write_text(json.dumps({"vaults": {"abc123": {"path": str(self.tmp)}}}), encoding="utf-8")
+        (self.tmp / ".gitignore").write_text(".compass/tmp/\n.obsidian/\n", encoding="utf-8")
+        self.git("add", ".gitignore")
+        self.git("commit", "-q", "-m", "ignore obsidian")
+
+    def test_record_is_saved_for_a_vault_whose_obsidian_root_is_the_project(self):
+        """Adversarial where: the earlier request's `file` is resolved against
+        the Compass vault instead of the Obsidian root, so with the project as
+        Obsidian root no earlier request matches and no record is saved."""
+        first = self.send(self.doc)
+        self.answer(first)
+        sha = self.recorded_commit(first)
+        self.assertEqual(json.loads(self.request_path(first).read_text(encoding="utf-8"))["file"], DOC_REL)
+        self.edit(self.doc, b"---\ntitle: x\n---\n\n# X\nrevised\n")
+        self.commit_all("revise")
+        second = self.send(self.doc)
+        self.assertEqual(self.changes_path(second).read_bytes(), self.git_diff(sha, DOC_REL))
+
+
 if __name__ == "__main__":
     unittest.main()
