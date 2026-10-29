@@ -79,7 +79,28 @@
 //     `<choice>: <note>` line in table order (for a review of several files,
 //     in the note of the plan's file). Agree adds no line. The answers live on
 //     the review, so redrawing the panel keeps them.
-// The board only reads the vault.
+// The view for `type: spec` shows the spec's Problem and Desired Outcome as the
+// human wrote them and one card per decision:
+//   - the decisions are the `- **D-NN:** text` bullets that `compass decisions`
+//     reports, read by the same rules (plain or in a callout, continuation
+//     lines, a trailing block id left out, `[deferred]` / `[informational]`
+//     tags and discretion subheadings marking a decision as not tracked, code
+//     fences ignored); a spec whose decisions cannot be read says so
+//   - while a review that lists the spec is pending, each decision card takes
+//     Agree or Change with a note. A Change with a blank note is refused, with
+//     a hint on the card. Every changed decision joins the review's note, after
+//     the typed text, as one `D-NN: <note>` line in spec order. Agree adds no
+//     line. The answers live on the review, so redrawing the panel keeps them.
+// The view for `type: research` reads the rows of every table whose header
+// names a Finding column (number, finding, confidence, grade, evidence):
+//   - one bar per section, in document order, splitting its findings by
+//     confidence (a mixed rating counts once, as its leading level; a finding
+//     with no rating counts as unrated)
+//   - one filter button per confidence level; a finding with no rating stays
+//     under every filter, and the bars keep counting the whole document
+//   - one row per shown finding with its evidence; a click on the row opens the
+//     research document at the finding's line
+// The views only read the vault.
 
 const { Plugin, ItemView, Notice, MarkdownView } = require("obsidian");
 
@@ -149,6 +170,8 @@ class ViewPanelView extends ItemView {
     super(leaf);
     this.plugin = plugin;
     this.drawSeq = 0;
+    // research path -> {high, medium, low}: the confidence filters switched on
+    this.confOn = new Map();
   }
 
   getViewType() {
@@ -199,10 +222,11 @@ function typeOf(text) {
   return props.type || null;
 }
 
-// The view a document gets: "plan" for `type: plan`, null for any other type
-// or none.
+// The view a document gets: "plan", "spec" or "research" for the document of
+// that `type:`, null for any other type or none.
 function viewFor(text) {
-  return typeOf(text) === "plan" ? "plan" : null;
+  const type = typeOf(text);
+  return type === "plan" || type === "spec" || type === "research" ? type : null;
 }
 
 // Feed it the lines in order: true for a fence line and for a line inside a
@@ -228,11 +252,22 @@ function splitRow(line) {
   const body = line.trim().replace(/^\|/, "").replace(/\|$/, "");
   const cells = [];
   let cur = "";
-  let code = false;
   for (let i = 0; i < body.length; i++) {
     const ch = body[i];
-    if (ch === "`") code = !code;
-    if (ch === "|" && !code && body[i - 1] !== "\\") {
+    if (ch === "`") {
+      // A backtick run opens a code span only when a run of the same length
+      // closes it later in the row; otherwise the backticks are plain text.
+      let end = i;
+      while (body[end] === "`") end++;
+      const run = body.slice(i, end);
+      let close = body.indexOf(run, end);
+      while (close >= 0 && (body[close - 1] === "`" || body[close + run.length] === "`")) {
+        close = body.indexOf(run, close + 1);
+      }
+      const stop = close >= 0 ? close + run.length : end;
+      cur += body.slice(i, stop);
+      i = stop - 1;
+    } else if (ch === "|" && body[i - 1] !== "\\") {
       cells.push(cur.trim());
       cur = "";
     } else cur += ch;
@@ -376,6 +411,304 @@ function joinChoiceNote(note, lines) {
   return typed.trim() ? `${typed}\n${lines.join("\n")}` : lines.join("\n");
 }
 
+// ---- reading a spec: sections and decisions ----
+
+// The decisions of a document exactly as `compass decisions` reads them: a
+// `- **D-NN:** text` bullet (continuation lines indented under it) inside a
+// two- or three-hash Decision/Decisions section, plain or inside a callout.
+const DECISIONS_HEADING = /^(#{2,3})\s*Decisions?\b/i;
+const ANY_HEADING = /^(#{1,6})\s/;
+const BULLET_GRAMMARS = [
+  /^\s*-\s+\*\*D-([A-Za-z0-9][A-Za-z0-9_-]*)(?:\s*\[([^\]]+)\])?[^:*]*:\*\*\s*(.*)$/,
+  /^\s*-\s+\*\*D-([A-Za-z0-9][A-Za-z0-9_-]*)(?:\s*\[([^\]]+)\])?[^*]*[\u2014\u2013][^*]*\*\*\s*(.*)$/,
+  /^\s*-\s+\*\*D-([A-Za-z0-9][A-Za-z0-9_-]*)(?:\s*\[([^\]]+)\])?[^:*]*:[^:*]*\*\*\s*(.*)$/,
+];
+const BULLET_SHAPED = /^\s*-\s+\*\*D-/;
+const D_TOKEN = /\bD-[A-Za-z0-9]/;
+const BOLD_ID_BULLET = /^\s*-\s+\*\*[A-Z]+[0-9]*-[A-Za-z0-9]/m;
+const QUALIFIED_STEM_REF = /\b(?:SPEC|ADR|PLAN|RESEARCH)-[A-Za-z0-9_-]*[ /]D-[A-Za-z0-9_-]*/g;
+const WIKILINK = /\[\[[^\]]*\]\]/g;
+const DECISION_SUBHEADING = /^#{3,6}\s+(.+?)\s*$/;
+const QUOTE_CHARS = /[‘’‚‛“”„‟'"`]/g;
+const QUOTE_PREFIX = /^\s*>(?:\s?>)*\s?/;
+const BLOCK_ID_AT_END = /(?:^|\s)\^([A-Za-z0-9-]+)\s*$/;
+const INLINE_CODE_SPAN = /`[^`\n]+`/g;
+const NON_TRACKABLE_TAGS = ["informational", "deferred"];
+
+// Whether each line belongs to a fenced code block (delimiters included), and
+// whether a fence never closes.
+function fenceMask(lines) {
+  const mask = new Array(lines.length).fill(false);
+  let marker = null;
+  lines.forEach((line, i) => {
+    const t = line.trim();
+    if (marker === null) {
+      const open = /^(`{3,}|~{3,})/.exec(t);
+      if (open) {
+        marker = open[1];
+        mask[i] = true;
+      }
+      return;
+    }
+    mask[i] = true;
+    const close = /^(`{3,}|~{3,})\s*$/.exec(t);
+    if (close && close[1][0] === marker[0] && close[1].length >= marker.length) marker = null;
+  });
+  return { mask, unterminated: marker !== null };
+}
+
+function dropBlockId(text) {
+  const m = BLOCK_ID_AT_END.exec(text);
+  return m ? text.slice(0, m.index).trimEnd() : text;
+}
+
+// Each decisions section: {start (1-based line of its first body line), body}.
+function decisionSections(lines) {
+  const sections = [];
+  let i = 0;
+  while (i < lines.length) {
+    const head = DECISIONS_HEADING.exec(lines[i]);
+    if (!head) {
+      i++;
+      continue;
+    }
+    const level = head[1].length;
+    const bodyStart = i + 1;
+    let j = bodyStart;
+    while (j < lines.length) {
+      const h = ANY_HEADING.exec(lines[j]);
+      if (h && h[1].length <= level) break;
+      j++;
+    }
+    sections.push({ start: bodyStart + 1, body: lines.slice(bodyStart, j) });
+    i = j;
+  }
+  return sections;
+}
+
+// The decisions of one section body and the count of decision-shaped bullets
+// no grammar could read.
+function parseDecisionLines(body, startLine) {
+  const decisions = [];
+  let misses = 0;
+  let discretion = false;
+  let current = null;
+  const flush = () => {
+    if (current) {
+      current.text = dropBlockId(current.text.trim());
+      decisions.push(current);
+      current = null;
+    }
+  };
+  body.forEach((raw, offset) => {
+    const line = raw.replace(QUOTE_PREFIX, "");
+    const trimmed = line.trim();
+    const sub = DECISION_SUBHEADING.exec(trimmed);
+    if (sub) {
+      flush();
+      discretion = sub[1].replace(QUOTE_CHARS, "").trim().toLowerCase().endsWith("discretion");
+      return;
+    }
+    let m = null;
+    for (const grammar of BULLET_GRAMMARS) {
+      m = grammar.exec(line);
+      if (m) break;
+    }
+    if (m) {
+      flush();
+      const tags = m[2] ? m[2].split(",").map((t) => t.trim().toLowerCase()).filter(Boolean) : [];
+      current = {
+        id: `D-${m[1]}`,
+        text: m[3] || "",
+        tags,
+        trackable: !discretion && !tags.some((t) => NON_TRACKABLE_TAGS.includes(t)),
+        line: startLine + offset,
+      };
+      return;
+    }
+    if (BULLET_SHAPED.test(line)) {
+      flush();
+      misses++;
+      return;
+    }
+    if (current && trimmed && !trimmed.startsWith("-") && (line[0] === " " || line[0] === "\t")) {
+      current.text += ` ${trimmed}`;
+      return;
+    }
+    if (!trimmed) flush();
+  });
+  flush();
+  return { decisions, misses };
+}
+
+// {decisions: [{id, text, trackable, tags, line (1-based)}], outcome}, where
+// outcome is "parsed", "none-present" or "could-not-parse".
+function extractDecisions(text) {
+  const all = linesOf(text);
+  const { mask, unterminated } = fenceMask(all);
+  const lines = all.map((line, i) => (mask[i] ? "" : line));
+  const sections = decisionSections(lines);
+  const withoutCode = (s) => s.replace(INLINE_CODE_SPAN, "");
+  if (sections.length > 0) {
+    const decisions = [];
+    let misses = 0;
+    const bodies = [];
+    for (const { start, body } of sections) {
+      const found = parseDecisionLines(body, start);
+      decisions.push(...found.decisions);
+      misses += found.misses;
+      bodies.push(body.map((l) => l.replace(QUOTE_PREFIX, "")).join("\n"));
+    }
+    if (misses > 0) return { decisions, outcome: "could-not-parse" };
+    if (decisions.length > 0) return { decisions, outcome: "parsed" };
+    const evidence = withoutCode(bodies.join("\n"));
+    const foreign = evidence.replace(WIKILINK, " ").replace(QUALIFIED_STEM_REF, " ");
+    const unread = D_TOKEN.test(foreign) || BOLD_ID_BULLET.test(evidence) || unterminated;
+    return { decisions: [], outcome: unread ? "could-not-parse" : "none-present" };
+  }
+  const evidence = withoutCode(lines.join("\n"));
+  return { decisions: [], outcome: unterminated || D_TOKEN.test(evidence) ? "could-not-parse" : "none-present" };
+}
+
+// The trimmed body of the `## <name>` section (to the next heading of level
+// one or two, fences skipped) and the 1-based line of its heading; "" and 0
+// when the document has no such section.
+function sectionOfSpec(lines, from, name) {
+  const inFence = fenceTracker();
+  const want = new RegExp(`^##\\s+${name}\\s*:?\\s*$`, "i");
+  let start = -1;
+  for (let i = from; i < lines.length; i++) {
+    if (inFence(lines[i])) continue;
+    const h = /^(#{1,2})\s/.exec(lines[i]);
+    if (!h) continue;
+    if (start >= 0) return { text: lines.slice(start + 1, i).join("\n").trim(), line: start + 1 };
+    if (h[1].length === 2 && want.test(lines[i])) start = i;
+  }
+  return start >= 0 ? { text: lines.slice(start + 1).join("\n").trim(), line: start + 1 } : { text: "", line: 0 };
+}
+
+// {problem, desiredOutcome, problemLine, desiredOutcomeLine, decisions,
+// decisionState}: the Problem and Desired Outcome as written, and the
+// decisions with the outcome of reading them.
+function parseSpec(text) {
+  const lines = linesOf(text);
+  const from = propertiesOf(lines).end;
+  const problem = sectionOfSpec(lines, from, "Problem");
+  const outcome = sectionOfSpec(lines, from, "Desired Outcome");
+  const { decisions, outcome: decisionState } = extractDecisions(text);
+  return {
+    problem: problem.text,
+    desiredOutcome: outcome.text,
+    problemLine: problem.line,
+    desiredOutcomeLine: outcome.line,
+    decisions,
+    decisionState,
+  };
+}
+
+// One `D-NN: <note>` line for each decision answered Change with a note, in
+// spec order, once per id; then the answers whose decision has left the spec.
+function decisionNoteLines(decisions, answers) {
+  const lines = [];
+  const seen = new Set();
+  for (const id of [...decisions.map((d) => d.id), ...Object.keys(answers)]) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    if (!hasOwn(answers, id) || answers[id].state !== "change") continue;
+    const note = String(answers[id].note || "").trim().replace(/\s+/g, " ");
+    if (note) lines.push(`${id}: ${note}`);
+  }
+  return lines;
+}
+
+// ---- reading research: findings by section and confidence ----
+
+const CONFIDENCES = ["high", "medium", "low"];
+
+// The rows of every table whose header names a Finding column, outside code
+// fences and with a numeric first cell: {n, text, conf ("high", "medium",
+// "low" or ""), confNote (the confidence cell as written), grade, evidence,
+// section (the nearest heading above), line (1-based)}.
+function parseResearchFindings(text) {
+  const lines = linesOf(text);
+  const inFence = fenceTracker();
+  const isSeparator = (line) => line.trimStart().startsWith("|") && splitRow(line).every((c) => /^:?-+:?$/.test(c));
+  const findings = [];
+  let section = "";
+  let cols = null;
+  let inTable = false;
+  for (let i = propertiesOf(lines).end; i < lines.length; i++) {
+    const line = lines[i];
+    if (inFence(line)) {
+      inTable = false;
+      cols = null;
+      continue;
+    }
+    const head = /^#{1,6}\s+(.+?)\s*$/.exec(line);
+    if (head) {
+      section = head[1];
+      inTable = false;
+      cols = null;
+      continue;
+    }
+    if (!line.trimStart().startsWith("|")) {
+      inTable = false;
+      cols = null;
+      continue;
+    }
+    if (!inTable) {
+      if (i + 1 < lines.length && isSeparator(lines[i + 1]) && !isSeparator(line)) {
+        const names = splitRow(line).map((c) => c.toLowerCase());
+        const at = (re) => names.findIndex((c) => re.test(c));
+        const finding = at(/^finding\b/);
+        cols = finding < 0 ? null : { n: 0, finding, conf: at(/^conf/), grade: at(/^grade/), evidence: at(/^evidence/) };
+        inTable = true;
+      }
+      continue;
+    }
+    if (!cols || isSeparator(line)) continue;
+    const cells = splitRow(line);
+    const cell = (k) => (k >= 0 && k < cells.length ? cells[k] : "");
+    if (!/^\d+$/.test(cell(cols.n))) continue;
+    const confNote = cell(cols.conf);
+    const lead = /^(high|medium|low)\b/i.exec(confNote);
+    findings.push({
+      n: Number(cell(cols.n)),
+      text: cell(cols.finding),
+      conf: lead ? lead[1].toLowerCase() : "",
+      confNote,
+      grade: cell(cols.grade),
+      evidence: cell(cols.evidence),
+      section: section || "Findings",
+      line: i + 1,
+    });
+  }
+  return findings;
+}
+
+// [{name, high, medium, low, other, total}] by section, in order of first
+// appearance; a finding with no rating counts under other.
+function countFindingsBySection(findings) {
+  const out = [];
+  const byName = new Map();
+  for (const f of findings) {
+    let s = byName.get(f.section);
+    if (!s) {
+      s = { name: f.section, high: 0, medium: 0, low: 0, other: 0, total: 0 };
+      byName.set(f.section, s);
+      out.push(s);
+    }
+    s[CONFIDENCES.includes(f.conf) ? f.conf : "other"]++;
+    s.total++;
+  }
+  return out;
+}
+
+// The findings whose confidence is in `confs`; one with no rating stays.
+function filterFindings(findings, confs) {
+  return findings.filter((f) => f.conf === "" || confs.includes(f.conf));
+}
+
 function textHash(text) {
   let h = 2166136261;
   for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
@@ -483,11 +816,73 @@ function inline(el, text) {
   }
 }
 
+// Markdown text drawn as elements: paragraphs, bullet lists, sub-headings and
+// fenced code.
+function prose(el, text) {
+  const lines = String(text).split(/\r?\n/);
+  let marker = null;
+  let para = [];
+  let list = null;
+  let item = null;
+  let code = null;
+  const endPara = () => {
+    if (para.length) inline(el.createDiv({ cls: "compass-prose-p" }), para.join(" "));
+    para = [];
+  };
+  const endCode = () => {
+    el.createEl("pre", { cls: "compass-prose-code" }).createEl("code", { text: code.join("\n") });
+    code = null;
+  };
+  for (const line of lines) {
+    const fence = /^(`{3,}|~{3,})(.*)$/.exec(line.trim());
+    // A backtick fence's info string holds no backtick, so a line like
+    // "```x``` text" is a paragraph with an inline span.
+    if (marker === null && fence && !(fence[1][0] === "`" && fence[2].includes("`"))) {
+      endPara();
+      list = null;
+      marker = fence[1];
+      code = [];
+      continue;
+    }
+    if (marker !== null) {
+      if (fence && fence[2].trim() === "" && fence[1][0] === marker[0] && fence[1].length >= marker.length) {
+        marker = null;
+        endCode();
+      } else code.push(line);
+      continue;
+    }
+    const trimmed = line.trim();
+    const heading = /^#{3,6}\s+(.+)$/.exec(trimmed);
+    const bullet = /^[-*]\s+(.+)$/.exec(trimmed);
+    if (!trimmed) {
+      endPara();
+      list = null;
+    } else if (heading) {
+      endPara();
+      list = null;
+      el.createDiv({ cls: "compass-prose-heading", text: heading[1] });
+    } else if (bullet) {
+      endPara();
+      if (!list) list = el.createEl("ul", { cls: "compass-prose-list" });
+      item = list.createEl("li");
+      inline(item, bullet[1]);
+    } else if (list && /^\s/.test(line)) {
+      inline(item, ` ${trimmed}`);
+    } else {
+      list = null;
+      para.push(trimmed);
+    }
+  }
+  if (code) endCode();
+  endPara();
+}
+
 class CompassReview extends Plugin {
   async onload() {
     // request id -> {request, path, files: [{file, why}], states: Map(file ->
     // {read, note}), index, comments: Map(file outside the review -> note),
-    // edited: Set(path), choiceAnswers: Map(file -> {choice -> {state, note}})}
+    // edited: Set(path), choiceAnswers: Map(file -> {choice -> {state, note}}),
+    // decisionAnswers: Map(file -> {D-NN -> {state, note}})}
     // in arrival order; the panel lists it newest first.
     this.pending = new Map();
     this.registerView(PANEL_TYPE, (leaf) => new ReviewPanelView(leaf, this));
@@ -588,11 +983,13 @@ class CompassReview extends Plugin {
       comments: new Map(),
       edited: new Set(),
       choiceAnswers: new Map(),
+      decisionAnswers: new Map(),
     };
     for (const old of replaced) {
       if (old.arrivedUnfocused) created.arrivedUnfocused = true;
       for (const f of files) if (old.states.has(f.file)) created.states.set(f.file, old.states.get(f.file));
       for (const f of files) if (old.choiceAnswers.has(f.file)) created.choiceAnswers.set(f.file, old.choiceAnswers.get(f.file));
+      for (const f of files) if (old.decisionAnswers.has(f.file)) created.decisionAnswers.set(f.file, old.decisionAnswers.get(f.file));
       for (const [file, note] of old.comments) created.comments.set(file, note);
       for (const file of old.edited) created.edited.add(file);
     }
@@ -702,6 +1099,10 @@ class CompassReview extends Plugin {
       if (entry.choiceAnswers.has(oldPath)) {
         entry.choiceAnswers.set(file.path, entry.choiceAnswers.get(oldPath));
         entry.choiceAnswers.delete(oldPath);
+      }
+      if (entry.decisionAnswers.has(oldPath)) {
+        entry.decisionAnswers.set(file.path, entry.decisionAnswers.get(oldPath));
+        entry.decisionAnswers.delete(oldPath);
       }
       if (entry.comments.has(oldPath)) {
         entry.comments.set(file.path, entry.comments.get(oldPath));
@@ -1023,21 +1424,33 @@ class CompassReview extends Plugin {
     return lines;
   }
 
+  // The decision lines of every spec answered on a card, in the order the
+  // answers were first given. A Change with a blank note gives none.
+  changedDecisionLines(entry) {
+    const lines = [];
+    for (const answers of entry.decisionAnswers.values()) {
+      lines.push(...decisionNoteLines(Object.keys(answers).map((id) => ({ id })), answers));
+    }
+    return lines;
+  }
+
   hasFeedback(entry) {
     return (
       this.noteCount(entry) > 0 ||
       entry.comments.size > 0 ||
       entry.edited.size > 0 ||
-      this.changedChoiceLines(entry).length > 0
+      this.changedChoiceLines(entry).length > 0 ||
+      this.changedDecisionLines(entry).length > 0
     );
   }
 
-  // One line per note on a file outside the review, one per changed choice,
-  // then one per edited file.
+  // One line per note on a file outside the review, one per changed choice or
+  // decision, then one per edited file.
   feedbackItems(entry) {
     return [
       ...[...entry.comments].map(([file, note]) => `${file}: ${note}`),
       ...this.changedChoiceLines(entry),
+      ...this.changedDecisionLines(entry),
       ...[...entry.edited].map((file) => `edited: ${file}`),
     ];
   }
@@ -1134,7 +1547,7 @@ class CompassReview extends Plugin {
     }
     if (seq !== view.drawSeq) return;
     const kind = text === null ? null : viewFor(text);
-    const entry = file && kind === "plan" ? this.entryFor(file.path) : null;
+    const entry = file && (kind === "plan" || kind === "spec") ? this.entryFor(file.path) : null;
     const signature = JSON.stringify([file && file.path, text === null ? null : textHash(text), entry && entry.request.id]);
     if (root.dataset.signature === signature) return;
     root.dataset.signature = signature;
@@ -1145,6 +1558,10 @@ class CompassReview extends Plugin {
       root.createDiv({ cls: "compass-view-note", text: "This document could not be read." });
     } else if (kind === "plan") {
       this.drawPlanBoard(root, file, text, entry);
+    } else if (kind === "spec") {
+      this.drawSpecView(root, file, text, entry);
+    } else if (kind === "research") {
+      this.drawResearchView(root, view, file, text);
     } else {
       const type = typeOf(text);
       root.createDiv({
@@ -1156,8 +1573,12 @@ class CompassReview extends Plugin {
     }
   }
 
+  openLine(path, line, what) {
+    this.showFile(path, true, { eState: { line: line - 1 } }).catch((e) => this.fail(what, e));
+  }
+
   openTask(path, line) {
-    this.showFile(path, true, { eState: { line: line - 1 } }).catch((e) => this.fail("open task", e));
+    this.openLine(path, line, "open task");
   }
 
   drawPlanBoard(root, file, text, entry) {
@@ -1313,6 +1734,200 @@ class CompassReview extends Plugin {
     }
   }
 
+  // The answers given to one spec's decisions on a review: {D-NN -> {state,
+  // note}}, state "agree" or "change" (or "" for a note typed before an answer).
+  decisionAnswersFor(entry, path) {
+    let answers = entry.decisionAnswers.get(path);
+    if (!answers) {
+      answers = Object.create(null);
+      entry.decisionAnswers.set(path, answers);
+    }
+    return answers;
+  }
+
+  // The spec as the human wrote it: Problem and Desired Outcome side by side,
+  // then one card per decision. While a review of the spec is pending the
+  // cards take answers in place, so a redraw of the panel keeps what was typed.
+  drawSpecView(root, file, text, entry) {
+    const spec = parseSpec(text);
+    const { props } = propertiesOf(linesOf(text));
+    const view = root.createDiv({ cls: "compass-spec-view" });
+    const head = view.createDiv({ cls: "compass-doc-head" });
+    head.createSpan({ cls: "compass-doc-title", text: this.titleOf(file.path) });
+    if (props.status) head.createSpan({ cls: "compass-chip", text: props.status });
+
+    const words = view.createDiv({ cls: "compass-spec-words" });
+    const part = (label, cls, body, line, none) => {
+      const col = words.createDiv({ cls: "compass-spec-col" });
+      const name = col.createDiv({ cls: "compass-fine", text: label });
+      const quote = col.createDiv({ cls: `compass-spec-quote ${cls}` });
+      if (body) {
+        prose(quote, body);
+        name.addClass("compass-open-line");
+        name.onclick = () => this.openLine(file.path, line, "open spec");
+      } else quote.createDiv({ cls: "compass-view-note", text: none });
+    };
+    part("The problem, in your words", "compass-spec-problem", spec.problem, spec.problemLine, "This spec has no Problem section.");
+    part("What you asked for", "compass-spec-outcome", spec.desiredOutcome, spec.desiredOutcomeLine, "This spec has no Desired Outcome section.");
+
+    const n = spec.decisions.length;
+    view.createEl("h4", { cls: "compass-board-heading", text: `${plural(n, "decision")} recorded` });
+    if (spec.decisionState === "could-not-parse") {
+      view.createDiv({
+        cls: "compass-view-note",
+        text: "Compass could not read every decision in this spec. The cards show the ones it could read.",
+      });
+    } else if (n === 0) {
+      view.createDiv({ cls: "compass-view-note", text: "This spec records no decisions." });
+    }
+    if (entry && n > 0) {
+      view.createDiv({
+        cls: "compass-fine",
+        text: "Agree or change each decision. A changed decision goes to Claude, with your note, in your answer to the review.",
+      });
+    }
+    const answers = entry ? this.decisionAnswersFor(entry, file.path) : null;
+    for (const d of spec.decisions) this.drawDecisionCard(view, d, file.path, entry, answers);
+  }
+
+  drawDecisionCard(parent, d, path, entry, answers) {
+    const card = parent.createDiv({ cls: "compass-decision-card" });
+    card.dataset.id = d.id;
+    const top = card.createDiv({ cls: "compass-decision-top" });
+    const id = top.createSpan({ cls: "compass-decision-id", text: d.id, attr: { title: "Open this decision in the spec" } });
+    id.onclick = () => this.openLine(path, d.line, "open decision");
+    for (const tag of d.tags) top.createSpan({ cls: "compass-chip", text: tag });
+    if (!d.trackable && d.tags.length === 0) top.createSpan({ cls: "compass-chip", text: "builder discretion" });
+    inline(card.createDiv({ cls: "compass-decision-text" }), d.text);
+    if (!entry) return;
+
+    const act = card.createDiv({ cls: "compass-decision-actions" });
+    const buttons = act.createDiv({ cls: "compass-choice-buttons" });
+    const agree = buttons.createEl("button", { text: "Agree" });
+    const change = buttons.createEl("button", { text: "Change" });
+    const note = act.createEl("textarea", {
+      cls: "compass-decision-note",
+      placeholder: "What should change? A note is needed to change a decision.",
+      attr: { rows: "2" },
+    });
+    let hint = null;
+    let needNote = false;
+    const stateNow = () => (hasOwn(answers, d.id) ? answers[d.id].state : "");
+    const paint = () => {
+      const state = stateNow();
+      setClass(card, "is-agree", state === "agree");
+      setClass(card, "is-change", state === "change");
+      setClass(agree, "mod-cta", state === "agree");
+      setClass(change, "mod-warning", state === "change");
+      if (needNote && !hint) {
+        hint = act.createDiv({ cls: "compass-decision-need-note", text: "Write what should change, then choose Change." });
+      } else if (!needNote && hint) {
+        hint.remove();
+        hint = null;
+      }
+    };
+    const answer = (state) => {
+      answers[d.id] = { state, note: note.value };
+      needNote = false;
+      paint();
+      this.refreshCard(entry);
+    };
+    note.value = hasOwn(answers, d.id) ? answers[d.id].note : "";
+    agree.onclick = () => answer("agree");
+    change.onclick = () => {
+      if (note.value.trim() === "") {
+        needNote = true;
+        paint();
+        this.refreshCard(entry);
+      } else answer("change");
+    };
+    note.addEventListener("input", () => {
+      if (hasOwn(answers, d.id)) answers[d.id].note = note.value;
+      else answers[d.id] = { state: "", note: note.value };
+      needNote = stateNow() === "change" && note.value.trim() === "";
+      paint();
+      this.refreshCard(entry);
+    });
+    paint();
+  }
+
+  // Bars of findings per section, a filter per confidence level, then one row
+  // per shown finding; a click on a row opens the document at the finding.
+  drawResearchView(root, view, file, text) {
+    const findings = parseResearchFindings(text);
+    const { props } = propertiesOf(linesOf(text));
+    const wrap = root.createDiv({ cls: "compass-research-view" });
+    const head = wrap.createDiv({ cls: "compass-doc-head" });
+    head.createSpan({ cls: "compass-doc-title", text: this.titleOf(file.path) });
+    if (props.status) head.createSpan({ cls: "compass-chip", text: props.status });
+    head.createSpan({ cls: "compass-fine", text: plural(findings.length, "finding") });
+    if (findings.length === 0) {
+      wrap.createDiv({ cls: "compass-view-note", text: "This document has no finding tables." });
+      return;
+    }
+
+    const sections = countFindingsBySection(findings);
+    const widest = Math.max(...sections.map((s) => s.total));
+    const bars = wrap.createDiv({ cls: "compass-section-bars" });
+    for (const s of sections) {
+      const row = bars.createDiv({ cls: "compass-section-bar" });
+      for (const k of ["total", ...CONFIDENCES]) row.dataset[k] = String(s[k]);
+      row.dataset.section = s.name;
+      row.createSpan({ cls: "compass-section-name", text: s.name.replace(/\s*\(axis[^)]*\)$/, ""), attr: { title: s.name } });
+      const track = row.createSpan({ cls: "compass-section-track" });
+      track.style.width = `${Math.max(8, Math.round((s.total / widest) * 100))}%`;
+      for (const c of [...CONFIDENCES, "other"]) {
+        if (!s[c]) continue;
+        const bit = track.createSpan({ cls: `compass-section-part compass-conf-${c}`, attr: { title: `${s[c]} ${c === "other" ? "unrated" : c}` } });
+        bit.style.flexGrow = String(s[c]);
+      }
+      row.createSpan({ cls: "compass-section-n", text: String(s.total) });
+    }
+
+    if (!view.confOn.has(file.path)) view.confOn.set(file.path, { high: true, medium: true, low: true });
+    const on = view.confOn.get(file.path);
+    const controls = wrap.createDiv({ cls: "compass-research-controls" });
+    const buttons = CONFIDENCES.map((c) => {
+      const b = controls.createEl("button", { cls: `compass-conf-filter compass-conf-${c}`, text: c });
+      b.dataset.conf = c;
+      b.onclick = () => {
+        on[c] = !on[c];
+        paint();
+      };
+      return b;
+    });
+    const count = controls.createSpan({ cls: "compass-fine" });
+    const list = wrap.createDiv({ cls: "compass-finding-rows" });
+    const paint = () => {
+      buttons.forEach((b) => setClass(b, "is-on", on[b.dataset.conf]));
+      const shown = filterFindings(findings, CONFIDENCES.filter((c) => on[c]));
+      count.setText(`${shown.length} of ${findings.length} shown`);
+      list.empty();
+      for (const f of shown) this.drawFindingRow(list, file.path, f);
+      if (shown.length === 0) list.createDiv({ cls: "compass-view-note", text: "No finding matches these filters." });
+    };
+    paint();
+  }
+
+  drawFindingRow(parent, path, f) {
+    const row = parent.createDiv({ cls: "compass-finding-row", attr: { title: "Open this finding in the document" } });
+    row.dataset.n = String(f.n);
+    row.onclick = () => this.openLine(path, f.line, "open finding");
+    const top = row.createDiv({ cls: "compass-finding-top" });
+    top.createSpan({ cls: "compass-finding-n", text: String(f.n) });
+    const level = CONFIDENCES.length - CONFIDENCES.indexOf(f.conf);
+    const pips = top.createSpan({ cls: `compass-pips compass-conf-${f.conf || "none"}`, attr: { title: f.conf ? `confidence ${f.conf}` : "no confidence given" } });
+    for (let i = 0; i < CONFIDENCES.length; i++) {
+      pips.createSpan({ cls: "compass-pip" + (f.conf && i < level ? " is-on" : "") });
+    }
+    inline(top.createSpan({ cls: "compass-finding-text" }), f.text);
+    if (f.grade) top.createSpan({ cls: "compass-chip", text: `weight ${f.grade}` });
+    if (f.confNote && f.confNote.toLowerCase() !== f.conf) {
+      row.createDiv({ cls: "compass-fine", text: `Confidence: ${f.confNote}` });
+    }
+    if (f.evidence) inline(row.createDiv({ cls: "compass-finding-evidence compass-fine" }), f.evidence);
+  }
+
   async verdict(entry, verdict) {
     if (entry.sending) return;
     entry.sending = true;
@@ -1340,6 +1955,24 @@ class CompassReview extends Plugin {
       // the rows that remain.
       const rest = Object.keys(answers).map((choice) => ({ choice }));
       out.set(file, choiceNoteLines([...choices, ...rest], answers));
+    }
+    return out;
+  }
+
+  // The decision lines of each file with an answer, in the order of the spec
+  // as it reads now: Map(file -> lines). A changed decision whose card has left
+  // the spec is still sent, after the rest.
+  async decisionLinesFor(entry) {
+    const out = new Map();
+    for (const [file, answers] of entry.decisionAnswers) {
+      let decisions = [];
+      try {
+        decisions = parseSpec(await this.app.vault.adapter.read(file)).decisions;
+      } catch (e) {
+        decisions = [];
+      }
+      const lines = decisionNoteLines(decisions, answers);
+      if (lines.length > 0) out.set(file, lines);
     }
     return out;
   }
@@ -1387,6 +2020,7 @@ class CompassReview extends Plugin {
       }
     }
     const choiceLines = await this.choiceLinesFor(entry);
+    for (const [file, lines] of await this.decisionLinesFor(entry)) choiceLines.set(file, [...(choiceLines.get(file) || []), ...lines]);
     if (!(await this.app.vault.adapter.exists(path))) {
       this.pending.delete(request.id);
       if (this.pending.size === 0) this.asideOwed = false;
@@ -1419,3 +2053,8 @@ module.exports.parsePlanChoices = parsePlanChoices;
 module.exports.viewFor = viewFor;
 module.exports.choiceNoteLines = choiceNoteLines;
 module.exports.joinChoiceNote = joinChoiceNote;
+module.exports.parseSpec = parseSpec;
+module.exports.parseResearchFindings = parseResearchFindings;
+module.exports.countFindingsBySection = countFindingsBySection;
+module.exports.filterFindings = filterFindings;
+module.exports.decisionNoteLines = decisionNoteLines;
