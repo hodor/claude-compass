@@ -9,6 +9,7 @@ moved artifact's old line.
 """
 
 import io
+import json
 import os
 import shutil
 import sys
@@ -284,6 +285,100 @@ class RefusalTests(MoveFixture):
     def test_already_in_dest_refuses(self):
         code, _, err = self.run_cmd(["SPEC-002-cache", "specs", "--apply"])
         self.assertEqual(code, 1)
+
+
+class CanvasCardTests(MoveFixture):
+    """`.compass/specs.canvas` file cards name vault-relative paths; Obsidian
+    leaves a card naming the old path when a note is renamed outside the app,
+    so `compass move` rewrites the card paths of the files it moves."""
+
+    def setUp(self):
+        super().setUp()
+        self.write("specs/net/index.md", domain_body("net"))
+        self.write("specs/SPEC-002-cache.md", spec_body("Cache", "cache spec"))
+        self.write("specs/SPEC-002-cache-extra.md", spec_body("Extra", "extra spec"))
+        self.write("specs/SPEC-003-pack/index.md", spec_body("Pack", "pack spec"))
+        self.write("specs/SPEC-003-pack/SPEC-001-inner.md",
+                   spec_body("Inner", "inner spec"))
+        self.canvas_path = self.root / "specs.canvas"
+
+    def canvas_with(self, nodes, edges=()):
+        self.canvas_path.write_text(
+            json.dumps({"nodes": nodes, "edges": list(edges)}, indent="\t"),
+            encoding="utf-8")
+
+    @staticmethod
+    def card(node_id, path, x, y, w, h):
+        return {"id": node_id, "type": "file", "file": path,
+                "x": x, "y": y, "width": w, "height": h}
+
+    def canvas_data(self):
+        return json.loads(self.canvas_path.read_text(encoding="utf-8"))
+
+    def test_apply_rewrites_card_path_and_keeps_geometry_edges_and_other_nodes(self):
+        """Adversarial where: a rewrite that regenerates the canvas, drops
+        the edge ids, rewrites a lookalike path (`SPEC-002-cache-extra`
+        shares the moved file's prefix), or edits a text node that merely
+        mentions the old path corrupts the human's arrangement while
+        looking correct for the moved card."""
+        self.canvas_with(
+            [
+                self.card("a1", "specs/SPEC-002-cache.md", -321, 4096, 277, 83),
+                self.card("b2", "specs/SPEC-002-cache-extra.md", 10, 20, 300, 90),
+                {"id": "t3", "type": "text", "x": 5, "y": 6, "width": 200,
+                 "height": 60, "text": "see specs/SPEC-002-cache.md"},
+            ],
+            [{"id": "e1", "fromNode": "a1", "toNode": "b2"}],
+        )
+        before = self.canvas_data()
+        code, _, err = self.run_cmd(["SPEC-002-cache", "specs/net", "--apply"])
+        self.assertEqual(code, 0, err)
+        after = self.canvas_data()
+        expected = json.loads(json.dumps(before))
+        expected["nodes"][0]["file"] = "specs/net/SPEC-002-cache.md"
+        self.assertEqual(after, expected)
+
+    def test_folder_move_rewrites_every_descendant_card(self):
+        """Adversarial where: a folder move that rewrites only the folder's
+        index.md card leaves each child card naming a path that no longer
+        exists."""
+        self.canvas_with([
+            self.card("p", "specs/SPEC-003-pack/index.md", 1, 2, 300, 90),
+            self.card("c", "specs/SPEC-003-pack/SPEC-001-inner.md", 3, 4, 300, 90),
+            self.card("o", "specs/SPEC-002-cache.md", 5, 6, 300, 90),
+        ])
+        code, _, err = self.run_cmd(["SPEC-003-pack", "specs/net", "--apply"])
+        self.assertEqual(code, 0, err)
+        files = {n["id"]: n["file"] for n in self.canvas_data()["nodes"]}
+        self.assertEqual(files, {
+            "p": "specs/net/SPEC-003-pack/index.md",
+            "c": "specs/net/SPEC-003-pack/SPEC-001-inner.md",
+            "o": "specs/SPEC-002-cache.md",
+        })
+
+    def test_dry_run_and_refusal_leave_the_canvas_byte_identical(self):
+        """Adversarial where: a canvas rewritten before the move is known to
+        succeed (dry-run, or a refusal such as a destination collision)
+        points cards at paths that never came to exist."""
+        self.canvas_with([self.card("a1", "specs/SPEC-002-cache.md", 1, 2, 3, 4)])
+        original = self.canvas_path.read_bytes()
+        code, _, _ = self.run_cmd(["SPEC-002-cache", "specs/net"])
+        self.assertEqual(code, 0)
+        self.assertEqual(self.canvas_path.read_bytes(), original,
+                         "dry-run should not touch the canvas")
+        self.write("specs/net/SPEC-002-cache.md", spec_body("Other", "other"))
+        code, _, _ = self.run_cmd(["SPEC-002-cache", "specs/net", "--apply"])
+        self.assertEqual(code, 1)
+        self.assertEqual(self.canvas_path.read_bytes(), original,
+                         "a refused move should not touch the canvas")
+
+    def test_move_without_a_canvas_creates_none(self):
+        """Adversarial where: a move in a vault that never ran
+        `compass canvas` writes an empty specs.canvas, or fails because the
+        file it expected is absent."""
+        code, _, err = self.run_cmd(["SPEC-002-cache", "specs/net", "--apply"])
+        self.assertEqual(code, 0, err)
+        self.assertFalse(self.canvas_path.exists())
 
 
 if __name__ == "__main__":
