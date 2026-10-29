@@ -4893,3 +4893,267 @@ test("a ledger beside a spec, plan or research document leaves that view without
     });
   }
 });
+
+// ---- a view an agent writes ----
+//
+// A document whose properties hold `view: views/<name>.js` gets that script's
+// drawing in the view panel instead of the view its `type:` picks. The value is
+// a vault path, read as written with `app.vault.adapter.read`.
+//
+// Module shape: the script text is evaluated as a CommonJS-style module; its
+// `module.exports` (or `module.exports.default`) is a function taking
+// `{ app, file, text, el, open }`, may be async, and draws into `el`. `file` is
+// the open document, `text` its text, `open(path, line)` opens a document at
+// the 1-based `line` (Obsidian takes `line - 1`).
+//
+// DOM the panel draws, read by these tests:
+//   .compass-view-custom   root of an agent's drawing, one per document in view;
+//                          holds the script's output
+//   .compass-view-script   the script's path as written, above the drawing
+//   .compass-view-note     exactly one plain line naming the script when the
+//                          path is refused or the script cannot be loaded or run
+// Only a path that starts with `views/` and holds no `..` segment, backslash or
+// drive is read; every other value is refused without reading anything.
+
+const AGENT_OUT = "views/out.js";
+const agentDoc = (view, type = "lesson", extra = "") => `---\ntype: ${type}\ntitle: D\n${view === null ? "" : `view: ${view}\n`}${extra}---\nbody of the document\n`;
+const drawScript = (label) => `module.exports = ({ el, file }) => { el.createEl("div", { cls: "agent-out", text: "RAN-${label} " + file.path }); };`;
+const customOf = (app) => viewEl(app).querySelectorAll(".compass-view-custom");
+const agentOuts = (app) => viewEl(app).querySelectorAll(".agent-out");
+const viewText = (app) => textOf(viewEl(app));
+const agentNotes = (app) => viewEl(app).querySelectorAll(".compass-view-note");
+async function showAgent(files, doc = "doc.md") {
+  const r = await loaded(files);
+  await openDoc(r.app, doc);
+  await r.plugin.openViewPanel();
+  await loopSettle();
+  return r;
+}
+async function quietly(fn) {
+  const seen = console.error;
+  console.error = () => {};
+  try { return await fn(); } finally { console.error = seen; }
+}
+// One plain line names the script, nothing of it ran, and a plan opened next
+// still draws its board.
+async function assertRefusedAndUsable(app, name, needle) {
+  const notes = agentNotes(app);
+  assert.equal(notes.length, 1, `${name}: one plain line`);
+  assert.ok(notes[0].text.includes(needle), `${name}: the line names ${needle}, got "${notes[0].text}"`);
+  assert.doesNotMatch(viewText(app), /RAN/, `${name}: nothing of the script ran`);
+  await openDoc(app, P24);
+  await loopSettle();
+  assert.equal(viewEl(app).querySelectorAll(".compass-plan-board").length, 1, `${name}: the plan board draws next`);
+  assert.equal(agentNotes(app).length, 0, `${name}: the line leaves with the document`);
+}
+
+// Adversarial where: the plugin hands the script the wrong argument (no `app`,
+// `text` of another file, `file` missing), does not wait for an async script so
+// the drawing is empty, or shows no path above the drawing.
+test("a view: under views/ draws its output, awaits an async script and shows its path above the drawing", async () => {
+  const doc = agentDoc(AGENT_OUT);
+  const script = `module.exports = async ({ app, file, text, el, open }) => {
+    const data = await app.vault.adapter.read("data.json");
+    el.createEl("div", { cls: "agent-out", text: ["RAN", file.path, data, text.length, typeof open].join(" ") });
+  };`;
+  const { app } = await showAgent({ "doc.md": doc, [AGENT_OUT]: script, "data.json": "DATA-77" });
+  const outs = agentOuts(app);
+  assert.equal(outs.length, 1);
+  assert.equal(outs[0].text, `RAN doc.md DATA-77 ${doc.length} function`);
+  assert.equal(customOf(app).length, 1);
+  assert.ok(customOf(app)[0].all().includes(outs[0]), "the output sits in the agent's root");
+  const label = viewEl(app).querySelector(".compass-view-script");
+  assert.ok(label && label.text.includes(AGENT_OUT), "the path is shown");
+  const order = viewEl(app).all();
+  assert.ok(order.indexOf(label) < order.indexOf(outs[0]), "the path comes before the drawing");
+});
+
+// Adversarial where: only `module.exports = function` loads, so a script
+// exporting an async function or a default export draws nothing.
+test("the exported function may be sync, async or the default export", async (t) => {
+  const out = `el.createEl("div", { cls: "agent-out", text: "RAN" });`;
+  const rows = [
+    ["function", `module.exports = function ({ el }) { ${out} };`],
+    ["async function", `module.exports = async function ({ el }) { await null; ${out} };`],
+    ["default export", `module.exports = { default: ({ el }) => { ${out} } };`],
+    ["default property of the exports object", `module.exports.default = async ({ el }) => { ${out} };`],
+  ];
+  for (const [name, script] of rows) {
+    await t.test(name, async () => {
+      const { app } = await showAgent({ "doc.md": agentDoc(AGENT_OUT), [AGENT_OUT]: script });
+      assert.equal(agentOuts(app).length, 1);
+      assert.equal(agentNotes(app).length, 0);
+    });
+  }
+});
+
+// Adversarial where: `open` counts lines from 0 (the line lands one too low or
+// high), a line of 1 becomes falsy and opens at the top by default, or `open`
+// opens a different path than the one it was given.
+test("open(path, line) opens the document at line - 1", async () => {
+  const script = `module.exports = ({ el, open }) => {
+    for (const [label, line] of [["seven", 7], ["one", 1]]) {
+      const b = el.createEl("button", { text: label });
+      b.onclick = () => open("notes.md", line);
+    }
+  };`;
+  const { app } = await showAgent({ "doc.md": agentDoc(AGENT_OUT), [AGENT_OUT]: script, "notes.md": "# n\n" });
+  for (const [label, line] of [["seven", 6], ["one", 0]]) {
+    const before = app.opened.length;
+    await clickOn(viewEl(app).all().find((e) => e.tag === "button" && e.text === label));
+    await settle();
+    assert.equal(app.opened.length, before + 1, `${label}: one file opened`);
+    const last = app.opened[app.opened.length - 1];
+    assert.equal(last.path, "notes.md", label);
+    assert.equal(last.state && last.state.eState && last.state.eState.line, line, label);
+  }
+});
+
+// Adversarial where: a path that escapes `views/` (a parent segment, an
+// absolute or drive path, a backslash, a sibling folder whose name merely starts
+// with `views`) is read and run, so any document can run any vault file.
+test("a view: path outside views/ is refused without running anything, one plain line naming it", async (t) => {
+  const rows = [
+    ["parent folder", "../x.js"],
+    ["absolute", "/abs.js"],
+    ["absolute inside a views folder", "/views/x.js"],
+    ["drive letter", "C:/x.js"],
+    ["parent segment after views/", "views/../secret.js"],
+    ["backslash parent segment after views/", "views/..\\x.js"],
+    ["a sibling folder starting with views", "views-old/x.js"],
+    ["another folder", "notes/x.js"],
+    ["no folder", "x.js"],
+    ["vault folder above views", ".compass/views/x.js"],
+  ];
+  for (const [name, view] of rows) {
+    await t.test(name, async () => {
+      const base = view.split(/[\\/]/).pop();
+      const files = { "doc.md": agentDoc(view), [P24]: PLAN_24, [view]: drawScript("decoy"), [base]: drawScript("decoy"), [`views/${base}`]: drawScript("decoy"), "secret.js": drawScript("decoy"), "abs.js": drawScript("decoy") };
+      const { app } = await quietly(() => showAgent(files));
+      await assertRefusedAndUsable(app, name, view);
+    });
+  }
+});
+
+// Adversarial where: a missing file, a syntax error, a throw, a rejected
+// promise or an export that is not a function takes the panel down or leaves it
+// blank with no word, or reports two lines.
+test("a missing, unparsable, throwing, rejecting or non-function script gives one plain line naming it and leaves the panel usable", async (t) => {
+  const rows = [
+    ["missing file", null],
+    ["syntax error", "module.exports = ({ el }) => {"],
+    ["throws", `module.exports = () => { throw new Error("boom"); };`],
+    ["throws while loading", `throw new Error("boom at load");`],
+    ["rejected promise", `module.exports = async () => { await null; throw new Error("late boom"); };`],
+    ["returns a rejected promise", `module.exports = () => Promise.reject(new Error("rejected"));`],
+    ["exports a number", "module.exports = 42;"],
+    ["exports nothing", "// no export\n"],
+  ];
+  for (const [name, script] of rows) {
+    await t.test(name, async () => {
+      const files = { "doc.md": agentDoc("views/bad.js"), [P24]: PLAN_24 };
+      if (script !== null) files["views/bad.js"] = script;
+      const { app } = await quietly(() => showAgent(files));
+      await assertRefusedAndUsable(app, name, "views/bad.js");
+    });
+  }
+});
+
+// Adversarial where: any `view:` line, even one in the body or under another
+// key, runs a script; or a document with a `view:` still draws its type's view;
+// or a document with no `view:` loses its ready-made view.
+test("a view: property replaces the type's view; no property, or a look-alike line, keeps it", async (t) => {
+  const script = drawScript("v");
+  const planWithView = (value) => PLAN_24.replace("type: plan\n", `type: plan\nview: ${value}\n`);
+  const drawsScript = [
+    ["plain", agentDoc(AGENT_OUT)],
+    ["double-quoted", agentDoc(`"${AGENT_OUT}"`)],
+    ["single-quoted", agentDoc(`'${AGENT_OUT}'`)],
+    ["trailing spaces", agentDoc(`${AGENT_OUT}   `)],
+    ["CRLF and a byte-order mark", "\uFEFF" + agentDoc(AGENT_OUT).replace(/\n/g, "\r\n")],
+    ["among other properties, no type", `---\ntitle: D\nstatus: draft\nview: ${AGENT_OUT}\ntags: [a]\n---\nbody\n`],
+    ["a plan, which has a ready-made view", planWithView(AGENT_OUT)],
+  ];
+  for (const [name, doc] of drawsScript) {
+    await t.test(`draws the script: ${name}`, async () => {
+      const { app } = await showAgent({ "doc.md": doc, [AGENT_OUT]: script });
+      assert.equal(agentOuts(app).length, 1);
+      assert.equal(viewEl(app).querySelectorAll(".compass-plan-board").length, 0, "no ready-made board beside it");
+      assert.equal(agentNotes(app).length, 0);
+    });
+  }
+  const keepsView = [
+    ["a plan with no view", PLAN_24, ".compass-plan-board"],
+    ["a view line in the body only", `---\ntype: plan\n---\n# P\n\nview: ${AGENT_OUT}\n`, ".compass-plan-board"],
+    ["a longer key ending in view", planWithView(AGENT_OUT).replace("view:", "subview:"), ".compass-plan-board"],
+    ["a lesson with no view", agentDoc(null), ".compass-view-note"],
+    ["no frontmatter, a view line in the text", `# Notes\n\nview: ${AGENT_OUT}\n`, null],
+  ];
+  for (const [name, doc, want] of keepsView) {
+    await t.test(`keeps its own view: ${name}`, async () => {
+      const { app } = await showAgent({ "doc.md": doc, [AGENT_OUT]: script });
+      assert.equal(agentOuts(app).length, 0, "the script did not run");
+      assert.equal(customOf(app).length, 0);
+      if (want) assert.ok(viewEl(app).querySelectorAll(want).length >= 1, `${want} drawn`);
+    });
+  }
+});
+
+// Adversarial where: a redraw (a save of the document, a layout change) appends
+// a second drawing instead of replacing the first, or caches the script so an
+// edited script keeps drawing its old output.
+test("fifty redraws leave one drawing, and an edited script draws its new output in place of the old", async () => {
+  const { app } = await showAgent({ "doc.md": agentDoc(AGENT_OUT), [AGENT_OUT]: drawScript("v1") });
+  for (let i = 0; i < 50; i++) {
+    app.store.set("doc.md", agentDoc(AGENT_OUT, "lesson", `tags: [t${i}]\n`));
+    await app.listeners.modify(mdFile("doc.md"));
+    app.wsListeners["layout-change"]();
+    await loopSettle();
+  }
+  assert.equal(customOf(app).length, 1);
+  assert.equal(agentOuts(app).length, 1);
+  assert.equal(viewEl(app).querySelectorAll(".compass-view-script").length, 1);
+
+  app.store.set(AGENT_OUT, drawScript("v2"));
+  await app.listeners.modify(mdFile("doc.md"));
+  await loopSettle();
+  assert.equal(agentOuts(app).length, 1);
+  assert.match(agentOuts(app)[0].text, /RAN-v2/);
+  assert.doesNotMatch(viewText(app), /RAN-v1/);
+});
+
+// Adversarial where: a slow script of a document the human has left finishes
+// later and draws over the document now in view, or two redraws that overlap a
+// slow script each draw and leave two drawings.
+test("a slow script finishing after the human moved on draws nothing, and overlapping redraws leave one drawing", async (t) => {
+  const slow = `module.exports = async ({ app, el }) => { await app.gate.wait; el.createEl("div", { cls: "agent-out", text: "RAN-slow" }); };`;
+  const files = { "doc.md": agentDoc("views/slow.js"), "views/slow.js": slow, "other.md": agentDoc(null) };
+  await t.test("moved to another document", async () => {
+    const { app, plugin } = await loaded(files);
+    app.gate = gate();
+    await openDoc(app, "doc.md");
+    await plugin.openViewPanel();
+    await loopSettle();
+    await openDoc(app, "other.md");
+    await loopSettle();
+    app.gate.release();
+    await loopSettle();
+    assert.equal(agentOuts(app).length, 0);
+    assert.doesNotMatch(viewText(app), /RAN-slow/);
+    assert.match(viewText(app), /lesson/);
+  });
+  await t.test("two redraws while the script waits", async () => {
+    const { app, plugin } = await loaded(files);
+    app.gate = gate();
+    await openDoc(app, "doc.md");
+    await plugin.openViewPanel();
+    await loopSettle();
+    await app.listeners.modify(mdFile("doc.md"));
+    await app.listeners.modify(mdFile("doc.md"));
+    await loopSettle();
+    app.gate.release();
+    await loopSettle();
+    assert.equal(agentOuts(app).length, 1);
+    assert.equal(customOf(app).length, 1);
+  });
+});

@@ -133,6 +133,24 @@ class WritingRulesTest(unittest.TestCase):
         body = section(text, "## Document Writing")
         self.assertRegex(squash(body), r"obsidian")
 
+class AgentViewRulesTest(unittest.TestCase):
+    def test_skill_teaches_the_agent_written_view(self):
+        """Adversarial where: the skill lets an agent write a view script
+        without the folder it must live in, the `view:` property that names it,
+        the order of choice (a ready-made view first, an agent's own only for a
+        picture none of them draws), or the commit rule that puts the script in
+        the review's `git diff` where the human reads it."""
+        text = SKILL.read_text(encoding="utf-8")
+        rows = {
+            "the views folder holds the script": (r"`views/", r"\.js|script"),
+            "the view property names the script": (r"`view: views/", r"frontmatter|propert"),
+            "a ready-made view comes first": (r"ready-made view", r"agent", r"only|none of them|no ready-made"),
+            "the script is committed with the document": (r"script", r"commit", r"document", r"git diff"),
+        }
+        for name, patterns in rows.items():
+            with self.subTest(rule=name):
+                self.assertTrue(has_block(text, *patterns), f"no block teaches: {name}")
+
 
 if __name__ == "__main__":
     unittest.main()
