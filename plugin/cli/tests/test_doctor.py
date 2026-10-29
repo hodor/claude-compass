@@ -21,6 +21,149 @@ import capturelib  # noqa: E402
 from commands import doctor  # noqa: E402
 
 
+class LocalAdditionsRowPostBuildTests(unittest.TestCase):
+    """Behaviors of the `local additions` row that exist only because it
+    classifies each addition twice (`addition_states` and `apply_overlays`)
+    and joins their answers into one line."""
+
+    def setUp(self):
+        self.project = make_project(self)
+        with_project_env(self, self.project)
+        build_complete_install(self.project)
+        self.vault = self.project / ".compass"
+
+    def add(self, rel, text):
+        path = self.vault / "meta" / "local" / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def apply(self):
+        from commands import overlay
+        overlay.apply_overlays(self.vault, apply=True)
+
+    def row(self):
+        _, out = run_doctor(["--json"])
+        rows = [r for r in json.loads(out)["checks"] if r["check"] == "local additions"]
+        self.assertEqual(len(rows), 1, out)
+        return rows[0]
+
+    def fail_reads_of(self, rel, nth, exc):
+        """Make the reads of the local file `rel` whose 1-based ordinal is in
+        `nth` raise `exc`; every other read passes through."""
+        import vaultlib
+        real = vaultlib.read_vault_text
+        seen = {"n": 0}
+
+        def read(path):
+            if str(path).replace("\\", "/").endswith(f"meta/local/{rel}"):
+                seen["n"] += 1
+                if seen["n"] in nth:
+                    raise exc
+            return real(path)
+
+        self.addCleanup(setattr, vaultlib, "read_vault_text", real)
+        vaultlib.read_vault_text = read
+
+    def test_failure_reason_with_newlines_stays_in_one_table_row(self):
+        """Adversarial where: a failure reason carrying a newline (an OS
+        message quoting a multi-line path or text) is pasted into the row
+        detail verbatim, so the plain-text table breaks the `local
+        additions` row across lines and the continuation reads as a
+        separate row."""
+        self.add("agents/builder.md", "Addition.\n")
+        self.fail_reads_of("agents/builder.md", {1, 2}, OSError("first line\nsecond line"))
+        row = self.row()
+        self.assertEqual(row["status"], "WARN", row)
+        self.assertIn("agents/builder.md", row["detail"])
+        self.assertNotIn("\n", row["detail"])
+        _, listing = run_doctor([])
+        stray = [ln for ln in listing.splitlines() if ln.startswith("second line") or ln.startswith("reason")]
+        self.assertEqual(stray, [], listing)
+
+    def test_row_survives_a_file_that_changes_between_the_two_reads(self):
+        """Adversarial where: the row classifies once for states and once for
+        the failure reasons; when the local file is readable on one pass and
+        not the other, the passes disagree and the row crashes, drops the
+        addition, or reports OK. Rows: unreadable only on the first pass,
+        unreadable only on the second pass."""
+        rel = "agents/builder.md"
+        cases = {"first pass fails": {1}, "second pass fails": {2}}
+        for name, nth in cases.items():
+            with self.subTest(case=name):
+                self.add(rel, "Addition.\n")
+                self.fail_reads_of(rel, nth, OSError("vanished"))
+                row = self.row()
+                self.assertEqual(row["status"], "WARN", row)
+                self.assertIn(rel, row["detail"])
+                self.assertIn("compass overlay --apply", row["fix"])
+
+    def test_doctor_leaves_every_addition_source_and_target_byte_identical(self):
+        """Adversarial where: the row is built from a dry run, and a dry run
+        that writes (a stale block replaced, an addition applied, a temp
+        file left beside a target) makes `doctor` mutate the installed
+        agents it is diagnosing. Rows: one current, one out-of-date, one
+        never-applied, one naming no shipped file; text and JSON runs."""
+        rules = self.project / ".claude" / "rules"
+        rules.mkdir(parents=True, exist_ok=True)
+        (rules / "extra.md").write_text("# Shipped\n", encoding="utf-8")
+        self.add("agents/builder.md", "One.\n")
+        self.add("agents/debug.md", "Two.\n")
+        self.apply()
+        self.add("agents/debug.md", "Two, edited.\n")
+        self.add("rules/extra.md", "Three.\n")
+        self.add("agents/ghost.md", "Nowhere.\n")
+
+        def snapshot():
+            roots = (self.project / ".claude" / "agents", rules,
+                     self.vault / "meta" / "local")
+            return {str(p): p.read_bytes() for root in roots
+                    for p in root.rglob("*") if p.is_file()}
+
+        before = snapshot()
+        run_doctor([])
+        run_doctor(["--json"])
+        self.assertEqual(snapshot(), before)
+
+    def test_crlf_and_symlinked_targets_read_as_current_once_applied(self):
+        """Adversarial where: the row compares LF-normalized text against a
+        target applied in CRLF, or reads through a link differently from
+        the apply that wrote it, so an addition that is live reports out of
+        date. Rows: a CRLF target, a symlinked target."""
+        agents = self.project / ".claude" / "agents"
+        (agents / "builder.md").write_bytes(b"# Shipped\r\nline\r\n")
+        self.add("agents/builder.md", "First\nSecond\n")
+        backing = self.project / "backing-debug.md"
+        backing.write_text("# Shipped\n", encoding="utf-8")
+        (agents / "debug.md").unlink()
+        try:
+            os.symlink(backing, agents / "debug.md")
+        except (OSError, NotImplementedError):
+            backing.replace(agents / "debug.md")
+        self.add("agents/debug.md", "Linked.\n")
+        self.apply()
+        row = self.row()
+        self.assertEqual(row["status"], "OK", row)
+        self.assertEqual(row["detail"], "2 applied")
+
+    def test_many_stale_additions_are_each_named_once_on_one_line(self):
+        """Adversarial where: with dozens of additions the row repeats a
+        path under two states, drops the tail, or wraps onto several lines
+        so the table no longer reads as one row per check. Rows: forty
+        never-applied additions."""
+        rules = self.project / ".claude" / "rules"
+        rules.mkdir(parents=True, exist_ok=True)
+        names = [f"rules/r{i:02d}.md" for i in range(40)]
+        for rel in names:
+            (self.project / ".claude" / rel).write_text("# Shipped\n", encoding="utf-8")
+            self.add(rel, "Addition.\n")
+        row = self.row()
+        self.assertEqual(row["status"], "WARN", row)
+        self.assertNotIn("\n", row["detail"])
+        for rel in names:
+            self.assertEqual(row["detail"].count(rel), 1, rel)
+
+
 def make_project(test_case):
     """A bare project dir with an empty `.compass/`, nothing under
     `.claude/`. Host detection is pinned off so doctor's row set does not

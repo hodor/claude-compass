@@ -337,27 +337,61 @@ def _lessons_catalog_check(vault_root):
     return Check("lessons-catalog.yaml", OK, f"{path} present")
 
 
+def _one_line(text):
+    """Collapse whitespace runs and control characters to single spaces so a
+    value stays inside one row of the plain-text table."""
+    return re.sub(r"[\s\x00-\x1f\x7f]+", " ", str(text)).strip()
+
+
 def _overlay_check(vault_root):
-    """Advisory row for project-local additions (ADR-020): OK naming how many
-    are applied, WARN when one names a target that no longer ships - an
-    addition that matches nothing must not silently do nothing."""
+    """Advisory row for project-local additions (ADR-020). OK means every
+    addition is current in its installed target, or there are none. WARN
+    names each addition that is not applied, out of date, unreadable, or
+    aimed at a target that no longer ships, so an addition that does nothing
+    never passes as live."""
     try:
         from commands import overlay as overlay_mod
 
-        report = overlay_mod.apply_overlays(vault_root, apply=False)
+        states = overlay_mod.addition_states(vault_root)
+        failed = overlay_mod.apply_overlays(vault_root, apply=False).get("failed", {})
     except Exception as exc:
         return Check("local additions", WARN, f"local additions scan failed: {exc}")
-    live = len(report["applied"]) + len(report["skipped"])
-    if report["orphans"]:
-        return Check(
-            "local additions", WARN,
-            f"{len(report['orphans'])} local addition(s) name an uninstalled target: "
-            f"{', '.join(report['orphans'])}",
-            "run `compass overlay` to list them; rename or remove the stale file",
-        )
-    if not live:
+    if not states:
         return Check("local additions", OK, "none")
-    return Check("local additions", OK, f"{live} applied")
+
+    def named(state):
+        return [_one_line(rel) for rel, got in states if got == state]
+
+    orphans = named(overlay_mod.NO_SHIPPED_FILE)
+    parts = []
+    for state in (overlay_mod.NOT_APPLIED, overlay_mod.OUT_OF_DATE):
+        rels = named(state)
+        if rels:
+            parts.append(f"{state}: {', '.join(rels)}")
+    unreadable = [
+        f"{_one_line(rel)} ({_one_line(failed[rel])})" if rel in failed else _one_line(rel)
+        for rel, got in states
+        if got == overlay_mod.UNREADABLE
+    ]
+    if unreadable:
+        parts.append(f"cannot be read: {', '.join(unreadable)}")
+    orphan_text = (
+        f"{len(orphans)} local addition(s) name an uninstalled target: "
+        f"{', '.join(orphans)}"
+    )
+    if not parts:
+        if orphans:
+            return Check(
+                "local additions", WARN, orphan_text,
+                "run `compass overlay` to list them; rename or remove the stale file",
+            )
+        return Check("local additions", OK, f"{len(states)} applied")
+    if orphans:
+        parts.append(orphan_text)
+    fix = "run `compass overlay --apply` to write them"
+    if orphans:
+        fix += "; rename or remove any file naming an uninstalled target"
+    return Check("local additions", WARN, "; ".join(parts), fix)
 
 
 MEASUREMENT_WINDOW_DAYS = 14
