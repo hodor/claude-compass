@@ -5157,3 +5157,168 @@ test("a slow script finishing after the human moved on draws nothing, and overla
     assert.equal(customOf(app).length, 1);
   });
 });
+
+// ---- a view an agent writes: paths that slip a textual check, and the held document ----
+
+// Adversarial where: the `views/` check is purely textual, so a segment that a
+// file system folds into a parent step (`.. ` with a trailing space, which
+// Windows reads as `..`), a segment doubled or dotted, or a differently cased
+// folder name is read and run from outside the views folder.
+test("a view: path that a file system could fold out of views/ is refused, one plain line naming it", async (t) => {
+  const rows = [
+    ["parent segment with a trailing space", "views/.. /x.js"],
+    ["current-folder segment", "views/./x.js"],
+    ["doubled slash", "views//x.js"],
+    ["dot-dot after a dot", "views/./../x.js"],
+    ["differently cased folder", "Views/x.js"],
+    ["trailing slash", "views/x.js/"],
+  ];
+  for (const [name, view] of rows) {
+    await t.test(name, async () => {
+      const files = { "doc.md": agentDoc(view), [P24]: PLAN_24, [view]: drawScript("decoy"), "x.js": drawScript("decoy") };
+      const { app } = await quietly(() => showAgent(files));
+      await assertRefusedAndUsable(app, name, view);
+    });
+  }
+});
+
+// Adversarial where: a script that never settles holds the panel, so the next
+// document never draws, or its pending state leaves a note behind.
+test("a script that never resolves leaves the panel usable and the next document draws", async () => {
+  const hang = `module.exports = () => new Promise(() => {});`;
+  const { app } = await showAgent({ "doc.md": agentDoc("views/hang.js"), "views/hang.js": hang, [P24]: PLAN_24 });
+  assert.equal(agentNotes(app).length, 0);
+  await openDoc(app, P24);
+  await loopSettle();
+  assert.equal(viewEl(app).querySelectorAll(".compass-plan-board").length, 1);
+  assert.equal(customOf(app).length, 0, "the hung drawing left with its document");
+});
+
+// Adversarial where: a script that drew part of its output and then threw leaves
+// the half drawing beside the failure line, or a script that fails after the
+// human moved on writes its failure line onto the document now in view.
+test("a script that fails after drawing leaves only the failure line, and a late failure never reaches another document", async (t) => {
+  await t.test("draws then throws", async () => {
+    const script = `module.exports = ({ el }) => { el.createEl("div", { cls: "agent-out", text: "RAN-half" }); throw new Error("after half"); };`;
+    const { app } = await quietly(() => showAgent({ "doc.md": agentDoc("views/half.js"), "views/half.js": script }));
+    assert.equal(agentOuts(app).length, 0, "the half drawing is gone");
+    assert.equal(agentNotes(app).length, 1);
+    assert.match(agentNotes(app)[0].text, /views\/half\.js/);
+  });
+  await t.test("rejects after the human moved on", async () => {
+    const script = `module.exports = async ({ app }) => { await app.gate.wait; throw new Error("late"); };`;
+    const { app, plugin } = await loaded({ "doc.md": agentDoc("views/late.js"), "views/late.js": script, [P24]: PLAN_24 });
+    app.gate = gate();
+    await openDoc(app, "doc.md");
+    await plugin.openViewPanel();
+    await loopSettle();
+    await openDoc(app, P24);
+    await loopSettle();
+    await quietly(async () => { app.gate.release(); await loopSettle(); });
+    assert.equal(agentNotes(app).length, 0, "no line from the left document");
+    assert.equal(viewEl(app).querySelectorAll(".compass-plan-board").length, 1);
+  });
+});
+
+// Adversarial where: a redraw that finds nothing changed still bumps the draw
+// counter, so a script that fails afterwards sees its draw as replaced, adds no
+// failure line and leaves the half drawing under the script's path.
+test("a script that rejects after an unchanged redraw still reports its failure", async () => {
+  const script = `module.exports = async ({ app, el }) => { el.createEl("div", { cls: "agent-out", text: "RAN-part" }); await app.gate.wait; throw new Error("late boom"); };`;
+  const { app, plugin } = await loaded({ "doc.md": agentDoc("views/late.js"), "views/late.js": script });
+  app.gate = gate();
+  await openDoc(app, "doc.md");
+  await plugin.openViewPanel();
+  await loopSettle();
+  app.wsListeners["layout-change"]();
+  await loopSettle();
+  await quietly(async () => { app.gate.release(); await loopSettle(); });
+  assert.equal(agentNotes(app).length, 1, "one failure line");
+  assert.equal(agentOuts(app).length, 0, "no half drawing left");
+});
+
+// Adversarial where: a script left running for a document the human left calls
+// `open` later; the hold then pins the panel to the drawing now shown (not the
+// document the script opened), so the opened document is in view with another
+// document's drawing.
+test("open called by a script whose draw was replaced does not pin the panel to a stale drawing", async () => {
+  const script = `module.exports = async ({ app, open }) => { await app.gate.wait; open(${JSON.stringify(P24)}, 1); };`;
+  const { app, plugin } = await loaded({ "doc.md": agentDoc("views/late.js"), "views/late.js": script, "other.md": agentDoc(null), [P24]: PLAN_24 });
+  app.gate = gate();
+  await openDoc(app, "doc.md");
+  await plugin.openViewPanel();
+  await loopSettle();
+  await openDoc(app, "other.md");
+  await loopSettle();
+  app.gate.release();
+  await loopSettle();
+  assert.equal(app.active.path, P24, "the late open landed");
+  assert.equal(viewEl(app).querySelectorAll(".compass-plan-board").length, 1, "the panel shows the plan now in view");
+});
+
+// Adversarial where: `open` of a path that is already in view, or that does not
+// exist, sets the hold with no file change to release it, so the drawing is
+// frozen: an edited script or document never redraws while that document stays
+// in view.
+test("open of the document already in view, or of a missing path, leaves the drawing live", async (t) => {
+  for (const [name, target] of [["its own document", "doc.md"], ["a missing path", "nowhere.md"]]) {
+    await t.test(name, async () => {
+      const script = (label) => `module.exports = ({ el, open }) => { const b = el.createEl("button", { text: "go" }); b.onclick = () => open(${JSON.stringify(target)}, 3); el.createEl("div", { cls: "agent-out", text: "RAN-${label}" }); };`;
+      const { app } = await showAgent({ "doc.md": agentDoc(AGENT_OUT), [AGENT_OUT]: script("v1") });
+      await clickOn(viewEl(app).all().find((e) => e.tag === "button" && e.text === "go"));
+      await settle();
+      app.store.set(AGENT_OUT, script("v2"));
+      await app.listeners.modify(mdFile(AGENT_OUT));
+      await loopSettle();
+      assert.match(viewText(app), /RAN-v2/, "an edited script redraws");
+    });
+  }
+});
+
+// Adversarial where: the hold outlives the human's own navigation: after the
+// script opens a document and the human goes elsewhere and comes back to it,
+// the panel still shows the first document's drawing instead of that
+// document's own view.
+test("a document a script opened keeps the drawing only while it is in view", async () => {
+  const script = `module.exports = ({ el, open }) => { const b = el.createEl("button", { text: "go" }); b.onclick = () => open("notes.md", 1); el.createEl("div", { cls: "agent-out", text: "RAN-held" }); };`;
+  const { app } = await showAgent({ "doc.md": agentDoc(AGENT_OUT), [AGENT_OUT]: script, "notes.md": agentDoc(null), [P24]: PLAN_24 });
+  await clickOn(viewEl(app).all().find((e) => e.tag === "button" && e.text === "go"));
+  await settle();
+  await loopSettle();
+  assert.equal(app.active.path, "notes.md");
+  assert.equal(agentOuts(app).length, 1, "kept while the opened document is in view");
+  await openDoc(app, P24);
+  await loopSettle();
+  assert.equal(viewEl(app).querySelectorAll(".compass-plan-board").length, 1);
+  assert.equal(agentOuts(app).length, 0);
+  await openDoc(app, "notes.md");
+  await loopSettle();
+  assert.equal(agentOuts(app).length, 0, "the hold ended with the navigation");
+  assert.match(viewText(app), /lesson/);
+  await openDoc(app, "doc.md");
+  await loopSettle();
+  assert.equal(agentOuts(app).length, 1, "the script's own document draws again");
+});
+
+// Adversarial where: two documents naming one script share state (the second
+// shows the first's file or text), or an unchanged text under a second path
+// reuses the first drawing.
+test("two documents naming one script each draw their own file and text, with no state shared between runs", async () => {
+  const script = `let runs = 0; module.exports = ({ el, file, text }) => { runs++; el.createEl("div", { cls: "agent-out", text: [file.path, text.length, runs].join("|") }); };`;
+  const a = agentDoc(AGENT_OUT);
+  const b = agentDoc(AGENT_OUT, "lesson", "tags: [more]\n");
+  const { app } = await showAgent({ "a.md": a, "b.md": b, [AGENT_OUT]: script }, "a.md");
+  assert.equal(agentOuts(app)[0].text, `a.md|${a.length}|1`);
+  await openDoc(app, "b.md");
+  await loopSettle();
+  assert.equal(agentOuts(app).length, 1);
+  assert.equal(agentOuts(app)[0].text, `b.md|${b.length}|1`);
+  await openDoc(app, "a.md");
+  await loopSettle();
+  assert.equal(agentOuts(app)[0].text, `a.md|${a.length}|1`);
+  const longer = a + "more body\n";
+  app.store.set("a.md", longer);
+  await app.listeners.modify(mdFile("a.md"));
+  await loopSettle();
+  assert.equal(agentOuts(app)[0].text, `a.md|${longer.length}|1`, "text is the live file");
+});
