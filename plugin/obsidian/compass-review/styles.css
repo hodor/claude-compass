@@ -217,14 +217,16 @@
   gap: 8px;
 }
 
-.compass-plan-head {
+.compass-plan-head,
+.compass-doc-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 
-.compass-plan-title {
+.compass-plan-title,
+.compass-doc-title {
   font-weight: var(--font-semibold, 600);
   font-size: var(--font-ui-medium);
 }
@@ -479,4 +481,252 @@
 
 .compass-choice-row.is-change .compass-choice-note {
   display: block;
+}
+
+/* Spec view */
+
+.compass-spec-view,
+.compass-research-view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.compass-spec-words {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.compass-open-line {
+  cursor: pointer;
+}
+
+.compass-open-line:hover {
+  text-decoration: underline;
+}
+
+.compass-spec-quote {
+  padding: 4px 12px;
+  border-left: 4px solid var(--interactive-accent);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  overflow-wrap: anywhere;
+}
+
+.compass-prose-p,
+.compass-prose-list,
+.compass-prose-heading {
+  margin: 0.4em 0;
+}
+
+.compass-prose-list {
+  padding-left: 1.4em;
+}
+
+.compass-prose-heading {
+  font-weight: var(--font-semibold, 600);
+}
+
+.compass-prose-code {
+  margin: 0.4em 0;
+  overflow: auto;
+  font-size: var(--font-ui-smaller);
+}
+
+.compass-decision-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-primary);
+}
+
+.compass-decision-card.is-agree {
+  background: rgba(var(--color-green-rgb), 0.1);
+}
+
+.compass-decision-card.is-change {
+  background: rgba(var(--color-orange-rgb), 0.12);
+}
+
+.compass-decision-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.compass-decision-id {
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold, 600);
+  color: var(--text-accent);
+  cursor: pointer;
+}
+
+.compass-decision-id:hover {
+  text-decoration: underline;
+}
+
+.compass-decision-text {
+  overflow-wrap: anywhere;
+}
+
+.compass-decision-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.compass-decision-actions button {
+  font-size: var(--font-ui-smaller);
+}
+
+.compass-decision-note {
+  width: 100%;
+  resize: vertical;
+  font-size: var(--font-ui-small);
+}
+
+.compass-decision-need-note {
+  color: var(--color-orange);
+  font-size: var(--font-ui-smaller);
+}
+
+/* Research view */
+
+.compass-section-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.compass-section-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 1px 6px;
+}
+
+.compass-section-name {
+  flex: 0 0 36%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-ui-smaller);
+}
+
+.compass-section-track {
+  display: flex;
+  gap: 1px;
+  height: 10px;
+  min-width: 8px;
+}
+
+.compass-section-part {
+  min-width: 3px;
+  border-radius: 2px;
+  background: var(--compass-conf);
+}
+
+.compass-conf-high {
+  --compass-conf: var(--color-green);
+}
+
+.compass-conf-medium {
+  --compass-conf: var(--color-orange);
+}
+
+.compass-conf-low {
+  --compass-conf: var(--color-red);
+}
+
+.compass-conf-other,
+.compass-conf-none {
+  --compass-conf: var(--background-modifier-border);
+}
+
+.compass-section-n {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.compass-research-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+button.compass-conf-filter {
+  opacity: 0.55;
+}
+
+button.compass-conf-filter.is-on {
+  opacity: 1;
+  box-shadow: inset 0 0 0 1px var(--compass-conf);
+}
+
+.compass-finding-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.compass-finding-row {
+  padding: 4px 8px;
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  cursor: pointer;
+}
+
+.compass-finding-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.compass-finding-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.compass-finding-n {
+  flex: none;
+  min-width: 2.2em;
+  color: var(--text-faint);
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  text-align: right;
+}
+
+.compass-pips {
+  flex: none;
+  display: inline-flex;
+  gap: 2px;
+  align-self: center;
+}
+
+.compass-pip {
+  width: 10px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--background-modifier-border);
+}
+
+.compass-pip.is-on {
+  background: var(--compass-conf);
+}
+
+.compass-finding-text {
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+}
+
+.compass-finding-evidence {
+  margin-left: 3em;
+  overflow-wrap: anywhere;
 }
