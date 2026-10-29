@@ -7,6 +7,7 @@ clamp, and the dispatch catch-all returns 1 on any exception.
 """
 
 import argparse
+import os
 import sys
 
 EXIT_OK = 0
@@ -129,6 +130,11 @@ def dispatch(name, args):
         return cli_err(f"compass {name}: not implemented yet")
     from commands import usage
     usage.record(name)
+    # A command that publishes USAGE answers `-h` or `--help` in any position
+    # with it; one without USAGE reads the flag itself.
+    command_usage = getattr(module, "USAGE", None)
+    if command_usage and any(arg in ("-h", "--help") for arg in args):
+        return cli_ok(command_usage.rstrip("\n"))
     return module.run(args)
 
 
@@ -140,6 +146,18 @@ def _escape_unencodable_output():
             stream.reconfigure(errors="backslashreplace")
         except (AttributeError, ValueError):
             pass
+
+
+def _reader_closed():
+    """Exit quietly when stdout's reader has gone, as `| head -1` does after
+    its line. Output still buffered is pointed at the null device, so the
+    flush at interpreter exit cannot raise a second BrokenPipeError."""
+    try:
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+    except (AttributeError, OSError, ValueError):
+        pass
+    return EXIT_ERROR
 
 
 def main(argv=None):
@@ -159,6 +177,8 @@ def main(argv=None):
         return EXIT_ERROR
     try:
         return dispatch(command, rest)
+    except BrokenPipeError:
+        return _reader_closed()
     except Exception as exc:  # never surface as a crash/exit-2 that blocks a write
         _try_capture(command, exc)
         return cli_err(f"compass {command}: {exc}")
