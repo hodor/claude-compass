@@ -1,0 +1,915 @@
+{
+ "total": 135,
+ "sections": [
+  {
+   "name": "A. Where the wall of text comes from (axis 1, axis 4)",
+   "high": 12,
+   "medium": 2,
+   "low": 0,
+   "other": 0,
+   "total": 14
+  },
+  {
+   "name": "B. Jargon: what it is and how to catch it (axis 1, axis 5)",
+   "high": 6,
+   "medium": 5,
+   "low": 1,
+   "other": 0,
+   "total": 12
+  },
+  {
+   "name": "C. Keeping it short (axis 5)",
+   "high": 1,
+   "medium": 4,
+   "low": 0,
+   "other": 0,
+   "total": 5
+  },
+  {
+   "name": "D. Measuring readability (axis 5)",
+   "high": 2,
+   "medium": 4,
+   "low": 0,
+   "other": 0,
+   "total": 6
+  },
+  {
+   "name": "E. Do visuals help (axis 5)",
+   "high": 1,
+   "medium": 2,
+   "low": 0,
+   "other": 0,
+   "total": 3
+  },
+  {
+   "name": "F. What Obsidian can show (axis 2, axis 3)",
+   "high": 21,
+   "medium": 2,
+   "low": 1,
+   "other": 0,
+   "total": 24
+  },
+  {
+   "name": "G. Claude artifacts (axis 3, axis 4)",
+   "high": 7,
+   "medium": 2,
+   "low": 0,
+   "other": 0,
+   "total": 9
+  },
+  {
+   "name": "H. Artifact-like pages inside Obsidian (axis 3)",
+   "high": 11,
+   "medium": 6,
+   "low": 0,
+   "other": 0,
+   "total": 17
+  },
+  {
+   "name": "I. What the terminal can show (axis 4)",
+   "high": 10,
+   "medium": 4,
+   "low": 0,
+   "other": 0,
+   "total": 14
+  },
+  {
+   "name": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)",
+   "high": 23,
+   "medium": 7,
+   "low": 1,
+   "other": 0,
+   "total": 31
+  }
+ ],
+ "rows": [
+  {
+   "n": 1,
+   "conf": "high",
+   "line": 82,
+   "section": "A. Where the wall of text comes from (axis 1, axis 4)"
+  },
+  {
+   "n": 2,
+   "conf": "high",
+   "line": 83,
+   "section": "A. Where the wall of text comes from (axis 1, axis 4)"
+  },
+  {
+   "n": 3,
+   "conf": "high",
+   "line": 84,
+   "section": "A. Where the wall of text comes from (axis 1, axis 4)"
+  },
+  {
+   "n": 4,
+   "conf": "high",
+   "line": 85,
+   "section": "A. Where the wall of text comes from (axis 1, axis 4)"
+  },
+  {
+   "n": 5,
+   "conf": "high",
+   "line": 86,
+   "section": "A. Where the wall of text comes from (axis 1, axis 4)"
+  },
+  {
+   "n": 6,
+   "conf": "high",
+   "line": 87,
+   "section": "A. Where the wall of text comes from (axis 1, axis 4)"
+  },
+  {
+   "n": 7,
+   "conf": "high",
+   "line": 88,
+   "section": "A. Where the wall of text comes from (axis 1, axis 4)"
+  },
+  {
+   "n": 8,
+   "conf": "medium",
+   "line": 89,
+   "section": "A. Where the wall of text comes from (axis 1, axis 4)"
+  },
+  {
+   "n": 9,
+   "conf": "high",
+   "line": 90,
+   "section": "A. Where the wall of text comes from (axis 1, axis 4)"
+  },
+  {
+   "n": 10,
+   "conf": "high",
+   "line": 91,
+   "section": "A. Where the wall of text comes from (axis 1, axis 4)"
+  },
+  {
+   "n": 11,
+   "conf": "high",
+   "line": 92,
+   "section": "A. Where the wall of text comes from (axis 1, axis 4)"
+  },
+  {
+   "n": 12,
+   "conf": "high",
+   "line": 93,
+   "section": "A. Where the wall of text comes from (axis 1, axis 4)"
+  },
+  {
+   "n": 13,
+   "conf": "high",
+   "line": 94,
+   "section": "A. Where the wall of text comes from (axis 1, axis 4)"
+  },
+  {
+   "n": 14,
+   "conf": "medium",
+   "line": 95,
+   "section": "A. Where the wall of text comes from (axis 1, axis 4)"
+  },
+  {
+   "n": 16,
+   "conf": "medium",
+   "line": 126,
+   "section": "B. Jargon: what it is and how to catch it (axis 1, axis 5)"
+  },
+  {
+   "n": 17,
+   "conf": "high",
+   "line": 127,
+   "section": "B. Jargon: what it is and how to catch it (axis 1, axis 5)"
+  },
+  {
+   "n": 18,
+   "conf": "high",
+   "line": 128,
+   "section": "B. Jargon: what it is and how to catch it (axis 1, axis 5)"
+  },
+  {
+   "n": 19,
+   "conf": "medium",
+   "line": 129,
+   "section": "B. Jargon: what it is and how to catch it (axis 1, axis 5)"
+  },
+  {
+   "n": 20,
+   "conf": "high",
+   "line": 130,
+   "section": "B. Jargon: what it is and how to catch it (axis 1, axis 5)"
+  },
+  {
+   "n": 21,
+   "conf": "high",
+   "line": 131,
+   "section": "B. Jargon: what it is and how to catch it (axis 1, axis 5)"
+  },
+  {
+   "n": 22,
+   "conf": "high",
+   "line": 132,
+   "section": "B. Jargon: what it is and how to catch it (axis 1, axis 5)"
+  },
+  {
+   "n": 23,
+   "conf": "high",
+   "line": 133,
+   "section": "B. Jargon: what it is and how to catch it (axis 1, axis 5)"
+  },
+  {
+   "n": 24,
+   "conf": "medium",
+   "line": 134,
+   "section": "B. Jargon: what it is and how to catch it (axis 1, axis 5)"
+  },
+  {
+   "n": 25,
+   "conf": "low",
+   "line": 135,
+   "section": "B. Jargon: what it is and how to catch it (axis 1, axis 5)"
+  },
+  {
+   "n": 26,
+   "conf": "medium",
+   "line": 136,
+   "section": "B. Jargon: what it is and how to catch it (axis 1, axis 5)"
+  },
+  {
+   "n": 27,
+   "conf": "medium",
+   "line": 137,
+   "section": "B. Jargon: what it is and how to catch it (axis 1, axis 5)"
+  },
+  {
+   "n": 28,
+   "conf": "high",
+   "line": 143,
+   "section": "C. Keeping it short (axis 5)"
+  },
+  {
+   "n": 29,
+   "conf": "medium",
+   "line": 144,
+   "section": "C. Keeping it short (axis 5)"
+  },
+  {
+   "n": 30,
+   "conf": "medium",
+   "line": 145,
+   "section": "C. Keeping it short (axis 5)"
+  },
+  {
+   "n": 31,
+   "conf": "medium",
+   "line": 146,
+   "section": "C. Keeping it short (axis 5)"
+  },
+  {
+   "n": 32,
+   "conf": "medium",
+   "line": 147,
+   "section": "C. Keeping it short (axis 5)"
+  },
+  {
+   "n": 33,
+   "conf": "high",
+   "line": 153,
+   "section": "D. Measuring readability (axis 5)"
+  },
+  {
+   "n": 34,
+   "conf": "medium",
+   "line": 154,
+   "section": "D. Measuring readability (axis 5)"
+  },
+  {
+   "n": 35,
+   "conf": "medium",
+   "line": 155,
+   "section": "D. Measuring readability (axis 5)"
+  },
+  {
+   "n": 36,
+   "conf": "high",
+   "line": 156,
+   "section": "D. Measuring readability (axis 5)"
+  },
+  {
+   "n": 37,
+   "conf": "medium",
+   "line": 157,
+   "section": "D. Measuring readability (axis 5)"
+  },
+  {
+   "n": 38,
+   "conf": "medium",
+   "line": 158,
+   "section": "D. Measuring readability (axis 5)"
+  },
+  {
+   "n": 39,
+   "conf": "high",
+   "line": 164,
+   "section": "E. Do visuals help (axis 5)"
+  },
+  {
+   "n": 40,
+   "conf": "medium",
+   "line": 165,
+   "section": "E. Do visuals help (axis 5)"
+  },
+  {
+   "n": 41,
+   "conf": "medium",
+   "line": 166,
+   "section": "E. Do visuals help (axis 5)"
+  },
+  {
+   "n": 42,
+   "conf": "high",
+   "line": 172,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 43,
+   "conf": "high",
+   "line": 173,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 44,
+   "conf": "high",
+   "line": 174,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 45,
+   "conf": "high",
+   "line": 175,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 46,
+   "conf": "high",
+   "line": 176,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 47,
+   "conf": "high",
+   "line": 177,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 48,
+   "conf": "medium",
+   "line": 178,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 49,
+   "conf": "low",
+   "line": 179,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 50,
+   "conf": "high",
+   "line": 180,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 51,
+   "conf": "high",
+   "line": 181,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 52,
+   "conf": "high",
+   "line": 182,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 53,
+   "conf": "high",
+   "line": 183,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 54,
+   "conf": "high",
+   "line": 184,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 55,
+   "conf": "high",
+   "line": 185,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 56,
+   "conf": "high",
+   "line": 186,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 57,
+   "conf": "high",
+   "line": 187,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 58,
+   "conf": "medium",
+   "line": 188,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 59,
+   "conf": "high",
+   "line": 189,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 60,
+   "conf": "high",
+   "line": 190,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 61,
+   "conf": "high",
+   "line": 191,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 62,
+   "conf": "high",
+   "line": 192,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 63,
+   "conf": "high",
+   "line": 193,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 64,
+   "conf": "high",
+   "line": 194,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 65,
+   "conf": "high",
+   "line": 195,
+   "section": "F. What Obsidian can show (axis 2, axis 3)"
+  },
+  {
+   "n": 67,
+   "conf": "high",
+   "line": 222,
+   "section": "G. Claude artifacts (axis 3, axis 4)"
+  },
+  {
+   "n": 68,
+   "conf": "high",
+   "line": 223,
+   "section": "G. Claude artifacts (axis 3, axis 4)"
+  },
+  {
+   "n": 69,
+   "conf": "high",
+   "line": 224,
+   "section": "G. Claude artifacts (axis 3, axis 4)"
+  },
+  {
+   "n": 70,
+   "conf": "high",
+   "line": 225,
+   "section": "G. Claude artifacts (axis 3, axis 4)"
+  },
+  {
+   "n": 71,
+   "conf": "high",
+   "line": 226,
+   "section": "G. Claude artifacts (axis 3, axis 4)"
+  },
+  {
+   "n": 72,
+   "conf": "high",
+   "line": 227,
+   "section": "G. Claude artifacts (axis 3, axis 4)"
+  },
+  {
+   "n": 73,
+   "conf": "medium",
+   "line": 228,
+   "section": "G. Claude artifacts (axis 3, axis 4)"
+  },
+  {
+   "n": 74,
+   "conf": "high",
+   "line": 229,
+   "section": "G. Claude artifacts (axis 3, axis 4)"
+  },
+  {
+   "n": 75,
+   "conf": "medium",
+   "line": 230,
+   "section": "G. Claude artifacts (axis 3, axis 4)"
+  },
+  {
+   "n": 76,
+   "conf": "high",
+   "line": 236,
+   "section": "H. Artifact-like pages inside Obsidian (axis 3)"
+  },
+  {
+   "n": 77,
+   "conf": "medium",
+   "line": 237,
+   "section": "H. Artifact-like pages inside Obsidian (axis 3)"
+  },
+  {
+   "n": 78,
+   "conf": "medium",
+   "line": 238,
+   "section": "H. Artifact-like pages inside Obsidian (axis 3)"
+  },
+  {
+   "n": 79,
+   "conf": "high",
+   "line": 239,
+   "section": "H. Artifact-like pages inside Obsidian (axis 3)"
+  },
+  {
+   "n": 80,
+   "conf": "high",
+   "line": 240,
+   "section": "H. Artifact-like pages inside Obsidian (axis 3)"
+  },
+  {
+   "n": 81,
+   "conf": "high",
+   "line": 241,
+   "section": "H. Artifact-like pages inside Obsidian (axis 3)"
+  },
+  {
+   "n": 82,
+   "conf": "high",
+   "line": 242,
+   "section": "H. Artifact-like pages inside Obsidian (axis 3)"
+  },
+  {
+   "n": 83,
+   "conf": "medium",
+   "line": 243,
+   "section": "H. Artifact-like pages inside Obsidian (axis 3)"
+  },
+  {
+   "n": 84,
+   "conf": "medium",
+   "line": 244,
+   "section": "H. Artifact-like pages inside Obsidian (axis 3)"
+  },
+  {
+   "n": 85,
+   "conf": "high",
+   "line": 245,
+   "section": "H. Artifact-like pages inside Obsidian (axis 3)"
+  },
+  {
+   "n": 86,
+   "conf": "high",
+   "line": 246,
+   "section": "H. Artifact-like pages inside Obsidian (axis 3)"
+  },
+  {
+   "n": 87,
+   "conf": "high",
+   "line": 247,
+   "section": "H. Artifact-like pages inside Obsidian (axis 3)"
+  },
+  {
+   "n": 88,
+   "conf": "high",
+   "line": 248,
+   "section": "H. Artifact-like pages inside Obsidian (axis 3)"
+  },
+  {
+   "n": 89,
+   "conf": "high",
+   "line": 249,
+   "section": "H. Artifact-like pages inside Obsidian (axis 3)"
+  },
+  {
+   "n": 90,
+   "conf": "medium",
+   "line": 250,
+   "section": "H. Artifact-like pages inside Obsidian (axis 3)"
+  },
+  {
+   "n": 91,
+   "conf": "medium",
+   "line": 251,
+   "section": "H. Artifact-like pages inside Obsidian (axis 3)"
+  },
+  {
+   "n": 92,
+   "conf": "high",
+   "line": 252,
+   "section": "H. Artifact-like pages inside Obsidian (axis 3)"
+  },
+  {
+   "n": 93,
+   "conf": "medium",
+   "line": 268,
+   "section": "I. What the terminal can show (axis 4)"
+  },
+  {
+   "n": 94,
+   "conf": "medium",
+   "line": 269,
+   "section": "I. What the terminal can show (axis 4)"
+  },
+  {
+   "n": 95,
+   "conf": "high",
+   "line": 270,
+   "section": "I. What the terminal can show (axis 4)"
+  },
+  {
+   "n": 96,
+   "conf": "high",
+   "line": 271,
+   "section": "I. What the terminal can show (axis 4)"
+  },
+  {
+   "n": 97,
+   "conf": "high",
+   "line": 272,
+   "section": "I. What the terminal can show (axis 4)"
+  },
+  {
+   "n": 98,
+   "conf": "high",
+   "line": 273,
+   "section": "I. What the terminal can show (axis 4)"
+  },
+  {
+   "n": 99,
+   "conf": "high",
+   "line": 274,
+   "section": "I. What the terminal can show (axis 4)"
+  },
+  {
+   "n": 100,
+   "conf": "medium",
+   "line": 275,
+   "section": "I. What the terminal can show (axis 4)"
+  },
+  {
+   "n": 101,
+   "conf": "high",
+   "line": 276,
+   "section": "I. What the terminal can show (axis 4)"
+  },
+  {
+   "n": 102,
+   "conf": "high",
+   "line": 277,
+   "section": "I. What the terminal can show (axis 4)"
+  },
+  {
+   "n": 103,
+   "conf": "medium",
+   "line": 278,
+   "section": "I. What the terminal can show (axis 4)"
+  },
+  {
+   "n": 104,
+   "conf": "high",
+   "line": 279,
+   "section": "I. What the terminal can show (axis 4)"
+  },
+  {
+   "n": 105,
+   "conf": "high",
+   "line": 280,
+   "section": "I. What the terminal can show (axis 4)"
+  },
+  {
+   "n": 106,
+   "conf": "high",
+   "line": 281,
+   "section": "I. What the terminal can show (axis 4)"
+  },
+  {
+   "n": 107,
+   "conf": "high",
+   "line": 299,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 108,
+   "conf": "high",
+   "line": 300,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 109,
+   "conf": "high",
+   "line": 301,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 110,
+   "conf": "high",
+   "line": 302,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 111,
+   "conf": "high",
+   "line": 303,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 112,
+   "conf": "high",
+   "line": 304,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 113,
+   "conf": "high",
+   "line": 305,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 114,
+   "conf": "medium",
+   "line": 306,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 115,
+   "conf": "medium",
+   "line": 307,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 116,
+   "conf": "high",
+   "line": 308,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 117,
+   "conf": "high",
+   "line": 309,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 118,
+   "conf": "high",
+   "line": 315,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 119,
+   "conf": "medium",
+   "line": 316,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 121,
+   "conf": "high",
+   "line": 336,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 122,
+   "conf": "high",
+   "line": 337,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 123,
+   "conf": "high",
+   "line": 338,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 124,
+   "conf": "high",
+   "line": 339,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 125,
+   "conf": "high",
+   "line": 340,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 126,
+   "conf": "high",
+   "line": 341,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 127,
+   "conf": "high",
+   "line": 342,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 128,
+   "conf": "high",
+   "line": 343,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 129,
+   "conf": "medium",
+   "line": 344,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 130,
+   "conf": "medium",
+   "line": 345,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 131,
+   "conf": "medium",
+   "line": 346,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 132,
+   "conf": "medium",
+   "line": 347,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 133,
+   "conf": "high",
+   "line": 348,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 134,
+   "conf": "high",
+   "line": 349,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 135,
+   "conf": "high",
+   "line": 350,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 136,
+   "conf": "high",
+   "line": 351,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 137,
+   "conf": "high",
+   "line": 352,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  },
+  {
+   "n": 138,
+   "conf": "low",
+   "line": 353,
+   "section": "J. What a plugin can draw inside Obsidian (axis 6, axis 7)"
+  }
+ ],
+ "spot": {
+  "1": {
+   "confNote": "high",
+   "evidence": "22 commands run in this repo; axis 4 measured `tree` and help the same"
+  },
+  "26": {
+   "confNote": "medium",
+   "evidence": "Bullock et al. 2019, doi:10.1177/0963662519865687 (n=650, 181 citations); GOV.UK research background; NN/g expert quotes (no statistics)"
+  },
+  "46": {
+   "confNote": "high (Obsidian), medium (GitHub)",
+   "evidence": "obsidian.md/help/advanced-syntax; docs.github.com \"creating diagrams\"; `gh api markdown` trial"
+  },
+  "53": {
+   "confNote": "high",
+   "evidence": "`plugin/cli/decisionslib.py:50-76`; `plugin/cli/planlib.py:53`; probe run"
+  }
+ }
+}

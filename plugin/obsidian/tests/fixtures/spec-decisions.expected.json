@@ -1,0 +1,203 @@
+{
+ "SPEC-007-decision-coverage-tracing.md": {
+  "outcome": "parsed",
+  "decisions": [
+   {
+    "id": "D-01",
+    "text": "ADRs are in scope as decision sources. The rulings inside an ADR's Decision section become discrete ID'd units, not only prose; citing the ADR document is not coverage of its individual rulings.",
+    "tags": [],
+    "trackable": true,
+    "line": 44
+   },
+   {
+    "id": "D-02",
+    "text": "The fail-loud parsing contract is required: \"decisions present but unparseable\" must be distinguishable from \"no decisions present\" and must never pass silently.",
+    "tags": [],
+    "trackable": true,
+    "line": 45
+   },
+   {
+    "id": "D-03",
+    "text": "The blocking coverage gate fires at the plan boundary: a plan is not approved while a trackable decision is unclaimed.",
+    "tags": [],
+    "trackable": true,
+    "line": 46
+   },
+   {
+    "id": "D-04",
+    "text": "Coverage extends to task level as citation and audit, not as gates: tasks cite the decision IDs they implement, and validation audits each task's cited IDs; there is no mid-build per-task blocking.",
+    "tags": [],
+    "trackable": true,
+    "line": 47
+   },
+   {
+    "id": "D-05",
+    "text": "Because statuses and phases are user-configurable ([[SPEC-009-configurable-pipeline-workflows]]), a workflow must declare which status transition carries the coverage gate; the gate is bound to a transition, not hardcoded to one phase name.",
+    "tags": [],
+    "trackable": true,
+    "line": 48
+   },
+   {
+    "id": "D-06",
+    "text": "The source and target of coverage are workflow-declared roles, not fixed artifact types: a workflow names which phase's artifacts bear decisions and which phase's artifacts must cover them. The shipped default is specs/ADRs covered by plans/tasks; a custom workflow (e.g. one with no Plan phase, or with a Design phase producing its own decision-bearing docs) binds the same mechanism to its own artifacts.",
+    "tags": [],
+    "trackable": true,
+    "line": 49
+   }
+  ]
+ },
+ "SPEC-023-research-covers-the-whole-spec.md": {
+  "outcome": "parsed",
+  "decisions": [
+   {
+    "id": "D-01",
+    "text": "Research is about the whole spec, always. Multiple agents. The question field is just a question field, something the research might answer already; it is never the scope.",
+    "tags": [],
+    "trackable": true,
+    "line": 25
+   },
+   {
+    "id": "D-02",
+    "text": "Open questions are fine to have, and there is no need to gate them. They must not become the center of gravity. If the human has questions, they lead; otherwise the spec is the real lead. Questions the spec lists never lead.",
+    "tags": [],
+    "trackable": true,
+    "line": 26
+   },
+   {
+    "id": "D-03",
+    "text": "Research always finds curated points to look: ACM, arXiv, GitHub from reliable sources, which means checking the owner. Never a bunch of blogs only. A blog of a specialist is completely fine for understanding a topic. Which sources are good is researched a bit more, and the good ones are embedded in Compass. The shipped list, from tested access ([[research/pipeline/RESEARCH-source-inventory]]): keyless and reachable are Crossref, OpenAlex, Unpaywall, arXiv, OpenReview v2, and GitHub; Semantic Scholar with its free key; ACM Digital Library, DBLP, and Internet Archive Scholar through the browser; specialist blogs admitted case by case. The reliability check is the mechanical marks of D-09, never an agent's judgment as a gate.",
+    "tags": [],
+    "trackable": true,
+    "line": 27
+   },
+   {
+    "id": "D-04",
+    "text": "Reading code is a very valid research method, especially to understand how an API works. For everything that code exists, prefer the code, not the API. Download the API and read the API code. Never go with documentation; documentation is always outdated.",
+    "tags": [],
+    "trackable": true,
+    "line": 28
+   },
+   {
+    "id": "D-05",
+    "text": "Research completely informs what the plan needs. Research might happen and reveal that more research is needed; that is a normal outcome. Research is a super critical step.",
+    "tags": [],
+    "trackable": true,
+    "line": 29
+   },
+   {
+    "id": "D-06",
+    "text": "Research follows a methodology chosen for the case. The research methodologies themselves are researched now, as this spec's own research: how people do surveys and other types of research, and how research scope is defined. Agents choose from the methodologies that research found and follow the one they chose.",
+    "tags": [],
+    "trackable": true,
+    "line": 30
+   },
+   {
+    "id": "D-07",
+    "text": "Sometimes there are plugins in the system that give access to more research or more source code. Research makes use of them.",
+    "tags": [],
+    "trackable": true,
+    "line": 31
+   },
+   {
+    "id": "D-08",
+    "text": "Shadow libraries (Sci-Hub, LibGen, Anna's Archive, Z-Library) are parked: profiled in [[research/pipeline/RESEARCH-source-inventory]] with their legal position, not on the shipped list, to be revisited.",
+    "tags": [
+     "deferred"
+    ],
+    "trackable": false,
+    "line": 32
+   },
+   {
+    "id": "D-09",
+    "text": "Petersen's mapping study is the conduct, by elimination: just AI will not be enough to review the quality of a source; that would need humans. Nothing is excluded on quality. Dedicated retrievers per curated source, regardless of what else we do; that makes our lives easier. Every finding carries mechanical marks: evidence type, retraction status, preprint status, citation count, convergence. Evidence type is graded, peer review being really good, but the grade's weight depends on the topic: when doing R&D for AI, where we want to see what is new, peer review is not as critical. Agents grade the papers. The grade is a soft thing, not a hard thing: it is completely fine to use the grade as long as the agent tells the user it plans to use it and the user can tell it NOT to use the grade. Judgment comes in the form of lessons we learn and by finding new papers that prove previous papers wrong.",
+    "tags": [],
+    "trackable": true,
+    "line": 33
+   }
+  ]
+ },
+ "SPEC-031-working-in-compass-is-visual.md": {
+  "outcome": "parsed",
+  "decisions": [
+   {
+    "id": "D-01",
+    "text": "Documents use every one of these: diagrams (a plan's task dependencies, the pipeline and status flow, key metrics over time as charts), callouts for risks, open questions and decisions, embeds that show another document's section in place, block references so a cited decision is one click away, a table of a plan's tasks inside the plan, footnotes for research sources, and a canvas of the spec tree the human rearranges.",
+    "tags": [],
+    "trackable": true,
+    "line": 30
+   },
+   {
+    "id": "D-02",
+    "text": "Make sure we don't bloat the documents.",
+    "tags": [],
+    "trackable": true,
+    "line": 31
+   }
+  ]
+ },
+ "SPEC-callout-decisions.md": {
+  "outcome": "parsed",
+  "decisions": [
+   {
+    "id": "D-01",
+    "text": "First ruling, in a callout.",
+    "tags": [],
+    "trackable": true,
+    "line": 34
+   },
+   {
+    "id": "D-02",
+    "text": "Second ruling, tagged deferred. continued on an indented line.",
+    "tags": [
+     "deferred"
+    ],
+    "trackable": false,
+    "line": 35
+   },
+   {
+    "id": "D-03",
+    "text": "Third ruling with a block id.",
+    "tags": [],
+    "trackable": true,
+    "line": 37
+   },
+   {
+    "id": "D-04",
+    "text": "Fourth ruling, nested one level deeper.",
+    "tags": [],
+    "trackable": true,
+    "line": 39
+   },
+   {
+    "id": "D-05",
+    "text": "Fifth ruling, a plain bullet after the callout.",
+    "tags": [],
+    "trackable": true,
+    "line": 41
+   },
+   {
+    "id": "D-06",
+    "text": "Sixth ruling, in a discretion group.",
+    "tags": [],
+    "trackable": false,
+    "line": 45
+   }
+  ]
+ },
+ "SPEC-malformed-decision.md": {
+  "outcome": "could-not-parse",
+  "decisions": [
+   {
+    "id": "D-01",
+    "text": "A well-formed ruling.",
+    "tags": [],
+    "trackable": true,
+    "line": 19
+   }
+  ]
+ },
+ "inline-none-present": {
+  "outcome": "none-present",
+  "decisions": []
+ }
+}

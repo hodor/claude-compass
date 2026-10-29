@@ -2630,3 +2630,575 @@ test("unloading the plugin and then saving the open plan throws nothing", async 
   await app.listeners.modify(mdFile(P24));
   await settle();
 });
+
+// ---- spec and research cards in the view panel ----
+//
+// The view panel draws `type: spec` and `type: research` documents. Pure
+// functions are static exports of main.js:
+//
+//   CompassReview.viewFor(text) -> "plan" | "spec" | "research" | null
+//   CompassReview.parseSpec(text) -> { problem, desiredOutcome, problemLine, desiredOutcomeLine,
+//       decisions: [{ id, text, trackable, tags, line }], decisionState }
+//       The decisions are what `compass decisions` reports (text with callout
+//       markers, block id and line breaks folded away; `line` 1-based);
+//       decisionState is "parsed" | "none-present" | "could-not-parse".
+//       problem and desiredOutcome are the trimmed section bodies, "" and line 0
+//       when the section is absent.
+//   CompassReview.parseResearchFindings(text) -> [{ n, text, conf, confNote, grade, evidence, section, line }]
+//       Rows of tables whose header names a "Finding" column; conf is the
+//       leading "high" | "medium" | "low" of the Conf. cell, lower-cased, or "".
+//   CompassReview.countFindingsBySection(findings) -> [{ name, high, medium, low, other, total }]
+//   CompassReview.filterFindings(findings, confs) -> findings whose conf is in
+//       the array `confs`; a finding with conf "" stays under every filter.
+//   CompassReview.decisionNoteLines(decisions, answers) -> string[]
+//       answers: { "D-01": { state: "agree" | "change", note } }. One
+//       `D-NN: <note>` line per decision answered "change" with a non-blank
+//       note, once per id, in document order, then answers whose decision left
+//       the spec; the note's whitespace runs fold to one space.
+//
+// DOM, read by these tests (the panel content is `view.containerEl.children[1]`):
+//   .compass-spec-view          root, one per spec in view
+//   .compass-spec-problem       the Problem text; .compass-spec-outcome the Desired Outcome text
+//   .compass-decision-card      one per decision, dataset.id "D-NN", in document order. While a
+//                               review that lists the spec is pending it holds an Agree button, a
+//                               Change button and a textarea. Class is-agree / is-change after an
+//                               answer. A Change clicked with a blank note is refused: no is-change,
+//                               and the card holds a .compass-decision-need-note element with text.
+//   .compass-research-view      root, one per research document in view
+//   .compass-section-bar        one per section holding findings, dataset.section, dataset.total,
+//                               dataset.high, dataset.medium, dataset.low (counts as strings)
+//   button.compass-conf-filter  dataset.conf "high" | "medium" | "low", class is-on while enabled
+//   .compass-finding-row        one per shown finding, dataset.n; a click on the row opens the
+//                               document at eState.line = finding line - 1
+
+const SPEC_FILES = {
+  "SPEC-007-decision-coverage-tracing.md": fixture("SPEC-007-decision-coverage-tracing.md"),
+  "SPEC-023-research-covers-the-whole-spec.md": fixture("SPEC-023-research-covers-the-whole-spec.md"),
+  "SPEC-031-working-in-compass-is-visual.md": fixture("SPEC-031-working-in-compass-is-visual.md"),
+  "SPEC-callout-decisions.md": fixture("SPEC-callout-decisions.md"),
+  "SPEC-malformed-decision.md": fixture("SPEC-malformed-decision.md"),
+};
+const SPEC_EXPECT = JSON.parse(fixture("spec-decisions.expected.json"));
+const RESEARCH_TEXT = fixture("RESEARCH-working-in-compass-is-visual.md");
+const RESEARCH_EXPECT = JSON.parse(fixture("research-findings.expected.json"));
+const SP = ".compass/specs/SPEC-900-fixture.md";
+const RP = ".compass/research/RESEARCH-fixture.md";
+const pickDecision = (d) => ({ id: d.id, text: d.text, trackable: d.trackable, tags: d.tags, line: d.line });
+const textOfEl = (el) => el.all().map((e) => e.text).join(" ");
+const decisionCards = (app) => viewEl(app).querySelectorAll(".compass-decision-card");
+const decisionCard = (app, id) => decisionCards(app).find((c) => c.dataset.id === id);
+const cardArea = (card) => card.all().find((e) => e.tag === "textarea");
+const sectionOf = (text, from, to) => text.split(to)[0].split(from)[1].trim();
+
+// Adversarial where: the type picks the wrong view: a spec or research
+// document gets no view, a plan is taken for a spec, a lookalike type
+// (specs, researcher) or a `type:` line in the body picks a view, or a
+// byte order mark and CRLF hide the property.
+test("viewFor picks spec and research from the type property alone", () => {
+  const rows = [
+    ["spec", "---\ntype: spec\n---\n# S\n", "spec"],
+    ["research", "---\ntype: research\n---\n# R\n", "research"],
+    ["plan stays plan", "---\ntype: plan\n---\n# P\n", "plan"],
+    ["quoted type", '---\ntype: "spec"\n---\n', "spec"],
+    ["CRLF and BOM", "﻿---\r\ntype: research\r\n---\r\n# R\r\n", "research"],
+    ["decision has no view", "---\ntype: decision\n---\n# A\n", null],
+    ["specs is not spec", "---\ntype: specs\n---\n", null],
+    ["researcher is not research", "---\ntype: researcher\n---\n", null],
+    ["type in the body only", "# Spec\n\ntype: spec\n", null],
+    ["type below a heading after the properties", "---\ntitle: T\n---\n# H\ntype: research\n", null],
+  ];
+  for (const [name, text, want] of rows) assert.equal(CompassReview.viewFor(text), want, name);
+});
+
+// Adversarial where: the decisions the panel reads differ from the ones
+// `compass decisions` reports for the same spec: callout markers left in
+// the text, a nested `> >` bullet dropped, a block id kept in the text, a
+// continuation line lost, a [deferred] tag or a discretion group still
+// trackable, a fenced example counted, or a spec the CLI cannot parse
+// passing as clean.
+test("parseSpec reads the decisions exactly as compass decisions does, from plain bullets and from callouts", async (t) => {
+  for (const [file, text] of Object.entries(SPEC_FILES)) {
+    await t.test(file, () => {
+      const got = CompassReview.parseSpec(text);
+      assert.deepEqual(got.decisions.map(pickDecision), SPEC_EXPECT[file].decisions.map(pickDecision));
+      assert.equal(got.decisionState, SPEC_EXPECT[file].outcome);
+    });
+  }
+  await t.test("a spec with no decisions section is none-present with no cards", () => {
+    const got = CompassReview.parseSpec("---\ntype: spec\n---\n## Problem\nx\n");
+    assert.deepEqual(got.decisions, []);
+    assert.equal(got.decisionState, SPEC_EXPECT["inline-none-present"].outcome);
+  });
+  await t.test("CRLF with a byte order mark gives the LF reading and the same line numbers", () => {
+    const text = "﻿" + SPEC_FILES["SPEC-callout-decisions.md"].replace(/\n/g, "\r\n");
+    assert.deepEqual(
+      CompassReview.parseSpec(text).decisions.map(pickDecision),
+      SPEC_EXPECT["SPEC-callout-decisions.md"].decisions.map(pickDecision),
+    );
+  });
+});
+
+// Adversarial where: the Problem or Desired Outcome shows reworded, cut at a
+// sub-heading or at a heading-shaped line inside a fence, merged with the
+// next section, taken from a decoy heading that only starts with "Problem",
+// or invented when the section is absent.
+test("parseSpec keeps the Problem and the Desired Outcome as the spec's own text", () => {
+  const s31 = SPEC_FILES["SPEC-031-working-in-compass-is-visual.md"];
+  const got31 = CompassReview.parseSpec(s31);
+  assert.equal(got31.problem, sectionOf(s31, "## Problem\n", "\n## Desired Outcome"));
+  assert.equal(got31.desiredOutcome, sectionOf(s31, "## Desired Outcome\n", "\n## Decisions"));
+  assert.ok(got31.problem.startsWith("Right now everything in using Compass is a wall of text."));
+  assert.equal(got31.problemLine, s31.split("\n").indexOf("## Problem") + 1);
+  assert.equal(got31.desiredOutcomeLine, s31.split("\n").indexOf("## Desired Outcome") + 1);
+
+  const callout = CompassReview.parseSpec(SPEC_FILES["SPEC-callout-decisions.md"]);
+  assert.match(callout.problem, /^People lose track of rulings\./);
+  assert.match(callout.problem, /### A sub-heading inside the problem\n\nStill the problem\.$/, "a ### heading stays inside the section");
+  assert.doesNotMatch(callout.problem, /Every ruling/);
+  assert.match(callout.desiredOutcome, /^Every ruling is a card\./);
+  assert.match(callout.desiredOutcome, /D-99/, "a fenced `## Decisions` does not end the section");
+
+  const decoy = CompassReview.parseSpec("---\ntype: spec\n---\n## Problem Space\nwrong\n\n## Problem\nright\n");
+  assert.equal(decoy.problem, "right");
+  const none = CompassReview.parseSpec("---\ntype: spec\n---\n## Context\nonly this\n");
+  assert.equal(none.problem, "");
+  assert.equal(none.desiredOutcome, "");
+  assert.equal(none.problemLine, 0);
+});
+
+// Adversarial where: the findings read differ from the research document: the
+// Methodology table's numbered rows are taken for findings (135 findings
+// become 142), a row inside a fence counts, a pipe inside a code span splits a
+// cell, a mixed confidence ("high (x), low (y)") reads as none or as low, a
+// short row throws or shifts cells, or a row with no number is kept.
+test("parseResearchFindings reads number, confidence and evidence from the evidence document and from malformed rows", async (t) => {
+  await t.test("RESEARCH-working-in-compass-is-visual: 135 findings, number, confidence, line and section per row", () => {
+    const got = CompassReview.parseResearchFindings(RESEARCH_TEXT);
+    assert.equal(got.length, RESEARCH_EXPECT.total);
+    assert.deepEqual(got.map((f) => ({ n: f.n, conf: f.conf, line: f.line, section: f.section })), RESEARCH_EXPECT.rows);
+  });
+  await t.test("RESEARCH-working-in-compass-is-visual: evidence and the full confidence cell of four rows", () => {
+    const byN = new Map(CompassReview.parseResearchFindings(RESEARCH_TEXT).map((f) => [f.n, f]));
+    for (const [n, want] of Object.entries(RESEARCH_EXPECT.spot)) {
+      assert.equal(byN.get(Number(n)).evidence, want.evidence, `finding ${n} evidence`);
+      assert.equal(byN.get(Number(n)).confNote, want.confNote, `finding ${n} confidence cell`);
+    }
+    assert.equal(byN.get(26).grade.toLowerCase(), "medium (bullock), low (expert quotes)");
+  });
+  await t.test("malformed rows: code-span pipe, upper case, mixed and missing confidence, short rows, fences, other tables", () => {
+    const doc = [
+      "---", "type: research", "---", "# R", "", "## Findings", "",
+      "### A. First (axis 1)", "",
+      "| # | Finding | Conf. | Grade | Evidence |", "|---|---|---|---|---|",
+      "| 1 | Plain finding | high | high | `a.js:1` |",
+      "| 2 | Pipe in `a|b` code | MEDIUM | low | ev2 |",
+      "| 3 | Split confidence | high (x), low (y) | medium | ev3 |",
+      "| 4 | No rating | n/a | | ev4 |",
+      "| 5 | Short row | low |",
+      "| - | Not numbered | high | high | ev |",
+      "",
+      "```", "| # | Finding | Conf. | Grade | Evidence |", "|---|---|---|---|---|", "| 6 | Fenced | high | high | ev6 |", "```", "",
+      "### B. Other table (axis 2)", "", "| Axis | Question | Method |", "|---|---|---|", "| 7 | What | How |", "",
+      "### C. Three columns", "", "| # | Finding | Conf. |", "|---|---|---|", "| 8 | Three columns | medium |", "",
+    ];
+    const got = CompassReview.parseResearchFindings(doc.join("\n"));
+    assert.deepEqual(got.map((f) => f.n), [1, 2, 3, 4, 5, 8]);
+    const by = Object.fromEntries(got.map((f) => [f.n, f]));
+    assert.equal(by[1].evidence, "`a.js:1`");
+    assert.equal(by[1].line, doc.indexOf("| 1 | Plain finding | high | high | `a.js:1` |") + 1);
+    assert.equal(by[2].text, "Pipe in `a|b` code");
+    assert.equal(by[2].conf, "medium");
+    assert.equal(by[2].evidence, "ev2");
+    assert.equal(by[3].conf, "high");
+    assert.equal(by[3].confNote, "high (x), low (y)");
+    assert.equal(by[4].conf, "");
+    assert.equal(by[5].conf, "low");
+    assert.equal(by[5].evidence, "");
+    assert.equal(by[5].grade, "");
+    assert.equal(by[8].section, "C. Three columns");
+    assert.equal(by[8].evidence, "");
+    assert.equal(by[1].section, "A. First (axis 1)");
+  });
+});
+
+// Adversarial where: the section bars count something other than the findings
+// (a section of a skipped table, a mixed confidence counted twice or as
+// "other"), put sections in another order, or the confidence filter drops
+// a finding with no rating or keeps one it should hide.
+test("countFindingsBySection and filterFindings count by section in document order and filter by confidence", async (t) => {
+  await t.test("the evidence document: ten sections whose counts match the table rows", () => {
+    const got = CompassReview.countFindingsBySection(CompassReview.parseResearchFindings(RESEARCH_TEXT));
+    assert.deepEqual(got, RESEARCH_EXPECT.sections);
+    assert.equal(got.reduce((sum, s) => sum + s.total, 0), RESEARCH_EXPECT.total);
+  });
+  const mk = (n, conf, section) => ({ n, conf, section, text: "", confNote: conf, grade: "", evidence: "", line: n });
+  const list = [mk(1, "high", "B"), mk(2, "low", "A"), mk(3, "", "B"), mk(4, "medium", "A"), mk(5, "high", "B")];
+  await t.test("first appearance orders the sections; an unrated finding counts as other and in the total", () => {
+    assert.deepEqual(CompassReview.countFindingsBySection(list), [
+      { name: "B", high: 2, medium: 0, low: 0, other: 1, total: 3 },
+      { name: "A", high: 0, medium: 1, low: 1, other: 0, total: 2 },
+    ]);
+  });
+  const rows = [
+    ["only high", ["high"], [1, 3, 5]],
+    ["high and low", ["high", "low"], [1, 2, 3, 5]],
+    ["all three", ["high", "medium", "low"], [1, 2, 3, 4, 5]],
+    ["none: only the unrated stays", [], [3]],
+  ];
+  for (const [name, confs, want] of rows) {
+    await t.test(name, () => assert.deepEqual(CompassReview.filterFindings(list, confs).map((f) => f.n), want));
+  }
+  await t.test("an empty document has no sections and no findings", () => {
+    assert.deepEqual(CompassReview.parseResearchFindings("---\ntype: research\n---\n# R\n"), []);
+    assert.deepEqual(CompassReview.countFindingsBySection([]), []);
+  });
+});
+
+// Adversarial where: a changed decision sends a line even when its note is
+// blank (a stale "(no note)" line), Agree adds a line, lines follow the order
+// of clicks instead of the spec's, one answer sent for two decisions that
+// share an id sends two lines, an answer to a decision no longer in the
+// spec vanishes, or a note with a line break splits the line in two.
+test("decisionNoteLines gives one D-NN line per Change with a note, in document order", async (t) => {
+  const decs = ["D-01", "D-02", "D-03", "D-04"].map((id) => ({ id }));
+  const rows = [
+    ["Change gives the line, Agree none", { "D-02": { state: "change", note: "reword" }, "D-01": { state: "agree", note: "fine" } }, ["D-02: reword"]],
+    ["document order, not answer order", { "D-04": { state: "change", note: "b" }, "D-01": { state: "change", note: "a" } }, ["D-01: a", "D-04: b"]],
+    ["a blank Change gives no line", { "D-01": { state: "change", note: "" }, "D-02": { state: "change", note: " \n\t " } }, []],
+    ["a one-character note is a note", { "D-03": { state: "change", note: "x" } }, ["D-03: x"]],
+    ["whitespace folds and the ends trim", { "D-01": { state: "change", note: "  a\n\n b\t c  " } }, ["D-01: a b c"]],
+    ["unanswered decisions give none", {}, []],
+    ["a Change whose decision left the spec still goes, after the rest", { "D-09": { state: "change", note: "gone" }, "D-01": { state: "change", note: "kept" } }, ["D-01: kept", "D-09: gone"]],
+  ];
+  for (const [name, answers, want] of rows) {
+    await t.test(name, () => assert.deepEqual(CompassReview.decisionNoteLines(decs, answers), want));
+  }
+  await t.test("two decisions sharing an id send the one answer once", () => {
+    assert.deepEqual(CompassReview.decisionNoteLines([{ id: "D-01" }, { id: "D-01" }], { "D-01": { state: "change", note: "n" } }), ["D-01: n"]);
+  });
+});
+
+// A review of the document, and the view panel open on it, in either order.
+async function pendingDoc(order, docPath, text, extra = {}) {
+  const r = await loaded({ [docPath]: text, [REQ1]: req("1", docPath), ...extra });
+  if (order === "panel-first") {
+    await openDoc(r.app, docPath);
+    await r.plugin.openViewPanel();
+    await settle();
+    await r.plugin.handler({ request: REQ1 });
+  } else {
+    await r.plugin.handler({ request: REQ1 });
+    await openDoc(r.app, docPath);
+    await r.plugin.openViewPanel();
+  }
+  await settle();
+  return r;
+}
+const decisionButtons = (app) => decisionCards(app).flatMap((c) => c.all().filter((e) => e.tag === "button" && (e.text === "Agree" || e.text === "Change")));
+// Writes the note, then clicks Change.
+const changeDecision = async (app, id, note) => {
+  const card = decisionCard(app, id);
+  typeInto(cardArea(card), note);
+  await click(button(card, "Change"));
+};
+const CALLOUT = SPEC_FILES["SPEC-callout-decisions.md"];
+
+// Adversarial where: the spec view shows a card for fewer or more decisions
+// than the spec holds (callout ones missing, the fenced example added), the
+// Problem and Desired Outcome come out reworded or swapped, a stale spec view
+// stays under another document, or controls show with no review pending.
+test("the panel draws a spec as its Problem, its Desired Outcome and one card per decision", async (t) => {
+  await t.test("a spec with decisions in a callout: six cards in order, the human's text in each part", async () => {
+    const { app, plugin } = await loaded({ [SP]: CALLOUT, "n.md": "---\ntype: lesson\n---\nx\n" });
+    await openDoc(app, SP);
+    await plugin.openViewPanel();
+    await settle();
+    assert.equal(viewEl(app).querySelectorAll(".compass-spec-view").length, 1);
+    assert.deepEqual(decisionCards(app).map((c) => c.dataset.id), ["D-01", "D-02", "D-03", "D-04", "D-05", "D-06"]);
+    assert.match(textOfEl(decisionCard(app, "D-04")), /Fourth ruling, nested one level deeper\./);
+    assert.match(textOfEl(decisionCard(app, "D-02")), /Second ruling, tagged deferred\. continued on an indented line\./);
+    assert.doesNotMatch(textOfEl(decisionCard(app, "D-03")), /\^d-03/, "the block id is not part of the ruling");
+    const problem = textOfEl(viewEl(app).querySelector(".compass-spec-problem"));
+    const outcome = textOfEl(viewEl(app).querySelector(".compass-spec-outcome"));
+    assert.match(problem, /People lose track of rulings\./);
+    assert.doesNotMatch(problem, /Every ruling is a card\./);
+    assert.match(outcome, /Every ruling is a card\./);
+    assert.doesNotMatch(outcome, /People lose track/);
+    assert.equal(decisionButtons(app).length, 0, "no review pending, no controls");
+    await openDoc(app, "n.md");
+    assert.equal(viewEl(app).querySelectorAll(".compass-spec-view").length, 0, "no stale spec under a lesson");
+    assert.equal(decisionCards(app).length, 0);
+  });
+  await t.test("SPEC-031 with plain bullets: two cards", async () => {
+    const { app, plugin } = await loaded({ [SP]: SPEC_FILES["SPEC-031-working-in-compass-is-visual.md"] });
+    await openDoc(app, SP);
+    await plugin.openViewPanel();
+    await settle();
+    assert.deepEqual(decisionCards(app).map((c) => c.dataset.id), ["D-01", "D-02"]);
+    assert.match(textOfEl(decisionCard(app, "D-02")), /Make sure we don't bloat the documents\./);
+  });
+  await t.test("a spec with no decisions and a spec with one unreadable bullet still draw their Problem", async () => {
+    for (const [name, text, problem] of [
+      ["none", "---\ntype: spec\n---\n## Problem\nNo rulings yet.\n\n## Desired Outcome\nSome.\n", /No rulings yet\./],
+      ["malformed", SPEC_FILES["SPEC-malformed-decision.md"], /One decision is written without its colon\./],
+    ]) {
+      const { app, plugin } = await loaded({ [SP]: text });
+      await openDoc(app, SP);
+      await plugin.openViewPanel();
+      await settle();
+      assert.equal(viewEl(app).querySelectorAll(".compass-spec-view").length, 1, name);
+      assert.match(textOfEl(viewEl(app).querySelector(".compass-spec-problem")), problem, name);
+    }
+  });
+});
+
+// Adversarial where: the cards take answers with no review pending, only in
+// one arrival order, for a review of another file, or keep their controls
+// after the review is answered.
+test("each decision card takes Agree or Change only while a review of this spec is pending", async (t) => {
+  for (const order of ["review-first", "panel-first"]) {
+    await t.test(`${order}: six cards each with Agree, Change and a note; gone after the answer`, async () => {
+      const { app } = await pendingDoc(order, SP, CALLOUT);
+      assert.equal(decisionCards(app).length, 6);
+      for (const card of decisionCards(app)) {
+        assert.ok(button(card, "Agree") && button(card, "Change") && cardArea(card), `${card.dataset.id}: controls`);
+      }
+      await click(cardBtn(app, "1", "Approve"));
+      await settle();
+      assert.equal(decisionButtons(app).length, 0);
+      assert.equal(decisionCards(app).length, 6, "the cards stay");
+    });
+  }
+  await t.test("a review of another file leaves the spec's cards without controls", async () => {
+    const { app, plugin } = await loaded({ [SP]: CALLOUT, "o.md": "---\ntype: lesson\n---\nx\n", [REQ1]: req("1", "o.md") });
+    await plugin.handler({ request: REQ1 });
+    await openDoc(app, SP);
+    await plugin.openViewPanel();
+    await settle();
+    assert.equal(decisionCards(app).length, 6);
+    assert.equal(decisionButtons(app).length, 0);
+  });
+});
+
+// Adversarial where: Change answers never reach the verdict, replace the typed
+// note, land in click order, survive only until a redraw, stay after a
+// change of mind to Agree, an all-Agree spec adds text, or the line carries a
+// carriage return.
+test("Change answers join the review's note as D-NN lines in document order, and Agree adds nothing", async (t) => {
+  await t.test("two Changes answered out of order join the typed note", async () => {
+    const { app } = await pendingDoc("review-first", SP, CALLOUT);
+    await changeDecision(app, "D-05", "split it");
+    await click(button(decisionCard(app, "D-02"), "Agree"));
+    await changeDecision(app, "D-01", "reword\nit");
+    typeInto(notesIn(cardFor(app, "1")), "overall");
+    await click(cardBtn(app, "1", "Needs changes"));
+    await settle();
+    assert.equal(verdictNotes(app), "overall\nD-01: reword it\nD-05: split it");
+  });
+  await t.test("Agree on every card adds no line, even with a note typed in it", async () => {
+    const { app } = await pendingDoc("review-first", SP, CALLOUT);
+    typeInto(cardArea(decisionCard(app, "D-03")), "a thought");
+    for (const card of decisionCards(app)) await click(button(card, "Agree"));
+    typeInto(notesIn(cardFor(app, "1")), "overall");
+    await click(cardBtn(app, "1", "Needs changes"));
+    await settle();
+    assert.equal(verdictNotes(app), "overall");
+  });
+  await t.test("a Change turned into Agree adds no line", async () => {
+    const { app } = await pendingDoc("review-first", SP, CALLOUT);
+    await changeDecision(app, "D-01", "reword");
+    await click(button(decisionCard(app, "D-01"), "Agree"));
+    typeInto(notesIn(cardFor(app, "1")), "overall");
+    await click(cardBtn(app, "1", "Needs changes"));
+    await settle();
+    assert.equal(verdictNotes(app), "overall");
+  });
+  await t.test("a Change survives the panel redrawing, and a CRLF spec sends no carriage return", async () => {
+    const { app } = await pendingDoc("panel-first", SP, CALLOUT.replace(/\n/g, "\r\n"));
+    await changeDecision(app, "D-04", "keep it");
+    app.wsListeners["layout-change"]();
+    app.wsListeners["file-open"](mdFile(SP));
+    await settle();
+    await click(cardBtn(app, "1", "Needs changes"));
+    await settle();
+    assert.equal(verdictNotes(app), "D-04: keep it");
+  });
+  await t.test("an answered decision that left the spec is still sent", async () => {
+    const { app } = await pendingDoc("review-first", SP, CALLOUT);
+    await changeDecision(app, "D-06", "drop it");
+    app.store.set(SP, CALLOUT.replace("- **D-06:** Sixth ruling, in a discretion group.\n", ""));
+    await click(cardBtn(app, "1", "Needs changes"));
+    await settle();
+    assert.equal(verdictNotes(app), "D-06: drop it");
+  });
+  await t.test("in a three-file review the lines join the spec's own note", async () => {
+    const files = [{ file: "a.md", why: "w" }, { file: "s.md", why: "w" }, { file: "b.md", why: "w" }];
+    const { app, plugin } = await loaded({
+      "a.md": "---\ntype: lesson\n---\nx\n",
+      "s.md": CALLOUT,
+      "b.md": "---\ntype: lesson\n---\ny\n",
+      [REQ1]: JSON.stringify({ id: "1", file: "a.md", title: "T", return: true, files }),
+    });
+    await plugin.handler({ request: REQ1 });
+    await openDoc(app, "s.md");
+    await plugin.openViewPanel();
+    await settle();
+    await changeDecision(app, "D-02", "why deferred");
+    await click(cardBtn(app, "1", "Needs changes"));
+    await settle();
+    const sent = verdictOf(app, "tmp/review/1.verdict.json");
+    assert.deepEqual(sent.files.map((f) => f.note), [undefined, "D-02: why deferred", undefined]);
+    assert.equal(sent.notes, "s: D-02: why deferred");
+  });
+});
+
+// Adversarial where: a Change with a blank note is accepted (the plan board's
+// "(no note)" line), is counted as feedback so Needs changes sends an empty
+// complaint, leaves the card marked as changed, or gives the human no sign why
+// nothing happened; or a refusal sticks so a note typed afterwards cannot be
+// sent.
+test("a Change with an empty note is refused and sends nothing", async (t) => {
+  for (const [name, blank] of [["empty", ""], ["spaces", "   "], ["tabs and a line break", "\t\n "]]) {
+    await t.test(`${name} note`, async () => {
+      const { app } = await pendingDoc("review-first", SP, CALLOUT);
+      const card = decisionCard(app, "D-01");
+      typeInto(cardArea(card), blank);
+      await click(button(card, "Change"));
+      assert.doesNotMatch(decisionCard(app, "D-01").cls, /is-change/);
+      const hint = decisionCard(app, "D-01").querySelector(".compass-decision-need-note");
+      assert.ok(hint && hint.text.trim() !== "", "the card says a note is needed");
+      assert.equal(decisionCard(app, "D-02").querySelector(".compass-decision-need-note"), null, "another card shows no hint");
+      assert.equal(cardBtn(app, "1", "Needs changes").disabled, true, "a refused Change is not feedback");
+    });
+  }
+  await t.test("after the refusal a note and a second Change are accepted", async () => {
+    const { app } = await pendingDoc("review-first", SP, CALLOUT);
+    await click(button(decisionCard(app, "D-01"), "Change"));
+    await changeDecision(app, "D-01", "now with a note");
+    assert.match(decisionCard(app, "D-01").cls, /is-change/);
+    assert.equal(decisionCard(app, "D-01").querySelector(".compass-decision-need-note"), null);
+    await click(cardBtn(app, "1", "Needs changes"));
+    await settle();
+    assert.equal(verdictNotes(app), "D-01: now with a note");
+  });
+  await t.test("a Change whose note is then cleared sends no line and no (no note)", async () => {
+    const { app } = await pendingDoc("review-first", SP, CALLOUT);
+    await changeDecision(app, "D-03", "temporary");
+    await changeDecision(app, "D-02", "kept");
+    typeInto(cardArea(decisionCard(app, "D-03")), "");
+    await click(cardBtn(app, "1", "Needs changes"));
+    await settle();
+    assert.equal(verdictNotes(app), "D-02: kept");
+  });
+  await t.test("a one-character note is accepted", async () => {
+    const { app } = await pendingDoc("review-first", SP, CALLOUT);
+    await changeDecision(app, "D-01", "x");
+    assert.match(decisionCard(app, "D-01").cls, /is-change/);
+  });
+});
+
+const confBtn = (app, conf) => viewEl(app).querySelectorAll("button.compass-conf-filter").find((b) => b.dataset.conf === conf);
+const findingRows = (app) => viewEl(app).querySelectorAll(".compass-finding-row");
+const findingNs = (app) => findingRows(app).map((r) => r.dataset.n);
+const barOf = (app, section) => viewEl(app).querySelectorAll(".compass-section-bar").find((b) => b.dataset.section === section);
+const SMALL_RESEARCH = [
+  "---", "type: research", "title: R", "---", "# R", "", "## Findings", "",
+  "### A. First (axis 1)", "",
+  "| # | Finding | Conf. | Grade | Evidence |", "|---|---|---|---|---|",
+  "| 1 | First | high | high | ev-1 |",
+  "| 2 | Second | medium | low | ev-2 |",
+  "| 3 | Third | high | high | ev-3 |", "",
+  "### B. Second (axis 2)", "",
+  "| # | Finding | Conf. | Grade | Evidence |", "|---|---|---|---|---|",
+  "| 4 | Fourth | low | low | ev-4 |",
+  "| 5 | Fifth | high (behavior), low (maturity) | high | ev-5 |", "",
+].join("\n");
+
+// Adversarial where: the research view's bars count another thing than the
+// findings of each section, the confidence filter hides the wrong rows or
+// strands the human with no way back, a filter changes the bars, a row opens
+// the document at the wrong line (off by one for Obsidian's 0-based lines),
+// or the row leaves the finding's evidence out.
+test("the panel draws research as bars per section, confidence filters and rows that open the finding's line", async (t) => {
+  const open = async () => {
+    const { app, plugin } = await loaded({ [RP]: SMALL_RESEARCH });
+    await openDoc(app, RP);
+    await plugin.openViewPanel();
+    await settle();
+    return app;
+  };
+  await t.test("bars: one per section with its counts; rows: one per finding with its evidence", async () => {
+    const app = await open();
+    assert.equal(viewEl(app).querySelectorAll(".compass-research-view").length, 1);
+    const bars = viewEl(app).querySelectorAll(".compass-section-bar");
+    assert.deepEqual(bars.map((b) => b.dataset.section), ["A. First (axis 1)", "B. Second (axis 2)"]);
+    const a = barOf(app, "A. First (axis 1)").dataset;
+    assert.deepEqual([a.total, a.high, a.medium, a.low], ["3", "2", "1", "0"]);
+    const b = barOf(app, "B. Second (axis 2)").dataset;
+    assert.deepEqual([b.total, b.high, b.medium, b.low], ["2", "1", "0", "1"], "a mixed confidence counts once, as its leading level");
+    assert.deepEqual(findingNs(app), ["1", "2", "3", "4", "5"]);
+    assert.match(textOfEl(findingRows(app)[3]), /ev-4/);
+    assert.deepEqual(viewEl(app).querySelectorAll("button.compass-conf-filter").map((x) => x.dataset.conf), ["high", "medium", "low"]);
+    for (const c of ["high", "medium", "low"]) assert.match(confBtn(app, c).cls, /is-on/, `${c} starts on`);
+  });
+  await t.test("each filter button hides and restores its confidence; the bars do not move", async () => {
+    const app = await open();
+    await click(confBtn(app, "high"));
+    assert.deepEqual(findingNs(app), ["2", "4"]);
+    assert.doesNotMatch(confBtn(app, "high").cls, /is-on/);
+    assert.equal(barOf(app, "A. First (axis 1)").dataset.total, "3", "bars count the document, not the shown rows");
+    await click(confBtn(app, "low"));
+    assert.deepEqual(findingNs(app), ["2"]);
+    await click(confBtn(app, "medium"));
+    assert.deepEqual(findingNs(app), [], "all three off shows no row");
+    await click(confBtn(app, "high"));
+    await click(confBtn(app, "medium"));
+    await click(confBtn(app, "low"));
+    assert.deepEqual(findingNs(app), ["1", "2", "3", "4", "5"], "all back on shows every row");
+  });
+  await t.test("a click on a row opens the document at the finding's line, 0-based", async () => {
+    const app = await open();
+    const lines = SMALL_RESEARCH.split("\n");
+    for (const n of ["1", "4", "5"]) {
+      const row = findingRows(app).find((r) => r.dataset.n === n);
+      await clickOn(row);
+      await settle();
+      const last = app.opened[app.opened.length - 1];
+      assert.equal(last.path, RP, `finding ${n}: the research document`);
+      assert.equal(last.state && last.state.eState && last.state.eState.line, lines.findIndex((l) => l.startsWith(`| ${n} |`)), `finding ${n}: 0-based line`);
+    }
+  });
+  await t.test("the evidence document: ten bars whose totals match, and rows to filter", async () => {
+    const { app, plugin } = await loaded({ [RP]: RESEARCH_TEXT });
+    await openDoc(app, RP);
+    await plugin.openViewPanel();
+    await settle();
+    const bars = viewEl(app).querySelectorAll(".compass-section-bar");
+    assert.deepEqual(bars.map((b) => [b.dataset.section, b.dataset.total, b.dataset.high, b.dataset.medium, b.dataset.low]),
+      RESEARCH_EXPECT.sections.map((s) => [s.name, String(s.total), String(s.high), String(s.medium), String(s.low)]));
+    assert.ok(findingRows(app).length > 0);
+  });
+});
+
+// Adversarial where: browsing a spec or research document writes into the
+// vault (a card click or an answer saves the file), even a rewrite that leaves
+// the bytes the same.
+test("drawing spec and research cards, answering decisions and clicking findings write nothing into the vault", async () => {
+  const { app, plugin } = await loaded({ [SP]: CALLOUT, [RP]: SMALL_RESEARCH, [REQ1]: req("1", SP) });
+  await plugin.handler({ request: REQ1 });
+  const before = Object.fromEntries(app.store);
+  const writes = [];
+  const write = app.vault.adapter.write;
+  app.vault.adapter.write = async (p, d) => { writes.push(p); return write.call(app.vault.adapter, p, d); };
+  await openDoc(app, SP);
+  await plugin.openViewPanel();
+  await settle();
+  await click(button(decisionCard(app, "D-01"), "Agree"));
+  await changeDecision(app, "D-02", "why");
+  await openDoc(app, RP);
+  await clickOn(findingRows(app)[0]);
+  await click(confBtn(app, "high"));
+  await settle();
+  assert.deepEqual(writes, []);
+  assert.deepEqual(Object.fromEntries(app.store), before);
+});
