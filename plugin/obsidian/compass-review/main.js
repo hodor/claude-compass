@@ -131,9 +131,25 @@
 //     differ between a removed line and the added line that replaces it marked
 //   - a click on a hunk's Open control opens the document at its first changed
 //     line
+// The view for `type: loop` charts the runs in the `ledger.jsonl` that sits in
+// the loop document's own folder, with two charts drawn through Obsidian's own
+// Mermaid (`loadMermaid()` then `mermaid.render`):
+//   - a run record (`"type":"run"`) with a numeric `reading_after.value` is a
+//     point; a run whose `reading_after` is null (throttled, or already at the
+//     set point) carries no reading and is left out, as are records of other
+//     types
+//   - one chart plots the reading after each run, the other the cost of the
+//     same runs; the cost axis is labelled an estimate, since on a
+//     subscription `cost_usd` is not a charge
+//   - a ledger line that is not a JSON object is skipped and counted in one
+//     line above the charts
+//   - a ledger with no run that carries a reading, or a Mermaid that fails to
+//     load or render, gives one plain line in place of the charts
+//   - a change to the ledger redraws the charts; a chart that finishes after
+//     the human moved to another document draws nothing
 // The views only read the vault.
 
-const { Plugin, ItemView, Notice, MarkdownView } = require("obsidian");
+const { Plugin, ItemView, Notice, MarkdownView, loadMermaid } = require("obsidian");
 
 const REVIEW_DIRS = ["tmp/review", ".compass/tmp/review"];
 const SURFACE = "obsidian";
@@ -201,6 +217,8 @@ class ViewPanelView extends ItemView {
     super(leaf);
     this.plugin = plugin;
     this.drawSeq = 0;
+    // the draw whose Mermaid charts may still land on the panel
+    this.chartToken = null;
     // research path -> {high, medium, low}: the confidence filters switched on
     this.confOn = new Map();
   }
@@ -253,11 +271,96 @@ function typeOf(text) {
   return props.type || null;
 }
 
-// The view a document gets: "plan", "spec" or "research" for the document of
-// that `type:`, null for any other type or none.
+// The view a document gets: "plan", "spec", "research" or "loop" for the
+// document of that `type:`, null for any other type or none.
 function viewFor(text) {
   const type = typeOf(text);
-  return type === "plan" || type === "spec" || type === "research" ? type : null;
+  return type === "plan" || type === "spec" || type === "research" || type === "loop" ? type : null;
+}
+
+// ---- a loop's ledger: readings and costs by run ----
+
+// The runs of a `ledger.jsonl` that carry a reading: `readings` holds each
+// run's `reading_after.value` in file order and `costs` its `cost_usd`, index
+// for index (0 when the record has none). `skipped` counts the non-blank lines
+// that are not a JSON object.
+function parseLedger(text) {
+  const out = { readings: [], costs: [], skipped: 0 };
+  for (const line of String(text).split(/\r?\n/)) {
+    if (line.trim() === "") continue;
+    let record;
+    try {
+      record = JSON.parse(line);
+    } catch (e) {
+      out.skipped++;
+      continue;
+    }
+    if (record === null || typeof record !== "object" || Array.isArray(record)) {
+      out.skipped++;
+      continue;
+    }
+    if (record.type !== "run") continue;
+    const after = record.reading_after;
+    if (!after || typeof after.value !== "number" || !Number.isFinite(after.value)) continue;
+    out.readings.push(after.value);
+    out.costs.push(typeof record.cost_usd === "number" && Number.isFinite(record.cost_usd) ? record.cost_usd : 0);
+  }
+  return out;
+}
+
+// A number written in plain notation with at most `digits` decimals; Mermaid
+// does not read exponent notation.
+function plain(n, digits) {
+  const text = n.toFixed(digits);
+  const trimmed = text.includes(".") ? text.replace(/\.?0+$/, "") : text;
+  return trimmed === "-0" || trimmed === "" ? "0" : trimmed;
+}
+
+// The y-axis range of a chart: from 0 (or the lowest value when below 0) to the
+// highest value, both rounded outward to a step of one power of ten of the span.
+function axisRange(values) {
+  const lowest = Math.min(0, ...values);
+  const highest = Math.max(0, ...values);
+  const span = highest - lowest;
+  const step = span > 0 ? Math.pow(10, Math.floor(Math.log10(span))) : 1;
+  const low = Math.floor(lowest / step + 1e-9) * step;
+  const high = Math.ceil(highest / step - 1e-9) * step;
+  return [low, high > low ? high : low + step];
+}
+
+// The Mermaid `xychart-beta` source of one chart of a parsed ledger: kind
+// "reading" plots the readings, kind "cost" the estimated cost of each run.
+// Null when the ledger holds no reading.
+function loopChartSource(ledger, kind) {
+  if (!ledger || ledger.readings.length === 0) return null;
+  let title;
+  let yLabel;
+  let values;
+  if (kind === "reading") {
+    title = "Reading after each run";
+    yLabel = "Reading";
+    values = ledger.readings;
+  } else if (kind === "cost") {
+    title = "Estimated cost of each run";
+    yLabel = "Cost per run in USD (estimate)";
+    values = ledger.costs;
+  } else {
+    return null;
+  }
+  const [low, high] = axisRange(values);
+  return [
+    "xychart-beta",
+    `    title "${title}"`,
+    `    x-axis "Run" 1 --> ${Math.max(2, ledger.readings.length)}`,
+    `    y-axis "${yLabel}" ${plain(low, 6)} --> ${plain(high, 6)}`,
+    `    line [${values.map((v) => plain(v, 6)).join(", ")}]`,
+  ].join("\n");
+}
+
+// The ledger beside a loop document: `ledger.jsonl` in the document's folder.
+function ledgerPathFor(docPath) {
+  const slash = docPath.lastIndexOf("/");
+  return slash < 0 ? "ledger.jsonl" : `${docPath.slice(0, slash)}/ledger.jsonl`;
 }
 
 // Feed it the lines in order: true for a fence line and for a line inside a
@@ -1213,6 +1316,8 @@ function pipelineFor(specPath, docs) {
 
 class CompassReview extends Plugin {
   async onload() {
+    // Counts the chart renders so each Mermaid render gets an element id of its own.
+    this.chartSeq = 0;
     // request id -> {request, path, files: [{file, why}], states: Map(file ->
     // {read, note}), index, comments: Map(file outside the review -> note),
     // edited: Set(path), choiceAnswers: Map(file -> {choice -> {state, note}}),
@@ -1525,6 +1630,10 @@ class CompassReview extends Plugin {
     if (!file) return;
     const active = this.app.workspace.getActiveFile();
     if (active && file.path === active.path) {
+      this.renderViewPanel();
+      return;
+    }
+    if (active && file.path === ledgerPathFor(active.path)) {
       this.renderViewPanel();
       return;
     }
@@ -1915,6 +2024,15 @@ class CompassReview extends Plugin {
     }
     if (seq !== view.drawSeq) return;
     const kind = text === null ? null : viewFor(text);
+    let ledgerText = null;
+    if (kind === "loop") {
+      try {
+        ledgerText = await this.app.vault.adapter.read(ledgerPathFor(file.path));
+      } catch (e) {
+        ledgerText = null;
+      }
+      if (seq !== view.drawSeq) return;
+    }
     const entry = file && (kind === "plan" || kind === "spec") ? this.entryFor(file.path) : null;
     const saved = file && kind ? await this.savedChanges(file.path) : null;
     let pipeline = null;
@@ -1935,10 +2053,12 @@ class CompassReview extends Plugin {
       entry && entry.request.id,
       saved && [saved.id, textHash(saved.diff)],
       pipeline,
+      ledgerText === null ? null : textHash(ledgerText),
     ]);
     if (root.dataset.signature === signature) return;
     root.dataset.signature = signature;
     root.empty();
+    view.chartToken = null;
     const changes = saved ? parseChanges(saved.diff, text, file.path) : [];
     if (!file) {
       root.createDiv({ cls: "compass-view-note", text: "Open a document to see its view." });
@@ -1950,6 +2070,8 @@ class CompassReview extends Plugin {
       this.drawSpecView(root, file, text, entry, changes, pipeline);
     } else if (kind === "research") {
       this.drawResearchView(root, view, file, text, changes);
+    } else if (kind === "loop") {
+      await this.drawLoopView(root, view, ledgerText);
     } else {
       const type = typeOf(text);
       root.createDiv({
@@ -1958,6 +2080,51 @@ class CompassReview extends Plugin {
           ? `Compass has no view for a document of type ${type}.`
           : "This document has no type property, so Compass has no view for it.",
       });
+    }
+  }
+
+  // The loop view: a line for skipped ledger lines, then the reading chart and
+  // the cost chart. Each chart is drawn by Obsidian's Mermaid into its own
+  // element; a draw that was replaced while Mermaid worked (the panel was
+  // emptied or redrawn) puts nothing on the panel.
+  async drawLoopView(root, view, ledgerText) {
+    const token = {};
+    view.chartToken = token;
+    const el = root.createDiv({ cls: "compass-loop-view" });
+    const ledger = parseLedger(ledgerText === null ? "" : ledgerText);
+    if (ledger.skipped > 0) {
+      el.createDiv({
+        cls: "compass-loop-skipped compass-fine",
+        text: `${plural(ledger.skipped, "ledger line")} could not be read and ${ledger.skipped === 1 ? "was" : "were"} skipped.`,
+      });
+    }
+    if (ledger.readings.length === 0) {
+      el.createDiv({ cls: "compass-view-note", text: "This loop has no run with a reading yet, so there is nothing to chart." });
+      return;
+    }
+    const charts = [];
+    for (const kind of ["reading", "cost"]) {
+      const chart = el.createDiv({ cls: "compass-loop-chart" });
+      chart.dataset.kind = kind;
+      charts.push({ kind, chart });
+    }
+    let id = null;
+    try {
+      const mermaid = await loadMermaid();
+      for (const { kind, chart } of charts) {
+        id = `compass-loop-${kind}-${++this.chartSeq}`;
+        const { svg } = await mermaid.render(id, loopChartSource(ledger, kind));
+        if (view.chartToken !== token) return;
+        chart.innerHTML = svg;
+      }
+    } catch (e) {
+      console.error("[compass-review] drawing the loop charts failed", e);
+      // A failed render leaves its error element in the page body, named `d<id>`.
+      const leftover = id && typeof document.getElementById === "function" ? document.getElementById(`d${id}`) : null;
+      if (leftover) leftover.remove();
+      if (view.chartToken !== token) return;
+      for (const { chart } of charts) chart.remove();
+      el.createDiv({ cls: "compass-view-note", text: "The charts could not be drawn." });
     }
   }
 
@@ -2546,6 +2713,8 @@ module.exports.parsePlanTasks = parsePlanTasks;
 module.exports.pipelineFor = pipelineFor;
 module.exports.parsePlanChoices = parsePlanChoices;
 module.exports.viewFor = viewFor;
+module.exports.parseLedger = parseLedger;
+module.exports.loopChartSource = loopChartSource;
 module.exports.choiceNoteLines = choiceNoteLines;
 module.exports.joinChoiceNote = joinChoiceNote;
 module.exports.parseSpec = parseSpec;

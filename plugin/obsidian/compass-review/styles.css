@@ -910,3 +910,19 @@ button.compass-conf-filter.is-on {
 .compass-pipe-task {
   font-size: var(--font-ui-small);
 }
+
+.compass-loop-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.compass-loop-chart {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.compass-loop-chart svg {
+  max-width: 100%;
+  height: auto;
+}
