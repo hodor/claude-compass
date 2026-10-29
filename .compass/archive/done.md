@@ -484,3 +484,6 @@ Plan: [[PLAN-026-local-additions-tell-the-truth]].
 
 - [x] TASK-232: dsh gets local additions - complexity: M, depends_on: TASK-231
 - [x] TASK-233: Release build and offline round-trip - complexity: S, depends_on: TASK-230, TASK-232
+
+### PLAN-026 Stage 2: the release from GitHub, and old hand edits
+- [x] TASK-234: Push to GitHub and update a scratch project from it - complexity: S, depends_on: TASK-233

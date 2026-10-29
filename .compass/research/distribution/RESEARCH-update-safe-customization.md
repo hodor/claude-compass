@@ -345,3 +345,5 @@ Run on 2026-10-29 in a scratch project holding a copy of `plugin/` as its local 
 - A local addition survives an update, is named in the update notice, and `CLAUDE.md` is never touched. Confidence: high.
 - An edited addition is reported out of date and lands on the next `--apply`, without waiting for a release. Confidence: high.
 - The dsh half (an addition reaching `.dsh/skills/` and `AGENTS.md`) is covered by tests only; this machine has no dsh. Confidence: medium.
+
+The same check from GitHub, after the push of 2026-10-29: a scratch project pinned to 0.30.0 (commit `c0ce45c`) with the repository as its only source updated to 0.33.0 (commit `bfaac4d`) and printed `Compass updated 0.30.0 -> 0.33.0; local additions re-applied: agents/researcher.md`. The installed `researcher.md` held the addition once, `CLAUDE.md` kept its sha256, and `compass doctor` read `OK local additions 1 applied`. Confidence: high.
