@@ -199,3 +199,284 @@
   opacity: 0.45;
   cursor: default;
 }
+
+/* Compass view panel and plan board */
+
+.compass-view-panel {
+  padding: 8px;
+  font-size: var(--font-ui-small);
+}
+
+.compass-view-note {
+  color: var(--text-muted);
+}
+
+.compass-plan-board {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.compass-plan-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.compass-plan-title {
+  font-weight: var(--font-semibold, 600);
+  font-size: var(--font-ui-medium);
+}
+
+.compass-plan-sum,
+.compass-fine {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.compass-chip {
+  display: inline-block;
+  padding: 0 8px;
+  border-radius: 10px;
+  font-size: var(--font-ui-smaller);
+  line-height: 18px;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.compass-chip.is-done {
+  background: rgba(var(--color-green-rgb), 0.2);
+  color: var(--color-green);
+}
+
+.compass-chip.is-ready {
+  background: rgba(var(--color-blue-rgb), 0.2);
+  color: var(--color-blue);
+}
+
+.compass-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.compass-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.compass-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--background-modifier-border);
+}
+
+.compass-dot.is-done {
+  background: var(--color-green);
+}
+
+.compass-dot.is-ready {
+  background: rgba(var(--color-blue-rgb), 0.45);
+}
+
+.compass-dot.is-later {
+  background: transparent;
+  border: 1px dashed var(--text-faint);
+}
+
+.compass-graph-scroll,
+.compass-task-scroll {
+  overflow: auto;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-primary);
+}
+
+.compass-graph {
+  position: relative;
+  isolation: isolate;
+}
+
+.compass-graph-edges {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.compass-graph-edge {
+  fill: none;
+  stroke: var(--text-faint);
+  stroke-width: 1.5;
+}
+
+.compass-graph-edge.is-done {
+  stroke: var(--color-green);
+}
+
+.compass-graph-arrowhead {
+  fill: var(--text-faint);
+}
+
+.compass-graph-lane {
+  position: absolute;
+  left: 2px;
+  padding: 2px 8px;
+  border-radius: var(--radius-s);
+  z-index: 0;
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  pointer-events: none;
+}
+
+.compass-graph-node {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-primary);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.compass-graph-node:hover {
+  box-shadow: 0 0 0 2px var(--background-modifier-border-hover);
+}
+
+.compass-graph-id {
+  flex: none;
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold, 600);
+}
+
+.compass-graph-title {
+  font-size: var(--font-ui-smaller);
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.compass-graph-node.is-done {
+  background: rgba(var(--color-green-rgb), 0.16);
+  border-color: var(--color-green);
+}
+
+.compass-graph-node.is-ready {
+  border-color: var(--color-blue);
+}
+
+.compass-graph-node.is-waiting {
+  color: var(--text-muted);
+}
+
+.compass-graph-node.is-later {
+  border-style: dashed;
+  color: var(--text-muted);
+}
+
+.compass-task-table,
+.compass-choice-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.compass-task-table th,
+.compass-task-table td,
+.compass-choice-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.compass-task-table th {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-normal, 400);
+  white-space: nowrap;
+}
+
+.compass-task-open {
+  font-family: var(--font-monospace);
+  white-space: nowrap;
+  color: var(--text-accent);
+  cursor: pointer;
+}
+
+.compass-task-open:hover {
+  text-decoration: underline;
+}
+
+.compass-task-row.is-waiting,
+.compass-task-row.is-later {
+  color: var(--text-muted);
+}
+
+.compass-board-heading {
+  margin: 8px 0 2px;
+  font-size: var(--font-ui-medium);
+}
+
+.compass-board-link {
+  color: var(--text-accent);
+}
+
+.compass-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.compass-choice-row.is-agree {
+  background: rgba(var(--color-green-rgb), 0.1);
+}
+
+.compass-choice-row.is-change {
+  background: rgba(var(--color-orange-rgb), 0.12);
+}
+
+.compass-choice-answer {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  overflow-wrap: anywhere;
+}
+
+.compass-choice-actions {
+  min-width: 120px;
+}
+
+.compass-choice-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.compass-choice-buttons button {
+  font-size: var(--font-ui-smaller);
+}
+
+.compass-choice-note {
+  display: none;
+  width: 100%;
+  margin-top: 4px;
+  resize: vertical;
+  font-size: var(--font-ui-small);
+}
+
+.compass-choice-row.is-change .compass-choice-note {
+  display: block;
+}

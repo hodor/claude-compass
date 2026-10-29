@@ -56,6 +56,30 @@
 // its request says `return`. Everything the human types lives on
 // the review's entry, so redrawing the panel keeps it. A periodic recheck drops
 // a review whose request file is gone or whose verdict already exists.
+//
+// The Compass view panel, a right-sidebar view (view type
+// `compass-view-panel`, opened by the "Open Compass view panel" command or the
+// ribbon icon), follows the markdown file in view and draws the view that the
+// file's `type:` property picks. A type with no view gets one plain line. The
+// view for `type: plan` is the plan board, drawn from the plan's task lines
+// and read from the vault only:
+//   - the lines `- [ ] TASK-n: ... - depends_on: ...` outside code fences and
+//     outside `## Wave n elaborated` sections, each with its wave (the nearest
+//     `Wave n` or `Phase n` heading; none under `## Later`), its status (done
+//     when checked; later under `## Later`; ready when every task it depends
+//     on in the plan is done; else waiting) and the TASK ids of its
+//     `depends_on` outside parentheses
+//   - a dependency graph with one node per task, laid out in a lane per wave
+//     and colored by status, and a table with one row per task (id, task,
+//     wave, status, depends on); a click on a task's id or on its node opens
+//     the plan at the task's line
+//   - while a review that lists the plan is pending, the rows of the plan's
+//     `| Choice | ... |` table each take Agree or Change with a note. Every
+//     changed choice joins the review's note, after the typed text, as one
+//     `<choice>: <note>` line in table order (for a review of several files,
+//     in the note of the plan's file). Agree adds no line. The answers live on
+//     the review, so redrawing the panel keeps them.
+// The board only reads the vault.
 
 const { Plugin, ItemView, Notice, MarkdownView } = require("obsidian");
 
@@ -63,6 +87,7 @@ const REVIEW_DIRS = ["tmp/review", ".compass/tmp/review"];
 const SURFACE = "obsidian";
 const RECHECK_MS = 5000;
 const PANEL_TYPE = "compass-review-panel";
+const VIEW_TYPE = "compass-view-panel";
 
 function electronRemote() {
   const electron = require("electron");
@@ -119,19 +144,366 @@ function filesOf(request) {
   return [{ file: request.file, why: "" }];
 }
 
+class ViewPanelView extends ItemView {
+  constructor(leaf, plugin) {
+    super(leaf);
+    this.plugin = plugin;
+    this.drawSeq = 0;
+  }
+
+  getViewType() {
+    return VIEW_TYPE;
+  }
+
+  getDisplayText() {
+    return "Compass View";
+  }
+
+  getIcon() {
+    return "layout-dashboard";
+  }
+
+  async onOpen() {
+    this.contentEl.addClass("compass-view-panel");
+    await this.plugin.drawViewPanel(this);
+  }
+}
+
+// ---- reading a document: properties, fences, tables, plan tasks ----
+
+const META_KEYS = "complexity|files|depends_on|decisions|lessons|commit-upfront";
+
+function linesOf(text) {
+  return String(text).replace(/^\uFEFF/, "").split(/\r?\n/);
+}
+
+// The properties block at the very start of a document: its simple
+// `key: value` lines, and the index of the first line after it.
+function propertiesOf(lines) {
+  if (lines.length === 0 || lines[0].trimEnd() !== "---") return { props: {}, end: 0 };
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trimEnd() !== "---") continue;
+    const props = {};
+    for (const line of lines.slice(1, i)) {
+      const m = /^([A-Za-z_][\w-]*):[ \t]*(.*?)[ \t]*$/.exec(line);
+      if (!m || m[1] in props) continue;
+      props[m[1]] = /^(".*"|'.*')$/.test(m[2]) ? m[2].slice(1, -1) : m[2];
+    }
+    return { props, end: i + 1 };
+  }
+  return { props: {}, end: 0 };
+}
+
+function typeOf(text) {
+  const { props } = propertiesOf(linesOf(text));
+  return props.type || null;
+}
+
+// The view a document gets: "plan" for `type: plan`, null for any other type
+// or none.
+function viewFor(text) {
+  return typeOf(text) === "plan" ? "plan" : null;
+}
+
+// Feed it the lines in order: true for a fence line and for a line inside a
+// fence. A fence closes with the same character, at least as long.
+function fenceTracker() {
+  let open = null;
+  return (line) => {
+    const m = /^\s*(`{3,}|~{3,})/.exec(line);
+    if (open) {
+      if (m && m[1][0] === open.ch && m[1].length >= open.len && /^\s*[`~]+\s*$/.test(line)) open = null;
+      return true;
+    }
+    if (m) {
+      open = { ch: m[1][0], len: m[1].length };
+      return true;
+    }
+    return false;
+  };
+}
+
+// Table cells; a pipe inside a code span or after a backslash does not split.
+function splitRow(line) {
+  const body = line.trim().replace(/^\|/, "").replace(/\|$/, "");
+  const cells = [];
+  let cur = "";
+  let code = false;
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i];
+    if (ch === "`") code = !code;
+    if (ch === "|" && !code && body[i - 1] !== "\\") {
+      cells.push(cur.trim());
+      cur = "";
+    } else cur += ch;
+  }
+  cells.push(cur.trim());
+  return cells;
+}
+
+function shortTitle(desc) {
+  const t = desc.split(/[:;]/)[0].trim();
+  return t.length > 44 ? t.slice(0, 42).trimEnd() + "..." : t;
+}
+
+// The TASK ids a `depends_on:` value names: those outside parentheses, and not
+// another plan's (`PLAN-021 TASK-163`). The value ends at the next metadata key.
+function dependsOf(meta) {
+  const at = /(?:^|,\s*)depends_on:\s*/.exec(meta);
+  if (!at) return [];
+  const rest = meta.slice(at.index + at[0].length);
+  const end = new RegExp(`,\\s*(?:${META_KEYS}):`, "y");
+  let depth = 0;
+  let outside = "";
+  for (let k = 0; k < rest.length; k++) {
+    const ch = rest[k];
+    if (ch === "(") depth++;
+    else if (ch === ")") depth = Math.max(0, depth - 1);
+    else if (depth === 0) {
+      end.lastIndex = k;
+      if (end.test(rest)) break;
+      outside += ch;
+    }
+  }
+  const ids = [];
+  for (const found of outside.match(/(?:PLAN-\d+(?:'s)?\s+)?TASK-\d+/g) || []) {
+    if (found.startsWith("TASK-") && !ids.includes(found)) ids.push(found);
+  }
+  return ids;
+}
+
+// Every task line of a plan, in file order: {id, title, desc, wave, lane,
+// done, later, status, dependsOn, line (1-based)}. Task-shaped lines inside a code fence or
+// a `## Wave n elaborated` section are quotations and are left out.
+function parsePlanTasks(text) {
+  const lines = linesOf(text);
+  const inFence = fenceTracker();
+  const tasks = [];
+  let h2 = "";
+  let h3 = "";
+  let skipping = false;
+  for (let i = propertiesOf(lines).end; i < lines.length; i++) {
+    const line = lines[i];
+    if (inFence(line)) continue;
+    const head = /^(#{1,6})\s+(.+?)\s*$/.exec(line);
+    if (head) {
+      if (head[1].length <= 2) {
+        h2 = head[1].length === 2 ? head[2] : "";
+        h3 = "";
+        skipping = /^Wave\s+\d+\s+elaborated/i.test(h2);
+      } else if (head[1].length === 3) h3 = head[2];
+      continue;
+    }
+    if (skipping) continue;
+    const m = /^- \[( |x|X)\] (TASK-\d+):\s*(.*)$/.exec(line);
+    if (!m) continue;
+    const split = new RegExp(`\\s-\\s(?=(?:${META_KEYS}):)`).exec(m[3]);
+    const desc = (split ? m[3].slice(0, split.index) : m[3]).trim();
+    const meta = split ? m[3].slice(split.index + 3) : "";
+    const later = /^Later/i.test(h2);
+    const waveMatch = later ? null : /^(?:Wave|Phase)\s+(\d+)/i.exec(h3) || /^(?:Wave|Phase)\s+(\d+)/i.exec(h2);
+    const wave = waveMatch ? Number(waveMatch[1]) : null;
+    tasks.push({
+      id: m[2],
+      title: shortTitle(desc) || m[2],
+      desc,
+      wave,
+      lane: wave !== null ? `Wave ${wave}` : later ? "Later" : (h3 || h2 || "Tasks").replace(/\s*\((?:detailed|intent only)\)/, ""),
+      done: m[1] !== " ",
+      later,
+      dependsOn: dependsOf(meta),
+      line: i + 1,
+    });
+  }
+  const byId = new Map(tasks.map((t) => [t.id, t]));
+  for (const t of tasks) {
+    const open = t.dependsOn.some((d) => byId.has(d) && !byId.get(d).done);
+    t.status = t.done ? "done" : t.later ? "later" : open ? "waiting" : "ready";
+  }
+  return tasks;
+}
+
+// The rows of the first table whose header starts with "Choice", outside code
+// fences: {choice, answer, line (1-based)}.
+function parsePlanChoices(text) {
+  const lines = linesOf(text);
+  const inFence = fenceTracker();
+  const out = [];
+  let header = false;
+  let rows = false;
+  for (let i = propertiesOf(lines).end; i < lines.length; i++) {
+    const line = lines[i];
+    if (inFence(line)) {
+      if (rows) break;
+      header = false;
+      continue;
+    }
+    const isRow = line.trimStart().startsWith("|");
+    if (rows) {
+      if (!isRow) break;
+      const cells = splitRow(line);
+      if (cells[0]) out.push({ choice: cells[0], answer: cells.slice(1).join(" | "), line: i + 1 });
+    } else if (header) {
+      header = false;
+      rows = isRow && splitRow(line).every((c) => /^:?-+:?$/.test(c));
+    } else if (isRow && /^choice$/i.test(splitRow(line)[0])) {
+      header = true;
+    }
+  }
+  return out;
+}
+
+const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+
+// One `<choice>: <note>` line for each choice answered Change, in table order.
+function choiceNoteLines(choices, answers) {
+  const lines = [];
+  for (const { choice } of choices) {
+    if (!hasOwn(answers, choice) || answers[choice].state !== "change") continue;
+    const note = String(answers[choice].note || "").trim().replace(/\s+/g, " ");
+    lines.push(`${choice}: ${note || "(no note)"}`);
+  }
+  return lines;
+}
+
+// The review's note with the choice lines after it, each on its own line.
+function joinChoiceNote(note, lines) {
+  if (lines.length === 0) return note;
+  const typed = note.trimEnd();
+  return typed.trim() ? `${typed}\n${lines.join("\n")}` : lines.join("\n");
+}
+
+function textHash(text) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return `${text.length}:${h >>> 0}`;
+}
+
+// ---- the plan graph: a lane per wave, columns by dependency depth ----
+
+const NODE_W = 172;
+const NODE_H = 46;
+const GAP_X = 46;
+const GAP_Y = 12;
+const LANE_HEAD = 26;
+const LANE_GAP = 16;
+const PAD = 8;
+const WRAP_ROWS = 3;
+
+// Positions for every task and the path of every dependency edge. Inside a
+// lane a task sits one column right of its deepest parent in that lane, rows
+// ordered by the parents' rows; a lane without dependencies wraps into short
+// columns.
+function layoutGraph(tasks) {
+  const byId = new Map(tasks.map((t) => [t.id, t]));
+  const depth = new Map();
+  const depthOf = (t, seen = new Set()) => {
+    if (depth.has(t.id)) return depth.get(t.id);
+    if (seen.has(t.id)) return 0;
+    seen.add(t.id);
+    let v = 0;
+    for (const d of t.dependsOn) {
+      const p = byId.get(d);
+      if (p && p.lane === t.lane) v = Math.max(v, depthOf(p, seen) + 1);
+    }
+    depth.set(t.id, v);
+    return v;
+  };
+  tasks.forEach((t) => depthOf(t));
+  const laneNames = [];
+  for (const t of tasks) if (!laneNames.includes(t.lane)) laneNames.push(t.lane);
+  const pos = new Map();
+  const lanes = [];
+  let y = PAD;
+  let width = 0;
+  for (const name of laneNames) {
+    const members = tasks.filter((t) => t.lane === name);
+    const hasEdges = members.some((t) => t.dependsOn.some((d) => byId.has(d) && byId.get(d).lane === name));
+    const cols = [];
+    if (hasEdges) {
+      for (const t of members) (cols[depth.get(t.id)] = cols[depth.get(t.id)] || []).push(t);
+    } else {
+      members.forEach((t, i) => {
+        const c = Math.floor(i / WRAP_ROWS);
+        (cols[c] = cols[c] || []).push(t);
+      });
+    }
+    let rows = 0;
+    cols.forEach((col, c) => {
+      if (!col) return;
+      const rowOf = (t) => {
+        const ps = t.dependsOn.map((d) => pos.get(d)).filter((p) => p && p.lane === name);
+        return ps.length ? ps.reduce((s, p) => s + p.row, 0) / ps.length : 0;
+      };
+      col.sort((a, b) => rowOf(a) - rowOf(b) || members.indexOf(a) - members.indexOf(b));
+      col.forEach((t, r) => {
+        pos.set(t.id, { lane: name, row: r, x: PAD + c * (NODE_W + GAP_X), y: y + LANE_HEAD + r * (NODE_H + GAP_Y) });
+      });
+      rows = Math.max(rows, col.length);
+    });
+    const h = LANE_HEAD + rows * (NODE_H + GAP_Y);
+    lanes.push({ name, y, h });
+    y += h + LANE_GAP;
+    width = Math.max(width, PAD * 2 + cols.length * (NODE_W + GAP_X) - GAP_X);
+  }
+  const edges = [];
+  for (const t of tasks) {
+    for (const d of t.dependsOn) {
+      const a = pos.get(d);
+      const b = pos.get(t.id);
+      if (!a || !b) continue;
+      const x1 = a.x + NODE_W;
+      const y1 = a.y + NODE_H / 2;
+      const x2 = b.x;
+      const y2 = b.y + NODE_H / 2;
+      edges.push({ from: d, to: t.id, path: `M ${x1} ${y1} C ${x1 + 22} ${y1}, ${x2 - 22} ${y2}, ${x2} ${y2}` });
+    }
+  }
+  return { pos, lanes, edges, width: Math.max(width, 320), height: y };
+}
+
+const STATUS_LABEL = {
+  done: "done",
+  ready: "ready to build",
+  waiting: "waiting on another task",
+  later: "intent only",
+};
+
+// Text with `code`, **bold** and [[link]] marks drawn as elements.
+function inline(el, text) {
+  for (const p of text.split(/(`[^`]+`|\*\*[^*]+\*\*|\[\[[^\]]+\]\])/)) {
+    if (!p) continue;
+    if (p.startsWith("`")) el.createEl("code", { text: p.slice(1, -1) });
+    else if (p.startsWith("**")) el.createEl("strong", { text: p.slice(2, -2) });
+    else if (p.startsWith("[[")) el.createSpan({ cls: "compass-board-link", text: p.slice(2, -2).split("|").pop() });
+    else el.appendText(p);
+  }
+}
+
 class CompassReview extends Plugin {
   async onload() {
     // request id -> {request, path, files: [{file, why}], states: Map(file ->
     // {read, note}), index, comments: Map(file outside the review -> note),
-    // edited: Set(path)} in arrival order; the panel lists it newest first.
+    // edited: Set(path), choiceAnswers: Map(file -> {choice -> {state, note}})}
+    // in arrival order; the panel lists it newest first.
     this.pending = new Map();
     this.registerView(PANEL_TYPE, (leaf) => new ReviewPanelView(leaf, this));
+    this.registerView(VIEW_TYPE, (leaf) => new ViewPanelView(leaf, this));
+    this.addCommand({
+      id: "open-view-panel",
+      name: "Open Compass view panel",
+      callback: () => this.openViewPanel().catch((e) => this.fail("open view panel", e)),
+    });
+    this.addRibbonIcon("layout-dashboard", "Open Compass view panel", () =>
+      this.openViewPanel().catch((e) => this.fail("open view panel", e))
+    );
     this.registerObsidianProtocolHandler("compass-review", (params) =>
       this.onRequest(params.request).catch((e) => this.fail("request", e))
     );
     this.registerEvent(this.app.workspace.on("file-open", (file) => this.onFileOpen(file)));
     this.registerEvent(this.app.workspace.on("layout-change", () => this.refresh()));
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => this.onRename(file, oldPath)));
+    this.registerEvent(this.app.vault.on("modify", (file) => this.onModify(file)));
     this.registerEvent(this.app.workspace.on("editor-change", (editor, info) => this.onEditorChange(info)));
     this.registerInterval(
       window.setInterval(() => this.recheck().catch((e) => console.error("[compass-review] recheck failed", e)), RECHECK_MS)
@@ -212,10 +584,12 @@ class CompassReview extends Plugin {
       index: 0,
       comments: new Map(),
       edited: new Set(),
+      choiceAnswers: new Map(),
     };
     for (const old of replaced) {
       if (old.arrivedUnfocused) created.arrivedUnfocused = true;
       for (const f of files) if (old.states.has(f.file)) created.states.set(f.file, old.states.get(f.file));
+      for (const f of files) if (old.choiceAnswers.has(f.file)) created.choiceAnswers.set(f.file, old.choiceAnswers.get(f.file));
       for (const [file, note] of old.comments) created.comments.set(file, note);
       for (const file of old.edited) created.edited.add(file);
     }
@@ -239,14 +613,15 @@ class CompassReview extends Plugin {
 
   // Brings a file into view: in the pane that already shows it, else in the
   // current pane. The editor takes keyboard focus unless `focus` is false.
-  async showFile(path, focus = true) {
+  // `state` is the open state the pane takes, such as {eState: {line}}.
+  async showFile(path, focus = true, state = undefined) {
     const file = this.app.vault.getAbstractFileByPath(path);
     if (!file) throw new Error(`file not in this vault: ${path}`);
     const open = this.app.workspace
       .getLeavesOfType("markdown")
       .find((leaf) => leaf.view.file && leaf.view.file.path === path);
     const leaf = open || this.app.workspace.getLeaf(false);
-    await leaf.openFile(file);
+    await leaf.openFile(file, state);
     this.app.workspace.setActiveLeaf(leaf, { focus });
   }
 
@@ -320,6 +695,10 @@ class CompassReview extends Plugin {
         entry.states.set(file.path, entry.states.get(oldPath));
         entry.states.delete(oldPath);
         entry.request.file = entry.files[0].file;
+      }
+      if (entry.choiceAnswers.has(oldPath)) {
+        entry.choiceAnswers.set(file.path, entry.choiceAnswers.get(oldPath));
+        entry.choiceAnswers.delete(oldPath);
       }
       if (entry.comments.has(oldPath)) {
         entry.comments.set(file.path, entry.comments.get(oldPath));
@@ -398,6 +777,13 @@ class CompassReview extends Plugin {
   refresh() {
     this.decorate();
     this.renderPanel();
+    this.renderViewPanel();
+  }
+
+  // The board follows the file it shows when that file changes on disk.
+  onModify(file) {
+    const active = this.app.workspace.getActiveFile();
+    if (file && active && file.path === active.path) this.renderViewPanel();
   }
 
   // The `title` property of a file, else its name.
@@ -624,14 +1010,31 @@ class CompassReview extends Plugin {
     return entry.files.filter((f) => entry.states.get(f.file).note.trim() !== "").length;
   }
 
-  hasFeedback(entry) {
-    return this.noteCount(entry) > 0 || entry.comments.size > 0 || entry.edited.size > 0;
+  // The choice lines of every plan answered on a card, in the order the
+  // answers were first given.
+  changedChoiceLines(entry) {
+    const lines = [];
+    for (const answers of entry.choiceAnswers.values()) {
+      lines.push(...choiceNoteLines(Object.keys(answers).map((choice) => ({ choice })), answers));
+    }
+    return lines;
   }
 
-  // One line per note on a file outside the review, then one per edited file.
+  hasFeedback(entry) {
+    return (
+      this.noteCount(entry) > 0 ||
+      entry.comments.size > 0 ||
+      entry.edited.size > 0 ||
+      this.changedChoiceLines(entry).length > 0
+    );
+  }
+
+  // One line per note on a file outside the review, one per changed choice,
+  // then one per edited file.
   feedbackItems(entry) {
     return [
       ...[...entry.comments].map(([file, note]) => `${file}: ${note}`),
+      ...this.changedChoiceLines(entry),
       ...[...entry.edited].map((file) => `edited: ${file}`),
     ];
   }
@@ -688,6 +1091,225 @@ class CompassReview extends Plugin {
     }
   }
 
+  // Opens the Compass view panel in the right sidebar when it is not open, and
+  // reveals it.
+  async openViewPanel() {
+    const workspace = this.app.workspace;
+    let leaf = workspace.getLeavesOfType(VIEW_TYPE)[0];
+    if (!leaf) {
+      leaf = workspace.getRightLeaf(false);
+      if (!leaf) throw new Error("no right sidebar to hold the view panel");
+      await leaf.setViewState({ type: VIEW_TYPE, active: true });
+    }
+    await workspace.revealLeaf(leaf);
+    this.renderViewPanel();
+  }
+
+  renderViewPanel() {
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE)) {
+      if (leaf.view instanceof ViewPanelView) {
+        this.drawViewPanel(leaf.view).catch((e) => console.error("[compass-review] view panel failed", e));
+      }
+    }
+  }
+
+  // Draws the view for the markdown file in view. A panel whose drawing would
+  // come out the same is left alone, so a note being typed keeps its focus and
+  // caret; of two draws in flight only the later one lands.
+  async drawViewPanel(view) {
+    const seq = ++view.drawSeq;
+    const root = view.contentEl;
+    const active = this.app.workspace.getActiveFile();
+    const file = active && active.extension === "md" ? active : null;
+    let text = null;
+    if (file) {
+      try {
+        text = await this.app.vault.adapter.read(file.path);
+      } catch (e) {
+        text = null;
+      }
+    }
+    if (seq !== view.drawSeq) return;
+    const kind = text === null ? null : viewFor(text);
+    const entry = file && kind === "plan" ? this.entryFor(file.path) : null;
+    const signature = JSON.stringify([file && file.path, text === null ? null : textHash(text), entry && entry.request.id]);
+    if (root.dataset.signature === signature) return;
+    root.dataset.signature = signature;
+    root.empty();
+    if (!file) {
+      root.createDiv({ cls: "compass-view-note", text: "Open a document to see its view." });
+    } else if (text === null) {
+      root.createDiv({ cls: "compass-view-note", text: "This document could not be read." });
+    } else if (kind === "plan") {
+      this.drawPlanBoard(root, file, text, entry);
+    } else {
+      const type = typeOf(text);
+      root.createDiv({
+        cls: "compass-view-note",
+        text: type
+          ? `Compass has no view for a document of type ${type}.`
+          : "This document has no type property, so Compass has no view for it.",
+      });
+    }
+  }
+
+  openTask(path, line) {
+    this.showFile(path, true, { eState: { line: line - 1 } }).catch((e) => this.fail("open task", e));
+  }
+
+  drawPlanBoard(root, file, text, entry) {
+    const tasks = parsePlanTasks(text);
+    const { props } = propertiesOf(linesOf(text));
+    const board = root.createDiv({ cls: "compass-plan-board" });
+    const head = board.createDiv({ cls: "compass-plan-head" });
+    head.createSpan({ cls: "compass-plan-title", text: this.titleOf(file.path) });
+    if (props.status) head.createSpan({ cls: "compass-chip", text: props.status });
+
+    if (tasks.length === 0) {
+      board.createDiv({ cls: "compass-view-note", text: "This plan has no task lines." });
+    } else {
+      const counts = { done: 0, ready: 0, waiting: 0, later: 0 };
+      for (const t of tasks) counts[t.status]++;
+      board.createDiv({
+        cls: "compass-plan-sum",
+        text: `${counts.done} of ${tasks.length} tasks done, ${counts.ready} ready, ${counts.waiting} waiting, ${counts.later} intent only`,
+      });
+      const legend = board.createDiv({ cls: "compass-legend" });
+      for (const status of Object.keys(STATUS_LABEL)) {
+        const item = legend.createSpan({ cls: "compass-legend-item" });
+        item.createSpan({ cls: `compass-dot is-${status}` });
+        item.appendText(STATUS_LABEL[status]);
+      }
+      this.drawGraph(board, file.path, tasks);
+      this.drawTaskTable(board, file.path, tasks);
+    }
+    if (entry) this.drawChoices(board, entry, file.path, text);
+  }
+
+  drawGraph(parent, path, tasks) {
+    const layout = layoutGraph(tasks);
+    const status = new Map(tasks.map((t) => [t.id, t.status]));
+    const scroll = parent.createDiv({ cls: "compass-graph-scroll" });
+    const graph = scroll.createDiv({ cls: "compass-graph" });
+    graph.style.width = `${layout.width}px`;
+    graph.style.height = `${layout.height}px`;
+    const svg = graph.createSvg("svg", { cls: "compass-graph-edges", attr: { width: layout.width, height: layout.height } });
+    const marker = svg.createSvg("defs").createSvg("marker", {
+      attr: { id: "compass-arrow", viewBox: "0 0 8 8", refX: "7", refY: "4", markerWidth: "7", markerHeight: "7", orient: "auto" },
+    });
+    marker.createSvg("path", { cls: "compass-graph-arrowhead", attr: { d: "M0,0 L8,4 L0,8 z" } });
+    for (const lane of layout.lanes) {
+      const label = graph.createDiv({ cls: "compass-graph-lane", text: lane.name });
+      label.style.top = `${lane.y}px`;
+      label.style.height = `${lane.h}px`;
+      label.style.width = `${layout.width - 4}px`;
+    }
+    for (const e of layout.edges) {
+      const edge = svg.createSvg("path", {
+        cls: "compass-graph-edge" + (status.get(e.from) === "done" ? " is-done" : ""),
+        attr: { d: e.path, "marker-end": "url(#compass-arrow)" },
+      });
+      edge.dataset.from = e.from;
+      edge.dataset.to = e.to;
+    }
+    for (const t of tasks) {
+      const p = layout.pos.get(t.id);
+      const node = graph.createDiv({ cls: `compass-graph-node is-${t.status}`, attr: { title: `${t.id} ${t.desc}` } });
+      node.dataset.id = t.id;
+      node.dataset.status = t.status;
+      node.style.left = `${p.x}px`;
+      node.style.top = `${p.y}px`;
+      node.style.width = `${NODE_W}px`;
+      node.style.height = `${NODE_H}px`;
+      node.createSpan({ cls: "compass-graph-id", text: t.id.replace("TASK-", "") });
+      node.createSpan({ cls: "compass-graph-title", text: t.title });
+      node.onclick = () => this.openTask(path, t.line);
+    }
+  }
+
+  drawTaskTable(parent, path, tasks) {
+    const scroll = parent.createDiv({ cls: "compass-task-scroll" });
+    const table = scroll.createEl("table", { cls: "compass-task-table" });
+    const headRow = table.createEl("thead").createEl("tr");
+    for (const name of ["Id", "Task", "Wave", "Status", "Depends on"]) headRow.createEl("th", { text: name });
+    const body = table.createEl("tbody");
+    for (const t of tasks) {
+      const row = body.createEl("tr", { cls: `compass-task-row is-${t.status}` });
+      row.dataset.id = t.id;
+      row.dataset.status = t.status;
+      const open = row.createEl("td", { cls: "compass-task-open", text: t.id, attr: { title: "Open this task in the plan" } });
+      open.onclick = () => this.openTask(path, t.line);
+      row.createEl("td", { text: t.title, attr: { title: t.desc } });
+      row.createEl("td", { text: t.wave !== null ? String(t.wave) : t.lane });
+      const state = row.createEl("td");
+      state.createSpan({ cls: `compass-chip is-${t.status}`, text: t.status });
+      row.createEl("td", { text: t.dependsOn.length ? t.dependsOn.join(", ") : "none" });
+    }
+  }
+
+  // The answers given to one plan's choices on a review: {choice -> {state,
+  // note}}, state "agree" or "change".
+  choiceAnswersFor(entry, path) {
+    let answers = entry.choiceAnswers.get(path);
+    if (!answers) {
+      answers = Object.create(null);
+      entry.choiceAnswers.set(path, answers);
+    }
+    return answers;
+  }
+
+  // One row per row of the plan's choices table, answered in place so a
+  // redraw of the panel keeps what was typed.
+  drawChoices(parent, entry, path, text) {
+    const choices = parsePlanChoices(text);
+    if (choices.length === 0) return;
+    const answers = this.choiceAnswersFor(entry, path);
+    const box = parent.createDiv({ cls: "compass-choices" });
+    box.createEl("h4", { cls: "compass-board-heading", text: "Choices to approve" });
+    box.createDiv({
+      cls: "compass-fine",
+      text: "Agree or change each choice. A changed choice goes to Claude, with your note, in your answer to the review.",
+    });
+    const table = box.createEl("table", { cls: "compass-choice-table" }).createEl("tbody");
+    for (const c of choices) {
+      const row = table.createEl("tr", { cls: "compass-choice-row" });
+      row.dataset.choice = c.choice;
+      const what = row.createEl("td");
+      what.createEl("strong", { text: c.choice });
+      inline(what.createDiv({ cls: "compass-choice-answer" }), c.answer);
+      const act = row.createEl("td", { cls: "compass-choice-actions" });
+      const buttons = act.createDiv({ cls: "compass-choice-buttons" });
+      const agree = buttons.createEl("button", { text: "Agree" });
+      const change = buttons.createEl("button", { text: "Change" });
+      const note = act.createEl("textarea", {
+        cls: "compass-choice-note",
+        placeholder: "What should change?",
+        attr: { rows: "2" },
+      });
+      const paint = () => {
+        const state = hasOwn(answers, c.choice) ? answers[c.choice].state : "";
+        setClass(row, "is-agree", state === "agree");
+        setClass(row, "is-change", state === "change");
+        setClass(agree, "mod-cta", state === "agree");
+        setClass(change, "mod-warning", state === "change");
+      };
+      const answer = (state, typed) => {
+        answers[c.choice] = { state, note: typed };
+        paint();
+        this.refreshCard(entry);
+      };
+      const noteNow = () => (hasOwn(answers, c.choice) ? answers[c.choice].note : "");
+      note.value = noteNow();
+      agree.onclick = () => answer("agree", noteNow());
+      change.onclick = () => answer("change", noteNow());
+      note.addEventListener("input", () => {
+        const state = hasOwn(answers, c.choice) ? answers[c.choice].state : "change";
+        answer(state, note.value);
+      });
+      paint();
+    }
+  }
+
   async verdict(entry, verdict) {
     if (entry.sending) return;
     entry.sending = true;
@@ -698,10 +1320,28 @@ class CompassReview extends Plugin {
     }
   }
 
+  // The choice lines of each file with answers, as the file's table reads now:
+  // Map(file -> lines). A file that cannot be read keeps the order of the
+  // answers.
+  async choiceLinesFor(entry) {
+    const out = new Map();
+    for (const [file, answers] of entry.choiceAnswers) {
+      if (!Object.values(answers).some((a) => a.state === "change")) continue;
+      let choices;
+      try {
+        choices = parsePlanChoices(await this.app.vault.adapter.read(file));
+      } catch (e) {
+        choices = Object.keys(answers).map((choice) => ({ choice }));
+      }
+      out.set(file, choiceNoteLines(choices, answers));
+    }
+    return out;
+  }
+
   // The answer: one `files` entry per listed document, in request order, when
   // the review lists several; a review of one document keeps its note as
-  // `notes`.
-  buildAnswer(entry, verdict) {
+  // `notes`. `choiceLines` (Map(file -> lines)) joins the note of its file.
+  buildAnswer(entry, verdict, choiceLines = new Map()) {
     const { request } = entry;
     const answer = {
       id: request.id,
@@ -713,13 +1353,15 @@ class CompassReview extends Plugin {
       at: new Date().toISOString(),
     };
     if (entry.files.length === 1) {
-      answer.notes = entry.states.get(entry.files[0].file).note;
+      const only = entry.files[0].file;
+      answer.notes = joinChoiceNote(entry.states.get(only).note, choiceLines.get(only) || []);
       return answer;
     }
     answer.files = entry.files.map((f) => {
       const state = entry.states.get(f.file);
       const item = { file: f.file, read: state.read };
-      if (state.note.trim()) item.note = state.note.trim();
+      const note = joinChoiceNote(state.note.trim(), choiceLines.get(f.file) || []);
+      if (note) item.note = note;
       return item;
     });
     answer.notes = answer.files
@@ -738,6 +1380,7 @@ class CompassReview extends Plugin {
         await leaf.view.save();
       }
     }
+    const choiceLines = await this.choiceLinesFor(entry);
     if (!(await this.app.vault.adapter.exists(path))) {
       this.pending.delete(request.id);
       if (this.pending.size === 0) this.asideOwed = false;
@@ -746,7 +1389,7 @@ class CompassReview extends Plugin {
       return;
     }
     if (this.pending.get(request.id) !== entry) return;
-    await this.app.vault.adapter.write(verdictPathFor(path), JSON.stringify(this.buildAnswer(entry, verdict), null, 2));
+    await this.app.vault.adapter.write(verdictPathFor(path), JSON.stringify(this.buildAnswer(entry, verdict, choiceLines), null, 2));
     this.pending.delete(request.id);
     this.refresh();
     new Notice(verdict === "approved" ? "Approved - sent to Claude" : "Changes requested - sent to Claude");
@@ -765,3 +1408,8 @@ class CompassReview extends Plugin {
 
 module.exports = CompassReview;
 module.exports.verdictPathFor = verdictPathFor;
+module.exports.parsePlanTasks = parsePlanTasks;
+module.exports.parsePlanChoices = parsePlanChoices;
+module.exports.viewFor = viewFor;
+module.exports.choiceNoteLines = choiceNoteLines;
+module.exports.joinChoiceNote = joinChoiceNote;
