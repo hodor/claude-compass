@@ -551,5 +551,167 @@ class ImplementationBranchTests(OverlayFixture):
         self.assertNotIn("run `compass overlay --apply`", out)
 
 
+class ExtractTests(OverlayFixture):
+    """`compass overlay --extract <name>` turns a hand-edited file saved by
+    update into a local addition.
+
+    Assumed shapes: `<name>` is the addition's path under `meta/local/`
+    (`agents/researcher.md`, `skills/autopilot.md`); the saved copy is
+    `meta/local/kept/<name>` and the shipped text is the installed target.
+    Lines the saved copy holds after the whole shipped text become the
+    addition, which is applied to the target at once so the listing reads
+    `current`. Each shipped line the saved copy rewords or drops is printed
+    on a line of its own."""
+
+    TARGETS = {
+        "agents": lambda claude, stem: claude / "agents" / f"{stem}.md",
+        "rules": lambda claude, stem: claude / "rules" / f"{stem}.md",
+        "skills": lambda claude, stem: claude / "skills" / stem / "SKILL.md",
+    }
+
+    def target(self, rel):
+        kind, name = rel.split("/", 1)
+        return self.TARGETS[kind](self.claude, name[: -len(".md")])
+
+    def install(self, rel, text):
+        path = self.target(rel)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(text.encode("utf-8"))
+
+    def keep(self, rel, text):
+        path = self.vault / "meta" / "local" / "kept" / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(text.encode("utf-8"))
+
+    def local_path(self, rel):
+        return self.vault / "meta" / "local" / rel
+
+    def lines_naming(self, out, text):
+        return [ln for ln in out.splitlines() if text in ln]
+
+    def test_appended_lines_become_an_addition_that_reads_current(self):
+        """Adversarial where: extraction keeps the shipped text in the
+        addition (so it is appended twice), drops the last appended line or
+        the blank line inside it, or writes the local file without applying
+        it so the listing says `not applied`. One agent, rule and skill each
+        take lines after the shipped text: with a blank line inside the
+        addition, with no blank line before it, and after shipped text that
+        lacks a final newline."""
+        rows = {
+            "agents/researcher.md": (
+                "# Researcher\n\nShipped protocol.\n",
+                "\nAlways sweep upstream issues first.\n\nThen file a note.\n",
+            ),
+            "rules/compass-pipeline.md": (
+                "# Pipeline\n\nShipped rules.\n",
+                "Extra rule line.\n",
+            ),
+            "skills/autopilot.md": (
+                "# Autopilot\n\nShipped steps.",
+                "\nLocal step.\n",
+            ),
+        }
+        for rel, (shipped, appended) in rows.items():
+            with self.subTest(rel=rel):
+                self.install(rel, shipped)
+                self.keep(rel, shipped + appended)
+
+                code, _ = self.run_cmd(["--extract", rel])
+
+                self.assertEqual(code, 0)
+                self.assertEqual(
+                    self.local_path(rel).read_bytes().decode("utf-8").strip(),
+                    appended.strip(),
+                )
+                _, listing = self.run_cmd([])
+                row = [ln for ln in listing.splitlines() if ln.startswith(rel)]
+                self.assertEqual(len(row), 1, listing)
+                self.assertTrue(row[0].endswith("current"), row[0])
+                text = self.target(rel).read_bytes().decode("utf-8")
+                self.assertTrue(text.startswith(shipped.rstrip("\n")))
+                self.assertEqual(text.count(shipped.strip().splitlines()[-1]), 1)
+                self.assertIn(appended.strip(), text)
+
+    def test_reworded_or_removed_shipped_lines_are_each_named_on_their_own_line(self):
+        """Adversarial where: a reworded shipped line is silently turned
+        into an addition (the shipped line and its reword both survive), a
+        removed line is not reported at all, two such lines share one
+        output line, or an untouched shipped line is reported. Rows: one
+        reword, one removal, both together, and a reword with a real
+        appended line, which still becomes the addition."""
+        shipped = "# Researcher\n\nLine one.\nLine two.\nLine three.\n"
+        rows = {
+            "reword": (
+                "# Researcher\n\nLine one.\nLine 2 reworded.\nLine three.\n",
+                ["Line two."],
+                ["Line one.", "Line three."],
+            ),
+            "removal": (
+                "# Researcher\n\nLine one.\nLine three.\n",
+                ["Line two."],
+                ["Line one.", "Line three."],
+            ),
+            "reword and removal": (
+                "# Researcher\n\nLine 1 reworded.\nLine two.\n",
+                ["Line one.", "Line three."],
+                ["Line two."],
+            ),
+            "reword and appended": (
+                "# Researcher\n\nLine one.\nLine 2 reworded.\nLine three.\nAppended note.\n",
+                ["Line two."],
+                ["Line one.", "Line three."],
+            ),
+        }
+        rel = "agents/researcher.md"
+        for name, (kept, named, unnamed) in rows.items():
+            with self.subTest(row=name):
+                shutil.rmtree(self.vault / "meta" / "local", ignore_errors=True)
+                self.install(rel, shipped)
+                self.keep(rel, kept)
+
+                _, out = self.run_cmd(["--extract", rel])
+
+                hits = []
+                for line in named:
+                    found = self.lines_naming(out, line)
+                    self.assertEqual(len(found), 1, f"{line!r} in {out!r}")
+                    hits.append(found[0])
+                self.assertEqual(len(set(hits)), len(named), out)
+                for line in unnamed:
+                    self.assertEqual(self.lines_naming(out, line), [], out)
+                added = (
+                    self.local_path(rel).read_bytes().decode("utf-8")
+                    if self.local_path(rel).exists()
+                    else ""
+                )
+                self.assertNotIn("reworded", added)
+                if "appended" in name:
+                    self.assertEqual(added.strip(), "Appended note.")
+
+    def test_nothing_to_extract_creates_no_addition_and_leaves_the_install_alone(self):
+        """Adversarial where: extraction writes an empty local addition (a
+        marker-only block in the install), or crashes, when there is no
+        saved copy for the name or the saved copy equals the shipped text.
+        Neither creates a local file or changes the installed bytes."""
+        rel = "agents/researcher.md"
+        shipped = "# Researcher\n\nShipped protocol.\n"
+        self.install(rel, shipped)
+        before = self.target(rel).read_bytes()
+
+        self.run_cmd(["--extract", rel])
+        self.assertFalse(self.local_path(rel).exists(), "no saved copy, yet a local file")
+        self.assertEqual(self.target(rel).read_bytes(), before)
+
+        self.keep(rel, shipped)
+        self.run_cmd(["--extract", rel])
+        self.assertFalse(self.local_path(rel).exists(), "identical copy, yet a local file")
+
+        self.keep(rel, shipped + "One added line.\n")
+        self.run_cmd(["--extract", rel])
+        self.assertEqual(
+            self.local_path(rel).read_bytes().decode("utf-8").strip(), "One added line."
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

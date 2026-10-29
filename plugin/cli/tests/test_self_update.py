@@ -6,6 +6,7 @@ the settings merge must preserve user-owned entries and stay idempotent,
 and no failure path may return nonzero or write a partial install.
 """
 
+import hashlib
 import io
 import json
 import os
@@ -856,3 +857,265 @@ class UpdateNoticeAdditionsAdversarialTests(SelfUpdateFixture):
         hostlib.dsh_home = lambda: self.project.parent / "dsh-home"
         notice = self.perform()["notice"]
         self.assertEqual(self.clause(notice, REAPPLIED), "agents/builder.md")
+
+
+KEPT = "hand edits saved to meta/local/kept: "
+
+
+def sha256_hex(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+class HandEditFixture(SelfUpdateFixture):
+    """Updates that run twice over one project: the first installs, the
+    second meets whatever the human changed in `.claude/` in between.
+
+    Assumed shapes: `.compass/meta/installed.json` is a JSON object mapping
+    each installed file's path under `.claude/` (`agents/builder.md`) to the
+    sha256 hex of the shipped bytes, either at the top level or under a
+    `files` key. A hand-edited file is saved byte-for-byte as
+    `.compass/meta/local/kept/<kind>/<name>.md`, named like a local addition
+    (`agents/builder.md`, `skills/sweeping.md`). The notice carries
+    `; hand edits saved to meta/local/kept: ` and the saved names joined by
+    `, `."""
+
+    @property
+    def claude(self):
+        return self.project / ".claude"
+
+    @property
+    def kept_dir(self):
+        return self.vault / "meta" / "local" / "kept"
+
+    def set_shipped(self, root, agent=None, rule=None, skill=None):
+        for text, rel in (
+            (agent, "templates/agents/builder.md"),
+            (rule, "templates/rules/r.md"),
+            (skill, "skills/sweeping/SKILL.md"),
+        ):
+            if text is not None:
+                (Path(root) / rel).write_bytes(text.encode("utf-8"))
+
+    def reinstall(self, **shipped):
+        """Ship new text and run another remote update from the old version."""
+        self.set_shipped(self.external_src, **shipped)
+        self.write_plugin_yaml(source=str(self.project.parent / "somewhere-else"))
+        return self.perform(force=True)
+
+    def recorded(self):
+        path = self.vault / "meta" / "installed.json"
+        self.assertTrue(path.is_file(), "update wrote no installed.json")
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(data.get("files"), dict):
+            data = data["files"]
+        return {k.replace("\\", "/"): v for k, v in data.items()}
+
+    def recorded_for(self, rel):
+        found = {k: v for k, v in self.recorded().items() if k.endswith(rel)}
+        self.assertEqual(len(found), 1, f"want one record for {rel}: {found}")
+        return next(iter(found.values()))
+
+    def write_installed(self, rel, data):
+        path = self.claude / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+
+    def kept_files(self):
+        if not self.kept_dir.exists():
+            return []
+        return sorted(
+            p.relative_to(self.kept_dir).as_posix()
+            for p in self.kept_dir.rglob("*")
+            if p.is_file()
+        )
+
+    def kept_names(self, notice):
+        for part in notice.split("; "):
+            if part.startswith(KEPT):
+                return part[len(KEPT):].split(", ")
+        return []
+
+    def clause(self, notice, label):
+        for part in notice.split("; "):
+            if part.startswith(label):
+                return part[len(label):]
+        return None
+
+
+class InstalledRecordTests(HandEditFixture):
+    def test_every_installed_file_is_recorded_with_the_hash_of_its_shipped_bytes(self):
+        """Adversarial where: the record is skipped for a whole file kind,
+        hashes the installed file after a local addition was appended (so
+        the next update calls an untouched file hand edited), or goes stale
+        when the shipped text changes. An agent, a rule and a skill each
+        carry the hash of what shipped; with an addition on the agent, the
+        second update still records the shipped hash, not the hash of
+        shipped text plus block."""
+        self.fake_remote()
+        self.perform()
+        self.assertEqual(self.recorded_for("agents/builder.md"), sha256_hex(b"agent"))
+        self.assertEqual(self.recorded_for("rules/r.md"), sha256_hex(b"rule"))
+        self.assertEqual(
+            self.recorded_for("skills/sweeping/SKILL.md"), sha256_hex(b"skill")
+        )
+
+        local = self.vault / "meta" / "local" / "agents" / "builder.md"
+        local.parent.mkdir(parents=True)
+        local.write_bytes(b"Always cite sources.\n")
+        self.reinstall(agent="agent v2")
+        installed = (self.claude / "agents" / "builder.md").read_bytes()
+        self.assertNotEqual(installed, b"agent v2", "the addition was not applied")
+        self.assertEqual(self.recorded_for("agents/builder.md"), sha256_hex(b"agent v2"))
+
+
+class HandEditSavedTests(HandEditFixture):
+    def test_edited_files_are_saved_before_replacement_and_named_unedited_are_not(self):
+        """Adversarial where: the update replaces an edited file without
+        saving it, saves every file (not only the changed ones), saves a
+        copy that is not the human's bytes, or leaves the saved file out of
+        the notice. An appended line in the agent and a same-length
+        one-byte change in the rule are both edits; the untouched skill is
+        neither saved nor named; the installed agent and rule hold the new
+        shipped text."""
+        self.fake_remote()
+        self.perform()
+        self.write_installed("agents/builder.md", b"agent\nmy private rule\n")
+        self.write_installed("rules/r.md", b"ruLe")
+
+        result = self.reinstall(agent="agent v2", rule="rule v2", skill="skill v2")
+
+        self.assertEqual(result["status"], "updated")
+        self.assertEqual(self.kept_files(), ["agents/builder.md", "rules/r.md"])
+        self.assertEqual(
+            (self.kept_dir / "agents" / "builder.md").read_bytes(),
+            b"agent\nmy private rule\n",
+        )
+        self.assertEqual((self.kept_dir / "rules" / "r.md").read_bytes(), b"ruLe")
+        self.assertEqual((self.claude / "agents" / "builder.md").read_bytes(), b"agent v2")
+        self.assertEqual((self.claude / "rules" / "r.md").read_bytes(), b"rule v2")
+        self.assertEqual(
+            (self.claude / "skills" / "sweeping" / "SKILL.md").read_bytes(), b"skill v2"
+        )
+        self.assertEqual(
+            sorted(self.kept_names(result["notice"])), ["agents/builder.md", "rules/r.md"]
+        )
+        log = (self.vault / "tmp" / "self-update.log").read_text(encoding="utf-8")
+        self.assertIn(KEPT, log)
+
+    def test_unedited_deleted_and_reverted_files_save_nothing(self):
+        """Adversarial where: anything that is not a live difference from the
+        record counts as an edit. A file left alone, a file edited and put
+        back to its exact shipped bytes before the update, and a file the
+        human deleted all leave `kept/` without a file, add no clause to the
+        notice, and the deleted file is installed again."""
+        self.fake_remote()
+        self.perform()
+        self.write_installed("rules/r.md", b"changed")
+        self.write_installed("rules/r.md", b"rule")
+        (self.claude / "skills" / "sweeping" / "SKILL.md").unlink()
+
+        result = self.reinstall(agent="agent v2", rule="rule v2", skill="skill v2")
+
+        self.assertEqual(result["status"], "updated")
+        self.assertEqual(self.kept_files(), [])
+        self.assertEqual(result["notice"], BASE_NOTICE)
+        self.assertEqual(
+            (self.claude / "skills" / "sweeping" / "SKILL.md").read_bytes(), b"skill v2"
+        )
+        self.assertEqual(self.recorded_for("rules/r.md"), sha256_hex(b"rule v2"))
+
+    def test_a_second_hand_edit_does_not_destroy_the_first_saved_copy(self):
+        """Adversarial where: both edits of one file are saved under the
+        same name and the second update overwrites the first copy, losing
+        what the human typed. After two updates that each meet an edit of
+        the same file, both edits' text can still be found under `kept/`."""
+        self.fake_remote()
+        self.perform()
+        self.write_installed("agents/builder.md", b"agent\nFIRST EDIT\n")
+        self.reinstall(agent="agent v2")
+        self.write_installed("agents/builder.md", b"agent v2\nSECOND EDIT\n")
+        self.reinstall(agent="agent v3")
+
+        saved = b"".join(
+            p.read_bytes() for p in self.kept_dir.rglob("*") if p.is_file()
+        )
+        self.assertIn(b"FIRST EDIT", saved)
+        self.assertIn(b"SECOND EDIT", saved)
+
+    def test_local_source_update_saves_and_names_hand_edits_too(self):
+        """Adversarial where: the local-source branch builds its own notice
+        and applies the shipped files separately, so it records no hashes
+        or never saves an edit. A version bump from a source inside the
+        project saves the edited agent and names it."""
+        source = make_plugin_tree(self.project / "plugin", version="1.0.0")
+        self.write_plugin_yaml(source=str(source))
+        self.forbid_network()
+        self.perform()
+        self.assertEqual(self.recorded_for("agents/builder.md"), sha256_hex(b"agent"))
+
+        self.write_installed("agents/builder.md", b"agent\nlocal tweak\n")
+        self.set_shipped(source, agent="agent v2")
+        (source / ".claude-plugin" / "plugin.json").write_text(
+            json.dumps(dict(PLUGIN_JSON, version="1.1.0")), encoding="utf-8"
+        )
+        result = self.perform(force=True)
+
+        self.assertEqual(result["status"], "applied-local")
+        self.assertEqual(
+            (self.kept_dir / "agents" / "builder.md").read_bytes(), b"agent\nlocal tweak\n"
+        )
+        self.assertEqual(self.kept_names(result["notice"]), ["agents/builder.md"])
+
+
+class NoRecordTests(HandEditFixture):
+    def test_project_without_a_record_is_unedited_on_its_first_update(self):
+        """Adversarial where: with no installed.json the update has nothing
+        to compare against and treats every differing file as hand edited,
+        saving the whole install, or it never writes the record so the next
+        update is blind too. Differing files already in `.claude/` are
+        replaced without a saved copy or a notice clause, the record is
+        written, and an edit made after that update is saved by the next."""
+        self.write_installed("agents/builder.md", b"text from an older release")
+        self.write_installed("rules/r.md", b"another older text")
+        self.assertFalse((self.vault / "meta" / "installed.json").exists())
+        self.fake_remote()
+
+        result = self.perform()
+
+        self.assertEqual(self.kept_files(), [])
+        self.assertEqual(result["notice"], BASE_NOTICE)
+        self.assertEqual((self.claude / "agents" / "builder.md").read_bytes(), b"agent")
+        self.assertEqual(self.recorded_for("agents/builder.md"), sha256_hex(b"agent"))
+
+        self.write_installed("agents/builder.md", b"agent\nedited after\n")
+        second = self.reinstall(agent="agent v2")
+        self.assertEqual(self.kept_names(second["notice"]), ["agents/builder.md"])
+
+
+class LocalAdditionBlockTests(HandEditFixture):
+    def test_a_files_own_addition_block_is_not_a_hand_edit_but_text_above_it_is(self):
+        """Adversarial where: the installed file differs from its shipped
+        hash only by the appended local addition block, and the update calls
+        every file with an addition hand edited, saving it on each update.
+        With the block present and nothing else changed, nothing is saved
+        and the addition is re-applied; with the shipped text above the
+        marker also edited, the file is saved whole."""
+        self.fake_remote()
+        local = self.vault / "meta" / "local" / "agents" / "builder.md"
+        local.parent.mkdir(parents=True)
+        local.write_bytes(b"Always cite sources.\n")
+        self.perform()
+        installed = (self.claude / "agents" / "builder.md").read_bytes()
+        self.assertIn(b"Always cite sources.", installed)
+
+        quiet = self.reinstall(agent="agent v2")
+        self.assertEqual(self.kept_files(), [])
+        self.assertEqual(self.kept_names(quiet["notice"]), [])
+        self.assertEqual(self.clause(quiet["notice"], REAPPLIED), "agents/builder.md")
+
+        path = self.claude / "agents" / "builder.md"
+        edited = path.read_bytes().replace(b"agent v2", b"agent v2 EDITED", 1)
+        path.write_bytes(edited)
+        loud = self.reinstall(agent="agent v3")
+        self.assertEqual(self.kept_names(loud["notice"]), ["agents/builder.md"])
+        self.assertEqual((self.kept_dir / "agents" / "builder.md").read_bytes(), edited)
