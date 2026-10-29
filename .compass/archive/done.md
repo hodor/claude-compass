@@ -453,3 +453,7 @@ Plan: [[PLAN-025-review-across-files-and-sessions]].
 - [x] TASK-202: A Compass view panel and the plan board - complexity: M
 - [x] TASK-206: Spec and research cards in the view panel - complexity: M, depends_on: TASK-202
 - [x] TASK-204: `compass canvas` writes the spec tree and `compass move` rewrites card paths - complexity: M
+
+### PLAN-024 Wave 4: the plugin draws
+- [x] TASK-227: What changed since a review - complexity: M, depends_on: TASK-206
+- [x] TASK-228: Each spec's pipeline strip - complexity: S, depends_on: TASK-227
