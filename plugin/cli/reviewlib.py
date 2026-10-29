@@ -22,6 +22,15 @@ A review is two JSON files in the Compass vault's `tmp/review/`:
   marking each listed file read or unread (`read` a boolean, `note` a string
   or absent).
 
+- `<id>.changes.diff`, written here beside the request when the review lists
+  a document an earlier review in the vault already listed: `git diff <sha>
+  -- <file>` for each listed file whose content differs from the commit its
+  own latest earlier review was sent at (`commit` in that request), run from
+  the repository top and joined in listed order. A first review, and a file
+  that equals what the earlier review showed, add nothing; with nothing to
+  add no file is written. It is written before the request, and removing the
+  request removes it.
+
 A request with no verdict is pending; while it is pending every file it
 lists belongs to the human. Removing a pending request's file withdraws it: its
 waiter ends and the surface drops the review. The surfaces themselves live
@@ -47,6 +56,7 @@ EDITOR_SETTING = "review_editor"
 PER_USER_EDITORS = ("vscode", "cursor")
 YAML_NULLS = ("null", "Null", "NULL", "~")
 _SETTING_LINE = re.compile(rf"^{EDITOR_SETTING}[ \t]*:[ \t]*(.*)$")
+_SHA = re.compile(r"[0-9a-fA-F]{7,64}")
 
 
 class GitUnavailable(Exception):
@@ -153,13 +163,26 @@ def _relative(document, root):
     return Path(document).resolve().relative_to(Path(root).resolve()).as_posix()
 
 
+def changes_path(request_path):
+    """The `<id>.changes.diff` file beside a request file."""
+    name = Path(request_path).name.replace(".request.json", ".changes.diff")
+    return Path(request_path).with_name(name)
+
+
+def _write_atomic(path, data):
+    tmp = path.with_suffix(".tmp")
+    tmp.write_bytes(data)
+    os.replace(tmp, path)
+
+
 def write_request(compass_vault, surface, root, document, title=None, step_aside=True, commit=None,
-                  documents=None, session="", project=""):
+                  documents=None, session="", project="", changes=b""):
     """Write a request for `document` on `surface` (its `NAME`), `file`
     relative to `root`, recording the git `commit` it was sent at; return
     `(request, request_path)`. `documents`, a list of `(path, why)` starting
     with `document`, makes it a request for several files that also carries
-    `files`, `session` and `project`."""
+    `files`, `session` and `project`. Non-empty `changes` (bytes, see
+    `changes_record`) is saved beside the request, ahead of it."""
     rid = new_id()
     request = {"id": rid, "surface": surface, "file": _relative(document, root)}
     if documents:
@@ -170,9 +193,14 @@ def write_request(compass_vault, surface, root, document, title=None, step_aside
     directory = review_dir(compass_vault)
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"{rid}.request.json"
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(request, indent=2), encoding="utf-8")
-    os.replace(tmp, path)
+    record = changes_path(path)
+    try:
+        if changes:
+            _write_atomic(record, changes)
+        _write_atomic(path, json.dumps(request, indent=2).encode("utf-8"))
+    except OSError:
+        record.unlink(missing_ok=True)
+        raise
     return request, path
 
 
@@ -303,6 +331,60 @@ def changes_since(root, commit, show=(), skip=None):
     return lines
 
 
+def _order(path):
+    """Sort key for request files, oldest first: the timestamp in the id, then
+    the time the file was written, which orders requests made in one second."""
+    try:
+        written = path.stat().st_mtime_ns
+    except OSError:
+        written = 0
+    return (path.name[:15], written, path.name)
+
+
+def _earlier_commits(compass_vault, documents):
+    """`{index: commit}` for each of `documents` (resolved paths) that a
+    request in the vault lists: the `commit` of the newest such request."""
+    directory = review_dir(compass_vault)
+    found = {}
+    if not directory.is_dir():
+        return found
+    for path in sorted(directory.glob("*.request.json"), key=_order):
+        request = read_json(path)
+        if request is None or not isinstance(request.get("commit"), str) or not _SHA.fullmatch(request["commit"]):
+            continue
+        surface = review_surfaces.named(request.get("surface"))
+        for name in request_files(request):
+            for candidate in [surface] if surface else review_surfaces.SURFACES:
+                listed = candidate.resolve({**request, "file": name}, compass_vault)
+                if listed is None:
+                    continue
+                for i, document in enumerate(documents):
+                    if _same_path(Path(listed).resolve(), document):
+                        found[i] = request["commit"]
+    return found
+
+
+def changes_record(compass_vault, root, documents):
+    """The bytes of a `<id>.changes.diff`: `git diff <sha> -- <file>` run in
+    the repository `root` for each of `documents` (paths, in listed order)
+    that an earlier request in the vault listed, `<sha>` being the commit
+    that newest request was sent at, and that differs from it. Empty when no
+    listed file qualifies. A diff git cannot produce (the commit is gone)
+    adds nothing."""
+    resolved = [Path(document).resolve() for document in documents]
+    record = b""
+    for i, commit in sorted(_earlier_commits(compass_vault, resolved).items()):
+        names = repo_paths(root, root, [str(resolved[i])])
+        if not names:
+            continue
+        diff = _git(root, "--literal-pathspecs", "-c", "color.ui=never", "-c", "core.quotepath=false",
+                    "diff", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/", "--end-of-options", commit,
+                    "--", names[0])
+        if diff.returncode == 0:
+            record += diff.stdout
+    return record
+
+
 def read_json(path):
     """The parsed object at `path`, or None when absent or not yet a whole
     JSON object (the surface may be mid-write)."""
@@ -359,9 +441,11 @@ def pending(compass_vault):
 
 def cancel(compass_vault, request_id):
     """Withdraw the pending request whose id is exactly `request_id` by
-    removing its request file; True when one was withdrawn."""
+    removing its request file and the changes record beside it; True when one
+    was withdrawn."""
     for path, request in _pending_entries(compass_vault):
         if request_id and request.get("id") == request_id:
+            changes_path(path).unlink(missing_ok=True)
             try:
                 path.unlink()
             except FileNotFoundError:

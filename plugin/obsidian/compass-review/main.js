@@ -9,6 +9,12 @@
 //               one-line reason; absent for a review of one document
 //     project   name of the project the request came from
 //     session   id of the Claude Code session that asked
+//   <dir>/<id>.changes.diff   written by Compass beside the request when the
+//     review lists a document an earlier review listed: git's unified diff
+//     (`git diff <sha> -- <file>`, paths from the repository top) of each
+//     such file against the commit that earlier review was sent at. Absent
+//     for a first review and for files that have not changed. It leaves with
+//     the request.
 //   obsidian://compass-review?vault=<vault id>&request=<dir>/<id>.request.json
 //   <dir>/<id>.verdict.json   written here when a button is clicked:
 //     {"id", "file", "verdict": "approved"|"changes", "notes",
@@ -100,6 +106,17 @@
 //     under every filter, and the bars keep counting the whole document
 //   - one row per shown finding with its evidence; a click on the row opens the
 //     research document at the finding's line
+// While a review that lists a plan, spec or research document is pending and
+// has a `.changes.diff` holding changes to that document, its view opens with
+// "Changed since you last saw it":
+//   - one group per heading of the document that holds a change, in document
+//     order; a hunk belongs to the heading above its first changed line, a
+//     removed line to the section it was removed from, and changes above the
+//     first heading to "Top of the document"
+//   - each hunk shows its lines (unchanged, removed, added) with the words that
+//     differ between a removed line and the added line that replaces it marked
+//   - a click on a hunk's Open control opens the document at its first changed
+//     line
 // The views only read the vault.
 
 const { Plugin, ItemView, Notice, MarkdownView } = require("obsidian");
@@ -877,6 +894,174 @@ function prose(el, text) {
   endPara();
 }
 
+// ---- reading what changed since a review ----
+
+function changesPathFor(requestPath) {
+  return requestPath.replace(/\.request\.json$/, ".changes.diff");
+}
+
+// Headings outside the properties block and code fences, in document order:
+// {title, line} with 1-based lines.
+function headingsOf(text) {
+  const lines = linesOf(text);
+  const inFence = fenceTracker();
+  const found = [];
+  for (let i = propertiesOf(lines).end; i < lines.length; i++) {
+    if (inFence(lines[i])) continue;
+    const m = /^#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/.exec(lines[i]);
+    if (m) found.push({ title: m[1], line: i + 1 });
+  }
+  return found;
+}
+
+// The path a `---` or `+++` header line names, without git's a/ or b/ prefix,
+// its quoting and the tab that ends the line when the name holds a space;
+// null for /dev/null.
+function diffHeaderPath(line) {
+  let name = line.slice(4).replace(/\t.*$/, "");
+  if (/^".*"$/.test(name)) name = name.slice(1, -1).replace(/\\(["\\])/g, "$1");
+  return name === "/dev/null" ? null : name.replace(/^[ab]\//, "");
+}
+
+function pathEndsWith(full, tail) {
+  return full === tail || full.endsWith(`/${tail}`);
+}
+
+// The unified diff's hunks for the one file whose path ends in `docPath` on a
+// folder boundary, the shortest such path when several files end that way (a
+// deeper folder holds a file of the same name): [{newStart, newCount, items: [{kind: "ctx"|"del"|"add",
+// text}]}]. A hunk's body is read by the line counts of its header, so a
+// removed line that begins with "--" or an added one that begins with "++" is
+// a row, not a file header.
+function diffHunksOf(diffText, docPath) {
+  const hunks = [];
+  let oldPath = null;
+  let wanted = false;
+  let wantedPath = null;
+  let hunk = null;
+  let oldLeft = 0;
+  let newLeft = 0;
+  for (const raw of String(diffText).split(/\r?\n/)) {
+    if (oldLeft > 0 || newLeft > 0) {
+      if (raw[0] === "\\") continue;
+      const kind = raw[0] === "+" ? "add" : raw[0] === "-" ? "del" : "ctx";
+      if (kind !== "add") oldLeft--;
+      if (kind !== "del") newLeft--;
+      if (wanted) hunk.items.push({ kind, text: raw.slice(1) });
+      continue;
+    }
+    if (raw.startsWith("diff --git ")) {
+      wanted = false;
+      oldPath = null;
+    } else if (raw.startsWith("--- ")) {
+      oldPath = diffHeaderPath(raw);
+    } else if (raw.startsWith("+++ ")) {
+      const name = diffHeaderPath(raw) || oldPath;
+      wanted = name !== null && pathEndsWith(name, docPath);
+      wantedPath = name;
+    } else {
+      const m = /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/.exec(raw);
+      if (!m) continue;
+      oldLeft = m[1] === undefined ? 1 : Number(m[1]);
+      newLeft = m[3] === undefined ? 1 : Number(m[3]);
+      if (wanted) {
+        hunk = { path: wantedPath, newStart: Number(m[2]), newCount: newLeft, items: [] };
+        hunks.push(hunk);
+      }
+    }
+  }
+  const shortest = Math.min(...hunks.map((h) => h.path.length));
+  return hunks.filter((h) => h.path.length === shortest);
+}
+
+// The words of two lines that differ: [{text, changed}] for each side, the
+// texts of one side joining back to its line. Words are split at spaces, table
+// pipes and punctuation; the spaces are parts too.
+function wordDiff(a, b) {
+  const tokens = (s) => s.split(/(\s+|[|,.;:()`[\]*])/).filter((x) => x !== "");
+  const A = tokens(a);
+  const B = tokens(b);
+  if (A.length * B.length > 160000) return { a: [{ text: a, changed: true }], b: [{ text: b, changed: true }] };
+  const L = Array.from({ length: A.length + 1 }, () => new Array(B.length + 1).fill(0));
+  for (let i = A.length - 1; i >= 0; i--) {
+    for (let j = B.length - 1; j >= 0; j--) {
+      L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    }
+  }
+  const left = [];
+  const right = [];
+  let i = 0;
+  let j = 0;
+  while (i < A.length && j < B.length) {
+    if (A[i] === B[j]) {
+      left.push({ text: A[i++], changed: false });
+      right.push({ text: B[j++], changed: false });
+    } else if (L[i + 1][j] >= L[i][j + 1]) left.push({ text: A[i++], changed: true });
+    else right.push({ text: B[j++], changed: true });
+  }
+  while (i < A.length) left.push({ text: A[i++], changed: true });
+  while (j < B.length) right.push({ text: B[j++], changed: true });
+  const merge = (parts) => {
+    const out = [];
+    for (const p of parts) {
+      const last = out[out.length - 1];
+      if (last && last.changed === p.changed) last.text += p.text;
+      else out.push({ ...p });
+    }
+    return out;
+  };
+  return { a: merge(left), b: merge(right) };
+}
+
+// A hunk's items as rows [{kind, parts: [{text, changed}]}]: the removed and
+// added lines of one change are paired in order and carry their changed words.
+function changeRows(items) {
+  const whole = (kind, text) => ({ kind, parts: [{ text, changed: false }] });
+  const rows = [];
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].kind === "ctx") {
+      rows.push(whole("ctx", items[i].text));
+      continue;
+    }
+    let j = i;
+    while (j < items.length && items[j].kind === "del") j++;
+    let k = j;
+    while (k < items.length && items[k].kind === "add") k++;
+    const dels = items.slice(i, j);
+    const adds = items.slice(j, k);
+    dels.forEach((d, n) => rows.push(adds[n] ? { kind: "del", parts: wordDiff(d.text, adds[n].text).a } : whole("del", d.text)));
+    adds.forEach((a, n) => rows.push(dels[n] ? { kind: "add", parts: wordDiff(dels[n].text, a.text).b } : whole("add", a.text)));
+    i = k - 1;
+  }
+  return rows;
+}
+
+// The changes a diff holds for the document `docText` (at `docPath` in the
+// vault), grouped under the heading above the first changed line of each
+// hunk: [{heading, line, hunks: [{line, rows}]}] in document order. `heading`
+// and `line` are null for changes above the first heading; a hunk's `line` is
+// its first changed line in the new text (1-based). A removed line lies in the
+// section it was removed from.
+function parseChanges(diffText, docText, docPath) {
+  const headings = headingsOf(docText);
+  const total = Math.max(1, linesOf(docText).length);
+  const groups = new Map();
+  for (const hunk of diffHunksOf(diffText, docPath)) {
+    const first = hunk.items.findIndex((it) => it.kind !== "ctx");
+    if (first < 0) continue;
+    const at = (hunk.newCount === 0 ? hunk.newStart + 1 : hunk.newStart) + first;
+    const end = hunk.items.findIndex((it, i) => i > first && it.kind === "ctx");
+    const change = hunk.items.slice(first, end < 0 ? undefined : end);
+    const inSection = change.some((it) => it.kind === "add") ? at : at - 1;
+    let heading = null;
+    for (const h of headings) if (h.line <= inSection) heading = h;
+    const key = heading ? heading.line : 0;
+    if (!groups.has(key)) groups.set(key, { heading: heading ? heading.title : null, line: heading ? heading.line : null, hunks: [] });
+    groups.get(key).hunks.push({ line: Math.max(1, Math.min(at, total)), rows: changeRows(hunk.items) });
+  }
+  return [...groups.entries()].sort((x, y) => x[0] - y[0]).map(([, group]) => group);
+}
+
 class CompassReview extends Plugin {
   async onload() {
     // request id -> {request, path, files: [{file, why}], states: Map(file ->
@@ -1548,20 +1733,28 @@ class CompassReview extends Plugin {
     if (seq !== view.drawSeq) return;
     const kind = text === null ? null : viewFor(text);
     const entry = file && (kind === "plan" || kind === "spec") ? this.entryFor(file.path) : null;
-    const signature = JSON.stringify([file && file.path, text === null ? null : textHash(text), entry && entry.request.id]);
+    const saved = file && kind ? await this.savedChanges(file.path) : null;
+    if (seq !== view.drawSeq) return;
+    const signature = JSON.stringify([
+      file && file.path,
+      text === null ? null : textHash(text),
+      entry && entry.request.id,
+      saved && [saved.id, textHash(saved.diff)],
+    ]);
     if (root.dataset.signature === signature) return;
     root.dataset.signature = signature;
     root.empty();
+    const changes = saved ? parseChanges(saved.diff, text, file.path) : [];
     if (!file) {
       root.createDiv({ cls: "compass-view-note", text: "Open a document to see its view." });
     } else if (text === null) {
       root.createDiv({ cls: "compass-view-note", text: "This document could not be read." });
     } else if (kind === "plan") {
-      this.drawPlanBoard(root, file, text, entry);
+      this.drawPlanBoard(root, file, text, entry, changes);
     } else if (kind === "spec") {
-      this.drawSpecView(root, file, text, entry);
+      this.drawSpecView(root, file, text, entry, changes);
     } else if (kind === "research") {
-      this.drawResearchView(root, view, file, text);
+      this.drawResearchView(root, view, file, text, changes);
     } else {
       const type = typeOf(text);
       root.createDiv({
@@ -1573,6 +1766,66 @@ class CompassReview extends Plugin {
     }
   }
 
+  // {id, diff}: the diff `compass review` saved beside the newest pending
+  // request of this surface that lists `path`; null when that review has none.
+  // The request files in the review folders are read, so the result does not
+  // depend on which requests the plugin tracks.
+  async savedChanges(path) {
+    const adapter = this.app.vault.adapter;
+    let found = null;
+    for (const dir of REVIEW_DIRS) {
+      let files = [];
+      try {
+        if (await adapter.exists(dir)) files = (await adapter.list(dir)).files;
+      } catch (e) {
+        console.error("[compass-review] listing the review folder failed", e);
+      }
+      for (const requestPath of files.filter((f) => f.endsWith(".request.json")).sort()) {
+        try {
+          if (await adapter.exists(verdictPathFor(requestPath))) continue;
+          const request = await this.readRequest(requestPath);
+          if (request.surface && request.surface !== SURFACE) continue;
+          if (!filesOf(request).some((f) => f.file === path)) continue;
+          const diffPath = changesPathFor(requestPath);
+          const diff = (await adapter.exists(diffPath)) ? await adapter.read(diffPath) : null;
+          if (!found || request.id >= found.id) found = { id: request.id, diff };
+        } catch (e) {
+          console.error("[compass-review] skipped", requestPath, e);
+        }
+      }
+    }
+    return found && found.diff !== null ? found : null;
+  }
+
+  // What changed since the human last saw the document: one group per heading
+  // that holds a change, each hunk with its rows and a control that opens the
+  // document at the hunk's first changed line.
+  drawChanges(parent, path, groups) {
+    if (groups.length === 0) return;
+    const section = parent.createDiv({ cls: "compass-changes" });
+    const places = groups.reduce((n, g) => n + g.hunks.length, 0);
+    section.createEl("h4", { cls: "compass-board-heading", text: "Changed since you last saw it" });
+    section.createDiv({ cls: "compass-fine", text: `${plural(places, "place")} under ${plural(groups.length, "heading")}` });
+    for (const group of groups) {
+      const box = section.createDiv({ cls: "compass-changes-group" });
+      box.createDiv({ cls: "compass-changes-heading", text: group.heading === null ? "Top of the document" : group.heading });
+      for (const hunk of group.hunks) {
+        const el = box.createDiv({ cls: "compass-change-hunk" });
+        const bar = el.createDiv({ cls: "compass-change-bar" });
+        bar.createSpan({ cls: "compass-fine", text: `line ${hunk.line}` });
+        const open = bar.createEl("button", { cls: "compass-change-open", text: "Open", attr: { title: "Open the document at this change" } });
+        open.onclick = () => this.openLine(path, hunk.line, "open change");
+        for (const row of hunk.rows) {
+          const line = el.createDiv({ cls: `compass-change-row is-${row.kind}` });
+          for (const part of row.parts) {
+            if (part.changed) line.createSpan({ cls: "compass-change-word", text: part.text });
+            else line.appendText(part.text);
+          }
+        }
+      }
+    }
+  }
+
   openLine(path, line, what) {
     this.showFile(path, true, { eState: { line: line - 1 } }).catch((e) => this.fail(what, e));
   }
@@ -1581,13 +1834,14 @@ class CompassReview extends Plugin {
     this.openLine(path, line, "open task");
   }
 
-  drawPlanBoard(root, file, text, entry) {
+  drawPlanBoard(root, file, text, entry, changes) {
     const tasks = parsePlanTasks(text);
     const { props } = propertiesOf(linesOf(text));
     const board = root.createDiv({ cls: "compass-plan-board" });
     const head = board.createDiv({ cls: "compass-plan-head" });
     head.createSpan({ cls: "compass-plan-title", text: this.titleOf(file.path) });
     if (props.status) head.createSpan({ cls: "compass-chip", text: props.status });
+    this.drawChanges(board, file.path, changes);
 
     if (tasks.length === 0) {
       board.createDiv({ cls: "compass-view-note", text: "This plan has no task lines." });
@@ -1748,13 +2002,14 @@ class CompassReview extends Plugin {
   // The spec as the human wrote it: Problem and Desired Outcome side by side,
   // then one card per decision. While a review of the spec is pending the
   // cards take answers in place, so a redraw of the panel keeps what was typed.
-  drawSpecView(root, file, text, entry) {
+  drawSpecView(root, file, text, entry, changes) {
     const spec = parseSpec(text);
     const { props } = propertiesOf(linesOf(text));
     const view = root.createDiv({ cls: "compass-spec-view" });
     const head = view.createDiv({ cls: "compass-doc-head" });
     head.createSpan({ cls: "compass-doc-title", text: this.titleOf(file.path) });
     if (props.status) head.createSpan({ cls: "compass-chip", text: props.status });
+    this.drawChanges(view, file.path, changes);
 
     const words = view.createDiv({ cls: "compass-spec-words" });
     const part = (label, cls, body, line, none) => {
@@ -1853,7 +2108,7 @@ class CompassReview extends Plugin {
 
   // Bars of findings per section, a filter per confidence level, then one row
   // per shown finding; a click on a row opens the document at the finding.
-  drawResearchView(root, view, file, text) {
+  drawResearchView(root, view, file, text, changes) {
     const findings = parseResearchFindings(text);
     const { props } = propertiesOf(linesOf(text));
     const wrap = root.createDiv({ cls: "compass-research-view" });
@@ -1861,6 +2116,7 @@ class CompassReview extends Plugin {
     head.createSpan({ cls: "compass-doc-title", text: this.titleOf(file.path) });
     if (props.status) head.createSpan({ cls: "compass-chip", text: props.status });
     head.createSpan({ cls: "compass-fine", text: plural(findings.length, "finding") });
+    this.drawChanges(wrap, file.path, changes);
     if (findings.length === 0) {
       wrap.createDiv({ cls: "compass-view-note", text: "This document has no finding tables." });
       return;
@@ -2058,3 +2314,5 @@ module.exports.parseResearchFindings = parseResearchFindings;
 module.exports.countFindingsBySection = countFindingsBySection;
 module.exports.filterFindings = filterFindings;
 module.exports.decisionNoteLines = decisionNoteLines;
+module.exports.changesPathFor = changesPathFor;
+module.exports.parseChanges = parseChanges;
