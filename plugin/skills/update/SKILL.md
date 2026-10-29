@@ -153,7 +153,7 @@ fi
 rm -rf "$TMP"
 ```
 
-Report: version delta (old -> new), counts of files refreshed, whether the python check passed, and doctor's table. A WARN or FAIL row means the update landed only partway - name the failing check and the fix command doctor prints, rather than reporting the update as clean. The `obsidian review` row is the exception: a WARN there means the human has not yet turned the plugin on, which Obsidian lets only him do; relay its steps to him as they are.
+Report: version delta (old -> new), counts of files refreshed, whether the python check passed, step 4b's lines in the notice's words (`local additions re-applied: <names>`, `no shipped file: <names>`, and `local additions not applied (run compass doctor)` when any failed; nothing when the project has no additions), and doctor's table. A WARN or FAIL row means the update landed only partway - name the failing check and the fix command doctor prints, rather than reporting the update as clean. The `obsidian review` row is the exception: a WARN there means the human has not yet turned the plugin on, which Obsidian lets only him do; relay its steps to him as they are.
 
 ### 8. Nothing to restart
 
