@@ -341,6 +341,7 @@ tags:
   - research/pipeline/RESEARCH-source-reliability-criteria.md
   customization:
   - decisions/distribution/ADR-020-local-overlays-appended-after-refresh.md
+  - plans/PLAN-026-local-additions-tell-the-truth.md
   - research/distribution/RESEARCH-update-safe-customization.md
   - specs/distribution/SPEC-014-update-safe-customizations.md
   - specs/pipeline/SPEC-009-configurable-pipeline-workflows.md
@@ -429,6 +430,7 @@ tags:
   doctor:
   - decisions/distribution/ADR-020-local-overlays-appended-after-refresh.md
   - lessons/distribution/LESSON-self-update-silent-on-bad-repository-url.md
+  - plans/PLAN-026-local-additions-tell-the-truth.md
   documentation-drift:
   - research/pipeline/RESEARCH-code-as-primary-source.md
   documents:
@@ -472,6 +474,7 @@ tags:
   dsh:
   - handoffs/PLAN-017-dsh-host-support/2026-09-05_21-30-00_wave6-zero-decision-queued.md
   - plans/PLAN-017-dsh-host-support.md
+  - plans/PLAN-026-local-additions-tell-the-truth.md
   - research/distribution/RESEARCH-deepseek-harness-fit.md
   - research/distribution/RESEARCH-dsh-live-probes.md
   - research/pipeline/RESEARCH-context-threshold-stop.md
@@ -1148,6 +1151,7 @@ tags:
   - lessons/vault-structure/LESSON-type-dir-discovery-needs-content-signal.md
   overlays:
   - decisions/distribution/ADR-020-local-overlays-appended-after-refresh.md
+  - plans/PLAN-026-local-additions-tell-the-truth.md
   - research/distribution/RESEARCH-update-safe-customization.md
   - specs/distribution/SPEC-014-update-safe-customizations.md
   paired-experiment:
@@ -1480,6 +1484,7 @@ tags:
   - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
   - lessons/distribution/LESSON-self-update-corrections-lag-one-version.md
   - lessons/distribution/LESSON-self-update-silent-on-bad-repository-url.md
+  - plans/PLAN-026-local-additions-tell-the-truth.md
   - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
   sendmessage:
   - lessons/subagents/LESSON-subagent-reports-need-sendmessage.md
@@ -1798,6 +1803,7 @@ tags:
   - lessons/distribution/LESSON-installer-removes-only-what-it-installed.md
   - plans/PLAN-005-model-table.md
   - plans/PLAN-012-self-update.md
+  - plans/PLAN-026-local-additions-tell-the-truth.md
   - research/distribution/RESEARCH-self-update-surfaces.md
   - research/distribution/RESEARCH-update-safe-customization.md
   - research/distribution/index.md
