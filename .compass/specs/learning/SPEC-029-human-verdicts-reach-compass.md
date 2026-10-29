@@ -12,6 +12,9 @@ summary: "the human sometimes says how good or bad a spec or other document is, 
 
 # Human Verdicts on Compass Documents Reach Compass Itself
 
+> [!question] You decide
+> Approve this spec, or change it. The Problem and Desired Outcome are your words. The two `[guess: ...]` lines are mine: how "sometimes" and "always" fit together, and the KPI.
+
 ## Problem
 
 We need to give the human the chance sometimes to say how good or bad a spec is using our new md editor tools.
