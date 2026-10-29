@@ -66,5 +66,5 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
 Plan: [[PLAN-026-local-additions-tell-the-truth]].
 
-- [ ] TASK-232: dsh gets local additions - complexity: M, depends_on: TASK-231
+- [x] TASK-232: dsh gets local additions - complexity: M, depends_on: TASK-231
 - [ ] TASK-233: Release build and offline round-trip - complexity: S, depends_on: TASK-230, TASK-232

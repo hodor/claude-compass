@@ -104,12 +104,14 @@ if command -v python3 >/dev/null 2>&1; then PYBIN=python3; else PYBIN=python; fi
 "$PYBIN" -c "import sys; sys.path.insert(0,'.claude/cli'); import hostlib
 if 'dsh' in hostlib.effective_hosts('.compass'):
     hostlib.materialize_dsh_hooks('.', '.claude/hooks/hooks.json')
-    hostlib.materialize_dsh_skills('.', '.claude/skills')
-    hostlib.materialize_dsh_instructions('.', '.claude/rules')
+    hostlib.materialize_dsh_skills('.', '$SRC/skills')
+    hostlib.materialize_dsh_instructions('.', '$SRC/templates/rules')
     home = hostlib.dsh_home()
     hostlib.materialize_dsh_bundle(home, '$SRC')
     print('bundle installed into profiles:', hostlib.install_dsh_bundle(home))"
 ```
+
+The skills and rules build from the clone's shipped files, so a project's own skills never become `compass-*` copies, and each shipped name's local addition (`.compass/meta/local/{skills,rules}/<name>.md`) is appended under its marker as it is built.
 
 A machine without dsh makes this a no-op - zero dsh-shaped writes.
 

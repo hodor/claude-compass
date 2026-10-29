@@ -1067,3 +1067,146 @@ class UpdateSkillStep4aTests(unittest.TestCase):
         self.assertNotIn(".claude/skills", section)
         self.assertNotIn(".claude/rules", section)
         self.assertEqual(text.count("'.claude/skills'"), 0)
+
+
+class DshAdditionEdgeTests(unittest.TestCase):
+    """Edges of the dsh addition folds that the writers' own layout creates:
+    text inside an addition that looks like a fence, names that match no
+    shipped file, shipped files that quote the marker, and unusual skill
+    folders."""
+
+    def test_rules_fence_text_inside_an_addition_does_not_split_the_section(self):
+        """Adversarial where: an addition quoting the section's own end
+        fence makes the next fold stop at the quoted fence, so the tail of
+        the old section survives outside it and each rerun grows AGENTS.md."""
+        project = make_project(self)
+        rules = _rules_src(self)
+        _write_addition(
+            project, "rules", "pipeline",
+            f"Do not edit {hostlib.RULES_END} by hand.\nSecond line.\n")
+        for _ in range(3):
+            hostlib.materialize_dsh_instructions(project, rules)
+        text = (project / "AGENTS.md").read_text(encoding="utf-8")
+        self.assertEqual(text.count("Second line."), 1)
+        self.assertEqual(text.count("# Wikilinks"), 1)
+        self.assertEqual(text.count(hostlib.RULES_BEGIN), 1)
+
+    def test_odd_addition_names_reach_only_the_exact_shipped_name(self):
+        """Adversarial where: an addition whose file name has spaces, dots,
+        a bare `.md` stem, non-ASCII letters or the shipped name plus a
+        suffix is matched to a shipped skill or rule by prefix or
+        normalization, or crashes the fold."""
+        project = make_project(self)
+        for kind in ("skills", "rules"):
+            for name in ("lessons extra", "lessons.v2", "", "lessonß", "pipeline-extra",
+                         "pipeline.md"):
+                _write_addition(project, kind, name, f"Stray {kind} {name!r}.\n")
+        hostlib.materialize_dsh_skills(
+            project, _skills_src(self, {"lessons": SHIPPED_SKILL}))
+        hostlib.materialize_dsh_instructions(project, _rules_src(self))
+        self.assertEqual(_dsh_skill(project), SHIPPED_SKILL_AS_DSH)
+        agents = (project / "AGENTS.md").read_text(encoding="utf-8")
+        self.assertNotIn("Stray", agents)
+
+    def test_shared_name_prefix_keeps_each_rule_addition_on_its_own_rule(self):
+        """Adversarial where: two shipped rules where one name is a prefix
+        of the other (`pipeline`, `pipeline-extra`) swap or share an
+        addition, or the last rule of the section loses its addition."""
+        project = make_project(self)
+        src = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, src, True)
+        for name in ("pipeline", "pipeline-extra"):
+            (src / f"{name}.md").write_text(f"# {name}\n\nBody {name}.\n", encoding="utf-8")
+        _write_addition(project, "rules", "pipeline-extra", "Extra addition.\n")
+        _write_addition(project, "rules", "pipeline", "Plain addition.\n")
+        hostlib.materialize_dsh_instructions(project, src)
+        text = (project / "AGENTS.md").read_text(encoding="utf-8")
+        for name, body, added in (
+                ("pipeline", "Body pipeline.", "Plain addition."),
+                ("pipeline-extra", "Body pipeline-extra.", "Extra addition.")):
+            marker = _marker("rules", name)
+            self.assertEqual(text.count(marker), 1)
+            self.assertEqual(text.count(added), 1)
+            self.assertLess(text.index(body), text.index(marker))
+            self.assertEqual(text.index(marker) + len(marker) + 2, text.index(added))
+        # The rule sorted last carries its addition right before the end fence.
+        self.assertTrue(text.endswith(f"Plain addition.\n{hostlib.RULES_END}\n"))
+
+    def test_quoted_marker_in_a_shipped_skill_does_not_shift_the_addition(self):
+        """Adversarial where: a shipped skill that quotes the overlay marker
+        in its prose makes the dsh fold treat the quote as the applied
+        block, so the real addition is skipped or the quote is cut away; the
+        Claude-side overlay must keep reading the same target as current."""
+        from commands import overlay
+        project = make_project(self)
+        marker = _marker("skills", "lessons")
+        shipped = SHIPPED_SKILL + f"\nQuoted: {marker}\n\nTail prose.\n"
+        _write_addition(project, "skills", "lessons", "Real addition.\n")
+        hostlib.materialize_dsh_skills(project, _skills_src(self, {"lessons": shipped}))
+        skill = _dsh_skill(project)
+        self.assertEqual(skill.count(marker), 2)
+        self.assertIn("Tail prose.", skill)
+        self.assertTrue(skill.endswith(f"{marker}\n\nReal addition.\n"))
+
+        claude = project / ".claude" / "skills" / "lessons" / "SKILL.md"
+        claude.parent.mkdir(parents=True)
+        claude.write_text(shipped, encoding="utf-8")
+        vault = project / ".compass"
+        self.assertEqual(overlay.apply_overlays(vault)["applied"], ["skills/lessons.md"])
+        self.assertEqual(overlay.apply_overlays(vault)["skipped"], ["skills/lessons.md"])
+        self.assertIn("Tail prose.", claude.read_text(encoding="utf-8"))
+
+    def test_skill_folder_with_extra_files_and_a_bodyless_skill_fold_cleanly(self):
+        """Adversarial where: a shipped skill folder holding files besides
+        SKILL.md, or a skill whose body is empty, crashes the fold, copies
+        the extras, or glues the marker onto the closing frontmatter fence;
+        removing the addition afterwards leaves the plain skill."""
+        project = make_project(self)
+        skills = _skills_src(self, {
+            "lessons": SHIPPED_SKILL,
+            "bare": "---\nname: bare\ndescription: Bare.\n---\n"})
+        (skills / "lessons" / "notes.txt").write_text("extra", encoding="utf-8")
+        (skills / "lessons" / "sub").mkdir()
+        (skills / "stray-file.md").write_text("not a skill dir", encoding="utf-8")
+        path = _write_addition(project, "skills", "bare", "Bare addition.\n")
+        lessons_path = _write_addition(project, "skills", "lessons", "Lessons addition.\n")
+        hostlib.materialize_dsh_skills(project, skills)
+
+        bare = _dsh_skill(project, "bare")
+        self.assertEqual(
+            bare, "---\nname: compass-bare\ndescription: Bare.\n---\n\n"
+            f"{_marker('skills', 'bare')}\n\nBare addition.\n")
+        self.assertEqual(
+            sorted(p.name for p in (project / ".dsh" / "skills" / "compass-lessons").iterdir()),
+            ["SKILL.md"])
+
+        path.unlink()
+        lessons_path.unlink()
+        hostlib.materialize_dsh_skills(project, skills)
+        self.assertEqual(_dsh_skill(project), SHIPPED_SKILL_AS_DSH)
+        self.assertEqual(
+            _dsh_skill(project, "bare"),
+            "---\nname: compass-bare\ndescription: Bare.\n---\n")
+
+    def test_addition_with_bom_and_crlf_writes_clean_lf_text(self):
+        """Adversarial where: a local file saved by a Windows editor (BOM,
+        CRLF, a lone CR) leaks a BOM or CR into the dsh skill or the
+        AGENTS.md section, or an undecodable sibling addition aborts the
+        fold of the readable ones."""
+        project = make_project(self)
+        _write_addition(project, "skills", "lessons",
+                        raw=b"\xef\xbb\xbfLine one.\r\nLine two.\rLine three.\r\n")
+        _write_addition(project, "rules", "pipeline",
+                        raw=b"\xef\xbb\xbfRule one.\r\nRule two.\r\n")
+        _write_addition(project, "rules", "wikilinks", raw=b"\xff\xfe bad bytes")
+        hostlib.materialize_dsh_skills(
+            project, _skills_src(self, {"lessons": SHIPPED_SKILL}))
+        hostlib.materialize_dsh_instructions(project, _rules_src(self))
+        skill = _dsh_skill(project)
+        agents = (project / "AGENTS.md").read_bytes().decode("utf-8")
+        for text in (skill, agents):
+            self.assertNotIn("\r", text)
+            self.assertNotIn("﻿", text)
+        self.assertTrue(skill.endswith("Line one.\nLine two.\nLine three.\n"))
+        self.assertIn("Rule one.\nRule two.", agents)
+        self.assertEqual(agents.count("# Wikilinks"), 1)
