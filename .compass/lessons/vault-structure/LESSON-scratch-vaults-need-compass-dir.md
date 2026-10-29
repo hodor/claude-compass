@@ -6,10 +6,10 @@ category: process
 area: workflow
 tags: [cli, vault-root, isolation, probes, hooks, env-var]
 created: 2026-08-06
-updated: 2026-10-28
-score: 5
+updated: 2026-10-29
+score: 6
 summary: "CLAUDE_PROJECT_DIR redirects the compass CLI only when it contains .compass; otherwise cwd-walk silently targets the enclosing vault"
-seen: []
+seen: [2026-10-29]
 ---
 
 find_vault_root honors CLAUDE_PROJECT_DIR only when $CLAUDE_PROJECT_DIR/.compass exists; otherwise it walks up from cwd and can resolve to the enclosing repo's vault.

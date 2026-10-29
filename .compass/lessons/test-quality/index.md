@@ -19,6 +19,7 @@ Class here: what makes tests and their evaluation mean something
 
 - [[lessons/test-quality/LESSON-revert-to-prove-a-regression-test|LESSON-revert-to-prove-a-regression-test]] - A test or fix that passes without discriminating the change under test is unwritten; prove it by revert or red run
 - [[lessons/test-quality/LESSON-suite-size-is-not-coverage|LESSON-suite-size-is-not-coverage]] - 44 tests for two behaviors carried mass redundancy and two critical holes at once; a delete list is half a review
+- [[lessons/test-quality/LESSON-test-delimited-blocks-with-the-delimiter-quoted|LESSON-test-delimited-blocks-with-the-delimiter-quoted]] - Code that rewrites a span between marker lines must be tested with content quoting the marker; first-occurrence find cuts or duplicates text
 - [[lessons/test-quality/LESSON-test-driven-tasks-dont-discriminate|LESSON-test-driven-tasks-dont-discriminate]] - When tests fully encode the spec, frontier models already read-tests-first; methodology can't be measured on such tasks
 - [[lessons/test-quality/LESSON-untestable-criterion-is-a-spec-defect|LESSON-untestable-criterion-is-a-spec-defect]] - A criterion that defines no input class cannot be tested; report the spec defect, never invent the equivalence class
 - [[lessons/test-quality/LESSON-vendored-test-suite-must-be-layout-aware|LESSON-vendored-test-suite-must-be-layout-aware]] - A vendored test suite must be layout-aware

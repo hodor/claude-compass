@@ -22,6 +22,7 @@ tags:
   - decisions/vault-structure/ADR-004-hierarchical-specs-with-facets.md
   adversarial:
   - lessons/pipeline/LESSON-adversarial-plan-review-before-build.md
+  - lessons/test-quality/LESSON-test-delimited-blocks-with-the-delimiter-quoted.md
   - specs/pipeline/SPEC-013-test-quality.md
   agent-instructions:
   - lessons/instructions/LESSON-threshold-in-prose-becomes-the-criterion.md
@@ -110,6 +111,8 @@ tags:
   - lessons/experiments/LESSON-blind-the-author-in-self-validation.md
   bloat:
   - specs/pipeline/SPEC-013-test-quality.md
+  block-rewrite:
+  - lessons/test-quality/LESSON-test-delimited-blocks-with-the-delimiter-quoted.md
   bm25:
   - research/vault-structure/RESEARCH-rag-fit-for-large-vaults.md
   bookkeeping:
@@ -398,6 +401,8 @@ tags:
   - lessons/pipeline/LESSON-stated-definitions-are-not-research-axes.md
   delete:
   - specs/vault-structure/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md
+  delimiters:
+  - lessons/test-quality/LESSON-test-delimited-blocks-with-the-delimiter-quoted.md
   denning:
   - decisions/vault-structure/ADR-004-hierarchical-specs-with-facets.md
   derived-index:
@@ -979,6 +984,7 @@ tags:
   markdown:
   - specs/human-surface/SPEC-031-working-in-compass-is-visual.md
   markers:
+  - lessons/test-quality/LESSON-test-delimited-blocks-with-the-delimiter-quoted.md
   - research/distribution/RESEARCH-update-safe-customization.md
   materializers:
   - plans/PLAN-017-dsh-host-support.md
@@ -1709,6 +1715,7 @@ tags:
   testing:
   - lessons/test-quality/LESSON-revert-to-prove-a-regression-test.md
   - lessons/test-quality/LESSON-suite-size-is-not-coverage.md
+  - lessons/test-quality/LESSON-test-delimited-blocks-with-the-delimiter-quoted.md
   - lessons/test-quality/LESSON-untestable-criterion-is-a-spec-defect.md
   - lessons/test-quality/LESSON-vendored-test-suite-must-be-layout-aware.md
   - lessons/test-quality/index.md

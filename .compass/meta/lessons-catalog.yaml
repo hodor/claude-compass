@@ -385,3 +385,10 @@ lessons:
     tags: [git, stash, subagents, tester, uncommitted-work]
     score: 5
     summary: "A subagent that runs git stash in a shared checkout reverts the human's uncommitted files; brief agents to never stash, reset or checkout there"
+  - file: "LESSON-test-delimited-blocks-with-the-delimiter-quoted.md"
+    status: active
+    category: process
+    area: testing
+    tags: [testing, delimiters, markers, adversarial, block-rewrite]
+    score: 5
+    summary: "Code that rewrites a span between marker lines must be tested with content quoting the marker; first-occurrence find cuts or duplicates text"

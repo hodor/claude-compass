@@ -27,7 +27,7 @@ Archived lessons live in `archive/lessons/`.
 - [[lessons/pipeline/index|pipeline]] (7 lessons) - how work passes the human's gates - adversarial review before approval, walkthroughs in his words, verifying reversibility before acting unasked
 - [[lessons/platform/index|platform]] (3 lessons) - host and OS quirks - line endings, shells, Windows
 - [[lessons/subagents/index|subagents]] (8 lessons) - spawning, briefing, and supervising agents
-- [[lessons/test-quality/index|test-quality]] (5 lessons) - what makes tests and their evaluation mean something
+- [[lessons/test-quality/index|test-quality]] (6 lessons) - what makes tests and their evaluation mean something
 - [[lessons/vault-structure/index|vault-structure]] (11 lessons) - vault mechanics - indexes, links, discovery, placement
 - [[LESSON-parallel-research-check-siblings-first]] - Research agents fanned out onto one spec should read sibling docs in the target domain folder first, and scope around what a sibling already owns
 - [[LESSON-verify-exactness-past-a-compressing-layer]] - Headroom-compressed Bash output can drop words; verify exact text via Read or grep before judging it

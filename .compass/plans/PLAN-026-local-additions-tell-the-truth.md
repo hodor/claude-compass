@@ -1,7 +1,7 @@
 ---
 title: "Local Additions Survive Update, and Say So"
 type: plan
-status: approved
+status: done
 approved: 2026-10-29
 confidence: medium
 area: methodology
@@ -35,12 +35,6 @@ flowchart LR
   T230 & T232 --> T233 --> T234
   T229 --> T235
 ```
-
-> [!important] You decide
-> Stage 2 (TASK-234 and TASK-235) is built, tested, and installed in this repository as Compass 0.34.0. An update now saves a file you edited by hand under `.compass/meta/local/kept/` before replacing it, and `compass overlay --extract <name>` turns the lines you added into a local addition.
-> - Read the table in [[research/distribution/RESEARCH-update-safe-customization#A hand edit through a real update (0.34.0)]]: do the update notice and the `--extract` line make your next step clear?
->
-> Approve if they do: `master` is pushed to GitHub, which publishes 0.34.0 to every project that updates from there, and the plan closes. Needs changes with a note holds the push.
 
 ## Goal
 
@@ -135,3 +129,4 @@ How each Stage 2 task differs from its one-line sketch, and why. The sketches re
 - 2026-10-29: Approved in Obsidian with the recommended answers: an edited addition replaces its own block, additions reach dsh, and Stage 2 keeps old hand edits.
 - 2026-10-29: Stage 1 done; Stage 2 detailed (TASK-234, TASK-235).
 - 2026-10-29: Stage 1 checks approved in Obsidian, and with them the push to GitHub.
+- 2026-10-29: Stage 2 approved in Obsidian, and with it the push of 0.34.0 to GitHub; the plan is done.
