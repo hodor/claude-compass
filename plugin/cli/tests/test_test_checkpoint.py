@@ -670,6 +670,44 @@ class ClassificationTests(unittest.TestCase):
         self.assertEqual(code, 0, out + err)
         self.assertNotIn("not-passed", out)
 
+    def test_verify_against_run_param_id_holding_brackets_reads_the_test_name(self):
+        """Adversarial where: `ids=str` on a list parameter prints the id as
+        `test_a[['--material']]`; a param pattern that ends at the first `]`
+        leaves the trailing `]` unmatched, so the line is skipped and every
+        passing case reads as not-passed (GitHub #49). The `-v` and the `-rA`
+        summary forms are each read on their own, since either one alone
+        proves every case."""
+        forms = {
+            "-v": ("tests/test_foo.py::FooTests::test_a[['--material']] PASSED   [ 50%]\n"
+                   "tests/test_foo.py::FooTests::test_b[['a b', 'c']] PASSED     [100%]\n"),
+            "-rA": ("PASSED tests/test_foo.py::FooTests::test_a[['--material']]\n"
+                    "PASSED tests/test_foo.py::FooTests::test_b[['a b', 'c']]\n"),
+        }
+        for n, (form, lines) in enumerate(forms.items()):
+            task = f"TASK-11{7 + n}"
+            repo_root, _ = build_checkpoint(self, task)
+            evidence = repo_root / "evidence.txt"
+            evidence.write_text(lines, encoding="utf-8")
+            code, out, err = self._verify(task=task, extra=["--against-run", str(evidence)])
+            self.assertEqual(code, 0, f"{form}: {out}{err}")
+            self.assertNotIn("not-passed", out)
+
+    def test_verify_against_run_failed_case_with_bracketed_param_id_reads_not_passed(self):
+        """Adversarial where: a parser that drops bracketed-id lines it cannot
+        read would also drop a failing case, and a passing sibling would then
+        stand for the whole test."""
+        repo_root, _ = build_checkpoint(self, "TASK-119")
+        evidence = repo_root / "evidence.txt"
+        evidence.write_text(
+            "tests/test_foo.py::FooTests::test_a[['x']] PASSED   [ 25%]\n"
+            "tests/test_foo.py::FooTests::test_a[['y']] FAILED   [ 50%]\n"
+            "tests/test_foo.py::FooTests::test_b[['x']] PASSED   [100%]\n",
+            encoding="utf-8",
+        )
+        code, out, err = self._verify(task="TASK-119", extra=["--against-run", str(evidence)])
+        self.assertNotEqual(code, 0, out + err)
+        self.assertIn("not-passed", out)
+
     def test_verify_against_run_reads_evidence_in_a_windows_encoding(self):
         """Adversarial where: a Windows shell saves the run as cp1252 (a
         dash printed by a test is byte 0x97) or, from a PowerShell `>`
