@@ -42,9 +42,9 @@ A project's workflow customizations live in dedicated local files that update ne
 - A reserved project-local location for customizations that `/compass:update` and `/compass:setup` treat as untouchable and never overwrite or delete.
 - Customizations to shipped agents, rules, and skills coexist with shipped updates: a shipped protocol fix arrives via update AND the local addition persists, without hand-merging.
 - Re-application is mechanical and automatic at update time, off the agent token budget, following the `apply-models` precedent.
-- The update report names every customization it re-applied; `compass doctor` detects a customization that failed to apply or references a shipped anchor that no longer exists.
+- The update report names every customization it re-applied; `compass doctor` detects a customization that failed to apply or references a shipped anchor that no longer exists. ^need-report
 - A customization is expressible without copying the whole shipped file - additions and targeted modifications, so local content does not fork the shipped surface and rot.
-- Existing hand-edited installs can migrate: their diffs against shipped files are extractable into the local form.
+- Existing hand-edited installs can migrate: their diffs against shipped files are extractable into the local form. ^need-migrate
 
 ## Hypothesis (falsifiable)
 
@@ -59,7 +59,7 @@ If customizations live in update-untouchable local files with mechanical re-appl
 ## Success criteria
 
 - A project's own `CLAUDE.md` is never touched by update, proven by test and by a live round-trip.
-- A project's Compass-usage instructions for its agents survive a real update round-trip intact, with the report naming what was re-applied. (The Defold set named at spec time no longer exists on disk - it is the wiped evidence, not a live benchmark.)
+- A project's Compass-usage instructions for its agents survive a real update round-trip intact, with the report naming what was re-applied. (The Defold set named at spec time no longer exists on disk - it is the wiped evidence, not a live benchmark.) ^live-round-trip
 - A shipped update to a customized file lands alongside the local additions without conflict on the benchmark set.
 - doctor flags a stale or unapplicable customization with an actionable message.
 
