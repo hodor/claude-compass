@@ -337,6 +337,12 @@ def _lessons_catalog_check(vault_root):
     return Check("lessons-catalog.yaml", OK, f"{path} present")
 
 
+def _one_line(text):
+    """Collapse whitespace runs and control characters to single spaces so a
+    value stays inside one row of the plain-text table."""
+    return re.sub(r"[\s\x00-\x1f\x7f]+", " ", str(text)).strip()
+
+
 def _overlay_check(vault_root):
     """Advisory row for project-local additions (ADR-020). OK means every
     addition is current in its installed target, or there are none. WARN
@@ -354,7 +360,7 @@ def _overlay_check(vault_root):
         return Check("local additions", OK, "none")
 
     def named(state):
-        return [rel for rel, got in states if got == state]
+        return [_one_line(rel) for rel, got in states if got == state]
 
     orphans = named(overlay_mod.NO_SHIPPED_FILE)
     parts = []
@@ -363,8 +369,9 @@ def _overlay_check(vault_root):
         if rels:
             parts.append(f"{state}: {', '.join(rels)}")
     unreadable = [
-        f"{rel} ({failed[rel]})" if rel in failed else rel
-        for rel in named(overlay_mod.UNREADABLE)
+        f"{_one_line(rel)} ({_one_line(failed[rel])})" if rel in failed else _one_line(rel)
+        for rel, got in states
+        if got == overlay_mod.UNREADABLE
     ]
     if unreadable:
         parts.append(f"cannot be read: {', '.join(unreadable)}")
