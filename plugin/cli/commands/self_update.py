@@ -17,6 +17,18 @@ A `source:` that resolves inside the project root is the dev repo
 bootstrapping itself: the local `plugin/` dir is the canonical source there,
 so it is applied directly and the network is never consulted.
 
+Each update records the sha256 of every agent, rule, and skill file it
+installs in `.compass/meta/installed.json`. The next update compares each
+installed file with that record before replacing or retiring it, and saves a
+file that differs byte-for-byte under `.compass/meta/local/kept/`, naming it
+in the notice. Its own local-addition block, its line endings and trailing
+newlines, and the `model:` and `effort:` lines `apply-models` writes into an
+agent are not differences. A project with no record counts every file as
+unedited.
+`--keep-edits <src>` does the same save and record without copying
+anything; `/compass:update` runs it before its own copy step, and it exits
+1 when `src` holds no plugin.
+
 Every path exits 0 and stays silent unless an update landed - SessionStart
 stdout enters model context, so the single "updated X -> Y" line reaches the
 session exactly when its tooling changed. Updates and failures append to
@@ -24,6 +36,7 @@ session exactly when its tooling changed. Updates and failures append to
 """
 
 import datetime
+import hashlib
 import json
 import os
 import re
@@ -35,8 +48,10 @@ import time
 from pathlib import Path
 
 import vaultlib
+from commands import overlay as overlay_mod
 
 SENTINEL = "tmp/.self-update-check"
+INSTALLED_FILE = "meta/installed.json"
 LOG_FILE = "tmp/self-update.log"
 RECHECK_FLOOR_SECONDS = 3600
 NETWORK_TIMEOUT = 15
@@ -240,17 +255,167 @@ def merge_settings(project_root, manifest_path):
     settings_path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
 
 
+def _sha256(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def _comparable(rel, data):
+    """The bytes of an installed or shipped file as a hand-edit check
+    compares them: LF line endings, trailing newlines trimmed, and for an
+    agent the frontmatter `model:` and `effort:` lines dropped, since
+    `compass apply-models` writes those from the project's model policy.
+    Bytes that are not UTF-8 compare as they are."""
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    if rel.startswith("agents/"):
+        lines = text.split("\n")
+        if lines and lines[0].strip() == "---":
+            for end in range(1, len(lines)):
+                if lines[end].strip() == "---":
+                    head = [
+                        line for line in lines[1:end]
+                        if not re.match(r"(model|effort):", line)
+                    ]
+                    lines = [lines[0]] + head + lines[end:]
+                    break
+        text = "\n".join(lines)
+    return text.rstrip("\n").encode("utf-8")
+
+
+def _fingerprint(rel, data):
+    return _sha256(_comparable(rel, data))
+
+
+def _shipped_files(src, claude):
+    """Return [(rel, shipped path, installed path)] for every agent, rule,
+    and skill file `src` ships. `rel` is the file's path under `.claude/`
+    (`agents/builder.md`, `skills/sweeping/SKILL.md`)."""
+    found = []
+    for kind in ("agents", "rules"):
+        for f in sorted((src / "templates" / kind).glob("*.md")):
+            found.append((f"{kind}/{f.name}", f, claude / kind / f.name))
+    for skill_dir in sorted((src / "skills").iterdir()):
+        if skill_dir.is_dir():
+            for f in sorted(skill_dir.glob("*.md")):
+                found.append(
+                    (
+                        f"skills/{skill_dir.name}/{f.name}",
+                        f,
+                        claude / "skills" / skill_dir.name / f.name,
+                    )
+                )
+    return found
+
+
+def _read_installed(vault_root):
+    """The record of what an update installed: {path under `.claude/`:
+    fingerprint of the shipped bytes}. None when the vault has no readable
+    record."""
+    try:
+        data = json.loads((vault_root / INSTALLED_FILE).read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _write_installed(vault_root, files):
+    """Record the fingerprint of each shipped file just installed. A vault
+    that refuses the write leaves the older record, which can only make a
+    later update save a copy it did not need."""
+    record = {rel: _fingerprint(rel, shipped.read_bytes()) for rel, shipped, _ in files}
+    try:
+        path = vault_root / INSTALLED_FILE
+        path.parent.mkdir(parents=True, exist_ok=True)
+        vaultlib.write_text_lf(path, json.dumps(record, indent=2, sort_keys=True) + "\n")
+    except OSError:
+        pass
+
+
+def _save_kept(vault_root, name, data):
+    """Write `data` byte-for-byte under `meta/local/kept/` as `name`, or as
+    `<stem>.2.md`, `<stem>.3.md` when an earlier copy holds the name. An
+    existing copy is never replaced. Returns the name written, or None when
+    an earlier copy already holds these exact bytes."""
+    n = 1
+    while True:
+        saved = name if n == 1 else f"{name[: -len('.md')]}.{n}.md"
+        path = vault_root / overlay_mod.KEPT_DIR / saved
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.is_file() and path.read_bytes() == data:
+            return None
+        try:
+            with open(path, "xb") as handle:
+                handle.write(data)
+            return saved
+        except FileExistsError:
+            n += 1
+
+
+def _retired_files(claude):
+    """Return [(rel, None, installed path)] for every file in an installed
+    skill folder that an update removes (`RETIRED_SKILLS`)."""
+    found = []
+    for retired in RETIRED_SKILLS:
+        for f in sorted((claude / "skills" / retired).glob("*.md")):
+            found.append((f"skills/{retired}/{f.name}", None, f))
+    return found
+
+
+def _keep_hand_edits(vault_root, files):
+    """Save every installed file whose bytes differ from the shipped text
+    the last update recorded for it, before the update replaces or removes
+    it. `files` lists the shipped files and the retired skill files the
+    update removes. The file's own local addition block, its line endings,
+    its trailing newlines and an agent's model policy are not edits. A file
+    that is missing or already equals what is about to ship is not saved, a
+    retired file with no recorded fingerprint cannot be judged, and a vault
+    with no record has nothing to compare against, so every file counts as
+    unedited. Returns the names saved; a save that fails raises, so no edit
+    is replaced unsaved."""
+    recorded = _read_installed(vault_root)
+    if recorded is None:
+        return []
+    kept = []
+    for rel, shipped, installed in files:
+        if not installed.is_file() or (shipped is None and rel not in recorded):
+            continue
+        current = installed.read_bytes()
+        known = {recorded.get(rel)}
+        if shipped is not None:
+            known.add(_fingerprint(rel, shipped.read_bytes()))
+        name = overlay_mod.addition_name(rel)
+        forms = overlay_mod.shipped_forms(name, current)
+        if any(_fingerprint(rel, form) in known for form in forms):
+            continue
+        saved = _save_kept(vault_root, name, current)
+        if saved is not None:
+            kept.append(saved)
+    return kept
+
+
 def _apply(src, project_root, apply_models):
     """Refresh every effective host's materialization from `src` in one run
     (SPEC-006 D-03/D-04/D-05): the Claude Code file set into `.claude/`
     (mirroring /compass:update step 4-5), and on a machine with dsh, the
     generated dsh materializations - detected, never asked. One run, every
     host - two hosts of one project can never sit on different Compass
-    versions. Returns the overlay report of the project's local additions
-    (see overlay.apply_overlays); a raise while applying them is reported as
-    a `failed` entry."""
+    versions. Installed agents, rules, and skills that were edited by hand
+    are saved under `meta/local/kept/` first, and the hash of each shipped
+    file is recorded in `meta/installed.json`. Returns the overlay report of
+    the project's local additions (see overlay.apply_overlays) with a `kept`
+    list of the saved names; a raise while applying the additions is
+    reported as a `failed` entry."""
     src = Path(src)
     claude = Path(project_root) / ".claude"
+    vault_root = Path(project_root) / ".compass"
+    files = _shipped_files(src, claude)
+    if vault_root.is_dir():
+        kept = _keep_hand_edits(vault_root, files + _retired_files(claude))
+    else:
+        kept = []
     agents = claude / "agents"
     agents.mkdir(parents=True, exist_ok=True)
     for f in (src / "templates" / "agents").glob("*.md"):
@@ -272,6 +437,8 @@ def _apply(src, project_root, apply_models):
         dest.mkdir(parents=True, exist_ok=True)
         for f in skill_dir.glob("*.md"):
             shutil.copy2(f, dest / f.name)
+    if vault_root.is_dir():
+        _write_installed(vault_root, files)
     for retired in RETIRED_SKILLS:
         retired_dir = claude / "skills" / retired
         if retired_dir.is_dir():
@@ -318,6 +485,7 @@ def _apply(src, project_root, apply_models):
         additions = overlay.apply_overlays(Path(project_root) / ".compass")
     except Exception as exc:
         additions = {"failed": {"*": str(exc) or type(exc).__name__}}
+    additions = dict(additions, kept=kept)
     if apply_models:
         python = sys.executable or "python"
         try:
@@ -343,8 +511,9 @@ def _one_line(name):
 
 def _additions_clause(report):
     """The `; `-prefixed notice text for an overlay report: the additions
-    re-applied, those with no shipped file, and a pointer to `compass
-    doctor` when any failed. Empty when there is nothing to say."""
+    re-applied, those with no shipped file, a pointer to `compass doctor`
+    when any failed, and the hand-edited files saved before replacement.
+    Empty when there is nothing to say."""
     report = report or {}
     clause = ""
     if report.get("applied"):
@@ -355,6 +524,9 @@ def _additions_clause(report):
         clause += "; no shipped file: " + names
     if report.get("failed"):
         clause += "; local additions not applied (run compass doctor)"
+    if report.get("kept"):
+        names = ", ".join(map(_one_line, report["kept"]))
+        clause += "; hand edits saved to meta/local/kept: " + names
     return clause
 
 
@@ -441,6 +613,10 @@ def _perform(vault_root, project_root, force, apply_models):
             additions = _apply(src_dir, project_root, apply_models)
             _normalize_flat_specs(vault_root)
             notice = None
+            if new_version == installed and additions.get("kept"):
+                clause = _additions_clause(additions)
+                notice = f"Compass refreshed from local source{clause}"
+                _log(vault_root, f"refreshed-local{clause}")
             if new_version != installed:
                 if raw:
                     _write_plugin_yaml(
@@ -501,7 +677,40 @@ def _perform(vault_root, project_root, force, apply_models):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def keep_edits(project_root, src):
+    """Save every hand-edited agent, rule, and skill file under
+    `meta/local/kept/` and record the hashes `src` ships, without copying
+    anything. `/compass:update` runs this before its own copy step. Returns
+    the names saved."""
+    project_root = Path(project_root)
+    vault_root = project_root / ".compass"
+    claude = project_root / ".claude"
+    files = _shipped_files(Path(src), claude)
+    kept = _keep_hand_edits(vault_root, files + _retired_files(claude))
+    _write_installed(vault_root, files)
+    return kept
+
+
 def run(args):
+    if "--keep-edits" in args:
+        i = args.index("--keep-edits")
+        src = Path(args[i + 1]) if i + 1 < len(args) else None
+        if src is None or not (src / ".claude-plugin" / "plugin.json").is_file():
+            sys.stderr.write("compass self-update --keep-edits: no plugin at that path\n")
+            return 1
+        try:
+            vault_root = vaultlib.find_vault_root()
+        except Exception:
+            sys.stderr.write("compass self-update --keep-edits: no vault here\n")
+            return 1
+        kept = keep_edits(vault_root.parent, src)
+        if kept:
+            sys.stdout.write(
+                "hand edits saved to meta/local/kept: "
+                + ", ".join(map(_one_line, kept))
+                + "\n"
+            )
+        return 0
     force = "--force" in args
     try:
         vault_root = vaultlib.find_vault_root()

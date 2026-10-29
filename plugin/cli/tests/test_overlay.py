@@ -60,11 +60,17 @@ class OverlayFixture(unittest.TestCase):
         return (self.claude / "agents" / "researcher.md").read_text(encoding="utf-8")
 
     def run_cmd(self, args):
+        """Run the command with the project as cwd and no
+        CLAUDE_PROJECT_DIR, since `find_vault_root` honors that variable
+        before the cwd."""
+        from unittest import mock
+
         cwd = os.getcwd()
         os.chdir(self.project)
         buf = io.StringIO()
         try:
-            with redirect_stdout(buf):
+            with mock.patch.dict(os.environ), redirect_stdout(buf):
+                os.environ.pop("CLAUDE_PROJECT_DIR", None)
                 code = overlay_cmd.run(args)
         finally:
             os.chdir(cwd)
@@ -711,6 +717,174 @@ class ExtractTests(OverlayFixture):
         self.assertEqual(
             self.local_path(rel).read_bytes().decode("utf-8").strip(), "One added line."
         )
+
+
+class ExtractImplementationBranchTests(OverlayFixture):
+    """Branches of `--extract` that sit between the saved copy and the
+    addition: how the saved name resolves, how lines are classified, and how
+    new text joins an addition that already exists."""
+
+    SHIPPED = "# Researcher\n\nLine one.\nLine two.\n"
+
+    def target(self, rel):
+        kind, name = rel.split("/", 1)
+        stem = name[: -len(".md")]
+        if kind == "skills":
+            return self.claude / "skills" / stem / "SKILL.md"
+        return self.claude / kind / f"{stem}.md"
+
+    def install(self, rel, data):
+        path = self.target(rel)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+
+    def keep(self, name, data):
+        path = self.vault / "meta" / "local" / "kept" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+
+    def local_bytes(self, rel):
+        path = self.vault / "meta" / "local" / rel
+        return path.read_bytes() if path.exists() else None
+
+    def test_lines_appended_after_a_changed_last_shipped_line_still_become_the_addition(self):
+        """Adversarial where: the line classifier folds the appended lines
+        into the same difference block as a reworded or removed final
+        shipped line, so the reword is named but the appended text is
+        neither added nor reported, and the human's addition vanishes
+        without a word. The appended line becomes the addition in both
+        rows."""
+        rel = "agents/researcher.md"
+        rows = {
+            "last line reworded": "# Researcher\n\nLine one.\nLine 2 reworded.\nAppended note.\n",
+            "last line removed": "# Researcher\n\nLine one.\nAppended note.\n",
+        }
+        for name, kept in rows.items():
+            with self.subTest(row=name):
+                shutil.rmtree(self.vault / "meta" / "local", ignore_errors=True)
+                self.install(rel, self.SHIPPED.encode("utf-8"))
+                self.keep(rel, kept.encode("utf-8"))
+
+                _, out = self.run_cmd(["--extract", rel])
+
+                self.assertIn("Line two.", out)
+                added = self.local_bytes(rel)
+                self.assertIsNotNone(added, f"appended line dropped silently: {out!r}")
+                self.assertEqual(added.decode("utf-8").strip(), "Appended note.")
+
+    def test_extract_joins_an_existing_addition_without_losing_text_that_resembles_it(self):
+        """Adversarial where: the already-added check is a substring test
+        over the whole existing addition, so appended text that happens to sit
+        inside a longer existing line is taken for added, nothing is written,
+        and the command still reports success. Rows: new text that differs,
+        new text that is a fragment of an existing line, and the same text
+        extracted twice (added once)."""
+        rel = "agents/researcher.md"
+        rows = {
+            "different text": ("Old rule: lint first.", "New rule."),
+            "fragment of an existing line": ("Old rule: run the linter.", "run the linter"),
+            "same text twice": ("Old rule.", "Old rule."),
+        }
+        for name, (existing, appended) in rows.items():
+            with self.subTest(row=name):
+                shutil.rmtree(self.vault / "meta" / "local", ignore_errors=True)
+                self.install(rel, self.SHIPPED.encode("utf-8"))
+                self.local(rel, existing + "\n")
+                self.keep(rel, (self.SHIPPED + appended + "\n").encode("utf-8"))
+
+                code, _ = self.run_cmd(["--extract", rel])
+
+                self.assertEqual(code, 0)
+                text = self.target(rel).read_bytes().decode("utf-8")
+                self.assertIn(existing, text)
+                self.assertIn(appended, text.split("project-local overlay")[-1])
+                if name == "fragment of an existing line":
+                    lines = [ln.strip() for ln in text.splitlines()]
+                    self.assertIn(appended, lines, "fragment was never added as its own text")
+                if name == "same text twice":
+                    self.assertEqual(text.count("Old rule."), 1)
+
+    def test_saved_names_resolve_to_their_addition_whatever_the_line_endings_or_spelling(self):
+        """Adversarial where: the numbered-copy suffix is not stripped, a CRLF
+        saved copy leaves `\\r` in the addition (so it never reads `current`
+        in an LF-checked target), or a file name with a space or non-ASCII
+        letters is refused. Each saved copy takes its appended line to the
+        addition of the file it belongs to, applied."""
+        rows = {
+            "numbered copy": ("agents/researcher.md", "agents/researcher.2.md", "\n"),
+            "crlf saved copy": ("agents/researcher.md", "agents/researcher.md", "\r\n"),
+            "spaced non-ascii name": ("agents/my agent é.md", "agents/my agent é.md", "\n"),
+            "skill": ("skills/autopilot.md", "skills/autopilot.md", "\n"),
+        }
+        for name, (rel, saved, eol) in rows.items():
+            with self.subTest(row=name):
+                shutil.rmtree(self.vault / "meta" / "local", ignore_errors=True)
+                shipped = "# Doc\n\nShipped.\n"
+                self.install(rel, shipped.encode("utf-8"))
+                kept = (shipped + "Appended note.\n").replace("\n", eol)
+                self.keep(saved, kept.encode("utf-8"))
+
+                code, out = self.run_cmd(["--extract", saved])
+
+                self.assertEqual(code, 0, out)
+                self.assertEqual(self.local_bytes(rel).strip(), b"Appended note.")
+                _, listing = self.run_cmd([])
+                row = [ln for ln in listing.splitlines() if ln.startswith(rel)]
+                self.assertEqual(len(row), 1, listing)
+                self.assertTrue(row[0].endswith("current"), row[0])
+
+    def test_names_outside_the_saved_file_shape_are_refused_and_write_nothing(self):
+        """Adversarial where: a name that is not `<agents|rules|skills>/<file>.md`
+        reaches the path join, so `..` climbs out of `kept/`, a bare file name
+        or an unknown kind is looked up as a path, or a name with no `.md` is
+        sliced into a wrong stem. Each exits 1 and creates no addition."""
+        self.install("agents/researcher.md", self.SHIPPED.encode("utf-8"))
+        self.keep("agents/researcher.md", (self.SHIPPED + "Appended.\n").encode("utf-8"))
+        rows = [
+            "researcher.md",
+            "agents/../rules/compass-pipeline.md",
+            "commands/researcher.md",
+            "agents/researcher",
+            "agents/researcher.txt",
+            "agents/.md",
+            "agents/sub/researcher.md",
+            "",
+        ]
+        for name in rows:
+            with self.subTest(name=name):
+                code, _ = self.run_cmd(["--extract", name])
+                self.assertEqual(code, 1)
+                self.assertFalse((self.vault / "meta" / "local" / "agents").exists())
+
+    def test_a_saved_copy_that_is_not_utf8_is_refused_and_writes_nothing(self):
+        """Adversarial where: a saved copy holding bytes that are not UTF-8
+        (a hand edit saved from another encoding) raises out of the decode
+        instead of exiting 1, or is decoded with replacement characters and
+        turned into an addition. It exits 1 and creates no addition."""
+        rel = "agents/researcher.md"
+        self.install(rel, self.SHIPPED.encode("utf-8"))
+        self.keep(rel, self.SHIPPED.encode("utf-8") + b"caf\xe9 note\n")
+
+        code, out = self.run_cmd(["--extract", rel])
+
+        self.assertEqual(code, 1, out)
+        self.assertIsNone(self.local_bytes(rel))
+
+    def test_extract_on_a_saved_skill_file_beside_skill_md_says_where_it_stays(self):
+        """Adversarial where: update saves an edited skill file other than
+        SKILL.md, and `--extract` on it reports a malformed name with exit 1,
+        though the name is exactly what the notice printed. It exits 0, says
+        a local addition extends SKILL.md only, writes no addition, and the
+        saved copy stays."""
+        name = "skills/lessons/REFERENCE.md"
+        self.keep(name, b"Reference.\nMy note.\n")
+
+        code, out = self.run_cmd(["--extract", name])
+
+        self.assertEqual(code, 0)
+        self.assertIn("SKILL.md only", out)
+        self.assertTrue((self.vault / "meta" / "local" / "kept" / name).is_file())
+        self.assertIsNone(self.local_bytes("skills/lessons.md"))
 
 
 if __name__ == "__main__":

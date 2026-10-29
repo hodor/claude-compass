@@ -395,14 +395,14 @@ class SettingsMergeTests(SelfUpdateFixture):
         # compass; only commands that run Compass's CLI are Compass's.
         user_commands = [
             "bash /home/me/compass-app/lint.sh",
-            "node F:\work\compass\check.js",
+            r"node F:\work\compass\check.js",
             "echo compass",
             "python3 tools/compass_report.py",
         ]
         stale = [
             'python3 "$CLAUDE_PLUGIN_ROOT/cli/compass" sync',
             'python3 "${CLAUDE_PLUGIN_ROOT}/cli/compass" sync',
-            'python "$CLAUDE_PROJECT_DIR\.claude\cli\compass" sync --hook',
+            r'python "$CLAUDE_PROJECT_DIR\.claude\cli\compass" sync --hook',
             "python .claude/cli/compass capture-check --hook",
         ]
         groups = [
@@ -467,9 +467,6 @@ class NeverBlocksTests(SelfUpdateFixture):
         self.assertIn("0.9.0 -> 9.9.9", out)
         self.assertEqual(len(out.strip().splitlines()), 1)
 
-
-if __name__ == "__main__":
-    unittest.main()
 
 
 class NormalizeFlatSpecsTests(SelfUpdateFixture):
@@ -1119,3 +1116,372 @@ class LocalAdditionBlockTests(HandEditFixture):
         loud = self.reinstall(agent="agent v3")
         self.assertEqual(self.kept_names(loud["notice"]), ["agents/builder.md"])
         self.assertEqual((self.kept_dir / "agents" / "builder.md").read_bytes(), edited)
+
+
+class ManualUpdateKeepsEditsTests(HandEditFixture):
+    """`/compass:update` copies the clone into `.claude/` with `cp`; it first
+    runs `compass self-update --keep-edits <clone>` so a hand-edited file is
+    saved and the install record written, the same as an automatic update."""
+
+    def keep_edits(self, src):
+        """Run `--keep-edits` with the project as cwd and no
+        CLAUDE_PROJECT_DIR, since `find_vault_root` honors that variable
+        before the cwd."""
+        from unittest import mock
+
+        cwd = os.getcwd()
+        os.chdir(self.project)
+        buf = io.StringIO()
+        try:
+            with mock.patch.dict(os.environ), redirect_stdout(buf):
+                os.environ.pop("CLAUDE_PROJECT_DIR", None)
+                code = self_update.run(["--keep-edits", str(src)])
+        finally:
+            os.chdir(cwd)
+        return code, buf.getvalue()
+
+    def test_keep_edits_saves_an_edited_file_and_records_what_ships(self):
+        """Adversarial where: the manual path saves nothing, so the `cp` that
+        follows destroys the human's edit; saves an untouched file; leaves
+        the record describing the old release, so the next update calls the
+        fresh copy hand edited; or copies anything into `.claude/` itself,
+        which is the skill's own step. The edited agent is saved and named
+        on one line, the untouched rule is not, the record holds the hashes
+        of the new shipped text, and the installed files are unchanged."""
+        self.fake_remote()
+        self.perform()
+        self.write_installed("agents/builder.md", b"agent\nmy private rule\n")
+        self.set_shipped(self.external_src, agent="agent v2", rule="rule v2")
+
+        code, out = self.keep_edits(self.external_src)
+
+        self.assertEqual(code, 0)
+        self.assertEqual(self.kept_files(), ["agents/builder.md"])
+        self.assertEqual(
+            (self.kept_dir / "agents" / "builder.md").read_bytes(),
+            b"agent\nmy private rule\n",
+        )
+        self.assertEqual(out, KEPT + "agents/builder.md\n")
+        self.assertEqual(self.recorded_for("agents/builder.md"), sha256_hex(b"agent v2"))
+        self.assertEqual(self.recorded_for("rules/r.md"), sha256_hex(b"rule v2"))
+        self.assertEqual(
+            (self.claude / "agents" / "builder.md").read_bytes(),
+            b"agent\nmy private rule\n",
+        )
+
+    def test_keep_edits_is_silent_with_nothing_edited_and_refuses_a_missing_source(self):
+        """Adversarial where: the entry prints a line when nothing was saved,
+        so the skill's report gains noise, or a wrong source path exits 0
+        and the skill copies over edits it never checked."""
+        self.fake_remote()
+        self.perform()
+        code, out = self.keep_edits(self.external_src)
+        self.assertEqual((code, out), (0, ""))
+        code, out = self.keep_edits(self.project / "no-such-clone")
+        self.assertNotEqual(code, 0)
+        self.assertEqual(self.kept_files(), [])
+
+
+class HandEditImplementationBranchTests(HandEditFixture):
+    """Branches that exist only in the hand-edit detection: the interplay
+    with `apply-models`, repeated `--keep-edits`, odd file names, unusual
+    line endings under an applied addition, and files a release adds or
+    drops."""
+
+    AGENT_WITH_FRONTMATTER = (
+        b"---\nname: builder\nmodel: sonnet\neffort: high\n---\nbody\n"
+    )
+
+    def in_project(self, call):
+        """Run `call()` with the project as cwd and no CLAUDE_PROJECT_DIR,
+        since `find_vault_root` honors that variable before the cwd."""
+        from unittest import mock
+
+        cwd = os.getcwd()
+        os.chdir(self.project)
+        try:
+            with mock.patch.dict(os.environ):
+                os.environ.pop("CLAUDE_PROJECT_DIR", None)
+                return call()
+        finally:
+            os.chdir(cwd)
+
+    def keep_edits(self, src):
+        from contextlib import redirect_stderr
+
+        out, err = io.StringIO(), io.StringIO()
+
+        def call():
+            with redirect_stdout(out), redirect_stderr(err):
+                return self_update.run(["--keep-edits", str(src)])
+
+        code = self.in_project(call)
+        return code, out.getvalue(), err.getvalue()
+
+    def run_apply_models(self):
+        from commands import apply_models
+
+        def call():
+            with redirect_stdout(io.StringIO()):
+                return apply_models.run(["--dir", str(self.claude / "agents")])
+
+        return self.in_project(call)
+
+    def test_a_model_override_written_by_apply_models_is_not_a_hand_edit(self):
+        """Adversarial where: every real update runs `apply-models` after the
+        copy, rewriting `model:`/`effort:` in the installed agents from the
+        project's `models.yaml`; the record holds the shipped hash, so the
+        next update calls each overridden agent hand edited, saves a copy
+        of it on every update and names it in the notice. A project that
+        pins builder to opus has its agent rewritten by the policy; an
+        update that ships the same text saves nothing."""
+        self.fake_remote()
+        self.set_shipped(self.external_src)
+        (self.external_src / "templates" / "agents" / "builder.md").write_bytes(
+            self.AGENT_WITH_FRONTMATTER
+        )
+        (self.vault / "meta" / "models.yaml").write_text(
+            "agents:\n  builder: opus\n", encoding="utf-8"
+        )
+        self.perform()
+        self.run_apply_models()
+        installed = (self.claude / "agents" / "builder.md").read_bytes()
+        self.assertIn(b"model: opus", installed, "policy did not rewrite the agent")
+
+        result = self.reinstall()
+
+        self.assertEqual(self.kept_files(), [])
+        self.assertEqual(self.kept_names(result["notice"]), [])
+
+    def test_keep_edits_run_twice_saves_one_edit_once(self):
+        """Adversarial where: `--keep-edits` records the new hashes without
+        copying, so a second run before the copy (the skill's step 4 run
+        again after a stop) finds the same edit still in place, differing
+        from the fresh record, and saves a second identical copy under
+        `builder.2.md` and names it again. The second run saves nothing."""
+        self.fake_remote()
+        self.perform()
+        self.write_installed("agents/builder.md", b"agent\nmy private rule\n")
+        self.set_shipped(self.external_src, agent="agent v2")
+
+        first = self.keep_edits(self.external_src)
+        second = self.keep_edits(self.external_src)
+
+        self.assertEqual(first[:2], (0, KEPT + "agents/builder.md\n"))
+        self.assertEqual(self.kept_files(), ["agents/builder.md"])
+        self.assertEqual(second[:2], (0, ""))
+
+    def test_keep_edits_refuses_without_a_vault_or_without_a_source_argument(self):
+        """Adversarial where: a project with no `.compass/` raises out of
+        `find_vault_root` instead of exiting 1, `--keep-edits` as the last
+        argument indexes past the list, or the next flag is read as the
+        source path. Each exits 1 with a message on stderr and writes
+        nothing."""
+        from contextlib import redirect_stderr
+
+        bare = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, bare, True)
+        rows = {
+            "no vault": (bare, ["--keep-edits", str(self.external_src)]),
+            "no argument": (self.project, ["--keep-edits"]),
+            "flag as source": (self.project, ["--keep-edits", "--force"]),
+        }
+        for name, (cwd_dir, args) in rows.items():
+            with self.subTest(row=name):
+                err = io.StringIO()
+
+                def call():
+                    with redirect_stdout(io.StringIO()), redirect_stderr(err):
+                        return self_update.run(args)
+
+                from unittest import mock
+
+                before = os.getcwd()
+                os.chdir(cwd_dir)
+                try:
+                    with mock.patch.dict(os.environ):
+                        os.environ.pop("CLAUDE_PROJECT_DIR", None)
+                        code = call()
+                finally:
+                    os.chdir(before)
+                self.assertEqual(code, 1)
+                self.assertIn("--keep-edits", err.getvalue())
+        self.assertFalse((bare / ".compass").exists())
+        self.assertFalse((self.vault / "meta" / "installed.json").exists())
+
+    def test_unusual_file_names_are_saved_byte_for_byte_and_named(self):
+        """Adversarial where: a name holding the notice's own `, ` and `; `
+        separators or non-ASCII characters is mangled, split or saved under
+        another name, losing the edit or pointing the human at a file that
+        does not exist. Both edited agents are saved under their own names
+        with the edited bytes, and the notice carries each name verbatim."""
+        self.fake_remote()
+        names = ["my agent; v2, copy.md", "café.md"]
+        agents = self.external_src / "templates" / "agents"
+        for name in names:
+            (agents / name).write_bytes(b"shipped")
+        self.perform()
+        for name in names:
+            self.write_installed(f"agents/{name}", b"shipped\nedit for " + name.encode("utf-8"))
+
+        result = self.reinstall(agent="agent v2")
+
+        for name in names:
+            with self.subTest(name=name):
+                self.assertEqual(
+                    (self.kept_dir / "agents" / name).read_bytes(),
+                    b"shipped\nedit for " + name.encode("utf-8"),
+                )
+                self.assertIn(f"agents/{name}", result["notice"])
+
+    def test_an_agent_named_like_a_numbered_copy_never_overwrites_a_saved_copy(self):
+        """Adversarial where: the numbered-copy scheme (`foo.2.md` for a
+        second save of `foo.md`) collides with a shipped agent that is itself
+        named `foo.2.md`; the save writes over the other file's copy and one
+        human's edit is lost. Three edits in one update (foo.md twice over
+        two updates, foo.2.md once) all remain findable under `kept/`."""
+        self.fake_remote()
+        agents = self.external_src / "templates" / "agents"
+        (agents / "foo.md").write_bytes(b"foo")
+        (agents / "foo.2.md").write_bytes(b"foo two")
+        self.perform()
+        self.write_installed("agents/foo.md", b"foo\nEDIT-ONE")
+        self.reinstall(agent="agent v2")
+        self.write_installed("agents/foo.md", b"foo\nEDIT-TWO")
+        self.write_installed("agents/foo.2.md", b"foo two\nEDIT-THREE")
+
+        self.reinstall(agent="agent v3")
+
+        saved = b"".join(p.read_bytes() for p in self.kept_dir.rglob("*") if p.is_file())
+        for marker in (b"EDIT-ONE", b"EDIT-TWO", b"EDIT-THREE"):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, saved)
+        self.assertEqual(len(self.kept_files()), 3)
+
+    def test_an_applied_addition_is_never_a_hand_edit_whatever_the_shipped_line_endings(self):
+        """Adversarial where: applying an addition rewrites the gap between
+        the shipped text and the marker, and the hash comparison recovers the
+        shipped bytes from only four forms of that text. A shipped file with
+        CRLF throughout, CRLF and no final newline, two or three trailing
+        newlines, or mixed endings is then called hand edited on every
+        update and saved each time. Each file carries an addition and an
+        update that ships the same text saves nothing."""
+        self.fake_remote()
+        rows = {
+            "crlf": b"line one\r\nline two\r\n",
+            "crlf-no-final-newline": b"line one\r\nline two",
+            "two-trailing-newlines": b"line one\n\n",
+            "three-trailing-newlines": b"line one\n\n\n",
+            "mixed": b"line one\r\nline two\nline three\n",
+        }
+        agents = self.external_src / "templates" / "agents"
+        for name, data in rows.items():
+            (agents / f"{name}.md").write_bytes(data)
+            local = self.vault / "meta" / "local" / "agents" / f"{name}.md"
+            local.parent.mkdir(parents=True, exist_ok=True)
+            local.write_bytes(b"Local rule for " + name.encode("utf-8") + b".\n")
+        self.perform()
+        for name in rows:
+            installed = (self.claude / "agents" / f"{name}.md").read_bytes()
+            self.assertIn(b"Local rule for", installed, name)
+
+        result = self.reinstall()
+
+        saved = self.kept_files()
+        for name in rows:
+            with self.subTest(row=name):
+                self.assertNotIn(f"agents/{name}.md", saved)
+        self.assertEqual(self.kept_names(result["notice"]), [])
+
+    def test_a_file_the_release_stops_shipping_is_left_alone(self):
+        """Adversarial where: the comparison walks the installed tree
+        instead of the release's file list, or a file missing from the new
+        release breaks the walk; an edited agent the release dropped is
+        replaced, saved needlessly, or aborts the update. The update lands,
+        the dropped agent keeps the human's bytes and nothing is saved."""
+        self.fake_remote()
+        agents = self.external_src / "templates" / "agents"
+        (agents / "old.md").write_bytes(b"old shipped")
+        self.perform()
+        self.write_installed("agents/old.md", b"old shipped\nmy edit")
+        (agents / "old.md").unlink()
+
+        result = self.reinstall(agent="agent v2")
+
+        self.assertEqual(result["status"], "updated")
+        self.assertEqual((self.claude / "agents" / "old.md").read_bytes(), b"old shipped\nmy edit")
+        self.assertEqual(self.kept_files(), [])
+
+    def test_a_file_of_the_humans_own_that_a_release_starts_shipping_is_saved(self):
+        """Adversarial where: a file with no entry in the record is taken for
+        unedited and replaced unsaved, destroying a project's own agent that
+        happens to share a name with a newly shipped one. The release adds
+        `mine.md`; the project already has its own `mine.md`; the update
+        saves it and names it."""
+        self.fake_remote()
+        self.perform()
+        self.write_installed("agents/mine.md", b"my own agent")
+        (self.external_src / "templates" / "agents" / "mine.md").write_bytes(b"shipped mine")
+
+        result = self.reinstall(agent="agent v2")
+
+        self.assertEqual((self.kept_dir / "agents" / "mine.md").read_bytes(), b"my own agent")
+        self.assertEqual((self.claude / "agents" / "mine.md").read_bytes(), b"shipped mine")
+        self.assertEqual(self.kept_names(result["notice"]), ["agents/mine.md"])
+
+    def test_an_edited_retired_skill_is_saved_before_the_update_removes_it(self):
+        """Adversarial where: the comparison walks only the release's file
+        list, so a skill the release retires is deleted with the human's edit
+        in it. One release ships `tree`; the human edits it; the next release
+        retires it. The edit is saved and named, the untouched retired copy
+        of another file is not, and the skill folder is gone."""
+        self.fake_remote()
+        retired = self.external_src / "skills" / "tree"
+        retired.mkdir(parents=True)
+        (retired / "SKILL.md").write_bytes(b"tree skill")
+        (retired / "NOTES.md").write_bytes(b"tree notes")
+        self.perform()
+        shutil.rmtree(retired)
+        self.write_installed("skills/tree/SKILL.md", b"tree skill\nmy tree rule")
+
+        result = self.reinstall(agent="agent v2")
+
+        self.assertFalse((self.claude / "skills" / "tree").exists())
+        self.assertEqual(self.kept_files(), ["skills/tree.md"])
+        self.assertEqual((self.kept_dir / "skills" / "tree.md").read_bytes(), b"tree skill\nmy tree rule")
+        self.assertEqual(self.kept_names(result["notice"]), ["skills/tree.md"])
+
+    def test_a_record_with_a_byte_order_mark_still_finds_the_edit(self):
+        """Adversarial where: an editor that saves `installed.json` with a
+        UTF-8 byte order mark makes the record unreadable, so every file
+        counts as unedited and the human's edit is replaced unsaved."""
+        self.fake_remote()
+        self.perform()
+        path = self.vault / "meta" / "installed.json"
+        path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes())
+        self.write_installed("agents/builder.md", b"agent\nmy private rule\n")
+
+        result = self.reinstall(agent="agent v2")
+
+        self.assertEqual(self.kept_names(result["notice"]), ["agents/builder.md"])
+
+    def test_a_model_override_does_not_hide_an_edit_to_the_agent_body(self):
+        """Adversarial where: the comparison that ignores the `model:` and
+        `effort:` lines ignores more of the file, so an agent carrying both a
+        model override and a body edit counts as unedited and the edit is
+        replaced unsaved."""
+        self.fake_remote()
+        self.set_shipped(self.external_src, agent=self.AGENT_WITH_FRONTMATTER.decode("utf-8"))
+        self.perform()
+        self.write_installed(
+            "agents/builder.md",
+            b"---\nname: builder\nmodel: opus\neffort: low\n---\nbody\nmy private rule\n",
+        )
+
+        result = self.reinstall()
+
+        self.assertEqual(self.kept_names(result["notice"]), ["agents/builder.md"])
+
+
+if __name__ == "__main__":
+    unittest.main()
