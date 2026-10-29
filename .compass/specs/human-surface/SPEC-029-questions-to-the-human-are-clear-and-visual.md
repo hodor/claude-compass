@@ -13,9 +13,6 @@ approved: 2026-10-18
 
 # Questions to the Human Are Clear and Visual
 
-> [!question] You decide
-> Approve D-01: every choice comes as numbered options.
-
 ## Problem
 
 I want to ensure that when Compass asks questions to the user, it's insanely clear and visual to the user, like it opens a UI to do it. Questions to the human need to be one by one as well.
