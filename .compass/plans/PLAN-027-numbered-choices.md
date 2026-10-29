@@ -24,24 +24,27 @@ flowchart LR
 ```
 
 > [!IMPORTANT]
-> You decide: approve one rule in the pipeline rules, the guide skill's fix and a 0.34.2 release, as the way decision D-01 (a numbered ruling) of [[specs/human-surface/SPEC-029-questions-to-the-human-are-clear-and-visual#Decisions]] reaches every question Compass asks.
+> You decide: approve one rule in the pipeline rules, the guide skill's fix and a 0.34.2 release, as the way decision D-01 (a numbered ruling) of [[specs/human-surface/SPEC-029-questions-to-the-human-are-clear-and-visual#Decisions]] reaches the questions an agent asks in the conversation.
+
+> [!note] Since your last review
+> The rule's scope is the general questions an agent asks in the conversation; approvals and other document gates already reach you in the md editor. The example below is a working question, and the Goal says where approvals go.
 
 ## Goal
 
 This plan carries decision D-01 of [[specs/human-surface/SPEC-029-questions-to-the-human-are-clear-and-visual|Questions to the Human Are Clear and Visual (SPEC-029)]], the spec (what we need): every choice put to the human is a numbered list, so a reply can be just the number.
 
-The rule lives once, in the pipeline rules. That file loads into every Claude Code session and is folded into `AGENTS.md` for dsh (a second agent CLI Compass installs into), which has no `AskUserQuestion` tool, so one sentence there reaches every skill, every agent and every host.
+The rule covers the general questions an agent asks in the conversation: which item first, what next, which of two readings is meant. Approvals and other document gates reach the human in the md editor through the review surface, and stay there. The rule lives once, in the pipeline rules. That file loads into every Claude Code session and is folded into `AGENTS.md` for dsh (a second agent CLI Compass installs into), which has no `AskUserQuestion` tool, so one sentence there reaches every skill, every agent and every host.
 
-What the human sees when a choice reaches him as text:
+What the human sees when a question reaches him as text:
 
 ```text
-Approve this plan?
-1. Approve as-is (Recommended): tasks are distributed.
-2. Request changes: you say what to modify.
-3. Reject: start over or abandon.
+What next?
+1. Fix the open issues (Recommended): each one gets a failing test, a fix and its closing commit.
+2. Plan the session-context loop: the plan goes to the md editor for approval.
+3. Something else: you say what.
 ```
 
-A reply of `1` approves.
+A reply of `1` picks the first option.
 
 ## The waves
 
