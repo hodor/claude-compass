@@ -17,6 +17,9 @@ summary: "control loops under .compass/loops/: `compass loop run` drives sensor,
 
 # Control Loops as Vault Artifacts
 
+> [!question] You decide
+> Approve this change to an approved plan: TASK-161 keeps only the ast-grep adapter, tested on its saved fixtures, and the new TASK-236 runs the live loop on this repository, shrinking the context Compass adds to every session ([[specs/tooling/SPEC-027-compass-uses-fewer-tokens]]). The actuator is sonnet at up to $0.50 a run, since it rewrites instructions; you state the target and the total budget before it runs, and you review every increment. TASK-163 now waits on TASK-236 and releases the next minor version.
+
 This plan implements [[specs/pipeline/SPEC-026-control-theory-for-loops]] on the evidence of [[research/pipeline/RESEARCH-control-theory-for-loops]]. A user, or Compass itself, gets a control loop for a task: a folder in the vault holding the loop's end state, sensor, controller, actuator, golden patterns, feedback file and state (D-01). Each run moves through an explicit state machine, measures itself, stays inside the caps and budget it is given, and stops on its own when it reaches the end state, runs out of budget, or keeps making things worse.
 
 ## The waves

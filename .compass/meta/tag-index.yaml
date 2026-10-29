@@ -645,6 +645,7 @@ tags:
   - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
   - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
   - handoffs/2026-08-31_12-04-15_v0.17.x-hardening.md
+  - handoffs/2026-10-29_09-30-00_issues-then-loops-then-workflow-spec.md
   - handoffs/PLAN-006-learning-loop/2026-08-06_06-02-00_phase2-live-hooks-first-firing.md
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_16-47-06_wave1-tree-uncommitted.md
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated.md
@@ -781,6 +782,7 @@ tags:
   - decisions/vault-structure/ADR-023-new-specs-propose-depth.md
   - loops/LOOP-001-visual-questions/index.md
   - plans/PLAN-022-review-in-obsidian.md
+  - plans/PLAN-027-numbered-choices.md
   - research/RESEARCH-review-in-obsidian.md
   - research/RESEARCH-review-mockup.md
   - specs/human-surface/SPEC-029-questions-to-the-human-are-clear-and-visual.md
@@ -873,6 +875,8 @@ tags:
   isolation:
   - lessons/subagents/LESSON-verify-worktree-isolation-is-real.md
   - lessons/vault-structure/LESSON-scratch-vaults-need-compass-dir.md
+  issues:
+  - handoffs/2026-10-29_09-30-00_issues-then-loops-then-workflow-spec.md
   iteration:
   - research/pipeline/RESEARCH-research-spawning-research.md
   jargon:
@@ -964,6 +968,7 @@ tags:
   - loops/LOOP-001-visual-questions/index.md
   - loops/LOOP-002-no-private-data/index.md
   loops:
+  - handoffs/2026-10-29_09-30-00_issues-then-loops-then-workflow-spec.md
   - lessons/pipeline/LESSON-subscription-cost-is-an-estimate-not-a-budget.md
   - plans/PLAN-021-control-loops.md
   - research/pipeline/RESEARCH-control-theory-for-loops.md
@@ -1212,6 +1217,8 @@ tags:
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
   - specs/pipeline/SPEC-030-a-loop-moves-specs-through-the-pipeline.md
   - specs/pipeline/index.md
+  pipeline-rules:
+  - plans/PLAN-027-numbered-choices.md
   placement:
   - decisions/vault-structure/ADR-023-new-specs-propose-depth.md
   - plans/PLAN-023-taxonomy-review-at-spec-creation.md
@@ -1331,6 +1338,7 @@ tags:
   - specs/vault-structure/SPEC-011-vault-graph-queries.md
   questions:
   - loops/LOOP-001-visual-questions/index.md
+  - plans/PLAN-027-numbered-choices.md
   - specs/human-surface/SPEC-029-questions-to-the-human-are-clear-and-visual.md
   rag:
   - research/vault-structure/RESEARCH-rag-fit-for-large-vaults.md
@@ -1372,6 +1380,7 @@ tags:
   release:
   - handoffs/2026-08-24_15-00-03_v0.8.1-invisible-capture-shipped.md
   - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
+  - handoffs/2026-10-29_09-30-00_issues-then-loops-then-workflow-spec.md
   releases:
   - handoffs/2026-08-31_12-04-15_v0.17.x-hardening.md
   reliability:
@@ -1798,6 +1807,7 @@ tags:
   ui:
   - lessons/pipeline/LESSON-ui-change-needs-agreed-mockup-before-build.md
   - loops/LOOP-001-visual-questions/index.md
+  - plans/PLAN-027-numbered-choices.md
   - specs/human-surface/SPEC-029-questions-to-the-human-are-clear-and-visual.md
   uncommitted-work:
   - lessons/subagents/LESSON-agents-never-stash-the-shared-tree.md
@@ -1927,6 +1937,8 @@ tags:
   - specs/SPEC-001-compass-vision-and-architecture.md
   - specs/pipeline/SPEC-009-configurable-pipeline-workflows.md
   - specs/pipeline/index.md
+  workflow-scripts:
+  - handoffs/2026-10-29_09-30-00_issues-then-loops-then-workflow-spec.md
   working-set:
   - research/vault-structure/RESEARCH-cache-theory-for-context-tiers.md
   - research/vault-structure/RESEARCH-hierarchical-knowledge-base-design.md

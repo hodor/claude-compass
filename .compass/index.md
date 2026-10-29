@@ -65,6 +65,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-024-working-in-compass-is-visual]] - five trials in Obsidian and three agreed mockups first; then documents gain callouts, embeds, block links and footnotes, Compass's plugin draws task tables, graphs, charts and the spec canvas, and the CLI speaks short plain words, every visual earning its bytes
 - [[PLAN-025-review-across-files-and-sessions]] - two live checks in Obsidian and an agreed mockup first; then one review walks the human through several files with one verdict, each card names its project and session, edits and stepping aside stay inside their own review, and a VS Code surface follows
 - [[PLAN-026-local-additions-tell-the-truth]] - local additions already survive update (v0.14.0); this plan makes them honest: an edited addition refreshes, doctor tells applied from not applied, the update notice names what it re-applied, dsh gets them too, then a live round-trip and a way to keep old hand edits
+- [[PLAN-027-numbered-choices]] - one rule in the always-loaded pipeline rules makes every choice put to the human a numbered list a bare number can answer; the guide skill's prose questions go through the same rule; ships as 0.34.2
 
 ## Decisions
 
