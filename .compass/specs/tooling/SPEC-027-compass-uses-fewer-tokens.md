@@ -13,6 +13,9 @@ approved: 2026-10-18
 
 # Compass Uses Fewer Tokens
 
+> [!question] You decide
+> Approve the added Problem paragraph (your words: Claude Code's context, efficiency and quality) and the KPI's new guess that quality does not fall.
+
 ## Problem
 
 I want to minimize the amount of tokens that Compass uses.

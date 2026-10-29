@@ -14,6 +14,9 @@ summary: "similar specs and research group into domain folders, recursively; the
 
 # The Vault Is Organized Per Domain, Recursively
 
+> [!question] You decide
+> Approve the new Desired Outcome line (taxonomy needs nothing from you) and D-07, now automatic with a check-in once in a while; the `[guess: ...]` on D-07 is mine. The Non-Goals line now points at those check-ins.
+
 ## Problem
 
 Before this spec every spec and every research doc is dropped flat at the root and consolidation can only trim lessons, because the other lines are individually non-redundant: the redundancy is structural. Things that belong together are not together, so consolidation has nothing to merge. Consolidation needs to happen guided through taxonomy.

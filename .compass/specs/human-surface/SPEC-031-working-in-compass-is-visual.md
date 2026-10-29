@@ -13,6 +13,9 @@ approved: 2026-10-25
 
 # Working in Compass Is Visual
 
+> [!question] You decide
+> Approve the added Problem sentence, in your words: documents are bloated and hard to read.
+
 ## Problem
 
 Right now everything in using Compass is a wall of text. A wall of text on both the CLI but also on the markdown files. It's very hard for humans to follow up and let them know what they think because there's also a lot of jargon that Compass puts in place.
