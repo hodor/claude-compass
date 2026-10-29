@@ -306,10 +306,17 @@ def _above_block(rel, raw):
     return _lf(raw if index < 0 else raw[:index])
 
 
+def _resembles(a, b):
+    """Whether line `a` reads as a rewording of line `b`."""
+    return difflib.SequenceMatcher(None, a, b, autojunk=False).ratio() >= 0.6
+
+
 def _compare_lines(shipped, kept):
     """Return (added, changes): the lines `kept` holds after all of
     `shipped`, and a sentence for each change that has no form as an
-    addition."""
+    addition. When the last shipped lines were reworded or removed, the
+    kept lines after the last one that resembles a shipped line are the
+    appended ones."""
     s_lines = shipped.rstrip("\n").split("\n")
     k_lines = kept.rstrip("\n").split("\n")
     matcher = difflib.SequenceMatcher(None, s_lines, k_lines, autojunk=False)
@@ -320,6 +327,12 @@ def _compare_lines(shipped, kept):
                 changes.append(
                     f"shipped line {n + 1} is reworded or removed: {s_lines[n]}"
                 )
+            if tag == "replace" and i2 == len(s_lines):
+                start = j1
+                for j in range(j1, j2):
+                    if any(_resembles(k_lines[j], line) for line in s_lines[i1:i2]):
+                        start = j + 1
+                added.extend(k_lines[start:j2])
         elif tag == "insert":
             if i1 == len(s_lines):
                 added.extend(k_lines[j1:j2])
@@ -331,11 +344,11 @@ def _compare_lines(shipped, kept):
 
 def _append_addition(vault_root, rel, text):
     """Add `text` to the local addition `rel`: a new file, or after the
-    existing text. Text the file already holds is not added again. Returns
-    the path."""
+    existing text. Text the file already holds as whole lines is not added
+    again. Returns the path."""
     path = vault_root / LOCAL_DIR / rel
     existing = vaultlib.read_vault_text(path).strip() if path.is_file() else ""
-    if text in existing:
+    if f"\n{text}\n" in f"\n{_lf(existing)}\n":
         return path
     joined = f"{existing}\n\n{text}" if existing else text
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -351,6 +364,13 @@ def extract(vault_root, name, out=None):
     out = out or sys.stdout
     rel, target = _split_kept_name(vault_root, name)
     if rel is None:
+        parts = name.split("/")
+        if len(parts) == 3 and parts[0] == "skills" and ".." not in parts:
+            out.write(
+                f"{name}: a local addition extends a skill's SKILL.md only; "
+                f"the saved copy stays under {KEPT_DIR}/\n"
+            )
+            return 0
         out.write(f"compass overlay: {name} is not <agents|rules|skills>/<file>.md\n")
         return 1
     kept_path = vault_root / KEPT_DIR / name

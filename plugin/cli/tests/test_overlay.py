@@ -60,11 +60,17 @@ class OverlayFixture(unittest.TestCase):
         return (self.claude / "agents" / "researcher.md").read_text(encoding="utf-8")
 
     def run_cmd(self, args):
+        """Run the command with the project as cwd and no
+        CLAUDE_PROJECT_DIR, since `find_vault_root` honors that variable
+        before the cwd."""
+        from unittest import mock
+
         cwd = os.getcwd()
         os.chdir(self.project)
         buf = io.StringIO()
         try:
-            with redirect_stdout(buf):
+            with mock.patch.dict(os.environ), redirect_stdout(buf):
+                os.environ.pop("CLAUDE_PROJECT_DIR", None)
                 code = overlay_cmd.run(args)
         finally:
             os.chdir(cwd)
@@ -863,6 +869,22 @@ class ExtractImplementationBranchTests(OverlayFixture):
 
         self.assertEqual(code, 1, out)
         self.assertIsNone(self.local_bytes(rel))
+
+    def test_extract_on_a_saved_skill_file_beside_skill_md_says_where_it_stays(self):
+        """Adversarial where: update saves an edited skill file other than
+        SKILL.md, and `--extract` on it reports a malformed name with exit 1,
+        though the name is exactly what the notice printed. It exits 0, says
+        a local addition extends SKILL.md only, writes no addition, and the
+        saved copy stays."""
+        name = "skills/lessons/REFERENCE.md"
+        self.keep(name, b"Reference.\nMy note.\n")
+
+        code, out = self.run_cmd(["--extract", name])
+
+        self.assertEqual(code, 0)
+        self.assertIn("SKILL.md only", out)
+        self.assertTrue((self.vault / "meta" / "local" / "kept" / name).is_file())
+        self.assertIsNone(self.local_bytes("skills/lessons.md"))
 
 
 if __name__ == "__main__":

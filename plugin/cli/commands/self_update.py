@@ -19,10 +19,12 @@ so it is applied directly and the network is never consulted.
 
 Each update records the sha256 of every agent, rule, and skill file it
 installs in `.compass/meta/installed.json`. The next update compares each
-installed file with that record before replacing it, and saves a file that
-differs (ignoring its own local-addition block) byte-for-byte under
-`.compass/meta/local/kept/`, naming it in the notice. A project with no
-record counts every file as unedited.
+installed file with that record before replacing or retiring it, and saves a
+file that differs byte-for-byte under `.compass/meta/local/kept/`, naming it
+in the notice. Its own local-addition block, its line endings and trailing
+newlines, and the `model:` and `effort:` lines `apply-models` writes into an
+agent are not differences. A project with no record counts every file as
+unedited.
 `--keep-edits <src>` does the same save and record without copying
 anything; `/compass:update` runs it before its own copy step, and it exits
 1 when `src` holds no plugin.
@@ -257,6 +259,36 @@ def _sha256(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def _comparable(rel, data):
+    """The bytes of an installed or shipped file as a hand-edit check
+    compares them: LF line endings, trailing newlines trimmed, and for an
+    agent the frontmatter `model:` and `effort:` lines dropped, since
+    `compass apply-models` writes those from the project's model policy.
+    Bytes that are not UTF-8 compare as they are."""
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    if rel.startswith("agents/"):
+        lines = text.split("\n")
+        if lines and lines[0].strip() == "---":
+            for end in range(1, len(lines)):
+                if lines[end].strip() == "---":
+                    head = [
+                        line for line in lines[1:end]
+                        if not re.match(r"(model|effort):", line)
+                    ]
+                    lines = [lines[0]] + head + lines[end:]
+                    break
+        text = "\n".join(lines)
+    return text.rstrip("\n").encode("utf-8")
+
+
+def _fingerprint(rel, data):
+    return _sha256(_comparable(rel, data))
+
+
 def _shipped_files(src, claude):
     """Return [(rel, shipped path, installed path)] for every agent, rule,
     and skill file `src` ships. `rel` is the file's path under `.claude/`
@@ -280,20 +312,20 @@ def _shipped_files(src, claude):
 
 def _read_installed(vault_root):
     """The record of what an update installed: {path under `.claude/`:
-    sha256 of the shipped bytes}. None when the vault has no readable
+    fingerprint of the shipped bytes}. None when the vault has no readable
     record."""
     try:
-        data = json.loads((vault_root / INSTALLED_FILE).read_text(encoding="utf-8"))
+        data = json.loads((vault_root / INSTALLED_FILE).read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return None
     return data if isinstance(data, dict) else None
 
 
 def _write_installed(vault_root, files):
-    """Record the hash of each shipped file just installed. A vault that
-    refuses the write leaves the older record, which can only make a later
-    update save a copy it did not need."""
-    record = {rel: _sha256(shipped.read_bytes()) for rel, shipped, _ in files}
+    """Record the fingerprint of each shipped file just installed. A vault
+    that refuses the write leaves the older record, which can only make a
+    later update save a copy it did not need."""
+    record = {rel: _fingerprint(rel, shipped.read_bytes()) for rel, shipped, _ in files}
     try:
         path = vault_root / INSTALLED_FILE
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -305,12 +337,15 @@ def _write_installed(vault_root, files):
 def _save_kept(vault_root, name, data):
     """Write `data` byte-for-byte under `meta/local/kept/` as `name`, or as
     `<stem>.2.md`, `<stem>.3.md` when an earlier copy holds the name. An
-    existing copy is never replaced. Returns the name written."""
+    existing copy is never replaced. Returns the name written, or None when
+    an earlier copy already holds these exact bytes."""
     n = 1
     while True:
         saved = name if n == 1 else f"{name[: -len('.md')]}.{n}.md"
         path = vault_root / overlay_mod.KEPT_DIR / saved
         path.parent.mkdir(parents=True, exist_ok=True)
+        if path.is_file() and path.read_bytes() == data:
+            return None
         try:
             with open(path, "xb") as handle:
                 handle.write(data)
@@ -319,12 +354,25 @@ def _save_kept(vault_root, name, data):
             n += 1
 
 
+def _retired_files(claude):
+    """Return [(rel, None, installed path)] for every file in an installed
+    skill folder that an update removes (`RETIRED_SKILLS`)."""
+    found = []
+    for retired in RETIRED_SKILLS:
+        for f in sorted((claude / "skills" / retired).glob("*.md")):
+            found.append((f"skills/{retired}/{f.name}", None, f))
+    return found
+
+
 def _keep_hand_edits(vault_root, files):
     """Save every installed file whose bytes differ from the shipped text
-    the last update recorded for it, before the update replaces it. The
-    file's own local addition block is not an edit. A file that is missing
-    or already equal to what is about to ship is not saved, and a vault with
-    no record has nothing to compare against, so every file counts as
+    the last update recorded for it, before the update replaces or removes
+    it. `files` lists the shipped files and the retired skill files the
+    update removes. The file's own local addition block, its line endings,
+    its trailing newlines and an agent's model policy are not edits. A file
+    that is missing or already equals what is about to ship is not saved, a
+    retired file with no recorded fingerprint cannot be judged, and a vault
+    with no record has nothing to compare against, so every file counts as
     unedited. Returns the names saved; a save that fails raises, so no edit
     is replaced unsaved."""
     recorded = _read_installed(vault_root)
@@ -332,14 +380,19 @@ def _keep_hand_edits(vault_root, files):
         return []
     kept = []
     for rel, shipped, installed in files:
-        if not installed.is_file():
+        if not installed.is_file() or (shipped is None and rel not in recorded):
             continue
         current = installed.read_bytes()
-        known = {_sha256(shipped.read_bytes()), recorded.get(rel)}
+        known = {recorded.get(rel)}
+        if shipped is not None:
+            known.add(_fingerprint(rel, shipped.read_bytes()))
         name = overlay_mod.addition_name(rel)
-        if any(_sha256(form) in known for form in overlay_mod.shipped_forms(name, current)):
+        forms = overlay_mod.shipped_forms(name, current)
+        if any(_fingerprint(rel, form) in known for form in forms):
             continue
-        kept.append(_save_kept(vault_root, name, current))
+        saved = _save_kept(vault_root, name, current)
+        if saved is not None:
+            kept.append(saved)
     return kept
 
 
@@ -359,7 +412,10 @@ def _apply(src, project_root, apply_models):
     claude = Path(project_root) / ".claude"
     vault_root = Path(project_root) / ".compass"
     files = _shipped_files(src, claude)
-    kept = _keep_hand_edits(vault_root, files) if vault_root.is_dir() else []
+    if vault_root.is_dir():
+        kept = _keep_hand_edits(vault_root, files + _retired_files(claude))
+    else:
+        kept = []
     agents = claude / "agents"
     agents.mkdir(parents=True, exist_ok=True)
     for f in (src / "templates" / "agents").glob("*.md"):
@@ -628,8 +684,9 @@ def keep_edits(project_root, src):
     the names saved."""
     project_root = Path(project_root)
     vault_root = project_root / ".compass"
-    files = _shipped_files(Path(src), project_root / ".claude")
-    kept = _keep_hand_edits(vault_root, files)
+    claude = project_root / ".claude"
+    files = _shipped_files(Path(src), claude)
+    kept = _keep_hand_edits(vault_root, files + _retired_files(claude))
     _write_installed(vault_root, files)
     return kept
 

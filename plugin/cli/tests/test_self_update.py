@@ -395,14 +395,14 @@ class SettingsMergeTests(SelfUpdateFixture):
         # compass; only commands that run Compass's CLI are Compass's.
         user_commands = [
             "bash /home/me/compass-app/lint.sh",
-            "node F:\work\compass\check.js",
+            r"node F:\work\compass\check.js",
             "echo compass",
             "python3 tools/compass_report.py",
         ]
         stale = [
             'python3 "$CLAUDE_PLUGIN_ROOT/cli/compass" sync',
             'python3 "${CLAUDE_PLUGIN_ROOT}/cli/compass" sync',
-            'python "$CLAUDE_PROJECT_DIR\.claude\cli\compass" sync --hook',
+            r'python "$CLAUDE_PROJECT_DIR\.claude\cli\compass" sync --hook',
             "python .claude/cli/compass capture-check --hook",
         ]
         groups = [
@@ -1124,11 +1124,17 @@ class ManualUpdateKeepsEditsTests(HandEditFixture):
     saved and the install record written, the same as an automatic update."""
 
     def keep_edits(self, src):
+        """Run `--keep-edits` with the project as cwd and no
+        CLAUDE_PROJECT_DIR, since `find_vault_root` honors that variable
+        before the cwd."""
+        from unittest import mock
+
         cwd = os.getcwd()
         os.chdir(self.project)
         buf = io.StringIO()
         try:
-            with redirect_stdout(buf):
+            with mock.patch.dict(os.environ), redirect_stdout(buf):
+                os.environ.pop("CLAUDE_PROJECT_DIR", None)
                 code = self_update.run(["--keep-edits", str(src)])
         finally:
             os.chdir(cwd)
@@ -1422,6 +1428,59 @@ class HandEditImplementationBranchTests(HandEditFixture):
         self.assertEqual((self.kept_dir / "agents" / "mine.md").read_bytes(), b"my own agent")
         self.assertEqual((self.claude / "agents" / "mine.md").read_bytes(), b"shipped mine")
         self.assertEqual(self.kept_names(result["notice"]), ["agents/mine.md"])
+
+    def test_an_edited_retired_skill_is_saved_before_the_update_removes_it(self):
+        """Adversarial where: the comparison walks only the release's file
+        list, so a skill the release retires is deleted with the human's edit
+        in it. One release ships `tree`; the human edits it; the next release
+        retires it. The edit is saved and named, the untouched retired copy
+        of another file is not, and the skill folder is gone."""
+        self.fake_remote()
+        retired = self.external_src / "skills" / "tree"
+        retired.mkdir(parents=True)
+        (retired / "SKILL.md").write_bytes(b"tree skill")
+        (retired / "NOTES.md").write_bytes(b"tree notes")
+        self.perform()
+        shutil.rmtree(retired)
+        self.write_installed("skills/tree/SKILL.md", b"tree skill\nmy tree rule")
+
+        result = self.reinstall(agent="agent v2")
+
+        self.assertFalse((self.claude / "skills" / "tree").exists())
+        self.assertEqual(self.kept_files(), ["skills/tree.md"])
+        self.assertEqual((self.kept_dir / "skills" / "tree.md").read_bytes(), b"tree skill\nmy tree rule")
+        self.assertEqual(self.kept_names(result["notice"]), ["skills/tree.md"])
+
+    def test_a_record_with_a_byte_order_mark_still_finds_the_edit(self):
+        """Adversarial where: an editor that saves `installed.json` with a
+        UTF-8 byte order mark makes the record unreadable, so every file
+        counts as unedited and the human's edit is replaced unsaved."""
+        self.fake_remote()
+        self.perform()
+        path = self.vault / "meta" / "installed.json"
+        path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes())
+        self.write_installed("agents/builder.md", b"agent\nmy private rule\n")
+
+        result = self.reinstall(agent="agent v2")
+
+        self.assertEqual(self.kept_names(result["notice"]), ["agents/builder.md"])
+
+    def test_a_model_override_does_not_hide_an_edit_to_the_agent_body(self):
+        """Adversarial where: the comparison that ignores the `model:` and
+        `effort:` lines ignores more of the file, so an agent carrying both a
+        model override and a body edit counts as unedited and the edit is
+        replaced unsaved."""
+        self.fake_remote()
+        self.set_shipped(self.external_src, agent=self.AGENT_WITH_FRONTMATTER.decode("utf-8"))
+        self.perform()
+        self.write_installed(
+            "agents/builder.md",
+            b"---\nname: builder\nmodel: opus\neffort: low\n---\nbody\nmy private rule\n",
+        )
+
+        result = self.reinstall()
+
+        self.assertEqual(self.kept_names(result["notice"]), ["agents/builder.md"])
 
 
 if __name__ == "__main__":
