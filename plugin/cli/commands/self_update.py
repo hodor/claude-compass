@@ -332,6 +332,15 @@ def _apply(src, project_root, apply_models):
     return additions
 
 
+def _one_line(name):
+    """`name` with each control character (C0 and DEL) written as a visible
+    backslash-x escape, so it cannot split a notice or log row."""
+    return "".join(
+        f"\\x{ord(c):02x}" if ord(c) < 0x20 or ord(c) == 0x7F else c
+        for c in name
+    )
+
+
 def _additions_clause(report):
     """The `; `-prefixed notice text for an overlay report: the additions
     re-applied, those with no shipped file, and a pointer to `compass
@@ -339,9 +348,11 @@ def _additions_clause(report):
     report = report or {}
     clause = ""
     if report.get("applied"):
-        clause += "; local additions re-applied: " + ", ".join(report["applied"])
+        names = ", ".join(map(_one_line, report["applied"]))
+        clause += "; local additions re-applied: " + names
     if report.get("orphans"):
-        clause += "; no shipped file: " + ", ".join(report["orphans"])
+        names = ", ".join(map(_one_line, report["orphans"]))
+        clause += "; no shipped file: " + names
     if report.get("failed"):
         clause += "; local additions not applied (run compass doctor)"
     return clause
