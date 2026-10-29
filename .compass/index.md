@@ -98,6 +98,7 @@ See [[backlog]].
   - [[handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated]] - PLAN-016 complete plus D-14: the whole vault lives in domains, lessons load through the index hierarchy instead of the catalog, hot path 3,269/5,000 - under cap for the first time (v0.17.0 fleet-verified); open: TASK-119 (prove the measure), D-13 grep-first follow-up
 - [[2026-08-31_12-04-15_v0.17.x-hardening]] - the useless-token measure is empirically proven (runs 2-3 flawless) and D-11 binds strategy to it; twelve releases (v0.17.1-12) hardened the taxonomy against live fleet friction - triggers, wording bias, five GitHub issues; open: 7 new issues (#14-20) from the human's live use await fix + test, a 2-domain lesson grouping at the human's gate, D-13 grep-first capability, SPEC-014
   - [[handoffs/PLAN-017-dsh-host-support/2026-09-05_21-30-00_wave6-zero-decision-queued]] - PLAN-017 waves 1-5 shipped (v0.19-0.22): dsh is a native host, cold start works after one apply; reopened for Wave 6 - SPEC-006 D-05 demands zero user decisions (no roster question, dsh-first bootstrap); tasks scoped, rig standing in the scratchpad
+- [[2026-10-29_09-30-00_issues-then-loops-then-workflow-spec]] - PLAN-026 shipped as 0.34.0 and pushed; next: fix the four open GitHub issues, finish PLAN-021 Wave 2 (control loops), then spec Claude Code workflow scripts to keep Compass runs off the context
 
 ## Lessons
 
