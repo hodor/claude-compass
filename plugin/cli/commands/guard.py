@@ -207,6 +207,10 @@ def _git_reason(tokens):
         label = "git branch -D"
     elif sub == "stash" and len(args) > 1 and args[1] in {"drop", "clear"}:
         label = f"git stash {args[1]}"
+    elif sub == "stash" and (len(args) == 1 or args[1] in {"push", "save"}):
+        # A stash takes the human's uncommitted edits out of the working tree
+        # and onto a stack every worktree shares.
+        label = "git stash"
     elif sub == "push" and ("--force" in flags or "-f" in flags or "--delete" in flags):
         label = "git push --force"
     if label is None:
