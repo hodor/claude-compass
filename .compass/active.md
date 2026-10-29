@@ -61,9 +61,3 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
 - [ ] TASK-168: setup/update install the plugin; doctor walks the human through enabling it - complexity: M, depends_on: TASK-165
 - [ ] TASK-169: review inbox and lessons table as Bases - complexity: S, depends_on: none
-
-## PLAN-024 Wave 4: the plugin draws
-
-Plan: [[PLAN-024-working-in-compass-is-visual]]. Approved; drawings live in a view panel.
-
-- [x] TASK-203: A loop's charts - complexity: M, depends_on: TASK-228

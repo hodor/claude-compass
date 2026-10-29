@@ -595,6 +595,7 @@ tags:
   - research/vault-structure/RESEARCH-active-set-prior-art.md
   git:
   - lessons/platform/LESSON-autocrlf-churns-lf-writers.md
+  - lessons/subagents/LESSON-agents-never-stash-the-shared-tree.md
   - lessons/subagents/LESSON-subagent-worktrees-fork-stale.md
   git-bash:
   - lessons/platform/LESSON-windows-heredoc-backslash-escapes.md
@@ -1584,6 +1585,8 @@ tags:
   - lessons/vault-structure/LESSON-append-only-index-misses-mutations.md
   stall:
   - lessons/subagents/LESSON-long-agents-stall-resume-them.md
+  stash:
+  - lessons/subagents/LESSON-agents-never-stash-the-shared-tree.md
   state-digest:
   - research/distribution/RESEARCH-gsd-core-improvements-for-compass.md
   stdin:
@@ -1595,6 +1598,7 @@ tags:
   strategy:
   - research/hermes/RESEARCH-hermes-vs-compass-fit.md
   subagents:
+  - lessons/subagents/LESSON-agents-never-stash-the-shared-tree.md
   - lessons/subagents/LESSON-dont-strip-agent-quality-stations.md
   - lessons/subagents/LESSON-long-agents-stall-resume-them.md
   - lessons/subagents/LESSON-subagent-reports-need-sendmessage.md
@@ -1692,6 +1696,8 @@ tags:
   - lessons/test-quality/LESSON-suite-size-is-not-coverage.md
   test-smells:
   - research/test-quality/RESEARCH-test-quality-literature.md
+  tester:
+  - lessons/subagents/LESSON-agents-never-stash-the-shared-tree.md
   tester-agent:
   - plans/PLAN-007-test-quality.md
   - specs/pipeline/SPEC-013-test-quality.md
@@ -1772,6 +1778,8 @@ tags:
   - lessons/pipeline/LESSON-ui-change-needs-agreed-mockup-before-build.md
   - loops/LOOP-001-visual-questions/index.md
   - specs/human-surface/SPEC-029-questions-to-the-human-are-clear-and-visual.md
+  uncommitted-work:
+  - lessons/subagents/LESSON-agents-never-stash-the-shared-tree.md
   units:
   - decisions/vault-structure/ADR-006-hybrid-hierarchy-implementation.md
   - decisions/vault-structure/ADR-011-sizing-is-a-procedure-not-a-score.md

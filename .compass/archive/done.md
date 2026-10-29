@@ -457,3 +457,9 @@ Plan: [[PLAN-025-review-across-files-and-sessions]].
 ### PLAN-024 Wave 4: the plugin draws
 - [x] TASK-227: What changed since a review - complexity: M, depends_on: TASK-206
 - [x] TASK-228: Each spec's pipeline strip - complexity: S, depends_on: TASK-227
+
+### PLAN-024 Wave 4: the plugin draws
+
+Plan: [[PLAN-024-working-in-compass-is-visual]]. Approved; drawings live in a view panel.
+
+- [x] TASK-203: A loop's charts - complexity: M, depends_on: TASK-228

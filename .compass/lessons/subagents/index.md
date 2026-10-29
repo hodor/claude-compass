@@ -17,6 +17,7 @@ Class here: spawning, briefing, and supervising agents
 
 ## Lessons
 
+- [[lessons/subagents/LESSON-agents-never-stash-the-shared-tree|LESSON-agents-never-stash-the-shared-tree]] - A subagent that runs git stash in a shared checkout reverts the human's uncommitted files; brief agents to never stash, reset or checkout there
 - [[lessons/subagents/LESSON-dont-strip-agent-quality-stations|LESSON-dont-strip-agent-quality-stations]] - A blanket no-sub-agents ban in a spawn brief strips the builder's review station; twice violated, both violations caught real bugs
 - [[lessons/subagents/LESSON-headless-worker-denies-tools-silently|LESSON-headless-worker-denies-tools-silently]] - Headless claude -p runs deny Write/Bash by default; scope the worker's tools exactly, don't bypass
 - [[lessons/subagents/LESSON-long-agents-stall-resume-them|LESSON-long-agents-stall-resume-them]] - A subagent completion notice whose final text reads like mid-task narration is a stall, not a result; resume it with 'continue from exactly where you stopped' instead of respawning

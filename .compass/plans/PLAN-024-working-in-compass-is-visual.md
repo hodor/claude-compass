@@ -17,15 +17,6 @@ summary: "five trials in Obsidian and three agreed mockups first; then documents
 
 # Working in Compass Is Visual
 
-> [!important] You decide
-> Wave 4 is built and installed: Compass 0.32.0 with review plugin 0.3.0. Reload Obsidian once so it loads the new plugin, then open the Compass view panel from its ribbon icon (a dashboard) or the command "Open Compass view panel". The panel draws the document open beside it, so open each document below in turn.
-> - This plan: does the board (task table, graph, choices) read as the plan approval board of [[research/human-surface/RESEARCH-plugin-ui-mockup]] did? The panel also lists what changed in this plan since your last review of it.
-> - [[specs/human-surface/SPEC-031-working-in-compass-is-visual]]: do the decision cards and the strip from spec to validate read well?
-> - [[loops/LOOP-001-visual-questions/index|LOOP-001]]: do the reading and cost charts read as metrics charts at pane width?
-> - `specs.canvas` at the vault root: move a few cards, then write "canvas moved" in the review panel's note; I rerun `compass canvas` and report whether they stayed put. It holds 34 cards and no lines, since no spec in this vault has child specs.
->
-> Approve if all of them read well; otherwise Needs changes, with a note per check.
-
 ## Goal
 
 This plan implements [[specs/human-surface/SPEC-031-working-in-compass-is-visual]] from the evidence in [[research/human-surface/RESEARCH-working-in-compass-is-visual]]. Compass documents show diagrams, charts, callouts, embeds, block links, footnotes, a task table and a spec canvas where these replace text, and none grows heavier than its text-only version. Compass Review, Compass's own Obsidian plugin ("the plugin" below), draws what Obsidian cannot. A visual stays only if it removes at least as many bytes of text as it adds, or the human keeps it knowing its cost. The approval loop runs in the markdown editor and the terminal says one line.
@@ -251,3 +242,4 @@ How each Wave 4 task differs from its one-line sketch, and why. The sketches rea
 - 2026-10-27: TASK-226 added and approved: the review of Wave 2's checks asked that every document Compass needs reviewed, the taxonomy proposal included, open in the editor.
 - 2026-10-28: Wave 4 detailed (TASK-202, TASK-206, TASK-227, TASK-228, TASK-203, TASK-204); where the drawings live is put to the human, since the approved answer used `compass-*` fences.
 - 2026-10-28: Wave 4 approved: drawings live in a view panel beside the document.
+- 2026-10-29: Wave 4 manual checks approved in Obsidian: the view panel, the spec strip and decision cards, the loop charts.

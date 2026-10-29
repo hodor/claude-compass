@@ -378,3 +378,10 @@ lessons:
     tags: [ui, mockup, plan-approval, human-gate]
     score: 5
     summary: "A UI change gets a mockup the human agrees on before any builder runs; a UI built without one gets the plan declined."
+  - file: "LESSON-agents-never-stash-the-shared-tree.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [git, stash, subagents, tester, uncommitted-work]
+    score: 5
+    summary: "A subagent that runs git stash in a shared checkout reverts the human's uncommitted files; brief agents to never stash, reset or checkout there"
