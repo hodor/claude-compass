@@ -448,3 +448,8 @@ Plan: [[PLAN-025-review-across-files-and-sessions]].
 
 - [x] TASK-223: a VS Code surface, also serving Cursor - complexity: L, depends_on: none
 - [x] TASK-224: live acceptance in VS Code and Cursor - complexity: S, depends_on: TASK-222, TASK-223
+
+### PLAN-024 Wave 4: the plugin draws
+- [x] TASK-202: A Compass view panel and the plan board - complexity: M
+- [x] TASK-206: Spec and research cards in the view panel - complexity: M, depends_on: TASK-202
+- [x] TASK-204: `compass canvas` writes the spec tree and `compass move` rewrites card paths - complexity: M
