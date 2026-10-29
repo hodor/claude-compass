@@ -7,6 +7,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const Module = require("node:module");
 const path = require("node:path");
+const fs = require("node:fs");
 
 // ---- minimal DOM: just what the plugin touches ----
 // A selector is an optional tag followed by any number of `.class` parts.
@@ -26,6 +27,8 @@ class El {
     this.href = opts.href;
     this.value = opts.value !== undefined ? opts.value : "";
     this.dataset = {};
+    this.style = {};
+    this.attrs = { ...(opts.attr || {}) };
     this.children = [];
     this.parent = null;
     this.onclick = null;
@@ -42,6 +45,12 @@ class El {
   }
   empty() { this.children.forEach((c) => { c.parent = null; }); this.children = []; }
   setText(t) { this.text = t; }
+  appendText(t) { this.text += t; }
+  setAttribute(k, v) { this.attrs[k] = String(v); }
+  getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
+  createSvg(tag, opts) { return this.createEl(tag, opts); }
+  toggleClass(c, on) { if (on) { if (!this.cls.split(" ").includes(c)) this.addClass(c); } else this.removeClass(c); }
+  closest(sel) { for (let n = this; n; n = n.parent) if (matches(n, sel)) return n; return null; }
   addClass(c) { this.cls = this.cls ? `${this.cls} ${c}` : c; }
   removeClass(c) { this.cls = this.cls.split(" ").filter((x) => x && x !== c).join(" "); }
   remove() { if (this.parent) this.parent.children = this.parent.children.filter((c) => c !== this); this.parent = null; }
@@ -108,6 +117,20 @@ function makeApp(files) {
   const listeners = { async modify() {} };
   const wsListeners = {};
   const fire = (name, ...args) => { if (wsListeners[name]) wsListeners[name](...args); };
+  // Several handlers for one event run in registration order behind one entry,
+  // so a second subscriber never replaces the first.
+  const chain = (map, name, fn) => {
+    const prev = map[name];
+    if (!prev) { map[name] = fn; return; }
+    map[name] = (...args) => {
+      const a = prev(...args);
+      const b = fn(...args);
+      return (a && a.then) || (b && b.then) ? Promise.all([a, b]) : (b || a);
+    };
+  };
+  // Every file opened in a leaf, with the state it was opened with (a line, for
+  // an eState of { line }).
+  const opened = [];
   const app = {
     store,
     active: null,
@@ -120,12 +143,12 @@ function makeApp(files) {
         async list(dir) { return { files: [...store.keys()].filter((k) => path.posix.dirname(k) === dir), folders: [] }; },
       },
       getAbstractFileByPath(p) { return store.has(p) ? { path: p, basename: path.posix.basename(p, ".md"), extension: "md" } : null; },
-      on(name, fn) { listeners[name] = fn; },
+      on(name, fn) { chain(listeners, name, fn); },
     },
     workspace: {
       getLeavesOfType: (type) => (type === "markdown" ? leaves : panelLeaves.filter((l) => l.view && l.view.getViewType() === type)),
       getLeaf() {
-        const leaf = { view: new MarkdownView(null), async openFile(f) { this.view.file = f; app.active = f; fire("file-open", f); fire("layout-change"); } };
+        const leaf = { view: new MarkdownView(null), async openFile(f, state) { this.view.file = f; app.active = f; opened.push({ path: f.path, state }); fire("file-open", f); fire("layout-change"); } };
         leaves.push(leaf);
         return leaf;
       },
@@ -143,14 +166,14 @@ function makeApp(files) {
         return leaf;
       },
       async revealLeaf(leaf) { revealed.push(leaf); },
-      async openLinkText(link) {
+      async openLinkText(link, _source, _newLeaf, state) {
         const f = app.vault.getAbstractFileByPath(link);
         if (!f) return;
-        await this.getLeaf(false).openFile(f);
+        await this.getLeaf(false).openFile(f, state);
       },
       getActiveFile: () => app.active,
       setActiveLeaf(leaf) { if (leaf.view && leaf.view.file) app.active = leaf.view.file; },
-      on(name, fn) { wsListeners[name] = fn; },
+      on(name, fn) { chain(wsListeners, name, fn); },
       onLayoutReady(fn) { this.ready = fn; },
     },
     // The `title` property of a file, as Obsidian's metadata cache reports it.
@@ -162,6 +185,7 @@ function makeApp(files) {
     },
     listeners,
     wsListeners,
+    opened,
     leaves,
     panelLeaves,
     revealed,
@@ -197,7 +221,8 @@ function show(app, leaf, p) {
   if (app.wsListeners["layout-change"]) app.wsListeners["layout-change"]();
 }
 
-const panelView = (app) => (app.panelLeaves.find((l) => l.view) || {}).view || null;
+const viewOfType = (app, type) => (app.panelLeaves.find((l) => l.view && l.view.getViewType() === type) || {}).view || null;
+const panelView = (app) => viewOfType(app, "compass-review-panel");
 const panelEl = (app) => { const v = panelView(app); return v ? v.containerEl.children[1] : null; };
 const cards = (app) => { const p = panelEl(app); return p ? p.querySelectorAll(".compass-review-card") : []; };
 const cardIds = (app) => cards(app).map((c) => c.dataset.id);
@@ -1908,4 +1933,476 @@ test("a step-aside debt does not outlive a withdrawn card into a later focused r
   await arriveByLink(plugin, "3", true);
   await approve(app, "3");
   assert.equal(win.minimized, 0, "the focused review leaves the window in front");
+});
+
+// ---- the Compass view panel and the plan board ----
+//
+// The view panel is a second right-sidebar view, `compass-view-panel`, opened
+// by `plugin.openViewPanel()`. It follows the active file and draws the view
+// that the file's `type:` property picks. The plan board is the view for
+// `type: plan`. Pure functions are static exports of main.js:
+//
+//   CompassReview.parsePlanTasks(text)   -> [{ id, title, wave, status, dependsOn, line }]
+//   CompassReview.parsePlanChoices(text) -> [{ choice, answer, line }]
+//   CompassReview.viewFor(text)          -> "plan" | null
+//   CompassReview.choiceNoteLines(choices, answers) -> string[]
+//   CompassReview.joinChoiceNote(note, lines)       -> string
+//
+// DOM the board draws, read by these tests (the panel content is
+// `view.containerEl.children[1]`):
+//   .compass-view-note      the one plain line for a type with no view
+//   .compass-plan-board     the board root, one per plan in view
+//   tr.compass-task-row     one per task, dataset.id and dataset.status, five td
+//                           cells: id, task, wave, status, depends on
+//   .compass-graph-node     one per task, dataset.id and dataset.status
+//   .compass-graph-edge     one per dependency, dataset.from and dataset.to
+//   tr.compass-choice-row   one per row of the choices table while a review of
+//                           the plan is pending, dataset.choice, with an Agree
+//                           button, a Change button and a note textarea
+// A click on a row's first cell, or on a graph node, opens the plan with
+// eState.line at the task line (0-based, as Obsidian takes it).
+
+const VIEW_TYPE = "compass-view-panel";
+const fixture = (name) => fs.readFileSync(path.join(__dirname, "fixtures", name), "utf8").replace(/\r\n/g, "\n");
+const PLAN_24 = fixture("PLAN-024.md");
+const PLAN_25 = fixture("PLAN-025.md");
+const P24 = ".compass/plans/PLAN-024-working-in-compass-is-visual.md";
+const settle = async () => { await sleep(); await sleep(); };
+const viewEl = (app) => { const v = viewOfType(app, VIEW_TYPE); return v ? v.containerEl.children[1] : null; };
+const openDoc = async (app, p) => { await app.workspace.getLeaf().openFile(mdFile(p)); await settle(); };
+const cellsOf = (row) => row.children.filter((c) => c.tag === "td");
+const taskRows = (app) => viewEl(app).querySelectorAll(".compass-task-row");
+const choiceRows = (app) => viewEl(app).querySelectorAll(".compass-choice-row");
+const choiceRow = (app, name) => choiceRows(app).find((r) => r.dataset.choice === name);
+const choiceButtons = (app) => viewEl(app).all().filter((e) => e.tag === "button" && (e.text === "Agree" || e.text === "Change"));
+
+// A click on an element reaches the handlers of it and of its ancestors.
+async function clickOn(el) {
+  let fired = 0;
+  for (let n = el; n; n = n.parent) {
+    for (const fn of [n.onclick, ...(n.handlers.click || [])].filter((f) => typeof f === "function")) {
+      fired++;
+      await fn.call(n, { target: el, preventDefault() {}, stopPropagation() {} });
+    }
+  }
+  assert.ok(fired, `nothing reacts to a click on <${el.tag}> "${el.text}"`);
+}
+
+// [task number, wave or null, status, dependency numbers, 1-based line in the fixture]
+const T = (n, wave, status, deps, line) => ({ id: `TASK-${n}`, wave, status, dependsOn: deps.map((d) => `TASK-${d}`), line });
+const EXPECT_24 = [
+  T(189, 1, "done", [], 112), T(190, 1, "done", [189], 115), T(191, 1, "done", [189], 118), T(192, 1, "done", [189], 121),
+  T(193, 1, "done", [192], 124), T(194, 1, "done", [], 127), T(195, 1, "done", [194], 130), T(196, 1, "done", [194], 133),
+  T(198, 2, "done", [], 143), T(199, 2, "done", [], 146), T(200, 2, "done", [198], 149), T(225, 2, "done", [], 152),
+  T(201, 2, "done", [199], 155), T(226, 3, "done", [], 163),
+  T(202, 4, "ready", [], 171), T(206, 4, "waiting", [202], 174), T(227, 4, "waiting", [206], 177),
+  T(228, 4, "waiting", [227], 180), T(203, 4, "waiting", [228], 183), T(204, 4, "ready", [], 186),
+  T(197, null, "done", [], 194), T(207, null, "later", [], 195), T(205, null, "later", [], 196),
+];
+const EXPECT_25 = [
+  T(208, 1, "done", [], 99), T(209, 1, "done", [208], 102), T(210, 1, "done", [], 105), T(211, 1, "done", [], 108),
+  T(212, 1, "done", [], 111), T(213, 2, "done", [], 121), T(214, 2, "done", [213], 124), T(215, 2, "done", [214], 127),
+  T(217, 2, "done", [], 130), T(218, 2, "done", [213, 214, 215, 217], 133), T(219, 2, "done", [218], 136),
+  T(220, 3, "done", [], 146), T(221, 3, "done", [], 149), T(222, 4, "done", [], 159), T(223, 4, "done", [], 162),
+  T(224, 4, "done", [222, 223], 165),
+];
+const shape = (tasks) => tasks.map(({ id, wave, status, dependsOn, line }) => ({ id, wave, status, dependsOn, line }));
+
+// Adversarial where: the parser reads the task lines quoted in a fence or
+// repeated under a `## Wave N elaborated` heading (PLAN-024 and PLAN-025 both
+// quote their sketches there), harvests TASK ids out of a depends_on
+// parenthetical ("none (PLAN-021 TASK-163 also edits...)"), mixes up the
+// wave of a task, loses the line a click must open, or calls a task whose
+// parents are unfinished "ready".
+test("parsePlanTasks reads every task line of PLAN-024 and PLAN-025 with its wave, status, depends_on and line", async (t) => {
+  await t.test("PLAN-024: 23 tasks, 4 quoted sketches under Wave 4 elaborated skipped", () => {
+    assert.deepEqual(shape(CompassReview.parsePlanTasks(PLAN_24)), EXPECT_24);
+  });
+  await t.test("PLAN-025: 16 tasks, 5 indented lines under Wave 3 and Wave 4 elaborated skipped", () => {
+    assert.deepEqual(shape(CompassReview.parsePlanTasks(PLAN_25)), EXPECT_25);
+  });
+  await t.test("a task's title carries no metadata", () => {
+    for (const task of [...CompassReview.parsePlanTasks(PLAN_24), ...CompassReview.parsePlanTasks(PLAN_25)]) {
+      assert.ok(task.title.length > 0, `${task.id} has a title`);
+      assert.doesNotMatch(task.title, / - (complexity|files|depends_on|decisions|lessons|commit-upfront):/, `${task.id} title`);
+    }
+  });
+});
+
+// Adversarial where: a skip region ends at the wrong heading (a `###` inside
+// an elaborated section reopens parsing, or the section never ends), a tilde
+// fence is not a fence, TASK-1 and TASK-12 are confused by prefix, or a task
+// with one finished parent and one open parent is called ready.
+test("parsePlanTasks skips fences and elaborated sections exactly, and derives status from the checkbox, the Later section and the parents", () => {
+  const text = [
+    "---", 'title: "S"', "type: plan", "---", "",
+    "# S", "", "## Phases", "",
+    "### Wave 1 (detailed): first", "",
+    "- [x] TASK-1: Base - complexity: S, depends_on: none, files: [a]",
+    "- [ ] TASK-12: Twelve - complexity: S, depends_on: TASK-1, files: [a]",
+    "- [ ] TASK-13: Thirteen - complexity: S, depends_on: TASK-12 (TASK-1 also edits a), files: [a]",
+    "- [ ] TASK-14: Two parents - complexity: S, depends_on: TASK-1, TASK-12, files: [a]",
+    "",
+    "```markdown",
+    "- [ ] TASK-90: inside a backtick fence - depends_on: none",
+    "```",
+    "~~~",
+    "- [ ] TASK-91: inside a tilde fence",
+    "~~~",
+    "- [ ] TASK-15: After the fences - files: [a]",
+    "",
+    "## Wave 1 elaborated", "",
+    "- [ ] TASK-92: sketch quoted in the elaboration - depends_on: none",
+    "### A sub-heading inside the elaboration", "",
+    "- [ ] TASK-93: still elaboration",
+    "",
+    "## Later (intent only)", "",
+    "- [ ] TASK-16: Intent - files: [b]",
+    "- [x] TASK-17: Done early - files: [b]",
+  ].join("\n");
+  const got = CompassReview.parsePlanTasks(text).map(({ id, wave, status, dependsOn }) => ({ id, wave, status, dependsOn }));
+  assert.deepEqual(got, [
+    { id: "TASK-1", wave: 1, status: "done", dependsOn: [] },
+    { id: "TASK-12", wave: 1, status: "ready", dependsOn: ["TASK-1"] },
+    { id: "TASK-13", wave: 1, status: "waiting", dependsOn: ["TASK-12"] },
+    { id: "TASK-14", wave: 1, status: "waiting", dependsOn: ["TASK-1", "TASK-12"] },
+    { id: "TASK-15", wave: 1, status: "ready", dependsOn: [] },
+    { id: "TASK-16", wave: null, status: "later", dependsOn: [] },
+    { id: "TASK-17", wave: null, status: "done", dependsOn: [] },
+  ]);
+});
+
+// Adversarial where: the choices table is taken to be any table (a decoy
+// above it, or one inside a fence), a `|` inside a code span splits a cell,
+// or the header and separator rows come back as choices.
+test("parsePlanChoices reads the Choice table of PLAN-024 and PLAN-025 and ignores other tables, fenced tables and pipes inside code spans", async (t) => {
+  await t.test("PLAN-024: fifteen rows in table order", () => {
+    const got = CompassReview.parsePlanChoices(PLAN_24);
+    assert.deepEqual(got.map((c) => c.choice), [
+      "Charts of metrics", "Decisions in callouts", "Embeds", "Task table", "Spec canvas", "Pages like Claude artifacts",
+      "Coined terms", "Terminal visuals", "Lowest Obsidian version", "Where visuals live", "Chart format",
+      "Chart library loading", "Data that is not notes", "Views", "How much a drawing may do",
+    ]);
+    const table = got.find((c) => c.choice === "Task table");
+    assert.equal(table.answer, "drawn by the plugin from the task lines, never written into the file");
+    assert.equal(table.line, 84);
+  });
+  await t.test("PLAN-025: fifteen rows, first and last", () => {
+    const got = CompassReview.parsePlanChoices(PLAN_25);
+    assert.equal(got.length, 15);
+    assert.equal(got[0].choice, "Several files");
+    assert.equal(got[0].line, 67);
+    assert.equal(got[14].choice, "Stepping aside on VS Code");
+  });
+  await t.test("decoy table, fenced table, and a pipe inside a code span", () => {
+    const lines = [
+      "---", "type: plan", "---", "",
+      "| Name | Value |", "| --- | --- |", "| not a choice | decoy |", "",
+      "```markdown", "| Choice | Answer |", "| --- | --- |", "| fenced choice | no |", "```", "",
+      "| Choice | The plan's answer (recommended) |", "| --- | --- |",
+      "| Plain | one |",
+      "| Pipes | run `a | b` or `c` here |",
+      "| Last | end |",
+      "", "Closing prose.",
+    ];
+    const got = CompassReview.parsePlanChoices(lines.join("\n"));
+    assert.deepEqual(got, [
+      { choice: "Plain", answer: "one", line: lines.indexOf("| Plain | one |") + 1 },
+      { choice: "Pipes", answer: "run `a | b` or `c` here", line: lines.indexOf("| Pipes | run `a | b` or `c` here |") + 1 },
+      { choice: "Last", answer: "end", line: lines.indexOf("| Last | end |") + 1 },
+    ]);
+  });
+});
+
+// Adversarial where: the picker reads `type:` out of the body, a nested or
+// longer key, or a longer value (`planning`), fails on a quoted value, or
+// invents a view for a file with no type.
+test("viewFor picks the plan view from the type property alone and no view otherwise", () => {
+  const rows = [
+    ["plain type", "---\ntype: plan\n---\n# x\n", "plan"],
+    ["quoted value among other properties", '---\ntitle: "A"\ntype: "plan"\nstatus: draft\n---\n', "plan"],
+    ["trailing spaces", "---\ntype: plan   \n---\n", "plan"],
+    ["no frontmatter", "# Notes\n", null],
+    ["empty file", "", null],
+    ["frontmatter with no type", "---\ntitle: x\n---\n", null],
+    ["type line in the body after the frontmatter", "---\ntitle: x\n---\n\ntype: plan\n", null],
+    ["type line in a file with no frontmatter", "# Notes\n\ntype: plan\n", null],
+    ["a longer key ending in type", "---\nsubtype: plan\n---\n", null],
+    ["a longer value starting with plan", "---\ntype: planning\n---\n", null],
+    ["a type that has no view", "---\ntype: lesson\n---\n", null],
+  ];
+  for (const [name, text, want] of rows) assert.equal(CompassReview.viewFor(text), want, name);
+});
+
+// Adversarial where: Agree adds a line (the mockup added "Note on" lines for
+// agreed rows), lines come out in click order instead of table order, an
+// answer for a row the plan no longer has invents a line, or a multi-line
+// note breaks the one-line-per-choice shape.
+test("choiceNoteLines gives one line per changed choice and none for Agree, unanswered or vanished rows", () => {
+  const choices = [
+    { choice: "A", answer: "a", line: 10 }, { choice: "B", answer: "b", line: 11 },
+    { choice: "C", answer: "c", line: 12 }, { choice: "D", answer: "d", line: 13 },
+  ];
+  const agree = (note = "") => ({ state: "agree", note });
+  const change = (note) => ({ state: "change", note });
+  const rows = [
+    ["no answers", {}, []],
+    ["Agree on every choice, one with a stray note", { A: agree(), B: agree("looks fine"), C: agree(), D: agree() }, []],
+    ["one Change", { A: agree(), B: change("reword it") }, ["B: reword it"]],
+    ["table order, not answer order", { D: change("n4"), B: change("n2") }, ["B: n2", "D: n4"]],
+    ["an answer for a row the plan does not have", { B: change("n2"), Z: change("gone") }, ["B: n2"]],
+  ];
+  for (const [name, answers, want] of rows) assert.deepEqual(CompassReview.choiceNoteLines(choices, answers), want, name);
+  const multi = CompassReview.choiceNoteLines(choices, { C: change("first part\nsecond part") });
+  assert.equal(multi.length, 1);
+  assert.doesNotMatch(multi[0], /\n/);
+  assert.match(multi[0], /^C: first part\s+second part$/);
+});
+
+// Adversarial where: the lines replace the typed note instead of joining it,
+// a blank line or leading newline appears when the note or the lines are
+// empty, or a note with no lines is altered.
+test("joinChoiceNote appends the lines to the review's note on their own lines", () => {
+  const rows = [
+    ["note and no lines", "overall", [], "overall"],
+    ["no note and lines", "", ["A: x"], "A: x"],
+    ["note and two lines", "overall", ["A: x", "B: y"], "overall\nA: x\nB: y"],
+    ["neither", "", [], ""],
+  ];
+  for (const [name, note, lines, want] of rows) assert.equal(CompassReview.joinChoiceNote(note, lines), want, name);
+});
+
+// Adversarial where: the panel is a second copy of the review panel, opening
+// it opens the review panel too, or each call adds another panel.
+test("openViewPanel registers its own view type, reveals one panel in the right sidebar and opens no review panel", async () => {
+  const { app, plugin } = await loaded({});
+  assert.equal(typeof app.viewFactories[VIEW_TYPE], "function", "view type registered");
+  await plugin.openViewPanel();
+  await plugin.openViewPanel();
+  const leaves = app.panelLeaves.filter((l) => l.view && l.view.getViewType() === VIEW_TYPE);
+  assert.equal(leaves.length, 1);
+  assert.ok(app.revealed.includes(leaves[0]), "panel revealed");
+  assert.equal(viewOfType(app, "compass-review-panel"), null);
+});
+
+// Adversarial where: the panel draws once for the file open at the start and
+// never follows, leaves the previous board under a file with another type,
+// draws a board for a plan-looking line in a body, or stacks a second board
+// on a return to the plan.
+test("the panel follows the open document: board for a plan, one plain line for a type with no view, no board for a file with no type", async () => {
+  const { app, plugin } = await loaded({
+    [P24]: PLAN_24,
+    "lesson.md": "---\ntype: lesson\ntitle: L\n---\nbody\n",
+    "notes.md": "# Plain notes\n",
+    "body-type.md": "# Heading\n\ntype: plan\n",
+  });
+  await openDoc(app, P24);
+  await plugin.openViewPanel();
+  await settle();
+  assert.equal(viewEl(app).querySelectorAll(".compass-plan-board").length, 1, "board for the plan open at start");
+
+  await openDoc(app, "lesson.md");
+  assert.equal(viewEl(app).querySelectorAll(".compass-plan-board").length, 0, "no stale board under a lesson");
+  const notes = viewEl(app).querySelectorAll(".compass-view-note");
+  assert.equal(notes.length, 1);
+  assert.match(notes[0].text, /lesson/);
+
+  for (const name of ["notes.md", "body-type.md"]) {
+    await openDoc(app, name);
+    assert.equal(viewEl(app).querySelectorAll(".compass-plan-board").length, 0, `${name}: no board`);
+    assert.equal(viewEl(app).querySelectorAll(".compass-task-row").length, 0, `${name}: no task rows`);
+  }
+
+  await openDoc(app, P24);
+  assert.equal(viewEl(app).querySelectorAll(".compass-plan-board").length, 1, "board returns once");
+  assert.equal(viewEl(app).querySelectorAll(".compass-task-row").length, EXPECT_24.length, "one table, not two");
+});
+
+// Adversarial where: the table or graph draws fewer tasks than the plan holds
+// (fenced or elaborated lines mishandled), a wrong status colors a node, a
+// parenthetical's TASK ids become dependency edges, or the dependency column
+// lists a different task than the graph draws.
+test("the plan board draws PLAN-024's task table and its dependency graph colored by status", async () => {
+  const { app, plugin } = await loaded({ [P24]: PLAN_24 });
+  await openDoc(app, P24);
+  await plugin.openViewPanel();
+  await settle();
+
+  const rows = taskRows(app);
+  assert.deepEqual(rows.map((r) => r.dataset.id), EXPECT_24.map((t) => t.id));
+  assert.deepEqual(rows.map((r) => r.dataset.status), EXPECT_24.map((t) => t.status));
+  rows.forEach((row, i) => {
+    const want = EXPECT_24[i];
+    const cells = cellsOf(row).map((c) => textOf(c));
+    assert.equal(cells.length, 5, `${want.id}: id, task, wave, status, depends on`);
+    assert.equal(cells[0].trim(), want.id);
+    assert.ok(cells[1].trim().length > 0, `${want.id}: task text`);
+    assert.doesNotMatch(cells[1], / - (complexity|files|depends_on|decisions|lessons|commit-upfront):/, `${want.id}: no metadata in the task text`);
+    if (want.wave !== null) assert.match(cells[2], new RegExp(`\\b${want.wave}\\b`), `${want.id}: wave`);
+    assert.deepEqual(cells[4].match(/TASK-\d+/g) || [], want.dependsOn, `${want.id}: depends on`);
+  });
+
+  const nodes = viewEl(app).querySelectorAll(".compass-graph-node");
+  assert.deepEqual(nodes.map((n) => n.dataset.id), EXPECT_24.map((t) => t.id));
+  assert.deepEqual(nodes.map((n) => n.dataset.status), EXPECT_24.map((t) => t.status));
+  const edges = viewEl(app).querySelectorAll(".compass-graph-edge").map((e) => `${e.dataset.from}>${e.dataset.to}`).sort();
+  const wantEdges = EXPECT_24.flatMap((t) => t.dependsOn.map((d) => `${d}>${t.id}`)).sort();
+  assert.equal(wantEdges.length, 12);
+  assert.deepEqual(edges, wantEdges);
+});
+
+// Adversarial where: a click opens the file at the wrong line (0-based and
+// 1-based mixed up), opens a different task's line, opens nothing from the
+// graph while the table works (or the reverse), or opens the file twice.
+test("a click on a task row or a graph node opens the plan at that task's line", async () => {
+  const { app, plugin } = await loaded({ [P24]: PLAN_24 });
+  await openDoc(app, P24);
+  await plugin.openViewPanel();
+  await settle();
+  const rowFor = (id) => taskRows(app).find((r) => r.dataset.id === id);
+  const nodeFor = (id) => viewEl(app).querySelectorAll(".compass-graph-node").find((n) => n.dataset.id === id);
+  const targets = [
+    ["row of TASK-206", () => cellsOf(rowFor("TASK-206"))[0], 174],
+    ["graph node of TASK-203", () => nodeFor("TASK-203"), 183],
+    ["row of TASK-189, the first task", () => cellsOf(rowFor("TASK-189"))[0], 112],
+  ];
+  for (const [name, pick, line] of targets) {
+    const before = app.opened.length;
+    await clickOn(pick());
+    await settle();
+    assert.equal(app.opened.length, before + 1, `${name}: one file opened`);
+    const last = app.opened[app.opened.length - 1];
+    assert.equal(last.path, P24, name);
+    assert.equal(last.state && last.state.eState && last.state.eState.line, line - 1, `${name}: 0-based line`);
+  }
+});
+
+// A pending review of the plan, and the view panel open on it, in either order.
+async function pendingPlan(order, planText = PLAN_24) {
+  const request = "tmp/review/1.request.json";
+  const r = await loaded({ [P24]: planText, "lesson.md": "---\ntype: lesson\n---\nx\n", [request]: req("1", P24) });
+  if (order === "panel-first") {
+    await openDoc(r.app, P24);
+    await r.plugin.openViewPanel();
+    await settle();
+    await r.plugin.handler({ request });
+  } else {
+    await r.plugin.handler({ request });
+    await r.plugin.openViewPanel();
+  }
+  await settle();
+  return r;
+}
+const verdictNotes = (app) => verdictOf(app, "tmp/review/1.verdict.json").notes;
+const answerChange = async (app, name, note) => {
+  await click(button(choiceRow(app, name), "Change"));
+  typeInto(choiceRow(app, name).all().find((e) => e.tag === "textarea"), note);
+};
+
+// Adversarial where: the choices rows take no answers or show them with no
+// review pending, the controls appear only when the review arrives before the
+// panel (or only after), or they stay after the review is answered.
+test("each choice row takes Agree or Change only while a review of this plan is pending", async (t) => {
+  for (const order of ["review-first", "panel-first"]) {
+    await t.test(`${order}: fifteen rows, each with Agree, Change; gone after the answer`, async () => {
+      const { app } = await pendingPlan(order);
+      assert.equal(choiceRows(app).length, 15);
+      for (const row of choiceRows(app)) {
+        assert.ok(button(row, "Agree") && button(row, "Change"), `${row.dataset.choice}: both buttons`);
+      }
+      await click(cardBtn(app, "1", "Approve"));
+      await settle();
+      assert.equal(choiceButtons(app).length, 0, "no controls once the review is answered");
+    });
+  }
+  await t.test("a review of another file leaves the plan's rows without controls", async () => {
+    const request = "tmp/review/2.request.json";
+    const { app, plugin } = await loaded({ [P24]: PLAN_24, "lesson.md": "---\ntype: lesson\n---\nx\n", [request]: req("2", "lesson.md") });
+    await openDoc(app, P24);
+    await plugin.openViewPanel();
+    await plugin.handler({ request });
+    await openDoc(app, P24);
+    assert.equal(taskRows(app).length, EXPECT_24.length, "the board is drawn");
+    assert.equal(choiceButtons(app).length, 0);
+  });
+  await t.test("no review at all", async () => {
+    const { app, plugin } = await loaded({ [P24]: PLAN_24 });
+    await openDoc(app, P24);
+    await plugin.openViewPanel();
+    await settle();
+    assert.equal(choiceButtons(app).length, 0);
+  });
+});
+
+// Adversarial where: the board's Change answers never reach the verdict, replace
+// the typed note, land in click order, survive only until the next redraw, stay
+// when the human changes their mind to Agree, or an all-Agree board adds text.
+test("Change answers join the review's note as one line each, in table order, and Agree adds nothing", async (t) => {
+  await t.test("two Changes answered out of table order join the typed note", async () => {
+    const { app } = await pendingPlan("review-first");
+    await answerChange(app, "Views", "add a diagram");
+    await click(button(choiceRow(app, "Embeds"), "Agree"));
+    await answerChange(app, "Task table", "reword it");
+    typeInto(notesIn(cardFor(app, "1")), "overall");
+    await click(cardBtn(app, "1", "Needs changes"));
+    await settle();
+    assert.equal(verdictNotes(app), "overall\nTask table: reword it\nViews: add a diagram");
+  });
+  await t.test("Agree on every choice adds no line", async () => {
+    const { app } = await pendingPlan("review-first");
+    for (const row of choiceRows(app)) await click(button(row, "Agree"));
+    typeInto(notesIn(cardFor(app, "1")), "overall");
+    await click(cardBtn(app, "1", "Needs changes"));
+    await settle();
+    assert.equal(verdictNotes(app), "overall");
+  });
+  await t.test("a Change turned into Agree adds no line", async () => {
+    const { app } = await pendingPlan("review-first");
+    await answerChange(app, "Task table", "reword it");
+    await click(button(choiceRow(app, "Task table"), "Agree"));
+    typeInto(notesIn(cardFor(app, "1")), "overall");
+    await click(cardBtn(app, "1", "Needs changes"));
+    await settle();
+    assert.equal(verdictNotes(app), "overall");
+  });
+  await t.test("a Change survives the panel redrawing on workspace events", async () => {
+    const { app } = await pendingPlan("panel-first");
+    await answerChange(app, "Spec canvas", "keep the cards");
+    app.wsListeners["layout-change"]();
+    app.wsListeners["file-open"](mdFile(P24));
+    await settle();
+    typeInto(notesIn(cardFor(app, "1")), "overall");
+    await click(cardBtn(app, "1", "Needs changes"));
+    await settle();
+    assert.equal(verdictNotes(app), "overall\nSpec canvas: keep the cards");
+  });
+});
+
+// Adversarial where: opening the board, answering its rows or clicking a task
+// writes into the vault (the mockup's Mark done changed task state), even a
+// rewrite that leaves the bytes the same.
+test("opening the board, answering its choices and clicking a task write nothing into the vault", async () => {
+  const { app, plugin } = await loaded({
+    [P24]: PLAN_24,
+    ".compass/specs/SPEC-1.md": "---\ntype: spec\n---\nx\n",
+    ".compass/tmp/review/1.request.json": req("1", P24),
+  });
+  await plugin.handler({ request: ".compass/tmp/review/1.request.json" });
+  const before = Object.fromEntries(app.store);
+  const writes = [];
+  const write = app.vault.adapter.write;
+  app.vault.adapter.write = async (p, d) => { writes.push(p); return write.call(app.vault.adapter, p, d); };
+
+  await plugin.openViewPanel();
+  await settle();
+  assert.equal(taskRows(app).length, EXPECT_24.length, "the board is drawn");
+  await click(button(choiceRow(app, "Embeds"), "Agree"));
+  await answerChange(app, "Task table", "reword it");
+  await clickOn(cellsOf(taskRows(app)[0])[0]);
+  await settle();
+  app.wsListeners["layout-change"]();
+  await settle();
+
+  assert.deepEqual(writes, []);
+  assert.deepEqual(Object.fromEntries(app.store), before);
 });
