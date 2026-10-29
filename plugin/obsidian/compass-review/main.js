@@ -87,8 +87,8 @@
 //     the review, so redrawing the panel keeps them.
 // A document whose properties hold `view: views/<name>.js` gets that script's
 // drawing in place of the view its `type:` picks. Only a path of the form
-// `views/<segments>` (forward slashes, no `.` or `..` segment, no drive) is
-// read, with the vault adapter. The script text is evaluated as a CommonJS-style
+// `views/<segments>` (forward slashes, no drive, no empty, dotted or padded
+// segment) is read, with the vault adapter. The script text is evaluated as a CommonJS-style
 // module whose `module.exports` (or its `default`) is a function, possibly
 // async, called with `{app, file, text, el, open}`: `file` is the open
 // document, `text` its text, `el` the element to draw into, and `open(path,
@@ -233,6 +233,7 @@ class ViewPanelView extends ItemView {
     this.drawSeq = 0;
     this.heldPath = null;
     this.scriptPath = null;
+    this.runToken = null;
     // the draw whose Mermaid charts may still land on the panel
     this.chartToken = null;
     // research path -> {high, medium, low}: the confidence filters switched on
@@ -302,11 +303,11 @@ function viewScriptOf(text) {
 }
 
 // Whether a `view:` value may be read and run: a vault path of the form
-// `views/<segments>` with forward slashes, no `.` or `..` segment, no empty
-// segment and no drive.
+// `views/<segments>` with forward slashes and no drive, each segment non-empty,
+// free of leading and trailing whitespace, and not made of dots alone.
 function viewScriptAllowed(path) {
   if (!path.startsWith("views/") || path.includes("\\") || path.includes(":")) return false;
-  return path.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..");
+  return path.split("/").every((segment) => segment !== "" && segment === segment.trim() && !/^\.+$/.test(segment));
 }
 
 // The function a view script exports. The script text is the body of a
@@ -1702,6 +1703,7 @@ class CompassReview extends Plugin {
     }
     const scriptInView = this.app.workspace.getLeavesOfType(VIEW_TYPE).some((leaf) => leaf.view && leaf.view.scriptPath === file.path);
     if (scriptInView) {
+      for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE)) if (leaf.view) leaf.view.heldPath = null;
       this.renderViewPanel();
       return;
     }
@@ -2145,13 +2147,14 @@ class CompassReview extends Plugin {
     root.dataset.signature = signature;
     root.empty();
     view.chartToken = null;
+    const token = (view.runToken = {});
     const changes = saved ? parseChanges(saved.diff, text, file.path) : [];
     if (!file) {
       root.createDiv({ cls: "compass-view-note", text: "Open a document to see its view." });
     } else if (text === null) {
       root.createDiv({ cls: "compass-view-note", text: "This document could not be read." });
     } else if (kind === "custom") {
-      this.drawAgentView(root, view, seq, file, text, viewPath, script).catch((e) =>
+      this.drawAgentView(root, view, token, file, text, viewPath, script).catch((e) =>
         console.error("[compass-review] drawing the view script failed", e)
       );
     } else if (kind === "plan") {
@@ -2177,14 +2180,17 @@ class CompassReview extends Plugin {
   // script ({source} or {error}), null when the path is refused. The script's
   // path stands above its drawing, which goes into its own element; a script
   // that cannot be loaded or run leaves one plain line naming it. The script
-  // runs on its own, so a slow one does not hold up the panel; a run whose
-  // draw was replaced while the script worked draws into an element that is no
-  // longer on the panel and adds nothing else. A document the script opens
-  // with `open` keeps the drawing in view for as long as it is the file in
-  // view, so a list of links stays usable.
-  async drawAgentView(root, view, seq, file, text, viewPath, script) {
+  // runs on its own, so a slow one does not hold up the panel. `token` marks
+  // the run as the one on the panel: a run whose drawing was replaced draws
+  // into an element that is no longer on the panel and adds nothing else, while
+  // a redraw that finds nothing changed leaves the run live. A document the
+  // script opens with `open` keeps the drawing in view for as long as it is the
+  // file in view, so a list of links stays usable; a run that is no longer on
+  // the panel, and an `open` of the document already in view, hold nothing.
+  async drawAgentView(root, view, token, file, text, viewPath, script) {
+    const live = () => view.runToken === token;
     const note = (reason) => {
-      if (seq !== view.drawSeq) return;
+      if (!live()) return;
       root.createDiv({ cls: "compass-view-note", text: `The view script ${viewPath} ${reason}.` });
     };
     if (script === null) {
@@ -2206,13 +2212,13 @@ class CompassReview extends Plugin {
         text,
         el,
         open: (path, line) => {
-          view.heldPath = path;
+          if (live() && path !== file.path) view.heldPath = path;
           this.openLine(path, line, "open from a view");
         },
       });
     } catch (e) {
       console.error("[compass-review] the view script failed", e);
-      if (seq !== view.drawSeq) return;
+      if (!live()) return;
       el.remove();
       note(`failed: ${e && e.message ? e.message : e}`);
     }
