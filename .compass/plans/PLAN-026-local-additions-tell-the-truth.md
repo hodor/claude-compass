@@ -36,6 +36,12 @@ flowchart LR
   T229 --> T235
 ```
 
+> [!important] You decide
+> Stage 2 is built, tested and installed here as Compass 0.34.0: an update saves a file you edited by hand under `.compass/meta/local/kept/` before replacing it, and `compass overlay --extract <name>` turns the lines you added into a local addition. Approving confirms the check below and pushes `master` to GitHub, which publishes 0.34.0 to every project that updates from there.
+> - The table in [[research/distribution/RESEARCH-update-safe-customization#A hand edit through a real update (0.34.0)]]: do the update notice and the `--extract` line make the next step clear?
+>
+> Approve to push and close the plan; Needs changes with a note holds the push.
+
 ## Goal
 
 This plan finishes [[specs/distribution/SPEC-014-update-safe-customizations|Project-local customizations survive update (SPEC-014)]], the spec (what we need), using [[research/distribution/RESEARCH-update-safe-customization]], its research (the evidence). Since v0.14.0 a local addition kept in `.compass/meta/local/` is appended to the fresh copy at every update, and `CLAUDE.md` is never touched. Three needs are still open: the update report and `compass doctor` must say which additions applied and which did not ([[specs/distribution/SPEC-014-update-safe-customizations#^need-report]]), a real round-trip must prove it ([[specs/distribution/SPEC-014-update-safe-customizations#^live-round-trip]]), and old hand edits must be movable into the local form ([[specs/distribution/SPEC-014-update-safe-customizations#^need-migrate]]).

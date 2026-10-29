@@ -347,3 +347,17 @@ Run on 2026-10-29 in a scratch project holding a copy of `plugin/` as its local 
 - The dsh half (an addition reaching `.dsh/skills/` and `AGENTS.md`) is covered by tests only; this machine has no dsh. Confidence: medium.
 
 The same check from GitHub, after the push of 2026-10-29: a scratch project pinned to 0.30.0 (commit `c0ce45c`) with the repository as its only source updated to 0.33.0 (commit `bfaac4d`) and printed `Compass updated 0.30.0 -> 0.33.0; local additions re-applied: agents/researcher.md`. The installed `researcher.md` held the addition once, `CLAUDE.md` kept its sha256, and `compass doctor` read `OK local additions 1 applied`. Confidence: high.
+
+## A hand edit through a real update (0.34.0)
+
+A scratch project installed Compass 0.34.0 from a copy of the plugin inside it. The human's line was then appended to `.claude/agents/researcher.md` by hand, and the project updated again:
+
+| Step | What Compass did |
+|---|---|
+| Update | printed `Compass updated 0.0.1 -> 0.34.0 (local source); hand edits saved to meta/local/kept: agents/researcher.md` |
+| Saved copy | `.compass/meta/local/kept/agents/researcher.md`, the edited file byte for byte |
+| `compass overlay --extract agents/researcher.md` | `agents/researcher.md: local addition written and applied`; the addition holds the appended line alone |
+| Installed `researcher.md` | ends with `<!-- project-local overlay: meta/local/agents/researcher.md -->` and the line |
+| Update again | printed `local additions re-applied: agents/researcher.md`; no second copy saved |
+
+Confidence: high. `meta/installed.json` describes the project's own `.claude/` install, so it belongs in git exactly when `.claude/` does ([Finding 6](#Finding%206%20%60.claude/%60%20gitignore%20treatment%20differs%20from%20%60.compass/%60%20and%20differs%20per%20project)); this repo ignores both.
