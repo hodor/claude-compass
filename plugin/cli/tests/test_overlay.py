@@ -373,5 +373,183 @@ class AdditionStateTests(OverlayFixture):
         self.assertEqual(self.agent_text(), stable)
 
 
+class ImplementationBranchTests(OverlayFixture):
+    """Adversarial classes the replace-from-marker implementation introduces:
+    a marker found in text the block does not own, line-ending rewrites of
+    text above the marker, an emptied local file, and targets or sources the
+    filesystem makes unreadable or unwritable."""
+
+    MARKER = "<!-- project-local overlay: meta/local/agents/researcher.md -->"
+
+    def write_target(self, content):
+        (self.claude / "agents" / "researcher.md").write_bytes(content)
+
+    def target_raw(self):
+        return (self.claude / "agents" / "researcher.md").read_bytes()
+
+    def test_marker_text_inside_shipped_content_is_not_a_block_boundary(self):
+        """Adversarial where: the block start is the first marker occurrence
+        in the target, so a shipped file that quotes the marker (in a code
+        fence, say) is cut from that quote to the end when an addition is
+        applied or replaced."""
+        shipped = (
+            "# Researcher\n\nQuote of the provenance line:\n\n"
+            f"    {self.MARKER}\n\nShipped tail that must survive.\n"
+        )
+        self.write_target(shipped.encode("utf-8"))
+        self.local("agents/researcher.md", "Keep notes terse.\n")
+
+        self.run_cmd(["--apply"])
+        self.local("agents/researcher.md", "Write notes in plain words.\n")
+        self.run_cmd(["--apply"])
+
+        text = self.agent_text()
+        self.assertTrue(text.startswith(shipped.rstrip("\n")))
+        self.assertIn("Shipped tail that must survive.", text)
+        self.assertEqual(text.count("Write notes in plain words."), 1)
+        self.assertNotIn("Keep notes terse.", text)
+
+    def test_crlf_text_above_the_marker_is_left_byte_identical(self):
+        """Adversarial where: replacing an out-of-date block rewrites a CRLF
+        shipped prefix to LF, so text above the marker changes although the
+        contract says it is never rewritten."""
+        prefix = b"# Researcher\r\n\r\nShipped protocol.\r\n"
+        self.write_target(prefix)
+        self.local("agents/researcher.md", "Keep notes terse.\n")
+        self.run_cmd(["--apply"])
+        self.local("agents/researcher.md", "Write notes in plain words.\n")
+
+        self.run_cmd(["--apply"])
+
+        raw = self.target_raw()
+        self.assertTrue(raw.startswith(prefix), raw[:60])
+
+    def test_crlf_target_with_matching_block_reads_current(self):
+        """Adversarial where: a CRLF target compares unequal to the LF local
+        file, so a block that matches reads out of date and is rewritten on
+        every run."""
+        self.local("agents/researcher.md", "Keep notes terse.\n")
+        self.run_cmd(["--apply"])
+        crlf = self.agent_text().replace("\n", "\r\n").encode("utf-8")
+        self.write_target(crlf)
+
+        _, out = self.run_cmd([])
+        self.run_cmd(["--apply"])
+
+        self.assertIn("current", out)
+        self.assertEqual(self.target_raw(), crlf)
+
+    def test_emptied_local_file_is_a_state_not_a_dangling_marker(self):
+        """Adversarial where: a local file emptied after being applied is
+        replaced into a bare marker line - the target then carries a block
+        header with no addition."""
+        self.local("agents/researcher.md", "Keep notes terse.\n")
+        self.run_cmd(["--apply"])
+        self.local("agents/researcher.md", "")
+
+        _, listed = self.run_cmd([])
+        self.run_cmd(["--apply"])
+
+        text = self.agent_text()
+        self.assertIn("out of date", listed)
+        self.assertNotIn("Keep notes terse.", text)
+        self.assertFalse(
+            text.rstrip().endswith(self.MARKER),
+            f"target ends in a bare marker: {text[-120:]!r}",
+        )
+
+    def test_unicode_addition_round_trips_and_reads_current(self):
+        """Adversarial where: non-ASCII text (accents, CJK, a character
+        outside the BMP) is mangled by an encoding default on write or
+        compared as unequal on the next run."""
+        body = "Priorize a revisão 日本語 \U0001f9ed\n"
+        self.local("agents/researcher.md", body)
+        self.run_cmd(["--apply"])
+        first = self.target_raw()
+
+        _, out = self.run_cmd([])
+        self.run_cmd(["--apply"])
+
+        self.assertIn(body.strip().encode("utf-8"), first)
+        self.assertIn("current", out)
+        self.assertEqual(self.target_raw(), first)
+
+    def test_undecodable_local_file_does_not_raise_from_apply_overlays(self):
+        """Adversarial where: apply_overlays documents that it never raises,
+        but a local file that is not UTF-8 escapes as UnicodeDecodeError and
+        takes the other additions down with it."""
+        path = self.vault / "meta" / "local" / "agents" / "researcher.md"
+        path.parent.mkdir(parents=True)
+        path.write_bytes(b"caf\xe9 bad bytes\n")
+        self.local("rules/compass-pipeline.md", "Local rule.\n")
+
+        try:
+            self.apply()
+        except UnicodeDecodeError as exc:
+            self.fail(f"apply_overlays raised: {exc}")
+
+        self.assertIn(
+            "Local rule.",
+            (self.claude / "rules" / "compass-pipeline.md").read_text(encoding="utf-8"),
+        )
+
+    def test_read_only_target_does_not_raise_from_apply_overlays(self):
+        """Adversarial where: a read-only installed file makes the write
+        fail, and the error escapes a function documented as never raising,
+        skipping every later addition."""
+        import stat
+
+        target = self.claude / "agents" / "researcher.md"
+        self.local("agents/researcher.md", "Keep notes terse.\n")
+        self.local("rules/compass-pipeline.md", "Local rule.\n")
+        target.chmod(stat.S_IREAD)
+        self.addCleanup(target.chmod, stat.S_IWRITE | stat.S_IREAD)
+
+        try:
+            self.apply()
+        except OSError as exc:
+            self.fail(f"apply_overlays raised: {exc}")
+
+        self.assertIn(
+            "Local rule.",
+            (self.claude / "rules" / "compass-pipeline.md").read_text(encoding="utf-8"),
+        )
+
+    def test_symlinked_target_keeps_its_link_and_edits_the_real_file(self):
+        """Adversarial where: the atomic replace swaps the symlink itself for
+        a regular file, so the real file the link points at is left without
+        the addition and the link is gone."""
+        real = self.project / "real-researcher.md"
+        real.write_text("# Researcher\n\nShipped protocol.\n", encoding="utf-8")
+        target = self.claude / "agents" / "researcher.md"
+        os.remove(target)
+        try:
+            target.symlink_to(real)
+        except (OSError, NotImplementedError):
+            self.skipTest("symlinks are not creatable here")
+        self.local("agents/researcher.md", "Keep notes terse.\n")
+
+        self.apply()
+
+        self.assertTrue(target.is_symlink(), "the symlink was replaced")
+        self.assertIn("Keep notes terse.", real.read_text(encoding="utf-8"))
+
+    def test_apply_output_labels_current_orphan_and_written_rows(self):
+        """Adversarial where: --apply labels a row it did not write as
+        written, or a listing hint to run --apply survives a finished apply."""
+        self.local("agents/researcher.md", "Keep notes terse.\n")
+        self.run_cmd(["--apply"])
+        self.local("agents/retired-agent.md", "x\n")
+        self.local("rules/compass-pipeline.md", "Local rule.\n")
+
+        _, out = self.run_cmd(["--apply"])
+
+        lines = {ln.split(":")[0]: ln for ln in out.splitlines()}
+        self.assertTrue(lines["agents/researcher.md"].endswith("current"))
+        self.assertTrue(lines["agents/retired-agent.md"].endswith("no shipped file"))
+        self.assertTrue(lines["rules/compass-pipeline.md"].endswith("applied"))
+        self.assertNotIn("run `compass overlay --apply`", out)
+
+
 if __name__ == "__main__":
     unittest.main()
