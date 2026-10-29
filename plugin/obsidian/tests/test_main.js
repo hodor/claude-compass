@@ -94,8 +94,25 @@ class ItemView {
   async onClose() {}
 }
 class MarkdownView { constructor(file) { this.file = file; this.saved = 0; this.containerEl = new El("view"); this.containerEl.createEl("div", { cls: "view-content" }); } async save() { this.saved++; } }
+// Obsidian's own Mermaid: `loadMermaid()` resolves to an object whose `render(id, source)`
+// resolves to { svg }. The svg the stub returns carries the source it drew, so a
+// test reads what each chart element holds. A test sets `loadError`,
+// `renderError` or `renderGate` (a promise render waits on) to steer it.
+const mermaidState = { calls: [], loadError: null, renderError: null, renderGate: null };
+const mermaidStub = {
+  async render(id, source) {
+    mermaidState.calls.push({ id, source });
+    if (mermaidState.renderGate) await mermaidState.renderGate;
+    if (mermaidState.renderError) throw mermaidState.renderError;
+    return { svg: `<svg data-source="${encodeURIComponent(source)}"></svg>` };
+  },
+};
+async function loadMermaid() {
+  if (mermaidState.loadError) throw mermaidState.loadError;
+  return mermaidStub;
+}
 const stubs = {
-  obsidian: { Plugin, ItemView, MarkdownView, Notice: class { constructor(m) { notices.push(m); } } },
+  obsidian: { Plugin, ItemView, MarkdownView, loadMermaid, Notice: class { constructor(m) { notices.push(m); } } },
   electron: { remote: { getCurrentWindow: () => win, app: { hide() { win.minimized++; } } } },
 };
 const origResolve = Module._resolveFilename;
@@ -4358,4 +4375,345 @@ test("plan, research and spec documents with CRLF line ends and a byte-order mar
       assert.deepEqual(r.next.map((x) => x.id), ["TASK-2"]);
     });
   }
+});
+
+// ---- a loop's charts ----
+//
+// The view for a document of `type: loop` charts the runs in the `ledger.jsonl`
+// beside it. A run record (`"type":"run"`) carries a reading when its
+// `reading_after` holds a numeric `value`; a throttled run or one already at the
+// set point has `reading_after: null` and carries none. Pure functions are
+// static exports of main.js:
+//
+//   CompassReview.viewFor(text)           -> "loop" for `type: loop`
+//   CompassReview.parseLedger(text)       -> { readings: number[], costs: number[], skipped: number }
+//       readings: reading_after.value of each run record that carries one, in
+//       file order; costs: cost_usd of those same runs, index for index (0 when
+//       absent); skipped: non-blank lines that are not a JSON object.
+//   CompassReview.loopChartSource(ledger, kind)
+//       ledger is a parseLedger result, kind "reading" or "cost"; returns a
+//       Mermaid `xychart-beta` source with one `line [..]`, or null when the
+//       ledger holds no reading. The cost source's y-axis line says "estimate".
+//
+// DOM the loop view draws in the view panel:
+//   .compass-loop-view     root, one per loop in view
+//   .compass-loop-chart    one per chart, dataset.kind "reading" or "cost"; its
+//                          innerHTML is the svg that mermaid.render returned
+//   .compass-loop-skipped  only when lines were skipped; its text holds the count
+//   .compass-view-note     the one plain line when the ledger holds no reading
+// The ledger read is `<folder of the loop document>/ledger.jsonl`.
+
+test.beforeEach(() => {
+  mermaidState.calls.length = 0;
+  mermaidState.loadError = null;
+  mermaidState.renderError = null;
+  mermaidState.renderGate = null;
+});
+
+const LEDGER_FIX = fs.readFileSync(path.join(__dirname, "fixtures", "LOOP-001-ledger.jsonl"), "utf8");
+const LOOP_INDEX = fixture("LOOP-001-index.md");
+const LOOP_EXPECT = JSON.parse(fixture("LOOP-001-ledger.expected.json"));
+const LOOP_DIR = ".compass/loops/LOOP-001-visual-questions";
+const LOOP_DOC = `${LOOP_DIR}/index.md`;
+const LOOP_LEDGER = `${LOOP_DIR}/ledger.jsonl`;
+const loopSettle = async () => { for (let i = 0; i < 8; i++) await sleep(); };
+const loopDoc = (extra = "") => `---\ntitle: "Loop: x"\ntype: loop\n${extra}---\n# Loop\n`;
+const runLine = (reading, cost, extra = {}) =>
+  JSON.stringify({ ts: "2026-10-19T01:00:00+00:00", type: "run", run_id: "RUN-1", cost_usd: cost, reading_before: { value: 99 }, reading_after: reading === null ? null : { value: reading, items_count: 1 }, outcome: "helpful", ...extra });
+const ledgerOf = (lines) => lines.join("\n") + "\n";
+const chartsOf = (app) => viewEl(app).querySelectorAll(".compass-loop-chart");
+const chartOf = (app, kind) => chartsOf(app).find((c) => c.dataset.kind === kind);
+const drawnSource = (chart) => decodeURIComponent(/data-source="([^"]*)"/.exec(chart.innerHTML || "")[1]);
+const lineValues = (source) => {
+  const m = /^\s*line\s*\[([^\]]*)\]/m.exec(source);
+  assert.ok(m, `no line [..] in the chart source:\n${source}`);
+  return m[1].split(",").map((s) => Number(s.trim()));
+};
+const closeTo = (got, want, tol, msg) => {
+  assert.equal(got.length, want.length, `${msg}: count`);
+  got.forEach((v, i) => assert.ok(Math.abs(v - want[i]) <= tol, `${msg}[${i}]: ${v} vs ${want[i]}`));
+};
+async function showLoop(files, doc = LOOP_DOC) {
+  const { app, plugin } = await loaded(files);
+  await openDoc(app, doc);
+  await plugin.openViewPanel();
+  await loopSettle();
+  return { app, plugin };
+}
+
+// Adversarial where: `type: loop` falls into "no view for this type", or the
+// match is loose (`loops`, a `type: loop` line in the body) and draws a chart
+// view for a document that is not a loop.
+test("viewFor names a document of type loop and no look-alike", () => {
+  const cases = [
+    ["plain", "---\ntype: loop\n---\nbody\n", "loop"],
+    ["quoted", "---\ntype: \"loop\"\n---\nbody\n", "loop"],
+    ["CRLF with a byte-order mark", "﻿---\r\ntype: loop\r\n---\r\nbody\r\n", "loop"],
+    ["a longer type word", "---\ntype: loops\n---\nbody\n", null],
+    ["another type", "---\ntype: lesson\n---\nbody\n", null],
+    ["type line in the body only", "# Heading\n\ntype: loop\n", null],
+  ];
+  for (const [name, text, want] of cases) assert.equal(CompassReview.viewFor(text), want, name);
+});
+
+// Adversarial where: the reading is taken from the wrong field (reading_before
+// gives 52 points, not 50), a run with `reading_after: null` is counted, a
+// reading of 0 is dropped as falsy, or costs fall out of step with readings.
+test("parseLedger reads LOOP-001's 50 readings and their costs, in order, from its 52 run records", () => {
+  const got = CompassReview.parseLedger(LEDGER_FIX);
+  assert.equal(LOOP_EXPECT.runRecords, 52);
+  assert.equal(got.readings.length, 50);
+  assert.deepEqual(got.readings, LOOP_EXPECT.readings);
+  assert.equal(got.readings[got.readings.length - 1], 0, "the last reading is the real 0");
+  closeTo(got.costs, LOOP_EXPECT.costs, 1e-12, "costs");
+  assert.equal(got.skipped, 0);
+});
+
+// Adversarial where: records that are not runs (a transition or a review that
+// happens to carry reading_after), a run with no value, a zero, a missing cost,
+// or a non-integer reading are taken for or dropped from the readings.
+test("parseLedger takes only run records that carry a numeric reading_after value", () => {
+  const text = ledgerOf([
+    runLine(10, 0.5),
+    JSON.stringify({ type: "transition", reading_after: { value: 999 }, cost_usd: 7 }),
+    runLine(null, 0.2, { reading_before: { value: 55 } }),
+    runLine(0, 0),
+    JSON.stringify({ type: "run", reading_after: { value: 7 } }),
+    JSON.stringify({ type: "rerun", reading_after: { value: 888 }, cost_usd: 9 }),
+    JSON.stringify({ type: "run", reading_after: { items_count: 3 }, cost_usd: 1 }),
+    runLine(4.5, 0.25),
+  ]);
+  const got = CompassReview.parseLedger(text);
+  assert.deepEqual(got.readings, [10, 0, 7, 4.5]);
+  assert.deepEqual(got.costs, [0.5, 0, 0, 0.25]);
+  assert.equal(got.skipped, 0);
+});
+
+// Adversarial where: one bad line aborts the whole parse (JSON.parse throws), a
+// valid-but-not-an-object line (`null`, a number, an array) crashes or is
+// taken as a record, a truncated last line is lost uncounted, or blank lines
+// are counted as skipped; the good lines around the bad one must survive in order.
+test("parseLedger skips malformed lines, counts them, and keeps the good lines around them", async (t) => {
+  const good = [runLine(1, 0.1), runLine(2, 0.2), runLine(3, 0.3)];
+  const rows = [
+    ["a truncated record in the middle", [good[0], '{"type":"run","reading_after":{"value":9}', good[1], good[2]], 1],
+    ["prose", [good[0], "not json at all", good[1], good[2]], 1],
+    ["a JSON array", [good[0], "[1,2,3]", good[1], good[2]], 1],
+    ["JSON null", [good[0], "null", good[1], good[2]], 1],
+    ["a JSON number", [good[0], "42", good[1], good[2]], 1],
+    ["a JSON string", [good[0], '"a string"', good[1], good[2]], 1],
+    ["blank and whitespace-only lines are not malformed", [good[0], "", "   ", good[1], good[2]], 0],
+    ["one first, one middle, one last", ["{broken", good[0], good[1], "}", good[2], "tail"], 3],
+  ];
+  for (const [name, lines, skipped] of rows) {
+    await t.test(name, () => {
+      const got = CompassReview.parseLedger(ledgerOf(lines));
+      assert.deepEqual(got.readings, [1, 2, 3]);
+      assert.deepEqual(got.costs, [0.1, 0.2, 0.3]);
+      assert.equal(got.skipped, skipped);
+    });
+  }
+  await t.test("a last line cut short with no line end is counted", () => {
+    const got = CompassReview.parseLedger(good.join("\n") + '\n{"type":"run","reading_af');
+    assert.deepEqual(got.readings, [1, 2, 3]);
+    assert.equal(got.skipped, 1);
+  });
+  await t.test("CRLF line ends read like LF", () => {
+    const got = CompassReview.parseLedger(good.join("\r\n") + "\r\n");
+    assert.deepEqual(got.readings, [1, 2, 3]);
+    assert.equal(got.skipped, 0);
+  });
+  await t.test("a ledger of nothing but garbage has no readings and counts every line", () => {
+    const got = CompassReview.parseLedger(ledgerOf(["x", "{", "]"]));
+    assert.deepEqual([got.readings, got.costs, got.skipped], [[], [], 3]);
+  });
+  await t.test("an empty ledger", () => {
+    assert.deepEqual(CompassReview.parseLedger(""), { readings: [], costs: [], skipped: 0 });
+  });
+});
+
+// Adversarial where: the chart source holds a different series than the ledger
+// (readings reordered, truncated, or taken from reading_before), the cost axis
+// is not labelled an estimate, an axis range excludes a value, a small cost is
+// written in exponent notation Mermaid cannot read, or a ledger with no reading
+// yields a source with an empty `line []`.
+test("loopChartSource draws the ledger series in order, labels cost an estimate, and returns null with no reading", async (t) => {
+  const ledger = CompassReview.parseLedger(LEDGER_FIX);
+  await t.test("the reading chart holds the 50 readings in order inside its y-axis range", () => {
+    const src = CompassReview.loopChartSource(ledger, "reading");
+    assert.match(src, /^\s*xychart-beta\s*$/m);
+    assert.deepEqual(lineValues(src), LOOP_EXPECT.readings);
+    const range = /y-axis[^\n]*?(-?\d+(?:\.\d+)?)\s*-->\s*(-?\d+(?:\.\d+)?)/.exec(src);
+    if (range) {
+      assert.ok(Number(range[1]) <= 0 && Number(range[2]) >= 75, `y range ${range[1]}..${range[2]} excludes 0..75`);
+    }
+  });
+  await t.test("the cost chart holds the 50 costs in order and its y-axis says estimate", () => {
+    const src = CompassReview.loopChartSource(ledger, "cost");
+    closeTo(lineValues(src), LOOP_EXPECT.costs, 1e-3, "cost line");
+    const yAxis = src.split("\n").find((l) => /^\s*y-axis/.test(l));
+    assert.ok(yAxis, `no y-axis line:\n${src}`);
+    assert.match(yAxis, /estimate/i);
+    const range = /(-?\d+(?:\.\d+)?)\s*-->\s*(-?\d+(?:\.\d+)?)/.exec(yAxis);
+    if (range) assert.ok(Number(range[1]) <= 0.1254 && Number(range[2]) >= 0.1687, `y range ${range[1]}..${range[2]} excludes the costs`);
+  });
+  await t.test("a cost too small for plain notation is not written in exponent form", () => {
+    const tiny = CompassReview.parseLedger(ledgerOf([runLine(5, 1e-7), runLine(4, 0.3)]));
+    assert.doesNotMatch(CompassReview.loopChartSource(tiny, "cost"), /\d[eE][-+]?\d/);
+  });
+  await t.test("one reading still draws", () => {
+    const one = CompassReview.parseLedger(ledgerOf([runLine(75, 0.2)]));
+    assert.deepEqual(lineValues(CompassReview.loopChartSource(one, "reading")), [75]);
+  });
+  await t.test("no reading gives null for both kinds", () => {
+    const none = CompassReview.parseLedger(ledgerOf([runLine(null, 0)]));
+    assert.equal(CompassReview.loopChartSource(none, "reading"), null);
+    assert.equal(CompassReview.loopChartSource(none, "cost"), null);
+  });
+});
+
+// Adversarial where: the view never calls loadMermaid/mermaid.render, draws one
+// chart instead of two, hands render a source other than the one the pure
+// function builds, reuses a render id (Mermaid then draws into the wrong
+// element), or leaves a loop's view mixed with a plan board or a skipped notice
+// when nothing was skipped.
+test("the loop view draws a reading chart and a cost chart for LOOP-001 through Obsidian's Mermaid", async () => {
+  const { app } = await showLoop({ [LOOP_DOC]: LOOP_INDEX, [LOOP_LEDGER]: LEDGER_FIX });
+  const view = viewEl(app);
+  assert.equal(view.querySelectorAll(".compass-loop-view").length, 1);
+  assert.equal(view.querySelectorAll(".compass-plan-board").length, 0);
+  assert.equal(view.querySelectorAll(".compass-loop-skipped").length, 0);
+  assert.deepEqual(chartsOf(app).map((c) => c.dataset.kind).sort(), ["cost", "reading"]);
+  const ledger = CompassReview.parseLedger(LEDGER_FIX);
+  for (const kind of ["reading", "cost"]) {
+    assert.equal(drawnSource(chartOf(app, kind)), CompassReview.loopChartSource(ledger, kind), kind);
+  }
+  assert.deepEqual(lineValues(drawnSource(chartOf(app, "reading"))), LOOP_EXPECT.readings);
+  assert.equal(mermaidState.calls.length, 2);
+  const ids = mermaidState.calls.map((c) => c.id);
+  assert.equal(new Set(ids).size, 2, "render ids are distinct");
+  for (const id of ids) assert.match(id, /^[A-Za-z][\w-]*$/, "a render id is a valid element id");
+});
+
+// Adversarial where: malformed lines are skipped silently (no count shown), the
+// count is off by one at the smallest and a larger value, or a skipped line
+// stops the charts from drawing.
+test("the loop view shows how many ledger lines were skipped and still draws the charts", async (t) => {
+  for (const [name, tail, count] of [["one line, no line end", "{broken", 1], ["two lines", "garbage\n{also broken\n", 2]]) {
+    await t.test(name, async () => {
+      const { app } = await showLoop({ [LOOP_DOC]: LOOP_INDEX, [LOOP_LEDGER]: LEDGER_FIX + tail });
+      const notes = viewEl(app).querySelectorAll(".compass-loop-skipped");
+      assert.equal(notes.length, 1);
+      assert.match(textOf(notes[0]), new RegExp(`\\b${count}\\b`));
+      assert.deepEqual(lineValues(drawnSource(chartOf(app, "reading"))), LOOP_EXPECT.readings);
+    });
+  }
+});
+
+// Adversarial where: a ledger with no reading draws an empty chart or an
+// error, calls Mermaid with a null source, stacks several lines, or (missing
+// file) leaves the panel blank because the read threw.
+test("a ledger with no run that carries a reading draws one plain line and no chart", async (t) => {
+  const transition = JSON.stringify({ type: "transition", from: "idle", to: "sensing" });
+  const rows = [
+    ["an empty ledger file", ""],
+    ["no ledger file", null],
+    ["transitions and reviews only", ledgerOf([transition, JSON.stringify({ type: "review" })])],
+    ["garbage only", ledgerOf(["{", "nope"])],
+    ["runs that all carry no reading", ledgerOf([runLine(null, 0), runLine(null, 0)])],
+  ];
+  for (const [name, ledger] of rows) {
+    await t.test(name, async () => {
+      const files = { [LOOP_DOC]: LOOP_INDEX };
+      if (ledger !== null) files[LOOP_LEDGER] = ledger;
+      const { app } = await showLoop(files);
+      const notes = viewEl(app).querySelectorAll(".compass-view-note");
+      assert.equal(notes.length, 1);
+      assert.match(notes[0].text, /run/i);
+      assert.equal(chartsOf(app).length, 0);
+      assert.equal(mermaidState.calls.length, 0);
+    });
+  }
+});
+
+// Adversarial where: the ledger path is joined wrongly (`./ledger.jsonl` for a
+// document at the vault root misses the store), the view reads a parent's or a
+// sibling loop's ledger, or assumes the document is named index.md.
+test("the loop view reads the ledger in the loop document's own folder", async (t) => {
+  const ledgerA = ledgerOf([runLine(1, 0.1), runLine(2, 0.1), runLine(3, 0.1)]);
+  const decoys = {
+    ".compass/loops/ledger.jsonl": ledgerOf([runLine(11, 0.1), runLine(12, 0.1)]),
+    ".compass/loops/LOOP-002-other/ledger.jsonl": ledgerOf([runLine(21, 0.1)]),
+  };
+  await t.test("beside index.md, with a parent's and a sibling's ledger present", async () => {
+    const { app } = await showLoop({ [LOOP_DOC]: loopDoc(), [LOOP_LEDGER]: ledgerA, ...decoys });
+    assert.deepEqual(lineValues(drawnSource(chartOf(app, "reading"))), [1, 2, 3]);
+  });
+  await t.test("a loop document at the vault root reads the root ledger", async () => {
+    const { app } = await showLoop({ "loop.md": loopDoc(), "ledger.jsonl": ledgerA, ...decoys }, "loop.md");
+    assert.deepEqual(lineValues(drawnSource(chartOf(app, "reading"))), [1, 2, 3]);
+  });
+  await t.test("a loop document not named index.md", async () => {
+    const { app } = await showLoop({ "loops/L3/notes.md": loopDoc(), "loops/L3/ledger.jsonl": ledgerA, ...decoys }, "loops/L3/notes.md");
+    assert.deepEqual(lineValues(drawnSource(chartOf(app, "reading"))), [1, 2, 3]);
+  });
+});
+
+// Adversarial where: a Mermaid that fails to load or to render throws out of
+// the draw, so the panel is left blank or with a half-built view instead of a
+// plain line saying the chart could not be drawn.
+test("when Obsidian's Mermaid fails to load or render, the loop view says so in one plain line", async (t) => {
+  for (const [name, set] of [
+    ["loadMermaid rejects", () => { mermaidState.loadError = new Error("no mermaid"); }],
+    ["mermaid.render rejects", () => { mermaidState.renderError = new Error("parse error"); }],
+  ]) {
+    await t.test(name, async () => {
+      const seen = console.error;
+      console.error = () => {};
+      try {
+        set();
+        const { app } = await showLoop({ [LOOP_DOC]: LOOP_INDEX, [LOOP_LEDGER]: LEDGER_FIX });
+        const notes = viewEl(app).querySelectorAll(".compass-view-note");
+        assert.equal(notes.length, 1);
+        assert.match(notes[0].text, /chart/i);
+        assert.equal(chartsOf(app).filter((c) => c.innerHTML).length, 0, "no svg is shown");
+      } finally {
+        console.error = seen;
+      }
+    });
+  }
+});
+
+// Adversarial where: the redraw signature ignores the ledger (the loop document
+// is unchanged, so a run appended by the loop never shows), a redraw stacks a
+// second pair of charts, or a redraw reuses a render id.
+test("reopening a loop after its ledger grew draws the new run once, with fresh render ids", async () => {
+  const before = ledgerOf([runLine(5, 0.1), runLine(4, 0.1), runLine(3, 0.1)]);
+  const { app } = await showLoop({ [LOOP_DOC]: loopDoc(), [LOOP_LEDGER]: before });
+  assert.deepEqual(lineValues(drawnSource(chartOf(app, "reading"))), [5, 4, 3]);
+  app.store.set(LOOP_LEDGER, before + runLine(2, 0.1) + "\n");
+  await openDoc(app, LOOP_DOC);
+  await loopSettle();
+  assert.equal(chartsOf(app).length, 2, "one pair of charts, not two");
+  assert.deepEqual(lineValues(drawnSource(chartOf(app, "reading"))), [5, 4, 3, 2]);
+  const ids = mermaidState.calls.map((c) => c.id);
+  assert.equal(new Set(ids).size, ids.length, `render ids repeat: ${ids.join(", ")}`);
+});
+
+// Adversarial where: a slow render that finishes after the human moved to
+// another document lands its charts under that document's view.
+test("a chart render that finishes after another document was opened draws nothing into the new view", async () => {
+  let release;
+  mermaidState.renderGate = new Promise((r) => { release = r; });
+  const { app, plugin } = await loaded({ [LOOP_DOC]: LOOP_INDEX, [LOOP_LEDGER]: LEDGER_FIX, "notes.md": "# Plain notes\n" });
+  await openDoc(app, LOOP_DOC);
+  plugin.openViewPanel();
+  await loopSettle();
+  assert.ok(mermaidState.calls.length > 0, "the render began");
+  await openDoc(app, "notes.md");
+  release();
+  await loopSettle();
+  assert.equal(chartsOf(app).length, 0);
+  assert.equal(viewEl(app).querySelectorAll(".compass-loop-view").length, 0);
+  assert.equal(viewEl(app).querySelectorAll(".compass-view-note").length, 1);
 });
