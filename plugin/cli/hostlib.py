@@ -193,6 +193,15 @@ RULES_BEGIN = "<!-- compass:rules:begin -->"
 RULES_END = "<!-- compass:rules:end -->"
 
 
+def _defang(text):
+    """`text` with the section fences defanged (`<!--` written as
+    `&lt;!--`), so addition text quoting a fence is never read as the start
+    or end of the managed section."""
+    for fence in (RULES_BEGIN, RULES_END):
+        text = text.replace(fence, fence.replace("<!--", "&lt;!--", 1))
+    return text
+
+
 def materialize_dsh_instructions(project_root, rules_src):
     """Fold the shipped rules into a fenced managed section of the
     project's `AGENTS.md` - the instruction surface dsh loads and Claude
@@ -209,7 +218,7 @@ def materialize_dsh_instructions(project_root, rules_src):
         rule = vaultlib.read_vault_text(path).strip()
         block = additions.get(f"rules/{path.name}")
         if block:
-            rule += "\n\n" + block
+            rule += "\n\n" + _defang(block)
         body.append(rule)
     section = "\n".join([
         RULES_BEGIN,
@@ -222,9 +231,13 @@ def materialize_dsh_instructions(project_root, rules_src):
     dest = Path(project_root) / "AGENTS.md"
     if dest.is_file():
         text = vaultlib.read_vault_text(dest)
-        begin, end = text.find(RULES_BEGIN), text.find(RULES_END)
-        if begin != -1 and end != -1:
-            text = text[:begin] + section + text[end + len(RULES_END):]
+        begin = text.find(RULES_BEGIN)
+        # The section's own end fence opens a line; a fence quoted
+        # mid-line in the user's text after the section is not a boundary.
+        end = re.compile(f"(?m)^{re.escape(RULES_END)}").search(
+            text, begin + len(RULES_BEGIN)) if begin != -1 else None
+        if end:
+            text = text[:begin] + section + text[end.end():]
         else:
             text = text.rstrip("\n") + "\n\n" + section + "\n"
     else:
