@@ -74,6 +74,6 @@ Plan: [[PLAN-026-local-additions-tell-the-truth]].
 
 - [x] TASK-229: `compass overlay` knows four states per addition, and `--apply` replaces an out-of-date block - complexity: M
 - [ ] TASK-230: The doctor row reads the four states - complexity: S, depends_on: TASK-229
-- [ ] TASK-231: The update notice names what it re-applied - complexity: S, depends_on: TASK-229
+- [x] TASK-231: The update notice names what it re-applied - complexity: S, depends_on: TASK-229
 - [ ] TASK-232: dsh gets local additions - complexity: M, depends_on: TASK-231
 - [ ] TASK-233: Release build and offline round-trip - complexity: S, depends_on: TASK-230, TASK-232

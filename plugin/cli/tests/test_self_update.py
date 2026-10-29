@@ -605,6 +605,9 @@ class UpdateNoticeAdditionsTests(SelfUpdateFixture):
 
         ghost.unlink()
         self.add("agents/builder.md", text="\n")
+        # the first update recorded the new version; start the second from
+        # the old one so its notice carries the same version change
+        self.write_plugin_yaml(source=str(self.project.parent / "somewhere-else"))
         self.assertEqual(self.perform(force=True)["notice"], BASE_NOTICE)
 
     def test_raising_overlay_apply_still_finishes_update_and_reports_failure(self):
@@ -716,4 +719,140 @@ class UpdateNoticeAdditionsTests(SelfUpdateFixture):
         self.forbid_network()
         notice = self.perform()["notice"]
         self.assertIn("0.9.0 -> 1.0.0", notice)
+        self.assertEqual(self.clause(notice, REAPPLIED), "agents/builder.md")
+
+
+class UpdateNoticeAdditionsAdversarialTests(SelfUpdateFixture):
+    """Hostile shapes for the additions clause: crowds, odd names, mixed
+    outcomes, and the branches that carry it."""
+
+    add = UpdateNoticeAdditionsTests.add
+    clause = UpdateNoticeAdditionsTests.clause
+    update_log = UpdateNoticeAdditionsTests.update_log
+
+    def run_cli(self):
+        cwd = os.getcwd()
+        os.chdir(self.project)
+        buf = io.StringIO()
+        try:
+            with redirect_stdout(buf):
+                self_update.run(["--force"])
+        finally:
+            os.chdir(cwd)
+        return buf.getvalue()
+
+    def fake_overlay_report(self, report):
+        from commands import overlay
+
+        self.addCleanup(setattr, overlay, "apply_overlays", overlay.apply_overlays)
+        overlay.apply_overlays = lambda *a, **k: report
+
+    def test_many_additions_keep_one_line_with_every_name_once(self):
+        """Adversarial where: a project with many additions makes the clause
+        wrap, truncate, or drop names. Forty additions with no shipped file
+        (names with spaces and semicolons among them) must all appear in
+        order inside a single output line."""
+        self.fake_remote()
+        names = [f"agents/ghost-{n:02d}.md" for n in range(38)]
+        names += ["agents/two words.md", "agents/semi;colon.md"]
+        for rel in names:
+            self.add(rel)
+        out = self.run_cli()
+        self.assertEqual(out.count("\n"), 1)
+        for rel in names:
+            self.assertEqual(out.count(rel), 1, rel)
+        self.assertEqual(out.count(NO_SHIPPED), 1)
+        self.assertNotIn(REAPPLIED, out)
+        self.assertEqual(self.update_log().count("\n"), 1)
+
+    def test_newline_in_an_addition_name_cannot_split_notice_or_log(self):
+        """Adversarial where: a name carrying a newline (legal on POSIX
+        filesystems) is joined into the clause raw, so the session-start
+        output gains a second line and the log row splits in two."""
+        self.fake_remote()
+        self.fake_overlay_report(
+            {"applied": ["agents/a\nb.md"], "orphans": ["rules/c\r\nd.md"]}
+        )
+        result = self.perform()
+        self.assertNotIn("\n", result["notice"])
+        self.assertNotIn("\r", result["notice"])
+        self.assertEqual(self.update_log().count("\n"), 1)
+
+    def test_failure_reason_with_newline_never_reaches_notice_or_log(self):
+        """Adversarial where: a raise whose message spans lines leaks its
+        text into the notice or the log row instead of the fixed pointer."""
+        from commands import overlay
+
+        self.fake_remote()
+
+        def boom(*a, **k):
+            raise RuntimeError("line one\nline two; local additions re-applied: x")
+
+        self.addCleanup(setattr, overlay, "apply_overlays", overlay.apply_overlays)
+        overlay.apply_overlays = boom
+        result = self.perform()
+        self.assertEqual(result["notice"], BASE_NOTICE + "; " + NOT_APPLIED_NOTICE)
+        self.assertEqual(self.update_log().count("\n"), 1)
+        self.assertNotIn("line two", self.update_log())
+
+    def test_applied_orphan_and_failed_together_report_all_three_in_order(self):
+        """Adversarial where: one clause shadows another when the report
+        holds every outcome at once. A re-applied agent, a ghost, and an
+        unreadable rule must yield all three clauses, in that order, in the
+        notice and in the same log row."""
+        self.fake_remote()
+        self.add("agents/builder.md")
+        self.add("agents/ghost.md")
+        self.add("rules/r.md", raw=b"\xff\xfe\x00bad bytes \xc3\x28")
+        expected = (
+            BASE_NOTICE
+            + "; " + REAPPLIED + "agents/builder.md"
+            + "; " + NO_SHIPPED + "agents/ghost.md"
+            + "; " + NOT_APPLIED_NOTICE
+        )
+        self.assertEqual(self.perform()["notice"], expected)
+        self.assertTrue(self.update_log().rstrip("\n").endswith(expected[len(BASE_NOTICE):]))
+
+    def test_local_source_version_bump_carries_failure_clause_in_log(self):
+        """Adversarial where: the local-source branch reports orphans but
+        loses the failure pointer, or writes the clause to the notice and
+        not the `applied-local` log row."""
+        make_plugin_tree(self.project / "plugin", version="1.0.0")
+        self.write_plugin_yaml(source=str(self.project / "plugin"))
+        self.add("agents/ghost.md")
+        self.add("rules/r.md", raw=b"\xff\xfe\x00bad bytes \xc3\x28")
+        self.forbid_network()
+        notice = self.perform()["notice"]
+        self.assertEqual(
+            notice,
+            "Compass updated 0.9.0 -> 1.0.0 (local source)"
+            + "; " + NO_SHIPPED + "agents/ghost.md"
+            + "; " + NOT_APPLIED_NOTICE,
+        )
+        self.assertIn("applied-local 0.9.0 -> 1.0.0; " + NO_SHIPPED, self.update_log())
+
+    def test_dsh_host_branch_still_returns_the_additions_report(self):
+        """Adversarial where: the dsh materialization branch sits between
+        the copy and the overlay call; a host roster containing dsh must
+        still apply the additions and report them."""
+        self.fake_remote()
+        self.add("agents/builder.md")
+        for name in (
+            "effective_hosts",
+            "materialize_dsh_hooks",
+            "materialize_dsh_skills",
+            "materialize_dsh_instructions",
+            "materialize_dsh_bundle",
+            "install_dsh_bundle",
+            "dsh_home",
+        ):
+            self.addCleanup(setattr, hostlib, name, getattr(hostlib, name))
+        hostlib.effective_hosts = lambda vault: ["claude", "dsh"]
+        hostlib.materialize_dsh_hooks = lambda *a, **k: None
+        hostlib.materialize_dsh_skills = lambda *a, **k: None
+        hostlib.materialize_dsh_instructions = lambda *a, **k: None
+        hostlib.materialize_dsh_bundle = lambda *a, **k: None
+        hostlib.install_dsh_bundle = lambda *a, **k: None
+        hostlib.dsh_home = lambda: self.project.parent / "dsh-home"
+        notice = self.perform()["notice"]
         self.assertEqual(self.clause(notice, REAPPLIED), "agents/builder.md")
