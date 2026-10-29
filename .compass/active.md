@@ -61,10 +61,3 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
 - [ ] TASK-168: setup/update install the plugin; doctor walks the human through enabling it - complexity: M, depends_on: TASK-165
 - [ ] TASK-169: review inbox and lessons table as Bases - complexity: S, depends_on: none
-
-## PLAN-026 Stage 1: local additions tell the truth
-
-Plan: [[PLAN-026-local-additions-tell-the-truth]].
-
-- [x] TASK-232: dsh gets local additions - complexity: M, depends_on: TASK-231
-- [ ] TASK-233: Release build and offline round-trip - complexity: S, depends_on: TASK-230, TASK-232

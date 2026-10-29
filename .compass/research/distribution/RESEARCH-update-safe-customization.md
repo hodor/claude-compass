@@ -6,7 +6,7 @@ confidence: high
 area: methodology
 tags: [update, customization, overlays, drop-ins, patches, markers, corpus]
 created: 2026-08-30
-updated: 2026-08-30
+updated: 2026-10-29
 author: researcher-consolidation
 summary: "overlay mechanisms are well-charted (drop-in dirs dominate, patches fail loudest, markers fail silently), but SPEC-014's benchmark corpus does not exist: zero content customizations survive in the Defold projects and models.yaml is adopted nowhere"
 depends_on: ["[[SPEC-014-update-safe-customizations]]", "[[ADR-015-self-update-on-session-start]]"]
@@ -328,3 +328,20 @@ Confidence: high. Evidence: `doctor.py:1-464` read in full.
 - Whether the ADR-001-documented customizations to `compass-pipeline.md`/`researcher.md`/`pr-describe.md`/`autopilot/SKILL.md` were ever actually written to disk (and later wiped by an update) or simply never applied cannot be determined - no git history exists for `.claude/` in the Defold repo to check (Finding 5, Finding 7).
 - No project in the corpus has ever exercised the `models.yaml` mechanism end-to-end with real content (Finding 4) - its behavior under `apply-models` is verified only by reading the code, not by observing it run against a populated override file in the wild.
 - The private fork's `.compass/` being git-tracked while `defold`'s is excluded (Finding 6) was not something this research was asked to explain further; it is reported as a fact, not investigated for cause.
+
+## A local addition through a real update (0.33.0)
+
+Run on 2026-10-29 in a scratch project holding a copy of `plugin/` as its local source, a `CLAUDE.md`, and one local addition, `.compass/meta/local/agents/researcher.md` ("When researching, record every source in the vault before answering."). The shipped `researcher.md` in the copy then gained a line and the version moved to 0.33.1; the script is `roundtrip.sh` in the session scratchpad.
+
+| Step | What Compass did |
+|---|---|
+| Update | printed `Compass updated 0.33.0 -> 0.33.1 (local source); local additions re-applied: agents/researcher.md` |
+| Installed `researcher.md` | holds the new shipped line once and the addition once, under `<!-- project-local overlay: meta/local/agents/researcher.md -->` |
+| `CLAUDE.md` | byte-identical before and after (same sha256) |
+| `compass doctor` | `OK local additions 1 applied` |
+| Addition edited | doctor: `WARN local additions out of date: agents/researcher.md`, fix `run compass overlay --apply to write them` |
+| `compass overlay --apply` | `agents/researcher.md: updated`; the new text once, the old text gone; doctor back to OK |
+
+- A local addition survives an update, is named in the update notice, and `CLAUDE.md` is never touched. Confidence: high.
+- An edited addition is reported out of date and lands on the next `--apply`, without waiting for a release. Confidence: high.
+- The dsh half (an addition reaching `.dsh/skills/` and `AGENTS.md`) is covered by tests only; this machine has no dsh. Confidence: medium.
