@@ -19,6 +19,14 @@ well-formed lines of one answer and counts the rest; `vote_findings` keeps the
 findings that more than half of the configured runs report. The reading is
 advisory and reaches no transition.
 
+The context sensor reads what an install of a plugin tree adds to every
+session: each `templates/rules/*.md` whole, and the `name`, `description` and
+`when_to_use` frontmatter fields of each `skills/*/SKILL.md` and
+`templates/agents/*.md`, plus the CLAUDE.md section the setup skill proposes
+(item `skills/setup/SKILL.md#claude-md-addition`). A source is estimated at its
+UTF-8 bytes divided by 4, rounded up, and the value sums the sources. Its
+items are the sources' plugin-relative paths with forward slashes.
+
 Ledger rows are dicts. A row may carry `ts` (ISO-8601) and `cost_usd`; rows
 without `cost_usd` contribute nothing to a spend sum. Days are UTC calendar
 days.
@@ -26,12 +34,14 @@ days.
 
 import json
 import math
+import re
 import subprocess
 import unicodedata
 from collections import Counter
 from datetime import datetime, timezone
 
 import proctree
+import vaultlib
 
 TOKEN_FIELDS = (
     ("input_tokens", "inputTokens"),
@@ -41,6 +51,15 @@ TOKEN_FIELDS = (
 )
 _KILL_WAIT_SECONDS = proctree.KILL_WAIT_SECONDS
 UNKNOWN_DAY = "unknown"
+
+CONTEXT_FIELDS = ("name", "description", "when_to_use")
+CONTEXT_BYTES_PER_TOKEN = 4
+SETUP_SKILL = "skills/setup/SKILL.md"
+CLAUDE_MD_ITEM = SETUP_SKILL + "#claude-md-addition"
+CLAUDE_MD_PROPOSAL = re.compile(
+    r"^#+[^\n]*CLAUDE\.md addition[^\n]*\n.*?^```markdown\n(.*?)^```",
+    re.MULTILINE | re.DOTALL,
+)
 
 
 class NoResultEvent(ValueError):
@@ -297,6 +316,63 @@ def run_sensor(command, cwd, timeout):
     finally:
         proctree.release(job)
     return _reading_from_stdout(stdout.decode("utf-8", errors="replace"), proc.returncode)
+
+
+def _estimate(byte_count):
+    return -(-byte_count // CONTEXT_BYTES_PER_TOKEN)
+
+
+def _context_sources(plugin):
+    """Every (relative path, path) the context sensor reads under `plugin`,
+    in path order: rules files, skill definitions and agent definitions."""
+    patterns = ("templates/rules/*.md", "skills/*/SKILL.md", "templates/agents/*.md")
+    found = {}
+    for pattern in patterns:
+        for path in plugin.glob(pattern):
+            found[path.relative_to(plugin).as_posix()] = path
+    return sorted(found.items())
+
+
+def _field_bytes(rel, raw):
+    """UTF-8 bytes of the `name`, `description` and `when_to_use` values in
+    the frontmatter of `raw`, and the decoded text."""
+    text = raw.decode("utf-8")
+    data, error = vaultlib.parse_frontmatter_text(text)
+    if error:
+        raise ValueError(f"{rel}: {error}")
+    total = 0
+    for field in CONTEXT_FIELDS:
+        value = data.get(field)
+        if isinstance(value, str):
+            total += len(value.encode("utf-8"))
+    return total, text
+
+
+def sense_context(plugin):
+    """Read what an install of the plugin tree at `plugin` adds to every
+    session and return a Reading. A missing directory or a source that cannot
+    be read gives an invalid Reading carrying the reason."""
+    if not plugin.is_dir():
+        return _invalid(f"plugin directory not found: {plugin}")
+    value = 0
+    items = []
+    try:
+        for rel, path in _context_sources(plugin):
+            raw = path.read_bytes()
+            if rel.startswith("templates/rules/"):
+                value += _estimate(len(raw))
+            else:
+                size, text = _field_bytes(rel, raw)
+                value += _estimate(size)
+                if rel == SETUP_SKILL:
+                    proposal = CLAUDE_MD_PROPOSAL.search(text.replace("\r\n", "\n"))
+                    if proposal:
+                        value += _estimate(len(proposal.group(1).encode("utf-8")))
+                        items.append(CLAUDE_MD_ITEM)
+            items.append(rel)
+    except (OSError, ValueError) as exc:
+        return _invalid(f"could not read a context source: {exc}")
+    return Reading(valid=True, value=value, items=items)
 
 
 def judge(before, after, direction):
