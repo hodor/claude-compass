@@ -255,5 +255,18 @@ class GuideClosingQuestionsTextTest(unittest.TestCase):
         self.assertLessEqual(byte_count(GUIDE), GUIDE_MAX_BYTES)
 
 
+class NumberedChoicesReleaseTest(unittest.TestCase):
+    def test_plugin_version_is_at_least_0_34_2(self):
+        """Adversarial where: the numbered-choice rule ships under a version
+        an installed project already holds, so `compass self-update` sees
+        nothing new and never installs it."""
+        import json
+
+        manifest = REPO / "plugin" / ".claude-plugin" / "plugin.json"
+        version = json.loads(manifest.read_text(encoding="utf-8"))["version"]
+        parts = tuple(int(part) for part in version.split("."))
+        self.assertGreaterEqual(parts, (0, 34, 2), f"plugin version {version}")
+
+
 if __name__ == "__main__":
     unittest.main()
