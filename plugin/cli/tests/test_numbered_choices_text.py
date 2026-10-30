@@ -154,5 +154,106 @@ class NumberedChoicesTextTest(unittest.TestCase):
         )
 
 
+GUIDE = REPO / "plugin" / "skills" / "guide" / "SKILL.md"
+GUIDE_MAX_LINES = 87
+GUIDE_MAX_BYTES = 4132
+
+
+def respond_section(text):
+    """The body of the guide's "### 2. Respond" step, up to the next step."""
+    return text.split("### 2. Respond", 1)[1].split("\n### ", 1)[0]
+
+
+def situation_entry(section, pattern):
+    """The text of the response entry whose bold header line matches `pattern`,
+    through to the next bold entry or the end of the section."""
+    match = re.search(
+        rf"(?ms)^\*\*{pattern}.*?(?=^\*\*|\Z)", section, flags=re.IGNORECASE
+    )
+    if match is None:
+        raise AssertionError(f"no response entry matches {pattern!r}")
+    return squash(match.group(0))
+
+
+class GuideClosingQuestionsTextTest(unittest.TestCase):
+    """The guide skill ends its responses with a question; each one goes
+    through the tool the pipeline rules number, with the options named."""
+
+    def setUp(self):
+        self.text = GUIDE.read_text(encoding="utf-8")
+
+    def test_respond_step_routes_every_closing_question_through_the_tool(self):
+        """Adversarial where: the Respond step names `AskUserQuestion` only
+        inside the Port entry (it already does), so a check on the whole step
+        or file passes while the other entries still end in a free-text
+        question; the rule must stand in a paragraph of its own, outside the
+        situation entries, saying each response's question uses the tool and
+        asks one question per call."""
+        section = respond_section(self.text)
+        lead = [
+            squash(raw)
+            for raw in re.split(r"\n\s*\n", section)
+            if raw.strip() and not re.match(r"\s*\*\*[A-E]\b", raw)
+        ]
+        with self.subTest(concept="a paragraph names the tool for every question"):
+            self.assertTrue(
+                any(
+                    has_sentence(
+                        block, r"askuserquestion", r"\b(each|every|any|all)\b", r"question"
+                    )
+                    for block in lead
+                ),
+                "no paragraph outside the entries says every closing question uses AskUserQuestion",
+            )
+        with self.subTest(concept="that paragraph says one question per call"):
+            self.assertTrue(
+                any(
+                    "askuserquestion" in block
+                    and re.search(r"one question per call", block)
+                    for block in lead
+                ),
+                "no paragraph outside the entries says one question per call",
+            )
+
+    def test_vision_without_specs_asks_which_roadmap_item_first(self):
+        """Adversarial where: the response still quotes the roadmap into prose
+        (`Spec roadmap: [list from vision.md]`) and asks a free-text question,
+        or drops the placeholder but never says the roadmap items are the
+        options, so the tool is asked with nothing to choose from."""
+        self.assertNotIn("[list from vision.md]", self.text.lower())
+        entry = situation_entry(
+            respond_section(self.text), r"B\b[^\n]*vision but no specs"
+        )
+        with self.subTest(concept="asks which roadmap item first"):
+            self.assertRegex(entry, r"which roadmap item first\s*\?")
+        with self.subTest(concept="the roadmap items are the options"):
+            self.assertRegex(
+                entry, r"roadmap items?\b.{0,80}\boptions?\b|\boptions?\b.{0,80}roadmap items?"
+            )
+
+    def test_active_work_asks_what_next_with_the_five_named_options(self):
+        """Adversarial where: `list options` is deleted but the five choices
+        go with it, or only some survive (here every name is checked, not a
+        count), or the entry stops asking what comes next; the phrase must
+        be gone from the whole file, not only from the one entry."""
+        self.assertNotIn("list options", squash(self.text))
+        entry = situation_entry(respond_section(self.text), r"C\b")
+        with self.subTest(concept="asks what next"):
+            self.assertRegex(entry, r"what\b.{0,20}\bnext\b")
+        with self.subTest(concept="the choices are options"):
+            self.assertRegex(entry, r"\boptions?\b")
+        for name in ("continue building", "validate", "new task", "handoff", "checkup"):
+            with self.subTest(option=name):
+                self.assertIn(name, entry)
+
+    def test_guide_stays_within_the_line_and_byte_budget(self):
+        """Adversarial where: the question lines are added on top of the text
+        they sit among, growing a skill loaded on every guide run; the byte
+        bound is checked separately because a long line passes a line count,
+        and both bounds sit exactly at today's size so one added byte fails."""
+        self.assertLessEqual(line_count(GUIDE), GUIDE_MAX_LINES)
+        self.assertLessEqual(byte_count(GUIDE), GUIDE_MAX_BYTES)
+
+
 if __name__ == "__main__":
     unittest.main()
