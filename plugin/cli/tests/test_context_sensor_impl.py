@@ -253,6 +253,44 @@ class InvalidReasonTests(TreeCase):
         self.assertEqual(reading.items, ["templates/rules/odd.md"])
 
 
+class ByteOrderMarkTests(TreeCase):
+    def test_leading_bom_reads_like_the_same_file_without_it(self):
+        """Adversarial where: a skill or agent file saved with a UTF-8 byte
+        order mark reads as having no frontmatter, so the whole reading is
+        invalid, or the mark's three bytes are counted in the value."""
+        text = "---\nname: ab\ndescription: abcdefghij\n---\nbody\n"
+        for rel in ("skills/a/SKILL.md", "templates/agents/a.md"):
+            with self.subTest(rel=rel):
+                self.put(rel, text)
+                plain = self.sense()
+                self.put(rel, b"\xef\xbb\xbf" + text.encode("utf-8"))
+                marked = self.sense()
+                self.assertTrue(marked.valid, marked.reason)
+                self.assertEqual((marked.value, marked.items), (plain.value, plain.items))
+                self.assertEqual(marked.value, ceil_quarter(2 + 10))
+                (self.plugin / rel).unlink()
+
+
+class EmptyTreeTests(TreeCase):
+    def test_directory_with_no_sources_is_invalid_and_names_the_directory(self):
+        """Adversarial where: a plugin folder that exists but holds no rules,
+        skills or agents reads as a valid zero, which a loop minimizing the
+        value would score as the best possible improvement."""
+        for name, setup in [
+            ("empty directory", lambda: None),
+            ("unrelated files only", lambda: self.put("README.md", "x" * 400)),
+            ("empty source folders", lambda: (self.plugin / "skills").mkdir()),
+        ]:
+            with self.subTest(case=name):
+                setup()
+                reading = self.sense()
+                self.assertFalse(reading.valid)
+                self.assertIn("no context sources found", reading.reason)
+                self.assertIn(str(self.plugin), reading.reason)
+                shutil.rmtree(self.plugin)
+                self.plugin.mkdir()
+
+
 class DeterminismTests(TreeCase):
     def populate(self, order):
         files = {

@@ -56,10 +56,9 @@ CONTEXT_FIELDS = ("name", "description", "when_to_use")
 CONTEXT_BYTES_PER_TOKEN = 4
 SETUP_SKILL = "skills/setup/SKILL.md"
 CLAUDE_MD_ITEM = SETUP_SKILL + "#claude-md-addition"
-CLAUDE_MD_PROPOSAL = re.compile(
-    r"^#+[^\n]*CLAUDE\.md addition[^\n]*\n.*?^```markdown\n(.*?)^```",
-    re.MULTILINE | re.DOTALL,
-)
+CLAUDE_MD_HEADING = re.compile(r"^#+\s.*CLAUDE\.md addition")
+MARKDOWN_HEADING = re.compile(r"^#+\s")
+BOM = "\ufeff"
 
 
 class NoResultEvent(ValueError):
@@ -333,10 +332,39 @@ def _context_sources(plugin):
     return sorted(found.items())
 
 
+def _claude_md_proposal(text):
+    """The body of the first ```markdown fence under the heading that names the
+    CLAUDE.md addition, or None when the heading's own section holds no closed
+    fence. A heading line outside the fence ends the section."""
+    lines = text.replace("\r\n", "\n").split("\n")
+    heading = next((i for i, line in enumerate(lines) if CLAUDE_MD_HEADING.match(line)), None)
+    if heading is None:
+        return None
+    opening = None
+    for i in range(heading + 1, len(lines)):
+        if lines[i].startswith("```markdown"):
+            opening = i
+            break
+        if MARKDOWN_HEADING.match(lines[i]):
+            return None
+    if opening is None:
+        return None
+    for i in range(opening + 1, len(lines)):
+        if lines[i].startswith("```"):
+            return "".join(line + "\n" for line in lines[opening + 1 : i])
+    return None
+
+
 def _field_bytes(rel, raw):
     """UTF-8 bytes of the `name`, `description` and `when_to_use` values in
-    the frontmatter of `raw`, and the decoded text."""
-    text = raw.decode("utf-8")
+    the frontmatter of `raw`, and the decoded text without a leading byte
+    order mark."""
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{rel}: {exc}") from exc
+    if text.startswith(BOM):
+        text = text[len(BOM):]
     data, error = vaultlib.parse_frontmatter_text(text)
     if error:
         raise ValueError(f"{rel}: {error}")
@@ -354,10 +382,13 @@ def sense_context(plugin):
     be read gives an invalid Reading carrying the reason."""
     if not plugin.is_dir():
         return _invalid(f"plugin directory not found: {plugin}")
+    sources = _context_sources(plugin)
+    if not sources:
+        return _invalid(f"no context sources found under {plugin}")
     value = 0
     items = []
     try:
-        for rel, path in _context_sources(plugin):
+        for rel, path in sources:
             raw = path.read_bytes()
             if rel.startswith("templates/rules/"):
                 value += _estimate(len(raw))
@@ -365,9 +396,9 @@ def sense_context(plugin):
                 size, text = _field_bytes(rel, raw)
                 value += _estimate(size)
                 if rel == SETUP_SKILL:
-                    proposal = CLAUDE_MD_PROPOSAL.search(text.replace("\r\n", "\n"))
-                    if proposal:
-                        value += _estimate(len(proposal.group(1).encode("utf-8")))
+                    proposal = _claude_md_proposal(text)
+                    if proposal is not None:
+                        value += _estimate(len(proposal.encode("utf-8")))
                         items.append(CLAUDE_MD_ITEM)
             items.append(rel)
     except (OSError, ValueError) as exc:
