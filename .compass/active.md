@@ -50,6 +50,14 @@ Plan: [[PLAN-021-control-loops]].
 - [ ] TASK-162: The Maya recipe on the local lane, marked untested on this machine - complexity: S, depends_on: TASK-160
 - [ ] TASK-163: Teach the vault conventions about loops and ship the next minor release - complexity: M, depends_on: TASK-158, TASK-159, TASK-160, TASK-161, TASK-162, TASK-236
 
+## PLAN-027: every choice is a numbered list
+
+Plan: [[PLAN-027-numbered-choices]].
+
+- [ ] TASK-237: Number every choice in the pipeline rules - complexity: S, depends_on: none
+- [ ] TASK-238: The guide skill asks its closing questions through the rule - complexity: S, depends_on: TASK-237
+- [ ] TASK-239: Install the change here and release 0.34.2 - complexity: S, depends_on: TASK-237, TASK-238
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].

@@ -1,12 +1,13 @@
 ---
 title: "Every Choice Is a Numbered List"
 type: plan
-status: draft
+status: approved
 confidence: medium
 area: methodology
 tags: [questions, human-gates, pipeline-rules, ui]
 created: 2026-10-29
 updated: 2026-10-29
+approved: 2026-10-29
 git_branch: "master"
 git_commit: "b14d675"
 author: "planner"
@@ -22,12 +23,6 @@ flowchart LR
   T237 --> T239["239 Install here and release 0.34.2"]
   T238 --> T239
 ```
-
-> [!IMPORTANT]
-> You decide: approve one rule in the pipeline rules, the guide skill's fix and a 0.34.2 release, as the way decision D-01 (a numbered ruling) of [[specs/human-surface/SPEC-029-questions-to-the-human-are-clear-and-visual#Decisions]] reaches the questions an agent asks in the conversation.
-
-> [!note] Since your last review
-> The rule's scope is the general questions an agent asks in the conversation; approvals and other document gates already reach you in the md editor. The example below is a working question, and the Goal says where approvals go.
 
 ## Goal
 
