@@ -35,6 +35,12 @@ one is accepted, a closed unmerged one rejected. Open pull requests, unknown
 runs, runs that reached no verdict and runs already reviewed are skipped and
 reported.
 
+`sense-context [--plugin DIR]` is a sensor command: it prints the sensor contract
+(`{"valid", "value", "items"}`, plus a `reason` when invalid) for the context an
+install of the plugin tree adds to every session (see `sensorlib.sense_context`).
+`--plugin` defaults to the `plugin/` folder of the project root. It exits 0 on
+every path; a bad argument or a missing folder is an invalid reading.
+
 `run [--dry-run]`, `check [--blocking]` and `baseline` belong to `looprunner`,
 imported when one of them is used. It provides `run_iteration(loop_dir,
 dry_run)`, `check(loop_dir, blocking)` and `write_baseline(loop_dir)`, each
@@ -129,6 +135,7 @@ USAGE = (
     "       compass loop schedule <LOOP-NNN> --github [--cron EXPR] | --local\n"
     "       compass loop reconcile <LOOP-NNN> --prs <file|->\n"
     "       compass loop status <LOOP-NNN> --last-run\n"
+    "       compass loop sense-context [--plugin DIR]\n"
 )
 
 
@@ -1143,7 +1150,35 @@ def _reconcile(args):
     return 0
 
 
+def _context_reading(args):
+    if len(args) == 2 and args[0] == "--plugin":
+        plugin = Path(args[1])
+    elif not args:
+        try:
+            root = vaultlib.find_vault_root().parent
+        except FileNotFoundError:
+            root = Path.cwd()
+        plugin = root / "plugin"
+    else:
+        return sensorlib.Reading(
+            valid=False,
+            reason=f"expected [--plugin DIR], got: {' '.join(args)}",
+        )
+    return sensorlib.sense_context(plugin)
+
+
+def _sense_context(args):
+    """Print the context sensor's reading as one JSON object and return 0."""
+    reading = _context_reading(args)
+    body = {"valid": reading.valid, "value": reading.value or 0, "items": reading.items}
+    if not reading.valid:
+        body["reason"] = reading.reason
+    print(json.dumps(body))
+    return 0
+
+
 COMMANDS = {
+    "sense-context": _sense_context,
     "schedule": _schedule,
     "reconcile": _reconcile,
     "new": _new,
