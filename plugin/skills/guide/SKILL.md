@@ -31,21 +31,23 @@ Read: .compass/index.md  - what exists?
 
 ### 2. Respond
 
+Each response that ends in a question asks it through `AskUserQuestion`, one question per call, never batched.
+
 **A - No Compass:**
-> Compass isn't set up. Run `/compass:setup` (installs 13 agents, scaffolds `.compass/`, sets up hooks, proposes CLAUDE.md additions). Then `/compass:vision` to capture the project goal and spec roadmap. Want me to run setup?
+> Compass isn't set up. Run `/compass:setup` (installs 13 agents, scaffolds `.compass/`, sets up hooks, proposes CLAUDE.md additions), then `/compass:vision` to capture the project goal and spec roadmap. Want me to run setup?
 
 **B - Empty vault, no vision:**
 > Compass is set up. Run `/compass:vision` to capture the project goal and a spec roadmap before writing individual specs. Want to start?
 
-**B - Vision but no specs:**
-> Vision is captured. Spec roadmap: [list from vision.md]. Which one first? I'll spawn `/compass:spec` for it.
+**B - Vision but no specs:** the roadmap items in `vision.md` are the options.
+> Vision is captured. Which roadmap item first? I'll spawn `/compass:spec` for it.
 
 **B - Documenting existing work:**
 > Point to `/compass:retroactive`.
 
-**C - Active work:** read `active.md`, present in-progress + blocked + recently completed, then list options (continue building, validate, new task, handoff, checkup).
+**C - Active work:** read `active.md`, present in-progress + blocked + recently completed, then ask what next, the options being continue building, validate, new task, handoff and checkup.
 
-**D - Port an existing project:** if setup hasn't run, run it. Then `git log --oneline -20` to show recent work. Ask which commits to document through `AskUserQuestion`, exactly one question per call: the recommended option first, labelled "(Recommended)", each option one short line saying what choosing it does, "Other" left open for free text. Never batch several questions in one message or one call. Run `/compass:retroactive` per piece, then offer a forward-looking spec the same way, as one more question: "Write a forward-looking spec?", with "Yes, start the spec (Recommended)" and "Not now".
+**D - Port an existing project:** if setup hasn't run, run it. Then `git log --oneline -20` to show recent work. Ask which commits to document through `AskUserQuestion`: the recommended option first, labelled "(Recommended)", each option one short line saying what choosing it does, "Other" left open for free text. Run `/compass:retroactive` per piece, then ask one more question, in the same form: "Write a forward-looking spec?", with "Yes, start the spec (Recommended)" and "Not now".
 
 **E - Stuck:** show the pipeline table.
 
@@ -70,14 +72,7 @@ Skills: /compass:setup, /compass:guide, /compass:checkup, /compass:vault-health,
 
 ### 3. After any action
 
-Offer the next step:
-- After spec → research?
-- After research → plan?
-- After plan → build?
-- After build → tester already ran, validate?
-- After validate → PR description?
-- After handoff create → safe to end.
-- After checkup → help fix the issues?
+Offer the next step: spec → research, research → plan, plan → build, build → validate (the tester already ran), validate → PR description, checkup → help fix the issues. After handoff create, it is safe to end.
 
 ## Failure modes worth naming
 
