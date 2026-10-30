@@ -55,7 +55,7 @@ Plan: [[PLAN-021-control-loops]].
 Plan: [[PLAN-027-numbered-choices]].
 
 - [x] TASK-237: Number every choice in the pipeline rules - complexity: S, depends_on: none
-- [ ] TASK-238: The guide skill asks its closing questions through the rule - complexity: S, depends_on: TASK-237
+- [x] TASK-238: The guide skill asks its closing questions through the rule - complexity: S, depends_on: TASK-237
 - [ ] TASK-239: Install the change here and release 0.34.2 - complexity: S, depends_on: TASK-237, TASK-238
 
 ## Next Up
