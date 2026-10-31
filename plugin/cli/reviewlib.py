@@ -34,8 +34,9 @@ A review is two JSON files in the Compass vault's `tmp/review/`:
 - `<id>.seen`, an empty file written by the surface beside the request when it
   takes the request up. Its presence tells `compass review` the add-on is
   loaded and has the request; a request still without one after the
-  acknowledgement window is withdrawn. Removing the request removes it. It
-  does not make the request answered.
+  acknowledgement window is withdrawn. Removing the request removes it, and
+  writing a request removes every `.seen` older than `ORPHAN_SECONDS` (an
+  hour) whose request is gone. It does not make the request answered.
 
 A request with no verdict is pending; while it is pending every file it
 lists belongs to the human. Removing a pending request's file withdraws it: its
@@ -58,6 +59,7 @@ VERDICTS = ("approved", "changes")
 CARRIED_LISTS = ("comments", "edited")
 SHORT_SHA = 10
 MAX_DIFF_LINES = 2000
+ORPHAN_SECONDS = 3600
 EDITOR_SETTING = "review_editor"
 PER_USER_EDITORS = ("vscode", "cursor")
 YAML_NULLS = ("null", "Null", "NULL", "~")
@@ -189,6 +191,20 @@ def seen_path(request_path):
     return Path(request_path).with_name(name)
 
 
+def _drop_orphan_claims(directory):
+    """Remove every `<id>.seen` in `directory` older than `ORPHAN_SECONDS`
+    whose `<id>.request.json` is gone: a claim written after its request was
+    withdrawn. A newer one stays, since its request may still be on its way."""
+    now = time.time()
+    for claim in Path(directory).glob("*.seen"):
+        request = claim.with_name(claim.name[: -len(".seen")] + ".request.json")
+        try:
+            if not request.exists() and now - claim.stat().st_mtime > ORPHAN_SECONDS:
+                claim.unlink(missing_ok=True)
+        except OSError:
+            continue
+
+
 def _write_atomic(path, data):
     tmp = path.with_suffix(".tmp")
     tmp.write_bytes(data)
@@ -212,6 +228,7 @@ def write_request(compass_vault, surface, root, document, title=None, step_aside
     request.update({"title": title, "return": bool(step_aside), "commit": commit})
     directory = review_dir(compass_vault)
     directory.mkdir(parents=True, exist_ok=True)
+    _drop_orphan_claims(directory)
     path = directory / f"{rid}.request.json"
     record = changes_path(path)
     try:

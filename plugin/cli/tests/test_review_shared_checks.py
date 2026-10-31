@@ -1,22 +1,29 @@
 """Tests that an editor is asked which extensions it holds once per review,
-however many files the review lists.
+however many files the review lists, and that writing a request clears the
+`<id>.seen` files whose request is gone for more than an hour.
 
 Adversarial themes: a listing repeated for every file; an answer that outlives
 one review (so a later review reads an old listing); an answer that survives
-an install.
+an install; a claim swept while its request exists or while it is fresh.
 """
 
 import importlib
 import io
 import os
+import shutil
 import sys
+import tempfile
+import time
+import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import review_surfaces  # noqa: E402
+import reviewlib  # noqa: E402
 import test_review_unconfirmed as un  # noqa: E402
 import test_review_vscode as vs  # noqa: E402
 
@@ -93,6 +100,61 @@ class ListingOncePerReview(un.Editors):
             self.assertEqual(code, 0, out + err)
             self.assertEqual(self.ops().count("install"), 1, self.ops())
             self.assertEqual(self.ops().count("list"), 2, self.ops())
+
+
+class OrphanClaims(unittest.TestCase):
+    def setUp(self):
+        self.base = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
+        self.vault = self.base / ".compass"
+        self.directory = reviewlib.review_dir(self.vault)
+        self.directory.mkdir(parents=True)
+        self.document = self.base / "a.md"
+        self.document.write_text("# A\n", encoding="utf-8")
+
+    def put(self, name, age=0):
+        path = self.directory / name
+        path.write_text("", encoding="utf-8")
+        stamp = time.time() - age
+        os.utime(path, (stamp, stamp))
+        return path
+
+    def write(self):
+        _, path = reviewlib.write_request(self.vault, "vscode", self.base, self.document, commit="abc")
+        return path
+
+    def test_an_old_claim_without_a_request_is_removed_and_a_fresh_one_stays(self):
+        """Adversarial where: an orphan claim stays for ever, the age bound is
+        ignored so a claim whose request is still being written is removed, or
+        a claim exactly at the bound is judged on the wrong side."""
+        old = self.put("old.seen", reviewlib.ORPHAN_SECONDS + 60)
+        fresh = self.put("fresh.seen", 5)
+        near = self.put("near.seen", reviewlib.ORPHAN_SECONDS - 60)
+        self.write()
+        self.assertFalse(old.exists())
+        self.assertTrue(fresh.exists())
+        self.assertTrue(near.exists())
+
+    def test_an_old_claim_whose_request_exists_stays(self):
+        """Adversarial where: the sweep removes the claim of a request that is
+        still pending because the claim is old, so a human who has had a
+        review open for hours loses its confirmation."""
+        request = self.put("keep.request.json", reviewlib.ORPHAN_SECONDS * 5)
+        claim = self.put("keep.seen", reviewlib.ORPHAN_SECONDS * 5)
+        answered = self.put("done.request.json", reviewlib.ORPHAN_SECONDS * 5)
+        answered_claim = self.put("done.seen", reviewlib.ORPHAN_SECONDS * 5)
+        other = self.put("notes.txt", reviewlib.ORPHAN_SECONDS * 5)
+        self.write()
+        for path in (request, claim, answered, answered_claim, other):
+            self.assertTrue(path.exists(), path.name)
+
+    def test_the_bound_is_a_patchable_constant(self):
+        """Adversarial where: the bound is a literal inside the sweep, so
+        neither a test nor a caller can move it."""
+        claim = self.put("moved.seen", 120)
+        with mock.patch.object(reviewlib, "ORPHAN_SECONDS", 60):
+            self.write()
+        self.assertFalse(claim.exists())
 
 
 if __name__ == "__main__":
