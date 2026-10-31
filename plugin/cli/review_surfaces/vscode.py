@@ -9,20 +9,25 @@ or opens one on it. The extension never minimizes the window, so the editor
 stays in front after an answer.
 
 An editor is configured for a document when the document sits below a
-`.compass` vault and the editor's command is on the PATH. The request's `file`
-is relative to the folder holding the vault. The extension is installed once
-for the user, from the `.vsix` shipped beside it.
+`.compass` vault, the editor's command is on the PATH, and the editor lists the
+Compass Review extension at the shipped version or later. A missing or older
+extension is installed from the `.vsix` shipped beside it before the request is
+written; a listing or an install that fails leaves the editor not configured.
+The request's `file` is relative to the folder holding the vault. The
+extension is installed once for the user.
 
 `VSCODE` and `CURSOR` are the two surfaces; they differ in their name and
 command. This module is itself the `vscode` surface.
 """
 
 import json
+import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+import review_surfaces
 from review_surfaces import foreground
 
 EXTENSION_DIR_NAME = "compass-review"
@@ -65,6 +70,33 @@ def extension_id(shipped_root=None):
         return None
 
 
+def extension_version(shipped_root=None):
+    """The version in the shipped `package.json`, or None when it cannot be
+    read."""
+    try:
+        package = json.loads((shipped_extension_dir(shipped_root) / "package.json").read_text(encoding="utf-8"))
+        return str(package["version"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def version_parts(version):
+    """The leading dotted number of `version` as a tuple of ints (`1.10.2-beta`
+    gives `(1, 10, 2)`), or None when it does not start with one."""
+    found = re.match(r"\d+(?:\.\d+)*", version.strip())
+    return tuple(int(part) for part in found.group().split(".")) if found else None
+
+
+def at_least(listed, shipped):
+    """True when version `listed` is the same as or later than `shipped`,
+    compared part by part as numbers. A version that does not parse is not."""
+    have, need = version_parts(listed), version_parts(shipped)
+    if have is None or need is None:
+        return False
+    width = max(len(have), len(need))
+    return have + (0,) * (width - len(have)) >= need + (0,) * (width - len(need))
+
+
 def _no_console():
     """Popen/run flags that keep a console window from flashing when the
     editor's `.cmd` shim starts on Windows."""
@@ -99,17 +131,60 @@ class Editor:
         self.label = label
         self.executables = executables
 
+    def listed_extensions(self, command):
+        """`([(id, version)], None)` from `<command> --list-extensions
+        --show-versions`, ids lower-cased, or `(None, problem)` when the
+        listing cannot run or exits non-zero."""
+        try:
+            listed = subprocess.run(
+                [command, "--list-extensions", "--show-versions"],
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                timeout=LIST_TIMEOUT, check=False, creationflags=_no_console(),
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            return None, f"`{self.command} --list-extensions` could not run ({exc})"
+        if listed.returncode != 0:
+            return None, (f"`{self.command} --list-extensions` exited {listed.returncode}: "
+                          f"{_first_line(listed.stderr, listed.stdout)}")
+        entries = []
+        for line in listed.stdout.splitlines():
+            if line.strip():
+                ident, _, version = line.strip().partition("@")
+                entries.append((ident.lower(), version))
+        return entries, None
+
     def configuration(self, document):
         """`({"root", "command"}, None)` when `document` can be reviewed in
         this editor, else `(None, reason)` naming what is missing. `root` is
-        the folder holding the vault; `command` is the editor's executable."""
+        the folder holding the vault; `command` is the editor's executable.
+        An extension the editor does not list, or lists at a version below the
+        shipped one, is installed first; a listing or install that fails is
+        the reason."""
         root = vault_folder(document)
         if root is None:
             return None, f"no .compass vault contains {document}"
         command = shutil.which(self.command)
         if command is None:
             return None, f"`{self.command}` is not on the PATH, so {self.label} cannot be opened"
+        wanted, version = extension_id(), extension_version()
+        if wanted is None or version is None:
+            return None, "the shipped Compass Review extension has no readable package.json; run /compass:update"
+        entries, problem = self.listed_extensions(command)
+        if problem:
+            return None, problem
+        if not any(ident == wanted and at_least(have, version) for ident, have in entries):
+            if not review_surfaces.may_install():
+                return None, f"the Compass Review extension is missing or out of date in {self.label}"
+            done = self.install(root / ".compass")
+            if not done.startswith("installed"):
+                return None, f"installing the Compass Review extension into {self.label} did not work: {done}"
         return {"root": root, "command": command}, None
+
+    def unconfirmed_fix(self):
+        """One line saying what to do when the extension in a running window
+        has not picked up a request."""
+        return (f"reload the {self.label} window (command palette: \"Developer: Reload Window\") "
+                "so it loads the Compass Review extension")
 
     def deliver(self, context, request_path):
         """Raise the editor window holding the folder, or open one on it. The
@@ -166,18 +241,10 @@ class Editor:
         wanted = extension_id()
         if wanted is None:
             return "WARN", "the shipped Compass Review extension has no readable package.json", "run /compass:update"
-        try:
-            listed = subprocess.run(
-                [command, "--list-extensions"],
-                capture_output=True, text=True, encoding="utf-8", errors="replace",
-                timeout=LIST_TIMEOUT, check=False, creationflags=_no_console(),
-            )
-        except (OSError, subprocess.SubprocessError) as exc:
-            return "WARN", f"`{self.command} --list-extensions` could not run ({exc})", f"check that `{self.command}` starts"
-        if listed.returncode != 0:
-            return ("WARN", f"`{self.command} --list-extensions` exited {listed.returncode}: "
-                    f"{_first_line(listed.stderr, listed.stdout)}", f"check that `{self.command}` starts")
-        ids = {line.strip().split("@")[0].lower() for line in listed.stdout.splitlines() if line.strip()}
+        entries, problem = self.listed_extensions(command)
+        if problem:
+            return "WARN", problem, f"check that `{self.command}` starts"
+        ids = {ident for ident, _ in entries}
         if wanted not in ids:
             return ("WARN", f"the Compass Review extension is not installed in {self.label}",
                     "run `compass review --install`")
@@ -188,9 +255,11 @@ VSCODE = Editor("vscode", "code", "VS Code", ("code.exe", "code - insiders.exe")
 CURSOR = Editor("cursor", "cursor", "Cursor", ("cursor.exe",))
 
 NAME = VSCODE.NAME
+label = VSCODE.label
 configuration = VSCODE.configuration
 deliver = VSCODE.deliver
 resolve = VSCODE.resolve
 has_focus = VSCODE.has_focus
 install = VSCODE.install
+unconfirmed_fix = VSCODE.unconfirmed_fix
 doctor = VSCODE.doctor

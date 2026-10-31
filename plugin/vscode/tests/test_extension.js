@@ -1373,7 +1373,7 @@ test("the answer lists every file in request order with read and note, and is on
   assert.deepEqual(v.comments, []);
   assert.deepEqual(v.edited, []);
   assert.ok(!Number.isNaN(Date.parse(v.at)));
-  assert.deepEqual(fs.readdirSync(env.reviewDir()).sort(), [`${ID}.request.json`, `${ID}.verdict.json`]);
+  assert.deepEqual(fs.readdirSync(env.reviewDir()).sort(), [`${ID}.request.json`, `${ID}.seen`, `${ID}.verdict.json`]);
 });
 
 // Adversarial where: a file never opened is recorded as read (the first-file

@@ -153,9 +153,19 @@ class Configuration(ReviewProject):
     def test_plugin_installed_but_off(self):
         self.configure(plugin="off")
         code, out, _ = self.review(str(self.doc), "--no-wait")
+        self.assertEqual(code, 0)
+        self.assertTrue(out.startswith("requested "), out)
+        self.assertEqual(obsidian_surface.plugin_state(self.vault), "on")
+
+    def test_plugin_off_that_cannot_be_switched_on(self):
+        self.configure(plugin="off")
+        listing = self.vault / ".obsidian" / "community-plugins.json"
+        listing.write_text("{not json", encoding="utf-8")
+        code, out, _ = self.review(str(self.doc), "--no-wait")
         self.assertEqual(code, 1)
         self.assertIn("plugin is off", out)
         self.assertIn("compass doctor", out)
+        self.assertEqual(listing.read_text(encoding="utf-8"), "{not json")
 
     def test_plugin_absent(self):
         self.configure(plugin="absent")
@@ -296,7 +306,7 @@ class Wait(ReviewProject):
         ticks = iter(range(10 ** 9))
         clock = mock.Mock(monotonic=lambda: next(ticks) * 86400.0, sleep=time.sleep)
         self.answer_later("approved", delay=1.0)
-        with mock.patch.object(module, "time", clock):
+        with mock.patch.object(module, "time", clock), mock.patch.object(module, "ACK_SECONDS", 10 ** 12):
             code, out, _ = self.review(str(self.doc))
         self.assertEqual(code, 0, out)
         self.assertIn('"verdict": "approved"', out)

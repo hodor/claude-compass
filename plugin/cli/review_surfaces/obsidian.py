@@ -9,7 +9,10 @@ the verdict beside the request.
 Obsidian is configured for a document when the document sits in an Obsidian
 vault (the nearest ancestor holding `.obsidian/`) that Obsidian's own vault
 list knows and whose `community-plugins.json` enables the plugin with its
-files present. The request's `file` is relative to that vault root.
+files present and equal to the shipped ones. A plugin that is absent, off or
+out of date is installed first (see `install_plugin`); a vault that still does
+not read as `on` afterwards is not configured. The request's `file` is
+relative to that vault root.
 """
 
 import json
@@ -19,9 +22,11 @@ import sys
 import urllib.parse
 from pathlib import Path
 
+import review_surfaces
 from review_surfaces import foreground
 
 NAME = "obsidian"
+label = "Obsidian"
 PLUGIN_ID = "compass-review"
 PLUGIN_FILES = ("main.js", "manifest.json", "styles.css")
 BASE_FILES = ("review-inbox.base", "lessons.base")
@@ -90,9 +95,39 @@ def plugin_state(vault_root):
     return "on" if isinstance(enabled, list) and PLUGIN_ID in enabled else "off"
 
 
+def plugin_current(vault_root):
+    """True when every shipped plugin file is installed in this vault with the
+    same bytes. A plugin file that is not shipped cannot be compared and
+    counts as current."""
+    shipped = shipped_plugin_dir()
+    folder = Path(vault_root) / ".obsidian" / "plugins" / PLUGIN_ID
+    for name in PLUGIN_FILES:
+        try:
+            wanted = (shipped / name).read_bytes()
+        except OSError:
+            continue
+        try:
+            if (folder / name).read_bytes() != wanted:
+                return False
+        except OSError:
+            return False
+    return True
+
+
+def _compass_vault_of(root):
+    """The `.compass` directory the Obsidian vault at `root` is or holds, or
+    `root` itself when it holds none."""
+    root = Path(root)
+    if root.name == ".compass":
+        return root
+    return root / ".compass" if (root / ".compass").is_dir() else root
+
+
 def configuration(document):
     """`({"root", "vault_id"}, None)` when `document` can be reviewed in
-    Obsidian, else `(None, reason)` naming what is missing."""
+    Obsidian, else `(None, reason)` naming what is missing. A plugin that is
+    absent, off or out of date in a vault Obsidian lists is installed first,
+    unless installing is switched off (see `review_surfaces.check_only`)."""
     root = find_obsidian_vault(document)
     if root is None:
         return None, f"no Obsidian vault contains {document}"
@@ -100,9 +135,21 @@ def configuration(document):
     if vid is None:
         return None, f"Obsidian does not list the vault {root}; open it once in Obsidian"
     state = plugin_state(root)
+    if (state != "on" or not plugin_current(root)) and review_surfaces.may_install():
+        try:
+            install_plugin(_compass_vault_of(root), with_bases=False)
+        except OSError as exc:
+            return None, f"the Compass Review plugin could not be installed in {root} ({exc})"
+        state = plugin_state(root)
     if state != "on":
         return None, f"the Compass Review plugin is {state} in {root}; `compass doctor` shows how to turn it on"
     return {"root": root, "vault_id": vid}, None
+
+
+def unconfirmed_fix():
+    """One line saying what to do when Obsidian has not picked up a request."""
+    return ("reload Obsidian (command palette: \"Reload app without saving\") so it loads the "
+            "Compass Review plugin; " + ENABLE_STEPS)
 
 
 def deliver(context, request_path):
@@ -161,14 +208,15 @@ def install_bases(compass_vault, src=None):
     return written
 
 
-def install_plugin(compass_vault, src=None, bases_src=None):
+def install_plugin(compass_vault, src=None, bases_src=None, with_bases=True):
     """Copy the plugin into the project's Obsidian vault, which is `.compass`
     itself or the project root around it, list it in `community-plugins.json`,
     and add the shipped Bases views to `.compass` (see `install_bases`).
     Returns one line saying what was done. A vault Obsidian has not opened
     (no `.obsidian/`) is left alone. Other plugins in the list are kept; a
     list that does not parse or is not a list is left untouched and named,
-    and the Bases views are then not added."""
+    and the Bases views are then not added. `with_bases=False` leaves the
+    Bases views out."""
     compass_vault = Path(compass_vault)
     root = next((d for d in (compass_vault, compass_vault.parent) if (d / ".obsidian").is_dir()), None)
     if root is None:
@@ -201,7 +249,7 @@ def install_plugin(compass_vault, src=None, bases_src=None):
         tmp = listing.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(enabled, indent=2) + "\n", encoding="utf-8")
         os.replace(tmp, listing)
-    bases = install_bases(compass_vault, bases_src)
+    bases = install_bases(compass_vault, bases_src) if with_bases else []
     return f"installed into {dest}" + (f"; added {', '.join(bases)}" if bases else "")
 
 

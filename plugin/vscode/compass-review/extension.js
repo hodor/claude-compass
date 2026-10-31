@@ -27,6 +27,8 @@
 //               window has focus, so writes from other programs are not listed
 //     files     for several documents only: every listed document in request
 //               order with its read mark and its note, when it has one
+//   <folder>/.compass/tmp/review/<id>.seen   written here, empty, when a
+//   request is first taken up; tells Compass an editor window holds it
 // Other review surfaces share the folder; a request whose `surface` is not
 // `vscode` or `cursor` is theirs.
 //
@@ -92,6 +94,11 @@ function plural(n, word) {
 
 function verdictPathFor(requestPath) {
   return requestPath.replace(/\.request\.json$/, ".verdict.json");
+}
+
+// The empty file written beside a request once this extension has taken it up.
+function seenPathFor(requestPath) {
+  return requestPath.replace(/\.request\.json$/, ".seen");
 }
 
 // A path from the workspace folder: relative, without parent steps.
@@ -309,7 +316,18 @@ class CompassReview {
       for (const name of old.edited) entry.edited.add(name);
     }
     this.reviews.set(request.id, entry);
+    this.markSeen(file);
     return entry;
+  }
+
+  // Writes `<id>.seen` beside a request this extension has just taken up, so
+  // `compass review` knows an editor window holds it. A failed write is logged.
+  markSeen(requestFile) {
+    try {
+      fs.writeFileSync(seenPathFor(requestFile), "");
+    } catch (e) {
+      this.log(`could not write ${seenPathFor(requestFile)}: ${(e && e.message) || e}`);
+    }
   }
 
   // Claims every request waiting in the review folders; returns the new ones.
