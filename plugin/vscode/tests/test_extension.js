@@ -1583,3 +1583,90 @@ test("a click after another surface already answered leaves that answer as it is
   assert.deepEqual(env.verdict(ID), first);
   assert.deepEqual(verdictWrites, []);
 });
+
+// ---- delivery confirmation: a `.seen` file beside each request this surface takes ----
+
+const seenFile = (env, id, project) => path.join(env.reviewDir(project), `${id}.seen`);
+const seenFiles = (env, project) => {
+  const dir = env.reviewDir(project);
+  return fs.existsSync(dir) ? fs.readdirSync(dir).filter((n) => n.endsWith(".seen")).sort() : [];
+};
+
+// Adversarial where: the extension draws the card for a request found at
+// activation and tells Compass nothing, so `compass review` withdraws a
+// request that is on screen; the claim is not an empty file or lands beside
+// another file.
+test("a request found at activation gets <id>.seen beside it, an empty file", async (t) => {
+  const env = await openSet(t);
+  await env.until(() => fs.existsSync(seenFile(env, ID)), `${ID}.seen`);
+  assert.equal(fs.readFileSync(seenFile(env, ID), "utf8"), "");
+  assert.ok(fs.existsSync(env.requestFile(ID)), "the request itself stays");
+});
+
+// Adversarial where: only the request found at activation is claimed, so one
+// written by `compass review` into an open window (the usual case) is
+// withdrawn after the window; the half-written .tmp is claimed.
+test("a request arriving after activation gets <id>.seen once its file is whole", async (t) => {
+  const { env, activate } = await begin(t);
+  await activate();
+  await env.settle();
+  assert.deepEqual(seenFiles(env), []);
+  await env.arrive(request(ID, SET), { events: 3 });
+  await env.ready();
+  await env.until(() => fs.existsSync(seenFile(env, ID)), `${ID}.seen`);
+  assert.deepEqual(seenFiles(env), [`${ID}.seen`]);
+});
+
+// Adversarial where: the extension claims requests it does not show: an
+// answered one, one addressed to Obsidian, a damaged one or a half-written
+// `.tmp`; or Cursor's own name is not counted as a surface it takes.
+test("only the requests this surface takes get a claim: not answered, other-surface, damaged or temporary ones", async (t) => {
+  const { env, activate } = await begin(t);
+  const dir = env.reviewDir();
+  fs.mkdirSync(dir, { recursive: true });
+  const write = (name, body) => fs.writeFileSync(path.join(dir, name), typeof body === "string" ? body : JSON.stringify(body));
+  write("waiting.request.json", request("waiting", SET));
+  write("cursor.request.json", request("cursor", SET, { surface: "cursor" }));
+  write("answered.request.json", request("answered", SET));
+  write("answered.verdict.json", { id: "answered", verdict: "approved" });
+  write("obsidian.request.json", request("obsidian", SET, { surface: "obsidian" }));
+  write("broken.request.json", "{nope");
+  write("half.request.tmp", '{"id": "half", "surface": "vscode", "file": ".compass/specs/spec.md"}');
+  await activate();
+  await env.ready("waiting");
+  await env.until(() => seenFiles(env).length >= 2, "the claims");
+  await env.settle();
+  assert.deepEqual(seenFiles(env), ["cursor.seen", "waiting.seen"]);
+});
+
+// Adversarial where: with two workspace folders the claim is written beside
+// the first folder's requests, or in only one folder.
+test("each workspace folder's request is claimed beside its own request file", async (t) => {
+  const { env, activate } = await begin(t, { folders: ["orchard", "harbor"] });
+  const other = env.host.folders[1];
+  for (const rel of SET) env.put(rel, "y\n", other);
+  fs.mkdirSync(env.reviewDir(env.project), { recursive: true });
+  fs.mkdirSync(env.reviewDir(other), { recursive: true });
+  fs.writeFileSync(env.requestFile(ID, env.project), JSON.stringify(request(ID, SET)));
+  fs.writeFileSync(env.requestFile(ID2, other), JSON.stringify(request(ID2, SET)));
+  await activate();
+  await env.ready(ID);
+  await env.ready(ID2);
+  await env.until(() => seenFiles(env, env.project).length && seenFiles(env, other).length, "both claims");
+  assert.deepEqual(seenFiles(env, env.project), [`${ID}.seen`]);
+  assert.deepEqual(seenFiles(env, other), [`${ID2}.seen`]);
+});
+
+// Adversarial where: a claim that cannot be written (here its name is taken by
+// a folder) is thrown out of the watcher, so the card never draws or the
+// answer cannot be given for a review that was delivered.
+test("a failed write of <id>.seen is not thrown, and the card still draws and answers", async (t) => {
+  const { env, activate } = await begin(t);
+  fs.mkdirSync(env.reviewDir(), { recursive: true });
+  fs.mkdirSync(seenFile(env, ID));
+  fs.writeFileSync(env.requestFile(ID), JSON.stringify(request(ID, SET)));
+  await activate();
+  await env.ready();
+  await env.approve();
+  assert.equal(env.verdict(ID).verdict, "approved");
+});

@@ -40,6 +40,10 @@ Plan: [[PLAN-020-clone-old-sessions]].
 
 - [ ] TASK-146: Live acceptance on this repo
 
+## Bug: a review waits forever when its editor add-on is missing
+
+- [ ] TASK-240: `compass review` checks the review editor's add-on (VS Code and Cursor extension, Obsidian plugin) is installed and current before sending, installs it when it is not, and stops waiting with `not configured:` when no editor confirms the request within 60 s - complexity: M
+
 ## PLAN-021 Wave 2: judge, schedule, ast-grep sensor, skill, release
 
 Plan: [[PLAN-021-control-loops]].

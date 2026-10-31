@@ -5322,3 +5322,103 @@ test("two documents naming one script each draw their own file and text, with no
   await loopSettle();
   assert.equal(agentOuts(app)[0].text, `a.md|${longer.length}|1`, "text is the live file");
 });
+
+// ---- delivery confirmation: a `.seen` file beside each request this surface takes ----
+
+const seenPaths = (app) => [...app.store.keys()].filter((k) => k.endsWith(".seen")).sort();
+
+// Adversarial where: the plugin takes a request through the link and tells
+// Compass nothing, so `compass review` withdraws a request that is on screen;
+// the claim lands beside another file (a folder prefix is dropped, the
+// `.request.json` suffix stays), is not empty, or a request that names no
+// surface (an older Compass) is not counted as this surface's own.
+test("a request taken through the link writes <id>.seen beside it, whether it names this surface or none", async () => {
+  for (const [label, extra] of [["names obsidian", { surface: "obsidian" }], ["names no surface", {}]]) {
+    const { app, plugin } = await loaded({
+      "specs/a.md": "x",
+      ".compass/tmp/review/31.request.json": req("31", "specs/a.md", extra),
+    });
+    await plugin.handler({ request: ".compass/tmp/review/31.request.json" });
+    await sleep();
+    assert.deepEqual(seenPaths(app), [".compass/tmp/review/31.seen"], label);
+    assert.equal(app.store.get(".compass/tmp/review/31.seen"), "", `${label}: the claim is an empty file`);
+    assert.ok(app.store.has(".compass/tmp/review/31.request.json"), "the request itself stays");
+  }
+});
+
+// Adversarial where: the start-up scan shows the cards but writes no claim (a
+// window opened on a waiting request is withdrawn after the window), or claims
+// an answered, damaged or other-surface request.
+test("the start-up scan writes <id>.seen for the unanswered requests of this surface and for no others", async () => {
+  const { app } = await loaded({
+    "a.md": "x", "b.md": "y", "c.md": "z", "d.md": "w",
+    "tmp/review/21.request.json": req("21", "a.md", { surface: "obsidian" }),
+    "tmp/review/22.request.json": req("22", "b.md", { surface: "obsidian" }), "tmp/review/22.verdict.json": "{}",
+    "tmp/review/23.request.json": req("23", "c.md", { surface: "vscode" }),
+    "tmp/review/24.request.json": req("24", "d.md", { surface: "cursor" }),
+    "tmp/review/bad.request.json": "{nope",
+  });
+  await app.workspace.ready();
+  await sleep();
+  assert.deepEqual(seenPaths(app), ["tmp/review/21.seen"]);
+});
+
+// Adversarial where: the link handler claims a request addressed to VS Code or
+// Cursor, so Compass sees it taken and the editor that should show it is never
+// waited on.
+test("a request addressed to another surface is given no <id>.seen by the link handler", async () => {
+  for (const surface of ["vscode", "cursor"]) {
+    const { app, plugin } = await loaded({
+      "a.md": "x", "tmp/review/41.request.json": req("41", "a.md", { surface }),
+    });
+    try { await plugin.handler({ request: "tmp/review/41.request.json" }); } catch (e) { /* what the handler does with the link is not under test */ }
+    await sleep();
+    assert.deepEqual(seenPaths(app), [], surface);
+  }
+});
+
+// Adversarial where: a request that does not parse or names no file is
+// claimed, so Compass believes a review is on screen that never opened.
+test("a malformed request given through the link is not claimed", async () => {
+  const { app, plugin } = await loaded({
+    "tmp/review/4.request.json": '{"file": 1}',
+    "tmp/review/5.request.json": "{nope",
+  });
+  await plugin.handler({ request: "tmp/review/4.request.json" });
+  await plugin.handler({ request: "tmp/review/5.request.json" });
+  await sleep();
+  assert.deepEqual(seenPaths(app), []);
+});
+
+// Adversarial where: the claim is written on every call that touches an
+// entry, not only the one that takes it, so a re-announced request keeps
+// recreating a file that was removed.
+test("a request taken again after its claim was removed does not get the claim written a second time", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x", "tmp/review/51.request.json": req("51", "a.md", { surface: "obsidian" }),
+  });
+  await plugin.handler({ request: "tmp/review/51.request.json" });
+  await sleep();
+  assert.deepEqual(seenPaths(app), ["tmp/review/51.seen"]);
+  app.store.delete("tmp/review/51.seen");
+  await plugin.handler({ request: "tmp/review/51.request.json" });
+  await sleep();
+  assert.deepEqual(seenPaths(app), []);
+});
+
+// Adversarial where: a vault that refuses the write of the claim makes the
+// handler throw, so the card never appears and the human cannot answer a
+// review that was delivered.
+test("a failed write of <id>.seen is not thrown, and the card still opens and answers", async () => {
+  const { app, plugin } = await loaded({
+    "a.md": "x", "tmp/review/61.request.json": req("61", "a.md", { surface: "obsidian" }),
+  });
+  const write = app.vault.adapter.write;
+  app.vault.adapter.write = async (p, d) => { if (p.endsWith(".seen")) throw new Error("EACCES"); return write(p, d); };
+  await plugin.handler({ request: "tmp/review/61.request.json" });
+  await sleep();
+  assert.deepEqual(cardIds(app), ["61"]);
+  await click(cardBtn(app, "61", "Approve"));
+  await sleep();
+  assert.equal(JSON.parse(app.store.get("tmp/review/61.verdict.json")).verdict, "approved");
+});
