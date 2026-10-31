@@ -249,10 +249,20 @@ def _fingerprints(loop_dir, definition):
     return prints
 
 
+USAGE_RECORD = ".compass/meta/usage.yaml"
+
+
+def _churn(name):
+    """True for a file other processes rewrite on their own: Compass's usage
+    record, written by every `compass` call a session's hooks make, and the
+    app state under any `.obsidian/` folder, written by a running Obsidian."""
+    return name == USAGE_RECORD or name.startswith(".obsidian/") or "/.obsidian/" in name
+
+
 def _git_snapshot(project):
     """`{path: (size, mtime_ns) or None}` for every file git reports modified
-    or untracked, outside `.compass/tmp`; None when the project is not a git
-    work tree or git cannot be run."""
+    or untracked, outside `.compass/tmp` and skipping churn (see `_churn`);
+    None when the project is not a git work tree or git cannot be run."""
     proc = _run_process(
         ["git", "ls-files", "-m", "-o", "--exclude-standard", "-z"], project, SNAPSHOT_SECONDS
     )
@@ -260,7 +270,7 @@ def _git_snapshot(project):
         return None
     snapshot = {}
     for name in _text(proc.stdout).split("\0"):
-        if not name or name.startswith(".compass/tmp/"):
+        if not name or name.startswith(".compass/tmp/") or _churn(name):
             continue
         try:
             stat = (Path(project) / name).stat()
@@ -272,9 +282,10 @@ def _git_snapshot(project):
 
 def _walk_snapshot(project, loop_dir):
     """`{relative path: (size, mtime_ns)}` for the files under the project,
-    walked in sorted order and skipping `.git`, `.compass/tmp` and the loop's
-    own ledger and state files. After SNAPSHOT_ENTRIES entries the walk stops
-    and the snapshot carries the key PARTIAL."""
+    walked in sorted order and skipping `.git`, `.compass/tmp`, churn (see
+    `_churn`) and the loop's own ledger and state files. After
+    SNAPSHOT_ENTRIES entries the walk stops and the snapshot carries the key
+    PARTIAL."""
     project, loop_dir = Path(project), Path(loop_dir)
     skip_dirs = {project / ".git", project / ".compass" / "tmp"}
     skip_files = {loop_dir / name for name in ("ledger.jsonl", "ledger.jsonl.lock", "state.json")}
@@ -289,6 +300,8 @@ def _walk_snapshot(project, loop_dir):
                 snapshot[PARTIAL] = True
                 return snapshot
             key = path.relative_to(project).as_posix()
+            if _churn(key):
+                continue
             try:
                 stat = path.stat()
                 snapshot[key] = (stat.st_size, stat.st_mtime_ns)
