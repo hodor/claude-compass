@@ -325,7 +325,12 @@ def _prepare(given):
     `(documents, surface, context, vault, root, commit)`; raises
     `reviewlib.GitUnavailable` naming the first file that cannot go out.
     All files must sit in one vault and one git repository and be shown by
-    one surface."""
+    one surface. Each editor is asked about its add-on once for all files."""
+    with reviewlib.shared_checks():
+        return _check_documents(given)
+
+
+def _check_documents(given):
     documents, first = [], None
     for name in given:
         document = Path(name).resolve()

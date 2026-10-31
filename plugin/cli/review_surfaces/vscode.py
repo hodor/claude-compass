@@ -134,7 +134,18 @@ class Editor:
     def listed_extensions(self, command):
         """`([(id, version)], None)` from `<command> --list-extensions
         --show-versions`, ids lower-cased, or `(None, problem)` when the
-        listing cannot run or exits non-zero."""
+        listing cannot run or exits non-zero. Inside
+        `review_surfaces.shared_listings()` the answer is kept per command, so
+        the editor is asked once."""
+        cache = review_surfaces.listing_cache()
+        if cache is not None and command in cache:
+            return cache[command]
+        result = self._list(command)
+        if cache is not None:
+            cache[command] = result
+        return result
+
+    def _list(self, command):
         try:
             listed = subprocess.run(
                 [command, "--list-extensions", "--show-versions"],
@@ -176,6 +187,9 @@ class Editor:
             if not review_surfaces.may_install():
                 return None, f"the Compass Review extension is missing or out of date in {self.label}"
             done = self.install(root / ".compass")
+            cache = review_surfaces.listing_cache()
+            if cache is not None:
+                cache.pop(command, None)
             if not done.startswith("installed"):
                 return None, f"installing the Compass Review extension into {self.label} did not work: {done}"
         return {"root": root, "command": command}, None

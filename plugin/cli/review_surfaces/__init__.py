@@ -50,6 +50,28 @@ def may_install():
     return not _check_only
 
 
+_listings = None
+
+
+@contextmanager
+def shared_listings():
+    """While active, a surface keeps what it learned from its editor in one
+    dictionary (see `listing_cache`), so checking several documents asks the
+    editor once. Nested uses share the outermost dictionary."""
+    global _listings
+    outer = _listings
+    _listings = {} if outer is None else outer
+    try:
+        yield
+    finally:
+        _listings = outer
+
+
+def listing_cache():
+    """The dictionary of `shared_listings()`, or None outside it."""
+    return _listings
+
+
 def named(name):
     """The registered surface called `name`, or None."""
     return next((s for s in SURFACES if s.NAME == name), None)

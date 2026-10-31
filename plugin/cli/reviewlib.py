@@ -159,6 +159,12 @@ def editor_report(compass_vault):
     return "OK", "no review editor is set up; reviews are asked in the terminal", None
 
 
+def shared_checks():
+    """A `with` block inside which the surfaces keep what they learn from their
+    editors, so checking several documents asks each editor once."""
+    return review_surfaces.shared_listings()
+
+
 def review_dir(compass_vault):
     return Path(compass_vault).joinpath(*REVIEW_DIR)
 
