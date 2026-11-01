@@ -11,6 +11,9 @@ summary: "Shrinks the text Compass puts into Claude Code's context over all a se
 
 # Loop: session-context
 
+> [!IMPORTANT]
+> You decide: accept or reject run 11. The rules' Capabilities section keeps "bare `compass` lists every command", and moves the `compass tree` and `compass usage` hints into the `methodology` skill. Recommended: reject. The section exists so every session knows those tools exist; once the hint is inside a skill, an agent that does not open that skill never learns of `compass tree`, and the saving is 31 tokens. Approve accepts it; Needs changes rejects it, and your note joins `feedback.md`.
+
 ## Step 0: End state
 
 The text Compass puts into Claude Code's context over all the work a session does is as small as it can be while Compass works as well as before. No fixed number: the loop runs until five runs in a row save nothing, or the budget ends.
@@ -130,3 +133,8 @@ Review of run 1 (changes): the loop is about the total context Compass uses to d
 - 11,083 -> 11,027 per average session (-56). The judge found nothing. Text tests pass.
 - The change: the phase summary schema moves word for word from `extract-lessons` to `plugin/skills/extract-lessons/phase-summary.md`; `extract-lessons` and `build` point to it.
 - Accepted.
+
+### 2026-11-01: run 11 (RUN-20261101T232943082396Z)
+
+- 11,027 -> 10,996 per average session (-31). The judge found nothing.
+- The change: the `compass tree` and `compass usage` hints move from the rules' Capabilities section to the `methodology` skill's capability index paragraph.
