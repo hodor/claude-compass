@@ -37,11 +37,11 @@ Run by hand from this repository (`compass loop run LOOP-003`), on the human's C
 
 ## Step 6: Human on the loop
 
-Every increment is reviewed before the next run: the full suite and `compass validate` pass, then `compass loop review LOOP-003 <run-id> accept|reject`.
+Each increment is checked automatically before the next run (text tests, `compass validate`, the protected rules sections unchanged, the full suite every fifth accepted run) and accepted or rejected with `compass loop review`; the human checks in on the batch.
 
 ## Step 7: Flow control
 
-`wip_limit` 1; $0.50 per actuator run plus $0.15 per judge run; $5 in total; halts after 2 harmful runs, 3 actuator failures or 5 runs without help.
+`wip_limit` 1; $0.50 per actuator run plus $0.15 per judge run; $12 in total; halts after 2 harmful runs, 3 actuator failures or 5 runs without help.
 
 ## Live record
 
@@ -136,3 +136,7 @@ Review of run 1 (changes): the loop is about the total context Compass uses to d
 - 11,027 -> 10,996 per average session (-31). The judge found nothing.
 - The change: the `compass tree` and `compass usage` hints move from the rules' Capabilities section to the `methodology` skill's capability index paragraph.
 - Accepted.
+
+### 2026-11-01: unattended batch
+
+The human ruled the loop runs on its own, about 30 runs, checked automatically rather than reviewed one by one, with the usage cap raised to $12. The batch starts at tag `loop003-batch-start`.
