@@ -11,6 +11,9 @@ summary: "Shrinks the text Compass puts into Claude Code's context over all a se
 
 # Loop: session-context
 
+> [!IMPORTANT]
+> You decide: accept or reject run 4. It moves three more paragraphs from the always-loaded rules to the `obsidian` skill's `writing-principles.md`: brevity binds only the agent's own prose and the human's captured words stay in his sentences; research may be as long as it needs; decisions consolidate by topic. Recommended: reject. The first one is what stops an agent from shortening your words while it obeys "short, sweet" two lines above, so the two belong side by side in every session; the saving is 78 tokens. Approve accepts it; Needs changes rejects it, and your note joins `feedback.md`.
+
 ## Step 0: End state
 
 The text Compass puts into Claude Code's context over all the work a session does is as small as it can be while Compass works as well as before. No fixed number: the loop runs until five runs in a row save nothing, or the budget ends.
@@ -89,3 +92,8 @@ Review of run 1 (changes): the loop is about the total context Compass uses to d
 - 11,761 -> 11,651 per average session (-110). The judge found nothing. Text tests pass.
 - The change: the pipeline rules' "Decisions (ADRs)" bullets become one line plus a pointer; the four bullets move word for word into the `methodology` skill's ADR section.
 - Accepted, with the note that agents must still reach the full ADR rules when they need them. The two places that write an ADR, the `builder` agent and the `retroactive` skill, now name the `methodology` skill's ADR section, and the always-loaded rules point there for every other agent.
+
+### 2026-11-01: run 4 (RUN-20261101T221953624975Z)
+
+- 11,651 -> 11,573 per average session (-78). The judge found nothing. Text tests pass.
+- The change: the Brevity, Research-length and Decisions-consolidate paragraphs of the pipeline rules' Document Writing section move word for word to `writing-principles.md`; the pointer line lists them.

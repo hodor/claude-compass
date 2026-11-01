@@ -27,13 +27,7 @@ Before presenting any document, have fresh eyes read it: a cheap sub-agent holdi
 
 Compass documents should be a pleasure to read. Easy to read, short, sweet. Long only when needed. Never verbose. The `obsidian` skill holds the forms (opening picture, callouts, embeds) and the plain words a human reads.
 
-Brevity binds your own prose only. The human's captured words (spec problems, vision goals, quoted rulings) are content, and they stay in his sentences at whatever length he spoke them.
-
-Research is the exception: it captures evidence and can be as long as required.
-
-The sentence-level writing principles (ornamental test, summaries, what a document carries, describing what IS, own authority, positive statements): the `obsidian` skill, file `writing-principles.md`.
-
-Decisions consolidate by topic: a ruling that refines an existing decision merges into it. The section heading is `## Decisions`.
+The remaining writing principles (brevity and the human's captured words, research length, ornamental test, summaries, what a document carries, describing what IS, own authority, positive statements, consolidating decisions by topic): the `obsidian` skill, file `writing-principles.md`.
 
 Rules default to judgment - an agent's value is deciding what is better in context. MUST is reserved for true invariants: the Data rule, the human's gates.
 

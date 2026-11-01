@@ -9,3 +9,9 @@ Documents describe what IS. The story of a document's making lives in git histor
 Documents speak with their own authority. A rule is stated as the rule, and the human's phrasing survives as the document's own prose; who spoke, and when, lives in git.
 
 State principles positively. Listing what a rule is not about makes that list read as the rule's real subject.
+
+Brevity binds your own prose only. The human's captured words (spec problems, vision goals, quoted rulings) are content, and they stay in his sentences at whatever length he spoke them.
+
+Research is the exception: it captures evidence and can be as long as required.
+
+Decisions consolidate by topic: a ruling that refines an existing decision merges into it. The section heading is `## Decisions`.
