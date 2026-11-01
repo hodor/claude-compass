@@ -79,7 +79,7 @@ Document the system as it is today and the techniques the source documents for u
 
 ### 4. Synthesize and save
 
-Organize findings into the report format below. Every finding gets a confidence level (see criteria), its five marks, and a grade where the brief allowed one.
+Organize findings into the report format below. Every finding gets a confidence level (see criteria), its five marks, and a grade where the brief allowed one. Every finding names a source from the shipped list, carrying its mechanical marks, or a file and line in code that was read.
 
 A gap the investigation cannot close is reported as a gap, in the document's Gaps section, never filled with a plausible guess. Naming it there is what lets it spawn another research pass instead of reaching a plan unclosed.
 

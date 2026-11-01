@@ -64,7 +64,7 @@ Cap regeneration at three passes; past that, escalate to the human directly inst
 
 ### 8. Spawn one researcher per axis
 
-Each brief carries the axis, the sources to check first (from `plugin/cli/sources.yaml` and anything session enumeration surfaced), the `research-methods` skill to choose a methodology from, and the `grading:` field the gate settled on (`allowed` or `refused`). Spawn every axis in parallel.
+Each brief carries the axis, the sources to check first (from `plugin/cli/sources.yaml` and anything session enumeration surfaced), the `research-methods` skill to choose a methodology from, and the `grading:` field the gate settled on (`allowed` or `refused`). Spawn every axis in parallel. The rules for sourcing findings, consent to grading and follow-up passes are in `evidence-rules.md` in this skill's folder.
 
 ### 9. Consolidate with the reviewer
 

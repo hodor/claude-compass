@@ -57,9 +57,7 @@ Conversation output is never the record - logs, reports, and vault files are. On
 - Every finding gets a confidence level.
 - Axes span the whole spec.
 - Before spawning researchers, present the planned axes - each in one plain line: the question and where the answers will be sought - and invite the human in. With a review surface they are a draft research document sent for review; otherwise they are plain text. How his questions lead and how research runs once he joins: the `research` skill, step 4.
-- Every finding names a source from the shipped list, carrying its mechanical marks, or a file and line in code that was read.
-- A grade is recorded only after the human is told at the gate that grading will apply, and he may refuse it.
-- A run that finds it needs more research spawns another research pass, never a plan.
+- Sourcing of findings, consent to grading, and follow-up passes: the `research` skill, file `evidence-rules.md`.
 
 ## Decisions (ADRs)
 

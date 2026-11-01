@@ -11,6 +11,9 @@ summary: "Shrinks the text Compass puts into Claude Code's context over all a se
 
 # Loop: session-context
 
+> [!IMPORTANT]
+> You decide: accept or reject run 6. Three research bullets leave the always-loaded rules (every finding names its source; a grade only after you were told and could refuse; a gap becomes another research pass, never a plan) and move to a new `evidence-rules.md` in the `research` skill, which links it. The `researcher` agent now carries the sourcing rule itself, and the `research` skill already enforces the other two in its steps 6 and 10. Recommended: accept. Approve accepts it; Needs changes rejects it, and your note joins `feedback.md`.
+
 ## Step 0: End state
 
 The text Compass puts into Claude Code's context over all the work a session does is as small as it can be while Compass works as well as before. No fixed number: the loop runs until five runs in a row save nothing, or the budget ends.
@@ -101,3 +104,8 @@ Review of run 1 (changes): the loop is about the total context Compass uses to d
 - 11,573 -> 11,477 per average session (-96). The judge found nothing. Text tests pass.
 - The change: the pipeline rules' two indexing bullets become one line; the full text moves word for word to a new section of `writing-principles.md`.
 - Accepted.
+
+### 2026-11-01: run 6 (RUN-20261101T222624533925Z)
+
+- 11,477 -> 11,425 per average session (-52). The judge found nothing. Text tests pass.
+- The change: three Research bullets become one pointer line; they move word for word to `plugin/skills/research/evidence-rules.md`, linked from the skill's researcher brief step, and the sourcing rule is added to the `researcher` agent.
