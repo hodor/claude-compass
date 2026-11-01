@@ -11,6 +11,9 @@ summary: "Shrinks the text Compass puts into Claude Code's context over all a se
 
 # Loop: session-context
 
+> [!IMPORTANT]
+> You decide: accept or reject run 10. The `phase-summary.yaml` schema and its halt rule move from the `extract-lessons` skill into a side file, `phase-summary.md`, read only when the lesson pass runs for a finished build phase; the pass that runs after ordinary turns (most of its runs) no longer loads it. The `build` skill, which writes that file, now points at the same schema. Recommended: accept. Approve accepts it; Needs changes rejects it, and your note joins `feedback.md`.
+
 ## Step 0: End state
 
 The text Compass puts into Claude Code's context over all the work a session does is as small as it can be while Compass works as well as before. No fixed number: the loop runs until five runs in a row save nothing, or the budget ends.
@@ -124,3 +127,8 @@ Review of run 1 (changes): the loop is about the total context Compass uses to d
 
 - Halted as `controls-changed`: `compass sync` rewrote `.compass/meta/tag-index.yaml` during the judge. The runner now skips every file under `.compass/meta/` (commit `c8c94b4`).
 - Its change, moving the Data rule's enforcement paragraph out of the always-loaded rules, was not kept: the Data rule is an invariant every session carries. `feedback.md` now says so.
+
+### 2026-11-01: run 10 (RUN-20261101T232653329926Z)
+
+- 11,083 -> 11,027 per average session (-56). The judge found nothing. Text tests pass.
+- The change: the phase summary schema moves word for word from `extract-lessons` to `plugin/skills/extract-lessons/phase-summary.md`; `extract-lessons` and `build` point to it.

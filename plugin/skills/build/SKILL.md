@@ -57,7 +57,7 @@ Spawn builder agents to execute tasks. The main conversation orchestrates; it do
       - tester capture → `task-<NNN>-test.md`
       - debug capture → `task-<NNN>-debug.md`
       - validator capture → `validator.md`
-   3. Write `phase-summary.yaml` with structured signals: `phase_id`, `plan`, `tasks` list, `completed_at`, `fix_loop_cycles` per task (read from the last `cycle N` that `compass test-checkpoint cycle` printed for the task, 0 when it never ran), `validator_deviations`, `debug_invocations`, `stop_and_report_events`, `plan_revisions`. See `extract-lessons/SKILL.md` for the exact schema.
+   3. Write `phase-summary.yaml` with structured signals: `phase_id`, `plan`, `tasks` list, `completed_at`, `fix_loop_cycles` per task (read from the last `cycle N` that `compass test-checkpoint cycle` printed for the task, 0 when it never ran), `validator_deviations`, `debug_invocations`, `stop_and_report_events`, `plan_revisions`. See `extract-lessons/phase-summary.md` for the exact schema.
 
    Only `phase-summary.yaml` is original content the orchestrator writes; the per-task reports are just renames of hook-captured files. This is the [[LESSON-no-agent-bookkeeping]] principle applied to subagent reports.
 
