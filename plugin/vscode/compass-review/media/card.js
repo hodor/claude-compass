@@ -94,7 +94,7 @@
           changes: button("Needs changes", "row-changes", choose("changes")),
         };
         choice.node.append(choice.approved, " ", choice.changes);
-        row.append(choice.node);
+        row.append(" ", choice.node);
       }
       rows.append(row);
       parts.rows.push({ row, mark, count, choice });

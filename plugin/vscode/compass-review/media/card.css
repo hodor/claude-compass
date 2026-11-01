@@ -155,6 +155,26 @@ button[disabled] {
   overflow-wrap: anywhere;
 }
 
+.row {
+  flex-wrap: wrap;
+}
+
+.row-choice {
+  flex: 1 1 100%;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.row-choice button.is-chosen {
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+.row-choice button.row-changes.is-chosen {
+  background: var(--vscode-errorForeground);
+}
+
 .row-count {
   flex: none;
   white-space: nowrap;

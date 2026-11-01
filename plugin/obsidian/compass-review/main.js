@@ -182,11 +182,6 @@ const PLUGIN_ID = "compass-review";
 const CARRIED_FILE = "carried-reviews.json";
 const VERDICTS = ["approved", "changes"];
 
-// The mark, note and own verdict (null until chosen) the human has given one
-// listed file.
-function newState() {
-  return { read: false, note: "", verdict: null };
-}
 const RELOAD_RETRY_MS = 2000;
 const RECHECK_MS = 5000;
 const PANEL_TYPE = "compass-review-panel";
@@ -195,6 +190,12 @@ const VIEW_TYPE = "compass-view-panel";
 function electronRemote() {
   const electron = require("electron");
   return electron.remote || require("@electron/remote");
+}
+
+// The mark, note and own verdict (null until chosen) the human has given one
+// listed file.
+function newState() {
+  return { read: false, note: "", verdict: null };
 }
 
 function verdictPathFor(requestPath) {
@@ -2155,7 +2156,10 @@ class CompassReview extends Plugin {
     if (several) {
       parts.send = actions.createEl("button", { cls: "mod-cta compass-review-send", text: "Send" });
       const all = actions.createEl("button", { cls: "compass-review-approve-all", text: "Approve all" });
-      parts.send.onclick = () => this.verdict(entry, this.settledVerdict(entry)).catch((e) => this.fail("verdict", e));
+      parts.send.onclick = () => {
+        if (!this.canSend(entry)) return undefined;
+        return this.verdict(entry, this.settledVerdict(entry)).catch((e) => this.fail("verdict", e));
+      };
       all.onclick = () => this.verdict(entry, "approved").catch((e) => this.fail("verdict", e));
     } else {
       const approve = actions.createEl("button", { cls: "mod-cta", text: "Approve" });
