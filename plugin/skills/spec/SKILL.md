@@ -94,7 +94,7 @@ Edit `.compass/index.md`, add the new spec under `## Specs` with `[[wikilinks]]`
 
 ### 6b. Cheap review pass
 
-Before presenting, spawn a reviewer sub-agent on the cheap model tier with exactly this brief: the draft spec's path, and the Document Writing rules from the pipeline rules (the ornamental test, direct statement, decisions consolidated by topic, a KPI where one exists, resident invariants cited where the work touches them - the Data rule above all). It returns a findings list; apply the edits, don't debate them. This pass exists so nothing falls through the cracks between the rules and the draft - it reviews writing, never substance: the problem and rulings are the human's.
+Before presenting, spawn a reviewer sub-agent on the cheap model tier with exactly this brief: the draft spec's path, the Document Writing rules from the pipeline rules and the `obsidian` skill's `writing-principles.md` (the ornamental test, direct statement, decisions consolidated by topic, a KPI where one exists, resident invariants cited where the work touches them - the Data rule above all). It returns a findings list; apply the edits, don't debate them. This pass exists so nothing falls through the cracks between the rules and the draft - it reviews writing, never substance: the problem and rulings are the human's.
 
 ### 7. Present for approval
 

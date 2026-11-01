@@ -11,9 +11,6 @@ summary: "Shrinks the text Compass puts into Claude Code's context over all a se
 
 # Loop: session-context
 
-> [!IMPORTANT]
-> You decide: accept or reject run 2. It moves six writing rules (the ornamental test, what a summary is, one job per document, describe what IS, own authority, state principles positively) out of the rules every session loads, into a file inside the `obsidian` skill. Recommended: reject. Those rules bind every text an agent writes, code comments and commit messages included, and an agent writing a comment never opens the `obsidian` skill. The spec skill's reviewer brief also looks for "the ornamental test" in the pipeline rules, where it would no longer be. Approve accepts the change; Needs changes rejects it, and the reason joins `feedback.md`.
-
 ## Step 0: End state
 
 The text Compass puts into Claude Code's context over all the work a session does is as small as it can be while Compass works as well as before. No fixed number: the loop runs until five runs in a row save nothing, or the budget ends.
@@ -85,3 +82,4 @@ Review of run 1 (changes): the loop is about the total context Compass uses to d
 
 - 11,969 -> 11,761 per average session (-208, 1.7%). The judge found nothing. Text tests pass.
 - The change: six paragraphs of the pipeline rules' Document Writing section move word for word to a new file, `plugin/skills/obsidian/writing-principles.md`. The rules keep one line pointing there, and the `obsidian` skill names the file under "Documents the human reads".
+- Accepted. The `spec` skill's reviewer brief now points at `writing-principles.md` for the moved rules.
