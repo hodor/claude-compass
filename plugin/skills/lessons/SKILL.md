@@ -12,7 +12,7 @@ Lessons capture hard-won knowledge that prevents the same mistake twice. Per Rei
 - **Process** (`category: process`) - how to build. "Mocking the DB in integration tests hides migration bugs."
 - **Domain** (`category: domain`) - what to build. "Users need batch export, not single-file."
 
-Process lessons improve how agents work. Domain lessons improve what agents build.
+Process lessons improve how agents work. Domain lessons improve what agents build. Spec-writer and planner prioritize domain. Builder prioritizes process. Researcher matches the question.
 
 ## Catalog
 

@@ -92,8 +92,7 @@ Conversation output is never the record - logs, reports, and vault files are. On
 
 ## Lessons
 
-- Two categories: `process` (how to build) and `domain` (what to build).
-- Spec-writer and planner prioritize domain. Builder prioritizes process. Researcher matches the question.
+- Two categories, `process` and `domain`, and which agent prioritizes which: the `lessons` skill.
 - Capture is never the human's job. Notice something worth remembering: run `compass capture-note "<one sentence>"` and move on. Never suggest `/compass:learned`, never ask whether to record it, never write a lesson in prose.
 
 ## Capabilities
