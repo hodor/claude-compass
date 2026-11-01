@@ -35,11 +35,25 @@ one is accepted, a closed unmerged one rejected. Open pull requests, unknown
 runs, runs that reached no verdict and runs already reviewed are skipped and
 reported.
 
-`sense-context [--plugin DIR]` is a sensor command: it prints the sensor contract
-(`{"valid", "value", "items"}`, plus a `reason` when invalid) for the context an
-install of the plugin tree adds to every session (see `sensorlib.sense_context`).
-`--plugin` defaults to the `plugin/` folder of the project root. It exits 0 on
-every path; a bad argument or a missing folder is an invalid reading.
+`sense-context [--plugin DIR] [--usage DIR]` is a sensor command: it prints the
+sensor contract (`{"valid", "value", "items"}`, plus a `reason` when invalid) for
+the context an install of the plugin tree adds to every session (see
+`sensorlib.sense_context`). `--plugin` defaults to the `plugin/` folder of the
+project root. `--usage` defaults to `~/.compass/usage/`, the folder of usage
+files `usage-scan` writes; the reading then also weighs the text sessions load
+on demand and carries `"usage"` (`"none"` or `{"machines", "sessions"}`) and,
+when a usage file did not parse, `"skipped"` naming it. It exits 0 on every
+path; a bad argument or a missing folder is an invalid reading.
+
+`usage-scan [--projects DIR] [--days N] [--out FILE] [--plugin DIR]` counts, over
+the Claude Code transcripts under `--projects` (default `~/.claude/projects`)
+modified within `--days` (default 30), the sessions Compass was in and the
+sessions that loaded each source of the plugin tree (`--plugin`, default the
+plugin folder this CLI ships in). It writes `{"machine", "scanned_at", "days",
+"sessions", "loads"}` to `--out` (default `~/.compass/usage/<machine>.json`) and
+prints one line. The file holds only plugin source paths and counts. An `--out`
+inside the git work tree of the working directory or of `CLAUDE_PROJECT_DIR` is
+refused. Lines and files that cannot be read are skipped and counted on stderr.
 
 `run [--dry-run]`, `check [--blocking]` and `baseline` belong to `looprunner`,
 imported when one of them is used. It provides `run_iteration(loop_dir,
@@ -60,6 +74,7 @@ import os
 import re
 import secrets
 import shlex
+import subprocess
 import sys
 import time
 from contextlib import contextmanager
@@ -118,6 +133,9 @@ VERIFIED_OUTCOMES = ("helpful", "neutral", "harmful")
 # `schtasks /TR` accepts at most this many characters.
 SCHTASKS_TR_LIMIT = 261
 
+# Where `usage-scan` writes and `sense-context` reads, relative to the home folder.
+USAGE_FOLDER = Path(".compass") / "usage"
+
 ACTIVE = "active"
 DECISIONS = ("accept", "reject")
 RUNNER_COMMANDS = ("run", "check", "baseline")
@@ -135,7 +153,8 @@ USAGE = (
     "       compass loop schedule <LOOP-NNN> --github [--cron EXPR] | --local\n"
     "       compass loop reconcile <LOOP-NNN> --prs <file|->\n"
     "       compass loop status <LOOP-NNN> --last-run\n"
-    "       compass loop sense-context [--plugin DIR]\n"
+    "       compass loop sense-context [--plugin DIR] [--usage DIR]\n"
+    "       compass loop usage-scan [--projects DIR] [--days N] [--out FILE] [--plugin DIR]\n"
 )
 
 
@@ -1150,21 +1169,36 @@ def _reconcile(args):
     return 0
 
 
+def _flag_values(args, flags):
+    """Map each flag of `flags` found in `args` to its value, or None when an
+    argument is not a known flag followed by a value."""
+    found = {}
+    it = iter(args)
+    for arg in it:
+        value = next(it, None)
+        if arg not in flags or value is None or value.startswith("--") or arg in found:
+            return None
+        found[arg] = value
+    return found
+
+
 def _context_reading(args):
-    if len(args) == 2 and args[0] == "--plugin":
-        plugin = Path(args[1])
-    elif not args:
+    given = _flag_values(args, ("--plugin", "--usage"))
+    if given is None:
+        return sensorlib.Reading(
+            valid=False,
+            reason=f"expected [--plugin DIR] [--usage DIR], got: {' '.join(args)}",
+        )
+    if "--plugin" in given:
+        plugin = Path(given["--plugin"])
+    else:
         try:
             root = vaultlib.find_vault_root().parent
         except FileNotFoundError:
             root = Path.cwd()
         plugin = root / "plugin"
-    else:
-        return sensorlib.Reading(
-            valid=False,
-            reason=f"expected [--plugin DIR], got: {' '.join(args)}",
-        )
-    return sensorlib.sense_context(plugin)
+    usage = Path(given["--usage"]) if "--usage" in given else Path.home() / USAGE_FOLDER
+    return sensorlib.sense_context(plugin, usage_dir=usage)
 
 
 def _sense_context(args):
@@ -1173,12 +1207,103 @@ def _sense_context(args):
     body = {"valid": reading.valid, "value": reading.value or 0, "items": reading.items}
     if not reading.valid:
         body["reason"] = reading.reason
+    if reading.usage is not None:
+        body["usage"] = reading.usage
+    if reading.skipped:
+        body["skipped"] = reading.skipped
     print(json.dumps(body))
+    return 0
+
+
+def _git_root(directory):
+    """The git work tree root containing `directory`, or None when it is in
+    none or git cannot run."""
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(directory), "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, encoding="utf-8", timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    top = proc.stdout.strip()
+    if proc.returncode != 0 or not top:
+        return None
+    return Path(top).resolve()
+
+
+def _work_tree_holding(path):
+    """The git work tree root among the working directory's and
+    `CLAUDE_PROJECT_DIR`'s that contains `path`, or None."""
+    directories = []
+    try:
+        directories.append(Path.cwd())
+    except OSError:
+        pass
+    project = os.environ.get("CLAUDE_PROJECT_DIR")
+    if project and Path(project).is_dir():
+        directories.append(Path(project))
+    for directory in directories:
+        root = _git_root(directory)
+        if root is not None and (path == root or root in path.parents):
+            return root
+    return None
+
+
+def _shipped_plugin():
+    """The plugin source tree this CLI ships in: the folder holding `cli/`,
+    `skills/` and `templates/agents/`. An install that lays the CLI out
+    differently has no such tree and needs `--plugin`."""
+    beside = Path(__file__).resolve().parent.parent.parent
+    if (beside / "skills").is_dir() and (beside / "templates" / "agents").is_dir():
+        return beside
+    raise UsageError("no plugin source tree beside the CLI; pass --plugin DIR")
+
+
+def _parse_usage_scan(args):
+    given = _flag_values(args, ("--projects", "--days", "--out", "--plugin"))
+    if given is None:
+        raise UsageError(
+            "expected [--projects DIR] [--days N] [--out FILE] [--plugin DIR], "
+            f"got: {' '.join(args)}"
+        )
+    days = sensorlib.DEFAULT_SCAN_DAYS
+    if "--days" in given:
+        if not re.fullmatch(r"[0-9]+", given["--days"]) or int(given["--days"]) < 1:
+            raise UsageError(f"--days needs a positive whole number, got: {given['--days']}")
+        days = int(given["--days"])
+    home = Path.home()
+    projects = Path(given["--projects"]) if "--projects" in given else home / ".claude" / "projects"
+    plugin = Path(given["--plugin"]) if "--plugin" in given else _shipped_plugin()
+    if not projects.is_dir():
+        raise UsageError(f"--projects is not a folder: {projects}")
+    out = (
+        Path(given["--out"]) if "--out" in given
+        else home / USAGE_FOLDER / f"{sensorlib.machine_id()}.json"
+    )
+    return projects, days, out, plugin
+
+
+def _usage_scan(args):
+    """Write the sessions and per-source loads counted from the transcripts
+    and print one line naming them."""
+    projects, days, out, plugin = _parse_usage_scan(args)
+    out = out.resolve()
+    root = _work_tree_holding(out)
+    if root is not None:
+        raise UsageError(
+            f"usage data stays outside the repository: {out} is inside the work tree {root}"
+        )
+    sessions, loads, skipped = sensorlib.scan_usage(projects, plugin, days)
+    sensorlib.write_usage(out, sessions, loads, days)
+    if skipped:
+        sys.stderr.write(f"skipped {skipped} undecodable lines or unreadable files\n")
+    print(f"scanned {sessions} sessions, {len(loads)} sources, wrote {out}")
     return 0
 
 
 COMMANDS = {
     "sense-context": _sense_context,
+    "usage-scan": _usage_scan,
     "schedule": _schedule,
     "reconcile": _reconcile,
     "new": _new,
