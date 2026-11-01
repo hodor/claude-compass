@@ -5989,3 +5989,195 @@ test("the shipped Obsidian manifest is at 0.7.0 or later", () => {
   for (let i = 0; i < 3; i++) if (have[i] !== want[i]) { ok = have[i] > want[i]; break; }
   assert.ok(ok, `manifest version ${manifest.version}`);
 });
+
+// ---- post-build probes: branches the per-file verdict implementation introduced ----
+
+const chosenIn = (app, i, id = "1") =>
+  ["Approve", "Needs changes"].filter((n) => rowButton(app, i, n, id).cls.split(" ").includes("is-chosen"));
+
+// A click as the panel delivers it: the button's handler first, then the row's
+// unless the button stopped the event.
+async function bubblingClick(el) {
+  let stopped = false;
+  const event = { target: el, preventDefault() {}, stopPropagation() { stopped = true; } };
+  for (let n = el; n && !stopped; n = n.parent) {
+    for (const fn of [n.onclick, ...(n.handlers.click || [])].filter(Boolean)) await fn.call(n, event);
+  }
+  await sleep();
+}
+
+// Adversarial where: a click on a row's Approve or Needs changes reaches the
+// row's own click handler, so choosing a verdict also opens the file, marks it
+// read and moves the walk.
+test("choosing a verdict on a row neither opens the file, marks it read nor moves the walk", async () => {
+  const { app } = await openSet();
+  for (const [i, name] of ["Approve", "Needs changes", "Approve", "Approve"].entries()) await bubblingClick(rowButton(app, i, name));
+  assert.deepEqual(marks(app), ["read", "unread", "unread", "unread"]);
+  assert.equal(positionOf(cardFor(app, "1")), "File 1 of 4");
+  assert.equal(app.active.path, "spec.md");
+});
+
+// Adversarial where: a renamed listed file loses its verdict (the state moves
+// but the verdict stays under the old path), or the answer names the old path.
+test("a renamed listed file keeps its row choice under the new path", async () => {
+  const { app } = await openSet();
+  await pickAll(app, ["Approve", "Needs changes", "Approve", "Approve"]);
+  await noteOn(app, 1, "reorder");
+  app.store.set("plan2.md", app.store.get("plan.md"));
+  app.store.delete("plan.md");
+  app.listeners.rename({ path: "plan2.md" }, "plan.md");
+  assert.deepEqual(chosenIn(app, 1), ["Needs changes"]);
+  assert.equal(sendButton(app).disabled, false, "the renamed changes row keeps its note and choice");
+  await click(sendButton(app));
+  await sleep();
+  const v = answered(app);
+  assert.deepEqual(v.files.map((f) => [f.file, f.verdict]), [["spec.md", "approved"], ["plan2.md", "changes"], ["detail.md", "approved"], ["study.md", "approved"]]);
+  assert.equal(v.verdict, "changes");
+});
+
+// Adversarial where: a request rewritten with fewer files keeps counting the
+// removed file toward Send (it stays undecided for ever), loses the choices of
+// the files that remain, or keeps the several-file buttons on a one-file card.
+test("the same request id rewritten keeps the remaining rows' choices, ignores removed files for Send and follows the file count", async () => {
+  const { app, plugin } = await openSet();
+  await pickAll(app, ["Approve", "Needs changes", "Approve"]);
+  await noteOn(app, 1, "reorder");
+  assert.equal(sendButton(app).disabled, true, "the fourth row is undecided");
+  const rewrite = async (names) => {
+    app.store.set("tmp/review/1.request.json", req("1", names[0], { files: filesOf(names, WHY), project: "orchard", session: SESSION_A }));
+    await plugin.handler({ request: "tmp/review/1.request.json" });
+    await sleep();
+  };
+  await rewrite(SET.slice(0, 3));
+  assert.deepEqual([0, 1, 2].map((i) => chosenIn(app, i)), [["Approve"], ["Needs changes"], ["Approve"]]);
+  assert.equal(sendButton(app).disabled, false, "the removed file no longer holds Send back");
+  await rewrite([...SET.slice(0, 3), "elsewhere.md"]);
+  assert.equal(sendButton(app).disabled, true, "a file listed again is undecided");
+  await rewrite(["spec.md"]);
+  const card = cardFor(app, "1");
+  assert.ok(button(card, "Approve") && button(card, "Needs changes"));
+  assert.equal(button(card, "Send"), undefined);
+  assert.equal(button(card, "Approve all"), undefined);
+  await click(button(card, "Approve"));
+  await sleep();
+  const v = answered(app);
+  assert.equal(v.verdict, "approved");
+  assert.equal(v.files, undefined);
+});
+
+// Adversarial where: a newer request listing a file of the older several-file
+// review drops the row choices on the shared files, or hands its new file a
+// choice it never had.
+test("a newer request carries the row choices of the files it shares and leaves its new files undecided", async () => {
+  const { app, plugin } = await openSet({}, SECOND);
+  await pickAll(app, ["Approve", "Needs changes", "Approve", "Approve"]);
+  await noteOn(app, 1, "reorder");
+  app.store.set("tmp/review/3.request.json", req("3", "plan.md", { files: filesOf(["plan.md", "detail.md", "dock-a.md"], WHY), project: "orchard", session: SESSION_A }));
+  await plugin.handler({ request: "tmp/review/3.request.json" });
+  await sleep();
+  assert.deepEqual(cardIds(app), ["3"]);
+  assert.deepEqual([0, 1, 2].map((i) => chosenIn(app, i, "3")), [["Needs changes"], ["Approve"], []]);
+  assert.equal(sendButton(app, "3").disabled, true, "dock-a.md is undecided");
+  await click(rowButton(app, 2, "Approve", "3"));
+  await sleep();
+  assert.equal(sendButton(app, "3").disabled, false, "the carried changes row keeps its note");
+  await click(sendButton(app, "3"));
+  await sleep();
+  const v = verdictOf(app, "tmp/review/3.verdict.json");
+  assert.deepEqual(v.files.map((f) => [f.file, f.verdict]), [["plan.md", "changes"], ["detail.md", "approved"], ["dock-a.md", "approved"]]);
+});
+
+// Adversarial where: Approve all or Send leaves a listed editor's text unsaved,
+// saves an unlisted editor, or lets Approve all keep a changes row's verdict
+// because that file was edited.
+test("Approve all and Send save the dirty listed editors and no others; Approve all overrides an edited changes row", async (t) => {
+  const savedBy = async (app) => {
+    const unlisted = app.workspace.getLeaf();
+    await unlisted.openFile(mdFile("elsewhere.md"));
+    await sleep();
+    const counts = (p) => app.leaves.filter((l) => l.view.file && l.view.file.path === p).map((l) => l.view.saved);
+    return { counts, unlisted };
+  };
+  await t.test("Approve all over an edited changes row", async () => {
+    const { app } = await openSet();
+    await pickAll(app, ["Approve", "Needs changes", "Approve", "Approve"]);
+    await goToRow(app, 1);
+    typedIn(app, "plan.md");
+    const { counts } = await savedBy(app);
+    await click(cardBtn(app, "1", "Approve all"));
+    await sleep();
+    assert.deepEqual(counts("plan.md"), [1]);
+    assert.deepEqual(counts("elsewhere.md"), [0]);
+    const v = answered(app);
+    assert.equal(v.verdict, "approved");
+    assert.deepEqual(sentVerdicts(app), ["approved", "approved", "approved", "approved"]);
+    assert.deepEqual(v.edited, ["plan.md"]);
+  });
+  await t.test("Send with the edit as the changes row's only feedback", async () => {
+    const { app } = await openSet();
+    await pickAll(app, ["Approve", "Needs changes", "Approve", "Approve"]);
+    await goToRow(app, 1);
+    typedIn(app, "plan.md");
+    await sleep();
+    assert.equal(sendButton(app).disabled, false);
+    const { counts } = await savedBy(app);
+    await click(sendButton(app));
+    await sleep();
+    assert.deepEqual(counts("plan.md"), [1]);
+    assert.deepEqual(sentVerdicts(app), ["approved", "changes", "approved", "approved"]);
+  });
+});
+
+// Adversarial where: a row flipped from Needs changes to Approve still counts
+// as changes because its note stays, so the top-level verdict stays changes.
+test("a row flipped from Needs changes to Approve sends as approved with its note left in place", async () => {
+  const { app } = await openSet();
+  await pickAll(app, ["Approve", "Needs changes", "Approve", "Approve"]);
+  await noteOn(app, 1, "reorder");
+  await decide(app, 1, "Approve");
+  assert.deepEqual(chosenIn(app, 1), ["Approve"]);
+  await click(sendButton(app));
+  await sleep();
+  assert.equal(answered(app).verdict, "approved");
+  assert.deepEqual(sentVerdicts(app), ["approved", "approved", "approved", "approved"]);
+});
+
+// Adversarial where: stepping with the arrow keys clears or moves a row's
+// choice, or lights both buttons of a row.
+test("the arrow keys keep every row's choice and each row shows exactly one chosen button", async () => {
+  const { app } = await openSet();
+  await pickAll(app, ["Approve", "Needs changes", "Approve", "Approve"]);
+  await decide(app, 2, "Needs changes");
+  const card = () => cardFor(app, "1");
+  await press(card(), "ArrowRight");
+  await press(card(), "ArrowRight");
+  await press(card(), "ArrowLeft");
+  assert.deepEqual([0, 1, 2, 3].map((i) => chosenIn(app, i)), [["Approve"], ["Needs changes"], ["Needs changes"], ["Approve"]]);
+});
+
+// Adversarial where: a changes row counts a changed decision on another file as
+// its own feedback, or ignores the decision changed on its own file, so Send
+// enables for the wrong row (or never enables when the human answered only on
+// the decision card).
+test("a decision changed on a spec is feedback for that file's row alone, and its line reaches that file's note", async () => {
+  const other = "other.md";
+  const files = [{ file: SP, why: null }, { file: other, why: null }];
+  const { app, plugin } = await loaded({ [SP]: CALLOUT, [other]: "x", [REQ1]: req("1", SP, { files }) });
+  await plugin.handler({ request: REQ1 });
+  await openDoc(app, SP);
+  await plugin.openViewPanel();
+  await settle();
+  await decide(app, 0, "Needs changes");
+  await decide(app, 1, "Needs changes");
+  assert.equal(sendButton(app).disabled, true);
+  await changeDecision(app, "D-01", "reword it");
+  assert.equal(sendButton(app).disabled, true, "the second row still has no feedback of its own");
+  await decide(app, 1, "Approve");
+  assert.equal(sendButton(app).disabled, false, "the first row's decision change is its feedback");
+  await click(sendButton(app));
+  await sleep();
+  const v = answered(app);
+  assert.deepEqual(v.files.map((f) => [f.file, f.verdict]), [[SP, "changes"], [other, "approved"]]);
+  assert.equal(v.files[0].note, "D-01: reword it");
+  assert.equal(v.files[1].note, undefined);
+});
