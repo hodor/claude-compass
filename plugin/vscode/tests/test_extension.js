@@ -1670,3 +1670,174 @@ test("a failed write of <id>.seen is not thrown, and the card still draws and an
   await env.approve();
   assert.equal(env.verdict(ID).verdict, "approved");
 });
+
+// ---- an updated extension installed beside the running one ----
+
+const RELOAD_COMMAND = "workbench.action.reloadWindow";
+const installedText = (v) => `Compass Review ${v} is installed. Reload this window to use it.`;
+const isInstalledNotice = (m) => /^Compass Review .* is installed\./.test(m.text);
+
+// Timers the extension asks for while a test runs are held, not scheduled: an
+// interval, or a timeout of a second or more, is a periodic recheck. `fire()`
+// runs every held periodic callback once and lets the work they start finish.
+function holdPeriodicTimers(t) {
+  const realInterval = global.setInterval;
+  const realTimeout = global.setTimeout;
+  const held = new Set();
+  const handle = () => ({ ref() { return this; }, unref() { return this; }, hasRef: () => false, refresh() { return this; }, [Symbol.toPrimitive]: () => 0 });
+  global.setInterval = (fn, ms, ...args) => { held.add(() => fn(...args)); return handle(); };
+  global.setTimeout = (fn, ms, ...args) => {
+    if (typeof ms !== "number" || ms < 1000) return realTimeout(fn, ms, ...args);
+    const once = () => { held.delete(once); return fn(...args); };
+    held.add(once);
+    return handle();
+  };
+  t.after(() => { global.setInterval = realInterval; global.setTimeout = realTimeout; });
+  return {
+    held,
+    async fire() {
+      for (const callback of [...held]) await callback();
+      await sleep(60);
+    },
+  };
+}
+
+// A window on one project whose running extension is `current` and whose
+// installed copies sit in a temporary extensions folder; `install(v)` adds a copy.
+async function begunAt(t, current) {
+  const timers = holdPeriodicTimers(t);
+  const { env, activate } = await begin(t);
+  const id = env.host.context.extension.id;
+  env.host.package.version = current;
+  const base = path.join(env.root, "extensions");
+  const copy = (name) => path.join(base, name);
+  fs.mkdirSync(copy(`${id}-${current}`), { recursive: true });
+  env.host.context.extensionPath = copy(`${id}-${current}`);
+  const shown = [];
+  const answers = { next: undefined };
+  env.host.api.window.showInformationMessage = async (text, ...items) => {
+    shown.push({ text: String(text), items: items.map((i) => (i && i.title) || i) });
+    return items.find((i) => ((i && i.title) || i) === answers.next);
+  };
+  return {
+    env, activate, timers, shown, answers, base, id,
+    install(version) { fs.mkdirSync(copy(`${id}-${version}`), { recursive: true }); },
+    installFile(name, body) { fs.mkdirSync(base, { recursive: true }); fs.writeFileSync(copy(name), body); },
+    notices: () => shown.filter(isInstalledNotice),
+  };
+}
+
+// Adversarial where: the newer-version decision is wrong at its edges: a copy
+// that is equal or older prompts a reload, versions compare as text (1.2.0
+// beats 1.10.0, 0.9.0 beats 0.10.0), the message names the first copy found
+// instead of the highest, or folders of other extensions (another id, an id
+// that merely starts with this one, a stray file) count as copies.
+test("a newer installed copy of this extension prompts a reload, and an equal, older or foreign one does not", async (t) => {
+  const rows = [
+    { name: "no other copy", current: "1.0.0", install: [], expect: null },
+    { name: "older copies only", current: "1.0.0", install: ["0.9.9", "0.0.1"], expect: null },
+    { name: "a newer patch", current: "1.0.0", install: ["1.0.1"], expect: "1.0.1" },
+    { name: "the highest of several, compared by number", current: "1.0.0", install: ["1.2.0", "1.10.0", "1.0.1", "0.9.0"], expect: "1.10.0" },
+    { name: "0.10.0 is newer than 0.9.0", current: "0.9.0", install: ["0.10.0"], expect: "0.10.0" },
+    { name: "0.9.0 is not newer than 0.10.0", current: "0.10.0", install: ["0.9.0"], expect: null },
+    { name: "folders of other extensions", current: "1.0.0", install: [], foreign: ["other.publisher-9.0.0", "{id}-tools-9.0.0"], expect: null },
+  ];
+  for (const row of rows) {
+    await t.test(row.name, async (st) => {
+      const w = await begunAt(st, row.current);
+      for (const v of row.install) w.install(v);
+      for (const name of row.foreign || []) fs.mkdirSync(path.join(w.base, name.replace("{id}", w.id)), { recursive: true });
+      w.installFile(".obsolete", "{}");
+      await w.activate();
+      await w.timers.fire();
+      assert.deepEqual(w.notices().map((m) => m.text), row.expect ? [installedText(row.expect)] : []);
+    });
+  }
+});
+
+// Adversarial where: the message repeats on every recheck, is not shown again
+// for a still newer version, or is shown again for a copy that is not newer
+// than the one already announced.
+test("the reload message is shown once per newer version", async (t) => {
+  const w = await begunAt(t, "1.0.0");
+  await w.activate();
+  w.install("1.0.1");
+  await w.timers.fire();
+  await w.timers.fire();
+  await w.timers.fire();
+  assert.deepEqual(w.notices().map((m) => m.text), [installedText("1.0.1")]);
+
+  w.install("1.2.0");
+  await w.timers.fire();
+  await w.timers.fire();
+  assert.deepEqual(w.notices().map((m) => m.text), [installedText("1.0.1"), installedText("1.2.0")]);
+
+  w.install("1.1.0");
+  await w.timers.fire();
+  assert.equal(w.notices().length, 2, "a copy older than the one announced says nothing");
+});
+
+// Adversarial where: the button is missing, runs another command, or the
+// reload happens without the human pressing it (or when the message is
+// dismissed).
+test("the Reload button runs workbench.action.reloadWindow and a dismissed message runs nothing", async (t) => {
+  for (const [answer, runs] of [["Reload", 1], [undefined, 0]]) {
+    await t.test(answer ? "Reload pressed" : "message dismissed", async (st) => {
+      const w = await begunAt(st, "1.0.0");
+      w.answers.next = answer;
+      await w.activate();
+      w.install("1.0.1");
+      await w.timers.fire();
+      assert.deepEqual(w.notices().map((m) => m.items), [["Reload"]]);
+      assert.equal(w.env.host.commandsRun.filter((c) => c === RELOAD_COMMAND).length, runs);
+    });
+  }
+});
+
+// Adversarial where: the recheck dies on what the editor throws at it: an
+// extensions folder that is gone, or a message call that rejects, and the
+// rest of the extension (verdicts, watchers) stops with it.
+test("a missing extensions folder or a failing message is ignored, not thrown", async (t) => {
+  await t.test("extensions folder does not exist", async (st) => {
+    const w = await begunAt(st, "1.0.0");
+    w.env.host.context.extensionPath = path.join(w.env.root, "gone", `${w.id}-1.0.0`);
+    await w.activate();
+    await w.timers.fire();
+    assert.deepEqual(w.notices(), []);
+    w.install("1.0.1");
+    w.env.host.context.extensionPath = path.join(w.base, `${w.id}-1.0.0`);
+    await w.timers.fire();
+    assert.deepEqual(w.notices().map((m) => m.text), [installedText("1.0.1")], "the recheck works once the folder is back");
+  });
+  await t.test("the message call rejects", async (st) => {
+    const w = await begunAt(st, "1.0.0");
+    const working = w.env.host.api.window.showInformationMessage;
+    w.env.host.api.window.showInformationMessage = async () => { throw new Error("window is closing"); };
+    await w.activate();
+    w.install("1.0.1");
+    await w.timers.fire();
+    await w.timers.fire();
+    w.env.host.api.window.showInformationMessage = working;
+    w.install("1.2.0");
+    await w.timers.fire();
+    assert.deepEqual(w.notices().map((m) => m.text), [installedText("1.2.0")], "the recheck works after a failed message");
+  });
+});
+
+// Adversarial where: the update ships under the version already installed, so
+// the running and the installed copy look identical and no reload is prompted;
+// or the `.vsix` that `--install-extension` takes is not the one for the version
+// in package.json; or the Compass plugin version stays behind the change.
+test("the extension, its .vsix and the Compass plugin are at their bumped versions", () => {
+  const atLeast = (version, floor) => {
+    const have = version.split(".").map(Number);
+    const want = floor.split(".").map(Number);
+    for (let i = 0; i < 3; i++) if (have[i] !== want[i]) return have[i] > want[i];
+    return true;
+  };
+  const pkg = JSON.parse(fs.readFileSync(path.join(EXT_DIR, "package.json"), "utf8"));
+  assert.ok(atLeast(pkg.version, "0.3.0"), `extension version ${pkg.version}`);
+  assert.ok(fs.existsSync(path.join(EXT_DIR, `${pkg.name}-${pkg.version}.vsix`)), `${pkg.name}-${pkg.version}.vsix`);
+  const plugin = JSON.parse(fs.readFileSync(path.join(EXT_DIR, "..", "..", ".claude-plugin", "plugin.json"), "utf8"));
+  assert.ok(atLeast(plugin.version, "0.34.4"), `plugin version ${plugin.version}`);
+});

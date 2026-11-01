@@ -69,8 +69,16 @@ const notices = [];
 const win = { minimized: 0, focused: 0, hasFocus: false, onTop: [], restore() {}, isMinimized: () => false,
   isFocused() { return this.hasFocus; },
   setAlwaysOnTop(v) { this.onTop.push(v); }, show() {}, focus() { this.focused++; this.hasFocus = true; }, minimize() { this.minimized++; } };
+const PLUGIN_ID = "compass-review";
+const PLUGIN_DIR = `.obsidian/plugins/${PLUGIN_ID}`;
+const MANIFEST_PATH = `${PLUGIN_DIR}/manifest.json`;
 class Plugin {
-  constructor(app) { this.app = app; this.intervals = []; }
+  // Obsidian hands a plugin its manifest: `id`, the `version` it was loaded at and the vault-relative `dir`.
+  constructor(app, manifest) {
+    this.app = app;
+    this.manifest = manifest || { id: PLUGIN_ID, version: "0.0.0-test", dir: PLUGIN_DIR };
+    this.intervals = [];
+  }
   registerEvent() {}
   // The timer is cleared at once so the test process can exit; the id is kept for assertions.
   registerInterval(id) { this.intervals.push(id); clearInterval(id); return id; }
@@ -152,6 +160,27 @@ function makeApp(files) {
     store,
     active: null,
     viewFactories: {},
+    // Obsidian's plugin manager. Disabling unloads the running instance; enabling
+    // loads a new one at the version the plugin folder's manifest.json holds, as
+    // Obsidian does, and runs its layout-ready work. A test replaces either method
+    // to model a reload that does nothing or fails.
+    plugins: {
+      calls: [],
+      instance: null,
+      async disablePlugin(id) {
+        app.plugins.calls.push(["disable", id]);
+        const old = app.plugins.instance;
+        if (old && typeof old.onunload === "function") { try { await old.onunload(); } catch (e) { /* the stub models no teardown */ } }
+      },
+      async enablePlugin(id) {
+        app.plugins.calls.push(["enable", id]);
+        const manifest = JSON.parse(store.get(MANIFEST_PATH));
+        const next = new CompassReview(app, { id, version: manifest.version, dir: PLUGIN_DIR });
+        app.plugins.instance = next;
+        await next.onload();
+        if (app.workspace.ready) await app.workspace.ready();
+      },
+    },
     vault: {
       adapter: {
         async read(p) { if (!store.has(p)) throw new Error(`ENOENT ${p}`); return store.get(p); },
@@ -5421,4 +5450,111 @@ test("a failed write of <id>.seen is not thrown, and the card still opens and an
   await click(cardBtn(app, "61", "Approve"));
   await sleep();
   assert.equal(JSON.parse(app.store.get("tmp/review/61.verdict.json")).verdict, "approved");
+});
+
+// ---- an updated plugin takes effect in a running Obsidian: recheck reloads on a manifest change ----
+
+const manifestJson = (version) => JSON.stringify({ id: PLUGIN_ID, name: "Compass Review", version });
+const RELOAD = [["disable", PLUGIN_ID], ["enable", PLUGIN_ID]];
+
+// A plugin loaded at `loadedVersion` in a vault whose plugin folder holds `diskManifest`
+// (undefined: no manifest.json file).
+async function loadedAs(loadedVersion, diskManifest, files = {}) {
+  const app = makeApp({ ...files, ...(diskManifest === undefined ? {} : { [MANIFEST_PATH]: diskManifest }) });
+  const plugin = new CompassReview(app, { id: PLUGIN_ID, version: loadedVersion, dir: PLUGIN_DIR });
+  app.plugins.instance = plugin;
+  await plugin.onload();
+  return { app, plugin };
+}
+
+// Console output while `fn` runs.
+async function withConsoleCaptured(fn) {
+  const names = ["log", "info", "warn", "error", "debug"];
+  const original = Object.fromEntries(names.map((n) => [n, console[n]]));
+  const lines = [];
+  for (const n of names) console[n] = (...args) => { lines.push([n, ...args]); };
+  try { await fn(); } finally { for (const n of names) console[n] = original[n]; }
+  return lines;
+}
+
+// Adversarial where: the reload decision is wrong at its edges: an identical
+// version reloads (a reload every interval), a different version does not
+// (the running plugin stays old and the `.seen` claim never comes), only a
+// newer version counts (a downgrade or a 0.10.0 vs 0.9.0 pair is judged by
+// order instead of difference), or a manifest that is absent, damaged or not
+// an object throws out of recheck or reloads into a plugin that cannot be read.
+test("recheck reloads the plugin when the manifest on disk names a different version, and only then", async () => {
+  const rows = [
+    { name: "same version", loaded: "3.2.1", disk: manifestJson("3.2.1"), reload: false },
+    { name: "newer version", loaded: "3.2.1", disk: manifestJson("3.3.0"), reload: true },
+    { name: "older version on disk", loaded: "3.2.1", disk: manifestJson("3.1.9"), reload: true },
+    { name: "0.9.0 on disk under a loaded 0.10.0", loaded: "0.10.0", disk: manifestJson("0.9.0"), reload: true },
+    { name: "no manifest.json", loaded: "3.2.1", disk: undefined, reload: false, logged: true },
+    { name: "manifest that does not parse", loaded: "3.2.1", disk: "{nope", reload: false, logged: true },
+    { name: "manifest that parses to null", loaded: "3.2.1", disk: "null", reload: false, logged: true },
+  ];
+  for (const row of rows) {
+    const { app, plugin } = await loadedAs(row.loaded, row.disk);
+    const logged = await withConsoleCaptured(async () => { await plugin.recheck(); await sleep(); });
+    assert.deepEqual(app.plugins.calls, row.reload ? RELOAD : [], row.name);
+    if (row.logged) assert.ok(logged.length > 0, `${row.name}: the failure is logged`);
+  }
+});
+
+// Adversarial where: the version a reload was made for is not remembered, so
+// a reload that leaves the old instance running (or fails) repeats on every
+// recheck; or it is remembered once for good, so a later update is never
+// reloaded; or two overlapping rechecks both reload.
+test("a differing version reloads once, a further version reloads again, and overlapping rechecks reload once", async () => {
+  const { app, plugin } = await loadedAs("3.2.1", manifestJson("3.3.0"));
+  let enableFails = false;
+  app.plugins.disablePlugin = async (id) => { app.plugins.calls.push(["disable", id]); await sleep(); };
+  app.plugins.enablePlugin = async (id) => { app.plugins.calls.push(["enable", id]); if (enableFails) throw new Error("reload failed"); };
+  const recheckQuietly = async () => { await plugin.recheck().catch(() => {}); await sleep(); };
+
+  await Promise.all([plugin.recheck(), plugin.recheck()]);
+  await recheckQuietly();
+  await recheckQuietly();
+  assert.deepEqual(app.plugins.calls, RELOAD, "the running instance still reports 3.2.1, and 3.3.0 was reloaded for once");
+
+  app.store.set(MANIFEST_PATH, manifestJson("3.4.0"));
+  enableFails = true;
+  await recheckQuietly();
+  await recheckQuietly();
+  await recheckQuietly();
+  assert.deepEqual(app.plugins.calls, [...RELOAD, ...RELOAD], "3.4.0 reloads once more, and its failed reload is not retried");
+});
+
+// Adversarial where: the reload drops the reviews waiting in the window: the
+// new instance does not rescan the requests, so an older plugin's pending
+// review is never claimed with `<id>.seen` and `compass review` withdraws a
+// review that is on screen.
+test("a reload leaves a pending review claimed by the new instance with <id>.seen", async () => {
+  const { app, plugin } = await loadedAs("3.2.1", manifestJson("3.3.0"), {
+    "a.md": "x", "tmp/review/71.request.json": req("71", "a.md"),
+  });
+  await plugin.handler({ request: "tmp/review/71.request.json" });
+  await sleep();
+  app.store.delete("tmp/review/71.seen");
+
+  await plugin.recheck();
+  await sleep();
+
+  assert.deepEqual(app.plugins.calls, RELOAD);
+  assert.notEqual(app.plugins.instance, plugin, "a new instance was loaded");
+  assert.equal(app.plugins.instance.manifest.version, "3.3.0");
+  assert.deepEqual(seenPaths(app), ["tmp/review/71.seen"]);
+  assert.ok(app.plugins.instance.pending.has("71"), "the new instance holds the review");
+  assert.equal(app.store.has("tmp/review/71.verdict.json"), false, "the reload answers nothing");
+  await app.plugins.instance.recheck();
+  await sleep();
+  assert.deepEqual(app.plugins.calls, RELOAD, "the new instance finds nothing to reload for");
+});
+
+// Adversarial where: the plugin update ships under the old version number, so
+// an installed copy and the running one look identical and no reload happens.
+test("the shipped Obsidian manifest is at 0.6.0 or later", () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "compass-review", "manifest.json"), "utf8"));
+  const [major, minor] = manifest.version.split(".").map(Number);
+  assert.ok(major > 0 || minor >= 6, `manifest version ${manifest.version}`);
 });
