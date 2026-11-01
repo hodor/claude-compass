@@ -338,7 +338,7 @@ class ScanOutputTests(Workspace):
             with self.subTest(fragment):
                 self.assertNotIn(fragment.lower(), raw)
         self.assertNotIn(SESSION_ID.lower(), proc.stdout.lower())
-        data = json.loads(raw)
+        data = json.loads(Path(out).read_text(encoding="utf-8"))
         self.assertEqual(data["sessions"], 2)
         self.assertEqual(data["loads"], {
             "skills/build/SKILL.md": 2,
