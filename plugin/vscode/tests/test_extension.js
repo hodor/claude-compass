@@ -1951,3 +1951,226 @@ test("a copy announced once is not announced again when it is removed and instal
   await w.timers.fire();
   assert.deepEqual(w.notices().map((m) => m.text), [installedText("1.0.1")]);
 });
+
+// ---- each file of a several-file review has its own verdict ----
+
+const rowButton = (env, i, name, id = ID) => env.rows(id)[i].all().find((e) => e.tag === "button" && e.textContent === name);
+const buttonsNamed = (env, name, id = ID) => env.card(id).all().filter((e) => e.tag === "button" && e.textContent === name);
+const inRow = (el) => { for (let n = el; n; n = n.parent) if (n.hasClass && n.hasClass("row")) return true; return false; };
+async function decide(env, i, name, id = ID) {
+  const b = rowButton(env, i, name, id);
+  assert.ok(b, `row ${i} has no "${name}" button`);
+  await env.click(b);
+}
+async function noteOn(env, i, text) {
+  await env.goToRow(i);
+  await env.type(env.notes(), text);
+}
+async function pickAll(env, picks) {
+  for (const [i, name] of picks.entries()) if (name) await decide(env, i, name);
+}
+const sentVerdicts = (env) => env.verdict(ID).files.map((f) => f.verdict);
+const ROW_1_CHANGES = ["Approve", "Needs changes", "Approve"];
+
+// Adversarial where: the several-file card keeps the card-wide Approve and
+// Needs changes buttons beside (or instead of) the row choices, a row lacks
+// one of its two choices, the end button is not named Send, or Approve all is
+// missing or waits for decisions.
+test("a several-file card gives each row Approve and Needs changes and ends with Send and Approve all", async (t) => {
+  const env = await openSet(t);
+  assert.equal(env.rows().length, 3);
+  for (const name of ["Approve", "Needs changes"]) {
+    const all = buttonsNamed(env, name);
+    assert.equal(all.length, 3, `${name} appears once per row and nowhere else`);
+    assert.ok(all.every(inRow), `${name} sits inside a row`);
+    for (let i = 0; i < 3; i++) assert.ok(rowButton(env, i, name), `row ${i} ${name}`);
+  }
+  assert.ok(env.button("Send"), "Send");
+  assert.equal(env.button("Send").disabled, true, "nothing is decided yet");
+  assert.ok(env.button("Approve all"), "Approve all");
+  assert.notEqual(env.button("Approve all").disabled, true, "Approve all never waits");
+});
+
+// Adversarial where: a one-file card gains per-row choices, Send or Approve all
+// (its contract is unchanged), or loses its card-wide buttons.
+test("a one-file card keeps its Approve and Needs changes buttons and has no row choice, Send or Approve all", async (t) => {
+  const { env, activate } = await begin(t);
+  fs.mkdirSync(env.reviewDir(), { recursive: true });
+  const one = request(ID, [SPEC]);
+  delete one.files;
+  delete one.session;
+  delete one.project;
+  fs.writeFileSync(env.requestFile(ID), JSON.stringify(one));
+  await activate();
+  await env.ready();
+  for (const name of ["Approve", "Needs changes"]) {
+    const all = buttonsNamed(env, name);
+    assert.equal(all.length, 1, name);
+    assert.equal(inRow(all[0]), false, `${name} is the card's, not the row's`);
+  }
+  assert.equal(env.button("Send"), undefined);
+  assert.equal(env.button("Approve all"), undefined);
+});
+
+// Adversarial where: Send enables while a row is undecided (an undecided row
+// read as approved), a changes row needs nothing, the note or edit of another
+// file satisfies it, a whitespace note counts, the rule is checked once and
+// never again after the note is cleared, or choosing Approve on a stuck changes
+// row leaves Send off.
+test("Send enables once every file has a choice, and a changes file also needs a note or an edit of its own", async (t) => {
+  await t.test("nothing decided", async (st) => {
+    const env = await openSet(st);
+    assert.equal(env.button("Send").disabled, true);
+  });
+  await t.test("two of three decided, then the third", async (st) => {
+    const env = await openSet(st);
+    await pickAll(env, ["Approve", "Approve"]);
+    assert.equal(env.button("Send").disabled, true);
+    await decide(env, 2, "Approve");
+    assert.equal(env.button("Send").disabled, false);
+  });
+  await t.test("all decided but a changes row with no note", async (st) => {
+    const env = await openSet(st);
+    await pickAll(env, ROW_1_CHANGES);
+    assert.equal(env.button("Send").disabled, true);
+  });
+  await t.test("a note on the changes file enables Send; clearing it switches Send off again", async (st) => {
+    const env = await openSet(st);
+    await pickAll(env, ROW_1_CHANGES);
+    await noteOn(env, 1, "fix this");
+    assert.equal(env.button("Send").disabled, false);
+    await noteOn(env, 1, "");
+    assert.equal(env.button("Send").disabled, true);
+  });
+  await t.test("a note typed before the choice counts once the choice is made", async (st) => {
+    const env = await openSet(st);
+    await noteOn(env, 1, "fix this");
+    await pickAll(env, ROW_1_CHANGES);
+    assert.equal(env.button("Send").disabled, false);
+  });
+  await t.test("a note on another file does not satisfy the changes file", async (st) => {
+    const env = await openSet(st);
+    await pickAll(env, ROW_1_CHANGES);
+    await noteOn(env, 2, "about the detail");
+    assert.equal(env.button("Send").disabled, true);
+  });
+  await t.test("a whitespace-only note does not count", async (st) => {
+    const env = await openSet(st);
+    await pickAll(env, ROW_1_CHANGES);
+    await noteOn(env, 1, "  ");
+    assert.equal(env.button("Send").disabled, true);
+  });
+  await t.test("an edit to the changes file enables Send; an edit to another listed file does not", async (st) => {
+    const env = await openSet(st);
+    await pickAll(env, ROW_1_CHANGES);
+    await env.open(SPEC);
+    await env.typedIn(SPEC);
+    assert.equal(env.button("Send").disabled, true);
+    await env.open(PLAN);
+    await env.typedIn(PLAN);
+    assert.equal(env.button("Send").disabled, false);
+  });
+  await t.test("a stuck changes row switched to Approve enables Send", async (st) => {
+    const env = await openSet(st);
+    await pickAll(env, ROW_1_CHANGES);
+    assert.equal(env.button("Send").disabled, true);
+    await decide(env, 1, "Approve");
+    assert.equal(env.button("Send").disabled, false);
+  });
+});
+
+// Adversarial where: the top-level verdict follows the last or first row
+// instead of "changes when any file is not approved", an entry misses its
+// verdict or takes the card's, the choice changed before sending is ignored
+// (first click wins), a row with no note gains a note key, or the answer's
+// shape (keys, order of files) changes.
+test("Send writes each file's own verdict and a top-level verdict of changes unless every file is approved", async (t) => {
+  await t.test("one file asks for changes among approved ones, the last click on a row wins", async (st) => {
+    const env = await openSet(st);
+    await decide(env, 0, "Approve");
+    await decide(env, 1, "Needs changes");
+    await decide(env, 2, "Needs changes");
+    await decide(env, 2, "Approve");
+    await noteOn(env, 1, "reorder");
+    await env.click(env.button("Send"));
+    const v = env.verdict(ID);
+    assert.deepEqual(Object.keys(v).sort(), ["at", "comments", "edited", "file", "files", "id", "notes", "verdict"]);
+    assert.equal(v.verdict, "changes");
+    assert.deepEqual(v.files.map((f) => f.file), SET);
+    assert.deepEqual(sentVerdicts(env), ["approved", "changes", "approved"]);
+    assert.deepEqual(v.files.map((f) => f.note), [undefined, "reorder", undefined]);
+  });
+  await t.test("every file approved, a changed mind on a row included", async (st) => {
+    const env = await openSet(st);
+    await decide(env, 0, "Needs changes");
+    await pickAll(env, ["Approve", "Approve", "Approve"]);
+    await env.click(env.button("Send"));
+    assert.equal(env.verdict(ID).verdict, "approved");
+    assert.deepEqual(sentVerdicts(env), ["approved", "approved", "approved"]);
+  });
+  await t.test("changes only on the last file", async (st) => {
+    const env = await openSet(st);
+    await pickAll(env, ["Approve", "Approve", "Needs changes"]);
+    await noteOn(env, 2, "no");
+    await env.click(env.button("Send"));
+    assert.equal(env.verdict(ID).verdict, "changes");
+    assert.deepEqual(sentVerdicts(env), ["approved", "approved", "changes"]);
+  });
+});
+
+// Adversarial where: Approve all marks only the rows still undecided (a
+// changes row stays changes), waits for every decision, sends without a
+// verdict per file, or leaves a verdict file that is not the only answer.
+test("Approve all approves every file at once, over earlier choices, and sends", async (t) => {
+  const env = await openSet(t);
+  await decide(env, 1, "Needs changes");
+  await env.click(env.button("Approve all"));
+  const v = env.verdict(ID);
+  assert.equal(v.verdict, "approved");
+  assert.deepEqual(v.files.map((f) => f.file), SET);
+  assert.deepEqual(sentVerdicts(env), ["approved", "approved", "approved"]);
+});
+
+// Adversarial where: the row choices live only in the page, so the page being
+// hidden and shown, or closed and opened again, returns the card with every row
+// undecided. Send would then stay off, or the answer would lack the choices
+// the human made.
+test("row choices survive the panel being hidden, shown, closed and opened again", async (t) => {
+  const env = await openSet(t);
+  await pickAll(env, ["Approve", "Needs changes", null]);
+  await noteOn(env, 1, "reorder");
+  assert.equal(env.button("Send").disabled, true, "row 3 is still undecided");
+  env.host.hideView();
+  await env.settle();
+  env.host.showView();
+  await env.ready();
+  assert.equal(env.button("Send").disabled, true, "row 3 is still undecided after hide and show");
+  env.host.disposeView();
+  await env.settle();
+  const container = env.host.package.contributes.viewsContainers.activitybar[0].id;
+  await env.host.api.commands.executeCommand(`workbench.view.extension.${container}`);
+  await env.ready();
+  assert.equal(env.button("Send").disabled, true, "row 3 is still undecided after close and open");
+  await decide(env, 2, "Approve");
+  assert.equal(env.button("Send").disabled, false, "rows 1 and 2 kept their choices, the changes row its note");
+  await env.click(env.button("Send"));
+  assert.deepEqual(sentVerdicts(env), ["approved", "changes", "approved"]);
+  assert.equal(env.verdict(ID).verdict, "changes");
+});
+
+// Adversarial where: the extension ships under the version an installed copy
+// already runs, so no reload is prompted for the change; or the .vsix for the
+// new version is not built; or the Compass plugin version stays behind.
+test("the extension, its .vsix and the Compass plugin are at 0.4.0 and 0.34.5 or later", () => {
+  const atLeast = (version, floor) => {
+    const have = version.split(".").map(Number);
+    const want = floor.split(".").map(Number);
+    for (let i = 0; i < 3; i++) if (have[i] !== want[i]) return have[i] > want[i];
+    return true;
+  };
+  const pkg = JSON.parse(fs.readFileSync(path.join(EXT_DIR, "package.json"), "utf8"));
+  assert.ok(atLeast(pkg.version, "0.4.0"), `extension version ${pkg.version}`);
+  assert.ok(fs.existsSync(path.join(EXT_DIR, `${pkg.name}-${pkg.version}.vsix`)), `${pkg.name}-${pkg.version}.vsix`);
+  const plugin = JSON.parse(fs.readFileSync(path.join(EXT_DIR, "..", "..", ".claude-plugin", "plugin.json"), "utf8"));
+  assert.ok(atLeast(plugin.version, "0.34.5"), `plugin version ${plugin.version}`);
+});

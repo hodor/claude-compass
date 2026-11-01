@@ -5730,3 +5730,249 @@ test("the state saved for a reload is restored once and then cleared", async () 
   assert.equal(app.plugins.instance.pending.get("95").states.get("a.md").note, "kept");
   assert.deepEqual(JSON.parse(app.store.get(`${PLUGIN_DIR}/carried-reviews.json`)), {});
 });
+
+// ---- each file of a several-file review has its own verdict ----
+
+const rowButton = (app, i, name, id = "1") => button(rowsIn(cardFor(app, id))[i], name);
+const sendButton = (app, id = "1") => cardBtn(app, id, "Send");
+async function decide(app, i, name, id = "1") {
+  const b = rowButton(app, i, name, id);
+  assert.ok(b, `row ${i} has no "${name}" button`);
+  await click(b);
+  await sleep();
+}
+async function noteOn(app, i, text, id = "1") {
+  await goToRow(app, i, id);
+  typeInto(notesIn(cardFor(app, id)), text);
+}
+async function pickAll(app, picks, id = "1") {
+  for (const [i, name] of picks.entries()) if (name) await decide(app, i, name, id);
+}
+const APPROVE_ALL_FOUR = ["Approve", "Approve", "Approve", "Approve"];
+const answered = (app) => verdictOf(app, "tmp/review/1.verdict.json");
+const sentVerdicts = (app) => answered(app).files.map((f) => f.verdict);
+
+// Adversarial where: the several-file card keeps the card-wide Approve and
+// Needs changes buttons beside (or instead of) the row choices, a row lacks
+// one of its two choices, the end button is not named Send, or Approve all
+// is missing or waits for decisions.
+test("a several-file card gives each row Approve and Needs changes and ends with Send and Approve all", async () => {
+  const { app } = await openSet();
+  const card = cardFor(app, "1");
+  const rows = rowsIn(card);
+  assert.equal(rows.length, 4);
+  for (const [i, row] of rows.entries()) {
+    assert.ok(button(row, "Approve"), `row ${i} Approve`);
+    assert.ok(button(row, "Needs changes"), `row ${i} Needs changes`);
+  }
+  for (const name of ["Approve", "Needs changes"]) {
+    const all = card.all().filter((e) => e.tag === "button" && e.text === name);
+    assert.equal(all.length, 4, `${name} appears once per row and nowhere else`);
+    assert.ok(all.every((b) => b.closest(".compass-review-row")), `${name} sits inside a row`);
+  }
+  assert.ok(button(card, "Send"), "Send");
+  assert.equal(button(card, "Send").disabled, true, "nothing is decided yet");
+  assert.ok(button(card, "Approve all"), "Approve all");
+  assert.notEqual(button(card, "Approve all").disabled, true, "Approve all never waits");
+});
+
+// Adversarial where: a one-file card gains per-row choices, Send or Approve
+// all (its contract is unchanged), or loses its card-wide buttons.
+test("a one-file card keeps its Approve and Needs changes buttons and has no row choice, Send or Approve all", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  const card = cardFor(app, "1");
+  for (const name of ["Approve", "Needs changes"]) {
+    const all = card.all().filter((e) => e.tag === "button" && e.text === name);
+    assert.equal(all.length, 1, name);
+    assert.equal(all[0].closest(".compass-review-row"), null, `${name} is the card's, not the row's`);
+  }
+  assert.equal(button(card, "Send"), undefined);
+  assert.equal(button(card, "Approve all"), undefined);
+  assert.equal(button(rowsIn(card)[0], "Approve"), undefined);
+  assert.equal(button(rowsIn(card)[0], "Needs changes"), undefined);
+});
+
+// Adversarial where: Send enables while a row is undecided (an undecided
+// row read as approved), a changes row needs nothing, the note or edit of
+// another file satisfies it, a whitespace note counts, the rule is checked
+// once and never again after the note is cleared, or choosing Approve on a
+// stuck changes row leaves Send off.
+test("Send enables once every file has a choice, and a changes file also needs a note or an edit of its own", async (t) => {
+  const ROW_2_CHANGES = ["Approve", "Approve", "Needs changes", "Approve"];
+  await t.test("nothing decided", async () => {
+    const { app } = await openSet();
+    assert.equal(sendButton(app).disabled, true);
+  });
+  await t.test("three of four decided, then the fourth", async () => {
+    const { app } = await openSet();
+    await pickAll(app, ["Approve", "Approve", "Approve"]);
+    assert.equal(sendButton(app).disabled, true);
+    await decide(app, 3, "Approve");
+    assert.equal(sendButton(app).disabled, false);
+  });
+  await t.test("all decided but a changes row with no note", async () => {
+    const { app } = await openSet();
+    await pickAll(app, ROW_2_CHANGES);
+    assert.equal(sendButton(app).disabled, true);
+  });
+  await t.test("a note on the changes file enables Send; clearing it switches Send off again", async () => {
+    const { app } = await openSet();
+    await pickAll(app, ROW_2_CHANGES);
+    await noteOn(app, 2, "fix this");
+    assert.equal(sendButton(app).disabled, false);
+    await noteOn(app, 2, "");
+    assert.equal(sendButton(app).disabled, true);
+  });
+  await t.test("a note typed before the choice counts once the choice is made", async () => {
+    const { app } = await openSet();
+    await noteOn(app, 2, "fix this");
+    await pickAll(app, ROW_2_CHANGES);
+    assert.equal(sendButton(app).disabled, false);
+  });
+  await t.test("a note on another file does not satisfy the changes file", async () => {
+    const { app } = await openSet();
+    await pickAll(app, ROW_2_CHANGES);
+    await noteOn(app, 1, "about the plan");
+    assert.equal(sendButton(app).disabled, true);
+  });
+  await t.test("a whitespace-only note does not count", async () => {
+    const { app } = await openSet();
+    await pickAll(app, ROW_2_CHANGES);
+    await noteOn(app, 2, "  ");
+    assert.equal(sendButton(app).disabled, true);
+  });
+  await t.test("an edit to the changes file enables Send; an edit to another listed file does not", async () => {
+    const { app } = await openSet();
+    await pickAll(app, ROW_2_CHANGES);
+    typedIn(app, "spec.md");
+    await sleep();
+    assert.equal(sendButton(app).disabled, true);
+    typedIn(app, "detail.md");
+    await sleep();
+    assert.equal(sendButton(app).disabled, false);
+  });
+  await t.test("a stuck changes row switched to Approve enables Send", async () => {
+    const { app } = await openSet();
+    await pickAll(app, ROW_2_CHANGES);
+    assert.equal(sendButton(app).disabled, true);
+    await decide(app, 2, "Approve");
+    assert.equal(sendButton(app).disabled, false);
+  });
+});
+
+// Adversarial where: the top-level verdict follows the last or first row
+// instead of "changes when any file is not approved", an entry misses its
+// verdict or takes the card's, the choice changed before sending is ignored
+// (first click wins), a row with no note gains a note key, or the answer's
+// shape (keys, order of files) changes.
+test("Send writes each file's own verdict and a top-level verdict of changes unless every file is approved", async (t) => {
+  await t.test("one file asks for changes among approved ones, the last click on a row wins", async () => {
+    const { app } = await openSet();
+    await decide(app, 0, "Approve");
+    await decide(app, 1, "Needs changes");
+    await decide(app, 2, "Needs changes");
+    await decide(app, 2, "Approve");
+    await decide(app, 3, "Approve");
+    await decide(app, 3, "Needs changes");
+    await noteOn(app, 1, "reorder");
+    await noteOn(app, 3, "check source");
+    await click(sendButton(app));
+    await sleep();
+    const v = answered(app);
+    assert.deepEqual(Object.keys(v).sort(), ["at", "comments", "edited", "file", "files", "id", "notes", "verdict"]);
+    assert.equal(v.verdict, "changes");
+    assert.deepEqual(v.files.map((f) => f.file), SET);
+    assert.deepEqual(sentVerdicts(app), ["approved", "changes", "approved", "changes"]);
+    assert.deepEqual(v.files.map((f) => f.note), [undefined, "reorder", undefined, "check source"]);
+  });
+  await t.test("every file approved, a changed mind on a row included", async () => {
+    const { app } = await openSet();
+    await decide(app, 0, "Needs changes");
+    await pickAll(app, APPROVE_ALL_FOUR);
+    await click(sendButton(app));
+    await sleep();
+    assert.equal(answered(app).verdict, "approved");
+    assert.deepEqual(sentVerdicts(app), ["approved", "approved", "approved", "approved"]);
+  });
+  await t.test("changes only on the last file", async () => {
+    const { app } = await openSet();
+    await pickAll(app, ["Approve", "Approve", "Approve", "Needs changes"]);
+    await noteOn(app, 3, "no");
+    await click(sendButton(app));
+    await sleep();
+    assert.equal(answered(app).verdict, "changes");
+    assert.deepEqual(sentVerdicts(app), ["approved", "approved", "approved", "changes"]);
+  });
+});
+
+// Adversarial where: Approve all marks only the rows still undecided (a
+// changes row stays changes), waits for every decision, sends without a
+// verdict per file, or leaves the card standing.
+test("Approve all approves every file at once, over earlier choices, and sends", async () => {
+  const { app } = await openSet();
+  await decide(app, 1, "Needs changes");
+  await click(cardBtn(app, "1", "Approve all"));
+  await sleep();
+  const v = answered(app);
+  assert.equal(v.verdict, "approved");
+  assert.deepEqual(v.files.map((f) => f.file), SET);
+  assert.deepEqual(sentVerdicts(app), ["approved", "approved", "approved", "approved"]);
+  assert.deepEqual(cardIds(app), []);
+});
+
+// Adversarial where: the row choices live only in the plugin instance, so an
+// update that reloads the plugin (or a closed and reopened panel) returns the
+// card with every row undecided. Send would then stay off, or the answer
+// would lack the choices the human made.
+test("a reload and a reopened panel keep each row's choice", async (t) => {
+  const store = {
+    "elsewhere.md": "e",
+    "tmp/review/1.request.json": req("1", SET[0], { files: filesOf(), project: "orchard", session: SESSION_A }),
+    ...Object.fromEntries(SET.map((f) => [f, "x"])),
+  };
+  const choicesMade = async (app, plugin) => {
+    await plugin.handler({ request: "tmp/review/1.request.json" });
+    await sleep();
+    await pickAll(app, ["Approve", "Needs changes", "Approve", null]);
+    await noteOn(app, 1, "reorder");
+    assert.equal(sendButton(app).disabled, true, "row 4 is still undecided");
+  };
+  const finishOnFourthRow = async (app) => {
+    assert.equal(sendButton(app).disabled, true, "the fourth row is still undecided after the return");
+    await decide(app, 3, "Approve");
+    assert.equal(sendButton(app).disabled, false, "rows 1 to 3 kept their choices, the changes row its note");
+    await click(sendButton(app));
+    await sleep();
+    assert.deepEqual(sentVerdicts(app), ["approved", "changes", "approved", "approved"]);
+    assert.equal(answered(app).verdict, "changes");
+  };
+  await t.test("plugin reload", async () => {
+    const { app, plugin } = await loadedAs("3.2.1", manifestJson("3.3.0"), store);
+    await choicesMade(app, plugin);
+    await plugin.recheck();
+    await sleep();
+    assert.deepEqual(app.plugins.calls, RELOAD);
+    await closePanel(app);
+    await app.plugins.instance.openPanel();
+    await finishOnFourthRow(app);
+  });
+  await t.test("panel closed and opened again", async () => {
+    const { app, plugin } = await loaded(store);
+    await choicesMade(app, plugin);
+    await closePanel(app);
+    await plugin.openPanel();
+    await finishOnFourthRow(app);
+  });
+});
+
+// Adversarial where: the add-on is shipped under the version an installed copy
+// already runs, so the running plugin is never reloaded for the change.
+test("the shipped Obsidian manifest is at 0.7.0 or later", () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "compass-review", "manifest.json"), "utf8"));
+  const have = manifest.version.split(".").map(Number);
+  const want = [0, 7, 0];
+  let ok = true;
+  for (let i = 0; i < 3; i++) if (have[i] !== want[i]) { ok = have[i] > want[i]; break; }
+  assert.ok(ok, `manifest version ${manifest.version}`);
+});
