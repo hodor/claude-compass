@@ -27,18 +27,37 @@ session: each `templates/rules/*.md` whole, and the `name`, `description` and
 UTF-8 bytes divided by 4, rounded up, and the value sums the sources. Its
 items are the sources' plugin-relative paths with forward slashes.
 
+Given a usage folder, the context sensor also counts the text that sessions
+load on demand: each `skills/*/SKILL.md` whole, every other text file inside a
+skill folder, and each `templates/agents/*.md` whole. A usage folder holds one
+`*.json` file per machine, `{"sessions": S, "loads": {<source>: <count>}}`, as
+`scan_usage` writes it. A source's weight is its loads summed over the files
+divided by their sessions summed; the value adds each source's tokens times
+its weight to the always-loaded tokens and rounds once at the end. A source
+with weight 0 adds nothing and is not an item.
+
+`scan_usage` reads Claude Code session transcripts and counts, per source of
+the plugin tree, the sessions that loaded it. The result names only plugin
+sources and counts.
+
 Ledger rows are dicts. A row may carry `ts` (ISO-8601) and `cost_usd`; rows
 without `cost_usd` contribute nothing to a spend sum. Days are UTC calendar
 days.
 """
 
+import hashlib
 import json
 import math
+import os
 import re
+import socket
 import subprocess
+import tempfile
+import time
 import unicodedata
 from collections import Counter
 from datetime import datetime, timezone
+from pathlib import Path
 
 import proctree
 import vaultlib
@@ -59,6 +78,12 @@ CLAUDE_MD_ITEM = SETUP_SKILL + "#claude-md-addition"
 CLAUDE_MD_HEADING = re.compile(r"^#+\s.*CLAUDE\.md addition")
 MARKDOWN_HEADING = re.compile(r"^#+\s")
 BOM = "\ufeff"
+
+SKILL_READ = re.compile(r"/\.claude/skills/([^/]+)/(.+)$")
+AGENT_READ = re.compile(r"/\.claude/agents/([^/]+\.md)$")
+NAMESPACE_PREFIX = "compass:"
+MACHINE_HASH_LENGTH = 12
+DEFAULT_SCAN_DAYS = 30
 
 
 class NoResultEvent(ValueError):
@@ -92,11 +117,17 @@ class ResultEvent:
 
 
 class Reading:
-    def __init__(self, valid, value=None, items=(), reason=None):
+    """A sensor reading. `usage` and `skipped` are set by the context sensor
+    when it was given a usage folder: `usage` is "none" or a dict of machine
+    and session counts, `skipped` names the usage files that did not parse."""
+
+    def __init__(self, valid, value=None, items=(), reason=None, usage=None, skipped=()):
         self.valid = valid
         self.value = value
         self.items = list(items)
         self.reason = reason
+        self.usage = usage
+        self.skipped = list(skipped)
 
     def __repr__(self):
         return (
@@ -376,10 +407,92 @@ def _field_bytes(rel, raw):
     return total, text
 
 
-def sense_context(plugin):
+def _load_usage(usage_dir):
+    """Read every `*.json` in `usage_dir`. Returns (loads, sessions, machines,
+    skipped): `loads` the per-source counts summed over the usable files,
+    `sessions` their summed session counts, `machines` the number of files
+    that held at least one session, `skipped` the names of files that are not
+    a usage file. An absent folder yields nothing."""
+    loads, sessions, machines, skipped = Counter(), 0, 0, []
+    if usage_dir is None or not Path(usage_dir).is_dir():
+        return loads, sessions, machines, skipped
+    for path in sorted(Path(usage_dir).glob("*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, RecursionError):
+            skipped.append(path.name)
+            continue
+        file_sessions = data.get("sessions") if isinstance(data, dict) else None
+        file_loads = data.get("loads") if isinstance(data, dict) else None
+        if (
+            not _is_int(file_sessions)
+            or file_sessions < 0
+            or not isinstance(file_loads, dict)
+            or not all(_is_int(n) and 0 <= n <= file_sessions for n in file_loads.values())
+        ):
+            skipped.append(path.name)
+            continue
+        if file_sessions == 0:
+            continue
+        sessions += file_sessions
+        machines += 1
+        loads.update(file_loads)
+    return loads, sessions, machines, skipped
+
+
+def _plain_key(key):
+    """True when every part of the plugin-relative `key` is an ordinary name:
+    not empty, not a dot hop, no backslash and no drive colon."""
+    return all(
+        part not in ("", ".", "..") and "\\" not in part and ":" not in part
+        for part in key.split("/")
+    )
+
+
+def _loaded_on_demand(key):
+    """True when `key` names a source the sessions load on demand: a file
+    inside a skill folder or an agent definition."""
+    if not _plain_key(key):
+        return False
+    parts = key.split("/")
+    if parts[0] == "skills":
+        return len(parts) >= 3
+    return len(parts) == 3 and parts[:2] == ["templates", "agents"] and parts[2].endswith(".md")
+
+
+def _weighted_tokens(plugin, loads, sessions, items):
+    """The summed tokens of the on-demand sources each times its weight, and
+    the keys appended to `items` for sources not yet listed. A key naming no
+    file under `plugin`, or a file that is not UTF-8 text, adds nothing."""
+    total = 0.0
+    root = plugin.resolve()
+    listed = set(items)
+    for key in sorted(loads):
+        if loads[key] <= 0 or not _loaded_on_demand(key):
+            continue
+        path = plugin / key
+        if not path.is_file() or root not in path.resolve().parents:
+            continue
+        raw = path.read_bytes()
+        try:
+            raw.decode("utf-8")
+        except UnicodeDecodeError:
+            continue
+        if b"\x00" in raw:
+            continue
+        total += _estimate(len(raw)) * loads[key] / sessions
+        if key not in listed:
+            listed.add(key)
+            items.append(key)
+    return total
+
+
+def sense_context(plugin, usage_dir=None):
     """Read what an install of the plugin tree at `plugin` adds to every
-    session and return a Reading. A missing directory or a source that cannot
-    be read gives an invalid Reading carrying the reason."""
+    session and return a Reading. With `usage_dir`, the skill, agent and skill
+    folder sources sessions load on demand are added, weighted by use. A
+    missing directory or a source that cannot be read gives an invalid Reading
+    carrying the reason."""
     if not plugin.is_dir():
         return _invalid(f"plugin directory not found: {plugin}")
     sources = _context_sources(plugin)
@@ -401,9 +514,15 @@ def sense_context(plugin):
                         value += _estimate(len(proposal.encode("utf-8")))
                         items.append(CLAUDE_MD_ITEM)
             items.append(rel)
+        if usage_dir is None:
+            return Reading(valid=True, value=value, items=items)
+        loads, sessions, machines, skipped = _load_usage(usage_dir)
+        weighted = _weighted_tokens(plugin, loads, sessions, items) if sessions else 0.0
     except (OSError, ValueError) as exc:
         return _invalid(f"could not read a context source: {exc}")
-    return Reading(valid=True, value=value, items=items)
+    usage = {"machines": machines, "sessions": sessions} if sessions else "none"
+    return Reading(valid=True, value=int(round(value + weighted)), items=items,
+                   usage=usage, skipped=skipped)
 
 
 def judge(before, after, direction):
@@ -482,3 +601,169 @@ def spend_today(rows, now):
 def spend_lifetime(rows):
     """Sum `cost_usd` over every row that carries a readable one."""
     return sum(cost for cost in map(_row_cost, rows) if cost is not None)
+
+
+def machine_id():
+    """A 12 hex digit hash of this machine's host name."""
+    digest = hashlib.sha256(socket.gethostname().encode("utf-8")).hexdigest()
+    return digest[:MACHINE_HASH_LENGTH]
+
+
+def _bare(name):
+    """`name` without a leading `compass:` namespace."""
+    name = name.strip()
+    return name[len(NAMESPACE_PREFIX):] if name.startswith(NAMESPACE_PREFIX) else name
+
+
+def _source_exists(plugin, key, cache):
+    """True when `key` is a plugin-relative path of a file under `plugin`."""
+    if key not in cache:
+        cache[key] = _plain_key(key) and (plugin / key).is_file()
+    return cache[key]
+
+
+def _block_keys(block):
+    """The plugin source keys one tool_use block loads: zero or one."""
+    name, tool_input = block.get("name"), block.get("input")
+    if not isinstance(tool_input, dict):
+        return []
+    if name == "Skill" and isinstance(tool_input.get("skill"), str):
+        return [f"skills/{_bare(tool_input['skill'])}/SKILL.md"]
+    if name in ("Agent", "Task") and isinstance(tool_input.get("subagent_type"), str):
+        return [f"templates/agents/{_bare(tool_input['subagent_type'])}.md"]
+    if name == "Read" and isinstance(tool_input.get("file_path"), str):
+        path = tool_input["file_path"].replace("\\", "/")
+        skill = SKILL_READ.search(path)
+        if skill:
+            return [f"skills/{skill.group(1)}/{skill.group(2)}"]
+        agent = AGENT_READ.search(path)
+        if agent:
+            return [f"templates/agents/{agent.group(1)}"]
+    return []
+
+
+COMMAND_SEPARATORS = re.compile(r"&&|\|\||[;|\n]")
+INTERPRETERS = ("python", "python3", "py")
+
+
+def _runs_compass(command):
+    """True when a segment of the shell `command` starts the Compass CLI: its
+    first word, after environment assignments and an optional Python
+    interpreter with its flags, is `compass`, a path ending in `/cli/compass`,
+    or `maincli.py`."""
+    if not isinstance(command, str):
+        return False
+    for segment in COMMAND_SEPARATORS.split(command):
+        words = [w.strip("\"'").replace("\\", "/") for w in segment.split()]
+        while words and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", words[0]):
+            words.pop(0)
+        if words and words[0].rsplit("/", 1)[-1].lower().removesuffix(".exe") in INTERPRETERS:
+            words.pop(0)
+            while words and words[0].startswith("-"):
+                words.pop(0)
+        if not words:
+            continue
+        first = words[0]
+        if first == "compass" or first.endswith("/cli/compass") or first.rsplit("/", 1)[-1] == "maincli.py":
+            return True
+    return False
+
+
+def _line_trace(entry):
+    """(keys, ran_compass) for one transcript entry: the source keys its
+    tool_use blocks load, and whether a Bash tool_use or a hook entry runs the
+    Compass CLI."""
+    keys, ran = [], False
+    if entry.get("type") == "attachment":
+        attachment = entry.get("attachment")
+        if isinstance(attachment, dict) and "hook" in str(attachment.get("type", "")).lower():
+            ran = _runs_compass(attachment.get("command"))
+        return keys, ran
+    message = entry.get("message")
+    content = message.get("content") if isinstance(message, dict) else None
+    if entry.get("type") != "assistant" or not isinstance(content, list):
+        return keys, ran
+    for block in content:
+        if not isinstance(block, dict) or block.get("type") != "tool_use":
+            continue
+        keys.extend(_block_keys(block))
+        tool_input = block.get("input")
+        if isinstance(tool_input, dict) and _runs_compass(tool_input.get("command")):
+            ran = True
+    return keys, ran
+
+
+def _scan_session(path, plugin, cache):
+    """(keys, traced, bad) for one transcript: the plugin source keys the
+    session loaded, whether Compass was in it, and the count of lines that
+    could not be read (one for a file with no readable line at all)."""
+    keys, traced, bad, good = set(), False, 0, 0
+    with open(path, "rb") as handle:
+        for raw in handle:
+            if not raw.strip():
+                continue
+            try:
+                entry = json.loads(raw.decode("utf-8"))
+            except (ValueError, RecursionError):
+                bad += 1
+                continue
+            good += 1
+            if not isinstance(entry, dict):
+                continue
+            found, ran = _line_trace(entry)
+            keys.update(key for key in found if _source_exists(plugin, key, cache))
+            traced = traced or ran
+    if good == 0 and bad:
+        bad = 1
+    return keys, traced or bool(keys), bad
+
+
+def scan_usage(projects, plugin, days=DEFAULT_SCAN_DAYS, now=None):
+    """Count, over the `*.jsonl` transcripts under `projects` modified within
+    `days`, the sessions Compass was in and the sessions that loaded each
+    source of the plugin tree at `plugin`. Returns (sessions, loads, skipped):
+    `loads` maps a plugin-relative source path to its session count and holds
+    only paths of files that exist under `plugin`; `skipped` counts the lines
+    and files that could not be read."""
+    cutoff = (time.time() if now is None else now) - days * 86400
+    loads, sessions, skipped, cache = Counter(), 0, 0, {}
+    for path in sorted(Path(projects).rglob("*.jsonl")):
+        try:
+            if not path.is_file() or path.stat().st_mtime < cutoff:
+                continue
+            keys, traced, bad = _scan_session(path, plugin, cache)
+        except OSError:
+            skipped += 1
+            continue
+        skipped += bad
+        if traced:
+            sessions += 1
+            loads.update(keys)
+    return sessions, dict(sorted(loads.items())), skipped
+
+
+def write_usage(out, sessions, loads, days):
+    """Write the usage file at `out` atomically and return its content: the
+    machine hash, the scan time, the window, the session count and the loads."""
+    data = {
+        "machine": machine_id(),
+        "scanned_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "days": days,
+        "sessions": sessions,
+        "loads": loads,
+    }
+    out = Path(out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=str(out.parent), prefix=".usage-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(data, handle, indent=2)
+            handle.write("\n")
+        os.replace(tmp, out)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+    return data
