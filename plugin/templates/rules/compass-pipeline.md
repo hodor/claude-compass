@@ -66,8 +66,7 @@ Conversation output is never the record - logs, reports, and vault files are. On
 ## Plans
 
 - Plans trace to an approved spec and completed research.
-- Tasks have automated AND manual verification criteria.
-- Tasks larger than L get broken into subtasks.
+- Task criteria and task sizing: the `planner` agent.
 - Only the human approves a plan. Tasks are not distributed to `active.md`/`backlog.md` before approval.
 
 ## Verification
@@ -89,9 +88,7 @@ Conversation output is never the record - logs, reports, and vault files are. On
 
 ## Validation
 
-- Running commands is verification. Reading code is not.
-- Every automated check must have a `Command run:` block with actual output.
-- At least one adversarial probe before issuing PASS.
+- Running commands is verification, reading code is not; the check format and the PASS requirements: the `validator` agent.
 
 ## Lessons
 
