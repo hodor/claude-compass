@@ -23,3 +23,4 @@ venv/
 # Generated local dsh install (host materializations, machine-specific paths)
 .dsh/
 AGENTS.md
+.compass/loops/*/ledger.jsonl.lock
