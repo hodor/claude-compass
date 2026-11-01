@@ -49,7 +49,7 @@ Plan: [[PLAN-020-clone-old-sessions]].
 Plan: [[PLAN-021-control-loops]].
 
 - [ ] TASK-236: A loop on this repository shrinks the context Compass adds to every session - complexity: L, depends_on: TASK-158, TASK-159
-- [ ] TASK-241: The context sensor counts all of Compass's shipped text, each source weighted by how often real sessions load it (`compass loop usage-scan` writes project-free counts to `~/.compass/usage/`) - complexity: M, depends_on: TASK-236
+- [x] TASK-241: The context sensor counts all of Compass's shipped text, each source weighted by how often real sessions load it (`compass loop usage-scan` writes project-free counts to `~/.compass/usage/`) - complexity: M, depends_on: TASK-236
 - [ ] TASK-161: The ast-grep sensor adapter, pinned to saved scan output - complexity: M, depends_on: TASK-158, TASK-159, TASK-236
 - [ ] TASK-160: `/compass:loop`: guided creation through steps 0 to 7 - complexity: M, depends_on: TASK-158, TASK-159, TASK-161
 - [ ] TASK-162: The Maya recipe on the local lane, marked untested on this machine - complexity: S, depends_on: TASK-160
