@@ -6,23 +6,18 @@ area: workflow
 tags: [loop]
 created: 2026-10-31
 updated: 2026-10-31
-summary: "Shrinks the text Compass adds to every Claude Code session, as far as it goes with Compass working as well as before."
+summary: "Shrinks the text Compass puts into Claude Code's context over all a session's work, as far as it goes with Compass working as well as before."
 ---
 
 # Loop: session-context
 
-> [!IMPORTANT]
-> You decide: accept or reject the loop's first change. It moved two sentences about how research runs with the human out of the rules every session loads, into the `research` skill, which loads only when research runs. Approve accepts it and the loop runs again; Needs changes rejects it, and your note joins `feedback.md` for every later run.
-
-Shrinks the text Compass loads into every Claude Code session, the need of [[specs/tooling/SPEC-027-compass-uses-fewer-tokens]].
-
 ## Step 0: End state
 
-The always-loaded text (rules files whole, skill and agent `name`/`description`/`when_to_use`, the setup CLAUDE.md block) is as small as it can be while Compass works as well as before. No fixed number: the loop runs until five runs in a row save nothing, or the budget ends.
+The text Compass puts into Claude Code's context over all the work a session does is as small as it can be while Compass works as well as before. No fixed number: the loop runs until five runs in a row save nothing, or the budget ends.
 
 ## Step 1: Sensor
 
-`compass loop sense-context`: estimated tokens (UTF-8 bytes / 4) over the always-loaded sources, one item per source. `direction` down, `target` 0, which is never reached, so the stop is the no-progress halt.
+`compass loop sense-context`: estimated tokens (UTF-8 bytes / 4) per average session. Rules files and every skill and agent's frontmatter count in full; skill bodies, skill folder files and agent bodies count times the share of sessions that load them. That share comes from `compass loop usage-scan`, which reads the Claude Code transcripts on each machine and writes only Compass source names and counts to `~/.compass/usage/`, outside the repository. `direction` down, `target` 0, never reached, so the stop is the no-progress halt.
 
 ## Step 2: Stabilize
 
@@ -30,11 +25,11 @@ The always-loaded text (rules files whole, skill and agent `name`/`description`/
 
 ## Step 3: Controller
 
-`controller.py` ranks the sources by estimated tokens, largest first; the actuator takes the first one `feedback.md` does not rule out.
+`controller.py` ranks the sources by tokens per average session, largest first; the actuator takes the first one `feedback.md` does not rule out.
 
 ## Step 4: Actuator
 
-Sonnet, Read/Edit/Write/Glob/Grep, one passage per run moved out of an always-loaded source into the skill or agent body that does that work, never deleted (`actuator.md`, `golden/`). An advisory Haiku judge checks `judge-rules.md`: removed text is still reachable, and no gate is weakened.
+Sonnet, Read/Edit/Write/Glob/Grep, one passage per run moved from where it loads often to where only the work that needs it loads it, never deleted (`actuator.md`, `golden/`). An advisory Haiku judge checks `judge-rules.md`: removed text is still reachable, and no gate is weakened.
 
 ## Step 5: Schedule
 
@@ -75,3 +70,10 @@ And in the `research` skill, step 4 "Fold in the human's own questions", which a
   ... The spec's own Open Questions stay answered-where-touched and never lead.
 + When he joins, research runs as a conversation: findings surface as they land and his readings steer the axes. When he passes, run and deliver as usual.
 ```
+
+Review of run 1 (changes): the loop is about the total context Compass uses to do everything, not only the text a session starts with. The run 1 change stays, since it shrinks both measures.
+
+### 2026-11-01: the sensor weighs all of Compass's text by real use
+
+- `compass loop usage-scan` on this machine: 1,477 sessions in the last 30 days loaded a Compass source; 27 sources were loaded at least once.
+- Reading: 11,969 tokens per average session, of which 9,072 are the startup text. The heaviest on-demand source is the `extract-lessons` skill, loaded in 673 of 1,477 sessions (2,229 tokens per session), second only to the pipeline rules (3,056).
