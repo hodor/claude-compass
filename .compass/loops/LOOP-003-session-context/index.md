@@ -11,6 +11,9 @@ summary: "Shrinks the text Compass puts into Claude Code's context over all a se
 
 # Loop: session-context
 
+> [!IMPORTANT]
+> You decide: accept or reject run 8, and whether the loop keeps doing this kind of move. Like run 7, it moves a step every `extract-lessons` run performs (the contradiction check) into a side file the skill tells every run to read. The sensor shows -193, but in practice nothing is saved, since each run reads both files. Recommended: reject, and its note becomes a rule for later runs: a passage every run of a skill needs stays in that skill's body. Approve accepts it, and the loop may keep making moves like this; Needs changes rejects it, and your note joins `feedback.md`.
+
 ## Step 0: End state
 
 The text Compass puts into Claude Code's context over all the work a session does is as small as it can be while Compass works as well as before. No fixed number: the loop runs until five runs in a row save nothing, or the budget ends.
@@ -113,3 +116,8 @@ Review of run 1 (changes): the loop is about the total context Compass uses to d
 - 11,425 -> 11,276 per average session (-149 on the sensor, about 0 in practice). The judge found nothing.
 - The change: the extraction log format moves from the `extract-lessons` skill to `plugin/skills/extract-lessons/extraction-log.md`, which the skill tells every run to read.
 - Accepted. The side file gains weight in later readings as `usage-scan` sees runs read it, so the sensor corrects itself after the next scan.
+
+### 2026-11-01: run 8 (RUN-20261101T230917854302Z)
+
+- 11,276 -> 11,083 per average session (-193 on the sensor, about 0 in practice). The judge found nothing.
+- The change: the contradiction check moves from the `extract-lessons` skill to `plugin/skills/extract-lessons/contradiction-check.md`, which the skill tells every run to read.
