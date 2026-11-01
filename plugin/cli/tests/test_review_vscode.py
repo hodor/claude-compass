@@ -504,8 +504,8 @@ class ReviewThroughTheCli(EditorFakes):
                 text = out.getvalue()
                 self.assertEqual(code, 0, text + err.getvalue())
                 self.assertTrue(text.startswith("requested "), text)
-                self.assertIn("file .compass/specs/SPEC-001-x.md read", text)
-                self.assertIn("file .compass/plans/PLAN-001-y.md read", text)
+                self.assertIn("file .compass/specs/SPEC-001-x.md approved read", text)
+                self.assertIn("file .compass/plans/PLAN-001-y.md approved read", text)
                 request, = seen
                 self.assertEqual(request["surface"], name)
                 self.assertEqual(request["file"], ".compass/specs/SPEC-001-x.md")

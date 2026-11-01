@@ -2,7 +2,7 @@
   "name": "compass-review",
   "displayName": "Compass Review",
   "description": "Shows the documents Compass asks you to review in a panel beside the editor and hands your verdict back.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "compass-plugin",
   "license": "UNLICENSED",
   "engines": { "vscode": "^1.85.0" },

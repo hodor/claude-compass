@@ -21,7 +21,7 @@
 //   <dir>/<id>.verdict.json   written here when a button is clicked:
 //     {"id", "file", "verdict": "approved"|"changes", "notes",
 //      "comments": [{"file", "note"}], "edited": [path],
-//      "files"?: [{"file", "read", "note"?}], "at"}
+//      "files"?: [{"file", "read", "verdict", "note"?}], "at"}
 //     file      the first listed document
 //     notes     the note typed for the reviewed document; for several
 //               documents, one `<name>: <note>` line per noted document
@@ -32,7 +32,10 @@
 //               event fires for the file, so writes from other programs are
 //               not listed
 //     files     for several documents only: every listed document in request
-//               order with its read mark and its note, when it has one
+//               order with its read mark, its own verdict ("approved" or
+//               "changes") and its note, when it has one; the top-level
+//               verdict is "approved" when every file is approved, else
+//               "changes"
 // <dir> is the Compass vault's tmp/review folder: `tmp/review` when the
 // Obsidian vault is the Compass vault, `.compass/tmp/review` when the
 // Obsidian vault is the project around it. Other review surfaces share the
@@ -50,10 +53,13 @@
 // marked read when it opens, whether the card opened it or the human did. While
 // a markdown file outside the review is in view, the card also shows an "On this
 // file" note field for that file. A summary line counts the files read and the
-// notes, and one Approve and one "Needs changes" end the review. "Needs
-// changes" is enabled once there is something to send: a note on a listed or
-// outside file, or an edit. A newer request that lists a file of an older one
-// replaces it.
+// notes. A card for one document ends with one Approve and one "Needs
+// changes"; "Needs changes" is enabled once there is something to send: a note
+// on the file or an outside file, or an edit. A card for several documents
+// gives each row its own Approve and "Needs changes" and ends with Send, enabled
+// once every row is decided and every "Needs changes" row has a note or an edit
+// of its own, and Approve all, which approves every file and sends. A newer
+// request that lists a file of an older one replaces it.
 //
 // Each listed document carries a one-line bar naming the review and the file's
 // place in it, with a button that opens the panel. A click on a card saves the
@@ -174,6 +180,13 @@ const REVIEW_DIRS = ["tmp/review", ".compass/tmp/review"];
 const SURFACE = "obsidian";
 const PLUGIN_ID = "compass-review";
 const CARRIED_FILE = "carried-reviews.json";
+const VERDICTS = ["approved", "changes"];
+
+// The mark, note and own verdict (null until chosen) the human has given one
+// listed file.
+function newState() {
+  return { read: false, note: "", verdict: null };
+}
 const RELOAD_RETRY_MS = 2000;
 const RECHECK_MS = 5000;
 const PANEL_TYPE = "compass-review-panel";
@@ -1493,7 +1506,7 @@ class CompassReview extends Plugin {
       known.request = request;
       known.path = path;
       known.files = files;
-      for (const f of files) if (!known.states.has(f.file)) known.states.set(f.file, { read: false, note: "" });
+      for (const f of files) if (!known.states.has(f.file)) known.states.set(f.file, newState());
       known.index = Math.min(known.index, files.length - 1);
       return;
     }
@@ -1502,7 +1515,7 @@ class CompassReview extends Plugin {
       request,
       path,
       files,
-      states: new Map(files.map((f) => [f.file, { read: false, note: "" }])),
+      states: new Map(files.map((f) => [f.file, newState()])),
       index: 0,
       comments: new Map(),
       edited: new Set(),
@@ -1791,7 +1804,11 @@ class CompassReview extends Plugin {
     const pairs = (list) => (Array.isArray(list) ? list.filter((p) => Array.isArray(p) && typeof p[0] === "string") : []);
     for (const [file, state] of pairs(saved.states)) {
       if (entry.states.has(file) && state && typeof state === "object") {
-        entry.states.set(file, { read: state.read === true, note: typeof state.note === "string" ? state.note : "" });
+        entry.states.set(file, {
+          read: state.read === true,
+          note: typeof state.note === "string" ? state.note : "",
+          verdict: VERDICTS.includes(state.verdict) ? state.verdict : null,
+        });
       }
     }
     if (Number.isInteger(saved.index)) entry.index = Math.max(0, Math.min(saved.index, entry.files.length - 1));
@@ -2064,6 +2081,7 @@ class CompassReview extends Plugin {
       return i < 0 ? undefined : this.visit(entry, i).catch((e) => this.fail("open file", e));
     };
 
+    const several = entry.files.length > 1;
     const rows = card.createDiv({ cls: "compass-review-rows" });
     entry.files.forEach((f, i) => {
       const row = rows.createDiv({ cls: "compass-review-row" });
@@ -2072,6 +2090,19 @@ class CompassReview extends Plugin {
       const link = body.createEl("a", { cls: "compass-review-file", text: this.titleOf(f.file), href: "#" });
       if (f.why) body.createDiv({ cls: "compass-review-fine", text: f.why });
       const count = row.createSpan({ cls: "compass-review-fine compass-review-row-count" });
+      let choice = null;
+      if (several) {
+        choice = row.createDiv({ cls: "compass-review-row-choice" });
+        for (const [verdict, text] of [["approved", "Approve"], ["changes", "Needs changes"]]) {
+          const b = choice.createEl("button", { cls: `compass-review-row-${verdict}`, text });
+          b.onclick = (event) => {
+            if (event && event.stopPropagation) event.stopPropagation();
+            entry.states.get(f.file).verdict = verdict;
+            this.refreshCard(entry);
+          };
+          choice[verdict] = b;
+        }
+      }
       const open = () => this.visit(entry, i).catch((e) => this.fail("open file", e));
       link.addEventListener("click", (event) => {
         event.preventDefault();
@@ -2079,7 +2110,7 @@ class CompassReview extends Plugin {
         return open();
       });
       row.addEventListener("click", open);
-      parts.rows.push({ row, mark, count });
+      parts.rows.push({ row, mark, count, choice });
     });
 
     parts.label = card.createDiv({ cls: "compass-review-label compass-review-note-label" });
@@ -2121,10 +2152,17 @@ class CompassReview extends Plugin {
     const foot = card.createDiv({ cls: "compass-review-foot" });
     parts.summary = foot.createDiv({ cls: "compass-review-fine compass-review-summary" });
     const actions = foot.createDiv({ cls: "compass-review-actions" });
-    const approve = actions.createEl("button", { cls: "mod-cta", text: "Approve" });
-    parts.changes = actions.createEl("button", { cls: "compass-review-changes", text: "Needs changes" });
-    approve.onclick = () => this.verdict(entry, "approved").catch((e) => this.fail("verdict", e));
-    parts.changes.onclick = () => this.verdict(entry, "changes").catch((e) => this.fail("verdict", e));
+    if (several) {
+      parts.send = actions.createEl("button", { cls: "mod-cta compass-review-send", text: "Send" });
+      const all = actions.createEl("button", { cls: "compass-review-approve-all", text: "Approve all" });
+      parts.send.onclick = () => this.verdict(entry, this.settledVerdict(entry)).catch((e) => this.fail("verdict", e));
+      all.onclick = () => this.verdict(entry, "approved").catch((e) => this.fail("verdict", e));
+    } else {
+      const approve = actions.createEl("button", { cls: "mod-cta", text: "Approve" });
+      parts.changes = actions.createEl("button", { cls: "compass-review-changes", text: "Needs changes" });
+      approve.onclick = () => this.verdict(entry, "approved").catch((e) => this.fail("verdict", e));
+      parts.changes.onclick = () => this.verdict(entry, "changes").catch((e) => this.fail("verdict", e));
+    }
     foot.createDiv({
       cls: "compass-review-fine",
       text: "Project is the folder holding the vault. Session is the first six characters of the Claude Code session id.",
@@ -2135,6 +2173,33 @@ class CompassReview extends Plugin {
         text: "Left and right arrow keys move between files when this card has focus.",
       });
     }
+  }
+
+  // The top-level verdict of a several-file card: approved when every file is.
+  settledVerdict(entry) {
+    return entry.files.every((f) => entry.states.get(f.file).verdict === "approved") ? "approved" : "changes";
+  }
+
+  // Whether one file has something for Claude to act on: a note, an edit, or a
+  // changed choice or decision on that file.
+  fileHasFeedback(entry, file) {
+    const answers = entry.choiceAnswers.get(file);
+    const decisions = entry.decisionAnswers.get(file);
+    return (
+      entry.states.get(file).note.trim() !== "" ||
+      entry.edited.has(file) ||
+      (answers !== undefined && choiceNoteLines(Object.keys(answers).map((choice) => ({ choice })), answers).length > 0) ||
+      (decisions !== undefined && decisionNoteLines(Object.keys(decisions).map((id) => ({ id })), decisions).length > 0)
+    );
+  }
+
+  // A several-file card can be sent once every file has a choice and every file
+  // asking for changes carries feedback of its own.
+  canSend(entry) {
+    return entry.files.every((f) => {
+      const { verdict } = entry.states.get(f.file);
+      return verdict === "approved" || (verdict === "changes" && this.fileHasFeedback(entry, f.file));
+    });
   }
 
   noteCount(entry) {
@@ -2196,11 +2261,14 @@ class CompassReview extends Plugin {
 
     entry.files.forEach((f, i) => {
       const state = entry.states.get(f.file);
-      const { row, mark, count } = parts.rows[i];
+      const { row, mark, count, choice } = parts.rows[i];
       mark.setText(state.read ? "read" : "unread");
       setClass(mark, "is-read", state.read);
       setClass(row, "is-current", i === entry.index);
       count.setText(state.note.trim() ? "1 note" : "no note");
+      if (choice) {
+        for (const verdict of VERDICTS) setClass(choice[verdict], "is-chosen", state.verdict === verdict);
+      }
     });
 
     parts.label.setText(`Note on ${this.titleOf(current.file)}`);
@@ -2219,8 +2287,13 @@ class CompassReview extends Plugin {
     const items = this.feedbackItems(entry);
     for (const item of items) parts.feedback.createEl("li", { text: item });
     setClass(parts.feedbackBlock, "is-empty", items.length === 0);
-    parts.changes.disabled = !this.hasFeedback(entry);
-    parts.changes.title = parts.changes.disabled ? "Write a note first" : "";
+    if (parts.send) {
+      parts.send.disabled = !this.canSend(entry);
+      parts.send.title = parts.send.disabled ? "Choose Approve or Needs changes on every file; a file that needs changes also needs a note or an edit" : "";
+    } else {
+      parts.changes.disabled = !this.hasFeedback(entry);
+      parts.changes.title = parts.changes.disabled ? "Write a note first" : "";
+    }
   }
 
   refreshCardIn(root, entry) {
@@ -2980,7 +3053,7 @@ class CompassReview extends Plugin {
     }
     answer.files = entry.files.map((f) => {
       const state = entry.states.get(f.file);
-      const item = { file: f.file, read: state.read };
+      const item = { file: f.file, read: state.read, verdict: verdict === "approved" ? "approved" : state.verdict || "changes" };
       const note = joinChoiceNote(state.note.trim(), choiceLines.get(f.file) || []);
       if (note) item.note = note;
       return item;
