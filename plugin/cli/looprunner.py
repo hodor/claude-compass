@@ -249,14 +249,15 @@ def _fingerprints(loop_dir, definition):
     return prints
 
 
-USAGE_RECORD = ".compass/meta/usage.yaml"
+GENERATED_VAULT_DIR = ".compass/meta/"
 
 
 def _churn(name):
-    """True for a file other processes rewrite on their own: Compass's usage
-    record, written by every `compass` call a session's hooks make, and the
-    app state under any `.obsidian/` folder, written by a running Obsidian."""
-    return name == USAGE_RECORD or name.startswith(".obsidian/") or "/.obsidian/" in name
+    """True for a file other processes rewrite on their own: the files under
+    `.compass/meta/` (the usage record, the tag index, the lessons catalog),
+    which `compass sync` and every `compass` call regenerate, and the app
+    state under any `.obsidian/` folder, written by a running Obsidian."""
+    return name.startswith(GENERATED_VAULT_DIR) or name.startswith(".obsidian/") or "/.obsidian/" in name
 
 
 def _git_snapshot(project):

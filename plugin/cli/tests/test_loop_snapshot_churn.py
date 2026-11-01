@@ -1,6 +1,7 @@
 """Tests for the project snapshot the loop runner takes around a judge run:
-files other processes rewrite on their own (Compass's usage record, written
-by every `compass` call a spawned session's hooks make, and Obsidian's
+files other processes rewrite on their own (everything under
+`.compass/meta/`, which `compass sync` and every `compass` call regenerate,
+and Obsidian's
 `.obsidian/` app state, written by a running Obsidian) never count as a
 change the judge made, in a git work tree or a plain directory.
 
@@ -38,6 +39,7 @@ class SnapshotChurnTest(unittest.TestCase):
 
     def _churn(self, project):
         (project / ".compass" / "meta" / "usage.yaml").write_text("sync: 2\n", encoding="utf-8")
+        (project / ".compass" / "meta" / "tag-index.yaml").write_text("tags: {}\n", encoding="utf-8")
         (project / ".compass" / ".obsidian" / "workspace.json").write_text("{}", encoding="utf-8")
         (project / ".obsidian" / "app.json").write_text("{}", encoding="utf-8")
 
