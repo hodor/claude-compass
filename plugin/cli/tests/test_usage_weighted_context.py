@@ -87,6 +87,15 @@ class Workspace(unittest.TestCase):
         self.projects.mkdir()
         self.out_dir = tmp / "out"
         self.out_dir.mkdir()
+        # The plugin tree `usage-scan` keeps keys for: every source the scan
+        # tests name exists in it.
+        self.scan_plugin = tmp / "scan-plugin"
+        for rel in ("skills/build/SKILL.md", "skills/build/ref.md", "skills/plan/SKILL.md",
+                    "skills/plan/ref/a.md", "templates/agents/tester.md",
+                    "templates/agents/builder.md", "templates/agents/validator.md"):
+            (self.scan_plugin / rel).parent.mkdir(parents=True, exist_ok=True)
+            (self.scan_plugin / rel).write_text("x
+", encoding="utf-8")
 
     def run_cli(self, *args, cwd=None):
         cwd = Path(cwd or self.work)
@@ -116,8 +125,9 @@ class Workspace(unittest.TestCase):
 
     def scan(self, *extra, projects=None, out=None):
         out = out or (self.out_dir / "usage.json")
+        plugin = getattr(self, "plugin", self.scan_plugin)
         proc = self.run_cli("usage-scan", "--projects", str(projects or self.projects),
-                            "--out", str(out), *extra)
+                            "--out", str(out), "--plugin", str(plugin), *extra)
         return proc, out
 
     def scan_ok(self, *extra, projects=None):
