@@ -103,15 +103,16 @@ def _no_console():
     return getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
 
 
-def _command_line(command, folder):
-    """What to run to hand `folder` to the editor: an argument list, except for
-    a Windows `.cmd` or `.bat` shim, where it is a command line with the folder
-    in double quotes so cmd.exe reads `&`, `^` and the like as part of the
-    name."""
+def _command_line(command, *arguments):
+    """What to run to start the editor with `arguments`: an argument list,
+    except for a Windows `.cmd` or `.bat` shim, where it is a command line with
+    the command quoted as needed and every argument in double quotes so cmd.exe
+    reads `&`, `^` and the like as part of a name."""
     if sys.platform == "win32" and command.lower().endswith((".cmd", ".bat")):
-        quoted = folder + "\\" if folder.endswith("\\") else folder
-        return f'{subprocess.list2cmdline([command])} "{quoted}"'
-    return [command, folder]
+        backslash = "\\"
+        quoted = " ".join(f'"{a + backslash if a.endswith(backslash) else a}"' for a in arguments)
+        return f'"{command}" {quoted}'.rstrip()
+    return [command, *arguments]
 
 
 def _first_line(*texts):
@@ -148,7 +149,7 @@ class Editor:
     def _list(self, command):
         try:
             listed = subprocess.run(
-                [command, "--list-extensions", "--show-versions"],
+                _command_line(command, "--list-extensions", "--show-versions"),
                 capture_output=True, text=True, encoding="utf-8", errors="replace",
                 timeout=LIST_TIMEOUT, check=False, creationflags=_no_console(),
             )
@@ -234,7 +235,7 @@ class Editor:
             return f"skipped: no .vsix is shipped in {shipped_extension_dir(shipped_root)}"
         try:
             done = subprocess.run(
-                [command, "--install-extension", str(vsix), "--force"],
+                _command_line(command, "--install-extension", str(vsix), "--force"),
                 capture_output=True, text=True, encoding="utf-8", errors="replace",
                 timeout=INSTALL_TIMEOUT, check=False, creationflags=_no_console(),
             )
