@@ -5558,3 +5558,131 @@ test("the shipped Obsidian manifest is at 0.6.0 or later", () => {
   const [major, minor] = manifest.version.split(".").map(Number);
   assert.ok(major > 0 || minor >= 6, `manifest version ${manifest.version}`);
 });
+
+// ---- reload edge cases the manifest check introduces ----
+
+// Adversarial where: a manifest.json that parses but carries no usable
+// `version` (missing, empty, a number, an array) or a plugin whose `dir` is
+// unknown is treated as a different version, so the plugin disables itself
+// and cannot be enabled again from a file that names no version; or the
+// failure throws out of recheck.
+test("a manifest without a usable version, or an unknown plugin folder, neither reloads nor throws", async () => {
+  const rows = [
+    { name: "no version key", disk: JSON.stringify({ id: PLUGIN_ID }) },
+    { name: "empty version", disk: JSON.stringify({ id: PLUGIN_ID, version: "" }) },
+    { name: "numeric version", disk: JSON.stringify({ id: PLUGIN_ID, version: 3.3 }) },
+    { name: "array version", disk: JSON.stringify({ id: PLUGIN_ID, version: ["3.3.0"] }) },
+    { name: "manifest is an array", disk: "[]" },
+    { name: "empty file", disk: "" },
+  ];
+  for (const row of rows) {
+    const { app, plugin } = await loadedAs("3.2.1", row.disk);
+    const logged = await withConsoleCaptured(async () => { await plugin.recheck(); await sleep(); });
+    assert.deepEqual(app.plugins.calls, [], row.name);
+    assert.ok(logged.length > 0, `${row.name}: the failure is logged`);
+  }
+  const app = makeApp({ [MANIFEST_PATH]: manifestJson("3.3.0") });
+  for (const dir of [undefined, "", 7]) {
+    const plugin = new CompassReview(app, { id: PLUGIN_ID, version: "3.2.1", dir });
+    app.plugins.instance = plugin;
+    await plugin.onload();
+    await withConsoleCaptured(async () => { await plugin.recheck(); await sleep(); });
+    assert.deepEqual(app.plugins.calls, [], `dir ${String(dir)}`);
+  }
+});
+
+// Adversarial where: an unreadable manifest is logged on every 5-second
+// recheck (a log flood), or logged once for good so a second, different
+// failure after a good read goes unreported; the stale-problem memory must
+// reset once the manifest reads again.
+test("an unreadable manifest is logged once per distinct problem and again after a good read", async () => {
+  const { app, plugin } = await loadedAs("3.2.1", "{nope");
+  const recheckLogged = async () => (await withConsoleCaptured(async () => { await plugin.recheck(); await sleep(); })).length;
+
+  assert.ok((await recheckLogged()) > 0, "first failure is logged");
+  assert.equal(await recheckLogged(), 0, "the same failure is not logged again");
+  assert.equal(await recheckLogged(), 0);
+
+  app.store.set(MANIFEST_PATH, manifestJson("3.2.1"));
+  assert.equal(await recheckLogged(), 0, "a good read logs nothing");
+  app.store.set(MANIFEST_PATH, "{nope");
+  assert.ok((await recheckLogged()) > 0, "the same failure after a good read is logged again");
+  assert.deepEqual(app.plugins.calls, []);
+});
+
+// Adversarial where: the version check is a numeric or ordered comparison
+// that mishandles non-numeric forms; any string that differs, a pre-release
+// or build-metadata form included, must be reloaded for, and an identical
+// pre-release string must not.
+test("pre-release and build-metadata version strings are compared by difference, not by order", async () => {
+  const rows = [
+    { name: "same pre-release", loaded: "0.6.0-beta.1", disk: "0.6.0-beta.1", reload: false },
+    { name: "pre-release to release", loaded: "0.6.0-beta.1", disk: "0.6.0", reload: true },
+    { name: "release to pre-release of the same number", loaded: "0.6.0", disk: "0.6.0-rc.1", reload: true },
+    { name: "build metadata only", loaded: "0.6.0+a", disk: "0.6.0+b", reload: true },
+    { name: "case differs", loaded: "0.6.0-Beta", disk: "0.6.0-beta", reload: true },
+    { name: "surrounding space", loaded: "0.6.0", disk: "0.6.0 ", reload: true },
+  ];
+  for (const row of rows) {
+    const { app, plugin } = await loadedAs(row.loaded, manifestJson(row.disk));
+    await plugin.recheck();
+    await sleep();
+    assert.deepEqual(app.plugins.calls, row.reload ? RELOAD : [], row.name);
+  }
+});
+
+// Adversarial where: when the reload cannot start (disable rejects) the
+// plugin is left running but the failure is thrown out of recheck, or enable
+// is still attempted on a plugin that was never disabled.
+test("a rejected disablePlugin is logged, enable is not attempted, and recheck still drops dead reviews", async () => {
+  const { app, plugin } = await loadedAs("3.2.1", manifestJson("3.3.0"), {
+    "a.md": "x", "tmp/review/81.request.json": req("81", "a.md"),
+  });
+  await plugin.handler({ request: "tmp/review/81.request.json" });
+  await sleep();
+  app.plugins.disablePlugin = async (id) => { app.plugins.calls.push(["disable", id]); throw new Error("cannot disable"); };
+  const logged = await withConsoleCaptured(async () => { await plugin.recheck(); await sleep(); });
+  assert.deepEqual(app.plugins.calls, [["disable", PLUGIN_ID]]);
+  assert.ok(logged.some((l) => l[0] === "error"), "the failure is logged as an error");
+  assert.ok(plugin.pending.has("81"), "the review is still held by the running instance");
+  app.store.delete("tmp/review/81.request.json");
+  await plugin.recheck();
+  assert.equal(plugin.pending.has("81"), false, "the recheck still runs after a failed reload on later passes");
+});
+
+// Adversarial where: the reload rebuilds the pending map from the request
+// files, so what the human typed on a review card but has not sent (the note,
+// the file position, the read marks) is lost when an update lands mid-review.
+test("a reload keeps a note typed on a review card that has not been sent", async () => {
+  const { app, plugin } = await loadedAs("3.2.1", manifestJson("3.3.0"), {
+    "a.md": "x", "tmp/review/91.request.json": req("91", "a.md"),
+  });
+  await plugin.handler({ request: "tmp/review/91.request.json" });
+  await sleep();
+  typeInto(notesIn(cardFor(app, "91")), "half-written thought");
+
+  await plugin.recheck();
+  await sleep();
+
+  assert.deepEqual(app.plugins.calls, RELOAD);
+  const next = app.plugins.instance;
+  assert.notEqual(next, plugin, "a new instance was loaded");
+  assert.equal(next.pending.get("91").states.get("a.md").note, "half-written thought");
+});
+
+// Adversarial where: a review whose request already has a verdict, or that
+// belongs to another surface, is claimed by the new instance's scan after a
+// reload (a `.seen` for a review Obsidian must not hold).
+test("a reload does not claim a request that has a verdict or belongs to another surface", async () => {
+  const { app, plugin } = await loadedAs("3.2.1", manifestJson("3.3.0"), {
+    "a.md": "x",
+    "tmp/review/92.request.json": req("92", "a.md"),
+    "tmp/review/92.verdict.json": JSON.stringify({ id: "92", verdict: "approved" }),
+    "tmp/review/93.request.json": req("93", "a.md", { surface: "vscode" }),
+  });
+  await plugin.recheck();
+  await sleep();
+  assert.deepEqual(app.plugins.calls, RELOAD);
+  assert.deepEqual(seenPaths(app), []);
+  assert.deepEqual(cardIds(app), []);
+});
