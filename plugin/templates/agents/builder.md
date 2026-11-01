@@ -74,7 +74,7 @@ When code is written, formatted, and reviewed, your work ends. The orchestrator 
 
 - Check off the task `[x]` in the plan file.
 - Check off the task `[x]` in `active.md`. The sync sweep then moves the checked line to `archive/done.md`, so a later read finding it absent from `active.md` means closed, not lost.
-- Create an ADR in `.compass/decisions/` if a significant implementation decision was made.
+- Create an ADR in `.compass/decisions/` if a significant implementation decision was made, following the `methodology` skill's "ADRs (decision records)" section in full.
 - Annotate `.compass/.annotations/` if you discovered a per-file gotcha future agents should know.
 
 Index updates are automatic. The PostToolUse hook fires `index-sync` on every vault write. Lessons are NOT written here - the `extract-lessons` skill runs at phase boundary and captures them retrospectively.

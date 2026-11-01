@@ -96,7 +96,7 @@ Compute next TASK number JIT (`max(N) + 1` across active.md + backlog.md). Add u
 
 ### 7. Create ADR (if applicable)
 
-Only if the human confirmed a significant decision. Compute next ADR number JIT (`max(N from glob '**/.compass/decisions/ADR-N-*.md') + 1`). Create `ADR-NNN-descriptive-name.md` with decision, context, and reasoning.
+Only if the human confirmed a significant decision. Compute next ADR number JIT (`max(N from glob '**/.compass/decisions/ADR-N-*.md') + 1`). Create `ADR-NNN-descriptive-name.md` with decision, context, and reasoning, following the `methodology` skill's "ADRs (decision records)" section in full.
 
 ### 8. Update the vault - REQUIRED
 

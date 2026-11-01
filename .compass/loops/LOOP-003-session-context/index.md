@@ -11,9 +11,6 @@ summary: "Shrinks the text Compass puts into Claude Code's context over all a se
 
 # Loop: session-context
 
-> [!IMPORTANT]
-> You decide: accept or reject run 3. It moves the detail of how an ADR is written (one decision per ADR, live options named, good and bad consequences, hypotheses stay in plans) out of the rules every session loads, into the `methodology` skill. The always-loaded rules keep the one line every agent needs: an ADR records a fork actually reached and resolved, never one written to fill a stage. Recommended: accept, since the detail matters only when an ADR is being written. Approve accepts it; Needs changes rejects it, and your note joins `feedback.md`.
-
 ## Step 0: End state
 
 The text Compass puts into Claude Code's context over all the work a session does is as small as it can be while Compass works as well as before. No fixed number: the loop runs until five runs in a row save nothing, or the budget ends.
@@ -91,3 +88,4 @@ Review of run 1 (changes): the loop is about the total context Compass uses to d
 
 - 11,761 -> 11,651 per average session (-110). The judge found nothing. Text tests pass.
 - The change: the pipeline rules' "Decisions (ADRs)" bullets become one line plus a pointer; the four bullets move word for word into the `methodology` skill's ADR section.
+- Accepted, with the note that agents must still reach the full ADR rules when they need them. The two places that write an ADR, the `builder` agent and the `retroactive` skill, now name the `methodology` skill's ADR section, and the always-loaded rules point there for every other agent.

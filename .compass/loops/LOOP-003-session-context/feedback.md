@@ -7,3 +7,4 @@ Durable guidance from the human reviewing this loop, loaded into every run after
 - A pointer left in a source names the skill or agent by its name ("the `research` skill, section X"), never a `plugin/...` path: an installed project has no `plugin/` folder.
 - Move whole paragraphs or sections, a hundred tokens or more per run; a one-sentence move does not pay for its run.
 - A skill or agent body has a line ceiling in the tests; add moved text to an existing paragraph or a new file in the skill's folder, never new lines in SKILL.md.
+- After moving a rule, every skill or agent that does the work the rule governs names the rule's new home, so an agent doing that work reaches the full text. Check with a grep for the work (for example "ADR", "research axes") before finishing.
