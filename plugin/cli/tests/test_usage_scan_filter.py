@@ -123,6 +123,58 @@ class ScanFilterTests(unittest.TestCase):
         _, data = self.scan()
         self.assertEqual((data["sessions"], data["loads"]), (1, {}))
 
+    def hook(self, command):
+        path = self.projects / "p1" / "hook.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"type": "attachment", "attachment": {
+            "type": "hook_success", "command": command}}) + "\n", encoding="utf-8")
+
+    def test_only_a_call_of_the_compass_cli_marks_a_session(self):
+        """Adversarial where: the word `compass` anywhere in a tool input
+        (a repository path, an echo, a grep pattern) marks the session, which
+        inflates the sessions total and dilutes every weight; or a real CLI
+        invocation form (path, interpreter, chained, environment prefix) is
+        missed."""
+        rows = {
+            "read of a file in a compass checkout": (
+                [tool_use("Read", file_path="F:/x/plugins/compass/README.md")], 0),
+            "bash in a compass checkout": (
+                [tool_use("Bash", command="cd F:/x/plugins/compass && ls")], 0),
+            "echo of the word": (
+                [tool_use("Bash", command="echo compass")], 0),
+            "grep for the word": (
+                [tool_use("Bash", command="grep -r compass README.md")], 0),
+            "a program whose name only contains compass": (
+                [tool_use("Bash", command="compassion --help")], 0),
+            "bare command": ([tool_use("Bash", command="compass sync")], 1),
+            "installed cli path": ([tool_use("Bash", command=".claude/cli/compass sync")], 1),
+            "windows cli path": ([tool_use("Bash", command="F:\\p\\.claude\\cli\\compass sync")], 1),
+            "python and maincli": (
+                [tool_use("Bash", command="python plugin/cli/maincli.py loop status")], 1),
+            "interpreter flag and cli path": (
+                [tool_use("Bash", command="python -I .claude/cli/compass sync")], 1),
+            "environment prefix": ([tool_use("Bash", command="FOO=1 compass sync")], 1),
+            "chained after another command": (
+                [tool_use("Bash", command="cd /w && compass sync")], 1),
+        }
+        for name, (blocks, expected) in rows.items():
+            with self.subTest(name):
+                shutil.rmtree(self.projects, ignore_errors=True)
+                self.session(*blocks)
+                _, data = self.scan()
+                self.assertEqual(data["sessions"], expected)
+
+    def test_a_hook_that_runs_the_cli_marks_a_session_and_other_hooks_do_not(self):
+        """Adversarial where: hook entries are ignored, or any hook whose
+        text contains the word marks the session."""
+        self.hook("python3 .claude/cli/compass sync")
+        _, data = self.scan()
+        self.assertEqual(data["sessions"], 1)
+        shutil.rmtree(self.projects)
+        self.hook("echo compass")
+        _, data = self.scan()
+        self.assertEqual(data["sessions"], 0)
+
     def test_a_missing_projects_folder_fails_and_leaves_an_existing_file_alone(self):
         """Adversarial where: a mistyped `--projects` scans nothing and
         overwrites the machine's good usage file with zero sessions."""

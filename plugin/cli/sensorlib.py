@@ -642,28 +642,55 @@ def _block_keys(block):
     return []
 
 
+COMMAND_SEPARATORS = re.compile(r"&&|\|\||[;|\n]")
+INTERPRETERS = ("python", "python3", "py")
+
+
+def _runs_compass(command):
+    """True when a segment of the shell `command` starts the Compass CLI: its
+    first word, after environment assignments and an optional Python
+    interpreter with its flags, is `compass`, a path ending in `/cli/compass`,
+    or `maincli.py`."""
+    if not isinstance(command, str):
+        return False
+    for segment in COMMAND_SEPARATORS.split(command):
+        words = [w.strip("\"'").replace("\\", "/") for w in segment.split()]
+        while words and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", words[0]):
+            words.pop(0)
+        if words and words[0].rsplit("/", 1)[-1].lower().removesuffix(".exe") in INTERPRETERS:
+            words.pop(0)
+            while words and words[0].startswith("-"):
+                words.pop(0)
+        if not words:
+            continue
+        first = words[0]
+        if first == "compass" or first.endswith("/cli/compass") or first.rsplit("/", 1)[-1] == "maincli.py":
+            return True
+    return False
+
+
 def _line_trace(entry):
-    """(keys, names_compass) for one transcript entry: the source keys its
-    tool_use blocks load, and whether a tool_use or a hook entry names
-    compass."""
-    keys, names = [], False
+    """(keys, ran_compass) for one transcript entry: the source keys its
+    tool_use blocks load, and whether a Bash tool_use or a hook entry runs the
+    Compass CLI."""
+    keys, ran = [], False
     if entry.get("type") == "attachment":
         attachment = entry.get("attachment")
-        kind = attachment.get("type") if isinstance(attachment, dict) else None
-        if isinstance(kind, str) and "hook" in kind.lower():
-            names = "compass" in json.dumps(attachment).lower()
-        return keys, names
+        if isinstance(attachment, dict) and "hook" in str(attachment.get("type", "")).lower():
+            ran = _runs_compass(attachment.get("command"))
+        return keys, ran
     message = entry.get("message")
     content = message.get("content") if isinstance(message, dict) else None
     if entry.get("type") != "assistant" or not isinstance(content, list):
-        return keys, names
+        return keys, ran
     for block in content:
         if not isinstance(block, dict) or block.get("type") != "tool_use":
             continue
         keys.extend(_block_keys(block))
-        if "compass" in json.dumps(block.get("input", "")).lower():
-            names = True
-    return keys, names
+        tool_input = block.get("input")
+        if isinstance(tool_input, dict) and _runs_compass(tool_input.get("command")):
+            ran = True
+    return keys, ran
 
 
 def _scan_session(path, plugin, cache):
@@ -683,9 +710,9 @@ def _scan_session(path, plugin, cache):
             good += 1
             if not isinstance(entry, dict):
                 continue
-            found, names = _line_trace(entry)
+            found, ran = _line_trace(entry)
             keys.update(key for key in found if _source_exists(plugin, key, cache))
-            traced = traced or names
+            traced = traced or ran
     if good == 0 and bad:
         bad = 1
     return keys, traced or bool(keys), bad
