@@ -11,6 +11,9 @@ summary: "Shrinks the text Compass puts into Claude Code's context over all a se
 
 # Loop: session-context
 
+> [!IMPORTANT]
+> You decide: accept or reject run 7. It moves the extraction log's format out of the `extract-lessons` skill into a side file, `extraction-log.md`, which the skill says to read before writing. Recommended: reject. Every run of that skill writes the log, so every run reads the side file too: the real saving is zero. The sensor shows -149 only because nobody has loaded the new file yet, so its weight is 0. Approve accepts it; Needs changes rejects it, and your note joins `feedback.md`.
+
 ## Step 0: End state
 
 The text Compass puts into Claude Code's context over all the work a session does is as small as it can be while Compass works as well as before. No fixed number: the loop runs until five runs in a row save nothing, or the budget ends.
@@ -107,3 +110,8 @@ Review of run 1 (changes): the loop is about the total context Compass uses to d
 - 11,477 -> 11,425 per average session (-52). The judge found nothing. Text tests pass.
 - The change: three Research bullets become one pointer line; they move word for word to `plugin/skills/research/evidence-rules.md`, linked from the skill's researcher brief step, and the sourcing rule is added to the `researcher` agent.
 - Accepted.
+
+### 2026-11-01: run 7 (RUN-20261101T223045987720Z)
+
+- 11,425 -> 11,276 per average session (-149 on the sensor, about 0 in practice). The judge found nothing.
+- The change: the extraction log format moves from the `extract-lessons` skill to `plugin/skills/extract-lessons/extraction-log.md`, which the skill tells every run to read.
