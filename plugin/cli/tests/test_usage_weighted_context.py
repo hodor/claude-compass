@@ -94,8 +94,7 @@ class Workspace(unittest.TestCase):
                     "skills/plan/ref/a.md", "templates/agents/tester.md",
                     "templates/agents/builder.md", "templates/agents/validator.md"):
             (self.scan_plugin / rel).parent.mkdir(parents=True, exist_ok=True)
-            (self.scan_plugin / rel).write_text("x
-", encoding="utf-8")
+            (self.scan_plugin / rel).write_text("x", encoding="utf-8")
 
     def run_cli(self, *args, cwd=None):
         cwd = Path(cwd or self.work)
