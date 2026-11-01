@@ -5686,3 +5686,47 @@ test("a reload does not claim a request that has a verdict or belongs to another
   assert.deepEqual(seenPaths(app), []);
   assert.deepEqual(cardIds(app), []);
 });
+
+// ---- a reload that cannot enable the plugin again ----
+
+// Adversarial where: enable rejects once after disable succeeded and the plugin
+// stays off for good; or it is retried without end; or the second failure goes
+// unannounced so the human never learns Compass Review is switched off.
+test("a failed enable after a successful disable is retried once, then the human is told to switch the plugin on", async () => {
+  const waitMs = (ms) => new Promise((r) => setTimeout(r, ms));
+  const { app, plugin } = await loadedAs("3.2.1", manifestJson("3.3.0"));
+  plugin.reloadRetryMs = 5;
+  let enableFails = 1;
+  const realEnable = app.plugins.enablePlugin;
+  app.plugins.enablePlugin = async (id) => {
+    if (enableFails-- > 0) { app.plugins.calls.push(["enable", id]); throw new Error("enable failed"); }
+    return realEnable(id);
+  };
+  await withConsoleCaptured(async () => { await plugin.recheck(); await waitMs(40); });
+  assert.deepEqual(app.plugins.calls, [["disable", PLUGIN_ID], ["enable", PLUGIN_ID], ["enable", PLUGIN_ID]]);
+  assert.equal(app.plugins.instance.manifest.version, "3.3.0", "the retry loaded the new version");
+  assert.deepEqual(notices, [], "a retry that works says nothing");
+
+  const second = await loadedAs("3.2.1", manifestJson("3.3.0"));
+  second.plugin.reloadRetryMs = 5;
+  second.app.plugins.enablePlugin = async (id) => { second.app.plugins.calls.push(["enable", id]); throw new Error("enable failed"); };
+  await withConsoleCaptured(async () => { await second.plugin.recheck(); await waitMs(40); await second.plugin.recheck(); await waitMs(40); });
+  assert.deepEqual(second.app.plugins.calls, [["disable", PLUGIN_ID], ["enable", PLUGIN_ID], ["enable", PLUGIN_ID]]);
+  assert.equal(notices.length, 1);
+  assert.match(notices[0], /Settings > Community plugins/);
+});
+
+// Adversarial where: the saved state is kept after use, so a later reload
+// restores a stale note over what the human has since sent or cleared.
+test("the state saved for a reload is restored once and then cleared", async () => {
+  const { app, plugin } = await loadedAs("3.2.1", manifestJson("3.3.0"), {
+    "a.md": "x", "tmp/review/95.request.json": req("95", "a.md"),
+  });
+  await plugin.handler({ request: "tmp/review/95.request.json" });
+  await sleep();
+  typeInto(notesIn(cardFor(app, "95")), "kept");
+  await plugin.recheck();
+  await sleep();
+  assert.equal(app.plugins.instance.pending.get("95").states.get("a.md").note, "kept");
+  assert.deepEqual(JSON.parse(app.store.get(`${PLUGIN_DIR}/carried-reviews.json`)), {});
+});
