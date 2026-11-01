@@ -63,7 +63,10 @@
 // window without focus, or, for a review the plugin found at start-up, when
 // its request says `return`. Everything the human types lives on
 // the review's entry, so redrawing the panel keeps it. A periodic recheck drops
-// a review whose request file is gone or whose verdict already exists.
+// a review whose request file is gone or whose verdict already exists. It also
+// reads manifest.json from the plugin's own folder; when that names a version
+// other than the one loaded, the plugin disables and enables itself, and the new
+// instance claims the pending requests again.
 //
 // The Compass view panel, a right-sidebar view (view type
 // `compass-view-panel`, opened by the "Open Compass view panel" command or the
@@ -169,6 +172,7 @@ const { Plugin, ItemView, Notice, MarkdownView, loadMermaid } = require("obsidia
 
 const REVIEW_DIRS = ["tmp/review", ".compass/tmp/review"];
 const SURFACE = "obsidian";
+const PLUGIN_ID = "compass-review";
 const RECHECK_MS = 5000;
 const PANEL_TYPE = "compass-review-panel";
 const VIEW_TYPE = "compass-view-panel";
@@ -1645,9 +1649,48 @@ class CompassReview extends Plugin {
     }
   }
 
-  // Drops reviews whose request file was removed or whose verdict another
-  // surface already wrote.
+  // The version named by manifest.json in this plugin's own folder: what a
+  // plugin update leaves on disk while this instance keeps running its older
+  // code. Null, with the reason logged once, when the file cannot be read.
+  async installedVersion() {
+    try {
+      const dir = this.manifest && this.manifest.dir;
+      if (typeof dir !== "string" || !dir) throw new Error("the plugin folder is unknown");
+      const manifest = JSON.parse(await this.app.vault.adapter.read(`${dir}/manifest.json`));
+      if (!manifest || typeof manifest.version !== "string" || !manifest.version) throw new Error("manifest.json has no version");
+      this.manifestProblem = null;
+      return manifest.version;
+    } catch (e) {
+      const problem = (e && e.message) || String(e);
+      if (this.manifestProblem !== problem) console.warn(`[compass-review] cannot read the installed manifest: ${problem}`);
+      this.manifestProblem = problem;
+      return null;
+    }
+  }
+
+  // Loads the plugin again when the folder holds a different version than this
+  // instance was loaded at, so an update takes effect without restarting
+  // Obsidian. Each version is reloaded for once; a reload that leaves this
+  // instance running does not repeat. Requests still pending are claimed again
+  // by the new instance's scan. True when a reload ran.
+  async reloadWhenUpdated() {
+    const version = await this.installedVersion();
+    if (version === null || version === this.manifest.version || version === this.reloadedFor) return false;
+    this.reloadedFor = version;
+    try {
+      await this.app.plugins.disablePlugin(PLUGIN_ID);
+      await this.app.plugins.enablePlugin(PLUGIN_ID);
+      return true;
+    } catch (e) {
+      console.error(`[compass-review] reload for version ${version} failed`, e);
+      return false;
+    }
+  }
+
+  // Reloads the plugin when it was updated on disk, then drops reviews whose
+  // request file was removed or whose verdict another surface already wrote.
   async recheck() {
+    if (await this.reloadWhenUpdated()) return;
     const adapter = this.app.vault.adapter;
     const dead = [];
     for (const [id, entry] of this.pending) {

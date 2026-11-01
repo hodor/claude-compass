@@ -55,7 +55,9 @@
 // A click on Approve or Needs changes saves the listed editors that have unsaved
 // text and writes the verdict. A periodic recheck drops a review whose request
 // file is gone or whose verdict already exists, and finds requests the file
-// watcher missed.
+// watcher missed. The recheck also looks beside the running extension's folder
+// for a copy of the same extension at a higher version; when one is installed,
+// an information message offers to reload the window, once per version.
 
 "use strict";
 
@@ -71,6 +73,8 @@ const REVIEW_PARTS = [".compass", "tmp", "review"];
 const REQUEST_SUFFIX = ".request.json";
 const SURFACES = new Set(["vscode", "cursor"]);
 const RECHECK_MS = 5000;
+const RELOAD_COMMAND = "workbench.action.reloadWindow";
+const RELOAD_LABEL = "Reload";
 
 const CASE_BLIND = process.platform === "win32" || process.platform === "darwin";
 
@@ -127,6 +131,39 @@ function readRequest(file) {
   return SURFACES.has(request.surface) ? request : null;
 }
 
+// The numeric parts of a dotted version; null when it is not `N.N.N...`.
+function versionParts(version) {
+  const text = String(version);
+  return /^\d+(\.\d+)*$/.test(text) ? text.split(".").map(Number) : null;
+}
+
+// Negative, zero or positive as version `a` is below, equal to or above `b`,
+// compared part by part as numbers.
+function compareVersions(a, b) {
+  const left = versionParts(a);
+  const right = versionParts(b);
+  const length = Math.max(left.length, right.length);
+  for (let i = 0; i < length; i++) {
+    const diff = (left[i] || 0) - (right[i] || 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+// The highest version among the copies of extension `id` installed beside
+// `extensionPath` (folders named `<id>-<version>`); null when there is none.
+// Folders of other extensions, `<id>-<word>` names and plain files are skipped.
+function highestInstalledVersion(extensionPath, id) {
+  const prefix = `${id}-`.toLowerCase();
+  let best = null;
+  for (const entry of fs.readdirSync(path.dirname(extensionPath), { withFileTypes: true })) {
+    if (!entry.isDirectory() || !entry.name.toLowerCase().startsWith(prefix)) continue;
+    const version = entry.name.slice(prefix.length).replace(/-.*$/, "");
+    if (versionParts(version) && (best === null || compareVersions(version, best) > 0)) best = version;
+  }
+  return best;
+}
+
 function exists(file) {
   try {
     fs.accessSync(file);
@@ -157,6 +194,8 @@ class CompassReview {
     this.queue = Promise.resolve();
     this.output = null;
     this.timer = null;
+    // The highest installed version a reload was offered for.
+    this.announced = null;
   }
 
   // -- start and stop --
@@ -356,7 +395,8 @@ class CompassReview {
   }
 
   // Drops reviews whose request file was removed or whose verdict another
-  // surface already wrote, and claims requests no watcher event announced.
+  // surface already wrote, claims requests no watcher event announced, and
+  // offers a window reload once a newer copy of this extension is installed.
   recheck() {
     try {
       for (const [id, entry] of this.reviews) {
@@ -366,6 +406,29 @@ class CompassReview {
       this.push();
     } catch (e) {
       this.log(`recheck failed: ${(e && e.message) || e}`);
+    }
+    this.offerReload();
+  }
+
+  // Shows "Compass Review <v> is installed" with a Reload button when a copy of
+  // this extension at a higher version than the running one sits in the
+  // extensions folder; each version is announced once, and only a version above
+  // the last announced one is announced again.
+  offerReload() {
+    try {
+      const extension = this.context.extension;
+      const running = extension.packageJSON.version;
+      const installed = highestInstalledVersion(this.context.extensionPath, extension.id);
+      if (!versionParts(running) || installed === null || compareVersions(installed, running) <= 0) return;
+      if (this.announced && compareVersions(installed, this.announced) <= 0) return;
+      this.announced = installed;
+      Promise.resolve(
+        vscode.window.showInformationMessage(`Compass Review ${installed} is installed. Reload this window to use it.`, RELOAD_LABEL)
+      )
+        .then((choice) => (choice === RELOAD_LABEL ? vscode.commands.executeCommand(RELOAD_COMMAND) : undefined))
+        .catch((e) => this.log(`reload offer failed: ${(e && e.message) || e}`));
+    } catch (e) {
+      this.log(`reload offer failed: ${(e && e.message) || e}`);
     }
   }
 
