@@ -69,10 +69,7 @@ Conversation output is never the record - logs, reports, and vault files are. On
 
 ## Decisions (ADRs)
 
-- An ADR records a fork that was actually reached and resolved - through deliberation among several agents, or by the human explaining which way to go. It is never written to fill a pipeline stage.
-- One decision per ADR, written at the moment of resolution, at any point in the pipeline. A plan may proceed from spec and research with zero ADRs.
-- An ADR is a strategic document: it names the options that were live, and it always records both the good and the bad consequences of the choice.
-- Research findings and untested mechanisms are hypotheses. They live in plans as experiments, and earn an ADR only when their results resolve a fork.
+- An ADR records a fork that was actually reached and resolved, never one written to fill a pipeline stage. When to write one and what it holds: the `methodology` skill, section "ADRs (decision records)".
 
 ## Plans
 
