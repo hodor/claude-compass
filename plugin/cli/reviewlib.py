@@ -31,6 +31,13 @@ A review is two JSON files in the Compass vault's `tmp/review/`:
   add no file is written. It is written before the request, and removing the
   request removes it.
 
+- `<id>.seen`, an empty file written by the surface beside the request when it
+  takes the request up. Its presence tells `compass review` the add-on is
+  loaded and has the request; a request still without one after the
+  acknowledgement window is withdrawn. Removing the request removes it, and
+  writing a request removes every `.seen` older than `ORPHAN_SECONDS` (an
+  hour) whose request is gone. It does not make the request answered.
+
 A request with no verdict is pending; while it is pending every file it
 lists belongs to the human. Removing a pending request's file withdraws it: its
 waiter ends and the surface drops the review. The surfaces themselves live
@@ -52,6 +59,7 @@ VERDICTS = ("approved", "changes")
 CARRIED_LISTS = ("comments", "edited")
 SHORT_SHA = 10
 MAX_DIFF_LINES = 2000
+ORPHAN_SECONDS = 3600
 EDITOR_SETTING = "review_editor"
 PER_USER_EDITORS = ("vscode", "cursor")
 YAML_NULLS = ("null", "Null", "NULL", "~")
@@ -139,8 +147,10 @@ def editor_report(compass_vault):
         known = ", ".join(s.NAME for s in review_surfaces.SURFACES) or "none"
         return ("FAIL", f"{EDITOR_SETTING} names {named}, which is not a review editor (known: {known})",
                 f"{where} to one of: {known}")
-    ready = next((s for s in review_surfaces.SURFACES if s.configuration(probe)[0] is not None), None)
-    if chosen and chosen.configuration(probe)[0] is None:
+    with review_surfaces.check_only():
+        ready = next((s for s in review_surfaces.SURFACES if s.configuration(probe)[0] is not None), None)
+        chosen_ready = chosen is None or chosen.configuration(probe)[0] is not None
+    if chosen and not chosen_ready:
         fallback = f"reviews open in {ready.NAME}" if ready else "no review editor is set up"
         return ("WARN", f"{EDITOR_SETTING} names {named}, which is not set up; {fallback}",
                 f"run compass review --install, or {where}")
@@ -149,6 +159,12 @@ def editor_report(compass_vault):
     if ready:
         return "OK", f"reviews open in {ready.NAME}", None
     return "OK", "no review editor is set up; reviews are asked in the terminal", None
+
+
+def shared_checks():
+    """A `with` block inside which the surfaces keep what they learn from their
+    editors, so checking several documents asks each editor once."""
+    return review_surfaces.shared_listings()
 
 
 def review_dir(compass_vault):
@@ -167,6 +183,26 @@ def changes_path(request_path):
     """The `<id>.changes.diff` file beside a request file."""
     name = Path(request_path).name.replace(".request.json", ".changes.diff")
     return Path(request_path).with_name(name)
+
+
+def seen_path(request_path):
+    """The `<id>.seen` file beside a request file."""
+    name = Path(request_path).name.replace(".request.json", ".seen")
+    return Path(request_path).with_name(name)
+
+
+def _drop_orphan_claims(directory):
+    """Remove every `<id>.seen` in `directory` older than `ORPHAN_SECONDS`
+    whose `<id>.request.json` is gone: a claim written after its request was
+    withdrawn. A newer one stays, since its request may still be on its way."""
+    now = time.time()
+    for claim in Path(directory).glob("*.seen"):
+        request = claim.with_name(claim.name[: -len(".seen")] + ".request.json")
+        try:
+            if not request.exists() and now - claim.stat().st_mtime > ORPHAN_SECONDS:
+                claim.unlink(missing_ok=True)
+        except OSError:
+            continue
 
 
 def _write_atomic(path, data):
@@ -192,6 +228,7 @@ def write_request(compass_vault, surface, root, document, title=None, step_aside
     request.update({"title": title, "return": bool(step_aside), "commit": commit})
     directory = review_dir(compass_vault)
     directory.mkdir(parents=True, exist_ok=True)
+    _drop_orphan_claims(directory)
     path = directory / f"{rid}.request.json"
     record = changes_path(path)
     try:
@@ -441,11 +478,12 @@ def pending(compass_vault):
 
 def cancel(compass_vault, request_id):
     """Withdraw the pending request whose id is exactly `request_id` by
-    removing its request file and the changes record beside it; True when one
-    was withdrawn."""
+    removing its request file and the changes record and claim beside it; True
+    when one was withdrawn."""
     for path, request in _pending_entries(compass_vault):
         if request_id and request.get("id") == request_id:
             changes_path(path).unlink(missing_ok=True)
+            seen_path(path).unlink(missing_ok=True)
             try:
                 path.unlink()
             except FileNotFoundError:

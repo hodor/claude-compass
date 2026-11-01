@@ -15,6 +15,8 @@
 //     such file against the commit that earlier review was sent at. Absent
 //     for a first review and for files that have not changed. It leaves with
 //     the request.
+//   <dir>/<id>.seen   written here, empty, when a request addressed to this
+//     surface (or to none) is first taken up; tells Compass the plugin holds it
 //   obsidian://compass-review?vault=<vault id>&request=<dir>/<id>.request.json
 //   <dir>/<id>.verdict.json   written here when a button is clicked:
 //     {"id", "file", "verdict": "approved"|"changes", "notes",
@@ -1081,6 +1083,11 @@ function changesPathFor(requestPath) {
   return requestPath.replace(/\.request\.json$/, ".changes.diff");
 }
 
+// The empty file written beside a request once this plugin has taken it up.
+function seenPathFor(requestPath) {
+  return requestPath.replace(/\.request\.json$/, ".seen");
+}
+
 // Headings outside the properties block and code fences, in document order:
 // {title, line} with 1-based lines.
 function headingsOf(text) {
@@ -1497,6 +1504,16 @@ class CompassReview extends Plugin {
       for (const file of old.edited) created.edited.add(file);
     }
     this.pending.set(request.id, created);
+    if (!request.surface || request.surface === SURFACE) this.markSeen(path);
+  }
+
+  // Writes `<id>.seen` beside a request this plugin has just taken up, so
+  // `compass review` knows Obsidian holds it. A failed write is logged.
+  markSeen(requestPath) {
+    const target = seenPathFor(requestPath);
+    Promise.resolve()
+      .then(() => this.app.vault.adapter.write(target, ""))
+      .catch((e) => console.error("[compass-review] could not write", target, e));
   }
 
   async onRequest(path) {

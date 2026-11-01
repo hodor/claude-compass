@@ -106,7 +106,9 @@ class GitReviewBase(unittest.TestCase):
             json.dumps({"vaults": {"abc123": {"path": str(self.vault)}}}), encoding="utf-8")
         plugin = obsidian / "plugins" / obsidian_surface.PLUGIN_ID
         plugin.mkdir(parents=True, exist_ok=True)
-        (plugin / "main.js").write_text("//", encoding="utf-8")
+        shipped = obsidian_surface.shipped_plugin_dir()
+        for name in obsidian_surface.PLUGIN_FILES:
+            (plugin / name).write_bytes((shipped / name).read_bytes())
         (obsidian / "community-plugins.json").write_text(
             json.dumps([obsidian_surface.PLUGIN_ID]), encoding="utf-8")
 

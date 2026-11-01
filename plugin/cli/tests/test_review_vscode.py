@@ -160,6 +160,12 @@ class EditorFakes(unittest.TestCase):
         self.launched.append((command, {}))
         return 0
 
+    def opens(self):
+        """The recorded launches that hand a folder to the editor, leaving out
+        the extension listing and install that configuring a surface runs."""
+        return [(args, kwargs) for args, kwargs in self.launched
+                if not {"--list-extensions", "--install-extension"} & set(args if not isinstance(args, str) else [args])]
+
     def make_project(self, name="orchard"):
         project = self.tmp / name
         spec = project / ".compass" / "specs" / "SPEC-001-x.md"
@@ -200,7 +206,7 @@ class Configuration(EditorFakes):
                         context, reason = surface(name).configuration(document)
                         self.assertIsNone(reason)
                         self.assertEqual(Path(context["root"]).resolve(), project.resolve())
-        self.assertEqual(self.launched, [])
+        self.assertEqual(self.opens(), [])
 
     def test_each_variant_needs_its_own_command(self):
         """Adversarial where: cursor is configured because `code` exists (or
@@ -272,7 +278,7 @@ class Deliver(EditorFakes):
                     self.assertIsNone(reason)
                     request = project / ".compass" / "tmp" / "review" / "r1.request.json"
                     surface(name).deliver(context, request)
-                    (args, kwargs), = self.launched
+                    (args, kwargs), = self.opens()
                     self.assertIsInstance(args, (list, tuple))
                     self.assertFalse(kwargs.get("shell"))
                     self.assertEqual(_stem(args), command)
@@ -507,7 +513,7 @@ class ReviewThroughTheCli(EditorFakes):
                     {"file": ".compass/specs/SPEC-001-x.md", "why": "The need"},
                     {"file": ".compass/plans/PLAN-001-y.md", "why": None}])
                 self.assertEqual(request["project"], "orchard")
-                (args, _kwargs), = self.launched
+                (args, _kwargs), = self.opens()
                 self.assertEqual(_stem(args), command)
 
 
@@ -582,6 +588,7 @@ class DeliverThroughTheWindowsShim(unittest.TestCase):
                     context, reason = surface("vscode").configuration(folder / ".compass" / "note.md")
                     self.assertIsNone(reason)
                     self.assertEqual(context["command"], str(shim))
+                    log.write_text("")
                     surface("vscode").deliver(context, folder / ".compass" / "tmp" / "review" / "r.request.json")
                 deadline = time.time() + 15
                 while time.time() < deadline and not (log.exists() and log.read_text().strip()):

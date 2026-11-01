@@ -1,0 +1,161 @@
+"""Tests that an editor is asked which extensions it holds once per review,
+however many files the review lists, and that writing a request clears the
+`<id>.seen` files whose request is gone for more than an hour.
+
+Adversarial themes: a listing repeated for every file; an answer that outlives
+one review (so a later review reads an old listing); an answer that survives
+an install; a claim swept while its request exists or while it is fresh.
+"""
+
+import importlib
+import io
+import os
+import shutil
+import sys
+import tempfile
+import time
+import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
+from unittest import mock
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import review_surfaces  # noqa: E402
+import reviewlib  # noqa: E402
+import test_review_unconfirmed as un  # noqa: E402
+import test_review_vscode as vs  # noqa: E402
+
+
+class ListingOncePerReview(un.Editors):
+    def setUp(self):
+        super().setUp()
+        self.project, self.spec = self.make_project()
+        self.others = []
+        for name in ("SPEC-002-y.md", "SPEC-003-z.md"):
+            other = self.project / ".compass" / "specs" / name
+            other.write_text("# " + name + "\n", encoding="utf-8")
+            self.others.append(other)
+        (self.tmp / "gitconfig").write_text("", encoding="utf-8")
+        env = {
+            "CLAUDE_PROJECT_DIR": str(self.project),
+            "GIT_CEILING_DIRECTORIES": str(self.tmp),
+            "GIT_CONFIG_GLOBAL": str(self.tmp / "gitconfig"),
+            "GIT_CONFIG_NOSYSTEM": "1",
+        }
+        patcher = mock.patch.dict(os.environ, env)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        for args in (["init", "-q"], ["config", "user.name", "Tester"],
+                     ["config", "user.email", "tester@example.invalid"],
+                     ["add", ".compass"], ["commit", "-q", "-m", "first"]):
+            vs.REAL_RUN(["git", *args], cwd=self.project, check=True, capture_output=True)
+        self.module = importlib.import_module("commands.review")
+        patcher = mock.patch.object(vs.surface("vscode"), "has_focus", lambda: False)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def review(self, files):
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.object(review_surfaces, "SURFACES", [vs.surface("vscode")]), \
+                redirect_stdout(out), redirect_stderr(err):
+            code = self.module.run([*map(str, files), "--no-wait"])
+        return code, out.getvalue(), err.getvalue()
+
+    def test_a_three_file_review_asks_the_editor_for_its_extensions_once(self):
+        """Adversarial where: the listing runs once per file (three
+        subprocesses for one review), or the shared answer is dropped before
+        the second file is checked."""
+        with self.fakes():
+            self.put_on_path("code")
+            self.installed = [(vs.extension_id(), un.shipped_version())]
+            code, out, err = self.review([self.spec, *self.others])
+            self.assertEqual(code, 0, out + err)
+            self.assertEqual(self.ops().count("list"), 1, self.ops())
+            self.assertEqual(self.ops().count("install"), 0)
+
+    def test_a_second_review_asks_again(self):
+        """Adversarial where: the answer outlives the review that learned it,
+        so an extension installed or removed between two reviews is judged by
+        the first review's listing."""
+        with self.fakes():
+            self.put_on_path("code")
+            self.installed = [(vs.extension_id(), un.shipped_version())]
+            self.assertEqual(self.review([self.spec])[0], 0)
+            self.assertIsNone(review_surfaces.listing_cache())
+            self.installed = []
+            self.assertEqual(self.review([self.others[0]])[0], 0)
+            self.assertEqual(self.ops().count("list"), 2, self.ops())
+            self.assertEqual(self.ops().count("install"), 1, self.ops())
+
+    def test_an_install_makes_the_next_file_ask_again(self):
+        """Adversarial where: the listing taken before an install is still
+        used afterwards, so a file checked later is judged by an extension
+        list that no longer holds."""
+        with self.fakes():
+            self.put_on_path("code")
+            self.installed = []
+            code, out, err = self.review([self.spec, *self.others])
+            self.assertEqual(code, 0, out + err)
+            self.assertEqual(self.ops().count("install"), 1, self.ops())
+            self.assertEqual(self.ops().count("list"), 2, self.ops())
+
+
+class OrphanClaims(unittest.TestCase):
+    def setUp(self):
+        self.base = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
+        self.vault = self.base / ".compass"
+        self.directory = reviewlib.review_dir(self.vault)
+        self.directory.mkdir(parents=True)
+        self.document = self.base / "a.md"
+        self.document.write_text("# A\n", encoding="utf-8")
+
+    def put(self, name, age=0):
+        path = self.directory / name
+        path.write_text("", encoding="utf-8")
+        stamp = time.time() - age
+        os.utime(path, (stamp, stamp))
+        return path
+
+    def write(self):
+        _, path = reviewlib.write_request(self.vault, "vscode", self.base, self.document, commit="abc")
+        return path
+
+    def test_an_old_claim_without_a_request_is_removed_and_a_fresh_one_stays(self):
+        """Adversarial where: an orphan claim stays for ever, the age bound is
+        ignored so a claim whose request is still being written is removed, or
+        a claim exactly at the bound is judged on the wrong side."""
+        old = self.put("old.seen", reviewlib.ORPHAN_SECONDS + 60)
+        fresh = self.put("fresh.seen", 5)
+        near = self.put("near.seen", reviewlib.ORPHAN_SECONDS - 60)
+        self.write()
+        self.assertFalse(old.exists())
+        self.assertTrue(fresh.exists())
+        self.assertTrue(near.exists())
+
+    def test_an_old_claim_whose_request_exists_stays(self):
+        """Adversarial where: the sweep removes the claim of a request that is
+        still pending because the claim is old, so a human who has had a
+        review open for hours loses its confirmation."""
+        request = self.put("keep.request.json", reviewlib.ORPHAN_SECONDS * 5)
+        claim = self.put("keep.seen", reviewlib.ORPHAN_SECONDS * 5)
+        answered = self.put("done.request.json", reviewlib.ORPHAN_SECONDS * 5)
+        answered_claim = self.put("done.seen", reviewlib.ORPHAN_SECONDS * 5)
+        other = self.put("notes.txt", reviewlib.ORPHAN_SECONDS * 5)
+        self.write()
+        for path in (request, claim, answered, answered_claim, other):
+            self.assertTrue(path.exists(), path.name)
+
+    def test_the_bound_is_a_patchable_constant(self):
+        """Adversarial where: the bound is a literal inside the sweep, so
+        neither a test nor a caller can move it."""
+        claim = self.put("moved.seen", 120)
+        with mock.patch.object(reviewlib, "ORPHAN_SECONDS", 60):
+            self.write()
+        self.assertFalse(claim.exists())
+
+
+if __name__ == "__main__":
+    unittest.main()

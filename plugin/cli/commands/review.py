@@ -39,6 +39,10 @@ The first stdout line is always one of:
   `requested <id> <file>`   the request went out
   `not configured: <why>`   nothing was sent; ask in the terminal instead
 
+A surface checks, and installs when it can, the add-on that shows requests
+before one is written; a check or install that fails makes the surface not
+configured and the next surface is tried.
+
 The request goes to the `.compass` vault that holds the documents. A new
 request for a document already waiting withdraws the older request, several
 files or not, whose waiter ends with `withdrawn <id>`.
@@ -52,9 +56,19 @@ saw the document. A first review and an unchanged document add nothing; with
 nothing to add there is no file. Withdrawing the request, by `--cancel` or by
 a newer request for the same document, removes it.
 
-`--no-wait` returns after the request line. The wait has no limit: the
-human may answer hours later. `--timeout S` bounds it and prints
-`timeout <id>` when it runs out. `--status`
+A surface that takes a request up writes an empty `<id>.seen` file beside it.
+When neither the verdict nor `<id>.seen` exists `ACK_SECONDS` (60) after the
+request went out, the add-on is not loaded in the running editor: the request
+is withdrawn (removing its `.seen` too) and the last line is
+`not configured: <surface label> did not pick up review <id> within 60 s;
+<fix>`, `<fix>` being one line from the surface (`unconfirmed_fix`) saying how
+to get it loaded. The review is then asked in the terminal. Once `<id>.seen`
+exists the wait has no limit.
+
+`--no-wait` returns after the request line and does not watch for `.seen`.
+The wait has no limit once the request is claimed: the human may answer hours
+later. `--timeout S` bounds the whole wait, the acknowledgement window
+included, and prints `timeout <id>` when it runs out. `--status`
 prints one `pending <id> <file>` line per request still waiting, the first
 file followed by `(+N more)` when the request lists N more.
 `--cancel <id>` withdraws that pending request (removes its request file),
@@ -65,7 +79,7 @@ done>` line each. A surface may need a step only the human can take, such
 as turning community plugins on in Obsidian; `compass doctor` names it.
 
 Exit 0 on a verdict, on `--no-wait`, `--status`, `--cancel` and `--install`;
-1 when not configured, on timeout, on a withdrawn request, on a usage error,
+1 when not configured (an unclaimed request included), on timeout, on a withdrawn request, on a usage error,
 on a `--cancel` of an id that is not pending, or when `--status`, `--cancel`
 or `--install` finds no `.compass` vault; never 2.
 """
@@ -80,6 +94,7 @@ import reviewlib
 import vaultlib
 
 POLL_SECONDS = 0.5
+ACK_SECONDS = 60
 
 USAGE = ("usage: compass review <file>... [--why <path>=<line>]... [--title T] [--timeout S] [--no-wait]\n"
          "       compass review --status\n"
@@ -274,9 +289,12 @@ def _print_answer(request, verdict, documents, root, vault, surface_root):
             _print_document(rel, path, newline=True)
 
 
-def _wait(request, request_path, documents, timeout, root, vault, surface_root):
+def _wait(request, request_path, documents, timeout, root, vault, surface_root, surface):
     target = reviewlib.verdict_path(request_path)
-    deadline = None if timeout is None else time.monotonic() + timeout
+    claim = reviewlib.seen_path(request_path)
+    started = time.monotonic()
+    deadline = None if timeout is None else started + timeout
+    claimed = False
     while deadline is None or time.monotonic() < deadline:
         if target.exists():
             verdict = reviewlib.read_json(target)
@@ -286,6 +304,13 @@ def _wait(request, request_path, documents, timeout, root, vault, surface_root):
         if not Path(request_path).exists():
             print(f"withdrawn {request['id']}")
             return 1
+        claimed = claimed or claim.exists()
+        if not claimed and time.monotonic() - started >= ACK_SECONDS:
+            if not claim.exists() and reviewlib.cancel(vault, request["id"]):
+                print(f"not configured: {surface.label} did not pick up review {request['id']} "
+                      f"within {ACK_SECONDS:g} s; {surface.unconfirmed_fix()}")
+                return 1
+            claimed = True
         time.sleep(POLL_SECONDS)
     print(f"timeout {request['id']}")
     return 1
@@ -300,7 +325,12 @@ def _prepare(given):
     `(documents, surface, context, vault, root, commit)`; raises
     `reviewlib.GitUnavailable` naming the first file that cannot go out.
     All files must sit in one vault and one git repository and be shown by
-    one surface."""
+    one surface. Each editor is asked about its add-on once for all files."""
+    with reviewlib.shared_checks():
+        return _check_documents(given)
+
+
+def _check_documents(given):
     documents, first = [], None
     for name in given:
         document = Path(name).resolve()
@@ -379,4 +409,4 @@ def run(args):
         return 0
     rels = [entry["file"] for entry in request["files"]] if several else [request["file"]]
     return _wait(request, request_path, list(zip(rels, documents)), opts["timeout"], root, compass_vault,
-                 context["root"])
+                 context["root"], surface)
