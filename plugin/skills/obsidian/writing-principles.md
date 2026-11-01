@@ -16,6 +16,12 @@ Research is the exception: it captures evidence and can be as long as required.
 
 Decisions consolidate by topic: a ruling that refines an existing decision merges into it. The section heading is `## Decisions`.
 
+## Scope of the reader test
+
+The test binds everything an agent writes, not only vault documents: code comments, test names and assertion messages, commit bodies, skill and agent text. Each must make sense to a first-time reader who has only the file. State what the thing is, positively; a sentence that only makes sense to someone who watched it get written goes.
+
+Compass documents should be a pleasure to read. Easy to read, short, sweet. Long only when needed. Never verbose. The `obsidian` skill holds the forms (opening picture, callouts, embeds) and the plain words a human reads.
+
 ## Indexing a new vault document
 
 After creating ANY vault document (spec, plan, research, ADR, lesson, vision, handoff, review), add a link to it in `.compass/index.md` under the appropriate section. This is mandatory in the same step that creates the document, not a follow-up. Documents not in index.md are invisible to the next session.

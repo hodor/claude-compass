@@ -21,11 +21,11 @@ Ask through `AskUserQuestion`, exactly one question per call: the options are a 
 
 Write every document for a reader who has only the document - no memory of the conversation that produced it, no knowledge of where the work stands. Every writing rule below is an instance of this one test.
 
-The test binds everything an agent writes, not only vault documents: code comments, test names and assertion messages, commit bodies, skill and agent text. Each must make sense to a first-time reader who has only the file. State what the thing is, positively; a sentence that only makes sense to someone who watched it get written goes.
+The test binds everything an agent writes, not only vault documents (code comments, test names, commit bodies, skill and agent text): the `obsidian` skill, file `writing-principles.md`, section "Scope of the reader test".
 
 Before presenting any document, have fresh eyes read it: a cheap sub-agent holding only the document and these rules, never the conversation. A sentence the fresh reader cannot justify from the document alone is conversation residue; it goes.
 
-Compass documents should be a pleasure to read. Easy to read, short, sweet. Long only when needed. Never verbose. The `obsidian` skill holds the forms (opening picture, callouts, embeds) and the plain words a human reads.
+Compass documents are easy to read, short, and long only when needed. The `obsidian` skill holds the forms (opening picture, callouts, embeds) and the plain words a human reads.
 
 The remaining writing principles (brevity and the human's captured words, research length, ornamental test, summaries, what a document carries, describing what IS, own authority, positive statements, consolidating decisions by topic): the `obsidian` skill, file `writing-principles.md`.
 
