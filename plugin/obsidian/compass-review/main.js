@@ -63,7 +63,10 @@
 // window without focus, or, for a review the plugin found at start-up, when
 // its request says `return`. Everything the human types lives on
 // the review's entry, so redrawing the panel keeps it. A periodic recheck drops
-// a review whose request file is gone or whose verdict already exists.
+// a review whose request file is gone or whose verdict already exists. It also
+// reads manifest.json from the plugin's own folder; when that names a version
+// other than the one loaded, the plugin disables and enables itself, and the new
+// instance claims the pending requests again.
 //
 // The Compass view panel, a right-sidebar view (view type
 // `compass-view-panel`, opened by the "Open Compass view panel" command or the
@@ -169,6 +172,9 @@ const { Plugin, ItemView, Notice, MarkdownView, loadMermaid } = require("obsidia
 
 const REVIEW_DIRS = ["tmp/review", ".compass/tmp/review"];
 const SURFACE = "obsidian";
+const PLUGIN_ID = "compass-review";
+const CARRIED_FILE = "carried-reviews.json";
+const RELOAD_RETRY_MS = 2000;
 const RECHECK_MS = 5000;
 const PANEL_TYPE = "compass-review-panel";
 const VIEW_TYPE = "compass-view-panel";
@@ -1387,6 +1393,10 @@ function pipelineFor(specPath, docs) {
 
 class CompassReview extends Plugin {
   async onload() {
+    // Review state a previous instance of this plugin saved before reloading itself,
+    // request id -> saved entry; each is restored when its request is claimed.
+    this.carried = await this.loadCarried();
+    this.carriedOnDisk = this.carried.size > 0;
     // Counts the chart renders so each Mermaid render gets an element id of its own.
     this.chartSeq = 0;
     // request id -> {request, path, files: [{file, why}], states: Map(file ->
@@ -1416,7 +1426,11 @@ class CompassReview extends Plugin {
     this.registerInterval(
       window.setInterval(() => this.recheck().catch((e) => console.error("[compass-review] recheck failed", e)), RECHECK_MS)
     );
-    this.app.workspace.onLayoutReady(() => this.scanPending().catch((e) => this.fail("scan", e)));
+    this.app.workspace.onLayoutReady(() =>
+      this.scanPending()
+        .catch((e) => this.fail("scan", e))
+        .then(() => this.clearCarried())
+    );
   }
 
   onunload() {
@@ -1495,6 +1509,7 @@ class CompassReview extends Plugin {
       choiceAnswers: new Map(),
       decisionAnswers: new Map(),
     };
+    this.restoreCarried(created);
     for (const old of replaced) {
       if (old.arrivedUnfocused) created.arrivedUnfocused = true;
       for (const f of files) if (old.states.has(f.file)) created.states.set(f.file, old.states.get(f.file));
@@ -1645,9 +1660,157 @@ class CompassReview extends Plugin {
     }
   }
 
-  // Drops reviews whose request file was removed or whose verdict another
-  // surface already wrote.
+  // The version named by manifest.json in this plugin's own folder: what a
+  // plugin update leaves on disk while this instance keeps running its older
+  // code. Null, with the reason logged once, when the file cannot be read.
+  async installedVersion() {
+    try {
+      const dir = this.manifest && this.manifest.dir;
+      if (typeof dir !== "string" || !dir) throw new Error("the plugin folder is unknown");
+      const manifest = JSON.parse(await this.app.vault.adapter.read(`${dir}/manifest.json`));
+      if (!manifest || typeof manifest.version !== "string" || !manifest.version) throw new Error("manifest.json has no version");
+      this.manifestProblem = null;
+      return manifest.version;
+    } catch (e) {
+      const problem = (e && e.message) || String(e);
+      if (this.manifestProblem !== problem) console.warn(`[compass-review] cannot read the installed manifest: ${problem}`);
+      this.manifestProblem = problem;
+      return null;
+    }
+  }
+
+  // Loads the plugin again when the folder holds a different version than this
+  // instance was loaded at, so an update takes effect without restarting
+  // Obsidian. Each version is reloaded for once; a reload that leaves this
+  // instance running does not repeat. What the human has typed on pending cards
+  // is saved first and restored by the new instance when it claims the same
+  // requests. True when a reload ran.
+  async reloadWhenUpdated() {
+    const version = await this.installedVersion();
+    if (version === null || version === this.manifest.version || version === this.reloadedFor) return false;
+    this.reloadedFor = version;
+    try {
+      await this.saveCarried();
+      await this.app.plugins.disablePlugin(PLUGIN_ID);
+    } catch (e) {
+      console.error(`[compass-review] reload for version ${version} failed`, e);
+      return false;
+    }
+    try {
+      await this.app.plugins.enablePlugin(PLUGIN_ID);
+      return true;
+    } catch (e) {
+      console.error(`[compass-review] enabling version ${version} failed, trying again`, e);
+      this.retryEnable();
+      return false;
+    }
+  }
+
+  // The plugin is off after a failed enable. One more attempt after a short
+  // delay; when that fails too, the human is told to switch it on.
+  retryEnable() {
+    const timer = setTimeout(async () => {
+      try {
+        const plugins = this.app.plugins;
+        if (plugins.enabledPlugins && plugins.enabledPlugins.has(PLUGIN_ID)) return;
+        await plugins.enablePlugin(PLUGIN_ID);
+      } catch (e) {
+        console.error("[compass-review] enabling failed again", e);
+        new Notice("Compass Review could not restart after an update. Switch it on in Settings > Community plugins.");
+      }
+    }, this.reloadRetryMs === undefined ? RELOAD_RETRY_MS : this.reloadRetryMs);
+    if (timer && timer.unref) timer.unref();
+  }
+
+  carriedPath() {
+    const dir = this.manifest && this.manifest.dir;
+    return typeof dir === "string" && dir ? `${dir}/${CARRIED_FILE}` : null;
+  }
+
+  // Writes the state of every pending card to the plugin folder, keyed by request id.
+  async saveCarried() {
+    const target = this.carriedPath();
+    if (!target) return;
+    const saved = {};
+    for (const [id, entry] of this.pending) {
+      saved[id] = {
+        states: [...entry.states],
+        index: entry.index,
+        comments: [...entry.comments],
+        edited: [...entry.edited],
+        choiceAnswers: [...entry.choiceAnswers],
+        decisionAnswers: [...entry.decisionAnswers],
+        arrivedUnfocused: entry.arrivedUnfocused === true,
+      };
+    }
+    try {
+      await this.app.vault.adapter.write(target, JSON.stringify(saved));
+    } catch (e) {
+      console.error("[compass-review] could not save the pending reviews", e);
+    }
+  }
+
+  // The state saved by the instance this one replaced; an empty map when there is none.
+  async loadCarried() {
+    const target = this.carriedPath();
+    const saved = new Map();
+    if (!target) return saved;
+    try {
+      const adapter = this.app.vault.adapter;
+      if (!(await adapter.exists(target))) return saved;
+      const parsed = JSON.parse(await adapter.read(target));
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        for (const [id, entry] of Object.entries(parsed)) if (entry && typeof entry === "object") saved.set(id, entry);
+      }
+    } catch (e) {
+      console.error("[compass-review] could not read the saved reviews", e);
+    }
+    return saved;
+  }
+
+  // Empties the saved state once the requests have been claimed.
+  async clearCarried() {
+    const target = this.carriedPath();
+    const had = this.carriedOnDisk;
+    this.carried = new Map();
+    this.carriedOnDisk = false;
+    if (!target || !had) return;
+    try {
+      await this.app.vault.adapter.write(target, "{}");
+    } catch (e) {
+      console.error("[compass-review] could not clear the saved reviews", e);
+    }
+  }
+
+  // Puts the saved state of a request onto its freshly created entry, for the
+  // files the request still lists.
+  restoreCarried(entry) {
+    const saved = this.carried && this.carried.get(entry.request.id);
+    if (!saved) return;
+    this.carried.delete(entry.request.id);
+    const pairs = (list) => (Array.isArray(list) ? list.filter((p) => Array.isArray(p) && typeof p[0] === "string") : []);
+    for (const [file, state] of pairs(saved.states)) {
+      if (entry.states.has(file) && state && typeof state === "object") {
+        entry.states.set(file, { read: state.read === true, note: typeof state.note === "string" ? state.note : "" });
+      }
+    }
+    if (Number.isInteger(saved.index)) entry.index = Math.max(0, Math.min(saved.index, entry.files.length - 1));
+    for (const [file, note] of pairs(saved.comments)) if (typeof note === "string") entry.comments.set(file, note);
+    for (const file of Array.isArray(saved.edited) ? saved.edited : []) if (typeof file === "string") entry.edited.add(file);
+    const listed = new Set(entry.files.map((f) => f.file));
+    for (const [file, answers] of pairs(saved.choiceAnswers)) {
+      if (listed.has(file) && answers && typeof answers === "object") entry.choiceAnswers.set(file, Object.assign(Object.create(null), answers));
+    }
+    for (const [file, answers] of pairs(saved.decisionAnswers)) {
+      if (listed.has(file) && answers && typeof answers === "object") entry.decisionAnswers.set(file, Object.assign(Object.create(null), answers));
+    }
+    if (saved.arrivedUnfocused === true) entry.arrivedUnfocused = true;
+  }
+
+  // Reloads the plugin when it was updated on disk, then drops reviews whose
+  // request file was removed or whose verdict another surface already wrote.
   async recheck() {
+    if (await this.reloadWhenUpdated()) return;
     const adapter = this.app.vault.adapter;
     const dead = [];
     for (const [id, entry] of this.pending) {

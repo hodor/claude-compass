@@ -628,13 +628,13 @@ class Contract(unittest.TestCase):
         (so an editor holding 0.1.0 is never offered the update and the check
         compares equal), the Obsidian manifest or the plugin version is not
         bumped, or the `.vsix` is not rebuilt under the new version."""
-        self.assertEqual(shipped_version(), "0.2.0")
+        self.assertEqual(shipped_version(), "0.3.0")
         manifest = json.loads((REPO_PLUGIN / "obsidian" / "compass-review" / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "0.5.0")
+        self.assertEqual(manifest["version"], "0.6.0")
         plugin = json.loads((REPO_PLUGIN / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
-        self.assertEqual(plugin["version"], "0.34.3")
+        self.assertEqual(plugin["version"], "0.34.4")
         packed = [p.name for p in (REPO_PLUGIN / "vscode").rglob("*.vsix") if "node_modules" not in p.parts]
-        self.assertEqual(packed, ["compass-review-0.2.0.vsix"])
+        self.assertEqual(packed, ["compass-review-0.3.0.vsix"])
 
 
 if __name__ == "__main__":

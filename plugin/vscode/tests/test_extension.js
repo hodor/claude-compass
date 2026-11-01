@@ -1841,3 +1841,113 @@ test("the extension, its .vsix and the Compass plugin are at their bumped versio
   const plugin = JSON.parse(fs.readFileSync(path.join(EXT_DIR, "..", "..", ".claude-plugin", "plugin.json"), "utf8"));
   assert.ok(atLeast(plugin.version, "0.34.4"), `plugin version ${plugin.version}`);
 });
+
+// ---- installed-copy edge cases the folder scan introduces ----
+
+// Adversarial where: the folder-name parse accepts or mis-reads names that VS
+// Code really writes: a platform suffix (`-win32-x64`, `-universal`) or a
+// pre-release tag is read as part of the version or makes a real copy
+// invisible; the id prefix is matched case-sensitively so a copy whose folder
+// is in another letter case is missed (as on a case-insensitive disk); names
+// that only look like copies (no version, `1.2.`, `1..2`, `.vsix`) count.
+test("folder names are read as <id>-<version>[-suffix], case-blind, and non-version names are skipped", async (t) => {
+  const rows = [
+    { name: "platform suffix", folders: ["{id}-1.0.1-win32-x64"], expect: "1.0.1" },
+    { name: "universal suffix", folders: ["{id}-1.0.1-universal"], expect: "1.0.1" },
+    { name: "pre-release tag", folders: ["{id}-1.0.1-beta.2"], expect: "1.0.1" },
+    { name: "id in upper case", folders: ["{ID}-1.0.1"], expect: "1.0.1" },
+    { name: "highest across letter cases", folders: ["{ID}-1.0.2", "{id}-1.0.9", "{id}-1.0.3"], expect: "1.0.9" },
+    { name: "two-part version", folders: ["{id}-1.1"], expect: "1.1" },
+    { name: "equal to the running one with a suffix", folders: ["{id}-1.0.0-win32-x64"], expect: null },
+    { name: "same number, more zero parts", folders: ["{id}-1.0.0.0"], expect: null },
+    { name: "no version", folders: ["{id}-"], expect: null },
+    { name: "word instead of a version", folders: ["{id}-latest", "{id}-v2"], expect: null },
+    { name: "trailing dot", folders: ["{id}-1.2."], expect: null },
+    { name: "empty part", folders: ["{id}-1..2"], expect: null },
+    { name: "package file named like a copy", folders: ["{id}-1.0.1.vsix"], expect: null },
+  ];
+  for (const row of rows) {
+    await t.test(row.name, async (st) => {
+      const w = await begunAt(st, "1.0.0");
+      for (const name of row.folders) {
+        fs.mkdirSync(path.join(w.base, name.replace("{id}", w.id).replace("{ID}", w.id.toUpperCase())), { recursive: true });
+      }
+      await w.activate();
+      await w.timers.fire();
+      assert.deepEqual(w.notices().map((m) => m.text), row.expect ? [installedText(row.expect)] : []);
+    });
+  }
+});
+
+// Adversarial where: the extension id the editor reports differs in letter
+// case from the lower-case folder name on disk (`Publisher.Name` against
+// `publisher.name-1.0.1`), so the prefix never matches.
+test("an extension id in mixed case still finds its lower-case folders", async (t) => {
+  const w = await begunAt(t, "1.0.0");
+  const lower = w.id.toLowerCase();
+  fs.mkdirSync(path.join(w.base, `${lower}-1.0.1`), { recursive: true });
+  w.env.host.context.extension.id = lower.replace(/^./, (c) => c.toUpperCase());
+  await w.activate();
+  await w.timers.fire();
+  assert.deepEqual(w.notices().map((m) => m.text), [installedText("1.0.1")]);
+});
+
+// Adversarial where: a running version that is not plain `N.N.N` (a
+// pre-release `1.0.0-beta`, a missing or numeric version) is compared as if
+// it were numbers and throws or prompts on every recheck, or the offer is made
+// while the rest of recheck (claiming requests) stops.
+test("a running version that is not dotted numbers offers nothing and does not break the recheck", async (t) => {
+  for (const running of ["1.0.0-beta", undefined, "", null]) {
+    await t.test(`running version ${String(running)}`, async (st) => {
+      const w = await begunAt(st, "1.0.0");
+      w.install("9.9.9");
+      await w.activate();
+      w.env.host.package.version = running;
+      fs.mkdirSync(w.env.reviewDir(), { recursive: true });
+      fs.writeFileSync(w.env.requestFile(ID), JSON.stringify(request(ID, SET)));
+      await w.timers.fire();
+      assert.deepEqual(w.notices(), []);
+      assert.ok(fs.existsSync(path.join(w.env.reviewDir(), `${ID}.seen`)), "the recheck still claims the request");
+    });
+  }
+});
+
+// Adversarial where: the recheck interval is not cleared when the extension
+// is disposed, so a window that unloads the extension keeps polling the
+// extensions folder and can raise a reload message from a dead instance; the
+// handle, once cleared, is also never re-armed by a later recheck.
+test("disposing the extension clears its recheck timer and raises no further message", async (t) => {
+  const w = await begunAt(t, "1.0.0");
+  const armed = new Set();
+  const setWrapped = global.setInterval;
+  const clearBefore = global.clearInterval;
+  global.setInterval = (fn, ms, ...args) => {
+    const handle = setWrapped(fn, ms, ...args);
+    armed.add(handle);
+    return handle;
+  };
+  global.clearInterval = (handle) => { armed.delete(handle); return clearBefore(handle); };
+  t.after(() => { global.setInterval = setWrapped; global.clearInterval = clearBefore; });
+
+  await w.activate();
+  assert.ok(armed.size >= 1, "the extension arms a periodic recheck");
+  await w.env.ext.deactivate();
+  assert.equal(armed.size, 0, "every periodic timer is cleared on deactivate");
+  w.install("1.0.1");
+  await sleep(30);
+  assert.deepEqual(w.notices(), []);
+});
+
+// Adversarial where: the announced version is forgotten when its folder
+// disappears, so the same version is announced again when it returns.
+test("a copy announced once is not announced again when it is removed and installed again", async (t) => {
+  const w = await begunAt(t, "1.0.0");
+  await w.activate();
+  w.install("1.0.1");
+  await w.timers.fire();
+  fs.rmSync(path.join(w.base, `${w.id}-1.0.1`), { recursive: true });
+  await w.timers.fire();
+  w.install("1.0.1");
+  await w.timers.fire();
+  assert.deepEqual(w.notices().map((m) => m.text), [installedText("1.0.1")]);
+});
