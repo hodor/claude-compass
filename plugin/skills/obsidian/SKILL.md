@@ -304,7 +304,7 @@ A ruling made in a spec or ADR is written as a discrete, referenceable bullet, n
 
 ## Documents the human reads
 
-A spec, plan or research document is read by a person who decides. It opens under its title with a picture of what is approved, then a callout saying what the person decides, then its text in plain words.
+A spec, plan or research document is read by a person who decides. It opens under its title with a picture of what is approved, then a callout saying what the person decides, then its text in plain words. The sentence-level writing principles (ornamental test, summaries, what a document carries, describing what IS, own authority, positive statements) are in `writing-principles.md` beside this file.
 
 - **Opening picture.** A Mermaid diagram sized to one glance: for a spec the problem, the outcome and the rulings; for a plan its stages and the task dependencies; for research the findings by confidence and what they mean for the spec.
 - **You decide callout.** Directly under the picture, a `> [!IMPORTANT]` callout whose text begins `You decide:` and asks the one question approving answers, naming what becomes binding. The callout leaves the file at approval, since an approved document states what is.
