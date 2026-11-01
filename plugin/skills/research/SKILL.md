@@ -36,7 +36,7 @@ Check the resulting list against a fixed set of facets, so a whole category does
 
 ### 4. Fold in the human's own questions
 
-If the human has questions about this spec, they enter the axis list first, with no judgment on whether to accept them, and the rest of the list regenerates around them. The spec's own Open Questions stay answered-where-touched and never lead.
+If the human has questions about this spec, they enter the axis list first, with no judgment on whether to accept them, and the rest of the list regenerates around them. The spec's own Open Questions stay answered-where-touched and never lead. When he joins, research runs as a conversation: findings surface as they land and his readings steer the axes. When he passes, run and deliver as usual.
 
 ### 5. Enumerate the session
 
