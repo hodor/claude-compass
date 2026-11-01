@@ -502,3 +502,21 @@ Plan: [[PLAN-022-review-in-obsidian]] (files and verification per task).
 
 - [x] TASK-168: setup/update install the plugin; doctor walks the human through enabling it - complexity: M, depends_on: TASK-165
 - [x] TASK-169: review inbox and lessons table as Bases - complexity: S, depends_on: none
+
+### PLAN-027: every choice is a numbered list
+
+Plan: [[PLAN-027-numbered-choices]].
+
+- [x] TASK-237: Number every choice in the pipeline rules - complexity: S, depends_on: none
+- [x] TASK-238: The guide skill asks its closing questions through the rule - complexity: S, depends_on: TASK-237
+- [x] TASK-239: Install the change here and release 0.34.2 - complexity: S, depends_on: TASK-237, TASK-238
+
+## 2026-11-01
+
+### Bug: a review waits forever when its editor add-on is missing
+
+- [x] TASK-240: `compass review` checks the review editor's add-on (VS Code and Cursor extension, Obsidian plugin) is installed and current before sending, installs it when it is not, and stops waiting with `not configured:` when no editor confirms the request within 60 s - complexity: M
+- [x] TASK-242: An updated review add-on takes effect in an editor that is already open: the Obsidian plugin reloads itself keeping unsent notes, VS Code and Cursor offer a Reload button - complexity: S, depends_on: TASK-240
+
+### PLAN-021 Wave 2: judge, schedule, ast-grep sensor, skill, release
+- [x] TASK-241: The context sensor counts all of Compass's shipped text, each source weighted by how often real sessions load it (`compass loop usage-scan` writes project-free counts to `~/.compass/usage/`) - complexity: M, depends_on: TASK-236
