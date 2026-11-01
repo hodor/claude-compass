@@ -119,3 +119,8 @@ Review of run 1 (changes): the loop is about the total context Compass uses to d
 - 11,276 -> 11,083 per average session (-193 on the sensor, about 0 in practice). The judge found nothing.
 - The change: the contradiction check moves from the `extract-lessons` skill to `plugin/skills/extract-lessons/contradiction-check.md`, which the skill tells every run to read.
 - Accepted; the loop may keep moving a step a skill always runs into a side file it reads.
+
+### 2026-11-01: run 9 (RUN-20261101T231924861842Z)
+
+- Halted as `controls-changed`: `compass sync` rewrote `.compass/meta/tag-index.yaml` during the judge. The runner now skips every file under `.compass/meta/` (commit `c8c94b4`).
+- Its change, moving the Data rule's enforcement paragraph out of the always-loaded rules, was not kept: the Data rule is an invariant every session carries. `feedback.md` now says so.
