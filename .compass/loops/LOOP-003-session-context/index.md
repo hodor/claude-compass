@@ -11,9 +11,6 @@ summary: "Shrinks the text Compass puts into Claude Code's context over all a se
 
 # Loop: session-context
 
-> [!IMPORTANT]
-> You decide: accept or reject run 5. The two Vault State bullets on indexing a new document become one line in the always-loaded rules: link it in `index.md` in the same step, with a `summary:` the index line copies. The full wording, including why (an unindexed document is invisible to the next session), moves to `writing-principles.md`. Recommended: accept; the rule an agent must follow stays in every session, only its explanation moves. Approve accepts it; Needs changes rejects it, and your note joins `feedback.md`.
-
 ## Step 0: End state
 
 The text Compass puts into Claude Code's context over all the work a session does is as small as it can be while Compass works as well as before. No fixed number: the loop runs until five runs in a row save nothing, or the budget ends.
@@ -103,3 +100,4 @@ Review of run 1 (changes): the loop is about the total context Compass uses to d
 
 - 11,573 -> 11,477 per average session (-96). The judge found nothing. Text tests pass.
 - The change: the pipeline rules' two indexing bullets become one line; the full text moves word for word to a new section of `writing-principles.md`.
+- Accepted.
