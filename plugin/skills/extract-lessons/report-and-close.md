@@ -1,5 +1,11 @@
 # Report fields and closing the opportunity
 
+## Why the pass runs in a subagent
+
+The pass runs in a SPAWNED SUBAGENT, never in the main conversation's context: the evidence reading and candidate judgment cost thousands of tokens that belong in a disposable context, and the durable record is the extraction log plus the capture-log row, not conversation text. The subagent's entire report back is step 9's one `extracted:` line; the orchestrator relays that line and nothing else. Narrating candidates, verdicts, or rationale into the conversation is context pollution - the logs hold all of it.
+
+## Report fields
+
 Read at step 9 of `SKILL.md`, after the `extracted:` line is composed.
 
 Where:

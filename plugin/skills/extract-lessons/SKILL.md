@@ -12,7 +12,7 @@ Retrospective lesson capture at a capture opportunity. No introspection prompts.
 
 This skill is consumed as a file: the agent reads this document and follows its steps in place. A Skill-tool invocation hangs when the caller is a subagent or a headless worker, so no prompt ever routes here through the Skill tool.
 
-The pass runs in a SPAWNED SUBAGENT, never in the main conversation's context: the evidence reading and candidate judgment cost thousands of tokens that belong in a disposable context, and the durable record is the extraction log plus the capture-log row, not conversation text. The subagent's entire report back is step 9's one `extracted:` line; the orchestrator relays that line and nothing else. Narrating candidates, verdicts, or rationale into the conversation is context pollution - the logs hold all of it.
+The pass runs in a SPAWNED SUBAGENT, never in the main conversation's context. The subagent's entire report back is step 9's one `extracted:` line; the orchestrator relays that line and nothing else. Why the pass is isolated and what the report excludes: `report-and-close.md` in this skill's folder, section "Why the pass runs in a subagent".
 
 ## Inputs
 
