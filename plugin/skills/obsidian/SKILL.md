@@ -237,7 +237,7 @@ Numbering is local per unit, so `SPEC-001-...` can exist at the root and inside 
 | Artifact below a domain | path-qualified vault-relative | `[[specs/network/cache/SPEC-001-eviction]]` |
 | Domain or folder-spec line on a generated surface | piped full path to its index | `[[specs/network/index\|network]]` |
 
-Always author unit-artifact and below-domain links path-qualified - domain names reuse across branches (`specs/network/cache` and `specs/gpu-hardware/cache` coexist), so the path is the identity. The convention is forward-only: links written before a target moved stay valid, and `compass validate` warns `ambiguous_wikilink` only when a bare stem actually resolves to more than one file. Generated surfaces emit folder links as piped full paths because Obsidian opens files, never folders - the piped form displays as the plain name and clicks through.
+Always author unit-artifact and below-domain links path-qualified - domain names reuse across branches (`specs/network/cache` and `specs/gpu-hardware/cache` coexist), so the path is the identity. The convention is forward-only: links written before a target moved stay valid, and `compass validate` warns `ambiguous_wikilink` only when a bare stem actually resolves to more than one file. Generated surfaces emit folder links as piped full paths because Obsidian opens files, never folders - the piped form displays as the plain name and clicks through. The rule text for resolving, authoring and ambiguity of path-qualified links: `path-qualified-links.md` in this skill's folder.
 
 ### Where a new artifact goes
 
