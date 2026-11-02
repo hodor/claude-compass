@@ -1,7 +1,7 @@
 ---
 title: "Review: Compass's Whole Overhead, Seven Axes Consolidated"
 type: research
-status: draft
+status: approved
 confidence: medium
 area: tooling
 tags: [tokens, cost, loops, measurement, review]
@@ -38,9 +38,6 @@ flowchart LR
   o1 --> Y
   o2 --> T["first plan task"]
 ```
-
-> [!IMPORTANT]
-> You decide: is this enough to plan from, with the six answers under "What only you decide"? Approving makes the settled findings and the recommended answers (or the ones your notes give) binding on the plan, with a pilot build as its first task.
 
 ## Inputs
 
@@ -110,7 +107,9 @@ Medium confidence:
 5. **Builder-written tests as success evidence.** Literature says weak (A6 finding 6); the vault's own probe caught 15 of 15 seeded defects, non-blinded, one run (A6 finding 9); LOOP-003's "quality held" rests on tests with no outcome measure (A7 finding 7).
 6. **Subagents save or cost.** Docs advise delegating verbose work to subagents; Anthropic's own post says each added agent multiplies total tokens. A7 findings 14, 16.
 
-## What only you decide
+## What the human decided
+
+Approved 2026-11-01 with every recommendation below as the answer.
 
 1. **Does Compass-driven extra work count as overhead?** Tests, research, review rounds, validator runs, spawned agents. Yes means the measure needs a without-Compass arm, since only paired runs capture changed behavior (A2 findings 28, 29); no means attribution by source is enough. **Recommendation: yes, measured as its own area.** The spec's Problem already defines overhead as including "the agents and commands it runs, and the work they do"; a separate area keeps a cut there visible against success.
 2. **Topics: replayed across before and after, or picked fresh each time?** Under decision D-01 (a numbered ruling: agents pick the topic). Replay pairs the arms and halves the builds needed; fresh picks keep genericity but widen intervals, and a changed topic moves results far more than a rerun does (A4 findings 11, 13 to 15; A2 and A7 raise the same question). **Recommendation: agents pick topics into a recorded pool; before and after runs replay that pool; a fresh batch at intervals checks the pool has not gone stale.** Whether code-sampled seeds (kind, size, language) still count as "agents pick" is part of this answer.
