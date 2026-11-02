@@ -70,6 +70,14 @@ def load_brief(topic_id, private_root=None):
 def require_goals(topic_id, private_root=None):
     """The goal dict of `topic_id`; GoalsMissing unless the list and the brief both exist."""
     goals = load_goals(topic_id, private_root)
+    items = goals.get("items")
+    if not isinstance(items, list) or not items or not all(
+        isinstance(item, dict)
+        and isinstance(item.get("id"), str)
+        and isinstance(item.get("text"), str)
+        for item in items
+    ):
+        raise GoalsMissing(f"topic {topic_id!r} has a goal list without usable items")
     load_brief(topic_id, private_root)
     return goals
 
@@ -117,9 +125,33 @@ def _parse_goals(text):
             raise ValueError(f"goal item {number} is not an object")
         command = item.get("command")
         if command is not None:
-            command = _text(command, f"the command of goal item {number}") if command != "" else None
+            if isinstance(command, str) and not command.strip():
+                command = None
+            else:
+                command = _text(command, f"the command of goal item {number}")
         items.append({"id": f"g{number}", "text": _text(item.get("text"), f"goal item {number}"), "command": command})
     return items, _text(reply.get("brief"), "the brief")
+
+
+def _store_both(*files):
+    """Store each (path, data) of `files` as a new file, all or none: every file
+    is written to a temporary name first and the names are given out together."""
+    staged, placed = [], []
+    try:
+        for path, data in files:
+            temp = path.with_name(f".{path.name}.new")
+            staged.append(temp)
+            topics.write_json(temp, data)
+        for temp, (path, _) in zip(staged, files):
+            topics.link_into_place(temp, path)
+            placed.append(path)
+    except BaseException:
+        for path in placed:
+            path.unlink(missing_ok=True)
+        raise
+    finally:
+        for temp in staged:
+            temp.unlink(missing_ok=True)
 
 
 def write_goals(topic_id, *, repo_root, private_root=None, claude_cmd=None, parent_env=None):
@@ -144,8 +176,10 @@ def write_goals(topic_id, *, repo_root, private_root=None, claude_cmd=None, pare
         claude_cmd=claude_cmd, parent_env=parent_env, model=MODEL,
     )
     items, brief = _parse_goals(text)
-    topics.write_json(_brief_path(topic_id, private_root), {"topic_id": topic_id, "brief": brief}, exclusive=True)
-    topics.write_json(_goals_path(topic_id, private_root), {"topic_id": topic_id, "items": items}, exclusive=True)
+    _store_both(
+        (_goals_path(topic_id, private_root), {"topic_id": topic_id, "items": items}),
+        (_brief_path(topic_id, private_root), {"topic_id": topic_id, "brief": brief}),
+    )
     return {"items": items, "brief": brief}
 
 

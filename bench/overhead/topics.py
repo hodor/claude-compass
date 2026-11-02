@@ -20,6 +20,7 @@ import random
 import re
 import secrets
 import shutil
+import stat
 import sys
 import tempfile
 from pathlib import Path
@@ -67,19 +68,49 @@ def check_private_root(private_root=None):
         raise Refused("topic files stay outside git work trees")
 
 
+def link_into_place(temp, path):
+    """Give the finished file `temp` the name `path` if no such file exists.
+    Raises FileExistsError when `path` exists; `temp` remains for the caller."""
+    try:
+        os.link(temp, path)
+    except FileExistsError:
+        raise
+    except OSError:
+        if Path(path).exists():
+            raise FileExistsError(str(path)) from None
+        os.rename(temp, path)
+
+
 def write_json(path, data, exclusive=False):
-    """Write `data` as JSON at `path`, whole or not at all. With `exclusive` an
-    existing file is an error."""
+    """Write `data` as JSON at `path`, whole or not at all: the text goes to a
+    temporary file beside `path` and is moved into place, so a failure leaves
+    the earlier file or none. With `exclusive` an existing file is an error."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(data, indent=2) + "\n"
-    if exclusive:
-        with open(path, "x", encoding="utf-8", newline="\n") as handle:
+    temp = path.with_name(f".{path.name}.{secrets.token_hex(4)}.part")
+    try:
+        with open(temp, "w", encoding="utf-8", newline="\n") as handle:
             handle.write(text)
-        return
-    partial = path.with_name(path.name + ".part")
-    partial.write_text(text, encoding="utf-8", newline="\n")
-    os.replace(partial, path)
+        if exclusive:
+            link_into_place(temp, path)
+        else:
+            os.replace(temp, path)
+    finally:
+        Path(temp).unlink(missing_ok=True)
+
+
+def _make_writable(function, path, *_):
+    os.chmod(path, stat.S_IRWXU)
+    function(path)
+
+
+def remove_tree(path):
+    """Delete the folder `path`, read-only files included."""
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=_make_writable)
+    else:
+        shutil.rmtree(path, onerror=_make_writable)
 
 
 def read_json(path):
@@ -138,7 +169,7 @@ def run_text_session(
         )
     finally:
         if scratch is not None:
-            shutil.rmtree(scratch, ignore_errors=True)
+            remove_tree(scratch)
     records.record_session(
         result.events, role=role, outcome=result.status, plugin_sha=result.head_sha, private_root=root,
     )
@@ -159,11 +190,33 @@ def seed_attributes(seed):
     }
 
 
+class PoolDamaged(ValueError):
+    """pool.json exists but does not hold a pool."""
+
+
 def load_pool(private_root=None):
+    """The entries of the pool; [] when there is no pool. Raises PoolDamaged
+    when the file cannot be read or is not a pool of entries."""
     path = topics_dir(private_root) / "pool.json"
     if not path.exists():
         return []
-    return list(read_json(path)["topics"])
+    try:
+        data = read_json(path)
+    except (ValueError, OSError) as error:
+        raise PoolDamaged(f"the topic pool cannot be read: {error}") from error
+    entries = data.get("topics") if isinstance(data, dict) else None
+    if not isinstance(entries, list):
+        raise PoolDamaged("the topic pool holds no list of topics")
+    for entry in entries:
+        if (
+            not isinstance(entry, dict)
+            or not isinstance(entry.get("id"), str)
+            or entry.get("form") not in FORMS
+            or not isinstance(entry.get("kind"), str)
+            or not isinstance(entry.get("language"), str)
+        ):
+            raise PoolDamaged("the topic pool holds an entry that is not a topic")
+    return entries
 
 
 def distinct_classes(entries):
@@ -234,6 +287,7 @@ def pick_topic(*, seeded, seed=None, repo_root, private_root=None, claude_cmd=No
     """
     attributes = seed_attributes(seed) if seeded else None
     check_private_root(private_root)
+    load_pool(private_root)
     text = run_text_session(
         "topic", _pick_prompt(attributes), repo_root=repo_root, private_root=private_root,
         claude_cmd=claude_cmd, parent_env=parent_env,
@@ -265,7 +319,12 @@ def main(argv, *, claude_cmd=None, repo_root=None, parent_env=None):
     args = parser.parse_args(argv)
 
     if args.command == "list":
-        for entry in load_pool(args.private_root):
+        try:
+            pool = load_pool(args.private_root)
+        except ValueError as error:
+            print(str(error), file=sys.stderr)
+            return 2
+        for entry in pool:
             print(entry["id"])
         return 0
 

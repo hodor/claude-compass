@@ -55,8 +55,8 @@ def _inside(path, folder):
 
 
 def _names_compass_or_claude(line):
-    stripped = line.strip().lstrip("!/").lower()
-    return "compass" in stripped or stripped.startswith(".claude")
+    lowered = line.lower()
+    return "compass" in lowered or ".claude" in lowered or "claude.md" in lowered
 
 
 def _clean_gitignore(source, target):
@@ -65,26 +65,37 @@ def _clean_gitignore(source, target):
     Path(target).write_bytes("".join(kept).encode("utf-8", errors="surrogateescape"))
 
 
+def _is_link(path):
+    """True for a symbolic link or, on Windows, a junction."""
+    return os.path.islink(path) or getattr(os.path, "isjunction", lambda _: False)(path)
+
+
 def make_copy(project, dest):
     """Copy `project` to `dest` without any trace of Compass and return `dest`.
 
-    Raises Refused when `dest` lies inside `project` or already holds files.
-    The project is not modified.
+    Links are not copied. Raises Refused when `project` is not a folder or
+    `dest` lies inside `project` or already holds files. The project is not
+    modified.
     """
     project, dest = Path(project), Path(dest)
+    if not project.is_dir():
+        raise Refused("the project is not a folder")
     if _inside(dest, project):
         raise Refused("the copy cannot sit inside the project")
     if dest.exists() and any(dest.iterdir()):
         raise Refused("the copy's folder is not empty")
     dest.mkdir(parents=True, exist_ok=True)
     for folder, dirs, files in os.walk(project):
-        dirs[:] = [name for name in dirs if name not in _OMITTED]
+        dirs[:] = [
+            name for name in dirs
+            if name not in _OMITTED and not _is_link(Path(folder) / name)
+        ]
         target = dest / Path(folder).relative_to(project)
         target.mkdir(parents=True, exist_ok=True)
         for name in dirs:
             (target / name).mkdir(exist_ok=True)
         for name in files:
-            if name in _OMITTED:
+            if name in _OMITTED or _is_link(Path(folder) / name):
                 continue
             if name == ".gitignore":
                 _clean_gitignore(Path(folder) / name, target / name)
@@ -149,6 +160,36 @@ def _shell_run(command, cwd, env, timeout):
         "output": output[:OUTPUT_LIMIT],
         "timed_out": timed_out,
     }
+
+
+def command_environment(env, sandbox):
+    """`env` with the home, application-data, XDG and temporary folders moved
+    into `sandbox`, so a command cannot reach the running user's own folders."""
+    sandbox = Path(sandbox)
+    home = sandbox / "home"
+    temp = sandbox / "tmp"
+    moved = {
+        "HOME": home,
+        "USERPROFILE": home,
+        "APPDATA": home / "AppData" / "Roaming",
+        "LOCALAPPDATA": home / "AppData" / "Local",
+        "XDG_CONFIG_HOME": home / ".config",
+        "XDG_CACHE_HOME": home / ".cache",
+        "XDG_DATA_HOME": home / ".local" / "share",
+        "XDG_STATE_HOME": home / ".local" / "state",
+        "TMPDIR": temp,
+        "TEMP": temp,
+        "TMP": temp,
+    }
+    result = {
+        key: value for key, value in env.items()
+        if key.upper() not in moved and not key.upper().startswith("XDG_")
+        and key.upper() not in ("HOMEDRIVE", "HOMEPATH")
+    }
+    for key, folder in moved.items():
+        folder.mkdir(parents=True, exist_ok=True)
+        result[key] = str(folder)
+    return result
 
 
 def _run_commands(items, folder, env, timeout):
@@ -219,6 +260,8 @@ def judge_project(
     and InvalidVerdict when its reply does not score every item exactly once.
     """
     topics.check_private_root(private_root)
+    if not Path(project).is_dir():
+        raise Refused("the project is not a folder")
     goal_list = goals.require_goals(topic_id, private_root)
     items = goal_list["items"]
 
@@ -229,7 +272,10 @@ def judge_project(
     try:
         run_copy = make_copy(project, scratch / "run")
         judged_copy = make_copy(project, scratch / "judged")
-        env = launch.session_environment(os.environ if parent_env is None else parent_env, root)
+        env = command_environment(
+            launch.session_environment(os.environ if parent_env is None else parent_env, root),
+            scratch / "sandbox",
+        )
         commands = _run_commands(items, run_copy, env, command_timeout)
         reply = topics.run_text_session(
             "judge", _judge_prompt(items, commands), repo_root=repo_root, private_root=root,
@@ -237,7 +283,7 @@ def judge_project(
             extra_args=["--allowedTools", JUDGE_TOOLS], cwd=judged_copy,
         )
     finally:
-        shutil.rmtree(scratch, ignore_errors=True)
+        topics.remove_tree(scratch)
 
     scores = parse_verdict(reply, [item["id"] for item in items])
     verdict = {
