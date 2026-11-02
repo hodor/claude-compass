@@ -520,3 +520,10 @@ Plan: [[PLAN-027-numbered-choices]].
 
 ### PLAN-021 Wave 2: judge, schedule, ast-grep sensor, skill, release
 - [x] TASK-241: The context sensor counts all of Compass's shipped text, each source weighted by how often real sessions load it (`compass loop usage-scan` writes project-free counts to `~/.compass/usage/`) - complexity: M, depends_on: TASK-236
+
+### Bug: a review of several documents has one verdict for all
+
+- [x] TASK-243: Each document in a several-file review gets its own Approve or Needs changes, and `compass review` prints each file's verdict - complexity: M, depends_on: TASK-242
+
+### PLAN-021 Wave 2: judge, schedule, ast-grep sensor, skill, release
+- [x] TASK-236: A loop on this repository shrinks the context Compass adds to every session - complexity: L, depends_on: TASK-158, TASK-159

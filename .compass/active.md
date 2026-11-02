@@ -40,15 +40,10 @@ Plan: [[PLAN-020-clone-old-sessions]].
 
 - [ ] TASK-146: Live acceptance on this repo
 
-## Bug: a review of several documents has one verdict for all
-
-- [x] TASK-243: Each document in a several-file review gets its own Approve or Needs changes, and `compass review` prints each file's verdict - complexity: M, depends_on: TASK-242
-
 ## PLAN-021 Wave 2: judge, schedule, ast-grep sensor, skill, release
 
 Plan: [[PLAN-021-control-loops]].
 
-- [ ] TASK-236: A loop on this repository shrinks the context Compass adds to every session - complexity: L, depends_on: TASK-158, TASK-159
 - [ ] TASK-161: The ast-grep sensor adapter, pinned to saved scan output - complexity: M, depends_on: TASK-158, TASK-159, TASK-236
 - [ ] TASK-160: `/compass:loop`: guided creation through steps 0 to 7 - complexity: M, depends_on: TASK-158, TASK-159, TASK-161
 - [ ] TASK-162: The Maya recipe on the local lane, marked untested on this machine - complexity: S, depends_on: TASK-160
