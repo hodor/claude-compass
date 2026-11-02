@@ -15,7 +15,7 @@
 //   is clicked:
 //     {"id", "file", "verdict": "approved"|"changes", "notes",
 //      "comments": [{"file", "note"}], "edited": [path],
-//      "files"?: [{"file", "read", "note"?}], "at"}
+//      "files"?: [{"file", "read", "verdict", "note"?}], "at"}
 //     file      the first listed document
 //     notes     the note typed for the reviewed document; for several
 //               documents, one `<name>: <note>` line per noted document
@@ -26,7 +26,10 @@
 //               changes in the listed file whose editor is in front while the
 //               window has focus, so writes from other programs are not listed
 //     files     for several documents only: every listed document in request
-//               order with its read mark and its note, when it has one
+//               order with its read mark, its own verdict ("approved" or
+//               "changes") and its note, when it has one; the top-level
+//               verdict is "approved" when every file is approved, else
+//               "changes"
 //   <folder>/.compass/tmp/review/<id>.seen   written here, empty, when a
 //   request is first taken up; tells Compass an editor window holds it
 // Other review surfaces share the folder; a request whose `surface` is not
@@ -44,16 +47,20 @@
 // the walk is on. A file is marked read when it opens, whether the card opened it
 // or the human did. While a markdown file outside the review is the active
 // editor, the card also shows an "On this file" note field for that file. A
-// summary line counts the files read and the notes, and one Approve and one
-// "Needs changes" end the review. "Needs changes" is enabled once there is
-// something to send: a note on a listed or outside file, or an edit. A newer
-// request that lists a file of an older one in the same folder replaces it.
+// summary line counts the files read and the notes. A card for one document
+// ends with one Approve and one "Needs changes"; "Needs changes" is enabled once
+// there is something to send: a note on the file or an outside file, or an edit.
+// A card for several documents gives each row its own Approve and "Needs
+// changes" and ends with Send, enabled once every row is decided and every
+// "Needs changes" row has a note or an edit of its own, and Approve all, which
+// approves every file and sends. A newer request that lists a file of an older
+// one in the same folder replaces it.
 //
 // The walk, the notes and the marks live here, not in the page, so the panel
 // being hidden, closed and opened again loses nothing. The page announces itself
 // when it loads and receives the whole state; it sends back the human's actions.
-// A click on Approve or Needs changes saves the listed editors that have unsaved
-// text and writes the verdict. A periodic recheck drops a review whose request
+// A click on a button that ends the review saves the listed editors that have
+// unsaved text and writes the verdict. A periodic recheck drops a review whose request
 // file is gone or whose verdict already exists, and finds requests the file
 // watcher missed. The recheck also looks beside the running extension's folder
 // for a copy of the same extension at a higher version; when one is installed,
@@ -76,6 +83,8 @@ const RECHECK_MS = 5000;
 const RELOAD_COMMAND = "workbench.action.reloadWindow";
 const RELOAD_LABEL = "Reload";
 
+const VERDICTS = ["approved", "changes"];
+
 const CASE_BLIND = process.platform === "win32" || process.platform === "darwin";
 
 // A file path in the form that compares equal for the same file.
@@ -90,6 +99,12 @@ function sameFile(a, b) {
 
 function baseName(file) {
   return file.split("/").pop().replace(/\.md$/, "");
+}
+
+// The mark, note and own verdict (null until chosen) the human has given one
+// listed file.
+function newState() {
+  return { read: false, note: "", verdict: null };
 }
 
 function plural(n, word) {
@@ -177,7 +192,7 @@ class CompassReview {
   constructor(context) {
     this.context = context;
     // request id -> {request, path, folder, files: [{file, why}], states:
-    // Map(file -> {read, note}), index, comments: Map(file outside the review ->
+    // Map(file -> {read, note, verdict}), index, comments: Map(file outside the review ->
     // note), edited: Set(path), sending} in arrival order; the panel lists it
     // newest first.
     this.reviews = new Map();
@@ -326,7 +341,7 @@ class CompassReview {
       known.request = request;
       known.path = file;
       known.files = files;
-      for (const f of files) if (!known.states.has(f.file)) known.states.set(f.file, { read: false, note: "" });
+      for (const f of files) if (!known.states.has(f.file)) known.states.set(f.file, newState());
       known.index = Math.min(known.index, files.length - 1);
       return known;
     }
@@ -343,7 +358,7 @@ class CompassReview {
       path: file,
       folder,
       files,
-      states: new Map(files.map((f) => [f.file, { read: false, note: "" }])),
+      states: new Map(files.map((f) => [f.file, newState()])),
       index: 0,
       comments: new Map(),
       edited: new Set(),
@@ -634,6 +649,25 @@ class CompassReview {
     return this.noteCount(entry) > 0 || entry.comments.size > 0 || entry.edited.size > 0;
   }
 
+  // Whether one file has something for Claude to act on: a note or an edit.
+  fileHasFeedback(entry, file) {
+    return entry.states.get(file).note.trim() !== "" || entry.edited.has(file);
+  }
+
+  // A several-file card can be sent once every file has a choice and every file
+  // asking for changes carries feedback of its own.
+  canSend(entry) {
+    return entry.files.every((f) => {
+      const { verdict } = entry.states.get(f.file);
+      return verdict === "approved" || (verdict === "changes" && this.fileHasFeedback(entry, f.file));
+    });
+  }
+
+  // The top-level verdict of a several-file card: approved when every file is.
+  settledVerdict(entry) {
+    return entry.files.every((f) => entry.states.get(f.file).verdict === "approved") ? "approved" : "changes";
+  }
+
   // One line per note on a file outside the review, then one per edited file.
   feedbackItems(entry) {
     return [
@@ -664,7 +698,13 @@ class CompassReview {
       session: typeof request.session === "string" ? request.session.slice(0, 6) : "",
       files: entry.files.map((f) => {
         const state = entry.states.get(f.file);
-        return { title: this.titleOf(entry, f.file), why: f.why, read: state.read, hasNote: state.note.trim() !== "" };
+        return {
+          title: this.titleOf(entry, f.file),
+          why: f.why,
+          read: state.read,
+          hasNote: state.note.trim() !== "",
+          verdict: state.verdict,
+        };
       }),
       index: entry.index,
       noteLabel: `Note on ${this.titleOf(entry, current.file)}`,
@@ -675,6 +715,7 @@ class CompassReview {
       feedback: this.feedbackItems(entry),
       canNextUnread: this.nextUnreadIndex(entry) >= 0,
       canChanges: this.hasFeedback(entry),
+      canSend: this.canSend(entry),
     };
   }
 
@@ -720,8 +761,20 @@ class CompassReview {
           }
           this.push();
           break;
+        case "choose": {
+          const target = Number.isInteger(msg.index) ? entry.files[msg.index] : null;
+          if (target && entry.files.length > 1 && VERDICTS.includes(msg.verdict)) entry.states.get(target.file).verdict = msg.verdict;
+          this.push();
+          break;
+        }
         case "send":
-          await this.send(entry, msg.verdict === "approved" ? "approved" : "changes");
+          if (entry.files.length === 1) await this.send(entry, msg.verdict === "approved" ? "approved" : "changes");
+          break;
+        case "sendChoices":
+          if (entry.files.length > 1 && this.canSend(entry)) await this.send(entry, this.settledVerdict(entry));
+          break;
+        case "approveAll":
+          if (entry.files.length > 1) await this.send(entry, "approved");
           break;
         default:
           break;
@@ -749,7 +802,7 @@ class CompassReview {
     }
     answer.files = entry.files.map((f) => {
       const state = entry.states.get(f.file);
-      const item = { file: f.file, read: state.read };
+      const item = { file: f.file, read: state.read, verdict: verdict === "approved" ? "approved" : state.verdict || "changes" };
       if (state.note.trim()) item.note = state.note.trim();
       return item;
     });
@@ -762,7 +815,7 @@ class CompassReview {
 
   async send(entry, verdict) {
     if (entry.sending) return;
-    if (verdict === "changes" && !this.hasFeedback(entry)) return;
+    if (verdict === "changes" && entry.files.length === 1 && !this.hasFeedback(entry)) return;
     entry.sending = true;
     try {
       // Flush the human's edits before Compass reads the files.

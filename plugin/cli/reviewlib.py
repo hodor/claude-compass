@@ -18,9 +18,12 @@ A review is two JSON files in the Compass vault's `tmp/review/`:
   `{"id", "file", "verdict": "approved"|"changes", "notes", "at"}`, plus
   three optional lists: `comments`, `{"file", "note"}` entries for notes the
   human left on other files while reviewing, `edited`, the paths of other
-  files the human changed, and `files`, `{"file", "read", "note"}` entries
-  marking each listed file read or unread (`read` a boolean, `note` a string
-  or absent).
+  files the human changed, and `files`, `{"file", "read", "note", "verdict"}`
+  entries marking each listed file read or unread (`read` a boolean, `note` a
+  string or absent). In a several-file review each entry's `verdict` is
+  `"approved"` or `"changes"`, that file's own answer, and the top-level
+  `verdict` is `"approved"` when every file is approved, else `"changes"`. An
+  entry without a `verdict` takes the top-level one.
 
 - `<id>.changes.diff`, written here beside the request when the review lists
   a document an earlier review in the vault already listed: `git diff <sha>
@@ -443,6 +446,7 @@ def _valid_mark(entry):
         and isinstance(entry.get("file"), str)
         and isinstance(entry.get("read"), bool)
         and (entry.get("note") is None or isinstance(entry["note"], str))
+        and ("verdict" not in entry or entry["verdict"] in VERDICTS)
     )
 
 

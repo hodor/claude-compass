@@ -297,9 +297,9 @@ class AfterTheAnswer(MultiFileProject):
         self.assertEqual(code, 0, out)
         lines, header = self.lines_of(out)
         expected = [
-            "file plans/PLAN-001-z.md read",
-            "file specs/SPEC-001-x.md unread note: needs: work",
-            "file specs/SPEC-002-y.md read",
+            "file plans/PLAN-001-z.md approved read",
+            "file specs/SPEC-001-x.md approved unread note: needs: work",
+            "file specs/SPEC-002-y.md approved read",
         ]
         start = lines.index(expected[0])
         self.assertEqual(lines[start:start + 3], expected)
@@ -340,7 +340,7 @@ class AfterTheAnswer(MultiFileProject):
         lines, header = self.lines_of(out)
         self.assertNotIn("as the human left it", out)
         self.assertEqual([ln for ln in lines if ln.startswith("file ")],
-                         [f"file {self.rel(p)} read" for p in self.trio])
+                         [f"file {self.rel(p)} approved read" for p in self.trio])
         self.assertEqual(lines[header], self.changes_header)
 
 
@@ -519,8 +519,8 @@ class AfterTheAnswerEdges(MultiFileProject):
         self.assertEqual(len(file_lines), 3, file_lines)
         self.assertEqual([ln.split()[1] for ln in file_lines],
                          ["plans/PLAN-001-z.md", "specs/SPEC-001-x.md", "specs/SPEC-002-y.md"])
-        self.assertEqual(file_lines[0], "file plans/PLAN-001-z.md unread")
-        self.assertEqual(file_lines[2], "file specs/SPEC-002-y.md unread")
+        self.assertEqual(file_lines[0], "file plans/PLAN-001-z.md approved unread")
+        self.assertEqual(file_lines[2], "file specs/SPEC-002-y.md approved unread")
         self.assertNotIn("as the human left it", out)
 
     def test_a_listed_file_deleted_or_renamed_during_the_review_is_reported_not_raised(self):
@@ -543,7 +543,7 @@ class AfterTheAnswerEdges(MultiFileProject):
                 gone = lines.index("--- specs/SPEC-002-y.md as the human left it ---")
                 self.assertIn("can no longer be read", lines[gone + 1])
                 self.assertIn("--- specs/SPEC-001-x.md as the human left it ---", lines)
-                self.assertIn("file specs/SPEC-002-y.md read note: gone", lines)
+                self.assertIn("file specs/SPEC-002-y.md approved read note: gone", lines)
                 self.assertTrue(any(ln.startswith("--- changes since ") for ln in lines))
 
     def test_a_file_renamed_in_obsidian_is_reported_under_its_new_name_with_its_mark(self):
@@ -559,8 +559,8 @@ class AfterTheAnswerEdges(MultiFileProject):
         renamed.rename(self.spec2)
         self.assertEqual(code, 0, out)
         lines = out.splitlines()
-        self.assertIn("file specs/SPEC-002-renamed.md read note: moved (renamed from specs/SPEC-002-y.md)", lines)
-        self.assertNotIn("file specs/SPEC-002-y.md unread", lines)
+        self.assertIn("file specs/SPEC-002-renamed.md approved read note: moved (renamed from specs/SPEC-002-y.md)", lines)
+        self.assertNotIn("file specs/SPEC-002-y.md approved unread", lines)
         self.assertIn("--- specs/SPEC-002-renamed.md as the human left it ---", lines)
 
     def test_a_whitespace_only_note_is_neither_shown_nor_a_reason_to_reprint(self):
@@ -570,7 +570,7 @@ class AfterTheAnswerEdges(MultiFileProject):
         files = [{"file": "specs/SPEC-001-x.md", "read": True, "note": " \n\t "}]
         code, out, _ = self.reviewed(files)
         self.assertEqual(code, 0, out)
-        self.assertIn("file specs/SPEC-001-x.md read", out.splitlines())
+        self.assertIn("file specs/SPEC-001-x.md approved read", out.splitlines())
         self.assertNotIn("note:", out)
         self.assertNotIn("as the human left it", out)
 

@@ -42,7 +42,7 @@ Plan: [[PLAN-020-clone-old-sessions]].
 
 ## Bug: a review of several documents has one verdict for all
 
-- [ ] TASK-243: Each document in a several-file review gets its own Approve or Needs changes, and `compass review` prints each file's verdict - complexity: M, depends_on: TASK-242
+- [x] TASK-243: Each document in a several-file review gets its own Approve or Needs changes, and `compass review` prints each file's verdict - complexity: M, depends_on: TASK-242
 
 ## PLAN-021 Wave 2: judge, schedule, ast-grep sensor, skill, release
 

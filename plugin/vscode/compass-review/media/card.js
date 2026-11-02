@@ -63,6 +63,7 @@
     nav.append(parts.pos, parts.prev, parts.next, parts.nextUnread);
     node.append(nav);
 
+    const several = card.files.length > 1;
     const rows = el("div", "rows");
     card.files.forEach((f, i) => {
       const row = el("div", "row");
@@ -81,8 +82,22 @@
       });
       row.addEventListener("click", open);
       row.append(mark, " ", body, " ", count);
+      let choice = null;
+      if (several) {
+        const choose = (verdict) => (event) => {
+          if (event && event.stopPropagation) event.stopPropagation();
+          send({ type: "choose", index: i, verdict });
+        };
+        choice = {
+          node: el("div", "row-choice"),
+          approved: button("Approve", "row-approved", choose("approved")),
+          changes: button("Needs changes", "row-changes", choose("changes")),
+        };
+        choice.node.append(choice.approved, " ", choice.changes);
+        row.append(" ", choice.node);
+      }
       rows.append(row);
-      parts.rows.push({ row, mark, count });
+      parts.rows.push({ row, mark, count, choice });
     });
     node.append(rows);
 
@@ -104,12 +119,18 @@
     const foot = el("div", "foot");
     parts.summary = el("div", "fine");
     const actions = el("div", "actions");
-    parts.approve = button("Approve", "primary", () => send({ type: "send", verdict: "approved" }));
-    parts.changes = button("Needs changes", "", () => send({ type: "send", verdict: "changes" }));
-    actions.append(parts.approve, parts.changes);
+    if (several) {
+      parts.send = button("Send", "primary", () => send({ type: "sendChoices" }));
+      parts.approveAll = button("Approve all", "", () => send({ type: "approveAll" }));
+      actions.append(parts.send, parts.approveAll);
+    } else {
+      parts.approve = button("Approve", "primary", () => send({ type: "send", verdict: "approved" }));
+      parts.changes = button("Needs changes", "", () => send({ type: "send", verdict: "changes" }));
+      actions.append(parts.approve, parts.changes);
+    }
     foot.append(parts.summary, actions);
     foot.append(el("div", "fine", "Project is the folder holding the vault. Session is the first six characters of the Claude Code session id."));
-    if (card.files.length > 1) {
+    if (several) {
       foot.append(el("div", "fine", "Left and right arrow keys move between files when this card has focus."));
     }
     node.append(foot);
@@ -153,11 +174,15 @@
     parts.nextUnread.disabled = !card.canNextUnread;
 
     card.files.forEach((f, i) => {
-      const { row, mark, count } = parts.rows[i];
+      const { row, mark, count, choice } = parts.rows[i];
       mark.textContent = f.read ? "read" : "unread";
       mark.classList.toggle("is-read", f.read);
       row.classList.toggle("is-current", i === card.index);
       count.textContent = f.hasNote ? "1 note" : "no note";
+      if (choice) {
+        choice.approved.classList.toggle("is-chosen", f.verdict === "approved");
+        choice.changes.classList.toggle("is-chosen", f.verdict === "changes");
+      }
     });
 
     parts.noteLabel.textContent = card.noteLabel;
@@ -174,8 +199,15 @@
     parts.feedback.textContent = "";
     for (const item of card.feedback) parts.feedback.append(el("li", "", item));
     parts.feedbackBlock.classList.toggle("is-empty", card.feedback.length === 0);
-    parts.changes.disabled = !card.canChanges;
-    parts.changes.title = parts.changes.disabled ? "Write a note first" : "";
+    if (parts.send) {
+      parts.send.disabled = !card.canSend;
+      parts.send.title = parts.send.disabled
+        ? "Choose Approve or Needs changes on every file; a file that needs changes also needs a note or an edit"
+        : "";
+    } else {
+      parts.changes.disabled = !card.canChanges;
+      parts.changes.title = parts.changes.disabled ? "Write a note first" : "";
+    }
   }
 
   function build() {

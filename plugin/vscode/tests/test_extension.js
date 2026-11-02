@@ -847,7 +847,7 @@ class Env {
   async press(el, key, mods = {}) { dispatch(el, "keydown", { key, ...mods }); await this.settle(); }
   async open(rel) { await this.host.humanOpens(this.abs(rel)); await this.settle(); }
   async typedIn(rel) { this.host.type(this.abs(rel)); await this.settle(); }
-  async approve(id = ID) { await this.step("Approve", id); }
+  async approve(id = ID) { await this.step(this.button("Approve all", id) ? "Approve all" : "Approve", id); }
   async until(fn, what, ms = 3000) {
     const end = Date.now() + ms;
     for (;;) {
@@ -1243,11 +1243,11 @@ test("On this file shows only while a markdown file outside the review is in vie
 test("a file outside the review gets its own note, which counts and travels in comments", async (t) => {
   const env = await openSet(t);
   await env.open(OUTSIDE);
-  assert.equal(env.button("Needs changes").disabled, true);
+  assert.equal(env.button("Send").disabled, true);
   await env.type(env.fileNote(), "  typo on line 3 \n");
   assert.match(env.summary(), /^1 of 3 files read, 0 notes/);
   assert.match(env.summary(), /outside/);
-  assert.equal(env.button("Needs changes").disabled, false);
+  assert.equal(env.button("Send").disabled, true, "a note outside the review decides no row");
   await env.open(DATA);
   await env.open(OUTSIDE);
   assert.equal(env.fileNote().value.trim(), "typo on line 3", "the note stays with its file");
@@ -1256,10 +1256,11 @@ test("a file outside the review gets its own note, which counts and travels in c
   await env.type(env.fileNote(), "temp");
   await env.type(env.fileNote(), "");
   await env.open(PLAN);
-  await env.step("Needs changes");
+  await pickAll(env, ["Approve", "Approve", "Approve"]);
+  await env.step("Send");
   const v = env.verdict(ID);
   assert.deepEqual(v.comments, [{ file: OUTSIDE, note: "typo on line 3" }]);
-  assert.equal(v.verdict, "changes");
+  assert.equal(v.verdict, "approved");
   assert.equal(v.notes, "");
   assert.equal(v.files.length, 3);
 });
@@ -1282,7 +1283,6 @@ test("edits come only from typing in a listed file whose editor is in front in a
     await t.test(row.name, async (st) => {
       const env = await openSet(st);
       await row.run(env);
-      assert.equal(env.button("Needs changes").disabled, row.expect.length === 0);
       await env.approve();
       assert.deepEqual([...env.verdict(ID).edited].sort(), row.expect);
       assert.deepEqual(env.verdict(ID).comments, []);
@@ -1300,44 +1300,50 @@ test("edits come only from typing in a listed file whose editor is in front in a
   });
 });
 
-// Adversarial where: Needs changes is enabled with nothing written, looks only
-// at the note of the file in view, stays off after an edit or an outside note,
-// never switches off when a note is cleared, or Approve waits for a note.
-test("Needs changes stays off until a note, an outside note or an edit exists, and Approve never waits", async (t) => {
+// Adversarial where: Send is enabled by a note, an outside note or an edit alone
+// while rows are undecided, the note of the file in view is the only one looked
+// at, a cleared note leaves Send on, or Approve all waits for a note.
+test("in a multi-file review a note, an outside note or an edit does not decide a row, and Approve all never waits", async (t) => {
   await t.test("nothing written", async (st) => {
     const env = await openSet(st);
-    assert.equal(env.button("Needs changes").disabled, true);
-    assert.notEqual(env.button("Approve").disabled, true);
+    assert.equal(env.button("Send").disabled, true);
+    assert.notEqual(env.button("Approve all").disabled, true);
   });
   await t.test("a note on a file other than the one in view, then cleared", async (st) => {
     const env = await openSet(st);
     await env.goToRow(2);
     await env.type(env.notes(), "see this");
     await env.goToRow(0);
-    assert.equal(env.button("Needs changes").disabled, false);
+    assert.equal(env.button("Send").disabled, true, "the rows are undecided");
+    await pickAll(env, ["Approve", "Approve", "Needs changes"]);
+    assert.equal(env.button("Send").disabled, false);
     await env.goToRow(2);
     await env.type(env.notes(), "");
-    assert.equal(env.button("Needs changes").disabled, true);
+    assert.equal(env.button("Send").disabled, true);
   });
   await t.test("a whitespace-only note", async (st) => {
     const env = await openSet(st);
     await env.goToRow(1);
     await env.type(env.notes(), "  ");
-    assert.equal(env.button("Needs changes").disabled, true);
+    await pickAll(env, ["Approve", "Needs changes", "Approve"]);
+    assert.equal(env.button("Send").disabled, true);
   });
-  await t.test("a note on an outside file, then cleared", async (st) => {
+  await t.test("a note on an outside file does not satisfy a changes row, then cleared", async (st) => {
     const env = await openSet(st);
+    await pickAll(env, ["Approve", "Needs changes", "Approve"]);
     await env.open(OUTSIDE);
     await env.type(env.fileNote(), "see this");
-    assert.equal(env.button("Needs changes").disabled, false);
+    assert.equal(env.button("Send").disabled, true);
     await env.type(env.fileNote(), "");
-    assert.equal(env.button("Needs changes").disabled, true);
+    assert.equal(env.button("Send").disabled, true);
   });
   await t.test("an edit to a listed file", async (st) => {
     const env = await openSet(st);
     await env.open(PLAN);
     await env.typedIn(PLAN);
-    assert.equal(env.button("Needs changes").disabled, false);
+    assert.equal(env.button("Send").disabled, true, "the rows are undecided");
+    await pickAll(env, ["Approve", "Needs changes", "Approve"]);
+    assert.equal(env.button("Send").disabled, false);
   });
 });
 
@@ -1362,9 +1368,9 @@ test("the answer lists every file in request order with read and note, and is on
   assert.equal(v.file, SPEC);
   assert.equal(v.verdict, "approved");
   assert.deepEqual(v.files, [
-    { file: SPEC, read: true },
-    { file: PLAN, read: true, note: "reorder" },
-    { file: DETAIL, read: true, note: "check the table" },
+    { file: SPEC, read: true, verdict: "approved" },
+    { file: PLAN, read: true, verdict: "approved", note: "reorder" },
+    { file: DETAIL, read: true, verdict: "approved", note: "check the table" },
   ]);
   const lines = v.notes.split("\n");
   assert.equal(lines.length, 2);
@@ -1382,7 +1388,11 @@ test("an answer given without reading marks the unopened files unread and carrie
   const env = await openSet(t);
   await env.approve();
   const v = env.verdict(ID);
-  assert.deepEqual(v.files, [{ file: SPEC, read: true }, { file: PLAN, read: false }, { file: DETAIL, read: false }]);
+  assert.deepEqual(v.files, [
+    { file: SPEC, read: true, verdict: "approved" },
+    { file: PLAN, read: false, verdict: "approved" },
+    { file: DETAIL, read: false, verdict: "approved" },
+  ]);
   assert.equal(v.notes, "");
 });
 
@@ -1397,7 +1407,7 @@ test("the answer saves the dirty listed documents first and no others", async (t
   await env.typedIn(OUTSIDE);
   const answered = [];
   env.doc(PLAN).save = async function () { answered.push(env.hasVerdict(ID)); this.saved++; this.isDirty = false; };
-  await env.step("Approve");
+  await env.step("Approve all");
   assert.equal(env.doc(PLAN).saved, 1);
   assert.deepEqual(answered, [false], "saved before the answer exists");
   assert.equal(env.doc(OUTSIDE).saved, 0);
@@ -1410,7 +1420,7 @@ test("the answer saves the dirty listed documents first and no others", async (t
 test("two clicks write one answer", async (t) => {
   const env = await openSet(t);
   verdictWrites.length = 0;
-  const button = env.button("Approve");
+  const button = env.button("Approve all");
   dispatch(button, "click");
   dispatch(button, "click");
   await env.settle();
@@ -1428,7 +1438,7 @@ test("a withdrawn request sends nothing", async (t) => {
     verdictWrites.length = 0;
     fs.unlinkSync(env.requestFile(ID));
     env.host.fire("delete", env.requestFile(ID));
-    await env.until(() => !env.card() || env.button("Approve").disabled === true, "the card of a withdrawn request to go or be switched off");
+    await env.until(() => !env.card() || env.button("Approve all").disabled === true, "the card of a withdrawn request to go or be switched off");
     assert.equal(env.hasVerdict(ID), false);
     assert.deepEqual(verdictWrites, []);
   });
@@ -1440,7 +1450,7 @@ test("a withdrawn request sends nothing", async (t) => {
     const held = new Promise((r) => { release = r; });
     env.doc(PLAN).save = () => held;
     verdictWrites.length = 0;
-    const pending = env.button("Approve");
+    const pending = env.button("Approve all");
     dispatch(pending, "click");
     await env.settle();
     fs.unlinkSync(env.requestFile(ID));
@@ -1456,7 +1466,7 @@ test("a withdrawn request sends nothing", async (t) => {
     const env = await openSet(st);
     verdictWrites.length = 0;
     fs.unlinkSync(env.requestFile(ID));
-    dispatch(env.button("Approve"), "click");
+    dispatch(env.button("Approve all"), "click");
     await env.settle();
     await sleep(100);
     assert.equal(env.hasVerdict(ID), false);
@@ -1481,10 +1491,13 @@ test("two cards walk and answer independently", async (t) => {
   assert.equal(env.position(ID), "File 3 of 3");
   assert.equal(env.position(ID2), "File 2 of 2", "a file of one review does not move the other");
   await env.approve(ID2);
-  assert.deepEqual(env.verdict(ID2).files, [{ file: DOCK_A, read: true }, { file: DOCK_B, read: true }]);
+  assert.deepEqual(env.verdict(ID2).files, [
+    { file: DOCK_A, read: true, verdict: "approved" },
+    { file: DOCK_B, read: true, verdict: "approved" },
+  ]);
   assert.equal(env.hasVerdict(ID), false);
   assert.ok(env.card(ID), "the other review is still waiting");
-  assert.notEqual(env.button("Approve", ID).disabled, true);
+  assert.notEqual(env.button("Approve all", ID).disabled, true);
 });
 
 // Adversarial where: a request without a `files` list (a one-file review) draws
@@ -2173,4 +2186,150 @@ test("the extension, its .vsix and the Compass plugin are at 0.4.0 and 0.34.5 or
   assert.ok(fs.existsSync(path.join(EXT_DIR, `${pkg.name}-${pkg.version}.vsix`)), `${pkg.name}-${pkg.version}.vsix`);
   const plugin = JSON.parse(fs.readFileSync(path.join(EXT_DIR, "..", "..", ".claude-plugin", "plugin.json"), "utf8"));
   assert.ok(atLeast(plugin.version, "0.34.5"), `plugin version ${plugin.version}`);
+});
+
+// ---- post-build probes: branches the per-file verdict implementation introduced ----
+
+const chosen = (env, i, id = ID) => ["Approve", "Needs changes"].filter((n) => rowButton(env, i, n, id).hasClass("is-chosen"));
+const rawMessage = async (env, msg) => { env.page.fromCard(clone({ id: ID, ...msg })); await env.settle(); };
+
+// Adversarial where: a click on a row's Approve or Needs changes bubbles to the
+// row, so choosing a verdict on a file also opens it, marks it read and moves
+// the walk, and the answer then reports files as read that the human never saw.
+test("choosing a verdict on a row neither opens the file, marks it read nor moves the walk", async (t) => {
+  const env = await openSet(t);
+  assert.deepEqual(env.marks(), ["read", "unread", "unread"]);
+  await pickAll(env, ["Approve", "Needs changes", "Approve"]);
+  assert.deepEqual(env.marks(), ["read", "unread", "unread"]);
+  assert.equal(env.position(), "File 1 of 3");
+  assert.equal(env.activeRel(), SPEC);
+  await noteOn(env, 1, "n");
+  await env.click(env.button("Send"));
+  assert.deepEqual(env.verdict(ID).files.map((f) => f.read), [true, true, false]);
+});
+
+// Adversarial where: a message the page never sends (a stale or hand-made one)
+// sets a verdict that is not a verdict, sets one on a file outside the list,
+// sends with a row undecided, or bypasses the per-row rule through the old
+// card-wide send.
+test("messages that break the per-row rule change nothing and send nothing", async (t) => {
+  const env = await openSet(t);
+  const bad = [
+    { type: "choose", index: 1, verdict: "maybe" },
+    { type: "choose", index: 1, verdict: "__proto__" },
+    { type: "choose", index: 3, verdict: "approved" },
+    { type: "choose", index: -1, verdict: "approved" },
+    { type: "choose", index: 1.5, verdict: "approved" },
+    { type: "choose", index: "1", verdict: "approved" },
+    { type: "choose", verdict: "approved" },
+  ];
+  for (const msg of bad) await rawMessage(env, msg);
+  assert.deepEqual([0, 1, 2].map((i) => chosen(env, i)), [[], [], []]);
+  await pickAll(env, ["Approve", "Approve", null]);
+  await rawMessage(env, { type: "sendChoices" });
+  await rawMessage(env, { type: "send", verdict: "approved" });
+  await rawMessage(env, { type: "send", verdict: "changes" });
+  assert.equal(env.hasVerdict(ID), false, "row 3 is undecided and the card-wide send is not for this card");
+  await decide(env, 2, "Needs changes");
+  await rawMessage(env, { type: "sendChoices" });
+  assert.equal(env.hasVerdict(ID), false, "a changes row without a note or edit");
+  await noteOn(env, 2, "n");
+  await rawMessage(env, { type: "sendChoices" });
+  assert.deepEqual(sentVerdicts(env), ["approved", "approved", "changes"]);
+});
+
+// Adversarial where: the one-file card honours the several-file messages
+// (approveAll, sendChoices, choose), so a stale page can answer it without the
+// card-wide rule.
+test("a one-file card ignores the several-file messages", async (t) => {
+  const { env, activate } = await begin(t);
+  fs.mkdirSync(env.reviewDir(), { recursive: true });
+  const one = request(ID, [SPEC]);
+  delete one.files;
+  fs.writeFileSync(env.requestFile(ID), JSON.stringify(one));
+  await activate();
+  await env.ready();
+  for (const msg of [{ type: "choose", index: 0, verdict: "approved" }, { type: "sendChoices" }, { type: "approveAll" }]) await rawMessage(env, msg);
+  assert.equal(env.hasVerdict(ID), false);
+  await env.step("Approve");
+  const v = env.verdict(ID);
+  assert.equal(v.verdict, "approved");
+  assert.equal(v.files, undefined);
+});
+
+// Adversarial where: a newer request listing a file of the older several-file
+// review drops the row choices on the shared files, or hands the new file a
+// choice it never had, so Send enables for a file nobody decided.
+test("a newer request carries the row choices of the files it shares and leaves its new files undecided", async (t) => {
+  const env = await openSet(t);
+  await pickAll(env, ["Approve", "Needs changes", "Approve"]);
+  await noteOn(env, 1, "reorder");
+  assert.equal(env.button("Send").disabled, false);
+  await env.arrive(request(ID2, [PLAN, DETAIL, DOCK_A], { session: SESSION_B }));
+  await env.ready(ID2);
+  assert.deepEqual(env.cardIds(), [ID2]);
+  assert.deepEqual([0, 1, 2].map((i) => chosen(env, i, ID2)), [["Needs changes"], ["Approve"], []]);
+  assert.equal(env.button("Send", ID2).disabled, true, "DOCK_A is undecided");
+  await env.click(rowButton(env, 2, "Approve", ID2));
+  assert.equal(env.button("Send", ID2).disabled, false, "the carried changes row keeps its note");
+  await env.click(env.button("Send", ID2));
+  const v = env.verdict(ID2);
+  assert.deepEqual(v.files.map((f) => [f.file, f.verdict]), [[PLAN, "changes"], [DETAIL, "approved"], [DOCK_A, "approved"]]);
+  assert.equal(v.verdict, "changes");
+});
+
+// Adversarial where: Approve all or Send leaves the typed text of a listed
+// editor unsaved, or Approve all keeps a changes row's verdict because the
+// human had edited that file.
+test("Approve all and Send save the dirty listed editors and Approve all overrides a changes row that carries an edit", async (t) => {
+  await t.test("Approve all over an edited changes row", async (st) => {
+    const env = await openSet(st);
+    await pickAll(env, ["Approve", "Needs changes", "Approve"]);
+    await env.open(PLAN);
+    await env.typedIn(PLAN);
+    await env.open(OUTSIDE);
+    await env.typedIn(OUTSIDE);
+    await env.click(env.button("Approve all"));
+    assert.equal(env.doc(PLAN).saved, 1);
+    assert.equal(env.doc(OUTSIDE).saved, 0);
+    assert.equal(env.verdict(ID).verdict, "approved");
+    assert.deepEqual(sentVerdicts(env), ["approved", "approved", "approved"]);
+    assert.deepEqual(env.verdict(ID).edited, [PLAN]);
+  });
+  await t.test("Send with the edit as the changes row's only feedback", async (st) => {
+    const env = await openSet(st);
+    await pickAll(env, ["Approve", "Needs changes", "Approve"]);
+    await env.open(PLAN);
+    await env.typedIn(PLAN);
+    assert.equal(env.button("Send").disabled, false);
+    await env.click(env.button("Send"));
+    assert.equal(env.doc(PLAN).saved, 1);
+    assert.deepEqual(sentVerdicts(env), ["approved", "changes", "approved"]);
+  });
+});
+
+// Adversarial where: a row that flipped from Needs changes to Approve still
+// counts as changes because its note is left behind, so the top-level verdict
+// stays changes.
+test("a row flipped from Needs changes to Approve sends as approved even with its note left in place", async (t) => {
+  const env = await openSet(t);
+  await pickAll(env, ["Approve", "Needs changes", "Approve"]);
+  await noteOn(env, 1, "reorder");
+  await decide(env, 1, "Approve");
+  assert.deepEqual(chosen(env, 1), ["Approve"]);
+  await env.click(env.button("Send"));
+  assert.equal(env.verdict(ID).verdict, "approved");
+  assert.deepEqual(sentVerdicts(env), ["approved", "approved", "approved"]);
+});
+
+// Adversarial where: stepping through the files with the arrow keys clears or
+// moves a row's choice, or lights both buttons of a row.
+test("the arrow keys keep every row's choice and each row shows exactly one chosen button", async (t) => {
+  const env = await openSet(t);
+  await pickAll(env, ["Approve", "Needs changes", "Approve"]);
+  await decide(env, 2, "Needs changes");
+  await env.press(env.card(), "ArrowRight");
+  await env.press(env.card(), "ArrowRight");
+  await env.press(env.card(), "ArrowLeft");
+  assert.deepEqual([0, 1, 2].map((i) => chosen(env, i)), [["Approve"], ["Needs changes"], ["Needs changes"]]);
 });

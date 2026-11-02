@@ -143,6 +143,27 @@
   color: var(--text-muted);
 }
 
+.compass-review-row {
+  flex-wrap: wrap;
+}
+
+.compass-review-row-choice {
+  flex: 1 1 100%;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.compass-review-row-choice button.is-chosen {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.compass-review-row-choice button.compass-review-row-changes.is-chosen {
+  background: var(--text-error);
+  color: var(--text-on-accent);
+}
+
 .compass-review-row-count {
   flex: none;
   white-space: nowrap;
