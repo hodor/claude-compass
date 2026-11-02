@@ -10,3 +10,4 @@ Durable guidance from the human reviewing this loop, loaded into every run after
 - After moving a rule, every skill or agent that does the work the rule governs names the rule's new home, so an agent doing that work reaches the full text. Check with a grep for the work (for example "ADR", "research axes") before finishing.
 - The "Data" section of the pipeline rules stays whole in the always-loaded rules, its enforcement paragraph included: it protects the human's information in every session.
 - full suite failed: 1 failed, 2213 passed, 1 skipped, 1 deselected, 2838 subtests passed in 659.53s (0:10:59)
+- full suite failed: 1 failed, 2213 passed, 1 skipped, 1 deselected, 2838 subtests passed in 696.94s (0:11:36)
