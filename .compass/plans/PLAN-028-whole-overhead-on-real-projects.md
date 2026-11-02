@@ -1,7 +1,8 @@
 ---
 title: "Compass's Whole Overhead on Real Projects"
 type: plan
-status: draft
+status: approved
+approved: 2026-11-01
 confidence: medium
 area: tooling
 tags: [tokens, cost, loops, measurement, bench]
@@ -46,9 +47,6 @@ flowchart LR
 ```
 
 Numbers are task ids; yellow tasks are yours. A stage (written "Wave" in the section headings, which Compass's tools read) is a group of tasks planned in detail together; the grey ones stay one-line sketches until the pilot's numbers are in.
-
-> [!IMPORTANT]
-> You decide: approve Stage 1 as written, meaning twelve full builds on your subscription, one at a time, stopping at any usage-limit event, one login by you before the builds and one grading session of four builds after them. Approving also makes the guesses marked `[guess]` below binding until the pilot reports; each is a number or a choice the pilot measures and Stage 2 revisits.
 
 ## Goal
 

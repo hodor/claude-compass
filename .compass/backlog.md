@@ -111,3 +111,15 @@ Plan: [[PLAN-023-taxonomy-review-at-spec-creation]].
 - [ ] TASK-183: measure the change with a finder drill and a filer drill (SPEC-022 D-11)
 - [ ] D-13 follow-up (now TASK-184): grep across all indexes made the most obvious first move for agents (capability + rule nudge; folds into TASK-119's strategy work)
 - [ ] TASK-184: one capability that greps every index level, named in the session-start rule (SPEC-022 D-13)
+
+## PLAN-028 later waves (intent only)
+
+Plan: [[PLAN-028-whole-overhead-on-real-projects]].
+
+- [ ] TASK-251: Baseline batch: replay the pool, each topic through both arms at the pilot's batch size, and record the first measured overhead share, weighted and raw, with a bootstrap interval over topics and the success rate on the counting signals beside it - files: [bench/overhead/baseline.py, .compass/research/whole-overhead/RESEARCH-whole-overhead-baseline.md], decisions: [SPEC-032-whole-overhead-measured-on-real-projects/D-01]
+- [ ] TASK-252: Overhead by area, ranked by weighted tokens: each loaded Compass source, sessions Compass spawns by agent type, capture workers, hook and command output, and changed behavior as the residual of the paired difference; repo-local - files: [bench/overhead/areas.py], decisions: [SPEC-032-whole-overhead-measured-on-real-projects/D-03]
+- [ ] TASK-253: The loop machinery judges a noisy sensor, shipped in `plugin/` since any loop user's sensor can be noisy: a noise band from the sensor's own repeat spread, a minimum gain before a run counts as help, sensor spend inside the budget, and a sensor timeout sized for builds - files: [plugin/cli/sensorlib.py, plugin/cli/looprunner.py, plugin/cli/looplib.py]
+- [ ] TASK-254: LOOP-004, whole overhead, repo-local: the sensor replays a fixed batch of pool topics through the Compass arm, the controller ranks areas biggest first, the actuator changes the top area in `plugin/` - files: [.compass/loops/LOOP-004-whole-overhead/loop.json, .compass/loops/LOOP-004-whole-overhead/controller.py, .compass/loops/LOOP-004-whole-overhead/index.md], decisions: [SPEC-032-whole-overhead-measured-on-real-projects/D-03]
+- [ ] TASK-255: Run LOOP-004 batches on the subscription, stopping at any usage-limit event, until the top area's gain falls inside the noise band; each accepted change ships in `plugin/` - decisions: [SPEC-032-whole-overhead-measured-on-real-projects/D-03]
+- [ ] TASK-256: Fresh topics and drift: at intervals agents pick a new batch, measured beside the pool, to show whether the pool has gone stale, and the without-Compass arm is re-measured when the model or Claude Code version changes - decisions: [SPEC-032-whole-overhead-measured-on-real-projects/D-01]
+- [ ] TASK-257: The KPI report after each loop batch: the overhead share against the first baseline with its interval, and whether the agents still finish what they set out to build
