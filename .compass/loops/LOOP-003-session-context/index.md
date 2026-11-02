@@ -140,3 +140,4 @@ Review of run 1 (changes): the loop is about the total context Compass uses to d
 ### 2026-11-01: unattended batch
 
 The human ruled the loop runs on its own, about 30 runs, checked automatically rather than reviewed one by one, with the usage cap raised to $12. The batch starts at tag `loop003-batch-start`.
+- Batch runs 1 to 4 accepted (10,868 -> 10,641). Runs 5 and 6 were rejected because the batch's full-suite check counted the VS Code harness, which runs the pre-build tests of TASK-243 that are meant to fail until it merges; their rejection reasons were not about the changes, so they are not kept in `feedback.md`. The batch paused, TASK-243 merges first, then the batch continues.
