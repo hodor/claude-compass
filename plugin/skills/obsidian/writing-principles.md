@@ -22,6 +22,10 @@ The test binds everything an agent writes, not only vault documents: code commen
 
 Compass documents should be a pleasure to read. Easy to read, short, sweet. Long only when needed. Never verbose. The `obsidian` skill holds the forms (opening picture, callouts, embeds) and the plain words a human reads.
 
+## Fresh-eyes check
+
+Before presenting any document, have fresh eyes read it: a cheap sub-agent holding only the document and these rules, never the conversation. A sentence the fresh reader cannot justify from the document alone is conversation residue; it goes.
+
 ## Indexing a new vault document
 
 After creating ANY vault document (spec, plan, research, ADR, lesson, vision, handoff, review), add a link to it in `.compass/index.md` under the appropriate section. This is mandatory in the same step that creates the document, not a follow-up. Documents not in index.md are invisible to the next session.
