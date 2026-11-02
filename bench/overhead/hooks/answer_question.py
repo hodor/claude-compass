@@ -24,6 +24,7 @@ The hook uses only the standard library and imports no sibling module.
 
 import json
 import os
+import posixpath
 import re
 import subprocess
 import sys
@@ -55,6 +56,11 @@ _HOME_VARIABLE = re.compile(
     r"|%(?:HOME|USERPROFILE|HOMEDRIVE|HOMEPATH|APPDATA|LOCALAPPDATA|TEMP|TMP)%",
     re.IGNORECASE,
 )
+# Folders at the root of a POSIX or Git Bash filesystem.
+_ROOT_FOLDERS = frozenset({
+    "tmp", "etc", "home", "usr", "users", "mnt", "var", "root", "bin", "sbin", "opt", "proc", "sys", "dev",
+    "lib", "lib64", "boot", "media", "srv", "private", "windows", "programdata",
+})
 _ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
 _DRIVE_PATH = re.compile(r"[A-Za-z]:[\\/]")
 _RAW_DRIVE_PATH = re.compile(r"(?<![A-Za-z0-9])[A-Za-z]:[\\/][^\s\"'|;&<>()]*")
@@ -230,6 +236,20 @@ def _looks_like_path(word):
     )
 
 
+def _names_filesystem_root_folder(path):
+    """True when the first component of the absolute `path` is a folder the
+    shell sees at the filesystem root: a well-known one, a Git Bash drive letter
+    (`/c/`), or one that exists. A word like `/api` is a route or a pattern."""
+    parts = posixpath.normpath(path).split("/")
+    first = parts[1] if len(parts) > 1 else ""
+    return (
+        first == ""
+        or first.lower() in _ROOT_FOLDERS
+        or (len(first) == 1 and first.isalpha())
+        or os.path.exists("/" + first)
+    )
+
+
 def _leaves_project(project, candidate):
     """True when `candidate`, a word or the value glued into one, names a place
     outside the project."""
@@ -242,6 +262,8 @@ def _leaves_project(project, candidate):
         return False
     if path.startswith("$"):
         return "/" in path
+    if path.startswith("/"):
+        return not _inside(project, path) and _names_filesystem_root_folder(path)
     return _looks_like_path(path) and not _inside(project, path)
 
 
