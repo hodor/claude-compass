@@ -27,6 +27,7 @@ records its own sessions, so its tokens stay out of the build's count.
 """
 
 import argparse
+import hashlib
 import json
 import os
 import queue
@@ -46,6 +47,9 @@ import records
 HOOK_SCRIPT = Path(__file__).resolve().parent / "hooks" / "answer_question.py"
 HOOK_MATCHER = "AskUserQuestion|Bash|Write|Edit|MultiEdit|NotebookEdit"
 HOOK_TIMEOUT_SECONDS = 1800
+# Exit codes of `main`: 0 human-done, 1 any other end, 2 refused, 3 usage limit.
+EXIT_REFUSED = 2
+EXIT_USAGE_LIMIT = 3
 # Seconds one simulated-human session may run.
 HUMAN_TIMEOUT_SECONDS = 900
 
@@ -107,9 +111,18 @@ def install_hook(project):
         if not isinstance(settings, dict):
             raise launch.Refused(f"{path.name} does not hold a JSON object")
     hooks = settings.setdefault("hooks", {})
+    existing = hooks.get("PreToolUse", []) if isinstance(hooks, dict) else None
+    shaped = isinstance(existing, list) and all(
+        isinstance(group, dict)
+        and isinstance(group.get("hooks", []), list)
+        and all(isinstance(hook, dict) for hook in group.get("hooks", []))
+        for group in existing
+    )
+    if not shaped:
+        raise launch.Refused(f"the hooks in {path.name} do not have the expected shape")
     groups = [
-        group for group in hooks.get("PreToolUse", [])
-        if not any(HOOK_SCRIPT.name in hook.get("command", "") for hook in group.get("hooks", []))
+        group for group in existing
+        if not any(HOOK_SCRIPT.name in str(hook.get("command", "")) for hook in group.get("hooks", []))
     ]
     groups.append({
         "matcher": HOOK_MATCHER,
@@ -120,11 +133,17 @@ def install_hook(project):
     path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
 
 
+def project_key(project):
+    """A file-name stem for `project`: its folder name and a hash of its resolved path."""
+    resolved = os.path.normcase(os.path.realpath(project))
+    return f"{Path(project).name}-{hashlib.sha256(resolved.encode('utf-8')).hexdigest()[:12]}"
+
+
 def write_hook_config(project, private_root, answer_command):
     """The JSON file the hook reads; returns its path."""
     folder = Path(private_root) / "hook-config"
     folder.mkdir(parents=True, exist_ok=True)
-    path = folder / f"{Path(project).name}.json"
+    path = folder / f"{project_key(project)}.json"
     path.write_text(json.dumps({"project": str(project), "answer_command": list(answer_command)}), encoding="utf-8")
     return path
 
@@ -456,7 +475,7 @@ def main(argv=None):
         folder.mkdir(parents=True, exist_ok=True)
         who = human_module.SimulatedHuman(
             brief, folder=folder, repo_root=repo_root, arm=args.arm,
-            state_file=private_root / "human-state" / f"{project.name}.json",
+            state_file=private_root / "human-state" / f"{project_key(project)}.json",
             private_root=private_root, readme=readme, timeout=HUMAN_TIMEOUT_SECONDS,
         )
         result = drive_build(
@@ -466,11 +485,11 @@ def main(argv=None):
         )
     except (launch.Refused, records.Refused, OSError, ValueError) as error:
         sys.stderr.write(f"refused: {error}\n")
-        return 1
+        return EXIT_REFUSED
     print(json.dumps({"end": result.end, "turns": result.turns, "resets_at": result.resets_at}))
     if result.end == HUMAN_DONE:
         return 0
-    return 2 if result.end == launch.USAGE_LIMIT else 1
+    return EXIT_USAGE_LIMIT if result.end == launch.USAGE_LIMIT else 1
 
 
 if __name__ == "__main__":

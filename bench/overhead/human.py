@@ -27,16 +27,27 @@ state file carries the settings the instance was built with.
 """
 
 import argparse
+import contextlib
 import json
 import os
 import re
 import sys
 import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
 import launch
 import records
+
+if sys.platform == "win32":
+    import msvcrt
+else:
+    import fcntl
+
+# Seconds between tries to take the state lock or to replace the state file.
+LOCK_RETRY_SECONDS = 0.005
+REPLACE_ATTEMPTS = 400
 
 DECIDE_YOURSELF = "decide yourself"
 DEFAULT_MODEL = "claude-sonnet-4-6"
@@ -76,6 +87,44 @@ def _result_text(events):
     return ""
 
 
+@contextlib.contextmanager
+def _locked(path):
+    """Hold an exclusive lock on the file `<path>.lock` across processes."""
+    path = Path(str(path) + ".lock")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "a+b") as handle:
+        while True:
+            try:
+                if sys.platform == "win32":
+                    handle.seek(0)
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError:
+                time.sleep(LOCK_RETRY_SECONDS)
+        try:
+            yield
+        finally:
+            if sys.platform == "win32":
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+def _replace(source, target):
+    """`os.replace`, retried while another process briefly holds the target open."""
+    for attempt in range(REPLACE_ATTEMPTS):
+        try:
+            os.replace(source, target)
+            return
+        except PermissionError:
+            if attempt == REPLACE_ATTEMPTS - 1:
+                raise
+            time.sleep(LOCK_RETRY_SECONDS)
+
+
 def _atomic_write(path, data):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -83,7 +132,7 @@ def _atomic_write(path, data):
     try:
         with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:
             stream.write(json.dumps(data))
-        os.replace(temporary, path)
+        _replace(temporary, path)
     except BaseException:
         try:
             os.unlink(temporary)
@@ -123,12 +172,14 @@ class SimulatedHuman:
         self.timeout = timeout
         if records._inside_work_tree(self.state_file.parent):
             raise records.Refused("the simulated human's state stays outside git work trees")
-        self._write_state(self.questions_used)
+        with _locked(self.state_file):
+            self._write_state(self._read_used())
 
     @classmethod
     def from_state_file(cls, state_file):
         """The instance whose settings `state_file` carries."""
-        state = json.loads(Path(state_file).read_text(encoding="utf-8"))
+        with _locked(state_file):
+            state = json.loads(Path(state_file).read_text(encoding="utf-8"))
         config = state["config"]
         return cls(
             config["brief"],
@@ -150,6 +201,11 @@ class SimulatedHuman:
 
     @property
     def questions_used(self):
+        with _locked(self.state_file):
+            return self._read_used()
+
+    def _read_used(self):
+        """The used count in the state file; the caller holds the lock."""
         try:
             state = json.loads(self.state_file.read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -175,11 +231,12 @@ class SimulatedHuman:
         })
 
     def named_items(self, message):
-        """The brief items whose name occurs in `message`, ignoring case."""
-        lowered = message.lower()
+        """The brief items whose name occurs in `message` as a whole word,
+        ignoring case."""
         return [
             item for item in self.brief.get("items", [])
-            if isinstance(item.get("name"), str) and item["name"].strip() and item["name"].lower() in lowered
+            if isinstance(item.get("name"), str) and item["name"].strip()
+            and re.search(r"(?<!\w)" + re.escape(item["name"].strip()) + r"(?!\w)", message, re.IGNORECASE)
         ]
 
     def _prompt(self, message, named):
@@ -237,10 +294,11 @@ class SimulatedHuman:
         """The simulated human's answer to `message`."""
         named = self.named_items(message)
         if named:
-            used = self.questions_used
-            if used >= self.budget:
-                return Reply(text=DECIDE_YOURSELF)
-            self._write_state(used + 1)
+            with _locked(self.state_file):
+                used = self._read_used()
+                if used >= self.budget:
+                    return Reply(text=DECIDE_YOURSELF)
+                self._write_state(used + 1)
         return self._session(message, named)
 
     def answer_questions(self, questions):

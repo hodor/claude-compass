@@ -25,7 +25,6 @@ The hook uses only the standard library and imports no sibling module.
 import json
 import os
 import re
-import shlex
 import subprocess
 import sys
 
@@ -42,12 +41,23 @@ _GIT_VALUE_OPTIONS = frozenset({"-C", "-c", "--git-dir", "--work-tree", "--names
 _WRAPPERS = frozenset({
     "env", "command", "exec", "time", "nohup", "sudo", "builtin", "timeout", "nice", "xargs", "setsid", "stdbuf",
 })
-_SHELLS = frozenset({"bash", "sh", "zsh", "dash"})
-_OPERATORS = frozenset({"&&", "||", "&", ";", ";;", "|", "|&", "(", ")", "&>", ">", ">>", "<", "<<", ">&", "<&"})
+_SHELLS = frozenset({"bash", "sh", "zsh", "dash", "ksh"})
+_POWERSHELLS = frozenset({"powershell", "pwsh"})
+_POWERSHELL_COMMAND = re.compile(r"-c(?:o(?:m(?:m(?:a(?:n(?:d)?)?)?)?)?)?", re.IGNORECASE)
+# Characters outside quotes that end a simple command.
+_SEPARATORS = "&|;()<>\n`"
+# Levels of command substitution and shell strings that are looked into.
+_MAX_DEPTH = 5
+_SUBSTITUTION = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
+# Variables naming a folder outside the project.
+_HOME_VARIABLE = re.compile(
+    r"\$(?:env:)?\{?(?:HOME|USERPROFILE|HOMEDRIVE|HOMEPATH|APPDATA|LOCALAPPDATA|TEMP|TMP)\b"
+    r"|%(?:HOME|USERPROFILE|HOMEDRIVE|HOMEPATH|APPDATA|LOCALAPPDATA|TEMP|TMP)%",
+    re.IGNORECASE,
+)
 _ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
 _DRIVE_PATH = re.compile(r"[A-Za-z]:[\\/]")
 _RAW_DRIVE_PATH = re.compile(r"(?<![A-Za-z0-9])[A-Za-z]:[\\/][^\s\"'|;&<>()]*")
-_RAW_PARENT = re.compile(r"(?:^|[\s\"'=])\.\.\\")
 _DEVICE_PATHS = frozenset({"/dev/null", "/dev/stdin", "/dev/stdout", "/dev/stderr", "/dev/tty"})
 
 
@@ -98,47 +108,64 @@ def _answer_questions(tool_input, answer):
     return {**tool_input, "questions": questions, "answers": answers}
 
 
-def _split_unquoted_newlines(command):
-    """`command` with each newline and backtick outside quotes turned into ';'."""
-    out, quote = [], None
-    for char in command:
-        if quote:
-            if char == quote:
+def _parse(command, depth=0):
+    """The simple commands of `command` as lists of words.
+
+    Quotes are removed and backslashes kept as written, so Windows paths reach
+    the checks intact. A word holding a command substitution also adds the
+    commands inside it as segments of their own.
+    """
+    segments, segment, chars = [], [], []
+    started, quote = False, None
+
+    def flush_word():
+        nonlocal started
+        if not started:
+            return
+        word = "".join(chars)
+        chars.clear()
+        started = False
+        segment.append(word)
+        if depth < _MAX_DEPTH and ("$(" in word or "`" in word):
+            for inner in _SUBSTITUTION.findall(word):
+                segments.extend(_parse(inner[0] or inner[1], depth + 1))
+            segments.append([piece for piece in re.split(r"\$\(|[\s`()]+", word) if piece])
+
+    def end_segment():
+        nonlocal segment
+        flush_word()
+        if segment:
+            segments.append(segment)
+        segment = []
+
+    index = 0
+    while index < len(command):
+        char = command[index]
+        index += 1
+        if quote == "'":
+            if char == "'":
                 quote = None
-            out.append(char)
+            else:
+                chars.append(char)
+        elif quote == '"':
+            if char == '"':
+                quote = None
+            elif char == "\\" and command[index:index + 1] == '"':
+                chars.append('"')
+                index += 1
+            else:
+                chars.append(char)
         elif char in "'\"":
-            quote = char
-            out.append(char)
-        elif char in "\n`":
-            out.append(";")
+            quote, started = char, True
+        elif char in " \t\r":
+            flush_word()
+        elif char in _SEPARATORS:
+            end_segment()
         else:
-            out.append(char)
-    return "".join(out)
-
-
-def _tokens(command):
-    prepared = _split_unquoted_newlines(command)
-    try:
-        lexer = shlex.shlex(prepared, posix=True, punctuation_chars=True)
-        lexer.whitespace_split = True
-        return list(lexer)
-    except ValueError:
-        return prepared.split()
-
-
-def _segments(tokens):
-    segment = []
-    for token in tokens:
-        if token == "$":
-            continue
-        if token in _OPERATORS:
-            if segment:
-                yield segment
-            segment = []
-        else:
-            segment.append(token)
-    if segment:
-        yield segment
+            chars.append(char)
+            started = True
+    end_segment()
+    return segments
 
 
 def _command_words(segment):
@@ -175,63 +202,85 @@ def _git_subcommand(words):
     return None
 
 
-def _forbidden_command(command, depth=0):
-    """The reason `command` may not run, or None."""
-    for segment in _segments(_tokens(command)):
-        words = _command_words(segment)
-        if not words:
-            continue
-        program = _program(words[0])
-        if program == "gh":
-            return "the gh command is not available in this build"
-        if program == "git" and _git_subcommand(words) == "push":
-            return "git push is not available in this build"
-        flags = [i for i, word in enumerate(words[1:], 1) if re.fullmatch(r"-[a-z]*c[a-z]*", word)]
-        if program in _SHELLS and depth < 3 and flags:
-            position = flags[0] + 1
-            if position < len(words):
-                reason = _forbidden_command(words[position], depth + 1)
-                if reason:
-                    return reason
+def _shell_payload(program, words):
+    """The command string a shell is asked to run, or None."""
+    rest = words[1:]
+    if program in _SHELLS:
+        for position, word in enumerate(rest):
+            if re.fullmatch(r"-[a-z]*c[a-z]*", word):
+                return rest[position + 1] if position + 1 < len(rest) else None
+    elif program in _POWERSHELLS:
+        for position, word in enumerate(rest):
+            if _POWERSHELL_COMMAND.fullmatch(word):
+                return " ".join(rest[position + 1:])
+    elif program == "cmd":
+        for position, word in enumerate(rest):
+            if word.lower() in ("/c", "/k"):
+                return " ".join(rest[position + 1:])
     return None
 
 
 def _looks_like_path(word):
     return (
-        word.startswith(("/", "~", "./", "../", ".\\", "..\\", "$"))
+        word.startswith(("/", "./", "../"))
         or word in (".", "..")
-        or word.endswith(("/..", "\\.."))
+        or word.endswith("/..")
         or "/../" in word
         or _DRIVE_PATH.match(word) is not None
     )
 
 
-def _leaves_project(project, word):
-    if word in _DEVICE_PATHS:
+def _leaves_project(project, candidate):
+    """True when `candidate`, a word or the value glued into one, names a place
+    outside the project."""
+    if _HOME_VARIABLE.search(candidate):
+        return True
+    path = candidate.replace("\\", "/")
+    if path.startswith("~") or path.startswith("//"):
+        return True
+    if path in _DEVICE_PATHS:
         return False
-    if word.startswith("$"):
-        return "/" in word or "\\" in word
-    if word.startswith("~"):
-        expanded = os.path.expanduser(word)
-        return expanded == word or not _inside(project, expanded)
-    return not _inside(project, word)
+    if path.startswith("$"):
+        return "/" in path
+    return _looks_like_path(path) and not _inside(project, path)
 
 
-def _path_escape(command, project):
-    """A path in `command` that leaves the project, or None."""
+def _candidates(word):
+    """The word, the value after an `=`, and the value glued to a short option."""
+    found = [word]
+    if "=" in word:
+        found.append(word.split("=", 1)[1])
+    if len(word) > 2 and word[0] == "-" and word[1].isalpha():
+        found.append(word[2:])
+    return found
+
+
+def _inspect(command, project, depth=0):
+    """The reason `command` may not run, or None."""
+    if depth > _MAX_DEPTH:
+        return "shell commands nest too deeply"
     for match in _RAW_DRIVE_PATH.finditer(command):
         if _leaves_project(project, match.group(0)):
-            return match.group(0)
-    if _RAW_PARENT.search(command):
-        return ".."
-    for segment in _segments(_tokens(command)):
+            return f"the path {match.group(0)!r} leaves the project"
+    for segment in _parse(command):
+        words = _command_words(segment)
+        if words:
+            program = _program(words[0])
+            if program == "gh":
+                return "the gh command is not available in this build"
+            if program == "git" and _git_subcommand(words) == "push":
+                return "git push is not available in this build"
+            if program in ("cd", "pushd") and len(words) == 1:
+                return "a bare cd leaves the project"
+            payload = _shell_payload(program, words)
+            if payload is not None:
+                reason = _inspect(payload, project, depth + 1)
+                if reason:
+                    return reason
         for word in segment:
-            candidates = [word]
-            if word.startswith("-") and "=" in word:
-                candidates.append(word.split("=", 1)[1])
-            for candidate in candidates:
-                if _looks_like_path(candidate) and _leaves_project(project, candidate):
-                    return candidate
+            for candidate in _candidates(word):
+                if _leaves_project(project, candidate):
+                    return f"the path {candidate!r} leaves the project"
     return None
 
 
@@ -239,13 +288,8 @@ def _check_bash(tool_input, project):
     command = tool_input.get("command")
     if not isinstance(command, str):
         return _deny("the Bash call carried no command")
-    reason = _forbidden_command(command)
-    if reason:
-        return _deny(reason)
-    escape = _path_escape(command, project)
-    if escape is not None:
-        return _deny(f"the path {escape!r} leaves the project")
-    return None
+    reason = _inspect(command, project)
+    return _deny(reason) if reason else None
 
 
 def _check_file_call(tool_input, project):
