@@ -30,7 +30,7 @@ For a `phase` kind opportunity, read `phase-summary.yaml` from the phase-report 
 
 ### 1. Mutex check
 
-If `opportunity.json`'s `outcome` field is already set (not `null`), exit silently - a prior pass already closed this opportunity. For a `phase` kind opportunity, also check `.compass/tmp/phase-reports/<phase-id>/.processed`: its presence is the same backstop collision this check has always guarded against, from the legacy path where the phase-report directory carried its own mutex before opportunities existed.
+If `opportunity.json`'s `outcome` field is already set (not `null`), exit silently - a prior pass already closed this opportunity. The extra `.processed` check for a `phase` kind opportunity: `phase-marker.md` in this skill's folder.
 
 ### 2. Read the opportunity
 
@@ -74,9 +74,7 @@ Write the extraction log to `.compass/tmp/extraction-log-YYYY-MM-DD.md`. Its for
 
 ### 8. Mutex marker
 
-Write `.compass/tmp/phase-reports/<phase-id>/.processed` (empty file) so the backstop path skips this phase.
-
-For a `signal` or `interval` kind opportunity, there is no phase-report directory to mark; step 9's `compass capture-close` call is what closes the opportunity and stops a later pass from picking it up again.
+For a `phase` kind opportunity, write the `.processed` marker so the backstop path skips this phase; a `signal` or `interval` kind has none and is closed by step 9. Details: `phase-marker.md` in this skill's folder; read it before this step.
 
 ### 9. Report to caller
 
