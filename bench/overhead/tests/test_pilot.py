@@ -497,7 +497,7 @@ def test_the_report_holds_aggregates_and_nothing_private(repo, private_root, pro
         str(tmp_path), str(private_root), str(repo), str(projects_root),
         *[d["project"] for d in world.drives],
         *[p.name for p in sandbox.list_projects(projects_root)],
-        "–", "—",
+        chr(0x2013), chr(0x2014),
     ]
     assert [f for f in forbidden if f in text] == []
     assert not re.search(r"[A-Za-z]:[\\/]", text)
