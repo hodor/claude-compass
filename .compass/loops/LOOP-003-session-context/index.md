@@ -141,3 +141,7 @@ Review of run 1 (changes): the loop is about the total context Compass uses to d
 
 The human ruled the loop runs on its own, about 30 runs, checked automatically rather than reviewed one by one, with the usage cap raised to $12. The batch starts at tag `loop003-batch-start`.
 - Batch runs 1 to 4 accepted (10,868 -> 10,641). Runs 5 and 6 were rejected because the batch's full-suite check counted the VS Code harness, which runs the pre-build tests of TASK-243 that are meant to fail until it merges; their rejection reasons were not about the changes, so they are not kept in `feedback.md`. The batch paused, TASK-243 merges first, then the batch continues.
+- Batch resumed after TASK-243 merged: runs 1 to 15 accepted (10,515 -> 9,493), run 16 neutral (no move of 100+ tokens left in the top sources) and rejected, runs 17 to 23 throttled behind it. The last accepted runs moved 1 or 2 tokens each: the loop has reached its plateau.
+- An audit of every moved passage found no lost text, protected sections unchanged, no added dashes; it found one wrong pointer (the document forms) and two steps naming a side file without saying to read it first, fixed in `a332f3a`.
+- After a fresh `compass loop usage-scan` (1,540 sessions) the side files carry their real weight: 9,479 per average session, down from 11,969 at the loop's start (-21%).
+- Full suite 2,226 passed; Obsidian 553 and VS Code 135 tests pass; `compass validate` 0 errors. Spend: $10.20 of the $12 cap.
