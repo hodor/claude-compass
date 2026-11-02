@@ -23,7 +23,7 @@ Write every document for a reader who has only the document - no memory of the c
 
 The test binds everything an agent writes, not only vault documents (code comments, test names, commit bodies, skill and agent text): the `obsidian` skill, file `writing-principles.md`, section "Scope of the reader test".
 
-The remaining writing principles and the fresh-eyes check every document passes before it is presented (a cheap sub-agent reads it holding only the document and these rules; brevity and the human's captured words, research length, ornamental test, summaries, what a document carries, describing what IS, own authority, positive statements, consolidating decisions by topic), and the forms (opening picture, callouts, embeds) and plain words a human reads: the `obsidian` skill, file `writing-principles.md`.
+The remaining writing principles and the fresh-eyes check every document passes before it is presented (a cheap sub-agent reads it holding only the document and these rules; brevity and the human's captured words, research length, ornamental test, summaries, what a document carries, describing what IS, own authority, positive statements, consolidating decisions by topic): the `obsidian` skill, file `writing-principles.md`. The forms (opening picture, callouts, embeds) and plain words a human reads: the `obsidian` skill, section "Documents the human reads".
 
 Rules default to judgment - an agent's value is deciding what is better in context. MUST is reserved for true invariants: the Data rule, the human's gates.
 

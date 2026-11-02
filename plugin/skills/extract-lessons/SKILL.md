@@ -30,7 +30,7 @@ For a `phase` kind opportunity, read `phase-summary.yaml` from the phase-report 
 
 ### 1. Mutex check
 
-If `opportunity.json`'s `outcome` field is already set (not `null`), exit silently - a prior pass already closed this opportunity. The extra `.processed` check for a `phase` kind opportunity: `phase-marker.md` in this skill's folder.
+If `opportunity.json`'s `outcome` field is already set (not `null`), exit silently - a prior pass already closed this opportunity. The extra `.processed` check for a `phase` kind opportunity: `phase-marker.md` in this skill's folder; read it before this step.
 
 ### 2. Read the opportunity
 
@@ -58,7 +58,7 @@ For each candidate, and for evidence that produced none, check whether it shows 
 
 ### 5. Anti-list filter
 
-For each candidate, apply the anti-list (the buckets are listed once, in the "Anti-list" section of `lesson-write/SKILL.md`). Reject candidates that fall in any bucket.
+For each candidate, apply the anti-list (the buckets are listed once, in the "Anti-list" section of `lesson-write/SKILL.md`; read that section before this step). Reject candidates that fall in any bucket.
 
 Then check the memory of prior passes: `prior-passes.md` in this skill's folder; read it before this step.
 
