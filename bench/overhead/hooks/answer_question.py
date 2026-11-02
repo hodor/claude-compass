@@ -47,7 +47,7 @@ DECIDE_YOURSELF = "decide yourself"
 
 FILE_TOOLS = ("Write", "Edit", "MultiEdit", "NotebookEdit")
 FILE_KEYS = ("file_path", "notebook_path", "path")
-COVERED_TOOLS = ("AskUserQuestion", "Bash") + FILE_TOOLS
+COVERED_TOOLS = ("AskUserQuestion", "Bash", "PowerShell") + FILE_TOOLS
 
 # git options that take the next word as their value.
 _GIT_VALUE_OPTIONS = frozenset({"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"})
@@ -107,6 +107,12 @@ def _decision(kind, reason, updated_input=None):
 
 def _deny(reason):
     return _decision("deny", reason)
+
+
+def _allow():
+    """Permission for a call inside the fence. A headless build has no one to
+    grant a prompt, so a call without an allow would be refused."""
+    return _decision("allow", "inside the build's fence")
 
 
 def _real(path):
@@ -363,7 +369,7 @@ def _leaves_path(fence, path):
     if path in _DEVICE_PATHS:
         return False
     if path.startswith("/"):
-        return not _inside(fence.project, path) and _names_filesystem_root_folder(path)
+        return not _inside(fence.project, _native(path)) and _names_filesystem_root_folder(path)
     return _looks_like_path(path) and not _inside(fence.project, path)
 
 
@@ -448,7 +454,7 @@ def _check_bash(tool_input, fence):
     if not isinstance(command, str):
         return _deny("the Bash call carried no command")
     reason = _inspect(command, fence)
-    return _deny(reason) if reason else None
+    return _deny(reason) if reason else _allow()
 
 
 def _check_file_call(tool_input, project):
@@ -457,14 +463,15 @@ def _check_file_call(tool_input, project):
         return _deny("the call named no file inside the project")
     if not _inside(project, path):
         return _deny(f"the path {path!r} leaves the project")
-    return None
+    return _allow()
 
 
 def decide(event, *, project, answer, read_roots=(), home=None):
     """The hook output for a PreToolUse `event`, or None for no opinion.
 
-    Bash commands may also name paths inside `read_roots` and the sandbox
-    `home`; Write and Edit calls stay inside the project."""
+    Bash, Write and Edit calls are allowed or denied: Bash commands may also
+    name paths inside `read_roots` and the sandbox `home`; Write and Edit calls
+    stay inside the project."""
     if event.get("hook_event_name") != "PreToolUse":
         return None
     tool = event.get("tool_name")
@@ -478,6 +485,8 @@ def decide(event, *, project, answer, read_roots=(), home=None):
             return _deny(f"the question could not be answered: {error}")
         return _decision("allow", "answered by the simulated human", updated)
     try:
+        if tool == "PowerShell":
+            return _deny("PowerShell is not available in this build; use the Bash tool")
         if tool == "Bash":
             return _check_bash(tool_input, _Fence(project, read_roots, home))
         if tool in FILE_TOOLS:

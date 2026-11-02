@@ -123,4 +123,4 @@ def test_paths_that_stay_inside_the_project_are_not_refused(project, command):
     strings, glued options) must not turn into a blanket refusal; a `..` that
     resolves back inside the project, `-C .`, and a quoted sentence that merely
     mentions `../` are ordinary work."""
-    assert verdict(command, project) is None
+    assert verdict(command, project) == "allow"

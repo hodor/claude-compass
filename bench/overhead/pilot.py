@@ -9,7 +9,8 @@ usage-limit halt:
 2. Topics. Further picks in that form are frozen with goal lists and briefs.
 3. Builds. Every pilot topic is built `runs_per_arm` times in each arm, one
    build at a time, each in a fresh project. The first topic's first run in each
-   arm comes first; a failed build there blocks the pilot.
+   arm comes first; a build there that fails, or that the judge finds met no
+   goal item even partly, blocks the pilot.
 4. Judging. Every closed build is scored against its topic's frozen goals.
 5. Report. A complete pilot writes aggregates only: no topic text, goal or
    brief text, path, project name, session id or model output.
@@ -166,6 +167,13 @@ def drive_brief(items, brief_text):
             for item, (_, name) in zip(items, chosen)
         ],
     }
+
+
+def _met_any(counts):
+    """True when judged `counts` hold at least one goal item met or partly met."""
+    if not isinstance(counts, dict):
+        return False
+    return (counts.get("met") or 0) + (counts.get("partly met") or 0) > 0
 
 
 def run_log_path(private_root):
@@ -331,10 +339,12 @@ class _Pilot:
         refused = {self.key(e) for e in self.events("build-refused")}
         if any(slot in closed and closed[slot]["exit"] != 0 for slot in smoke):
             raise _Halt("blocked")
-        judged = {self.key(e) for e in self.events("judged")}
+        judged = {self.key(e): e.get("counts") for e in self.events("judged")}
         for slot in slots:
             if slot in closed and slot not in judged:
-                self.judge_build(closed[slot])
+                judged[slot] = self.judge_build(closed[slot])
+        if any(slot in judged and not _met_any(judged[slot]) for slot in smoke):
+            raise _Halt("blocked")
         for slot in slots:
             if slot in closed or slot in refused:
                 continue
@@ -342,7 +352,13 @@ class _Pilot:
             if slot in smoke and event["exit"] != 0:
                 self.log(event="blocked", topic=slot[0], arm=slot[1], run=slot[2], exit=event["exit"])
                 raise _Halt("blocked")
-            self.judge_build(event)
+            counts = self.judge_build(event)
+            if slot in smoke and not _met_any(counts):
+                self.log(
+                    event="blocked", topic=slot[0], arm=slot[1], run=slot[2],
+                    reason="the smoke build met no goal item, even partly",
+                )
+                raise _Halt("blocked")
 
     def record_marks(self):
         """{records file name: line count} before a build."""
@@ -420,10 +436,12 @@ class _Pilot:
         verdict = self.attempt(
             lambda: self.judge(event["project"], event["topic"], **self.session_options())
         )
+        counts = verdict.get("counts")
         self.log(
             event="judged", topic=event["topic"], arm=event["arm"], run=event["run"],
-            counts=verdict.get("counts"),
+            counts=counts,
         )
+        return counts
 
     # results
 

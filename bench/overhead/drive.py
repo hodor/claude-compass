@@ -53,7 +53,7 @@ import launch
 import records
 
 HOOK_SCRIPT = Path(__file__).resolve().parent / "hooks" / "answer_question.py"
-HOOK_MATCHER = "AskUserQuestion|Bash|Write|Edit|MultiEdit|NotebookEdit"
+HOOK_MATCHER = "AskUserQuestion|Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit"
 HOOK_TIMEOUT_SECONDS = 1800
 # Exit codes of `main`: 0 human-done, 1 any other end, 2 refused, 3 usage limit.
 EXIT_REFUSED = 2

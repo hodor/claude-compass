@@ -501,3 +501,45 @@ def test_the_report_holds_aggregates_and_nothing_private(repo, private_root, pro
     ]
     assert [f for f in forbidden if f in text] == []
     assert not re.search(r"[A-Za-z]:[\\/]", text)
+
+
+class EmptyJudgeWorld(World):
+    """A world whose judge scores chosen judge calls as meeting no goal item."""
+
+    def __init__(self, private_root, empty_calls):
+        super().__init__(private_root)
+        self.empty_calls = set(empty_calls)
+
+    def judge(self, project, topic_id, **kwargs):
+        verdict = super().judge(project, topic_id, **kwargs)
+        if len(self.judges) in self.empty_calls:
+            verdict = {**verdict, "counts": {"met": 0, "partly met": 0, "not met": 3}}
+        return verdict
+
+
+@pytest.mark.parametrize("empty_call", [1, 2])
+def test_a_smoke_build_that_meets_no_goal_item_blocks_the_pilot(empty_call, repo, private_root, projects_root):
+    """Adversarial where: a smoke build exits 0 but leaves nothing the judge can
+    credit (a headless build whose writes were all refused), and the pilot spends
+    ten more builds on the same failure, or a re-run forgets the block."""
+    world = EmptyJudgeWorld(private_root, [empty_call])
+
+    result = go(world, repo, private_root, projects_root)
+
+    assert result.status == "blocked"
+    assert len(world.drives) == empty_call
+    assert log_events(private_root, "blocked")[-1]["reason"]
+    again = go(world, repo, private_root, projects_root)
+    assert again.status == "blocked"
+    assert len(world.drives) == empty_call
+
+
+def test_a_later_build_that_meets_no_goal_item_does_not_block(repo, private_root, projects_root):
+    """Adversarial where: the empty-build guard fires on every build, halting a
+    pilot whose smoke pair worked because one later build genuinely failed."""
+    world = EmptyJudgeWorld(private_root, [5])
+
+    result = go(world, repo, private_root, projects_root)
+
+    assert result.status == "complete"
+    assert len(world.drives) == 12

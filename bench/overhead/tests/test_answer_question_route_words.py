@@ -40,7 +40,7 @@ def verdict(command, project):
 def test_a_slash_word_that_names_no_root_folder_is_allowed(project, command):
     """Adversarial where: denying every word that starts with a slash refuses a
     grep for a route, a URL path and a regex, which a build does all the time."""
-    assert verdict(command, project) is None
+    assert verdict(command, project) == "allow"
 
 
 @pytest.mark.parametrize(

@@ -65,7 +65,7 @@ def test_the_setup_command_is_allowed_with_the_read_root_and_denied_without_it(p
     that the loop assigned, leaves the copy denied."""
     command = setup_command(places["plugin"])
 
-    assert run(command, places) is None
+    assert run(command, places) == "allow"
     assert run(command, places, read_roots=[]) == "deny"
     assert run(command, places, read_roots=[str(places["home"])]) == "deny"
     assert run(command, places, home=None) == "deny"
@@ -88,7 +88,7 @@ def test_a_word_inside_a_read_root_does_not_leave_the_project(places, template):
     slip past the check that only looks at plain words."""
     command = template.format(plugin=places["plugin"].as_posix(), plugin_win=str(places["plugin"]))
 
-    assert run(command, places) is None
+    assert run(command, places) == "allow"
 
 
 @pytest.mark.parametrize(
@@ -119,7 +119,7 @@ def test_the_git_bash_form_of_a_read_root_is_inside_it(places):
     inside = f"/{drive_letter}{rest}/templates/a.md"
     sibling = f"/{drive_letter}{rest}-evil/a.md"
 
-    assert run(f"cp {inside} x", places) is None
+    assert run(f"cp {inside} x", places) == "allow"
     assert run(f"cp {sibling} x", places) == "deny"
 
 
@@ -158,7 +158,7 @@ def test_home_forms_are_allowed_only_when_a_home_is_set(places, command):
     """Adversarial where: a home variable that is always allowed, or one that
     is never allowed, breaks git or lets a build read the real home when the
     configuration lacks a home."""
-    assert run(command, places) is None
+    assert run(command, places) == "allow"
     assert run(command, places, home=None) == "deny"
 
 
@@ -184,7 +184,7 @@ def test_a_variable_the_command_assigns_is_judged_by_its_values(places):
     inside = places["plugin"].as_posix()
     outside = places["outside"].as_posix()
 
-    assert run(f'R={inside}; cat "$R/x"', places) is None
+    assert run(f'R={inside}; cat "$R/x"', places) == "allow"
     assert run(f'R={outside}; cat "$R/x"', places) == "deny"
     assert run(f'for r in {inside} {outside}; do cat "$r/x"; done', places) == "deny"
     assert run(f'R=$(pwd); cat "$R/x"', places) == "deny"
@@ -207,7 +207,7 @@ def test_main_reads_read_roots_and_home_from_the_config_file(places, tmp_path):
     _, allowed = hook.main([], payload, {hook.CONFIG_VARIABLE: str(config)})
     _, denied = hook.main([], payload, {hook.CONFIG_VARIABLE: str(bare)})
 
-    assert allowed == ""
+    assert json.loads(allowed)["hookSpecificOutput"]["permissionDecision"] == "allow"
     assert json.loads(denied)["hookSpecificOutput"]["permissionDecision"] == "deny"
 
 
@@ -225,4 +225,4 @@ def test_the_hook_script_run_as_a_process_honours_the_config(places, tmp_path):
     )
 
     assert done.returncode == 0
-    assert done.stdout == ""
+    assert json.loads(done.stdout)["hookSpecificOutput"]["permissionDecision"] == "allow"
