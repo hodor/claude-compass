@@ -65,7 +65,7 @@ For each candidate, and for evidence that produced none, check whether it shows 
 
 For each candidate, apply the anti-list (the buckets are listed once, in the "Anti-list" section of `lesson-write/SKILL.md`). Reject candidates that fall in any bucket.
 
-Then check the memory of prior passes - by SUBJECT, never by filename, since a re-drafted candidate arrives reworded: grep the audit logs (`tmp/extraction-log-*.md`, `archive/logs/`) and `archive/lessons/` for the candidate's subject. A candidate an earlier pass rejected or judged already-documented is rejected again, citing that pass's log line, unless the new evidence states why the old judgment no longer holds. Never write a lesson only to self-archive it in the same pass - a candidate that would arrive archived is a rejection.
+Then check the memory of prior passes: `prior-passes.md` in this skill's folder; read it before this step.
 
 For each candidate, record the anti-list outcome: passed, or matched bucket `<name>`.
 
