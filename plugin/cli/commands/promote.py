@@ -26,16 +26,29 @@ from commands import sizing
 
 
 def _resolve(vault_root, target):
-    """Return the flat artifacts `target` names. A vault-relative path
-    resolves to the one flat artifact at that path; a bare stem resolves to
-    every flat artifact bearing it, under any type dir (root or unit) at any
-    depth, so the caller can refuse an ambiguous stem. A path that is not a
-    flat artifact of the vault resolves to nothing."""
+    """Return the flat artifacts `target` names. A path resolves to the one
+    flat artifact at that path: vault-relative or prefixed by the vault's own
+    folder name (`.compass/specs/...`), with or without the `.md` suffix. A
+    bare stem resolves to every flat artifact bearing it, under any type dir
+    (root or unit) at any depth; a bare id (`SPEC-027`) that is no stem
+    resolves to every flat artifact whose stem is that id followed by `-`.
+    Several matches are returned so the caller can refuse an ambiguous
+    argument. A path that is not a flat artifact of the vault resolves to
+    nothing."""
     flats = [r["path"] for r in vaultlib.scan_artifacts(vault_root) if r["kind"] in ("flat", "child")]
-    if target.endswith(".md") or "/" in target:
-        candidate = (vault_root / target).resolve()
+    norm = target.replace("\\", "/").strip("/")
+    if "/" in norm or norm.endswith(".md"):
+        prefix = vault_root.name + "/"
+        if norm.startswith(prefix):
+            norm = norm[len(prefix):]
+        if not norm.endswith(".md"):
+            norm += ".md"
+        candidate = (vault_root / norm).resolve()
         return [p for p in flats if p.resolve() == candidate]
-    return [p for p in flats if p.stem == target]
+    exact = [p for p in flats if p.stem == norm]
+    if exact:
+        return exact
+    return [p for p in flats if p.stem.startswith(norm + "-")]
 
 
 def git_mv(repo, src, dest):
