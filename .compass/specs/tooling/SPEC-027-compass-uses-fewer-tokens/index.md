@@ -9,6 +9,8 @@ summary: "minimize the amount of tokens Compass uses, driven by a control loop i
 created: 2026-10-18
 updated: 2026-10-29
 approved: 2026-10-18
+children_count: 1
+sizing_id: sz-2026-11-01-1
 ---
 
 # Compass Uses Fewer Tokens
