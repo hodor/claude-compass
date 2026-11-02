@@ -239,7 +239,7 @@ ITEMS_OVERLAP = [
     {"id": "g4", "text": "Export the monthly report", "command": None},
 ]
 ITEMS_PUNCTUATION = [
-    {"id": "g1", "text": "Run `make test` and see exit code 0.", "command": "make test"},
+    {"id": "g1", "text": "The test target runs (with `-v`) and exits with code 0.", "command": "make test"},
     {"id": "g2", "text": "README explains install steps, usage and limits.", "command": None},
 ]
 
