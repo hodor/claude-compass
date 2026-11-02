@@ -73,7 +73,9 @@ def new_project(projects_root):
         except FileExistsError:
             continue
     try:
-        done = subprocess.run(["git", "init", "-q"], cwd=project, capture_output=True, text=True)
+        done = subprocess.run(
+            ["git", "init", "-q"], cwd=project, capture_output=True, text=True, env=launch.git_environment(),
+        )
     except OSError as error:
         project.rmdir()
         raise RuntimeError(f"git cannot be run: {error}") from error
@@ -152,11 +154,11 @@ def discard_project(project, *, config_dir, claude_cmd=None, projects_root=None)
     projects root.
     """
     path = check_project(project, projects_root)
+    command = launch.resolve_command(claude_cmd, os.environ) + ["purge", str(path), "--yes"]
+    env = {key: value for key, value in os.environ.items() if not launch.drops_variable(key)}
+    env["CLAUDE_CONFIG_DIR"] = str(config_dir)
     if path.exists():
         _remove_tree(path)
-    env = {key: value for key, value in os.environ.items() if key.upper() not in launch.CREDENTIAL_VARS}
-    env["CLAUDE_CONFIG_DIR"] = str(config_dir)
-    command = launch.resolve_command(claude_cmd, os.environ) + ["purge", str(path), "--yes"]
     done = subprocess.run(command, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if done.returncode != 0:
         raise RuntimeError(f"claude purge exited {done.returncode}: {done.stderr.strip()}")
@@ -192,7 +194,7 @@ def main(argv=None):
             config_dir = args.config_dir or str(launch.default_private_root() / "claude-config")
             discard_project(args.project, config_dir=config_dir, projects_root=root)
             print(f"discarded {args.project}")
-    except (Refused, OSError, RuntimeError) as error:
+    except (Refused, launch.Refused, OSError, RuntimeError) as error:
         print(f"sandbox: {error}", file=sys.stderr)
         return 2
     return 0

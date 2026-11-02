@@ -198,6 +198,7 @@ def record_session(events, *, role, outcome, arm=None, plugin_sha=None, private_
     shape, and Refused when the records folder would sit inside a git work tree.
     Nothing is written in either case.
     """
+    events = list(events)
     _check_choice("role", role, ROLES)
     _check_choice("outcome", outcome, OUTCOMES)
     _check_choice("arm", arm, ARMS, optional=True)

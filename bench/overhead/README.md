@@ -28,11 +28,11 @@ python -m pytest bench/overhead/tests -q -p no:cacheprovider
 Every session runs with:
 
 - `CLAUDE_CONFIG_DIR` set to `<private root>/claude-config` and `--setting-sources project,local --strict-mcp-config`.
-- `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN`, `GH_TOKEN` and `GITHUB_TOKEN` removed from the environment.
+- `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN`, `GH_TOKEN` and `GITHUB_TOKEN` removed from the environment, with every variable that selects another provider, endpoint or model (`ANTHROPIC_BASE_URL`, `ANTHROPIC_MODEL`, `ANTHROPIC_DEFAULT_*_MODEL`, `CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX`, `AWS_*`) and the variables that point git at a repository (`GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` and kin), so a build bills the subscription and acts on its own project.
 - `DISABLE_AUTOUPDATER=1`, `PIP_REQUIRE_VIRTUALENV=1`, `GH_CONFIG_DIR` set to an empty sandbox folder and `DSH_HOME` set to a path that does not exist.
-- The VS Code and Cursor folders removed from `PATH`.
+- The VS Code and Cursor install folders (matched by whole folder name) removed from `PATH`.
 
-A session starts only when `git status` reports `plugin/` clean; the result carries the repository's HEAD sha. With `plugin=True` the session loads `<repo>/plugin`.
+A session starts only when `git status` reports `plugin/` clean (and, with `plugin=True`, present); a `timeout` kills the session's whole process tree; the result carries the repository's HEAD sha. With `plugin=True` the session loads `<repo>/plugin`.
 
 ## Ending a session
 
