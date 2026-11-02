@@ -10,3 +10,12 @@ For each fired trigger, read the corresponding evidence from the table in `trigg
 - handoff written → what the handoff records as open work or a surprising finding is a candidate source.
 - agent noted → the note body is one candidate as stated: the agent already judged it worth remembering, so the anti-list and dedup in steps 5-6 are the only filters. A note that names the incident but not the rule still yields a candidate; state the rule the incident implies.
 - interval reached with signal(s) → read every evidence file in the window. An interval opportunity fires on volume, not on one strong signal, so a finding only becomes a candidate if it would independently justify a lesson - the anti-list in step 5 is the filter that keeps this permissive read from flooding the catalog.
+
+## Payload draft
+
+For each candidate, prepare a payload draft:
+- Tentative summary (<=120 chars)
+- Tentative body (<=5 lines)
+- Tentative category (process likely - extraction lives in the build pipeline)
+- Tentative area (read from the parent plan's `area` frontmatter when the evidence traces to one; otherwise from the vault's active plan or spec)
+- Tentative tags (extract from the task description and the finding)

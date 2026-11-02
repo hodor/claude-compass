@@ -50,12 +50,7 @@ For each fired trigger, read the evidence the table in `triggers.md` names. What
 
 A candidate is a discrete finding: one rule, one why. Do not group multiple findings into one. If the evidence has 3 findings, emit 3 candidates.
 
-For each candidate, prepare a payload draft:
-- Tentative summary (<=120 chars)
-- Tentative body (<=5 lines)
-- Tentative category (process likely - extraction lives in the build pipeline)
-- Tentative area (read from the parent plan's `area` frontmatter when the evidence traces to one; otherwise from the vault's active plan or spec)
-- Tentative tags (extract from the task description and the finding)
+The payload draft prepared for each candidate (summary, body, category, area, tags): `candidate-gathering.md`, section "Payload draft".
 
 ### 4a. Contradiction check
 
