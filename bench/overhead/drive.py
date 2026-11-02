@@ -16,6 +16,14 @@ before and after setup.
 Before launch a PreToolUse command hook (`hooks/answer_question.py`) is merged
 into the project's `.claude/settings.local.json`; it answers `AskUserQuestion`
 through the human's answer command and fences Bash, Write and Edit calls into
+the project. In the "compass" arm the plugin folder is also a read root: Bash
+commands may name paths inside it (setup copies from it) but nothing may write
+there, and the check after the build marks a build failed when `plugin/` of the
+repository changed.
+
+The session runs with HOME, USERPROFILE, APPDATA, LOCALAPPDATA, TEMP and TMP
+inside a per-project home folder under the private root, holding a `.gitconfig`
+with a build identity, so the real home folder is out of reach.
 the project.
 
 The build session is recorded as one role `build` row; the simulated human
@@ -71,6 +79,18 @@ EXIT_SECONDS = 60.0
 # Seconds the output is read for after the session exited.
 DRAIN_SECONDS = 10.0
 
+# Folders of the sandbox home that the home-like variables name; the hook's
+# HOME_SUBFOLDERS holds the same table.
+HOME_VARIABLE_FOLDERS = {
+    "APPDATA": "AppData/Roaming",
+    "LOCALAPPDATA": "AppData/Local",
+    "TEMP": "AppData/Local/Temp",
+    "TMP": "AppData/Local/Temp",
+}
+HOME_VARIABLES_REMOVED = frozenset({"HOMEDRIVE", "HOMEPATH"})
+BUILD_GITCONFIG = "[user]\n\tname = Overhead Build\n\temail = build@example.invalid\n"
+PLUGIN_CHANGED = "plugin/ changed during the build"
+
 _COMMIT_LINE = re.compile(r"^(\s*)commit:.*$", re.MULTILINE)
 
 
@@ -82,6 +102,7 @@ class DriveResult:
     init_counts: dict | None = None
     events: list = field(default_factory=list, repr=False)
     stderr: str = field(default="", repr=False)
+    reason: str = ""
 
 
 class _Ended(Exception):
@@ -139,13 +160,50 @@ def project_key(project):
     return f"{Path(project).name}-{hashlib.sha256(resolved.encode('utf-8')).hexdigest()[:12]}"
 
 
-def write_hook_config(project, private_root, answer_command):
-    """The JSON file the hook reads; returns its path."""
+def write_hook_config(project, private_root, answer_command, read_roots=None, home=None):
+    """The JSON file the hook reads; returns its path. `read_roots` (a list of
+    folders) and `home` are written when given."""
     folder = Path(private_root) / "hook-config"
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / f"{project_key(project)}.json"
-    path.write_text(json.dumps({"project": str(project), "answer_command": list(answer_command)}), encoding="utf-8")
+    config = {"project": str(project), "answer_command": list(answer_command)}
+    if read_roots is not None:
+        config["read_roots"] = [str(root) for root in read_roots]
+    if home is not None:
+        config["home"] = str(home)
+    path.write_text(json.dumps(config), encoding="utf-8")
     return path
+
+
+def sandbox_home(project, private_root):
+    """The home folder of `project`'s build, created with its `.gitconfig` and
+    the folders the home-like variables name."""
+    home = Path(private_root) / "homes" / project_key(project)
+    home.mkdir(parents=True, exist_ok=True)
+    for sub in HOME_VARIABLE_FOLDERS.values():
+        (home / sub).mkdir(parents=True, exist_ok=True)
+    (home / ".gitconfig").write_text(BUILD_GITCONFIG, encoding="utf-8")
+    return home
+
+
+def apply_home(env, home):
+    """`env` with the home-like variables pointing into `home`; HOMEDRIVE and
+    HOMEPATH are removed."""
+    names = {"HOME", "USERPROFILE", *HOME_VARIABLE_FOLDERS, *HOME_VARIABLES_REMOVED}
+    env = {key: value for key, value in env.items() if key.upper() not in names}
+    env["HOME"] = env["USERPROFILE"] = str(home)
+    for name, sub in HOME_VARIABLE_FOLDERS.items():
+        env[name] = str(Path(home) / sub)
+    return env
+
+
+def plugin_changes(repo_root):
+    """Lines of `git status --porcelain` for `plugin/` of `repo_root`; a line
+    saying so when git cannot report."""
+    done = launch._git(repo_root, "status", "--porcelain", "--untracked-files=all", "--", "plugin")
+    if done.returncode != 0:
+        return ["git cannot report the state of plugin/"]
+    return [line for line in done.stdout.splitlines() if line.strip()]
 
 
 def remote_head(repo_root):
@@ -333,7 +391,8 @@ def drive_build(
     pinned_sha = remote_head(repo_root) if compass else None
 
     parent = os.environ if parent_env is None else parent_env
-    env = launch.session_environment(parent, private_root)
+    home = sandbox_home(project, private_root)
+    env = apply_home(launch.session_environment(parent, private_root), home)
     command = launch.resolve_command(claude_cmd, parent)
     command += [
         "-p",
@@ -348,7 +407,10 @@ def drive_build(
         command += ["--plugin-dir", str(repo_root / "plugin")]
 
     install_hook(project)
-    env["OVERHEAD_HOOK_CONFIG"] = str(write_hook_config(project, private_root, human.answer_command))
+    read_roots = [str(repo_root / "plugin")] if compass else []
+    env["OVERHEAD_HOOK_CONFIG"] = str(
+        write_hook_config(project, private_root, human.answer_command, read_roots=read_roots, home=home)
+    )
 
     events = []
     turns = 0
@@ -438,11 +500,16 @@ def drive_build(
         if session.process.poll() is None:
             session.kill()
 
+    reason = ""
+    changed = plugin_changes(repo_root)
+    if changed:
+        end, reason = launch.FAILED, f"{PLUGIN_CHANGED}: {'; '.join(changed[:5])}"
+
     outcome = {HUMAN_DONE: launch.DONE, launch.USAGE_LIMIT: launch.USAGE_LIMIT}.get(end, launch.FAILED)
     records.record_session(events, role="build", outcome=outcome, arm=arm, plugin_sha=head_sha, private_root=private_root)
     return DriveResult(
         end=end, turns=turns, resets_at=resets_at, init_counts=init_counts(events),
-        events=events, stderr=session.stderr_text(),
+        events=events, stderr=session.stderr_text(), reason=reason,
     )
 
 
@@ -486,7 +553,7 @@ def main(argv=None):
     except (launch.Refused, records.Refused, OSError, ValueError) as error:
         sys.stderr.write(f"refused: {error}\n")
         return EXIT_REFUSED
-    print(json.dumps({"end": result.end, "turns": result.turns, "resets_at": result.resets_at}))
+    print(json.dumps({"end": result.end, "turns": result.turns, "resets_at": result.resets_at, "reason": result.reason}))
     if result.end == HUMAN_DONE:
         return 0
     return EXIT_USAGE_LIMIT if result.end == launch.USAGE_LIMIT else 1

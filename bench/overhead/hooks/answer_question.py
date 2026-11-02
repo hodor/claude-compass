@@ -4,7 +4,10 @@ It answers `AskUserQuestion` and fences the session into its project. Claude
 Code runs it as a command with the event on stdin; the file named by the
 environment variable `OVERHEAD_HOOK_CONFIG` holds
 
-    {"project": "<project folder>", "answer_command": ["argv", ...]}
+    {"project": "<project folder>", "answer_command": ["argv", ...],
+     "read_roots": ["<folder>", ...], "home": "<sandbox home folder>"}
+
+`read_roots` and `home` are optional.
 
 `AskUserQuestion` is allowed with `updatedInput` holding the questions and an
 `answers` object keyed by question text. The answer command receives
@@ -16,8 +19,18 @@ names the failure.
 Write, Edit, MultiEdit and NotebookEdit calls are denied when their path, with
 links resolved, is not inside the project. Bash calls are denied when a command
 word is `gh`, when a command is `git push`, or when an argument names a path
-that leaves the project. Every other call, and every other hook event, gets no
-opinion: nothing is printed.
+that leaves the project. A Bash argument may also name a place inside a read
+root (a folder the session copies from, such as the plugin under test) or
+inside the sandbox home. Within a command, `$HOME`, `${HOME}`, `%USERPROFILE%`,
+`$env:USERPROFILE` and a leading `~` stand for the sandbox home; `APPDATA`,
+`LOCALAPPDATA`, `TEMP` and `TMP` stand for the folders below it that
+`HOME_SUBFOLDERS` names, and a variable the command itself assigns (an
+assignment or a `for` list) stands for its values. Each expansion is judged
+like any other path; a variable of unknown value followed by a slash, and every
+home variable when no home is configured, leaves the project. Write and Edit
+calls never reach into a read root or the home.
+Every other call, and every other hook event, gets no opinion: nothing is
+printed.
 
 The hook uses only the standard library and imports no sibling module.
 """
@@ -56,6 +69,20 @@ _HOME_VARIABLE = re.compile(
     r"|%(?:HOME|USERPROFILE|HOMEDRIVE|HOMEPATH|APPDATA|LOCALAPPDATA|TEMP|TMP)%",
     re.IGNORECASE,
 )
+# Where each home-like variable points, relative to the sandbox home.
+HOME_SUBFOLDERS = {
+    "HOME": "",
+    "USERPROFILE": "",
+    "APPDATA": "AppData/Roaming",
+    "LOCALAPPDATA": "AppData/Local",
+    "TEMP": "AppData/Local/Temp",
+    "TMP": "AppData/Local/Temp",
+}
+# A variable reference at the start of a word: `$X`, `${X}`, `$env:X`, `%X%`.
+_VARIABLE_START = re.compile(r"\$(?:env:)?(?:\{([A-Za-z_]\w*)\}|([A-Za-z_]\w*))|%([A-Za-z_]\w*)%")
+# Words that may precede an assignment or a `for` in a simple command.
+_KEYWORDS = frozenset({"do", "then", "else", "{", "!", "if", "while", "until", "export", "declare", "local",
+                       "readonly", "typeset"})
 # Folders at the root of a POSIX or Git Bash filesystem.
 _ROOT_FOLDERS = frozenset({
     "tmp", "etc", "home", "usr", "users", "mnt", "var", "root", "bin", "sbin", "opt", "proc", "sys", "dev",
@@ -84,6 +111,11 @@ def _deny(reason):
 
 def _real(path):
     return os.path.normcase(os.path.realpath(path))
+
+
+def _is_absolute(path):
+    """True for a POSIX absolute path or a Windows drive path."""
+    return path.startswith("/") or (len(path) > 2 and path[1] == ":" and path[2] in "/\\")
 
 
 def _inside(project, path):
@@ -250,21 +282,105 @@ def _names_filesystem_root_folder(path):
     )
 
 
-def _leaves_project(project, candidate):
-    """True when `candidate`, a word or the value glued into one, names a place
-    outside the project."""
-    if _HOME_VARIABLE.search(candidate):
+class _Fence:
+    """What a Bash command may name: the project, the read roots, the sandbox
+    home, and the variables the command itself assigns."""
+
+    def __init__(self, project, read_roots=(), home=None, variables=None):
+        self.project = project
+        self.home = home.replace("\\", "/").rstrip("/") if isinstance(home, str) and home.strip() else None
+        self.roots = [root for root in read_roots if isinstance(root, str) and root.strip()]
+        if self.home:
+            self.roots.append(self.home)
+        self.variables = variables or {}
+
+    def with_variables(self, variables):
+        fence = _Fence(self.project)
+        fence.home, fence.roots, fence.variables = self.home, self.roots, variables
+        return fence
+
+
+def _native(path):
+    """`path` with a Git Bash drive prefix (`/f/x`) written as a drive path."""
+    if os.name == "nt" and re.match(r"/[A-Za-z](?:/|$)", path):
+        return path[1].upper() + ":" + (path[2:] or "/")
+    return path
+
+
+def _in_roots(fence, path):
+    """True when the absolute `path` is a read root, the sandbox home, or below one."""
+    path = _native(path)
+    return _is_absolute(path) and any(_inside(root, path) for root in fence.roots)
+
+
+def _variable_values(name, fence, depth):
+    """The values the variable `name` may hold, or None when unknown."""
+    if fence.home is not None and name.upper() in HOME_SUBFOLDERS:
+        sub = HOME_SUBFOLDERS[name.upper()]
+        return [fence.home + ("/" + sub if sub else "")]
+    if name in fence.variables and depth < _MAX_DEPTH:
+        values = []
+        for raw in fence.variables[name]:
+            expanded = _expand(raw, fence, depth + 1)
+            if expanded is None:
+                return None
+            values.extend(expanded)
+        return values
+    return None
+
+
+def _expand(text, fence, depth=0):
+    """The values of `text` with a leading `~` or variable expanded: the text
+    itself when it starts with neither, None when the expansion is unknown or
+    leaves a substitution or variable behind."""
+    text = text.replace("\\", "/")
+    values = [text]
+    if text == "~" or text.startswith("~/"):
+        if fence.home is None:
+            return None
+        values = [fence.home + text[1:]]
+    else:
+        match = _VARIABLE_START.match(text)
+        if match:
+            found = _variable_values(match.group(1) or match.group(2) or match.group(3), fence, depth)
+            if found is None:
+                return None
+            values = [value + text[match.end():] for value in found]
+    if any("$" in value or "`" in value or _HOME_VARIABLE.search(value) for value in values):
+        return None
+    return values
+
+
+def _leaves_path(fence, path):
+    """True when `path`, which holds no variable, names a place outside the
+    project, the read roots and the sandbox home."""
+    if path.startswith("//"):
         return True
-    path = candidate.replace("\\", "/")
-    if path.startswith("~") or path.startswith("//"):
+    if _in_roots(fence, path):
+        return False
+    if path.startswith("~"):
         return True
     if path in _DEVICE_PATHS:
         return False
-    if path.startswith("$"):
-        return "/" in path
     if path.startswith("/"):
-        return not _inside(project, path) and _names_filesystem_root_folder(path)
-    return _looks_like_path(path) and not _inside(project, path)
+        return not _inside(fence.project, path) and _names_filesystem_root_folder(path)
+    return _looks_like_path(path) and not _inside(fence.project, path)
+
+
+def _leaves_project(fence, candidate):
+    """True when `candidate`, a word or the value glued into one, names a place
+    outside the project, the read roots and the sandbox home."""
+    path = candidate.replace("\\", "/")
+    if path.startswith("~") or _VARIABLE_START.match(path):
+        values = _expand(path, fence)
+        if values is not None:
+            return any(_leaves_path(fence, value) for value in values)
+        if _HOME_VARIABLE.search(candidate) or path.startswith("~"):
+            return True
+        return "/" in path
+    if _HOME_VARIABLE.search(candidate):
+        return True
+    return _leaves_path(fence, path)
 
 
 def _candidates(word):
@@ -277,14 +393,35 @@ def _candidates(word):
     return found
 
 
-def _inspect(command, project, depth=0):
+def _assigned_variables(segments):
+    """{name: [raw values]} for the variables `segments` assign: leading
+    `NAME=value` words and the lists of `for NAME in ...`."""
+    found = {}
+    for segment in segments:
+        start = 0
+        while start < len(segment) and segment[start] in _KEYWORDS:
+            start += 1
+        if start + 2 < len(segment) and segment[start] == "for" and segment[start + 2] == "in":
+            found.setdefault(segment[start + 1], []).extend(segment[start + 3:])
+        for word in segment:
+            if _ASSIGNMENT.match(word):
+                name, value = word.split("=", 1)
+                found.setdefault(name, []).append(value)
+            elif word not in _KEYWORDS:
+                break
+    return found
+
+
+def _inspect(command, fence, depth=0):
     """The reason `command` may not run, or None."""
     if depth > _MAX_DEPTH:
         return "shell commands nest too deeply"
+    segments = _parse(command)
+    fence = fence.with_variables(_assigned_variables(segments))
     for match in _RAW_DRIVE_PATH.finditer(command):
-        if _leaves_project(project, match.group(0)):
+        if _leaves_project(fence, match.group(0)):
             return f"the path {match.group(0)!r} leaves the project"
-    for segment in _parse(command):
+    for segment in segments:
         words = _command_words(segment)
         if words:
             program = _program(words[0])
@@ -296,21 +433,21 @@ def _inspect(command, project, depth=0):
                 return "a bare cd leaves the project"
             payload = _shell_payload(program, words)
             if payload is not None:
-                reason = _inspect(payload, project, depth + 1)
+                reason = _inspect(payload, fence, depth + 1)
                 if reason:
                     return reason
         for word in segment:
             for candidate in _candidates(word):
-                if _leaves_project(project, candidate):
+                if _leaves_project(fence, candidate):
                     return f"the path {candidate!r} leaves the project"
     return None
 
 
-def _check_bash(tool_input, project):
+def _check_bash(tool_input, fence):
     command = tool_input.get("command")
     if not isinstance(command, str):
         return _deny("the Bash call carried no command")
-    reason = _inspect(command, project)
+    reason = _inspect(command, fence)
     return _deny(reason) if reason else None
 
 
@@ -323,8 +460,11 @@ def _check_file_call(tool_input, project):
     return None
 
 
-def decide(event, *, project, answer):
-    """The hook output for a PreToolUse `event`, or None for no opinion."""
+def decide(event, *, project, answer, read_roots=(), home=None):
+    """The hook output for a PreToolUse `event`, or None for no opinion.
+
+    Bash commands may also name paths inside `read_roots` and the sandbox
+    `home`; Write and Edit calls stay inside the project."""
     if event.get("hook_event_name") != "PreToolUse":
         return None
     tool = event.get("tool_name")
@@ -339,7 +479,7 @@ def decide(event, *, project, answer):
         return _decision("allow", "answered by the simulated human", updated)
     try:
         if tool == "Bash":
-            return _check_bash(tool_input, project)
+            return _check_bash(tool_input, _Fence(project, read_roots, home))
         if tool in FILE_TOOLS:
             return _check_file_call(tool_input, project)
     except Exception as error:
@@ -372,11 +512,16 @@ def main(argv, stdin_text, env):
         with open(env[CONFIG_VARIABLE], encoding="utf-8") as handle:
             config = json.load(handle)
         project, answer_command = config["project"], config["answer_command"]
+        read_roots = [str(root) for root in config.get("read_roots") or []]
+        home = config.get("home")
     except (KeyError, OSError, ValueError, TypeError):
         if event.get("hook_event_name") == "PreToolUse" and event.get("tool_name") in COVERED_TOOLS:
             return 0, json.dumps(_deny("the hook's configuration could not be read")) + "\n"
         return 0, ""
-    out = decide(event, project=project, answer=_command_answerer(answer_command))
+    out = decide(
+        event, project=project, answer=_command_answerer(answer_command),
+        read_roots=read_roots, home=home if isinstance(home, str) else None,
+    )
     return 0, (json.dumps(out) + "\n" if out is not None else "")
 
 
