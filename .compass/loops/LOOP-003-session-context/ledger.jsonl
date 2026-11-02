@@ -285,3 +285,7 @@
 {"ts": "2026-11-02T01:52:11+00:00", "type": "transition", "from": "sensing", "event": "off-set-point", "to": "gating", "reason": "reading 9493"}
 {"ts": "2026-11-02T01:52:11+00:00", "cost_usd": 0.0, "type": "run", "run_id": "RUN-20261102T015211358175Z", "reading_before": {"value": 9493.0, "items_count": 52}, "reading_after": null, "outcome": "throttled", "reason": "1 unreviewed increments reach the limit 1"}
 {"ts": "2026-11-02T01:52:11+00:00", "type": "transition", "from": "gating", "event": "wip-full", "to": "throttled", "reason": "1 unreviewed increments reach the limit 1"}
+{"ts": "2026-11-02T01:52:12+00:00", "type": "transition", "from": "throttled", "event": "start", "to": "sensing", "reason": "run RUN-20261102T015212186034Z"}
+{"ts": "2026-11-02T01:52:12+00:00", "type": "transition", "from": "sensing", "event": "off-set-point", "to": "gating", "reason": "reading 9493"}
+{"ts": "2026-11-02T01:52:12+00:00", "cost_usd": 0.0, "type": "run", "run_id": "RUN-20261102T015212186034Z", "reading_before": {"value": 9493.0, "items_count": 52}, "reading_after": null, "outcome": "throttled", "reason": "1 unreviewed increments reach the limit 1"}
+{"ts": "2026-11-02T01:52:12+00:00", "type": "transition", "from": "gating", "event": "wip-full", "to": "throttled", "reason": "1 unreviewed increments reach the limit 1"}
