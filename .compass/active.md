@@ -53,7 +53,7 @@ Plan: [[PLAN-021-control-loops]].
 
 Plan: [[PLAN-028-whole-overhead-on-real-projects]]; each task's full text, files and checks are there.
 
-- [ ] TASK-244: You log the sandbox config into your Claude subscription - complexity: S, depends_on: none
+- [x] TASK-244: You log the sandbox config into your Claude subscription - complexity: S, depends_on: none
 - [x] TASK-246: The session driver and the simulated human - complexity: L, depends_on: TASK-245
 - [x] TASK-247: Topics - complexity: L, depends_on: TASK-245
 - [ ] TASK-248: The pilot - complexity: M, depends_on: TASK-244, TASK-246, TASK-247
