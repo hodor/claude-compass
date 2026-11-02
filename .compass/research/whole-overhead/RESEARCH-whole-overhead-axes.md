@@ -1,7 +1,7 @@
 ---
 title: "Compass's Whole Overhead: Research Axes"
 type: research
-status: draft
+status: approved
 confidence: low
 area: tooling
 tags: [tokens, cost, loops, measurement]
@@ -25,9 +25,6 @@ flowchart LR
   S --> A7["7 Biggest area first, as a loop"]
   A1 & A2 & A3 & A4 & A5 & A6 & A7 --> R["Consolidated review, then a plan"]
 ```
-
-> [!IMPORTANT]
-> You decide: should research run on these seven axes? Approving starts one researcher per axis on your subscription; their findings come back as one consolidated review before any plan. Write your own questions under "Your questions": they lead the list.
 
 ## Your questions
 

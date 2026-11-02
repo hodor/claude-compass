@@ -247,3 +247,19 @@ log:
     by: agent
     at: 2026-10-26
     volatile: []
+  - id: sz-2026-11-01-1
+    action: decision
+    shape: folder
+    subject: "specs/tooling/SPEC-027-compass-uses-fewer-tokens/index.md"
+    reason: "SPEC-032 is its first child: the whole overhead the loop drives down"
+    by: agent
+    at: 2026-11-01
+    volatile: []
+  - id: sz-2026-11-01-2
+    action: decision
+    shape: domain
+    subject: "research/whole-overhead"
+    reason: "SPEC-032 research: seven axes plus their review"
+    by: agent
+    at: 2026-11-01
+    volatile: []
