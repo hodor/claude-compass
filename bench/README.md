@@ -21,7 +21,10 @@ bench/
   external/           Cloned benchmark repos (gitignored)
   results/            Per-run output (raw transcripts gitignored, summaries tracked)
   requirements.txt    Python deps for analyze.py
+  overhead/           Whole-overhead measurement on real projects (see overhead/README.md)
 ```
+
+The two wrapper scripts under `agents/`, `compass-agent.sh` and `baseline-agent.sh`, are not on disk. The harness that measures Compass's token overhead on real builds lives in `overhead/`; its README describes it.
 
 ## Arms
 
