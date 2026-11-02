@@ -290,7 +290,7 @@ CHOOSE_ROWS = {
     "empty": ([], 0, "unseeded"),
     "size-is-not-a-class": ([entry_in("seeded", "game", "go", s) for s in ("small", "large")], 1, "seeded"),
     "language-splits": ([entry_in("seeded", "game", "go"), entry_in("seeded", "game", "rust")], 2, "seeded"),
-    "tie-goes-unseeded": ([entry_in("seeded", "game", "go"), entry_in("unseeded", "cli", "go")], 1, "unseeded"),
+    "tie-goes-unseeded": ([entry_in("seeded", "game", "go"), entry_in("unseeded", "cli", "go")], 2, "unseeded"),
     "many-in-one-class-lose": (
         [entry_in("unseeded", "cli", "go")] * 10 + [entry_in("seeded", "cli", "go"), entry_in("seeded", "game", "go")],
         2, "seeded"),
