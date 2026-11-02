@@ -18,6 +18,8 @@ import statistics
 Z_CONFIDENCE = statistics.NormalDist().inv_cdf(0.975)
 Z_POWER = statistics.NormalDist().inv_cdf(0.8)
 WINDOW_SECONDS = 18000
+# Fewest builds per arm a batch plan names; a zero spread still needs a repeat.
+MIN_BATCH = 2
 
 
 def share(pairs):
@@ -132,11 +134,12 @@ def sd_upper_bound(sd, df, confidence=0.8):
 
 
 def batch_size(sigma_w, delta):
-    """Builds per arm to see a drop of `delta` given the within-topic spread `sigma_w`."""
+    """Builds per arm to see a drop of `delta` given the within-topic spread
+    `sigma_w`, at least MIN_BATCH."""
     if sigma_w < 0 or delta <= 0:
         raise ValueError("the batch size needs sigma_w >= 0 and delta > 0")
     exact = (Z_CONFIDENCE + Z_POWER) ** 2 * 2 * sigma_w ** 2 / delta ** 2
-    return math.ceil(round(exact, 9))
+    return max(MIN_BATCH, math.ceil(round(exact, 9)))
 
 
 def batch_plan(share_value, sd, df, relative_drop=0.10):
@@ -150,21 +153,39 @@ def batch_plan(share_value, sd, df, relative_drop=0.10):
     }
 
 
-def bootstrap_interval(topics, *, seed, resamples=2000, confidence=0.95):
-    """Percentile interval of the overall share over topics resampled with replacement."""
+def bootstrap_summary(topics, *, seed, resamples=2000, confidence=0.95):
+    """(low, high, skipped): the percentile interval of the overall share over
+    topics resampled with replacement, and the number of resamples skipped
+    because their compass sum was zero. low and high are None when every
+    resample was skipped."""
     names = list(topics)
     if len(names) < 2:
         raise ValueError("a bootstrap over topics needs two topics")
+    if resamples < 1:
+        raise ValueError("a bootstrap needs at least one resample")
     pairs = {name: _pairs(topics[name]) for name in names}
     rng = random.Random(seed)
-    values = []
+    values, skipped = [], 0
     for _ in range(resamples):
         drawn = [rng.choice(names) for _ in names]
-        values.append(share([pair for name in drawn for pair in pairs[name]]))
+        try:
+            values.append(share([pair for name in drawn for pair in pairs[name]]))
+        except ValueError:
+            skipped += 1
+    if not values:
+        return None, None, skipped
     values.sort()
     tail = (1 - confidence) / 2
     low = values[min(len(values) - 1, int(tail * len(values)))]
     high = values[max(0, math.ceil((1 - tail) * len(values)) - 1)]
+    return low, high, skipped
+
+
+def bootstrap_interval(topics, *, seed, resamples=2000, confidence=0.95):
+    """(low, high) of `bootstrap_summary`; ValueError when every resample was skipped."""
+    low, high, _ = bootstrap_summary(topics, seed=seed, resamples=resamples, confidence=confidence)
+    if low is None:
+        raise ValueError("every resample had a compass total of zero")
     return low, high
 
 

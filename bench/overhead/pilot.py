@@ -51,11 +51,17 @@ ATTEMPTS = 3
 BOOTSTRAP_SEED = 0
 
 _WORD = re.compile(r"\w+")
+# Words separated by white space only.
+_RUN = re.compile(r"\w+(?:[^\S\n]+\w+)*")
 _STOPWORDS = frozenset(
     "a an the of to and or in on for with as at by is are be it its this that from into".split()
 )
 _NAME_SIZES = (2, 3, 4)
 _NODE_LIMIT = 200000
+
+
+class PilotError(Exception):
+    """The run log and the private files disagree."""
 
 
 class _Halt(Exception):
@@ -90,29 +96,35 @@ def _overlaps(first, second):
 
 def _candidates(text, frequency):
     """Name candidates for one item text, best first: phrases of two to four
-    consecutive words of the text, preferring phrases without filler words, with
-    words no other item uses, and shorter ones."""
-    tokens = _tokens(text)
+    consecutive words that no punctuation separates, so each name occurs in the
+    item's wording exactly as written. Phrases without filler words rank first,
+    then those with words no other item uses, then shorter ones."""
     found = {}
-    for size in _NAME_SIZES:
-        for start in range(len(tokens) - size + 1):
-            words = tokens[start:start + size]
-            key = " ".join(word.lower() for word in words)
-            if key in found:
-                continue
-            lowered = [word.lower() for word in words]
-            filler = sum(1 for word in lowered if word in _STOPWORDS)
-            unique = sum(1 for word in lowered if frequency[word] == 1)
-            rank = (filler, -unique, size, sum(frequency[word] for word in lowered), start)
-            found[key] = (rank, " ".join(words))
+    for run in _RUN.finditer(text):
+        words = list(_WORD.finditer(run.group()))
+        for size in _NAME_SIZES:
+            for start in range(len(words) - size + 1):
+                span = words[start:start + size]
+                name = run.group()[span[0].start():span[-1].end()]
+                lowered = [word.group().lower() for word in span]
+                key = " ".join(lowered)
+                if key in found:
+                    continue
+                filler = sum(1 for word in lowered if word in _STOPWORDS)
+                unique = sum(1 for word in lowered if frequency[word] == 1)
+                rank = (
+                    filler, -unique, size, sum(frequency[word] for word in lowered),
+                    run.start() + span[0].start(),
+                )
+                found[key] = (rank, name)
     return [(key, name) for key, (_, name) in sorted(found.items(), key=lambda pair: pair[1][0])]
 
 
 def drive_brief(items, brief_text):
     """The brief the simulated human reads: {"context", "items": [{"id", "name", "detail"}]}.
 
-    Each item gets a name of two to four consecutive words of its text, unique
-    in the list and not a whole-word phrase of any other name, so a message
+    Each item gets a name of two to four consecutive words of its text with no
+    punctuation between them, unique in the list and not a whole-word phrase of any other name, so a message
     that names one item names that item alone. Raises ValueError for an item
     text of fewer than two words and for items that cannot be named apart.
     """
@@ -215,8 +227,21 @@ class _Pilot:
 
     def log(self, **event):
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
+        lead = "" if self._ends_cleanly() else "\n"
         with open(self.log_path, "a", encoding="utf-8", newline="\n") as handle:
-            handle.write(json.dumps(event) + "\n")
+            handle.write(lead + json.dumps(event) + "\n")
+
+    def _ends_cleanly(self):
+        """True when the log is absent, empty or ends in a newline."""
+        try:
+            with open(self.log_path, "rb") as handle:
+                handle.seek(0, 2)
+                if handle.tell() == 0:
+                    return True
+                handle.seek(-1, 2)
+                return handle.read(1) == b"\n"
+        except FileNotFoundError:
+            return True
 
     def events(self, name=None):
         if not self.log_path.exists():
@@ -346,7 +371,9 @@ class _Pilot:
 
     def run_build(self, slot):
         topic_id, arm, run = slot
-        entry = next(e for e in topics.load_pool(self.private_root) if e["id"] == topic_id)
+        entry = next((e for e in topics.load_pool(self.private_root) if e["id"] == topic_id), None)
+        if entry is None:
+            raise PilotError(f"pilot topic {topic_id} is in the run log but not in the pool")
         goal_list = goals.require_goals(topic_id, self.private_root)
         project = self.new_project(self.projects_root)
 
@@ -421,8 +448,12 @@ class _Pilot:
         )
 
     def aggregates(self, closed):
+        """Aggregates over the closed builds. Only builds that ended done and
+        have a judged verdict enter the shares; failed builds are counted."""
+        judged = {self.key(e) for e in self.events("judged")}
+        counted = [e for e in closed if e["exit"] == 0 and self.key(e) in judged]
         by_column = {"weighted": {}, "raw": {}}
-        for event in closed:
+        for event in counted:
             for column, groups in by_column.items():
                 arms = groups.setdefault(event["topic"], {"compass": {}, "baseline": {}})
                 arms[event["arm"]][event["run"]] = event[column]
@@ -447,8 +478,12 @@ class _Pilot:
             out["within_sd"], out["df"] = stats.pooled_within_sd(weighted)
         with contextlib.suppress(ValueError):
             out["between_sd"] = stats.between_topic_sd(weighted)
+        out["skipped_resamples"] = 0
         with contextlib.suppress(ValueError):
-            out["interval"] = stats.bootstrap_interval(weighted, seed=BOOTSTRAP_SEED)
+            low, high, out["skipped_resamples"] = stats.bootstrap_summary(weighted, seed=BOOTSTRAP_SEED)
+            out["interval"] = None if low is None else (low, high)
+        out["failed_builds"] = sum(1 for e in closed if e["exit"] != 0)
+        out["unjudged_builds"] = sum(1 for e in closed if e["exit"] == 0 and self.key(e) not in judged)
         if out["within_sd"] is not None and out["weighted_share"] is not None:
             with contextlib.suppress(ValueError):
                 out["batch"] = stats.batch_plan(out["weighted_share"], out["within_sd"], out["df"])
@@ -514,12 +549,16 @@ def run_pilot(
 
 # report
 
-def _percent(value):
-    return "not computable" if value is None else f"{value * 100:.1f}%"
+def _missing(reason):
+    return f"not computable ({reason})"
 
 
-def _number(value, digits=1):
-    return "not computable" if value is None else f"{value:.{digits}f}"
+def _percent(value, reason="no finished pair of builds"):
+    return _missing(reason) if value is None else f"{value * 100:.1f}%"
+
+
+def _number(value, digits=1, reason="no finished build"):
+    return _missing(reason) if value is None else f"{value:.{digits}f}"
 
 
 def _git_line(repo_root, *args):
@@ -577,6 +616,8 @@ def render_report(result, repo_root):
             lines.append(f"- Probe, {form}: {info['picks']} picks in {info['classes']} distinct kind and language classes.")
     lines += [
         f"- Builds closed: {result.closed}; refused: {result.refused}.",
+        f"- Failed builds, left out of the shares: {agg.get('failed_builds', 0)}; "
+        f"finished builds without a judged verdict, also left out: {agg.get('unjudged_builds', 0)}.",
         "",
         "### Overhead share",
         "",
@@ -595,14 +636,26 @@ def render_report(result, repo_root):
     lines += [
         "",
         "- Bootstrap interval of the weighted share over topics (95%): "
-        + ("not computable" if interval is None else f"{_percent(interval[0])} to {_percent(interval[1])}")
+        + (_missing("needs two topics with finished pairs") if interval is None
+           else f"{_percent(interval[0])} to {_percent(interval[1])}")
+        + (f"; {agg['skipped_resamples']} resamples skipped for a zero Compass total"
+           if agg.get("skipped_resamples") else "")
         + ".",
-        f"- Spread between topics (standard deviation of topic shares): {_number(agg.get('between_sd'), 4)}.",
-        f"- Spread within a topic, between its runs (pooled standard deviation of pair shares, {agg.get('df')} degrees of freedom): {_number(agg.get('within_sd'), 4)}.",
+        "- Spread between topics (standard deviation of topic shares): "
+        f"{_number(agg.get('between_sd'), 4, 'needs two topics with finished pairs')}.",
+        "- Spread within a topic, between its runs (pooled standard deviation of pair shares"
+        + (f", {agg['df']} degrees of freedom" if agg.get("df") else "")
+        + f"): {_number(agg.get('within_sd'), 4, 'needs a topic with two finished runs per arm')}.",
         "",
         "### Batch size",
         "",
     ]
+    if agg.get("within_sd") == 0:
+        lines += [
+            "The within-topic spread was zero in the pilot, so the batch size below is the floor of "
+            f"{stats.MIN_BATCH} builds per arm and says nothing about the spread of a larger sample.",
+            "",
+        ]
     if batch:
         lines += [
             "Builds per arm to see a 10% relative drop in the weighted share at 95% confidence and 80% power:",
@@ -616,13 +669,17 @@ def render_report(result, repo_root):
                 windows = -(-2 * batch[name] // per_window)
                 lines.append(f"- Windows of {WINDOW_HOURS:g} hours for the {name} batch (both arms): {windows}.")
     else:
-        lines.append("Not computable from these builds.")
+        lines.append(
+            _missing("it needs a nonzero share and a spread within topics from repeated finished runs")
+            + "."
+        )
     lines += [
         "",
         "### Cost and time of one build",
         "",
         f"- Mean wall time: {_number(agg.get('mean_seconds'), 0)} seconds; mean turns: {_number(agg.get('mean_turns'), 1)}.",
-        f"- Builds that fit one {WINDOW_HOURS:g}-hour window: {agg.get('builds_per_window')}.",
+        f"- Builds that fit one {WINDOW_HOURS:g}-hour window: "
+        f"{_number(agg.get('builds_per_window'), 0, 'no build with a positive duration')}.",
     ]
     for arm in ARMS:
         lines.append(
