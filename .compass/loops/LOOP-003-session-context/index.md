@@ -145,3 +145,7 @@ The human ruled the loop runs on its own, about 30 runs, checked automatically r
 - An audit of every moved passage found no lost text, protected sections unchanged, no added dashes; it found one wrong pointer (the document forms) and two steps naming a side file without saying to read it first, fixed in `a332f3a`.
 - After a fresh `compass loop usage-scan` (1,540 sessions) the side files carry their real weight: 9,479 per average session, down from 11,969 at the loop's start (-21%).
 - Full suite 2,226 passed; Obsidian 553 and VS Code 135 tests pass; `compass validate` 0 errors. Spend: $10.20 of the $12 cap.
+
+### 2026-11-01: calibration at the stop
+
+- The same scratch-project measure as before the loop (`claude -p "hi" --model sonnet`, first request's input), with Compass 0.34.5: 29,111 tokens without Compass and 38,396 with it, so Compass adds 9,285, down from 12,095 (-2,810, -23%). The sensor's -21% and this -23% agree.
