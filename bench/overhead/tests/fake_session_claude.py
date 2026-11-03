@@ -12,8 +12,11 @@ Spec keys
 mode            "stream" or "oneshot"
 log             path of the JSON-lines log
 init            stream mode: {"skills": n, "agents": m}, the first `system/init`
-turns           stream mode: one entry per user message, in order; a message
-                beyond the list gets a zero-usage "ok" turn. Entry keys:
+                of the first invocation
+turns           stream mode: one entry per turn, in order, shared by every
+                invocation of the spec (a second session goes on where the first
+                stopped, under the next session id, its totals starting at zero);
+                a message beyond the list gets a zero-usage "ok" turn. Entry keys:
                   text     assistant text (default "turn")
                   usage    [input, output, cache_read, cache_write] added to the
                            running totals (default [10, 5, 100, 20])
@@ -25,6 +28,11 @@ turns           stream mode: one entry per user message, in order; a message
                            usage_limit_reached, exit 1)
                   error    true: an `error_max_budget_usd` error result, exit 1
                   crash    true: a truncated JSON line, exit 3
+                  background  list of task ids: a `system/background_tasks_changed`
+                           event listing them, emitted before the turn's result
+                  auto     true: the turn runs right after the previous one,
+                           without a user message (a finished background task),
+                           and opens with a `system/init` of the same session
 replies         one-shot mode: one entry per invocation, in order (the last
                 repeats). A string is the result text; {"limit": true} is a
                 usage-limit end, {"crash": true} a crash.
@@ -124,32 +132,58 @@ def _end_with(turn, text, totals, index):
     return None
 
 
+def _invocation(spec):
+    """The 0-based number of this stream invocation of `spec`."""
+    counter = Path(spec["log"] + ".sessions")
+    number = int(counter.read_text(encoding="utf-8")) if counter.exists() else 0
+    counter.write_text(str(number + 1), encoding="utf-8")
+    return number
+
+
+def _turn_index(spec, advance=False):
+    counter = Path(spec["log"] + ".turn")
+    index = int(counter.read_text(encoding="utf-8")) if counter.exists() else 0
+    if advance:
+        counter.write_text(str(index + 1), encoding="utf-8")
+    return index
+
+
 def run_stream(spec):
+    global SESSION_ID
     cwd = Path(os.getcwd())
-    _emit(_init(spec.get("init", {"skills": 2, "agents": 1}), cwd))
+    number = _invocation(spec)
+    SESSION_ID = fake_claude.SECRET_SESSION_IDS[number % len(fake_claude.SECRET_SESSION_IDS)]
+    counts = spec.get("init", {"skills": 2, "agents": 1}) if number == 0 else {}
+    _emit(_init(counts, cwd))
     totals = [0, 0, 0, 0]
     turns = spec.get("turns", [])
-    index = 0
     while True:
-        line = sys.stdin.readline()
-        if not line:
-            return 0
-        if not line.strip():
-            continue
-        try:
-            message = json.loads(line)
-            assert message["type"] == "user" and message["message"]["role"] == "user"
-            text_in = _text_of(message)
-        except Exception:
-            _log(spec, {"kind": "bad-message", "line": line})
-            return 5
-        _log(spec, {"kind": "message", "text": text_in})
+        index = _turn_index(spec)
+        upcoming = turns[index] if index < len(turns) else {}
+        if not upcoming.get("auto"):
+            line = sys.stdin.readline()
+            if not line:
+                return 0
+            if not line.strip():
+                continue
+            try:
+                message = json.loads(line)
+                assert message["type"] == "user" and message["message"]["role"] == "user"
+                text_in = _text_of(message)
+            except Exception:
+                _log(spec, {"kind": "bad-message", "line": line})
+                return 5
+            _log(spec, {"kind": "message", "text": text_in})
         turn = turns[index] if index < len(turns) else {"text": "ok", "usage": [0, 0, 0, 0]}
+        _turn_index(spec, advance=True)
         index += 1
         for slot, delta in enumerate(turn.get("usage", DEFAULT_USAGE)):
             totals[slot] += delta
         if turn.get("init"):
-            _emit(_init(turn["init"], cwd))
+            counts = turn["init"]
+            _emit(_init(counts, cwd))
+        elif turn.get("auto"):
+            _emit(_init(counts, cwd))
         for relative, content in turn.get("write", {}).items():
             target = cwd / relative
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -157,6 +191,9 @@ def run_stream(spec):
         code = _end_with(turn, turn.get("text", "turn"), totals, index)
         if code is not None:
             return code
+        if "background" in turn:
+            _emit({"type": "system", "subtype": "background_tasks_changed", "session_id": SESSION_ID,
+                   "tasks": [{"task_id": task} for task in turn["background"]]})
         for event in _turn_events(turn.get("text", "turn"), totals, index):
             _emit(event)
 

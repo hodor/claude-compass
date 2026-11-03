@@ -6,12 +6,21 @@ opening message and, at every end of turn, asks the simulated human for the next
 message. The build ends when the human says it is done, when a cap is reached
 (wall time, turns), when the session hits a usage limit, or when it fails.
 
-In the "compass" arm the first message is `/compass:setup`; when that turn ends
-the driver pins `commit:` in the project's `.compass/meta/plugin.yaml` to the
-remote head of the repository, so Compass's start-of-session self-update finds
-the install current, and then sends the opening message without asking the
-human. The `system/init` events of the session give the skill and agent counts
-before and after setup.
+While the session reports background tasks running (its latest
+`system/background_tasks_changed` event lists any), an end of turn goes to no
+one: the driver reads on, since the session starts a turn of its own when a task
+finishes. After BACKGROUND_IDLE_SECONDS with no event the end of turn goes to
+the human after all. The human reads the text of every turn since its last
+message. A turn that ends with no text gets the continue message without the
+human.
+
+In the "compass" arm a setup session, started with `--plugin-dir`, runs
+`/compass:setup` and is closed when its turn ends; the driver pins `commit:` in the project's
+`.compass/meta/plugin.yaml` to the remote head of the repository, so Compass's
+start-of-session self-update finds the install current, and starts the build
+session without `--plugin-dir`, which loads Compass once, from the project's
+`.claude/` install, and receives the opening message. The first and last
+`system/init` events give the skill and agent counts before and after setup.
 
 Before launch a PreToolUse command hook (`hooks/answer_question.py`) is merged
 into the project's `.claude/settings.local.json`; it answers `AskUserQuestion`
@@ -24,9 +33,8 @@ repository changed.
 The session runs with HOME, USERPROFILE, APPDATA, LOCALAPPDATA, TEMP and TMP
 inside a per-project home folder under the private root, holding a `.gitconfig`
 with a build identity, so the real home folder is out of reach.
-the project.
 
-The build session is recorded as one role `build` row; the simulated human
+The setup and build sessions are recorded together as one role `build` row; the simulated human
 records its own sessions, so its tokens stay out of the build's count.
 
     python drive.py PROJECT --arm {compass,baseline} --opening-file FILE
@@ -74,6 +82,9 @@ DEFAULT_MAX_BUDGET_USD = 25
 
 # Seconds the reader waits on the session between checks of the wall clock.
 POLL_SECONDS = 1.0
+# Seconds with no event, background tasks listed, after which the end of turn
+# goes to the human: a task the session never reports finished.
+BACKGROUND_IDLE_SECONDS = 1200
 # Seconds a session gets to exit after its input is closed.
 EXIT_SECONDS = 60.0
 # Seconds the output is read for after the session exited.
@@ -103,6 +114,10 @@ class DriveResult:
     events: list = field(default_factory=list, repr=False)
     stderr: str = field(default="", repr=False)
     reason: str = ""
+
+
+class _Idle(Exception):
+    """No event arrived for BACKGROUND_IDLE_SECONDS while background tasks were listed."""
 
 
 class _Ended(Exception):
@@ -403,8 +418,6 @@ def drive_build(
         "--strict-mcp-config",
         "--max-budget-usd", _budget_argument(max_budget_usd),
     ]
-    if compass:
-        command += ["--plugin-dir", str(repo_root / "plugin")]
 
     install_hook(project)
     read_roots = [str(repo_root / "plugin")] if compass else []
@@ -417,18 +430,28 @@ def drive_build(
     end, resets_at = launch.FAILED, None
     started_at = time.time()
     start = clock()
-    session = _Session(command, str(project), env)
+    background = {"running": False}
+    setup_stderr = ""
+    plugin_args = ["--plugin-dir", str(repo_root / "plugin")]
+    session = _Session(command + plugin_args if compass else command, str(project), env)
 
-    def read_turn():
-        """Read events up to the turn's `result`; return (assistant text, the turn's events)."""
+    def read_turn(idle_limit=None):
+        """Read events up to the turn's `result`; return (assistant text, the turn's events).
+
+        With `idle_limit`, raises _Idle when that many seconds pass with no event
+        before the turn's first one."""
         turn_events = []
         text = ""
+        waiting_since = clock()
         while True:
             try:
                 line = session.lines.get(timeout=POLL_SECONDS)
             except queue.Empty:
-                if clock() - start > max_wall_seconds:
+                now = clock()
+                if now - start > max_wall_seconds:
                     raise _Ended(WALL_TIME) from None
+                if idle_limit is not None and not turn_events and now - waiting_since > idle_limit:
+                    raise _Idle() from None
                 continue
             if line is None:
                 code = session.wait_exit()
@@ -440,7 +463,9 @@ def drive_build(
             for event in launch._parse_events(line):
                 turn_events.append(event)
                 events.append(event)
-                if event.get("type") == "assistant":
+                if event.get("type") == "system" and event.get("subtype") == "background_tasks_changed":
+                    background["running"] = bool(event.get("tasks"))
+                elif event.get("type") == "assistant":
                     said = _assistant_text(event)
                     if said.strip():
                         text = said
@@ -449,32 +474,66 @@ def drive_build(
                         text = event["result"]
                     return text, turn_events
 
-    try:
-        pending = SETUP_MESSAGE if compass else opening_message
-        setup_pending = compass
+    def close_session():
+        session.close_input()
+        if session.process.poll() is None:
+            try:
+                session.wait_exit()
+            except OSError:
+                pass
+        for line in session.drain():
+            events.extend(launch._parse_events(line))
+        if session.process.poll() is None:
+            session.kill()
+
+    def check_caps():
+        if turns >= max_turns:
+            raise _Ended(TURNS)
+        if clock() - start > max_wall_seconds:
+            raise _Ended(WALL_TIME)
+
+    def run_turns():
+        """Read turns until no background task runs; return the texts they ended with."""
+        nonlocal turns
+        texts = []
+        idle_limit = None
         while True:
-            if not session.send(pending):
-                raise _Ended(launch.FAILED)
-            text, turn_events = read_turn()
+            try:
+                text, turn_events = read_turn(idle_limit)
+            except _Idle:
+                background["running"] = False
+                return "\n\n".join(texts)
+            idle_limit = BACKGROUND_IDLE_SECONDS
             turns += 1
             bad = _turn_status(turn_events)
             if bad is not None:
-                end, resets_at = bad
-                break
-            after_setup = setup_pending
-            if setup_pending:
-                setup_pending = False
-                if not pin_commit(project, pinned_sha):
-                    end = launch.FAILED
-                    break
-            if turns >= max_turns:
-                end = TURNS
-                break
-            if clock() - start > max_wall_seconds:
-                end = WALL_TIME
-                break
-            if after_setup:
-                pending = opening_message
+                raise _Ended(*bad)
+            if text.strip():
+                texts.append(text)
+            if not background["running"]:
+                return "\n\n".join(texts)
+            check_caps()
+
+    try:
+        if compass:
+            if not session.send(SETUP_MESSAGE):
+                raise _Ended(launch.FAILED)
+            run_turns()
+            close_session()
+            setup_stderr = session.stderr_text()
+            if not pin_commit(project, pinned_sha):
+                raise _Ended(launch.FAILED)
+            check_caps()
+            background["running"] = False
+            session = _Session(command, str(project), env)
+        pending = opening_message
+        while True:
+            if not session.send(pending):
+                raise _Ended(launch.FAILED)
+            text = run_turns()
+            check_caps()
+            if not text.strip():
+                pending = CONTINUE_MESSAGE
                 continue
             reply = human.reply(text)
             if reply.outcome != launch.DONE:
@@ -489,16 +548,7 @@ def drive_build(
         if end == WALL_TIME:
             session.kill()
     finally:
-        session.close_input()
-        if end == WALL_TIME or session.process.poll() is None:
-            try:
-                session.wait_exit()
-            except OSError:
-                pass
-        for line in session.drain():
-            events.extend(launch._parse_events(line))
-        if session.process.poll() is None:
-            session.kill()
+        close_session()
 
     reason = ""
     changed = plugin_changes(repo_root)
@@ -509,7 +559,7 @@ def drive_build(
     records.record_session(events, role="build", outcome=outcome, arm=arm, plugin_sha=head_sha, private_root=private_root)
     return DriveResult(
         end=end, turns=turns, resets_at=resets_at, init_counts=init_counts(events),
-        events=events, stderr=session.stderr_text(), reason=reason,
+        events=events, stderr=setup_stderr + session.stderr_text(), reason=reason,
     )
 
 

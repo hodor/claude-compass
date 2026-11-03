@@ -141,6 +141,10 @@ def start_entry(cmd):
     return next(entry for entry in fake.read_log(cmd) if entry["kind"] == "start")
 
 
+def start_entries(cmd):
+    return [entry for entry in fake.read_log(cmd) if entry["kind"] == "start"]
+
+
 def build(project, repo, private_root, tmp_path, spec, who, **kwargs):
     cmd = fake.command({"mode": "stream", **spec}, tmp_path / "specs")
     kwargs.setdefault("arm", "baseline")
@@ -315,7 +319,9 @@ def test_compass_arm_runs_setup_first_pins_the_commit_and_records_init_counts(
     project, repo, private_root, tmp_path, git
 ):
     """Adversarial where: the Compass arm must send `/compass:setup` before the
-    topic and not ask the human in between; a `commit:` pinned to local HEAD
+    topic, in a session of its own started with `--plugin-dir`, and start the
+    build session without it, not asking the human in
+    between; a `commit:` pinned to local HEAD
     instead of the remote head (the repo has an unpushed commit) lets the
     self-update fire; the skill and agent counts must be the first and the
     last `system/init`, not the same event twice."""
@@ -335,9 +341,9 @@ def test_compass_arm_runs_setup_first_pins_the_commit_and_records_init_counts(
     spec = {
         "init": {"skills": 1, "agents": 0},
         "turns": [
-            {"text": "setup finished", "init": {"skills": 7, "agents": 3},
+            {"text": "setup finished", "init": {"skills": 40, "agents": 0},
              "write": {".compass/meta/plugin.yaml": plugin_yaml}},
-            {"text": "T2"},
+            {"text": "T2", "init": {"skills": 7, "agents": 3}},
         ],
     }
 
@@ -345,8 +351,11 @@ def test_compass_arm_runs_setup_first_pins_the_commit_and_records_init_counts(
 
     assert messages(cmd) == ["/compass:setup", "OPENING"]
     assert who.asked == ["T2"]
-    argv = start_entry(cmd)["argv"]
-    assert argv[argv.index("--plugin-dir") + 1] == str(repo / "plugin")
+    starts = start_entries(cmd)
+    assert len(starts) == 2
+    setup_argv, build_argv = starts[0]["argv"], starts[1]["argv"]
+    assert setup_argv[setup_argv.index("--plugin-dir") + 1] == str(repo / "plugin")
+    assert "--plugin-dir" not in build_argv
     saved = (project / ".compass" / "meta" / "plugin.yaml").read_text(encoding="utf-8")
     assert f"commit: {remote_head}" in saved
     assert local_head not in saved
@@ -411,3 +420,95 @@ def test_human_tokens_get_their_own_rows_and_stay_out_of_the_build_row(
     }
     assert human_rows[0]["models"][fake_claude.MAIN_MODEL]["input"] == 900
     assert build_rows[0]["outcome"] == "done"
+
+
+def test_no_one_is_asked_while_background_tasks_run(project, repo, private_root, tmp_path):
+    """Adversarial where: an end of turn with a background agent still running
+    goes to the human, who answers "ok" to a turn that asked nothing, and the
+    turn the finished task starts is answered a second time; the human must
+    read both turns' text once, after the last task ends."""
+    who = ScriptedHuman([human.Reply(text="done", done=True)])
+    spec = {"turns": [
+        {"text": "started the research agents", "background": ["a1", "a2"]},
+        {"text": "", "auto": True, "background": ["a2"]},
+        {"text": "research is in", "auto": True, "background": []},
+    ]}
+
+    result, cmd = build(project, repo, private_root, tmp_path, spec, who)
+
+    assert messages(cmd) == ["OPENING"]
+    assert who.asked == ["started the research agents\n\nresearch is in"]
+    assert result.end == drive.HUMAN_DONE
+    assert result.turns == 3
+
+
+def test_a_turn_with_no_text_is_continued_without_the_human(project, repo, private_root, tmp_path):
+    """Adversarial where: the human is shown an empty message and, reading
+    nothing to answer, invents a new request."""
+    who = ScriptedHuman([human.Reply(text="done", done=True)])
+    spec = {"turns": [{"text": ""}, {"text": "T2"}]}
+
+    result, cmd = build(project, repo, private_root, tmp_path, spec, who)
+
+    assert who.asked == ["T2"]
+    assert messages(cmd) == ["OPENING", drive.CONTINUE_MESSAGE]
+
+
+def test_the_setup_and_build_sessions_are_counted_once_each(project, repo, private_root, tmp_path, git):
+    """Adversarial where: a record that keeps only the last session drops the
+    setup session's tokens, or one that reads totals across the restart as one
+    running count loses or doubles them."""
+    remote = tmp_path / "remote.git"
+    remote.mkdir()
+    git(remote, "init", "-q", "--bare")
+    git(repo, "remote", "add", "origin", str(remote))
+    git(repo, "push", "-q", "origin", "HEAD")
+    spec = {"turns": [
+        {"text": "setup finished", "usage": [100, 0, 0, 0],
+         "write": {".compass/meta/plugin.yaml": "commit: 0\n"}},
+        {"text": "T2", "usage": [7, 0, 0, 0]},
+        {"text": "T3", "usage": [5, 0, 0, 0]},
+    ]}
+    who = ScriptedHuman([human.Reply(text="more"), human.Reply(text="done", done=True)])
+
+    build(project, repo, private_root, tmp_path, spec, who, arm="compass")
+
+    row = [r for r in read_records(private_root) if r["role"] == "build"][0]
+    inputs = sum(counts["input"] for counts in row["models"].values())
+    assert inputs == 100 + 7 + 5
+
+
+def test_a_background_task_that_never_reports_goes_to_the_human_after_the_idle_limit(
+    project, repo, private_root, tmp_path, monkeypatch,
+):
+    """Adversarial where: the session lists a task it never reports finished
+    (a monitor left running), and the driver waits for a turn that never comes
+    until the wall-time cap ends the build."""
+    monkeypatch.setattr(drive, "BACKGROUND_IDLE_SECONDS", 150)
+    monkeypatch.setattr(drive, "POLL_SECONDS", 0.05)
+    who = ScriptedHuman([human.Reply(text="done", done=True)])
+    spec = {"turns": [{"text": "watching the server", "background": ["m1"]}]}
+
+    result, cmd = build(
+        project, repo, private_root, tmp_path, spec, who, clock=Ticker(40), max_wall_seconds=10 ** 9,
+    )
+
+    assert who.asked == ["watching the server"]
+    assert result.end == drive.HUMAN_DONE
+
+
+def test_self_started_turns_keep_the_session_counts(project, repo, private_root, tmp_path):
+    """Adversarial where: the `system/init` that opens a self-started turn, in
+    the same session, is read as a new session (tokens counted twice) or as the
+    after-setup skill count."""
+    who = ScriptedHuman([human.Reply(text="done", done=True)])
+    spec = {"init": {"skills": 4, "agents": 2}, "turns": [
+        {"text": "started", "background": ["a1"], "usage": [10, 0, 0, 0]},
+        {"text": "finished", "auto": True, "background": [], "usage": [3, 0, 0, 0]},
+    ]}
+
+    result, cmd = build(project, repo, private_root, tmp_path, spec, who)
+
+    assert result.init_counts == {"before": {"skills": 4, "agents": 2}, "after": {"skills": 4, "agents": 2}}
+    row = [r for r in read_records(private_root) if r["role"] == "build"][0]
+    assert sum(counts["input"] for counts in row["models"].values()) == 13
