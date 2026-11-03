@@ -113,6 +113,9 @@ class Clock:
         return self.now
 
 
+INIT_COUNTS = {"before": {"skills": 3, "agents": 1}, "after": {"skills": 40, "agents": 14}}
+
+
 class World:
     """Fakes for pick, freeze, judge and drive that write the private files the
     real ones write, and remember every call."""
@@ -204,6 +207,7 @@ class World:
             "end": end, "turns": 30 if compass else 10,
             "resets_at": RESETS_AT if code == 3 else None,
             "session_id": SENTINEL_SESSION, "text": SENTINEL_OUTPUT,
+            "reason": "" if code == 0 else "the session ended", "init_counts": INIT_COUNTS if compass else None,
         }))
         if code != 3:
             self.done_runs[key] = run
@@ -543,3 +547,21 @@ def test_a_later_build_that_meets_no_goal_item_does_not_block(repo, private_root
 
     assert result.status == "complete"
     assert len(world.drives) == 12
+
+
+def test_a_closed_build_logs_how_it_ended_and_what_its_session_loaded(repo, private_root, projects_root):
+    """Adversarial where: the drive's end, its reason and the session's skill
+    and agent counts are printed but dropped, so a failed build cannot be
+    diagnosed and a double plugin load cannot be seen from the run log."""
+    world = World(private_root)
+    world.exits[3] = 1
+
+    go(world, repo, private_root, projects_root)
+
+    closed = log_events(private_root, "build-closed")
+    compass = [e for e in closed if e["arm"] == "compass"]
+    assert compass and all(e["init_counts"] == INIT_COUNTS for e in compass)
+    failed = [e for e in closed if e["exit"] == 1]
+    assert len(failed) == 1
+    assert failed[0]["end"] == "failed" and failed[0]["reason"] == "the session ended"
+    assert all(e["end"] == "human-done" for e in closed if e["exit"] == 0)

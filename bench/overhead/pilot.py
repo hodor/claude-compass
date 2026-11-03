@@ -424,7 +424,8 @@ class _Pilot:
         rows = self.new_rows(marks, arm)
         event = {
             "event": "build-closed", "topic": topic_id, "arm": arm, "run": run,
-            "exit": 0 if code == 0 else 1, "seconds": seconds, "turns": summary.get("turns"),
+            "exit": 0 if code == 0 else 1, "end": summary.get("end"), "reason": summary.get("reason"),
+            "init_counts": summary.get("init_counts"), "seconds": seconds, "turns": summary.get("turns"),
             "weighted": sum(row.get("weighted", 0) for row in rows),
             "raw": sum(_raw_total(row) for row in rows),
             "project": str(project),

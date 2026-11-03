@@ -553,7 +553,10 @@ def main(argv=None):
     except (launch.Refused, records.Refused, OSError, ValueError) as error:
         sys.stderr.write(f"refused: {error}\n")
         return EXIT_REFUSED
-    print(json.dumps({"end": result.end, "turns": result.turns, "resets_at": result.resets_at, "reason": result.reason}))
+    print(json.dumps({
+        "end": result.end, "turns": result.turns, "resets_at": result.resets_at, "reason": result.reason,
+        "init_counts": result.init_counts,
+    }))
     if result.end == HUMAN_DONE:
         return 0
     return EXIT_USAGE_LIMIT if result.end == launch.USAGE_LIMIT else 1
