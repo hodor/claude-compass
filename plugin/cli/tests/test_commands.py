@@ -79,6 +79,23 @@ class NextNumTests(unittest.TestCase):
             next_num.run(["spec", "SPEC-002-tile"])
         self.assertEqual(out.getvalue().strip(), "003")
 
+    def test_topic_folder_members_share_the_type_dir_number_space(self):
+        """Adversarial where: specs moved into topic folders drop out of the
+        count and their numbers are handed out again."""
+        root = make_vault(self)
+        write(root, "specs/SPEC-018-root.md")
+        write(root, "specs/notes-page/index.md", "---\ntype: domain\n---\n")
+        write(root, "specs/notes-page/SPEC-019-a.md")
+        write(root, "specs/notes-page/SPEC-020-b.md")
+        write(root, "specs/net/cache/SPEC-017-deep.md")
+        write(root, "specs/net/SPEC-005-tile/SPEC-090-child.md")
+        write(root, "specs/.hidden/SPEC-099-x.md")
+        with_vault_env(self, root)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(next_num.run(["spec"]), 0)
+        self.assertEqual(out.getvalue().strip(), "021")
+
     def test_unnumbered_type_errors(self):
         root = make_vault(self)
         with_vault_env(self, root)

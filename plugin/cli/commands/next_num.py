@@ -4,7 +4,10 @@ Computes max+1 from the filesystem, scoped to a single folder so numbering is
 local per folder (a subtree stays portable). The optional scope is either a
 unit folder name (numbering runs inside the unit's own type dir, e.g.
 `next-num spec compass-cli` scans `compass-cli/specs/`) or a folder-artifact
-name inside the root type dir. Scopes that traverse outside the vault are
+name inside the root type dir. Topic folders (unnumbered subfolders, as
+`make-domain` creates) share their type dir's number space, so the scan
+descends into them; a numbered folder artifact keeps its own local numbers and
+is counted by its own number only. Scopes that traverse outside the vault are
 rejected. Reads nothing but directory names and the unit marker.
 """
 
@@ -52,13 +55,21 @@ def run(args):
         base = vault_root / type_dir
 
     pattern = re.compile(rf"^{prefix}-(\d+)-")
-    highest = 0
-    if base.is_dir():
-        for entry in base.iterdir():
-            stem = entry.stem if entry.is_file() else entry.name
-            match = pattern.match(stem)
-            if match:
-                highest = max(highest, int(match.group(1)))
+    highest = _highest(base, pattern) if base.is_dir() else 0
 
     sys.stdout.write(f"{highest + 1:03d}\n")
     return 0
+
+
+def _highest(folder, pattern):
+    """Highest number among the artifacts in `folder` and its topic folders."""
+    top = 0
+    for entry in folder.iterdir():
+        if entry.name.startswith("."):
+            continue
+        match = pattern.match(entry.stem if entry.is_file() else entry.name)
+        if match:
+            top = max(top, int(match.group(1)))
+        elif entry.is_dir():
+            top = max(top, _highest(entry, pattern))
+    return top
