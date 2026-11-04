@@ -170,6 +170,20 @@ def drive_brief(items, brief_text):
     }
 
 
+# Ends of a build stopped by a cap while it was still working. Such a build
+# holds real work and its tokens up to the cap, so it is judged and counted.
+CAPPED_ENDS = frozenset({drive_module.WALL_TIME, drive_module.TURNS})
+
+
+def _capped(event):
+    return event["exit"] != 0 and event.get("end") in CAPPED_ENDS
+
+
+def _finished(event):
+    """True for a build that ended done or was stopped by a cap."""
+    return event["exit"] == 0 or _capped(event)
+
+
 def _met_any(counts):
     """True when judged `counts` hold at least one goal item met or partly met."""
     if not isinstance(counts, dict):
@@ -363,23 +377,23 @@ class _Pilot:
         smoke = set(slots[:2])
         closed = {self.key(e): e for e in self.events("build-closed")}
         refused = {self.key(e) for e in self.events("build-refused")}
-        if any(slot in closed and closed[slot]["exit"] != 0 for slot in smoke):
+        if any(slot in closed and not _finished(closed[slot]) for slot in smoke):
             raise _Halt("blocked")
         judged = {self.key(e): e.get("counts") for e in self.events("judged")}
         for slot in slots:
             if slot in closed and slot not in judged:
                 judged[slot] = self.judge_build(closed[slot])
-        if any(slot in judged and not _met_any(judged[slot]) for slot in smoke):
+        if any(slot in judged and not _met_any(judged[slot]) and not _capped(closed[slot]) for slot in smoke):
             raise _Halt("blocked")
         for slot in slots:
             if slot in closed or slot in refused:
                 continue
             event = self.run_build(slot)
-            if slot in smoke and event["exit"] != 0:
+            if slot in smoke and not _finished(event):
                 self.log(event="blocked", topic=slot[0], arm=slot[1], run=slot[2], exit=event["exit"])
                 raise _Halt("blocked")
             counts = self.judge_build(event)
-            if slot in smoke and not _met_any(counts):
+            if slot in smoke and not _met_any(counts) and not _capped(event):
                 self.log(
                     event="blocked", topic=slot[0], arm=slot[1], run=slot[2],
                     reason="the smoke build met no goal item, even partly",
@@ -493,10 +507,11 @@ class _Pilot:
         )
 
     def aggregates(self, closed):
-        """Aggregates over the closed builds. Only builds that ended done and
-        have a judged verdict enter the shares; failed builds are counted."""
+        """Aggregates over the closed builds. Builds that ended done or were
+        stopped by a cap, and have a judged verdict, enter the shares; failed
+        and capped builds are counted."""
         judged = {self.key(e) for e in self.events("judged")}
-        counted = [e for e in closed if e["exit"] == 0 and self.key(e) in judged]
+        counted = [e for e in closed if _finished(e) and self.key(e) in judged]
         by_column = {"weighted": {}, "raw": {}}
         for event in counted:
             for column, groups in by_column.items():
@@ -527,8 +542,9 @@ class _Pilot:
         with contextlib.suppress(ValueError):
             low, high, out["skipped_resamples"] = stats.bootstrap_summary(weighted, seed=BOOTSTRAP_SEED)
             out["interval"] = None if low is None else (low, high)
-        out["failed_builds"] = sum(1 for e in closed if e["exit"] != 0)
-        out["unjudged_builds"] = sum(1 for e in closed if e["exit"] == 0 and self.key(e) not in judged)
+        out["failed_builds"] = sum(1 for e in closed if not _finished(e))
+        out["unjudged_builds"] = sum(1 for e in closed if _finished(e) and self.key(e) not in judged)
+        out["capped_by_arm"] = {arm: sum(1 for e in counted if e["arm"] == arm and _capped(e)) for arm in ARMS}
         if out["within_sd"] is not None and out["weighted_share"] is not None:
             with contextlib.suppress(ValueError):
                 out["batch"] = stats.batch_plan(out["weighted_share"], out["within_sd"], out["df"])
@@ -661,6 +677,22 @@ def _git_line(repo_root, *args):
     return done.stdout.strip() if done.returncode == 0 and done.stdout.strip() else None
 
 
+def _capped_line(capped):
+    """The report line on builds stopped by a cap. A capped Compass build
+    understates the Compass tokens and a capped baseline build the baseline
+    tokens, so each kind bounds the share from one side."""
+    compass, baseline = capped.get("compass", 0), capped.get("baseline", 0)
+    line = (f"- Builds stopped by the wall-time or turn cap and counted up to it: "
+            f"{compass} with Compass, {baseline} without")
+    if compass and not baseline:
+        return line + "; the shares below are lower bounds."
+    if baseline and not compass:
+        return line + "; the shares below are upper bounds."
+    if compass and baseline:
+        return line + "; the shares below are bounded from neither side."
+    return line + "."
+
+
 def render_report(result, repo_root):
     agg = result.aggregates or {}
     batch = agg.get("batch")
@@ -710,6 +742,7 @@ def render_report(result, repo_root):
         f"- Builds closed: {result.closed}; refused: {result.refused}.",
         f"- Failed builds, left out of the shares: {agg.get('failed_builds', 0)}; "
         f"finished builds without a judged verdict, also left out: {agg.get('unjudged_builds', 0)}.",
+        _capped_line(agg.get("capped_by_arm") or {}),
         "",
         "### Overhead share",
         "",

@@ -125,6 +125,7 @@ class World:
         self.fill = {"seeded": seeded_classes, "unseeded": unseeded_classes}
         self.clock = Clock()
         self.exits = {}  # 1-based drive call number -> exit code
+        self.capped = set()  # 1-based drive call numbers stopped by the wall-time cap
         self.limit = None  # (stage, nth call of that stage), raised once
         self.picks, self.pick_ok, self.freezes, self.freeze_ok = [], [], [], []
         self.judges, self.judge_ok, self.drives = [], [], []
@@ -183,7 +184,7 @@ class World:
         topic_id = brief["context"].rsplit(" ", 1)[1]
         arm = option("--arm")
         self.drives.append({"project": argv[0], "arm": arm, "topic": topic_id, "argv": list(argv)})
-        code = self.exits.get(call, 0)
+        code = 1 if call in self.capped else self.exits.get(call, 0)
         if code == 2:
             return 2
         key = (topic_id, arm)
@@ -202,7 +203,7 @@ class World:
             private_root=option("--private-root"),
         )
         self.clock.now += 120 if compass else 80
-        end = {0: "human-done", 1: "failed", 3: "usage-limit"}[code]
+        end = "wall-time" if call in self.capped else {0: "human-done", 1: "failed", 3: "usage-limit"}[code]
         print(json.dumps({
             "end": end, "turns": 30 if compass else 10,
             "resets_at": RESETS_AT if code == 3 else None,
@@ -613,3 +614,46 @@ def test_the_report_says_where_the_tokens_go_per_arm_from_saved_profiles(repo, p
     assert SENTINEL_TEXT not in text and "secretskill" not in text
     saved = sorted((private_root / "pilot" / "profiles").glob("*.json"))
     assert len(saved) == 12
+
+
+@pytest.mark.parametrize("capped_call", [1, 2])
+def test_a_smoke_build_stopped_by_the_wall_cap_is_counted_not_blocking(capped_call, repo, private_root, projects_root):
+    """Adversarial where: a build that worked until the cap blocks the pilot
+    as if the harness failed, or its tokens are dropped from the shares."""
+    world = World(private_root)
+    world.capped.add(capped_call)
+
+    result = go(world, repo, private_root, projects_root)
+
+    assert result.status == "complete"
+    assert len(world.drives) == 12
+    agg = result.aggregates
+    assert agg["failed_builds"] == 0
+    arm = world.drives[capped_call - 1]["arm"]
+    assert agg["capped_by_arm"][arm] == 1
+    assert sum(agg["capped_by_arm"].values()) == 1
+    assert agg["weighted_share"] is not None
+    assert len(agg["topic_shares"]["weighted"]) == 3
+
+
+@pytest.mark.parametrize("capped, bound", [
+    ({"compass": 1, "baseline": 0}, "lower bounds"),
+    ({"compass": 0, "baseline": 2}, "upper bounds"),
+    ({"compass": 1, "baseline": 1}, "neither side"),
+    ({}, "0 with Compass, 0 without."),
+])
+def test_the_capped_line_says_which_side_the_caps_bound_the_share(capped, bound):
+    assert bound in pilot._capped_line(capped)
+
+
+def test_a_capped_smoke_build_that_met_no_goal_yet_does_not_block(repo, private_root, projects_root):
+    """Adversarial where: a build stopped mid-work by the cap, with no goal
+    item reached yet, is taken for a harness fault and halts the pilot."""
+    world = EmptyJudgeWorld(private_root, empty_calls=[1, 2])
+    world.capped.add(1)
+    world.capped.add(2)
+
+    result = go(world, repo, private_root, projects_root)
+
+    assert result.status == "complete"
+    assert len(world.drives) == 12
