@@ -171,7 +171,7 @@ When an agent is instructed to commit:
 - Never commit `.compass/tmp/` or draft handoffs not ready for source control.
 - Imperative mood. Explain *why* (from conversation), not just *what* (from diff).
 - After committing: `git log --oneline -3` to confirm.
-- Only commit when explicitly instructed.
+- Commit when instructed. A vault document about to go to `compass review` is committed locally first, without asking, since a review diffs against the commit. Push only when asked.
 
 ## Status transitions
 

@@ -1,11 +1,12 @@
 """`compass review <file>... [--why <path>=<line>]... [--title T] [--timeout S]
-[--no-wait]` and `compass review --status`, `compass review --cancel <id>` and
-`compass review --install` - put documents in front of the human in a visual
-md interface and wait for the verdict.
+[--no-wait]` and `compass review --status`, `compass review --cancel <id>`,
+`compass review --install` and `compass review --editor <name>` - put
+documents in front of the human in a visual md interface and wait for the
+verdict.
 
 `review <file>...` writes one request (see `reviewlib`) for the files in the
-order given, delivers it to the first review surface configured for them (see
-`review_surfaces`), and waits. Every file must be committed, sit in the same
+order given, delivers it to the review surface selected for the vault (see
+`reviewlib.selected_surface` and `review_surfaces`), and waits. Every file must be committed, sit in the same
 `.compass` vault and the same git repository, and be shown by the same
 surface; the first file that fails names the refusal. A repeated path counts
 once. With several files the request also carries `session` (the
@@ -40,9 +41,12 @@ The first stdout line is always one of:
   `requested <id> <file>`   the request went out
   `not configured: <why>`   nothing was sent; ask in the terminal instead
 
-A surface checks, and installs when it can, the add-on that shows requests
-before one is written; a check or install that fails makes the surface not
-configured and the next surface is tried.
+The selected surface is the one `review_editor` names in the vault's
+`meta/plugin.yaml`; with no setting, the first surface ready without
+installing anything, else the first one that can be installed. It checks, and
+installs when it can, the add-on that shows requests before one is written;
+a check or install that fails prints `not configured: <why>`, with the step
+only the human can take when there is one.
 
 The request goes to the `.compass` vault that holds the documents. A new
 request for a document already waiting withdraws the older request, several
@@ -79,13 +83,29 @@ file followed by `(+N more)` when the request lists N more.
 which ends its waiter with `withdrawn <id>` and clears the review in the
 surface; an id that is not pending prints a message on stderr.
 `--install` runs every surface's install, printing one `<surface>: <what was
-done>` line each. A surface may need a step only the human can take, such
-as turning community plugins on in Obsidian; `compass doctor` names it.
+done>` line each. `--install --selected` is what an update does: the editors
+that install their extension once per user (VS Code, Cursor) are left alone
+unless they are the project's selected editor. A surface may need a step only
+the human can take, such as turning community plugins on in Obsidian;
+`compass doctor` names it.
 
-Exit 0 on a verdict, on `--no-wait`, `--status`, `--cancel` and `--install`;
-1 when not configured, on timeout, on a withdrawn request, on a usage error,
-on a `--cancel` of an id that is not pending, or when `--status`, `--cancel`
-or `--install` finds no `.compass` vault; never 2.
+`--editor <name>` makes `<name>` (`obsidian`, `vscode`, `cursor`) the editor
+the project's reviews open in: it writes or replaces the top-level
+`review_editor` line in `.compass/meta/plugin.yaml`, leaving every other line
+as it is, and prepares that editor for the project, printing one line for
+what was done. For Obsidian that gives `.compass` a `.obsidian/` folder when
+no vault holds the project and installs and enables the plugin; Obsidian's
+own vault list is not edited. When Obsidian does not list the vault yet, the
+last line is the one step only the human can take: `In Obsidian: Open folder
+as vault, <path>, then turn on Compass Review`. A name that is not a review
+editor exits 1 and changes nothing; an editor that could not be prepared exits 1
+with the setting written.
+
+Exit 0 on a verdict, on `--no-wait`, `--status`, `--cancel`, `--install` and
+`--editor`; 1 when not configured, on timeout, on a withdrawn request, on a
+usage error, on a `--cancel` of an id that is not pending, on an `--editor`
+name that is not a review editor, or when `--status`, `--cancel`, `--install`
+or `--editor` finds no `.compass` vault; never 2.
 """
 
 import json
@@ -103,12 +123,14 @@ ACK_SECONDS = 60
 USAGE = ("usage: compass review <file>... [--why <path>=<line>]... [--title T] [--timeout S] [--no-wait]\n"
          "       compass review --status\n"
          "       compass review --cancel <id>\n"
-         "       compass review --install\n")
+         "       compass review --install [--selected]\n"
+         "       compass review --editor <obsidian|vscode|cursor>\n")
 
 
 def _parse(args):
     opts = {"files": [], "whys": [], "title": None, "timeout": None, "wait": True,
-            "status": False, "install": False, "cancel": None}
+            "status": False, "install": False, "cancel": None, "editor": None,
+            "selected": False}
     i = 0
     while i < len(args):
         arg = args[i]
@@ -116,11 +138,18 @@ def _parse(args):
             opts["status"] = True
         elif arg == "--install":
             opts["install"] = True
+        elif arg == "--selected":
+            opts["selected"] = True
         elif arg == "--cancel":
             if i + 1 >= len(args):
                 raise ValueError("--cancel needs a request id")
             i += 1
             opts["cancel"] = args[i]
+        elif arg == "--editor":
+            if i + 1 >= len(args):
+                raise ValueError("--editor needs an editor name")
+            i += 1
+            opts["editor"] = args[i]
         elif arg == "--no-wait":
             opts["wait"] = False
         elif arg in ("--title", "--timeout", "--why"):
@@ -143,9 +172,11 @@ def _parse(args):
         else:
             opts["files"].append(arg)
         i += 1
-    modes = [opts["status"], opts["install"], opts["cancel"] is not None]
+    modes = [opts["status"], opts["install"], opts["cancel"] is not None, opts["editor"] is not None]
     if sum(modes) > 1:
-        raise ValueError("--status, --cancel and --install are separate runs")
+        raise ValueError("--status, --cancel, --install and --editor are separate runs")
+    if opts["selected"] and not opts["install"]:
+        raise ValueError("--selected goes with --install")
     if not any(modes) and not opts["files"]:
         raise ValueError("name the file to review")
     return opts
@@ -321,6 +352,29 @@ def _wait(request, request_path, documents, timeout, root, vault, surface_root, 
     return 1
 
 
+def _editor(name):
+    """`--editor <name>`: make it the project's review editor and print what
+    was done and the step left for the human."""
+    try:
+        vault = vaultlib.find_vault_root()
+    except FileNotFoundError:
+        print("no .compass vault found")
+        return 1
+    try:
+        lines, step = reviewlib.set_editor(vault, name)
+    except ValueError as exc:
+        sys.stderr.write(f"compass review: {exc}\n")
+        return 1
+    except OSError as exc:
+        sys.stderr.write(f"compass review: could not write plugin.yaml ({exc})\n")
+        return 1
+    for line in lines:
+        print(line)
+    if step:
+        print(step)
+    return 1 if any(line.startswith(f"{name.strip().lower()}: failed") for line in lines) else 0
+
+
 def _same(a, b):
     return os.path.normcase(os.path.normpath(str(a))) == os.path.normcase(os.path.normpath(str(b)))
 
@@ -384,9 +438,11 @@ def run(args):
         except FileNotFoundError:
             print("no .compass vault found")
             return 1
-        for line in reviewlib.install(vault):
+        for line in reviewlib.install(vault, automatic=opts["selected"]):
             print(line)
         return 0
+    if opts["editor"] is not None:
+        return _editor(opts["editor"])
 
     try:
         documents, surface, context, compass_vault, root, commit = _prepare(given)

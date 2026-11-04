@@ -273,25 +273,33 @@ class ReviewEditorSetting(SurfaceProject):
                 self.write_setting(content)
                 self.assertEqual(self.sent_to(self.obsidian, self.vscode, self.cursor), [expected])
 
-    def test_a_setting_that_cannot_be_honoured_leaves_the_usual_order(self):
+    def test_a_setting_that_cannot_be_honoured_sends_nothing_elsewhere(self):
         """Adversarial where: a setting naming an editor that is not set up,
-        one no surface has, one set up only for other documents, or a
-        plugin.yaml that cannot be read raises or sends nothing instead of
-        falling back to the first editor set up."""
+        one no surface has, or one set up only for other documents sends the
+        review to some other editor, which the human is not looking at, or
+        raises instead of printing the reason; a plugin.yaml that cannot be
+        read is no setting."""
         cursor_off = editor("cursor", self.tmp, set_up=False)
         rows = {
             "names an editor that is not set up": (
-                PLUGIN_YAML + "review_editor: cursor\n", [self.obsidian, self.vscode, cursor_off], "obsidian"),
+                PLUGIN_YAML + "review_editor: cursor\n", [self.obsidian, self.vscode, cursor_off], "cursor"),
             "names an editor no surface has": (
-                PLUGIN_YAML + "review_editor: emacs\n", [self.obsidian, self.vscode, self.cursor], "obsidian"),
+                PLUGIN_YAML + "review_editor: emacs\n", [self.obsidian, self.vscode, self.cursor], "emacs"),
             "names an editor set up for other documents only": (
                 PLUGIN_YAML + "review_editor: vscode\n",
-                [fake_surface("vscode", "plans"), fake_surface("cursor", "specs")], "cursor"),
+                [fake_surface("vscode", "plans"), fake_surface("cursor", "specs")], "vscode"),
         }
-        for name, (content, surfaces, expected) in rows.items():
+        for name, (content, surfaces, named) in rows.items():
             with self.subTest(name):
                 self.write_setting(content)
-                self.assertEqual(self.sent_to(*surfaces), [expected])
+                for surface in surfaces:
+                    surface.delivered.clear()
+                self.register(*surfaces)
+                code, out, _ = self.run_cli("review", str(self.spec), "--no-wait")
+                self.assertEqual(code, 1, out)
+                self.assertTrue(out.startswith("not configured:"), out)
+                self.assertIn(named, out)
+                self.assertEqual([s.NAME for s in surfaces if s.delivered], [])
         with self.subTest("a plugin.yaml that is not text"):
             self.write_setting(b"\xff\xfe\x00review_editor: cursor\n\x80\x81")
             self.register(self.obsidian, self.vscode, self.cursor)
