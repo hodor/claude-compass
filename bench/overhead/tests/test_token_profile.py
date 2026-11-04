@@ -178,7 +178,9 @@ def test_sessions_are_classified_and_a_subagents_skills_stay_out_of_the_build_ph
     (agents / "agent-a1.meta.json").write_text(json.dumps({"agentType": "researcher"}), encoding="utf-8")
     write_session(agents, "agent-a1", [
         user_text("research brief"),
-        user_text("w" * 3000, meta=True),
+        user_text("<command-message>methodology</command-message>\n<command-name>methodology</command-name>\n"
+                  + "w" * 3000, meta=True),
+        user_text("The coordinator sent a message while you were working", meta=True),
         assistant("a1", usage(write=200, output=30), [
             {"type": "tool_use", "id": "t9", "name": "Skill", "input": {"skill": "lessons"}}], sidechain=True),
     ])
@@ -189,7 +191,8 @@ def test_sessions_are_classified_and_a_subagents_skills_stay_out_of_the_build_ph
     assert summary["by_kind"]["subagent:researcher"]["output"] == 30
     assert "lessons" not in summary["by_phase"]
     assert summary["by_phase"]["subagent:researcher"]["output"] == 30
-    assert "skill body:preloaded" in summary["by_source"]
+    assert summary["by_source"]["skill body:methodology"]["cache_write"] > 0
+    assert "user:meta" in summary["by_source"]
     assert summary["by_phase"]["compass:spec"]["output"] > 0
 
 
@@ -232,10 +235,14 @@ def test_file_paths_fall_into_compass_folders_install_files_or_the_project(path,
     assert token_profile._path_source(path) == expected
 
 
-def test_an_empty_or_missing_folder_profiles_to_zero(tmp_path):
-    summary = token_profile.profile_folder(tmp_path / "missing")
-    assert summary["weighted"] == 0
-    assert summary["sessions"] == {}
+def test_an_empty_or_missing_folder_is_refused_so_it_cannot_dilute_a_mean(tmp_path):
+    """Adversarial where: a project whose transcripts are missing profiles as
+    zero tokens and pulls its arm's mean down."""
+    with pytest.raises(ValueError):
+        token_profile.profile_folder(tmp_path / "missing")
+    (tmp_path / "empty").mkdir()
+    with pytest.raises(ValueError):
+        token_profile.profile_folder(tmp_path / "empty")
 
 
 @pytest.mark.parametrize("source, expected", [
@@ -279,6 +286,7 @@ def test_reading_a_skill_file_in_the_main_session_moves_the_phase_to_that_skill(
     the first skill, in either path spelling."""
     write_session(folder, SECRET_SESSION, [
         user_text("<command-message>compass:vision</command-message>\n<command-name>/compass:vision</command-name>"),
+        user_text(token_profile.SKILL_BODY_START + ": vision skill text", meta=True),
         assistant("m1", usage(write=100, output=10), [
             {"type": "tool_use", "id": "t1", "name": "Read", "input": {"file_path": path}}]),
         tool_result("t1", "plan skill text"),
@@ -318,3 +326,55 @@ def test_waiting_for_a_quiet_folder_returns_once_nothing_changed_for_the_quiet_t
     assert token_profile.wait_until_quiet(tmp_path, quiet_seconds=60, limit_seconds=100,
                                           clock=lambda: now["t"], sleep=busy_sleep) is False
     assert now["t"] - start <= 100 + 15
+
+
+def test_a_response_streamed_as_several_records_is_not_its_own_input(folder):
+    """Adversarial where: the thinking and text records of one response sit
+    in the context when that response is counted, taking a share of its own
+    cache write."""
+    write_session(folder, SECRET_SESSION, [
+        shape(), request("r1"),
+        user_text("q" * 1000),
+        assistant("m1", usage(write=1000, output=50), [{"type": "text", "text": "t" * 5000}]),
+        assistant("m1", usage(write=1000, output=50), [{"type": "tool_use", "id": "t1", "name": "Bash",
+                                                       "input": {"command": "c" * 5000}}]),
+    ])
+
+    summary = token_profile.profile_folder(folder)
+
+    assert "assistant:text" not in summary["by_source"]
+    assert "tool call:Bash" not in summary["by_source"]
+    assert summary["by_kind"]["build"]["cache_write"] == 1000
+
+
+def test_a_forked_subagent_does_not_count_the_parent_response_it_repeats(folder):
+    """Adversarial where: a fork's file repeats the parent's last response,
+    and its tokens are counted in both files."""
+    write_session(folder, SECRET_SESSION, [
+        user_text("go"),
+        assistant("m1", usage(write=700, output=10), [{"type": "text", "text": "spawning"}]),
+    ])
+    agents = folder / SECRET_SESSION / "subagents"
+    agents.mkdir(parents=True)
+    write_session(agents, "agent-f1", [
+        {"type": "fork-context-ref", "parentLastUuid": "x"},
+        assistant("m1", usage(write=700, output=10), [{"type": "text", "text": "spawning"}], sidechain=True),
+        user_text("fork brief"),
+        assistant("f2", usage(read=700, write=30, output=5), [{"type": "text", "text": "ok"}], sidechain=True),
+    ])
+
+    summary = token_profile.profile_folder(folder)
+
+    assert summary["models"][MODEL]["cache_write"] == 700 + 30
+    assert summary["models"][MODEL]["output"] == 10 + 5
+
+
+@pytest.mark.parametrize("source, expected", [
+    ("tool result:Read .claude/rules/lighthouse.md", "tool result:Read .claude/(other)"),
+    ("tool result:Read .claude/rules/compass-pipeline.md", "tool result:Read .claude/rules/compass-pipeline.md"),
+    ("tool result:Read .claude/cli/commands/lighthouse.py", "tool result:Read .claude/cli/"),
+    ("tool call:Lighthouse", "tool call:(other)"),
+    ("prefix:tool Lighthouse", "prefix:tool (other)"),
+])
+def test_install_paths_and_tool_names_pass_only_from_the_known_lists(source, expected):
+    assert token_profile.public_source(source, frozenset({"compass-pipeline"})) == expected

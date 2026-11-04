@@ -21,16 +21,20 @@ starts the extract-lessons skill, and `build` otherwise; a subagent session is
 Sources. A response's context holds the request prefix (the system prompt and
 each tool definition, read from the request shape the transcript stores) and
 every item the session added before it: messages, tool calls and results,
-skill bodies (`skill body:preloaded` for one a subagent loads without a Skill
-call), attachments and hook output. Its cache-write and uncached input
+skill bodies (a meta message after a Skill call or a typed slash command, or
+one carrying its own command tag, as a subagent's preloaded skills do; it is
+`skill body:preloaded` when no name is known), other harness meta messages (`user:meta`), attachments and hook output.
+A response streamed as several records is counted at its first record, so its
+own blocks enter the context after it. Its cache-write and uncached input
 tokens are split over the items added since the session's previous response,
 its cache-read tokens over the items already there, each in proportion to the
-item's characters; a split with no item on its side falls back to the whole
-context. A compaction boundary empties the context.
+item's characters (an image or document block counts MEDIA_CHARS); a response
+with no cache read rewrote its whole context, so its cache write is split over
+all of it; a split with no item on its side falls back to the whole context. A compaction boundary empties the context.
 
 Phases. In a build or setup session the phase is the last skill the session
-loaded (a Skill tool call, a slash command, or a Read of a skill's `SKILL.md`
-under `.claude/skills/`), `none` before the first; in a
+loaded (a skill body after a Skill tool call or a slash command, or a Read of a
+skill's `SKILL.md` under `.claude/skills/`), `none` before the first; in a
 subagent or capture-worker session it is the session kind. Every response's
 weighted tokens also go to its phase, and its output tokens to `output:<phase>`.
 
@@ -53,6 +57,10 @@ import launch
 import records
 
 CAPTURE_PROMPT = "Read the file .claude/skills/extract-lessons/SKILL.md"
+SKILL_BODY_START = "Base directory for this skill"
+# Characters counted for an image or document block, whose base64 data says
+# nothing about its token count.
+MEDIA_CHARS = 6000
 SETUP_COMMAND = "<command-name>/compass:setup</command-name>"
 _COMMAND_NAME = re.compile(r"<command-name>/?([^<\s]+)</command-name>")
 _SKILL_NAME = re.compile(r"[A-Za-z0-9:_\-.]+")
@@ -91,6 +99,8 @@ def _chars(value):
     if isinstance(value, list):
         return sum(_chars(item) for item in value)
     if isinstance(value, dict):
+        if value.get("type") in ("image", "document"):
+            return MEDIA_CHARS
         if "text" in value and isinstance(value["text"], str):
             return len(value["text"])
         if "content" in value:
@@ -233,8 +243,10 @@ def _split(tokens, items, key_of):
     return shares
 
 
-def profile_session(lines, kind):
-    """Aggregates of one session's lines (see the module docstring)."""
+def profile_session(lines, kind, skip_ids=frozenset()):
+    """Aggregates of one session's lines (see the module docstring). Responses
+    whose message id is in `skip_ids` (counted in a parent session already, as
+    a forked subagent repeats them) add their content but no tokens."""
     shapes, requests_ = {}, {}
     for item in lines:
         if item.get("type") == "api-request-shape" and isinstance(item.get("shapeHash"), str):
@@ -242,12 +254,13 @@ def profile_session(lines, kind):
         elif item.get("type") == "api-request" and isinstance(item.get("id"), str):
             requests_[item["id"]] = item.get("shapeHash")
 
-    responses = {}
+    first, last = {}, {}
     for index, item in enumerate(lines):
         if item.get("type") == "assistant":
             message = item.get("message") or {}
             key = message.get("id") or f"line-{index}"
-            responses[key] = index
+            first.setdefault(key, index)
+            last[key] = index
 
     context = _Context()
     by_source, by_phase, models = {}, {}, {}
@@ -289,13 +302,23 @@ def profile_session(lines, kind):
                     continue
                 text = block.get("text") if isinstance(block.get("text"), str) else ""
                 command = _COMMAND_NAME.search(text)
-                if command:
-                    active = fixed or _skill(command.group(1))
-                    context.add("user:slash command", len(text))
-                elif meta:
-                    name = pending_skill or (active if fixed is None else "preloaded")
+                if command and meta:
+                    name = _skill(command.group(1))
+                    if fixed is None:
+                        active = name
                     context.add(f"skill body:{name}", len(text))
                     pending_skill = None
+                elif command:
+                    pending_skill = _skill(command.group(1))
+                    context.add("user:slash command", len(text))
+                elif meta and (pending_skill or text.lstrip().startswith(SKILL_BODY_START)):
+                    name = pending_skill or (active if fixed is None else "preloaded")
+                    if fixed is None and pending_skill:
+                        active = pending_skill
+                    context.add(f"skill body:{name}", len(text))
+                    pending_skill = None
+                elif meta:
+                    context.add("user:meta", len(text))
                 elif text.lstrip().startswith("<task-notification>"):
                     context.add("user:task notification", len(text))
                 elif "<system-reminder>" in text:
@@ -308,9 +331,11 @@ def profile_session(lines, kind):
 
         message = item.get("message") or {}
         key = message.get("id") or f"line-{index}"
-        if responses.get(key) == index and key not in counted:
+        if first.get(key) == index:
+            pending_skill = None
+        if first.get(key) == index and key not in counted and key not in skip_ids:
             counted.add(key)
-            usage = _usage(message)
+            usage = _usage(lines[last[key]].get("message") or {})
             if usage is not None:
                 request_count += 1
                 model = records._model_key(message.get("model"))
@@ -321,6 +346,8 @@ def profile_session(lines, kind):
                         prefix = [[source, chars, True] for source, chars in new_prefix]
                 whole = prefix + context.items
                 fresh = [entry for entry in whole if entry[2]] or whole
+                if usage["cache_read"] == 0:
+                    fresh = whole
                 kept = [entry for entry in whole if not entry[2]] or whole
                 parts = {}
                 for kind_name, items, in (("cache_write", fresh), ("input", fresh), ("cache_read", kept)):
@@ -352,7 +379,6 @@ def profile_session(lines, kind):
                 tool_names[block.get("id")] = (name, tool_input.get("file_path") or tool_input.get("path"))
                 if name == "Skill":
                     pending_skill = _skill(tool_input.get("skill"))
-                    active = fixed or pending_skill
                 elif name == "Read" and fixed is None:
                     read_skill = _SKILL_FILE.search(str(tool_input.get("file_path") or ""))
                     if read_skill:
@@ -365,6 +391,7 @@ def profile_session(lines, kind):
             reported = item["modelUsage"]
     return {
         "kind": kind,
+        "counted_ids": counted,
         "requests": request_count,
         "models": models,
         "by_source": by_source,
@@ -395,15 +422,19 @@ def _agent_type(meta_path):
 
 
 def profile_folder(folder):
-    """Aggregates over every session in a project's transcript `folder`."""
+    """Aggregates over every session in a project's transcript `folder`.
+    Raises ValueError when the folder holds no session."""
     folder = Path(folder)
+    if not any(folder.glob("*.jsonl")):
+        raise ValueError("the folder holds no session transcript")
     sessions = []
     for path in sorted(folder.glob("*.jsonl")):
         lines = _read_lines(path)
         family = [profile_session(lines, session_kind(lines))]
+        parent_ids = frozenset(family[0]["counted_ids"])
         for agent_path in sorted((folder / path.stem / "subagents").glob("*.jsonl")):
             agent = _agent_type(agent_path.with_name(agent_path.stem + ".meta.json"))
-            family.append(profile_session(_read_lines(agent_path), f"subagent:{agent}"))
+            family.append(profile_session(_read_lines(agent_path), f"subagent:{agent}", skip_ids=parent_ids))
         family[0]["family_models"] = _family_models(family)
         sessions.extend(family)
     return summarize(sessions)
@@ -424,6 +455,7 @@ def summarize(sessions):
     counts = {}
     mismatches = []
     for session in sessions:
+        session.pop("counted_ids", None)
         counts[session["kind"]] = counts.get(session["kind"], 0) + 1
         for model, kinds in session["models"].items():
             _add(models, model, kinds)
@@ -483,19 +515,24 @@ VAULT_FOLDERS = frozenset({
     "specs", "research", "plans", "decisions", "lessons", "handoffs", "prs", "archive", "meta", "tmp",
     "loops", ".annotations", "(folder)",
 })
-_BUILT_IN_TOOL = re.compile(r"[A-Z][A-Za-z]+")
+BUILT_IN_TOOLS = frozenset({
+    "Agent", "Bash", "DeferredToolPlaceholder", "Edit", "Glob", "Grep", "ListAgents", "Monitor", "MultiEdit",
+    "NotebookEdit", "PowerShell", "Read", "ReportFindings", "ScheduleWakeup", "SendMessage", "Skill", "Task",
+    "TaskStop", "TodoWrite", "ToolSearch", "WebFetch", "WebSearch", "Workflow", "Write", "AskUserQuestion",
+    "advisor",
+})
 _ATTACHMENT_KIND = re.compile(r"[a-z][a-z_]+")
 _FIXED_SOURCES = frozenset({
     "compaction summary", "assistant:text", "assistant:thinking", "user:message", "user:slash command",
-    "user:task notification", "user:system reminder", "prefix:system prompt",
+    "user:task notification", "user:system reminder", "user:meta", "prefix:system prompt",
 })
 
 
 def compass_names(plugin_root):
-    """The skill and agent names the plugin at `plugin_root` ships."""
+    """The skill, agent and rule names the plugin at `plugin_root` ships."""
     root = Path(plugin_root)
     names = {path.name for path in (root / "skills").glob("*") if path.is_dir()}
-    for folder in (root / "agents", root / "templates" / "agents"):
+    for folder in (root / "agents", root / "templates" / "agents", root / "templates" / "rules"):
         names |= {path.stem for path in folder.glob("*.md")}
     return frozenset(names)
 
@@ -523,10 +560,12 @@ def _public_path(path_source, known):
             return path_source
         return ".compass/(other)"
     parts = path_source[len(".claude/"):].split("/")
-    if len(parts) >= 2 and parts[0] in ("skills", "agents", "rules", "cli", "hooks"):
+    if len(parts) >= 2 and parts[0] in ("skills", "agents", "rules"):
         name = parts[1][:-3] if parts[1].endswith(".md") else parts[1]
-        if parts[0] in ("cli", "hooks", "rules") or name in known:
+        if name in known:
             return path_source
+    if parts and parts[0] in ("cli", "hooks"):
+        return f".claude/{parts[0]}/"
     return ".claude/(other)"
 
 
@@ -543,10 +582,10 @@ def public_source(source, known):
     if head == "attachment":
         return source if _ATTACHMENT_KIND.fullmatch(rest) else "attachment:(other)"
     if head == "prefix" and rest.startswith("tool "):
-        return source if _BUILT_IN_TOOL.fullmatch(rest[5:]) else "prefix:tool (other)"
+        return source if rest[5:] in BUILT_IN_TOOLS else "prefix:tool (other)"
     if head in ("tool result", "tool call"):
         tool, _, path = rest.partition(" ")
-        if not _BUILT_IN_TOOL.fullmatch(tool):
+        if tool not in BUILT_IN_TOOLS:
             return f"{head}:(other)"
         return f"{head}:{tool}" + (f" {_public_path(path, known)}" if path else "")
     return "(other)"

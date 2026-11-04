@@ -247,7 +247,8 @@ class _Pilot:
         self.runs_per_arm = runs_per_arm
         self.pick, self.freeze, self.judge = pick, freeze, judge
         self.drive, self.new_project, self.clock = drive, new_project, clock
-        self.profile = profile or (lambda project: token_profile.profile_project(project, self.private_root))
+        self.profile = profile or self._profile_without_waiting
+        self.waits_for_workers = profile is None
         self.log_path = run_log_path(self.private_root)
 
     def session_options(self):
@@ -547,15 +548,28 @@ class _Pilot:
         out["profile"] = self.profiles(closed, counted)
         return out
 
+    def _profile_without_waiting(self, project):
+        return token_profile.profile_project(project, self.private_root, wait=False)
+
     def profiles(self, closed, counted):
         """Token profiles of the closed builds, each saved under the private
         root, and their means per arm (see token_profile.py). The share over
-        whole projects counts every session a build's project holds."""
+        whole projects counts every session a build's project holds. The
+        capture workers of the last build may still run, so its transcript
+        folder is waited on first; a build is profiled once, and a project
+        with no transcript is left out."""
         folder = self.private_root / "pilot" / "profiles"
         folder.mkdir(parents=True, exist_ok=True)
+        if self.waits_for_workers and closed:
+            token_profile.wait_until_quiet(token_profile.transcript_folder(closed[-1]["project"], self.private_root))
+        counted_keys = {self.key(event) for event in counted}
         by_arm = {arm: [] for arm in ARMS}
         whole = {}
+        profiled = set()
         for event in closed:
+            if self.key(event) in profiled:
+                continue
+            profiled.add(self.key(event))
             try:
                 summary = self.profile(event["project"])
             except (OSError, ValueError, KeyError, TypeError):
@@ -563,7 +577,7 @@ class _Pilot:
             name = Path(event["project"]).name
             (folder / f"{name}.json").write_text(json.dumps(summary, indent=1), encoding="utf-8")
             by_arm[event["arm"]].append(summary)
-            if event in counted:
+            if self.key(event) in counted_keys:
                 arms = whole.setdefault(event["topic"], {"compass": {}, "baseline": {}})
                 arms[event["arm"]][event["run"]] = summary["weighted"]
         paired = {}
