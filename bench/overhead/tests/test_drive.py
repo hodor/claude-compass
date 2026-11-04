@@ -5,7 +5,7 @@ Interface the tests pin (drive.py, human.py, hooks/answer_question.py)
 drive.py
     drive_build(project, opening_message, *, human, repo_root, arm,
                 private_root=None, claude_cmd=None, parent_env=None,
-                max_wall_seconds=5400, max_turns=400, max_budget_usd=25,
+                max_wall_seconds=9000, max_turns=400, max_budget_usd=50,
                 clock=time.monotonic) -> DriveResult
         Holds one build open as `claude -p --input-format stream-json
         --output-format stream-json --verbose --setting-sources project,local
@@ -291,7 +291,7 @@ def test_command_line_hook_settings_and_environment_of_the_build_session(
     assert config["answer_command"] == ScriptedHuman.answer_command
 
 
-def test_the_default_budget_guard_is_25_dollars(project, repo, private_root, tmp_path):
+def test_the_default_budget_guard_is_50_dollars(project, repo, private_root, tmp_path):
     """Adversarial where: omitting the budget argument must still pass the
     runaway guard; a driver that adds the flag only when asked leaves a build
     without a spending limit."""
@@ -300,7 +300,7 @@ def test_the_default_budget_guard_is_25_dollars(project, repo, private_root, tmp
     _, cmd = build(project, repo, private_root, tmp_path, {"turns": [{}]}, who)
 
     argv = start_entry(cmd)["argv"]
-    assert argv[argv.index("--max-budget-usd") + 1] == "25"
+    assert argv[argv.index("--max-budget-usd") + 1] == "50"
 
 
 def test_installing_the_hook_twice_leaves_one_entry(project, repo, private_root, tmp_path):

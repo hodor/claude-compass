@@ -76,9 +76,9 @@ HUMAN_DONE = "human-done"
 WALL_TIME = "wall-time"
 TURNS = "turns"
 
-DEFAULT_MAX_WALL_SECONDS = 5400
+DEFAULT_MAX_WALL_SECONDS = 9000
 DEFAULT_MAX_TURNS = 400
-DEFAULT_MAX_BUDGET_USD = 25
+DEFAULT_MAX_BUDGET_USD = 50
 
 # Seconds the reader waits on the session between checks of the wall clock.
 POLL_SECONDS = 1.0
@@ -328,6 +328,15 @@ class _Session:
     def kill(self):
         launch._kill_tree(self.process)
 
+    def close_output(self):
+        """Close the output pipe once the reader thread has finished with it."""
+        self.reader.join(timeout=DRAIN_SECONDS)
+        if not self.reader.is_alive():
+            try:
+                self.process.stdout.close()
+            except (OSError, ValueError):
+                pass
+
     def wait_exit(self):
         """The exit code; the process tree is killed when it outlives EXIT_SECONDS."""
         try:
@@ -485,6 +494,7 @@ def drive_build(
             events.extend(launch._parse_events(line))
         if session.process.poll() is None:
             session.kill()
+        session.close_output()
 
     def check_caps():
         if turns >= max_turns:

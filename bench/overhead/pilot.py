@@ -42,6 +42,7 @@ import launch
 import records
 import sandbox
 import stats
+import token_profile
 import topics
 
 ARMS = records.ARMS
@@ -176,6 +177,29 @@ def _met_any(counts):
     return (counts.get("met") or 0) + (counts.get("partly met") or 0) > 0
 
 
+def _mean_profile(summaries):
+    """Mean weighted tokens per build by session kind, source family, source and
+    phase over `summaries`, or None when there are none."""
+    if not summaries:
+        return None
+    count = len(summaries)
+    tables = {"kind": {}, "family": {}, "source": {}, "phase": {}}
+    for summary in summaries:
+        for key, kinds in summary.get("by_kind", {}).items():
+            tables["kind"][key] = tables["kind"].get(key, 0.0) + kinds["weighted"]
+        for key, kinds in summary.get("by_source", {}).items():
+            tables["source"][key] = tables["source"].get(key, 0.0) + kinds["weighted"]
+            family = token_profile.group(key)
+            tables["family"][family] = tables["family"].get(family, 0.0) + kinds["weighted"]
+        for key, kinds in summary.get("by_phase", {}).items():
+            tables["phase"][key] = tables["phase"].get(key, 0.0) + kinds["weighted"]
+    means = {name: {key: value / count for key, value in table.items()} for name, table in tables.items()}
+    means["weighted"] = sum(summary.get("weighted", 0.0) for summary in summaries) / count
+    gaps = [s["reconciliation"]["largest_gap"] for s in summaries if s.get("reconciliation", {}).get("largest_gap") is not None]
+    means["largest_gap"] = max(gaps) if gaps else None
+    return means
+
+
 def run_log_path(private_root):
     return Path(private_root) / "pilot" / "run-log.jsonl"
 
@@ -211,7 +235,7 @@ def _mean(values):
 class _Pilot:
     def __init__(
         self, *, repo_root, private_root, projects_root, claude_cmd, parent_env, probe_size,
-        topic_count, runs_per_arm, pick, freeze, judge, drive, new_project, clock,
+        topic_count, runs_per_arm, pick, freeze, judge, drive, new_project, clock, profile=None,
     ):
         self.repo_root = Path(repo_root)
         self.private_root = Path(private_root)
@@ -223,6 +247,7 @@ class _Pilot:
         self.runs_per_arm = runs_per_arm
         self.pick, self.freeze, self.judge = pick, freeze, judge
         self.drive, self.new_project, self.clock = drive, new_project, clock
+        self.profile = profile or (lambda project: token_profile.profile_project(project, self.private_root))
         self.log_path = run_log_path(self.private_root)
 
     def session_options(self):
@@ -519,7 +544,41 @@ class _Pilot:
             arm: _mean([e["raw"] for e in closed if e["arm"] == arm]) for arm in ARMS
         }
         out["judged"] = self.judged_counts()
+        out["profile"] = self.profiles(closed, counted)
         return out
+
+    def profiles(self, closed, counted):
+        """Token profiles of the closed builds, each saved under the private
+        root, and their means per arm (see token_profile.py). The share over
+        whole projects counts every session a build's project holds."""
+        folder = self.private_root / "pilot" / "profiles"
+        folder.mkdir(parents=True, exist_ok=True)
+        by_arm = {arm: [] for arm in ARMS}
+        whole = {}
+        for event in closed:
+            try:
+                summary = self.profile(event["project"])
+            except (OSError, ValueError, KeyError, TypeError):
+                continue
+            name = Path(event["project"]).name
+            (folder / f"{name}.json").write_text(json.dumps(summary, indent=1), encoding="utf-8")
+            by_arm[event["arm"]].append(summary)
+            if event in counted:
+                arms = whole.setdefault(event["topic"], {"compass": {}, "baseline": {}})
+                arms[event["arm"]][event["run"]] = summary["weighted"]
+        paired = {}
+        for topic_id, arms in whole.items():
+            runs = sorted(set(arms["compass"]) & set(arms["baseline"]))
+            if runs:
+                paired[topic_id] = {arm: [arms[arm][run] for run in runs] for arm in ARMS}
+        share = None
+        with contextlib.suppress(ValueError):
+            share = stats.overall_share(paired)
+        return {
+            "profiled": {arm: len(by_arm[arm]) for arm in ARMS},
+            "whole_project_share": share,
+            "arms": {arm: _mean_profile(by_arm[arm]) for arm in ARMS},
+        }
 
     def judged_counts(self):
         totals = {arm: {} for arm in ARMS}
@@ -533,7 +592,7 @@ def run_pilot(
     *, repo_root, private_root, projects_root, report_path=None, claude_cmd=None, parent_env=None,
     probe_size=10, topic_count=3, runs_per_arm=2, pick=topics.pick_topic, freeze=goals.write_goals,
     judge=judge_module.judge_project, drive=drive_module.main, new_project=sandbox.new_project,
-    clock=time.monotonic,
+    clock=time.monotonic, profile=None,
 ):
     """Run the pilot, or resume it from its run log, and return a PilotResult.
 
@@ -546,7 +605,7 @@ def run_pilot(
         repo_root=repo_root, private_root=private_root, projects_root=projects_root,
         claude_cmd=claude_cmd, parent_env=parent_env, probe_size=probe_size,
         topic_count=topic_count, runs_per_arm=runs_per_arm, pick=pick, freeze=freeze,
-        judge=judge, drive=drive, new_project=new_project, clock=clock,
+        judge=judge, drive=drive, new_project=new_project, clock=clock, profile=profile,
     )
     try:
         try:
@@ -705,6 +764,7 @@ def render_report(result, repo_root):
             f"- Mean weighted tokens, {arm} arm: {_number(agg.get('mean_weighted_by_arm', {}).get(arm), 0)};"
             f" mean raw tokens: {_number(agg.get('mean_raw_by_arm', {}).get(arm), 0)}."
         )
+    lines += _profile_lines(agg.get("profile"), token_profile.compass_names(Path(repo_root) / "plugin"))
     lines += ["", "### Judge", ""]
     for arm in ARMS:
         counts = agg.get("judged", {}).get(arm, {})
@@ -726,6 +786,66 @@ def render_report(result, repo_root):
         "",
     ]
     return "\n".join(lines)
+
+
+PROFILE_ROWS = 15
+_FAMILIES = frozenset({
+    "output", "tool result", "tool call", "attachment", "skill body", "prefix", "prefix:tool definitions",
+    "assistant", "user", "compaction summary",
+})
+
+
+def _public_table(table, rename):
+    merged = {}
+    for key, value in table.items():
+        name = rename(key)
+        merged[name] = merged.get(name, 0.0) + value
+    return merged
+
+
+def _profile_lines(profile, known):
+    """The report's section on where the tokens go, from aggregates only; a
+    source or phase outside the public vocabulary shows as `(other)`."""
+    lines = ["", "### Where the tokens go", ""]
+    if not profile or not any(profile.get("arms", {}).values()):
+        return lines + ["- No build was profiled."]
+    lines += [
+        "Mean weighted tokens per build, read from every session transcript of the build's project"
+        " (setup, build, subagents, capture workers); see `bench/overhead/token_profile.py` for the"
+        " counting and the split by source.",
+        "",
+        f"- Builds profiled: {', '.join(f'{arm} {count}' for arm, count in profile['profiled'].items())}.",
+        f"- Overhead share over whole projects (weighted): {_percent(profile.get('whole_project_share'))}.",
+    ]
+    for arm in ARMS:
+        means = profile["arms"].get(arm)
+        if means is None:
+            continue
+        total = means["weighted"] or 1.0
+        gap = means.get("largest_gap")
+        lines += [
+            "",
+            f"#### {arm.capitalize()} arm: {means['weighted']:.0f} weighted tokens per build",
+            "",
+            f"Largest gap between counted tokens and a session's own totals: {_percent(gap, 'none checked')}.",
+        ]
+        for title, table, rows in (
+            ("Session kind", "kind", None), ("Source family", "family", None),
+            ("Source", "source", PROFILE_ROWS), ("Phase", "phase", PROFILE_ROWS),
+        ):
+            rename = {
+                "source": lambda key: token_profile.public_source(key, known),
+                "phase": lambda key: token_profile.public_phase(key, known),
+                "kind": lambda key: token_profile.public_phase(key, known),
+                "family": lambda key: key if key in _FAMILIES else "(other)",
+            }[table]
+            ranked = sorted(_public_table(means[table], rename).items(), key=lambda pair: -pair[1])
+            if rows is not None:
+                ranked = ranked[:rows]
+            lines += ["", f"| {title} | Weighted per build | Share |", "|---|---|---|"]
+            for key, value in ranked:
+                lines.append(f"| {key} | {value:.0f} | {value / total:.1%} |")
+    return lines
 
 
 def write_report(report_path, result, pilot):

@@ -565,3 +565,51 @@ def test_a_closed_build_logs_how_it_ended_and_what_its_session_loaded(repo, priv
     assert len(failed) == 1
     assert failed[0]["end"] == "failed" and failed[0]["reason"] == "the session ended"
     assert all(e["end"] == "human-done" for e in closed if e["exit"] == 0)
+
+
+def fake_profile(sessions_by_arm):
+    """A profile callable giving each project a fixed summary per arm; it
+    names the project's folder in a source to prove the report drops it."""
+
+    def profile(project):
+        arm = sessions_by_arm(project)
+        weighted = 900.0 if arm == "compass" else 300.0
+        row = lambda value: {"input": 0, "cache_read": 0, "cache_write": 0, "output": 0, "weighted": value}  # noqa: E731
+        by_source = {"tool result:Bash": row(weighted / 2), "attachment:skill_listing": row(weighted / 2)}
+        if arm == "compass":
+            by_source = {"tool result:Bash": row(300.0), "skill body:compass:demo": row(500.0), "skill body:compass:secretskill": row(100.0)}
+        return {
+            "weighted": weighted,
+            "sessions": {"build": 1},
+            "by_kind": {"build": row(weighted * 2 / 3), "capture-worker": row(weighted / 3)},
+            "by_source": {**by_source, f"tool result:Read {SENTINEL_TEXT}": row(0.0)},
+            "by_phase": {"none": row(weighted)},
+            "models": {},
+            "reconciliation": {"sessions_checked": 1, "largest_gap": 0.0},
+        }
+
+    return profile
+
+
+def test_the_report_says_where_the_tokens_go_per_arm_from_saved_profiles(repo, private_root, projects_root, tmp_path):
+    """Adversarial where: the profiles of the builds are not taken, not saved
+    for later study, mixed between arms, or carry a source name with private
+    text into the report; the whole-project share must use the profiles'
+    totals, which include the capture workers the build rows leave out."""
+    report = tmp_path / "out" / "RESEARCH-whole-overhead-pilot.md"
+    world = World(private_root)
+    arm_of = lambda project: next(d["arm"] for d in world.drives if d["project"] == str(project))  # noqa: E731
+
+    result = go(world, repo, private_root, projects_root, report_path=report, profile=fake_profile(arm_of))
+
+    text = report.read_text(encoding="utf-8")
+    profile = result.aggregates["profile"]
+    assert profile["profiled"] == {"compass": 6, "baseline": 6}
+    assert profile["whole_project_share"] == pytest.approx((900 - 300) / 900)
+    assert profile["arms"]["compass"]["source"]["skill body:compass:demo"] == pytest.approx(500)
+    assert "skill body:compass:demo" not in profile["arms"]["baseline"]["source"]
+    assert "### Where the tokens go" in text and "| skill body:compass:demo | 500 | 55.6% |" in text
+    assert "| skill body:(other) | 100 | 11.1% |" in text
+    assert SENTINEL_TEXT not in text and "secretskill" not in text
+    saved = sorted((private_root / "pilot" / "profiles").glob("*.json"))
+    assert len(saved) == 12
