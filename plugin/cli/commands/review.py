@@ -59,17 +59,20 @@ a newer request for the same document, removes it.
 
 A surface that takes a request up writes an empty `<id>.seen` file beside it.
 When neither the verdict nor `<id>.seen` exists `ACK_SECONDS` (60) after the
-request went out, the add-on is not loaded in the running editor: the request
-is withdrawn (removing its `.seen` too) and the last line is
-`not configured: <surface label> did not pick up review <id> within 60 s;
-<fix>`, `<fix>` being one line from the surface (`unconfirmed_fix`) saying how
-to get it loaded. The review is then asked in the terminal. Once `<id>.seen`
-exists the wait has no limit.
+request went out, the add-on is probably not loaded in the running editor, and
+the waiter prints one line, once, and keeps waiting:
+`waiting: <surface label> has not picked up review <id> yet; <fix>`, `<fix>`
+being one line from the surface (`unconfirmed_fix`) saying how to get it
+loaded. The line is printed only while the request file exists and `<id>.seen`
+does not. The request stays on disk, and an editor that loads later, a day or
+a week on, claims it and shows it. Once `<id>.seen` exists no such line is
+printed.
 
 `--no-wait` returns after the request line and does not watch for `.seen`.
-The wait has no limit once the request is claimed: the human may answer hours
-later. `--timeout S` bounds the whole wait, the acknowledgement window
-included, and prints `timeout <id>` when it runs out. `--status`
+The wait has no limit, claimed or not: the human may answer hours or days
+later. Only a verdict, a withdrawal (`--cancel` or a newer request for the
+same document) or `--timeout S` ends it; `--timeout S` bounds the whole wait
+and prints `timeout <id>` when it runs out. `--status`
 prints one `pending <id> <file>` line per request still waiting, the first
 file followed by `(+N more)` when the request lists N more.
 `--cancel <id>` withdraws that pending request (removes its request file),
@@ -80,7 +83,7 @@ done>` line each. A surface may need a step only the human can take, such
 as turning community plugins on in Obsidian; `compass doctor` names it.
 
 Exit 0 on a verdict, on `--no-wait`, `--status`, `--cancel` and `--install`;
-1 when not configured (an unclaimed request included), on timeout, on a withdrawn request, on a usage error,
+1 when not configured, on timeout, on a withdrawn request, on a usage error,
 on a `--cancel` of an id that is not pending, or when `--status`, `--cancel`
 or `--install` finds no `.compass` vault; never 2.
 """
@@ -297,6 +300,7 @@ def _wait(request, request_path, documents, timeout, root, vault, surface_root, 
     started = time.monotonic()
     deadline = None if timeout is None else started + timeout
     claimed = False
+    hinted = False
     while deadline is None or time.monotonic() < deadline:
         if target.exists():
             verdict = reviewlib.read_json(target)
@@ -307,12 +311,11 @@ def _wait(request, request_path, documents, timeout, root, vault, surface_root, 
             print(f"withdrawn {request['id']}")
             return 1
         claimed = claimed or claim.exists()
-        if not claimed and time.monotonic() - started >= ACK_SECONDS:
-            if not claim.exists() and reviewlib.cancel(vault, request["id"]):
-                print(f"not configured: {surface.label} did not pick up review {request['id']} "
-                      f"within {ACK_SECONDS:g} s; {surface.unconfirmed_fix()}")
-                return 1
-            claimed = True
+        if not claimed and not hinted and time.monotonic() - started >= ACK_SECONDS:
+            hinted = True
+            if not claim.exists() and Path(request_path).exists():
+                print(f"waiting: {surface.label} has not picked up review {request['id']} "
+                      f"yet; {surface.unconfirmed_fix()}", flush=True)
         time.sleep(POLL_SECONDS)
     print(f"timeout {request['id']}")
     return 1

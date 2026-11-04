@@ -1,22 +1,23 @@
 """Tests for a review that never waits on an editor that cannot show it: the
 VS Code, Cursor and Obsidian surfaces check (and install) their add-on before
 a request is written, the add-on's claim of a request is a `<id>.seen` file
-beside it, and `compass review` withdraws a request nobody claimed within
-`ACK_SECONDS` instead of waiting without limit.
+beside it, and `compass review` keeps a request nobody claimed open without
+limit, printing one `waiting:` hint after `ACK_SECONDS`.
 
 Adversarial themes: an extension that is listed but older than the shipped
 one, listed under another case, listed under a longer id, or listed at a
 version whose digits compare differently as text; a listing or an install that
 fails, times out or vanishes; Obsidian files that are stale in only one of the
 three, a plugin list that is not a list; a claim that arrives just inside the
-window, an answer with no claim, another request's claim, a withdrawal inside
-the window and a `--timeout` shorter than the window.
+window or long after it, an answer with no claim, another request's claim, a
+withdrawal inside the window and after the hint, and a `--timeout` shorter
+than the window.
 
 No editor is started: the VS Code and Cursor command lines are recorded by the
 fakes of `test_review_vscode.py`, and the Obsidian opener and focus probe are
 stubbed by `ReviewProject`. Every wait test patches `ACK_SECONDS` and
 `POLL_SECONDS` of `commands.review` to fractions of a second and passes
-`--timeout` so a missing acknowledgement ends the test instead of hanging it.
+`--timeout` so a missing answer ends the test instead of hanging it.
 """
 
 import importlib
@@ -45,7 +46,7 @@ from test_review import ReviewProject  # noqa: E402
 
 ACK = 0.6
 POLL = 0.05
-LINE = r"^not configured: (?P<label>.+?) did not pick up review (?P<id>\S+) within [\d.]+ s; (?P<fix>.+)$"
+LINE = r"^waiting: (?P<label>.+?) has not picked up review (?P<id>\S+) yet; (?P<fix>.+)$"
 REPO_PLUGIN = Path(__file__).resolve().parents[2]
 
 
@@ -423,31 +424,102 @@ class AckWait(ReviewProject):
             {"id": request["id"], "file": request["file"], "verdict": "approved", "notes": "n", "at": "t"}),
             encoding="utf-8")
 
-    def test_an_unclaimed_request_is_withdrawn_after_the_window_with_the_surface_and_the_fix(self):
-        """Adversarial where: the waiter outlives the window when no add-on
-        claimed the request (the bug), withdraws at once instead of after the
-        window, leaves the request for the next review to find, prints
-        `timeout` or `withdrawn` instead of the not-configured line, or the
-        line names no fix; the window is not sixty seconds."""
+    def test_an_unclaimed_request_prints_one_waiting_hint_after_the_window_and_stays_open(self):
+        """Adversarial where: the waiter withdraws an unclaimed request at the
+        window, prints the hint before the window ends, never prints it,
+        prints it more than once over the many polls, drops the request or
+        its fix, or ends with `not configured` or `withdrawn` instead of
+        `timeout`; the window is not sixty seconds."""
         self.assertEqual(self.default_ack, 60)
         started = time.monotonic()
-        code, out, err = self.review(str(self.doc), "--timeout", "10")
+        code, out, err = self.review(str(self.doc), "--timeout", "2")
         elapsed = time.monotonic() - started
         self.assertEqual(code, 1, out + err)
         lines = out.splitlines()
         rid = lines[0].split()[1]
-        found = re.match(LINE, lines[-1])
-        self.assertIsNotNone(found, lines[-1])
+        hints = [ln for ln in lines if ln.startswith("waiting:")]
+        self.assertEqual(len(hints), 1, out)
+        found = re.match(LINE, hints[0])
+        self.assertIsNotNone(found, hints[0])
         self.assertEqual(found["label"], "Obsidian")
         self.assertEqual(found["id"], rid)
         self.assertIn(obsidian_surface.ENABLE_STEPS, found["fix"])
         self.assertIn("reload", found["fix"].lower())
-        self.assertFalse([ln for ln in lines if ln.startswith(("timeout ", "withdrawn "))], out)
-        self.assertGreaterEqual(elapsed, ACK - 0.1)
-        self.assertLess(elapsed, 5)
+        self.assertEqual(lines[-1], f"timeout {rid}")
+        self.assertNotIn("not configured", out)
+        self.assertNotIn("withdrawn", out)
+        self.assertGreaterEqual(elapsed, 2 - 0.1, "the wait outlasts the window until the timeout")
         directory = reviewlib.review_dir(self.vault)
-        self.assertEqual(list(directory.glob("*.request.json")), [])
+        self.assertEqual(len(list(directory.glob("*.request.json"))), 1, "the request stays on disk")
         self.assertEqual(list(directory.glob("*.seen")), [])
+
+    def test_the_hint_waits_for_the_window(self):
+        """Adversarial where: the hint prints on the first poll, so an editor
+        that is about to claim the request is reported as not loaded."""
+        with mock.patch.object(self.module, "ACK_SECONDS", 3.0, create=True):
+            code, out, _ = self.review(str(self.doc), "--timeout", "1")
+        self.assertEqual(code, 1)
+        self.assertNotIn("waiting:", out)
+        self.assertTrue(out.splitlines()[-1].startswith("timeout "), out)
+
+    def test_the_request_is_still_on_disk_and_unclaimed_while_the_hint_is_up(self):
+        """Adversarial where: the hint prints for a request that was already
+        removed, or the waiter removes the request as it prints the hint."""
+        seen = {}
+
+        def probe(path, _request):
+            seen["request"] = path.exists()
+            seen["claim"] = seen_beside(path).exists()
+
+        self.when_requested(ACK + 0.4, probe)
+        self.review(str(self.doc), "--timeout", "1.5")
+        self.assertEqual(seen, {"request": True, "claim": False})
+
+    def test_an_editor_that_claims_and_answers_long_after_the_window_still_gets_the_verdict_through(self):
+        """Adversarial where: the request is gone by the time an editor
+        loads, so a human who reloads the window a minute, a day or a week
+        later finds nothing; or the late claim prints a second hint or a
+        not-configured line instead of the verdict."""
+        self.when_requested(ACK + 1.0, self.claim)
+        self.when_requested(ACK + 1.6, self.answer)
+        code, out, err = self.review(str(self.doc), "--timeout", "10")
+        self.assertEqual(code, 0, out + err)
+        self.assertIn('"verdict": "approved"', out)
+        self.assertEqual(len([ln for ln in out.splitlines() if ln.startswith("waiting:")]), 1, out)
+        self.assertNotIn("not configured", out)
+
+    def test_an_answer_with_no_claim_long_after_the_window_is_accepted(self):
+        """Adversarial where: an answer that lands after the hint, with no
+        `.seen` ever written, is discarded because the request was withdrawn
+        at the window."""
+        self.when_requested(ACK + 1.0, self.answer)
+        code, out, err = self.review(str(self.doc), "--timeout", "10")
+        self.assertEqual(code, 0, out + err)
+        self.assertIn('"verdict": "approved"', out)
+        self.assertNotIn("not configured", out)
+
+    def test_the_hint_prints_once_over_many_polls_and_the_wait_outlasts_days(self):
+        """Adversarial where: the hint prints on every poll past the window
+        (a flood of lines for a review left open for days), or the wait gives
+        up after some number of polls; the clock runs a day per reading
+        and the answer arrives after two hundred polls."""
+        directory = reviewlib.review_dir(self.vault)
+        ticks = iter(range(10 ** 9))
+        sleeps = []
+
+        def sleep(_seconds):
+            sleeps.append(1)
+            if len(sleeps) == 200:
+                path = sorted(directory.glob("*.request.json"))[0]
+                self.answer(path, json.loads(path.read_text(encoding="utf-8")))
+
+        fake = mock.Mock(monotonic=lambda: next(ticks) * 86400.0, sleep=sleep)
+        with mock.patch.object(self.module, "time", fake):
+            code, out, err = self.review(str(self.doc))
+        self.assertEqual(code, 0, out + err)
+        self.assertEqual(len(sleeps), 200)
+        self.assertEqual(len([ln for ln in out.splitlines() if ln.startswith("waiting:")]), 1, out)
+        self.assertIn('"verdict": "approved"', out)
 
     def test_a_claim_inside_the_window_removes_the_limit(self):
         """Adversarial where: the window keeps running after the claim, so a
@@ -471,13 +543,14 @@ class AckWait(ReviewProject):
     def test_another_requests_claim_does_not_confirm_this_one(self):
         """Adversarial where: any `.seen` in the folder is taken as the
         claim (a stale file from an earlier review, or one from another
-        editor's request), so an unclaimed request waits without limit."""
+        editor's request), so the hint for an unclaimed request never
+        prints."""
         directory = reviewlib.review_dir(self.vault)
         directory.mkdir(parents=True)
         (directory / "20000101T000000-aaaaaa.seen").write_text("", encoding="utf-8")
-        code, out, _ = self.review(str(self.doc), "--timeout", "10")
+        code, out, _ = self.review(str(self.doc), "--timeout", "1.5")
         self.assertEqual(code, 1)
-        self.assertRegex(out.splitlines()[-1], LINE)
+        self.assertRegex(out.splitlines()[1], LINE)
         self.assertTrue((directory / "20000101T000000-aaaaaa.seen").exists(), "another request's claim is not ours to remove")
 
     def test_a_timeout_shorter_than_the_window_still_ends_the_wait_with_timeout(self):
@@ -491,8 +564,31 @@ class AckWait(ReviewProject):
         self.assertLess(time.monotonic() - started, 3)
         self.assertTrue(out.splitlines()[-1].startswith("timeout "), out)
         self.assertNotIn("not configured", out)
+        self.assertNotIn("waiting:", out)
 
-    def test_a_withdrawal_inside_the_window_ends_with_withdrawn_not_the_not_configured_line(self):
+    def test_a_withdrawal_after_the_hint_ends_with_withdrawn(self):
+        """Adversarial where: a request cancelled while the hint is up leaves
+        the waiter polling a request that no longer exists, or ends with a
+        not-configured line."""
+        self.when_requested(ACK + 0.4, lambda path, request: self.review("--cancel", request["id"]))
+        started = time.monotonic()
+        code, out, _ = self.review(str(self.doc), "--timeout", "10")
+        self.assertLess(time.monotonic() - started, 4)
+        self.assertEqual(code, 1)
+        lines = out.splitlines()
+        self.assertRegex(lines[1], LINE)
+        self.assertRegex(lines[-1], r"^withdrawn ")
+        self.assertNotIn("not configured", out)
+
+    def test_a_newer_request_for_the_same_document_ends_the_older_wait_as_withdrawn(self):
+        """Adversarial where: the hint keeps the older waiter alive after a
+        newer request for the document replaced its request."""
+        self.when_requested(ACK + 0.4, lambda path, request: self.review(str(self.doc), "--no-wait"))
+        code, out, _ = self.review(str(self.doc), "--timeout", "10")
+        self.assertEqual(code, 1)
+        self.assertRegex(out.splitlines()[-1], r"^withdrawn ")
+
+    def test_a_withdrawal_inside_the_window_ends_with_withdrawn_and_no_hint(self):
         """Adversarial where: the unclaimed-request check runs before the
         withdrawal check, so a request cancelled during the window is reported
         as an editor that did not pick it up."""
@@ -504,6 +600,7 @@ class AckWait(ReviewProject):
         self.assertEqual(code, 1)
         self.assertRegex(out.splitlines()[-1], r"^withdrawn ")
         self.assertNotIn("not configured", out)
+        self.assertNotIn("waiting:", out)
 
     def test_no_wait_neither_waits_for_a_claim_nor_withdraws(self):
         """Adversarial where: `--no-wait` blocks for the window or withdraws
@@ -555,8 +652,8 @@ class VsCodeFamilyWait(Editors):
     def requests(self):
         return sorted((self.project / ".compass" / "tmp" / "review").glob("*.request.json"))
 
-    def test_an_editor_that_never_claims_the_request_is_named_in_the_withdrawal(self):
-        """Adversarial where: the not-configured line names the wrong
+    def test_an_editor_that_never_claims_the_request_is_named_in_the_hint_and_the_request_stays(self):
+        """Adversarial where: the waiting line names the wrong
         surface (Obsidian, or both editors under one label), or gives the
         Obsidian fix for an editor that needs its window reloaded."""
         for name, label in (("vscode", "VS Code"), ("cursor", "Cursor")):
@@ -564,15 +661,17 @@ class VsCodeFamilyWait(Editors):
                 self.installed = [(vs.extension_id(), shipped_version())]
                 self.launched.clear()
                 self.put_on_path(vs.COMMANDS[name])
-                code, out, err = self.run_review([vs.surface(name)], "--timeout", "10")
+                code, out, err = self.run_review([vs.surface(name)], "--timeout", "1.5")
                 self.assertEqual(code, 1, out + err)
-                found = re.match(LINE, out.splitlines()[-1])
+                lines = out.splitlines()
+                self.assertTrue(lines[-1].startswith("timeout "), out)
+                found = re.match(LINE, lines[-2])
                 self.assertIsNotNone(found, out)
                 self.assertEqual(found["label"], label)
                 self.assertIn("reload", found["fix"].lower())
                 self.assertIn("Compass Review", found["fix"])
                 self.assertNotIn(obsidian_surface.ENABLE_STEPS, found["fix"])
-                self.assertEqual(self.requests(), [])
+                self.assertEqual(len(self.requests()), 1, "the request stays on disk")
                 self.assertEqual(vs.surface(name).unconfirmed_fix(), found["fix"])
 
     def test_a_surface_that_fails_its_check_falls_through_to_the_next_and_to_not_configured(self):
@@ -617,10 +716,12 @@ class Contract(unittest.TestCase):
     def test_the_new_line_and_file_are_documented(self):
         """Adversarial where: the module docstrings that other agents read to
         learn the output of `compass review` and the surface functions omit
-        the `.seen` file, the not-configured line or `unconfirmed_fix()`."""
+        the `.seen` file, the waiting line or `unconfirmed_fix()`, or
+        describe a withdrawal of an unclaimed request."""
         module = importlib.import_module("commands.review")
         self.assertIn(".seen", module.__doc__)
-        self.assertIn("did not pick up", module.__doc__)
+        self.assertIn("waiting: <surface label> has not picked up review", module.__doc__)
+        self.assertNotIn("did not pick up", module.__doc__)
         self.assertIn("unconfirmed_fix", review_surfaces.__doc__)
 
     def test_versions_are_bumped_and_the_vsix_is_rebuilt_for_the_new_extension(self):

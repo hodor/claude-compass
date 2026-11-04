@@ -332,8 +332,9 @@ class WaiterReCheck(ReviewProject):
 
     def test_a_claim_that_lands_as_the_window_closes_is_honoured(self):
         """Adversarial where: the waiter decides on the claim it saw at the
-        start of the pass and withdraws a request whose `.seen` was written a
-        moment before, so the human's open card loses its request."""
+        start of the pass and reports a request whose `.seen` was written a
+        moment before as not picked up, so the human is told to reload an
+        editor that already shows the card."""
         def claim_and_answer(path, request):
             reviewlib.seen_path(path).write_text("", encoding="utf-8")
             self.answer(path, request)
@@ -342,7 +343,28 @@ class WaiterReCheck(ReviewProject):
         code, out, err = self.run_review()
         self.assertEqual(code, 0, out + err)
         self.assertNotIn("not configured", out)
+        self.assertNotIn("waiting:", out)
         self.assertIn('"verdict": "approved"', out)
+
+    def test_a_claim_that_lands_as_the_window_closes_prints_no_hint_before_the_answer(self):
+        """Adversarial where: the hint is decided on the claim read before the
+        clock check, so it prints for a request claimed in between and the
+        answer arrives on a line already telling the human to reload."""
+        slept = []
+
+        def sleep(_seconds):
+            slept.append(1)
+            found = sorted(reviewlib.review_dir(self.vault).glob("*.request.json"))[0]
+            self.answer(found, json.loads(found.read_text(encoding="utf-8")))
+
+        self.at_window = lambda path, request: reviewlib.seen_path(path).write_text("", encoding="utf-8")
+        fake = types.SimpleNamespace(monotonic=self.clock, sleep=sleep)
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.object(self.module, "time", fake), redirect_stdout(out), redirect_stderr(err):
+            code = self.module.run([str(self.doc)])
+        self.assertEqual(code, 0, out.getvalue() + err.getvalue())
+        self.assertNotIn("waiting:", out.getvalue())
+        self.assertEqual(slept, [1])
 
     def test_a_request_withdrawn_as_the_window_closes_ends_as_withdrawn(self):
         """Adversarial where: a request removed by someone else at the moment
@@ -352,6 +374,7 @@ class WaiterReCheck(ReviewProject):
         code, out, err = self.run_review()
         self.assertEqual(code, 1, out + err)
         self.assertNotIn("not configured", out)
+        self.assertNotIn("waiting:", out)
         self.assertTrue(out.splitlines()[-1].startswith("withdrawn "), out)
 
 

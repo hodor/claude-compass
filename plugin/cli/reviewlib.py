@@ -36,8 +36,9 @@ A review is two JSON files in the Compass vault's `tmp/review/`:
 
 - `<id>.seen`, an empty file written by the surface beside the request when it
   takes the request up. Its presence tells `compass review` the add-on is
-  loaded and has the request; a request still without one after the
-  acknowledgement window is withdrawn. Removing the request removes it, and
+  loaded and has the request; a request without one after the
+  acknowledgement window makes the waiter print one `waiting:` line and keep
+  waiting. Removing the request removes it, and
   writing a request removes every `.seen` older than `ORPHAN_SECONDS` (an
   hour) whose request is gone. It does not make the request answered.
 
