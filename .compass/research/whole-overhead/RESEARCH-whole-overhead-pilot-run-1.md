@@ -1,10 +1,10 @@
 ---
-title: "Whole overhead pilot"
+title: "Whole overhead pilot, first run"
 type: research
-status: draft
+status: superseded
 confidence: low
 area: workflow
-summary: "Overhead share of Compass over twelve builds on three topics, its spread, the batch size it implies, and the cost of one build"
+summary: "The first twelve pilot builds: headless checks, and the harness faults that make its overhead shares too high to serve as a baseline"
 tags: [overhead, pilot, measurement]
 created: 2026-11-03
 updated: 2026-11-03
@@ -13,7 +13,7 @@ git_commit: "8a7cec1"
 author: "pilot.py"
 ---
 
-# Whole overhead pilot
+# Whole overhead pilot, first run
 
 ```mermaid
 flowchart LR
@@ -21,8 +21,8 @@ flowchart LR
   T --> B["12 judged builds"] --> S["share and batch size"]
 ```
 
-> [!IMPORTANT]
-> You decide: whether the batch size and the cost of one build below are a pace your subscription can carry.
+> [!NOTE]
+> The second run of the same twelve builds, with the harness faults below fixed and every build profiled, is [[RESEARCH-whole-overhead-pilot]].
 
 ## Question
 
