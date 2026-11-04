@@ -1,0 +1,11 @@
+{
+  "path": "research/hermes/RESEARCH-hermes-vs-compass-fit.md",
+  "notes": [
+    {
+      "text": "Describes 0.19.0: 'no diff-based version history per skill patch', snapshots 'before curator runs' with keep=5, curator 30/90 days. At hermes-agent a212421d a per-change skill ledger with single-entry rollback exists, snapshots are taken only before the consolidation pass with keep 2, and curator windows are 14/30 days. See [[research/hermes/REVIEW-hermes-skill-creation-2026-11]].",
+      "by": "reviewer",
+      "date": "2026-11-04",
+      "tags": ["outdated", "hermes-agent", "curator"]
+    }
+  ]
+}

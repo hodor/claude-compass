@@ -1,0 +1,11 @@
+{
+  "path": "research/hermes/RESEARCH-hermes-skill-review-gate.md",
+  "notes": [
+    {
+      "text": "Finding 20 (a request no surface claims within 60 s is withdrawn) holds at e331edd and is removed by approved fix e2fa732 (issue #53): a request stays open until a verdict, a cancel, a newer request for the same document, or --timeout. Per-document verdicts in a several-document review are being built (issue #54).",
+      "by": "reviewer",
+      "date": "2026-11-04",
+      "tags": ["superseded", "compass-review"]
+    }
+  ]
+}

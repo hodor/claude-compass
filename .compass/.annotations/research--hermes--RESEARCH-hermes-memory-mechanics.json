@@ -1,0 +1,11 @@
+{
+  "path": "research/hermes/RESEARCH-hermes-memory-mechanics.md",
+  "notes": [
+    {
+      "text": "Finding 9 (protected skills the background reviewer may never edit) and the 30/90-day curator windows describe 0.19.0. At hermes-agent a212421d content writes are not ownership-gated: only deletes are (tools/skill_manager_guards.py:164-167), the user lock is the one guard on every write, and curator windows are 14/30 days. See [[research/hermes/REVIEW-hermes-skill-creation-2026-11]].",
+      "by": "reviewer",
+      "date": "2026-11-04",
+      "tags": ["outdated", "hermes-agent", "skills"]
+    }
+  ]
+}
