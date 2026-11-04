@@ -1,7 +1,7 @@
 """`compass review <file>... [--why <path>=<line>]... [--title T] [--timeout S]
-[--no-wait]` and `compass review --status`, `compass review --cancel <id>` and
-`compass review --install` - put documents in front of the human in a visual
-md interface and wait for the verdict.
+[--no-wait]` and `compass review --status`, `compass review --wait <id>`,
+`compass review --cancel <id>` and `compass review --install` - put documents
+in front of the human in a visual md interface and wait for the verdict.
 
 `review <file>...` writes one request (see `reviewlib`) for the files in the
 order given, delivers it to the first review surface configured for them (see
@@ -31,6 +31,25 @@ only the files with a note or an edit, in request order. The caller thus
 reads the human's notes and edits and every change made during the review.
 `<sha>` is the commit the request was sent at, recorded in the request as
 `commit`.
+
+In a several-file review the human answers each document on its own, and the
+waiter ends as soon as one answer arrives. It prints that answer as above
+(`file` lines, notes, edits and the changes report for the answered documents
+only; the verdict JSON is the surface's `<id>.verdict.<n>.json`, whose `files`
+entries also carry `index`, the document's 0-based position) and then, while
+other documents are unanswered or their answer is not yet handed on, one line
+`still open <id>: <path>, <path>` naming them in request order. Handing an
+answer on writes the empty `<id>.verdict.<n>.taken` beside it. The unanswered
+documents stay open in the same request, and the documents already answered
+are no longer under review. An answer to every document at once is the
+`<id>.verdict.json` described above. A one-file review ends on its one answer.
+
+`compass review --wait <id> [--timeout S]` waits on the same request again:
+it prints the next answer not yet handed on, in the same form and with the same
+exit codes, and ends the same way, so the caller runs it after acting on each
+answer until no `still open` line follows. An id that names no review, or a
+review whose every answer was already handed on, prints a message on stderr
+and exits 1.
 
 A document goes out only when it is committed: one with uncommitted changes,
 one outside a git repository, a repository with no commits, and a machine
@@ -84,8 +103,10 @@ as turning community plugins on in Obsidian; `compass doctor` names it.
 
 Exit 0 on a verdict, on `--no-wait`, `--status`, `--cancel` and `--install`;
 1 when not configured, on timeout, on a withdrawn request, on a usage error,
-on a `--cancel` of an id that is not pending, or when `--status`, `--cancel`
-or `--install` finds no `.compass` vault; never 2.
+on a `--cancel` of an id that is not pending, on a `--wait` of an id with no
+answer left to hand on, or when `--status`, `--cancel`, `--wait` or `--install`
+finds no `.compass` vault; never 2. `--wait` on a one-file review prints its
+answer again.
 """
 
 import json
@@ -102,13 +123,14 @@ ACK_SECONDS = 60
 
 USAGE = ("usage: compass review <file>... [--why <path>=<line>]... [--title T] [--timeout S] [--no-wait]\n"
          "       compass review --status\n"
+         "       compass review --wait <id> [--timeout S]\n"
          "       compass review --cancel <id>\n"
          "       compass review --install\n")
 
 
 def _parse(args):
     opts = {"files": [], "whys": [], "title": None, "timeout": None, "wait": True,
-            "status": False, "install": False, "cancel": None}
+            "status": False, "install": False, "cancel": None, "rewait": None}
     i = 0
     while i < len(args):
         arg = args[i]
@@ -121,6 +143,11 @@ def _parse(args):
                 raise ValueError("--cancel needs a request id")
             i += 1
             opts["cancel"] = args[i]
+        elif arg == "--wait":
+            if i + 1 >= len(args):
+                raise ValueError("--wait needs a request id")
+            i += 1
+            opts["rewait"] = args[i]
         elif arg == "--no-wait":
             opts["wait"] = False
         elif arg in ("--title", "--timeout", "--why"):
@@ -143,9 +170,11 @@ def _parse(args):
         else:
             opts["files"].append(arg)
         i += 1
-    modes = [opts["status"], opts["install"], opts["cancel"] is not None]
+    modes = [opts["status"], opts["install"], opts["cancel"] is not None, opts["rewait"] is not None]
     if sum(modes) > 1:
-        raise ValueError("--status, --cancel and --install are separate runs")
+        raise ValueError("--status, --cancel, --install and --wait are separate runs")
+    if opts["rewait"] is not None and (opts["files"] or opts["whys"] or opts["title"] is not None or not opts["wait"]):
+        raise ValueError("--wait takes the request id and --timeout only")
     if not any(modes) and not opts["files"]:
         raise ValueError("name the file to review")
     return opts
@@ -220,17 +249,24 @@ def _marks(verdict):
             for entry in verdict.get("files") or []}
 
 
-def _walked(documents, verdict, surface_root):
+def _walked(documents, verdict, surface_root, covered=None):
     """The request's documents as the answer left them: `(rel, path, old_rel)`
     per listed file, in request order. A listed file that no longer exists,
     where the answer's entry at the same place names a different file that
     does, was renamed during the review; it takes the entry's path, with its
     request name as `old_rel`. Every other file keeps its own, `old_rel`
-    None."""
+    None. An answer to some documents only (`covered`, the set of their
+    positions) walks just those, each matched to the entry carrying its
+    position."""
     entries = verdict.get("files") or []
     walked = []
     for i, (rel, path) in enumerate(documents):
-        entry = entries[i] if i < len(entries) else None
+        if covered is not None:
+            if i not in covered:
+                continue
+            entry = next((e for e in entries if isinstance(e, dict) and e.get("index") == i), None)
+        else:
+            entry = entries[i] if i < len(entries) else None
         name = entry.get("file") if isinstance(entry, dict) else None
         moved = Path(surface_root) / name if isinstance(name, str) and name != rel else None
         if moved is not None and not Path(path).exists() and moved.is_file():
@@ -274,15 +310,16 @@ def _shown_paths(verdict, documents, root, surface_root):
     return shown + [path for path in edited if path not in shown]
 
 
-def _print_answer(request, verdict, documents, root, vault, surface_root):
+def _print_answer(request, verdict, documents, root, vault, surface_root, covered=None):
     print(json.dumps(verdict, indent=2))
     _print_carried(verdict)
     several = len(documents) > 1
     marks = _marks(verdict)
-    walked = _walked(documents, verdict, surface_root) if several else [(r, p, None) for r, p in documents]
+    walked = _walked(documents, verdict, surface_root, covered) if several else [(r, p, None) for r, p in documents]
     if several:
         _print_file_lines(walked, marks, verdict["verdict"])
-    shown = documents + [(rel, path) for rel, path, old_rel in walked if old_rel]
+    answered = documents if covered is None else [documents[i] for i in sorted(covered)]
+    shown = answered + [(rel, path) for rel, path, old_rel in walked if old_rel]
     _print_changes(root, request["commit"], _shown_paths(verdict, shown, root, surface_root),
                    reviewlib.review_dir(vault))
     if not several:
@@ -294,19 +331,50 @@ def _print_answer(request, verdict, documents, root, vault, surface_root):
             _print_document(rel, path, newline=True)
 
 
+def _next_answer(request, request_path, several):
+    """`(verdict, covered, marker)` for the earliest answer no waiter has
+    handed on, else None. `covered` is the set of positions a partial answer
+    covers, None for the whole `<id>.verdict.json`; `marker` is the file to
+    write once the answer is printed, None when none is owed."""
+    whole = reviewlib.verdict_path(request_path)
+    whole_marker = reviewlib.taken_path(request_path, None)
+    if whole.exists() and not (several and whole_marker.exists()):
+        verdict = reviewlib.read_json(whole)
+        if reviewlib.valid_verdict(verdict, request):
+            return verdict, None, whole_marker if several else None
+    for n, verdict in reviewlib.partial_verdicts(request_path, request):
+        marker = reviewlib.taken_path(request_path, n)
+        if not marker.exists():
+            return verdict, reviewlib.covered_indexes(verdict), marker
+    return None
+
+
+def _print_open(request, request_path, documents):
+    """One line naming the documents whose answer no waiter has handed on."""
+    handed = reviewlib.handed_indexes(request_path, request)
+    waiting = [rel for i, (rel, _) in enumerate(documents) if i not in handed]
+    if waiting:
+        print(f"still open {request['id']}: {', '.join(waiting)}", flush=True)
+
+
 def _wait(request, request_path, documents, timeout, root, vault, surface_root, surface):
-    target = reviewlib.verdict_path(request_path)
     claim = reviewlib.seen_path(request_path)
+    several = len(documents) > 1
     started = time.monotonic()
     deadline = None if timeout is None else started + timeout
     claimed = False
     hinted = False
     while deadline is None or time.monotonic() < deadline:
-        if target.exists():
-            verdict = reviewlib.read_json(target)
-            if reviewlib.valid_verdict(verdict, request):
-                _print_answer(request, verdict, documents, root, vault, surface_root)
-                return 0
+        answer = _next_answer(request, request_path, several)
+        if answer is not None:
+            verdict, covered, marker = answer
+            _print_answer(request, verdict, documents, root, vault, surface_root, covered)
+            sys.stdout.flush()
+            if marker is not None:
+                marker.write_bytes(b"")
+            if covered is not None:
+                _print_open(request, request_path, documents)
+            return 0
         if not Path(request_path).exists():
             print(f"withdrawn {request['id']}")
             return 1
@@ -319,6 +387,36 @@ def _wait(request, request_path, documents, timeout, root, vault, surface_root, 
         time.sleep(POLL_SECONDS)
     print(f"timeout {request['id']}")
     return 1
+
+
+def _rewait(request_id, timeout):
+    """`compass review --wait <id>`: wait on the documents of an existing
+    request whose answer no waiter has handed on yet."""
+    try:
+        vault = vaultlib.find_vault_root()
+    except FileNotFoundError:
+        sys.stderr.write("compass review: no .compass vault found\n")
+        return 1
+    found = reviewlib.find_request(vault, request_id)
+    if found is None:
+        sys.stderr.write(f"compass review: no review with id {request_id!r}\n")
+        return 1
+    request_path, request = found
+    located = reviewlib.locate(vault, request)
+    if located is None:
+        sys.stderr.write(f"compass review: cannot place the documents of review {request_id!r}\n")
+        return 1
+    surface, documents, surface_root = located
+    rels = [rel for rel, _ in documents]
+    try:
+        root, _ = reviewlib.repo_of(documents[0][1])
+    except reviewlib.GitUnavailable as exc:
+        sys.stderr.write(f"compass review: {exc}\n")
+        return 1
+    if _next_answer(request, request_path, len(rels) > 1) is None and reviewlib.is_answered(request_path, request):
+        sys.stderr.write(f"compass review: every document of review {request_id!r} was already answered and handed on\n")
+        return 1
+    return _wait(request, request_path, documents, timeout, root, vault, surface_root, surface)
 
 
 def _same(a, b):
@@ -378,6 +476,8 @@ def run(args):
         return _status()
     if opts["cancel"] is not None:
         return _cancel(opts["cancel"])
+    if opts["rewait"] is not None:
+        return _rewait(opts["rewait"], opts["timeout"])
     if opts["install"]:
         try:
             vault = vaultlib.find_vault_root()

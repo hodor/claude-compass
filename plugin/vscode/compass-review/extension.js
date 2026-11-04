@@ -15,7 +15,7 @@
 //   is clicked:
 //     {"id", "file", "verdict": "approved"|"changes", "notes",
 //      "comments": [{"file", "note"}], "edited": [path],
-//      "files"?: [{"file", "read", "verdict", "note"?}], "at"}
+//      "files"?: [{"file", "read", "verdict", "note"?, "index"?}], "at"}
 //     file      the first listed document
 //     notes     the note typed for the reviewed document; for several
 //               documents, one `<name>: <note>` line per noted document
@@ -30,6 +30,14 @@
 //               "changes") and its note, when it has one; the top-level
 //               verdict is "approved" when every file is approved, else
 //               "changes"
+//   <folder>/.compass/tmp/review/<id>.verdict.<n>.json   written here instead
+//   when a button answers some documents of a several-document review and
+//   leaves others open: the same shape, `files` listing only the answered
+//   documents, each entry carrying `index`, the document's 0-based position in
+//   the request's `files`; `<n>` is the lowest `index` in it. `comments` carries
+//   the notes on outside files not sent before, `edited` the answered documents
+//   typed in. The review is answered once `<id>.verdict.json` exists or the
+//   `<n>` files cover every document.
 //   <folder>/.compass/tmp/review/<id>.seen   written here, empty, when a
 //   request is first taken up; tells Compass an editor window holds it
 // Other review surfaces share the folder; a request whose `surface` is not
@@ -50,11 +58,12 @@
 // summary line counts the files read and the notes. A card for one document
 // ends with one Approve and one "Needs changes"; "Needs changes" is enabled once
 // there is something to send: a note on the file or an outside file, or an edit.
-// A card for several documents gives each row its own Approve and "Needs
-// changes" and ends with Send, enabled once every row is decided and every
-// "Needs changes" row has a note or an edit of its own, and Approve all, which
-// approves every file and sends. A newer request that lists a file of an older
-// one in the same folder replaces it.
+// A card for several documents gives each row its own note field, Approve and
+// "Needs changes"; a click sends that document's verdict with its note at once
+// and the other rows stay open. "Needs changes" on a row is enabled once the row
+// has a note or an edit. The card ends with Approve all, which approves the rows
+// not yet sent that carry no note. A newer request that lists an unsent file of
+// an older one in the same folder replaces it.
 //
 // The walk, the notes and the marks live here, not in the page, so the panel
 // being hidden, closed and opened again loses nothing. The page announces itself
@@ -101,10 +110,10 @@ function baseName(file) {
   return file.split("/").pop().replace(/\.md$/, "");
 }
 
-// The mark, note and own verdict (null until chosen) the human has given one
+// The mark, note, own verdict (null until sent) and whether it was sent, for one
 // listed file.
 function newState() {
-  return { read: false, note: "", verdict: null };
+  return { read: false, note: "", verdict: null, sent: false };
 }
 
 function plural(n, word) {
@@ -113,6 +122,54 @@ function plural(n, word) {
 
 function verdictPathFor(requestPath) {
   return requestPath.replace(/\.request\.json$/, ".verdict.json");
+}
+
+// The `<id>.verdict.<n>.json` file answering the documents from position `n`.
+function partialPathFor(requestPath, n) {
+  return requestPath.replace(/\.request\.json$/, `.verdict.${n}.json`);
+}
+
+// The answers to some documents of a request, as `[{n, answer}]`: every
+// `<id>.verdict.<n>.json` beside it that parses.
+function partialAnswers(requestPath) {
+  const dir = path.dirname(requestPath);
+  const prefix = path.basename(requestPath).replace(/\.request\.json$/, ".verdict.");
+  const found = [];
+  let names = [];
+  try {
+    names = fs.readdirSync(dir);
+  } catch (e) {
+    return found;
+  }
+  for (const name of names) {
+    const named = name.startsWith(prefix) && /^(\d+)\.json$/.exec(name.slice(prefix.length));
+    if (!named) continue;
+    try {
+      const answer = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8"));
+      if (answer && Array.isArray(answer.files)) found.push({ n: Number(named[1]), answer });
+    } catch (e) {
+      // a file still being written is read on the next look
+    }
+  }
+  return found.sort((a, b) => a.n - b.n);
+}
+
+// The positions of the documents the `<id>.verdict.<n>.json` files answer.
+function answeredPositions(requestPath, count) {
+  const covered = new Set();
+  for (const { answer } of partialAnswers(requestPath)) {
+    for (const item of answer.files) {
+      if (item && Number.isInteger(item.index) && item.index >= 0 && item.index < count) covered.add(item.index);
+    }
+  }
+  return covered;
+}
+
+// Whether a request with `count` documents is answered: its `<id>.verdict.json`
+// exists, or the `<n>` files cover every document of a several-document review.
+function isAnswered(requestPath, count) {
+  if (exists(verdictPathFor(requestPath))) return true;
+  return count > 1 && answeredPositions(requestPath, count).size >= count;
 }
 
 // The empty file written beside a request once this extension has taken it up.
@@ -315,7 +372,7 @@ class CompassReview {
       this.noteBad(file, e);
       return null;
     }
-    if (!request || this.retired.has(request.id)) return null;
+    if (!request || this.retired.has(request.id) || isAnswered(file, filesOf(request).length)) return null;
     const isNew = !this.reviews.has(request.id);
     return { entry: this.track(request, file, folder), isNew };
   }
@@ -347,7 +404,8 @@ class CompassReview {
     }
     const replaced = [];
     for (const [id, old] of this.reviews) {
-      if (old.folder === folder && files.some((f) => old.files.some((o) => o.file === f.file))) {
+      const holds = (f) => old.files.some((o) => o.file === f.file && !old.states.get(o.file).sent);
+      if (old.folder === folder && files.some(holds)) {
         replaced.push(old);
         this.reviews.delete(id);
         this.retired.add(id);
@@ -361,17 +419,40 @@ class CompassReview {
       states: new Map(files.map((f) => [f.file, newState()])),
       index: 0,
       comments: new Map(),
+      carriedComments: new Map(),
       edited: new Set(),
       sending: false,
     };
     for (const old of replaced) {
-      for (const f of files) if (old.states.has(f.file)) entry.states.set(f.file, old.states.get(f.file));
+      for (const f of files) {
+        if (old.states.has(f.file) && !old.states.get(f.file).sent) entry.states.set(f.file, old.states.get(f.file));
+      }
       for (const [name, note] of old.comments) entry.comments.set(name, note);
+      for (const [name, note] of old.carriedComments) entry.carriedComments.set(name, note);
       for (const name of old.edited) entry.edited.add(name);
     }
+    this.restoreSent(entry);
     this.reviews.set(request.id, entry);
     this.markSeen(file);
     return entry;
+  }
+
+  // Marks the documents that `<id>.verdict.<n>.json` files already answer as
+  // sent, with the verdict each was sent with, so a window opened later shows
+  // them settled.
+  restoreSent(entry) {
+    if (entry.files.length < 2) return;
+    for (const { answer } of partialAnswers(entry.path)) {
+      for (const item of answer.files) {
+        const target = Number.isInteger(item.index) ? entry.files[item.index] : null;
+        if (!target || !VERDICTS.includes(item.verdict)) continue;
+        const state = entry.states.get(target.file);
+        state.sent = true;
+        state.verdict = item.verdict;
+        state.read = state.read || item.read === true;
+        state.note = typeof item.note === "string" ? item.note : state.note;
+      }
+    }
   }
 
   // Writes `<id>.seen` beside a request this extension has just taken up, so
@@ -415,7 +496,7 @@ class CompassReview {
   recheck() {
     try {
       for (const [id, entry] of this.reviews) {
-        if (!exists(entry.path) || exists(verdictPathFor(entry.path))) this.reviews.delete(id);
+        if (!exists(entry.path) || isAnswered(entry.path, entry.files.length)) this.reviews.delete(id);
       }
       this.scan().forEach((entry) => this.present(entry));
       this.push();
@@ -654,18 +735,15 @@ class CompassReview {
     return entry.states.get(file).note.trim() !== "" || entry.edited.has(file);
   }
 
-  // A several-file card can be sent once every file has a choice and every file
-  // asking for changes carries feedback of its own.
-  canSend(entry) {
-    return entry.files.every((f) => {
-      const { verdict } = entry.states.get(f.file);
-      return verdict === "approved" || (verdict === "changes" && this.fileHasFeedback(entry, f.file));
+  // The positions Approve all approves: the rows not yet sent that carry no
+  // note. A row with a note is the human's answer in progress and stays open.
+  approvableRows(entry) {
+    const rows = [];
+    entry.files.forEach((f, i) => {
+      const state = entry.states.get(f.file);
+      if (!state.sent && state.note.trim() === "") rows.push(i);
     });
-  }
-
-  // The top-level verdict of a several-file card: approved when every file is.
-  settledVerdict(entry) {
-    return entry.files.every((f) => entry.states.get(f.file).verdict === "approved") ? "approved" : "changes";
+    return rows;
   }
 
   // One line per note on a file outside the review, then one per edited file.
@@ -703,7 +781,10 @@ class CompassReview {
           why: f.why,
           read: state.read,
           hasNote: state.note.trim() !== "",
+          note: state.note,
           verdict: state.verdict,
+          sent: state.sent,
+          canChanges: this.fileHasFeedback(entry, f.file),
         };
       }),
       index: entry.index,
@@ -715,7 +796,7 @@ class CompassReview {
       feedback: this.feedbackItems(entry),
       canNextUnread: this.nextUnreadIndex(entry) >= 0,
       canChanges: this.hasFeedback(entry),
-      canSend: this.canSend(entry),
+      canApproveAll: entry.files.length > 1 && this.approvableRows(entry).length > 0,
     };
   }
 
@@ -750,7 +831,9 @@ class CompassReview {
         }
         case "note": {
           const target = Number.isInteger(msg.index) ? entry.files[msg.index] : null;
-          if (target && typeof msg.text === "string") entry.states.get(target.file).note = msg.text;
+          if (target && typeof msg.text === "string" && !entry.states.get(target.file).sent) {
+            entry.states.get(target.file).note = msg.text;
+          }
           this.push();
           break;
         }
@@ -761,20 +844,16 @@ class CompassReview {
           }
           this.push();
           break;
-        case "choose": {
-          const target = Number.isInteger(msg.index) ? entry.files[msg.index] : null;
-          if (target && entry.files.length > 1 && VERDICTS.includes(msg.verdict)) entry.states.get(target.file).verdict = msg.verdict;
-          this.push();
+        case "sendFile":
+          if (entry.files.length > 1 && Number.isInteger(msg.index) && VERDICTS.includes(msg.verdict)) {
+            await this.sendRows(entry, [msg.index], msg.verdict);
+          }
           break;
-        }
         case "send":
           if (entry.files.length === 1) await this.send(entry, msg.verdict === "approved" ? "approved" : "changes");
           break;
-        case "sendChoices":
-          if (entry.files.length > 1 && this.canSend(entry)) await this.send(entry, this.settledVerdict(entry));
-          break;
         case "approveAll":
-          if (entry.files.length > 1) await this.send(entry, "approved");
+          if (entry.files.length > 1) await this.sendRows(entry, this.approvableRows(entry), "approved");
           break;
         default:
           break;
@@ -802,7 +881,7 @@ class CompassReview {
     }
     answer.files = entry.files.map((f) => {
       const state = entry.states.get(f.file);
-      const item = { file: f.file, read: state.read, verdict: verdict === "approved" ? "approved" : state.verdict || "changes" };
+      const item = { file: f.file, read: state.read, verdict };
       if (state.note.trim()) item.note = state.note.trim();
       return item;
     });
@@ -813,15 +892,109 @@ class CompassReview {
     return answer;
   }
 
+  // The answer to the documents at `rows` (positions, ascending) of a
+  // several-document review whose other documents stay open: the same shape as
+  // the whole answer, `files` listing only these documents, each with its
+  // `index`. `verdict` is the one every row is sent with. Notes on outside
+  // files go out once; `edited` lists the answered documents typed in.
+  buildPartialAnswer(entry, rows, verdict) {
+    const files = rows.map((i) => {
+      const f = entry.files[i];
+      const state = entry.states.get(f.file);
+      const item = { file: f.file, read: state.read, verdict, index: i };
+      if (state.note.trim()) item.note = state.note.trim();
+      return item;
+    });
+    const answered = new Set(files.map((f) => f.file));
+    return {
+      id: entry.request.id,
+      file: files[0].file,
+      verdict,
+      notes: files
+        .filter((f) => f.note)
+        .map((f) => `${baseName(f.file)}: ${f.note}`)
+        .join("\n"),
+      comments: [...entry.comments]
+        .filter(([file, note]) => entry.carriedComments.get(file) !== note)
+        .map(([file, note]) => ({ file, note: note.trim() })),
+      edited: [...entry.edited].filter((file) => answered.has(file)),
+      files,
+      at: new Date().toISOString(),
+    };
+  }
+
+  // Sends the verdict for the rows at `rows` of a several-document review. The
+  // answer is `<id>.verdict.json` when it covers every document of the request
+  // and nothing was sent before, else `<id>.verdict.<n>.json`. A row already
+  // sent is left out, and a "changes" row needs a note or an edit. The review
+  // leaves the panel once every document is sent.
+  async sendRows(entry, rows, verdict) {
+    if (entry.sending) return;
+    const open = [...new Set(rows)]
+      .filter((i) => Number.isInteger(i) && i >= 0 && i < entry.files.length && !entry.states.get(entry.files[i].file).sent)
+      .sort((a, b) => a - b);
+    if (open.length === 0) return;
+    if (verdict === "changes" && !open.every((i) => this.fileHasFeedback(entry, entry.files[i].file))) return;
+    entry.sending = true;
+    try {
+      await this.saveListed(entry);
+      const id = entry.request.id;
+      if (this.reviews.get(id) !== entry) return;
+      if (!exists(entry.path)) {
+        this.reviews.delete(id);
+        this.push();
+        vscode.window.showInformationMessage("This review was withdrawn, so nothing was sent");
+        return;
+      }
+      const taken = answeredPositions(entry.path, entry.files.length);
+      if (exists(verdictPathFor(entry.path)) || open.some((i) => taken.has(i))) {
+        this.reviews.delete(id);
+        this.retired.add(id);
+        this.push();
+        vscode.window.showInformationMessage("This review was already answered, so nothing was sent");
+        return;
+      }
+      const sentBefore = entry.files.some((f) => entry.states.get(f.file).sent);
+      const whole = !sentBefore && open.length === entry.files.length;
+      const target = whole ? verdictPathFor(entry.path) : partialPathFor(entry.path, open[0]);
+      const answer = whole ? this.buildAnswer(entry, verdict) : this.buildPartialAnswer(entry, open, verdict);
+      const staged = target.replace(/\.json$/, ".tmp");
+      fs.writeFileSync(staged, JSON.stringify(answer, null, 2));
+      fs.renameSync(staged, target);
+      for (const i of open) {
+        const state = entry.states.get(entry.files[i].file);
+        state.sent = true;
+        state.verdict = verdict;
+      }
+      for (const [file, note] of entry.comments) entry.carriedComments.set(file, note);
+      if (entry.files.every((f) => entry.states.get(f.file).sent)) {
+        this.reviews.delete(id);
+        this.retired.add(id);
+      }
+      this.push();
+      vscode.window.showInformationMessage(
+        verdict === "approved" ? "Approved, sent to Claude" : "Changes requested, sent to Claude"
+      );
+    } finally {
+      entry.sending = false;
+    }
+  }
+
+  // Saves the listed editors that have unsaved text, so Compass reads what the
+  // human sees.
+  async saveListed(entry) {
+    for (const doc of vscode.workspace.textDocuments) {
+      if (doc.isDirty && doc.uri.scheme === "file" && this.listedFile(entry, doc.uri.fsPath)) await doc.save();
+    }
+  }
+
   async send(entry, verdict) {
     if (entry.sending) return;
-    if (verdict === "changes" && entry.files.length === 1 && !this.hasFeedback(entry)) return;
+    if (verdict === "changes" && !this.hasFeedback(entry)) return;
     entry.sending = true;
     try {
       // Flush the human's edits before Compass reads the files.
-      for (const doc of vscode.workspace.textDocuments) {
-        if (doc.isDirty && doc.uri.scheme === "file" && this.listedFile(entry, doc.uri.fsPath)) await doc.save();
-      }
+      await this.saveListed(entry);
       const id = entry.request.id;
       if (this.reviews.get(id) !== entry) return;
       if (!exists(entry.path)) {
