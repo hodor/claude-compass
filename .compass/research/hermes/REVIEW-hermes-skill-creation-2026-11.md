@@ -1,7 +1,7 @@
 ---
 title: "Review: Hermes automatic skill creation and a reviewed Compass flow (2026-11)"
 type: research
-status: draft
+status: complete
 confidence: high
 area: architecture
 tags: [hermes-agent, skills, skill-creation, review, write-approval, learning-loop, convergence]
@@ -27,12 +27,13 @@ flowchart LR
   D -->|cancel or no verdict| G["Draft stays staged, nothing applied"]
 ```
 
-> [!IMPORTANT]
-> You decide: does Compass build automatic skill creation with a review of every draft in the md editor, as pictured? Approving makes these choices binding, so each needs your answer:
-> 1. Where a staged draft lives inside `.compass` so `compass review` accepts it (today no path exists for a new skill).
-> 2. What the helper may change: new skills only, or also patches to existing skills (Hermes lets its reviewer patch any skill a user has not locked).
-> 3. How eager the helper is: Hermes tells its reviewer most sessions should produce a skill update; Compass lesson capture writes nothing unless a fixed trigger fired.
-> 4. Whether the gaps listed below get another research pass before a plan (spec (what we need): [[SPEC-012-learning-loop]]).
+## Decision
+
+Approved 2026-11-04: Compass builds automatic skill creation with a review of every draft in the md editor, as pictured. Four choices are open and are settled in the spec that captures this need:
+1. Where a staged draft lives inside `.compass` so `compass review` accepts it (today no path exists for a new skill).
+2. What the helper may change: new skills only, or also patches to existing skills (Hermes lets its reviewer patch any skill a user has not locked).
+3. How eager the helper is: Hermes tells its reviewer most sessions should produce a skill update; Compass lesson capture writes nothing unless a fixed trigger fired.
+4. Whether the gaps listed below get another research pass before a plan.
 
 ## Inputs
 
