@@ -283,7 +283,7 @@ def test_command_line_hook_settings_and_environment_of_the_build_session(
         if any("answer_question.py" in hook["command"] for hook in group["hooks"])
     ]
     assert len(ours) == 1
-    for tool in ("AskUserQuestion", "Bash", "Write", "Edit"):
+    for tool in ("AskUserQuestion", "Bash", "Write", "Edit", "WebSearch", "WebFetch"):
         assert re.fullmatch(ours[0]["matcher"], tool), tool
     config_path = entry["env"]["OVERHEAD_HOOK_CONFIG"]
     config = json.loads(open(config_path, encoding="utf-8").read())

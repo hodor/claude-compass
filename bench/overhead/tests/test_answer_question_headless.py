@@ -2,7 +2,8 @@
 
 A headless build has no one to grant a permission prompt, so the hook's word
 is final: a call inside the fence is allowed outright, a call outside it is
-denied with a reason, and the PowerShell tool is denied with a pointer to Bash.
+denied with a reason, web search and fetch are allowed, and the PowerShell
+tool is denied with a pointer to Bash.
 
 Adversarial themes: the project named in its Git Bash spelling (`/c/...`),
 which the shell reports for the working folder, must count as the project; a
@@ -83,3 +84,14 @@ def test_powershell_is_denied_with_a_pointer_to_bash(project):
     out = call("PowerShell", {"command": "Get-ChildItem"}, project)
     assert out["permissionDecision"] == "deny"
     assert "Bash" in out["permissionDecisionReason"]
+
+
+@pytest.mark.parametrize("tool, tool_input", [
+    ("WebSearch", {"query": "json lines spec"}),
+    ("WebFetch", {"url": "https://jsonlines.org/", "prompt": "summarize"}),
+])
+def test_web_tools_are_allowed_since_no_one_can_grant_their_prompt(project, tool, tool_input):
+    """Adversarial where: a web call falls through to the permission prompt,
+    which a headless session refuses, and researchers fall back to curl."""
+    out = call(tool, tool_input, project)
+    assert out["permissionDecision"] == "allow"
