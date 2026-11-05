@@ -1,7 +1,7 @@
 ---
 title: "Review: what a launched agent needs in its context, Hermes memory and a crafted Compass launch"
 type: research
-status: draft
+status: complete
 confidence: medium
 area: workflow
 tags: [context, subagents, memory, hermes-agent, overhead, skills, launcher, review]
@@ -36,12 +36,13 @@ flowchart LR
   T --> C
 ```
 
-> [!IMPORTANT]
-> You decide:
-> 1. Which launch design goes into a plan first: A, slim agent files and split skills, no hook (Recommended); B, a task packet built by the `compass` CLI and passed in the brief; C, the same packet injected by a hook.
-> 2. Whether builder, tester and validator keep the `obsidian` skill: split it so the preloaded part holds only the link and properties rules (Recommended); drop it from those three (they lose the link rule, which builders use in 7 of 20 sessions); keep it whole.
-> 3. Whether tester, reviewer, validator and researcher keep the `lessons` skill, which none of them followed with `compass lessons`: keep it until a paired run with equal outcome shows it can go (Recommended); drop it now.
-> 4. The start-here read that never runs: run the one-launch check (E1), then deliver the start-here files through the brief or a hook (Recommended); delete the `initialPrompt` lines; leave them.
+## Decisions
+
+Approved 2026-11-05:
+1. Design A goes into a plan first: slim agent files and split skills, no hook.
+2. Builder, tester and validator keep a split `obsidian` skill whose preloaded part holds only the link and properties rules.
+3. Tester, reviewer, validator and researcher keep the `lessons` skill until a paired run with equal outcome shows it can go.
+4. The start-here read: the one-launch check (E1) runs first, then the start-here files reach agents through the brief or a hook.
 
 ## Inputs
 
