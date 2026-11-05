@@ -527,3 +527,11 @@ Plan: [[PLAN-027-numbered-choices]].
 
 ### PLAN-021 Wave 2: judge, schedule, ast-grep sensor, skill, release
 - [x] TASK-236: A loop on this repository shrinks the context Compass adds to every session - complexity: L, depends_on: TASK-158, TASK-159
+
+### PLAN-028 Wave 1: the pilot
+- [x] TASK-245: Sandbox - complexity: L, depends_on: none
+
+### PLAN-028 Wave 1: the pilot
+- [x] TASK-244: You log the sandbox config into your Claude subscription - complexity: S, depends_on: none
+- [x] TASK-246: The session driver and the simulated human - complexity: L, depends_on: TASK-245
+- [x] TASK-247: Topics - complexity: L, depends_on: TASK-245

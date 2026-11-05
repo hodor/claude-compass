@@ -1,7 +1,8 @@
 ---
 title: "Crafted Context for Each Launched Agent"
 type: plan
-status: draft
+status: approved
+approved: 2026-11-05
 confidence: medium
 area: workflow
 tags: [tokens, context, subagents, skills, overhead, measurement]
@@ -52,8 +53,9 @@ flowchart LR
 
 Numbers are task ids. The yellow box is the pilot of [[PLAN-028-whole-overhead-on-real-projects]], which every plugin change waits for. A stage (written "Wave" in the headings below, which Compass's tools read) is a group of tasks planned in detail together; grey ones stay one-line sketches.
 
-> [!IMPORTANT]
-> You decide: whether design A, as cut here, is the first change to launched agents. Approving binds four readings of the approved rulings: (1) the `obsidian` skill is split once, for every agent that preloads it, so the planner, researcher, reviewer and pr-describe read the templates side file before writing a document; (2) the start-here files reach agents through the brief the orchestrating skills write, with a hook used only if the brief route fails; (3) the `lessons` skill stays in every agent until TASK-268's paired run; (4) every plugin change lands after PLAN-028's TASK-250. The capability removals at the end are questions, not tasks.
+## Rulings
+
+Approved 2026-11-05 with these readings of the approved rulings: (1) the `obsidian` skill is split once, for every agent that preloads it, so the planner, researcher, reviewer and pr-describe read the templates side file before writing a document; (2) the start-here files reach agents through the brief the orchestrating skills write, with a hook used only if the brief route fails; (3) the `lessons` skill stays in every agent until TASK-268's paired run; (4) every plugin change lands after PLAN-028's TASK-250. The capability removals at the end are questions, not tasks.
 
 ## Goal
 
@@ -149,4 +151,4 @@ These remove a capability, so they stay out of the plan until you rule on them; 
 - TASK-259 misses its window and the pilot's transcripts are purged: TASK-259's ordering against TASK-250 is a named prerequisite, and the saved profiles PLAN-028 already writes keep the whole-project totals as a fallback.
 - Writer agents skip the templates side file and write malformed documents: TASK-266 counts properties and link-rule misses per type; `compass validate` catches malformed properties on write.
 - LOOP-004 of PLAN-028 (TASK-254) also changes the biggest area in `plugin/`: its baseline batch (TASK-251) records the plugin sha, so a baseline taken after this Stage 1 lands measures the slim agents [guess: Stage 1 lands before TASK-251 starts].
-- The review's approved rulings are a numbered list, not decision bullets (`- **D-NN:**`), so `compass coverage` tracks none of them; this plan carries them in its "You decide" callout and its task text.
+- The review's approved rulings are a numbered list, not decision bullets (`- **D-NN:**`), so `compass coverage` tracks none of them; this plan carries them in its Rulings section and its task text.

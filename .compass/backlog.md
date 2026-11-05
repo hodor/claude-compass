@@ -7,6 +7,18 @@ updated: 2026-05-24
 
 > PLAN-001 Phases 3-6 are now tracked in [[active]] under "Next Up" / "In Progress".
 
+## PLAN-029 later tasks (intent only)
+
+Plan: [[PLAN-029-crafted-agent-context]], section "Later (intent only)".
+
+- [ ] TASK-265: The harness pairs two Compass versions
+- [ ] TASK-266: Paired run of the split `obsidian` skill
+- [ ] TASK-267: The start-here files reach agents through the brief, as TASK-260 directs
+- [ ] TASK-268: Paired run of the `lessons` skill for tester, reviewer, validator and researcher
+- [ ] TASK-269: Measure per-section use of the `methodology` skill
+- [ ] TASK-270: Measure each subagent's returned report size
+- [ ] TASK-271: Measure agent memory reads and writes
+
 ## PLAN-009 later tasks (intent only, not yet elaborated)
 
 Held under [[PLAN-009-sizing-mechanism]]'s `## Later` region. Promoted into a detailed wave at the elaboration step, not worked from here.
