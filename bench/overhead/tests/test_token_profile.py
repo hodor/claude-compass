@@ -378,3 +378,157 @@ def test_a_forked_subagent_does_not_count_the_parent_response_it_repeats(folder)
 ])
 def test_install_paths_and_tool_names_pass_only_from_the_known_lists(source, expected):
     assert token_profile.public_source(source, frozenset({"compass-pipeline"})) == expected
+
+
+def write_agent(folder, parent, name, agent_type, usages):
+    """A subagent session of `parent` whose responses carry `usages`, one
+    response each, after a plain brief."""
+    agents = folder / parent / "subagents"
+    agents.mkdir(parents=True, exist_ok=True)
+    (agents / f"{name}.meta.json").write_text(json.dumps({"agentType": agent_type}), encoding="utf-8")
+    lines = [user_text("b" * 300)]
+    for index, one in enumerate(usages):
+        lines.append(assistant(f"{name}-{index}", one, [{"type": "text", "text": "ok"}], sidechain=True))
+    write_session(agents, name, lines)
+
+
+def test_by_agent_counts_each_type_and_its_means_are_the_hand_summed_weighted_tokens(folder):
+    """Defect class: a per-type mean that divides by the project's session count,
+    or sums the types into one row. Weights: input 1, output 5."""
+    write_session(folder, SECRET_SESSION, build_lines())
+    write_agent(folder, SECRET_SESSION, "agent-b1", "builder", [usage(input_=100, output=10)])
+    write_agent(folder, SECRET_SESSION, "agent-b2", "builder", [usage(input_=200, output=20)])
+    write_agent(folder, SECRET_SESSION, "agent-v1", "validator", [usage(input_=40, output=2)])
+
+    by_agent = token_profile.profile_folder(folder)["by_agent"]
+
+    assert set(by_agent) == {"subagent:builder", "subagent:validator"}
+    assert by_agent["subagent:builder"]["sessions"] == 2
+    assert by_agent["subagent:validator"]["sessions"] == 1
+    assert by_agent["subagent:builder"]["mean"] == pytest.approx((150 + 300) / 2)
+    assert by_agent["subagent:validator"]["mean"] == pytest.approx(50)
+    assert sorted(by_agent["subagent:builder"]["session_weighted"]) == [150, 300]
+
+
+def test_by_agent_median_is_the_middle_session_not_the_mean(folder):
+    write_session(folder, SECRET_SESSION, build_lines())
+    for index, tokens in enumerate((100, 200, 1000)):
+        write_agent(folder, SECRET_SESSION, f"agent-b{index}", "builder", [usage(input_=tokens)])
+
+    entry = token_profile.profile_folder(folder)["by_agent"]["subagent:builder"]
+
+    assert entry["median"] == pytest.approx(200)
+    assert entry["mean"] == pytest.approx(1300 / 3, abs=0.1)
+
+
+def test_a_sessions_weighted_tokens_sum_every_response_of_that_session(folder):
+    write_session(folder, SECRET_SESSION, build_lines())
+    write_agent(folder, SECRET_SESSION, "agent-b1", "builder", [usage(input_=10, output=1), usage(input_=20, output=2)])
+
+    entry = token_profile.profile_folder(folder)["by_agent"]["subagent:builder"]
+
+    assert entry["session_weighted"] == [pytest.approx(10 + 5 + 20 + 10)]
+
+
+def test_by_agent_shares_split_a_types_tokens_by_source_family_and_sum_to_one(folder):
+    write_session(folder, SECRET_SESSION, build_lines())
+    write_agent(folder, SECRET_SESSION, "agent-b1", "builder", [usage(input_=100, output=10)])
+
+    shares = token_profile.profile_folder(folder)["by_agent"]["subagent:builder"]["families"]
+
+    assert shares == {"user": pytest.approx(100 / 150, abs=1e-3), "output": pytest.approx(50 / 150, abs=1e-3)}
+    assert sum(shares.values()) == pytest.approx(1.0, abs=1e-3)
+
+
+def test_by_agent_is_empty_without_subagent_sessions_and_top_level_kinds_stay_out(folder):
+    write_session(folder, SECRET_SESSION, build_lines())
+
+    assert token_profile.profile_folder(folder)["by_agent"] == {}
+
+
+def test_a_subagent_with_no_counted_response_still_counts_as_a_session_with_zero_tokens(folder):
+    """Defect class: a launch that wrote nothing disappearing from the per-launch mean."""
+    write_session(folder, SECRET_SESSION, build_lines())
+    write_agent(folder, SECRET_SESSION, "agent-b1", "builder", [])
+    write_agent(folder, SECRET_SESSION, "agent-b2", "builder", [usage(input_=100)])
+
+    entry = token_profile.profile_folder(folder)["by_agent"]["subagent:builder"]
+
+    assert entry["sessions"] == 2
+    assert entry["mean"] == pytest.approx(50)
+    assert entry["families"] != {}
+
+
+def test_an_agent_with_no_tokens_has_empty_shares_rather_than_a_division_error(folder):
+    write_session(folder, SECRET_SESSION, build_lines())
+    write_agent(folder, SECRET_SESSION, "agent-b1", "builder", [])
+
+    entry = token_profile.profile_folder(folder)["by_agent"]["subagent:builder"]
+
+    assert entry["mean"] == 0
+    assert entry["families"] == {}
+
+
+def test_public_by_agent_renames_private_types_and_pools_them_into_one_row():
+    by_agent = {
+        "subagent:builder": {"sessions": 1, "mean": 100.0, "median": 100.0, "families": {"user": 1.0},
+                             "session_weighted": [100.0]},
+        "subagent:lighthouse-agent": {"sessions": 1, "mean": 200.0, "median": 200.0, "families": {"tool result": 1.0},
+                                      "session_weighted": [200.0]},
+        "subagent:keeper-agent": {"sessions": 2, "mean": 500.0, "median": 500.0, "families": {"tool result": 1.0},
+                                  "session_weighted": [400.0, 600.0]},
+    }
+
+    public = token_profile.public_by_agent(by_agent, frozenset({"builder"}))
+
+    assert set(public) == {"subagent:builder", "(other)"}
+    assert public["(other)"]["sessions"] == 3
+    assert public["(other)"]["mean"] == pytest.approx((200 + 400 + 600) / 3)
+    assert public["(other)"]["median"] == pytest.approx(400)
+    assert public["(other)"]["families"] == {"tool result": pytest.approx(1.0)}
+
+
+def test_the_by_agent_render_lists_counts_means_and_family_shares_without_private_names(folder):
+    write_session(folder, SECRET_SESSION, build_lines())
+    write_agent(folder, SECRET_SESSION, "agent-b1", "builder", [usage(input_=100, output=10)])
+    write_agent(folder, SECRET_SESSION, "agent-b2", "builder", [usage(input_=200, output=20)])
+    write_agent(folder, SECRET_SESSION, "agent-x1", "lighthouse-agent", [usage(input_=40)])
+    summary = token_profile.profile_folder(folder)
+
+    text = token_profile.render_by_agent(summary, frozenset({"builder"}))
+
+    assert "subagent:builder" in text
+    assert "225" in text
+    assert "(other)" in text
+    assert "lighthouse" not in text
+    assert "output" in text and "user" in text
+
+
+def test_the_by_agent_render_of_a_project_with_no_subagents_says_so(folder):
+    write_session(folder, SECRET_SESSION, build_lines())
+
+    text = token_profile.render_by_agent(token_profile.profile_folder(folder), frozenset())
+
+    assert "no subagent" in text.lower()
+
+
+def test_the_by_agent_flag_prints_only_the_per_agent_table(tmp_path, capsys, monkeypatch):
+    monkeypatch.setattr(token_profile, "wait_until_quiet", lambda folder: True)
+    root = tmp_path / "private"
+    project = tmp_path / "proj-abc123"
+    project.mkdir()
+    transcripts = token_profile.transcript_folder(project, root)
+    transcripts.mkdir(parents=True)
+    write_session(transcripts, SECRET_SESSION, build_lines())
+    write_agent(transcripts, SECRET_SESSION, "agent-b1", "builder", [usage(input_=100, output=10)])
+    plugin = tmp_path / "plugin"
+    (plugin / "agents").mkdir(parents=True)
+    (plugin / "agents" / "builder.md").write_text("x", encoding="utf-8")
+
+    code = token_profile.main([str(project), "--private-root", str(root), "--by-agent", "--plugin-root", str(plugin)])
+
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "subagent:builder" in out
+    assert "Weighted tokens:" not in out
+    assert "Active skill" not in out

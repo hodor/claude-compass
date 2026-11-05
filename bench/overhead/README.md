@@ -9,6 +9,8 @@ Repo-local tooling that measures how many tokens Compass adds to a real build. N
 | `sandbox.py` | Throwaway projects under a projects root: `new`, `list`, `keep PROJECT --to DIR`, `discard PROJECT [--config-dir DIR]`. |
 | `launch.py` | One isolated headless `claude -p` session; reads `stream-json` and classifies the end as `done`, `failed` or `usage-limit`. |
 | `records.py` | Counts a session's tokens, adds list-price weights, appends one allowlisted row to the private records. |
+| `token_profile.py` | Where a build's tokens go, read from its session transcripts; `--by-agent` prints the mean and median weighted tokens per launch of each subagent type and each source family's share; `--json` saves the profile. |
+| `compare.py` | `compare.py BEFORE AFTER`: per agent type, the mean weighted tokens per launch in two folders of saved profiles, the change and a bootstrap 95% interval over sessions (fixed seed). |
 | `tests/` | pytest suite. `tests/fake_claude.py` replays canned `stream-json` in place of `claude`. |
 
 Standard library only. Run the suite from the repository root:
@@ -49,3 +51,9 @@ A session starts only when `git status` reports `plugin/` clean (and, with `plug
 The private root is `~/.compass/overhead/`. `record_session` appends one row per session to `records/<machine id>.jsonl`, where the machine id is `sensorlib.machine_id()` from `plugin/cli`. A row holds a timestamp, the machine id, role (`build`, `human`, `topic`, `goal`, `judge`), outcome, arm (`compass`, `baseline` or null), commit id, Claude Code version, result count, summed duration, per-model counts of `input`, `output`, `cache_read` and `cache_write` tokens, a list-price weighted total and the list of unpriced models. No topic, path, prompt, session id or model output is stored. A records folder inside a git work tree is refused.
 
 Counting takes each stretch's last `modelUsage` totals (a stretch ends at a `/clear`, which shows as a new `system/init` event) and sums the stretches. The weight of a token is its list price relative to fresh input of the same model: output 5, cache write 1.25, cache read 0.1 (0.05 for the Opus 5.5 and Sonnet 5.5 families, 0.025 for Fable 5.1 and Mythos 5.1). A model outside the table adds no weight; its tokens are counted and its id appears in `unpriced_models`.
+
+## Comparing launches
+
+`token_profile.py PROJECT --by-agent --json` saves one profile per build, with a `by_agent` table: for each `subagent:<type>` the session count, the mean and median weighted tokens per session, every session's weighted tokens, and the share of each source family. `compare.py BEFORE AFTER` pools the sessions of every profile in each folder and prints, per agent type, the launches and the mean weighted tokens in each set, the change, and a 95% bootstrap interval of the change in the mean (2000 resamples, seed fixed). A type seen in one set only shows no change, and an interval needs two sessions on each side. Agent types that Compass does not ship print as `(other)`.
+
+Pass `--outcomes-before DIR --outcomes-after DIR` to guard the comparison with outcomes. Each folder holds one JSON file per build: a judge verdict (`counts` of goals scored `met`, `partly met`, `not met`) and the build's test result (`recorded.builder_tests`, or a top-level `tests`). When the sets' summed goal counts or test tallies differ, the report prints `outcome differs` and no token comparison.

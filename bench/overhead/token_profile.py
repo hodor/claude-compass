@@ -38,17 +38,23 @@ skill's `SKILL.md` under `.claude/skills/`), `none` before the first; in a
 subagent or capture-worker session it is the session kind. Every response's
 weighted tokens also go to its phase, and its output tokens to `output:<phase>`.
 
+Launches. For each `subagent:<type>` session kind the summary's `by_agent`
+holds the session count, the mean and median weighted tokens per session, the
+weighted tokens of every session (`session_weighted`) and the share of each
+source family in the type's tokens.
+
 Reconciliation. The counted tokens of each top-level session and its
 subagents are compared with the `cost-state` totals the session wrote, when it
 wrote them.
 
-    python token_profile.py PROJECT [--private-root DIR] [--json]
+    python token_profile.py PROJECT [--private-root DIR] [--json] [--by-agent [--plugin-root DIR]]
 """
 
 import argparse
 import json
 import os
 import re
+import statistics
 import sys
 import time
 from pathlib import Path
@@ -453,10 +459,13 @@ def _family_models(family):
 def summarize(sessions):
     by_kind, by_source, by_phase, models = {}, {}, {}, {}
     counts = {}
+    launches = {}
     mismatches = []
     for session in sessions:
         session.pop("counted_ids", None)
         counts[session["kind"]] = counts.get(session["kind"], 0) + 1
+        if session["kind"].startswith("subagent:"):
+            launches.setdefault(session["kind"], []).append(session)
         for model, kinds in session["models"].items():
             _add(models, model, kinds)
             _add(by_kind, session["kind"], kinds)
@@ -478,12 +487,42 @@ def summarize(sessions):
         "by_kind": _rounded(by_kind),
         "by_source": _rounded(by_source),
         "by_phase": _rounded(by_phase),
+        "by_agent": _by_agent(launches),
         "models": _rounded(models),
         "reconciliation": {
             "sessions_checked": len(mismatches),
             "largest_gap": round(max(mismatches), 4) if mismatches else None,
         },
     }
+
+
+def _by_agent(launches):
+    """{`subagent:<type>`: {sessions, mean, median, session_weighted, families}}
+    from the subagent sessions of each type; `families` is each source family's
+    share of the type's weighted tokens."""
+    table = {}
+    for kind, sessions in sorted(launches.items()):
+        weighted = [sum(kinds["weighted"] for kinds in session["models"].values()) for session in sessions]
+        family_tokens = {}
+        for session in sessions:
+            for source, kinds in session["by_source"].items():
+                family_tokens[group(source)] = family_tokens.get(group(source), 0.0) + kinds["weighted"]
+        table[kind] = {
+            "sessions": len(sessions),
+            "mean": round(statistics.fmean(weighted), 1),
+            "median": round(statistics.median(weighted), 1),
+            "session_weighted": [round(value, 1) for value in weighted],
+            "families": _shares(family_tokens),
+        }
+    return table
+
+
+def _shares(tokens):
+    """{name: share of the total}, empty when nothing was counted."""
+    total = sum(tokens.values())
+    if total <= 0:
+        return {}
+    return {name: round(value / total, 4) for name, value in tokens.items() if value > 0}
 
 
 def _rounded(table):
@@ -626,15 +665,63 @@ def render(summary, top=25):
     return "\n".join(lines)
 
 
+def public_by_agent(by_agent, known):
+    """`by_agent` with each type outside the public vocabulary renamed
+    `(other)`; the types that share a name pool their sessions."""
+    pooled = {}
+    for kind, entry in by_agent.items():
+        pooled.setdefault(public_phase(kind, known), []).append(entry)
+    table = {}
+    for name, entries in pooled.items():
+        sessions = [value for entry in entries for value in entry["session_weighted"]]
+        family_tokens = {}
+        for entry in entries:
+            for family, share in entry["families"].items():
+                family_tokens[family] = family_tokens.get(family, 0.0) + share * sum(entry["session_weighted"])
+        table[name] = {
+            "sessions": len(sessions),
+            "mean": round(statistics.fmean(sessions), 1) if sessions else 0.0,
+            "median": round(statistics.median(sessions), 1) if sessions else 0.0,
+            "session_weighted": sessions,
+            "families": _shares(family_tokens),
+        }
+    return table
+
+
+def render_by_agent(summary, known):
+    """Markdown tables of the per-agent-type launch figures of `summary`, with
+    type names outside the public vocabulary shown as `(other)`."""
+    by_agent = public_by_agent(summary.get("by_agent") or {}, known)
+    if not by_agent:
+        return "No subagent sessions."
+    ranked = sorted(by_agent.items(), key=lambda pair: -pair[1]["mean"])
+    lines = ["| Agent type | Sessions | Mean weighted | Median weighted |", "|---|---|---|---|"]
+    for name, entry in ranked:
+        lines.append(f"| {name} | {entry['sessions']} | {entry['mean']:.0f} | {entry['median']:.0f} |")
+    lines += ["", "| Agent type | Source family | Share |", "|---|---|---|"]
+    for name, entry in ranked:
+        for family, share in sorted(entry["families"].items(), key=lambda pair: -pair[1]):
+            lines.append(f"| {name} | {family} | {share:.1%} |")
+    return "\n".join(lines)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("project")
     parser.add_argument("--private-root")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--top", type=int, default=25)
+    parser.add_argument("--by-agent", action="store_true", help="print the per-agent-type launch table only")
+    parser.add_argument("--plugin-root", default=str(Path(__file__).resolve().parents[2] / "plugin"))
     args = parser.parse_args(argv)
     summary = profile_project(args.project, args.private_root)
-    sys.stdout.write((json.dumps(summary, indent=1) if args.json else render(summary, args.top)) + "\n")
+    if args.json:
+        text = json.dumps(summary, indent=1)
+    elif args.by_agent:
+        text = render_by_agent(summary, compass_names(args.plugin_root))
+    else:
+        text = render(summary, args.top)
+    sys.stdout.write(text + "\n")
     return 0
 
 
