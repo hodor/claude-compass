@@ -17,7 +17,10 @@ Typical use:
         proctree.release(job)
 
 A descendant the child starts before `assign` returns is outside the job;
-`taskkill /T` still reaches it through the parent chain.
+`taskkill /T` still reaches it through the parent chain. `taskkill` can fail
+on a loaded machine ("Call cancelled", "Quota violation") without ending any
+process; when it does, the tree is walked through a process snapshot taken in
+this process and each descendant is terminated directly.
 """
 
 import os
@@ -31,6 +34,9 @@ _JOB_OBJECT_EXTENDED_LIMIT_INFORMATION_CLASS = 9
 _JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000
 _PROCESS_SET_QUOTA = 0x0100
 _PROCESS_TERMINATE = 0x0001
+_TH32CS_SNAPPROCESS = 0x00000002
+_TASKKILL_PROCESS_NOT_FOUND = 128
+_SNAPSHOT_PASSES = 5
 
 
 def popen_kwargs():
@@ -165,11 +171,119 @@ def release(job):
         job.close()
 
 
+def _process_parents():
+    """Map every running pid to its parent pid from a process snapshot, or
+    None when the snapshot cannot be taken (Windows only)."""
+    import ctypes
+    from ctypes import wintypes
+
+    class ProcessEntry(ctypes.Structure):
+        _fields_ = [
+            ("dwSize", wintypes.DWORD),
+            ("cntUsage", wintypes.DWORD),
+            ("th32ProcessID", wintypes.DWORD),
+            ("th32DefaultHeapID", ctypes.c_size_t),
+            ("th32ModuleID", wintypes.DWORD),
+            ("cntThreads", wintypes.DWORD),
+            ("th32ParentProcessID", wintypes.DWORD),
+            ("pcPriClassBase", wintypes.LONG),
+            ("dwFlags", wintypes.DWORD),
+            ("szExeFile", wintypes.WCHAR * 260),
+        ]
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    kernel32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+    kernel32.Process32FirstW.restype = wintypes.BOOL
+    kernel32.Process32FirstW.argtypes = [wintypes.HANDLE, ctypes.POINTER(ProcessEntry)]
+    kernel32.Process32NextW.restype = wintypes.BOOL
+    kernel32.Process32NextW.argtypes = [wintypes.HANDLE, ctypes.POINTER(ProcessEntry)]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+
+    snapshot = kernel32.CreateToolhelp32Snapshot(_TH32CS_SNAPPROCESS, 0)
+    if not snapshot or snapshot == wintypes.HANDLE(-1).value:
+        return None
+    try:
+        entry = ProcessEntry()
+        entry.dwSize = ctypes.sizeof(entry)
+        parents = {}
+        more = kernel32.Process32FirstW(snapshot, ctypes.byref(entry))
+        while more:
+            parents[entry.th32ProcessID] = entry.th32ParentProcessID
+            more = kernel32.Process32NextW(snapshot, ctypes.byref(entry))
+        return parents
+    finally:
+        kernel32.CloseHandle(snapshot)
+
+
+def _terminate_pid(pid):
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel32.TerminateProcess.restype = wintypes.BOOL
+    kernel32.TerminateProcess.argtypes = [wintypes.HANDLE, wintypes.UINT]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    handle = kernel32.OpenProcess(_PROCESS_TERMINATE, False, pid)
+    if not handle:
+        return
+    try:
+        kernel32.TerminateProcess(handle, 1)
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def _terminate_descendants(root_pid):
+    """Terminate every descendant of `root_pid` found through the parent
+    chain of a process snapshot. The snapshot is taken again after each pass,
+    so a descendant started while the pass ran is found by the next one."""
+    for _ in range(_SNAPSHOT_PASSES):
+        parents = _process_parents()
+        if parents is None:
+            return
+        found = {root_pid}
+        grew = True
+        while grew:
+            grew = False
+            for pid, parent in parents.items():
+                if parent in found and pid not in found:
+                    found.add(pid)
+                    grew = True
+        found.discard(root_pid)
+        if not found:
+            return
+        for pid in found:
+            _terminate_pid(pid)
+
+
+def _kill_windows_tree(pid):
+    """End the tree rooted at `pid` with `taskkill /T /F`; when taskkill
+    fails or times out, walk the tree and terminate it directly."""
+    try:
+        result = subprocess.run(
+            ["taskkill", "/T", "/F", "/PID", str(pid)],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=KILL_WAIT_SECONDS,
+        )
+        if result.returncode in (0, _TASKKILL_PROCESS_NOT_FOUND):
+            return
+    except (OSError, subprocess.SubprocessError):
+        pass
+    _terminate_descendants(pid)
+
+
 def kill(proc, job=None):
     """Kill `proc` and everything it started. A Windows `job` holding the
     child is terminated; when that succeeds the whole tree is gone. Without a
-    job, or when the termination fails, `taskkill /T` (Windows) or a group
-    kill (POSIX) reaches the tree. The child itself is killed last."""
+    job, or when the termination fails, `taskkill /T` with a snapshot walk as
+    its backstop (Windows) or a group kill (POSIX) reaches the tree. The child
+    itself is killed last."""
     if job is not None and job.terminate():
         try:
             proc.kill()
@@ -178,13 +292,7 @@ def kill(proc, job=None):
         return
     try:
         if sys.platform == "win32":
-            subprocess.run(
-                ["taskkill", "/T", "/F", "/PID", str(proc.pid)],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=KILL_WAIT_SECONDS,
-            )
+            _kill_windows_tree(proc.pid)
         else:
             import signal
 

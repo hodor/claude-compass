@@ -75,7 +75,7 @@ class MultiFileProject(test_review.ReviewProject):
         directory = reviewlib.review_dir(self.vault)
 
         def write():
-            deadline = time.monotonic() + 5
+            deadline = time.monotonic() + test_review.ANSWER_WAIT_SECONDS
             while time.monotonic() < deadline:
                 waiting = [p for p in sorted(directory.glob("*.request.json"))
                            if not reviewlib.verdict_path(p).exists()] if directory.is_dir() else []
@@ -270,7 +270,7 @@ class VerdictFiles(MultiFileProject):
         """Adversarial where: a verdict from a surface that does not know
         about `files` leaves the waiter waiting until its timeout."""
         self.answer(None)
-        code, out, _ = self.review(*map(str, self.trio), "--timeout", "5")
+        code, out, _ = self.review(*map(str, self.trio), "--timeout", str(test_review.ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out)
         self.assertIn('"verdict": "approved"', out)
 
@@ -293,7 +293,7 @@ class AfterTheAnswer(MultiFileProject):
         lines come out in another order than the request, or they land after
         the change report."""
         self.answer(self.FILES)
-        code, out, _ = self.review(*map(str, self.trio), "--timeout", "5")
+        code, out, _ = self.review(*map(str, self.trio), "--timeout", str(test_review.ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out)
         lines, header = self.lines_of(out)
         expected = [
@@ -317,7 +317,7 @@ class AfterTheAnswer(MultiFileProject):
             edited.write_text("# Y\nhuman edit of two\n", encoding="utf-8")
 
         self.answer(self.FILES, extra={"edited": ["specs/SPEC-002-y.md"]}, during=human_edit)
-        code, out, _ = self.review(*map(str, self.trio), "--timeout", "5")
+        code, out, _ = self.review(*map(str, self.trio), "--timeout", str(test_review.ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out)
         lines, header = self.lines_of(out)
         marker = "--- {} as the human left it ---"
@@ -335,7 +335,7 @@ class AfterTheAnswer(MultiFileProject):
         file has a note or an edit, or the per-file lines go missing along
         with the reprints."""
         self.answer([{"file": self.rel(p), "read": True} for p in self.trio])
-        code, out, _ = self.review(*map(str, self.trio), "--timeout", "5")
+        code, out, _ = self.review(*map(str, self.trio), "--timeout", str(test_review.ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out)
         lines, header = self.lines_of(out)
         self.assertNotIn("as the human left it", out)
@@ -501,7 +501,7 @@ class RefusalAcrossRepositories(MultiFileProject):
 class AfterTheAnswerEdges(MultiFileProject):
     def reviewed(self, files, during=None, extra=None):
         self.answer(files, extra=extra, during=during)
-        return self.review(*map(str, self.trio), "--timeout", "5")
+        return self.review(*map(str, self.trio), "--timeout", str(test_review.ANSWER_WAIT_SECONDS))
 
     def test_a_verdict_entry_for_an_unlisted_file_prints_no_line_and_no_reprint(self):
         """Adversarial where: the per-file lines follow the verdict's entries
@@ -599,7 +599,7 @@ class AfterTheAnswerEdges(MultiFileProject):
         self.git("commit", "-q", "-m", "tail")
         self.commit = self.git("rev-parse", "HEAD").stdout.strip()
         self.answer(None)
-        code, out, _ = self.review(str(self.doc), "--timeout", "5")
+        code, out, _ = self.review(str(self.doc), "--timeout", str(test_review.ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out)
         self.assertTrue(out.endswith("last-line-no-newline"), repr(out[-40:]))
 

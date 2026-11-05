@@ -37,6 +37,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import reviewlib  # noqa: E402
 from review_surfaces import obsidian as obsidian_surface  # noqa: E402
 
+# How long a stand-in for the human polls for a request, and how long a
+# waiter that expects an answer waits for it. A review spends its time in git
+# subprocesses before the request exists, so on a loaded machine both
+# windows must be far wider than the unloaded case needs; the waiter returns
+# the moment the answer arrives.
+ANSWER_WAIT_SECONDS = 60
+
 
 class ReviewProject(unittest.TestCase):
     """A temp directory holding `project/` (a git repository whose first
@@ -116,7 +123,7 @@ class ReviewProject(unittest.TestCase):
         directory = reviewlib.review_dir(self.vault)
 
         def write():
-            deadline = time.monotonic() + 5
+            deadline = time.monotonic() + ANSWER_WAIT_SECONDS
             while time.monotonic() < deadline:
                 requests = list(directory.glob("*.request.json")) if directory.is_dir() else []
                 if requests:
@@ -233,7 +240,7 @@ class Request(ReviewProject):
         waiter = threading.Thread(target=lambda: holder.update(result=self.review(str(self.doc))), daemon=True)
         waiter.start()
         directory = reviewlib.review_dir(self.vault)
-        deadline = time.monotonic() + 5
+        deadline = time.monotonic() + ANSWER_WAIT_SECONDS
         while time.monotonic() < deadline and len(list(directory.glob("*.request.json"))) < 2:
             time.sleep(0.05)
         with mock.patch.object(reviewlib, "new_id", lambda: "20991231T235959-ffffff"):
@@ -266,7 +273,7 @@ class Wait(ReviewProject):
         self.configure()
         self.answer_later("approved", during=lambda: self.doc.write_text(
             "---\ntitle: x\n---\n\n# X\n\nhuman edit\n", encoding="utf-8"))
-        code, out, _ = self.review(str(self.doc), "--timeout", "5")
+        code, out, _ = self.review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out)
         lines = out.splitlines()
         self.assertTrue(lines[0].startswith("requested "))
@@ -296,7 +303,7 @@ class Wait(ReviewProject):
     def test_changes_verdict_is_taken(self):
         self.configure()
         self.answer_later("changes")
-        code, out, _ = self.review(str(self.doc), "--timeout", "5")
+        code, out, _ = self.review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0)
         self.assertIn('"verdict": "changes"', out)
 
@@ -437,7 +444,7 @@ class Carried(ReviewProject):
         directory = reviewlib.review_dir(self.vault)
 
         def write():
-            deadline = time.monotonic() + 5
+            deadline = time.monotonic() + ANSWER_WAIT_SECONDS
             while time.monotonic() < deadline:
                 requests = [p for p in sorted(directory.glob("*.request.json"))
                             if not reviewlib.verdict_path(p).exists()] if directory.is_dir() else []
@@ -462,7 +469,7 @@ class Carried(ReviewProject):
                          {"file": "plans/PLAN-009-z.md", "note": "second"}],
             "edited": ["specs/SPEC-003-w.md", "specs/SPEC-001-x.md"],
         })
-        code, out, _ = self.review(str(self.doc), "--timeout", "5")
+        code, out, _ = self.review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out)
         lines = out.splitlines()
         marker = lines.index("--- specs/SPEC-001-x.md as the human left it ---")
@@ -488,7 +495,7 @@ class Carried(ReviewProject):
                 shutil.rmtree(reviewlib.review_dir(self.vault), ignore_errors=True)
                 self.configure()
                 self.answer_with(extra)
-                code, out, _ = self.review(str(self.doc), "--timeout", "5")
+                code, out, _ = self.review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
                 self.assertEqual(code, 0, out)
                 lines = out.splitlines()
                 marker = lines.index("--- specs/SPEC-001-x.md as the human left it ---")
@@ -506,7 +513,7 @@ class Carried(ReviewProject):
                 shutil.rmtree(reviewlib.review_dir(self.vault), ignore_errors=True)
                 self.configure()
                 self.answer_with(extra)
-                code, out, _ = self.review(str(self.doc), "--timeout", "5")
+                code, out, _ = self.review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
                 self.assertEqual(code, 0, out)
                 first, _, rest = out.partition("\n")
                 self.assertTrue(first.startswith("requested "), first)
@@ -569,7 +576,7 @@ class Cancel(ReviewProject):
         cancelled = {}
 
         def cancel():
-            deadline = time.monotonic() + 5
+            deadline = time.monotonic() + ANSWER_WAIT_SECONDS
             while time.monotonic() < deadline:
                 requests = list(directory.glob("*.request.json")) if directory.is_dir() else []
                 if requests:
