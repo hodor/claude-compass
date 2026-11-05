@@ -23,6 +23,10 @@ turns           stream mode: one entry per turn, in order, shared by every
                   init     {"skills": n, "agents": m}: another `system/init`
                            event before the turn's events
                   write    {relative path: content} written under the cwd
+                  subagent {"agentType": name, "entries": [transcript entries]}: a
+                           subagent transcript and its `.meta.json` written under
+                           `$CLAUDE_CONFIG_DIR/projects/<encoded cwd>/<session
+                           id>/subagents/`
                   limit    "rejected" (rate_limit_event, error result, exit 1)
                            or "api_error" (result with api_error
                            usage_limit_reached, exit 1)
@@ -35,7 +39,9 @@ turns           stream mode: one entry per turn, in order, shared by every
                            and opens with a `system/init` of the same session
 replies         one-shot mode: one entry per invocation, in order (the last
                 repeats). A string is the result text; {"limit": true} is a
-                usage-limit end, {"crash": true} a crash.
+                usage-limit end, {"crash": true} a crash; {"text": ..., "write":
+                {...}, "subagent": {...}} is a result text with files written
+                under the cwd and a subagent transcript, as the stream-mode keys.
 usage           one-shot mode: usage of each reply (default [10, 5, 100, 20])
 
 A stream-mode message must be `{"type": "user", "message": {"role": "user",
@@ -45,6 +51,7 @@ a `bad-message` entry. The session ends at end of stdin.
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -132,6 +139,26 @@ def _end_with(turn, text, totals, index):
     return None
 
 
+def _write_files(files, cwd):
+    for relative, content in files.items():
+        target = cwd / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
+
+
+def _write_subagent(subagent, cwd, index):
+    folder = (
+        Path(os.environ["CLAUDE_CONFIG_DIR"]) / "projects" / re.sub(r"[^a-zA-Z0-9]", "-", str(cwd))
+        / SESSION_ID / "subagents"
+    )
+    folder.mkdir(parents=True, exist_ok=True)
+    stem = f"agent-a{index:03d}"
+    lines = [json.dumps(entry) for entry in subagent.get("entries", [])]
+    (folder / f"{stem}.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    meta = {"agentType": subagent.get("agentType", "builder")}
+    (folder / f"{stem}.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+
+
 def _invocation(spec):
     """The 0-based number of this stream invocation of `spec`."""
     counter = Path(spec["log"] + ".sessions")
@@ -184,10 +211,9 @@ def run_stream(spec):
             _emit(_init(counts, cwd))
         elif turn.get("auto"):
             _emit(_init(counts, cwd))
-        for relative, content in turn.get("write", {}).items():
-            target = cwd / relative
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(content, encoding="utf-8")
+        _write_files(turn.get("write", {}), cwd)
+        if turn.get("subagent"):
+            _write_subagent(turn["subagent"], cwd, index)
         code = _end_with(turn, turn.get("text", "turn"), totals, index)
         if code is not None:
             return code
@@ -217,7 +243,13 @@ def run_oneshot(spec, argv_log):
         _emit(fake_claude.result_event(
             SESSION_ID, {fake_claude.MAIN_MODEL: totals}, is_error=True, text=fake_claude.LIMIT_TEXT))
         return 1
-    for event in _turn_events(reply, totals, index):
+    text = reply
+    if isinstance(reply, dict):
+        text = reply.get("text", "ok")
+        _write_files(reply.get("write", {}), cwd)
+        if reply.get("subagent"):
+            _write_subagent(reply["subagent"], cwd, index)
+    for event in _turn_events(text, totals, index):
         _emit(event)
     return 0
 
