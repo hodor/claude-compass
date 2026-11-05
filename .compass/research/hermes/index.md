@@ -23,3 +23,5 @@ Class here: the hermes host - capabilities, memory mechanics, fit with Compass
 - [[research/hermes/RESEARCH-hermes-changes-since-july]] - what changed in hermes from 760112a (July) to a212421d (Nov 4): four portable techniques re-checked, new skill ledger and staged-skill diff review
 - [[research/hermes/RESEARCH-hermes-fit-2026-11]] - per-mechanism fit of Hermes learning and context features onto Compass hooks, skills, CLI and detached workers; token cost, goal served, ranked candidates
 - [[research/hermes/REVIEW-hermes-skill-creation-2026-11]] - five Hermes axes consolidated: where they agree, conflicts settled, gaps, and ranked Compass changes for automatic skills reviewed in the md editor
+- [[research/hermes/RESEARCH-hermes-memory-today]] - what Hermes stores as memory at a212421d, the exact caps, what is in every prompt vs on demand, and how the always-loaded part stays small
+- [[research/hermes/RESEARCH-hermes-launched-agent-context]] - five Hermes launch paths (delegate_task, review fork, cron, MoA, batch) compared on prompt, tools, memory, skills, history, brief, result size and budgets, against Compass agent frontmatter and spawn briefs
