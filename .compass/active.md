@@ -61,8 +61,7 @@ Plan: [[PLAN-028-whole-overhead-on-real-projects]]; each task's full text, files
 
 Plan: [[PLAN-029-crafted-agent-context]]; each task's full text, files and checks are there.
 
-- [x] TASK-259: The "before" figures, saved while the pilot's transcripts exist - complexity: S, depends_on: TASK-258, TASK-248
-- [ ] TASK-260: The one-launch check E1 - complexity: S, depends_on: TASK-248
+- [x] TASK-260: The one-launch check E1 - complexity: S, depends_on: TASK-248
 - [ ] TASK-261: Split the `obsidian` skill - complexity: M, depends_on: TASK-250
 - [ ] TASK-262: Pointers name the side files - complexity: S, depends_on: TASK-261
 - [ ] TASK-263: The other-host install copies skill side files - complexity: S, depends_on: TASK-250
