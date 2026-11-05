@@ -1,7 +1,8 @@
 ---
 title: "Skills Created Automatically, Reviewed in the md Editor"
 type: spec
-status: draft
+status: approved
+approved: 2026-11-05
 confidence: low
 area: learning
 tags: [skills, skill-creation, review, md-editor, learning-loop]
@@ -21,13 +22,10 @@ flowchart LR
   C -->|changes| B
 ```
 
-> [!IMPORTANT]
-> You decide: whether this states the need. One guess is marked inline: which skills Compass may change.
-
 ## Problem
 
 Ideally I like the thing about creating skills automatically. What a session learns becomes at most a lesson of five lines; Compass creates no skills. Hermes creates skills automatically (see [[research/hermes/REVIEW-hermes-skill-creation-2026-11]]).
 
 ## Desired Outcome
 
-Creating skills automatically, and we should give the developer a review opportunity for the skill at the md editor. [guess: Every skill Compass creates or changes reaches the developer this way before it takes effect. Compass changes only the skills it created itself; shipped Compass skills and the developer's own skills stay as they are.]
+Creating skills automatically, and we should give the developer a review opportunity for the skill at the md editor. Every skill Compass creates or changes reaches the developer this way before it takes effect. Compass changes only the skills it created itself; shipped Compass skills and the developer's own skills stay as they are.
