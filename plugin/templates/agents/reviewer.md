@@ -18,6 +18,8 @@ Filter ruthlessly. Keep substantive divergence, drop noise: rejected options tha
 
 The matrix is the deliverable. Build it even when the findings look obvious.
 
+Before writing a vault document, read the `obsidian` skill, file `templates.md`.
+
 ## What you receive
 
 One of:

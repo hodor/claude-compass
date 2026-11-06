@@ -60,7 +60,7 @@ What does success look like when this is done?
 Hard limits - technical, legal, organizational, time.
 
 ## Decisions (made by the human)
-Explicit rulings made during the interview - a trade-off resolved, an approach chosen. Record each as a `- **D-NN:** text` bullet in a callout (see "Decision bullets" above), not as prose elsewhere in the spec.
+Explicit rulings made during the interview - a trade-off resolved, an approach chosen. Record each as a `- **D-NN:** text` bullet in a callout (see file `documents.md`, section "Decision bullets"), not as prose elsewhere in the spec.
 
 > [!NOTE]
 > - **D-01:** [ruling]
@@ -221,11 +221,11 @@ Overall testing approach - new fixtures, integration test needs, performance ben
 > **All open questions must be resolved before `approved` status.**
 ```
 
-`decisions:` is optional and mirrors `files:` - source-qualified citations (`<doc-stem>/D-NN`, see "Decision bullets" above) of the decisions a task implements. `compass coverage <plan>` checks these against the plan's `depends_on` sources.
+`decisions:` is optional and mirrors `files:` - source-qualified citations (`<doc-stem>/D-NN`, see file `documents.md`, section "Decision bullets") of the decisions a task implements. `compass coverage <plan>` checks these against the plan's `depends_on` sources.
 
 `lessons:` is optional and sits in the same position, after `files:` - catalog filenames (`LESSON-name` or `LESSON-name.md`) of the lessons a task applies. `compass lesson-coverage <plan>` resolves these against `.compass/meta/lessons-catalog.yaml`.
 
-`decisions:` and `lessons:` are the citation home - the field where a task line stakes its own claim. For `lessons:` this is the only citation surface `compass lesson-coverage` reads. A decision can also be claimed by a source-qualified citation in prose when no task line claims it (see "Decision bullets" above); either way, naming a decision bare (`D-04`) or in backticks claims nothing.
+`decisions:` and `lessons:` are the citation home - the field where a task line stakes its own claim. For `lessons:` this is the only citation surface `compass lesson-coverage` reads. A decision can also be claimed by a source-qualified citation in prose when no task line claims it (see file `documents.md`, section "Decision bullets"); either way, naming a decision bare (`D-04`) or in backticks claims nothing.
 
 ### Lesson
 
@@ -341,7 +341,7 @@ Approved / Superseded by [[ADR-NNN-name]]
 What is the issue motivating this decision?
 
 ## Decision
-What is the change we're proposing or doing? Record each ruling as a `- **D-NN:** text` bullet in a callout (see "Decision bullets" above) so it can be traced through plans.
+What is the change we're proposing or doing? Record each ruling as a `- **D-NN:** text` bullet in a callout (see file `documents.md`, section "Decision bullets") so it can be traced through plans.
 
 > [!NOTE]
 > - **D-01:** [ruling]

@@ -99,4 +99,4 @@ Both paths share dedup, anti-list filtering, atomic 3-file writes, and the 5-lin
 
 ## File format
 
-Lessons live in `.compass/lessons/` as markdown files with YAML frontmatter. The body is free-form, hard-capped at 5 lines. See the Lesson template in `obsidian/SKILL.md` for the frontmatter schema.
+Lessons live in `.compass/lessons/` as markdown files with YAML frontmatter. The body is free-form, hard-capped at 5 lines. See the `obsidian` skill, file `templates.md`, section "Lesson" for the frontmatter schema.

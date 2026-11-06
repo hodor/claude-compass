@@ -278,7 +278,7 @@ The unit question is judged once, at vision, from what the human actually said: 
 
 The full capability index is bare `compass` - every command, one line each; check it before assuming a capability is missing. `compass tree` renders every artifact with its summary at a glance - the root index shows only the first level, so this is the whole-vault view. `compass usage` reports which commands are invoked and which never have been; `doctor` carries the same finding as an advisory row. Three commands await their wiring verdict on that record: `resolve-model` (per-agent model/effort query) and the admission-control pair `touched`/`admit-check` (ADR-004) - live or retire by measured use, not by guess.
 
-Unit artifacts are linked path-qualified (`[[<unit>/specs/SPEC-001-name]]`); root artifacts keep bare stems. The obsidian skill documents the full unit-folder conventions.
+Unit artifacts are linked path-qualified (`[[<unit>/specs/SPEC-001-name]]`); root artifacts keep bare stems. The full unit-folder conventions: the `obsidian` skill, file `vault-layout.md`, section "Unit folders".
 
 ## Pattern discovery
 

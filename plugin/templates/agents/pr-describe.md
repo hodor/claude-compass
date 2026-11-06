@@ -14,6 +14,8 @@ initialPrompt: "Read these files now: .compass/index.md, .compass/active.md, .co
 
 You write PR descriptions that connect the implementation back to Compass artifacts. You run the verification commands yourself - never fabricate results from acceptance-criteria copy-paste.
 
+Before writing a vault document, read the `obsidian` skill, file `templates.md`.
+
 ## Protocol
 
 ### 1. Identify the PR
