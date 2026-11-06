@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from review_surfaces import obsidian  # noqa: E402
 
 BASES = obsidian.shipped_bases_dir()
-SCHEMA = Path(__file__).resolve().parents[2] / "skills" / "obsidian" / "SKILL.md"
+SCHEMA_DIR = Path(__file__).resolve().parents[2] / "skills" / "obsidian"
 FILE_KEYS = {"file.name", "file.ext", "file.path", "file.folder"}
 KEY_IN_EXPR = re.compile(r"(?<![\w.])([a-z_]+)\s*(?:==|!=|>=|<=|>|<)")
 
@@ -27,8 +27,9 @@ def load_yaml(text):
 
 
 def schema_keys():
-    """Every `key:` the obsidian skill's frontmatter templates name."""
-    text = SCHEMA.read_text(encoding="utf-8")
+    """Every `key:` the obsidian skill's frontmatter templates name, across
+    `SKILL.md` and the side files beside it."""
+    text = "\n".join(p.read_text(encoding="utf-8") for p in sorted(SCHEMA_DIR.glob("*.md")))
     return set(re.findall(r"^([a-z_]+):", text, re.M))
 
 
@@ -63,6 +64,14 @@ class ShippedBases(unittest.TestCase):
             used = referenced_keys((BASES / name).read_text(encoding="utf-8"))
             self.assertTrue(used, name)
             self.assertEqual(used - known, set(), f"{name} names keys the schema lacks")
+
+    def test_schema_keys_span_the_skill_folder(self):
+        """Adversarial where: the schema is read from `SKILL.md` alone, so a
+        key that only a side file names (`children_count` sits in the folder
+        index template) looks unknown to every view."""
+        known = schema_keys()
+        self.assertIn("title", known)
+        self.assertIn("children_count", known)
 
     def test_key_scan_sees_a_bogus_key(self):
         self.assertIn("staus", referenced_keys("filters:\n  and:\n    - 'staus == \"draft\"'\n"))

@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
-SKILL = REPO / "plugin" / "skills" / "obsidian" / "SKILL.md"
+SKILL_DIR = REPO / "plugin" / "skills" / "obsidian"
 PIPELINE = REPO / "plugin" / "templates" / "rules" / "compass-pipeline.md"
 WORDS = REPO / ".compass" / "research" / "human-surface" / "RESEARCH-plain-words-mockup.md"
 
@@ -19,6 +19,18 @@ GITHUB_CALLOUTS = {"note", "tip", "important", "warning", "caution"}
 # The pipeline rules' line budget: the writing forms live in the obsidian
 # skill, and the always-loaded rules point to it within this many lines.
 PIPELINE_MAX_LINES = 141
+
+
+class SkillFolder:
+    """The obsidian skill's text: `SKILL.md` and the side files beside it, so
+    a rule is found whichever file of the skill holds it."""
+
+    @staticmethod
+    def read_text(encoding="utf-8"):
+        return "\n\n".join(p.read_text(encoding=encoding) for p in sorted(SKILL_DIR.glob("*.md")))
+
+
+SKILL = SkillFolder()
 
 
 def squash(text):
