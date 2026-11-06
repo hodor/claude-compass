@@ -14,9 +14,10 @@ Sets up Compass in a project for the first time:
 1. Detects project state (new vs existing).
 2. Installs agents, rules, skills, and the compass CLI from the plugin to `.claude/`.
 3. Configures hooks and permissions.
-4. Creates the `.compass/` vault.
-5. Proposes CLAUDE.md additions - human approves before any write.
-6. Kicks off vision capture for new projects.
+4. Creates the `.compass/` vault, and a git repository with a first commit when the project has none.
+5. Asks which editor reviews open in and sets it up.
+6. Proposes CLAUDE.md additions - human approves before any write.
+7. Kicks off vision capture for new projects.
 
 Updating an existing install is a separate command: **`/compass:update`** - it pulls the latest from GitHub, refreshes `.claude/`, and leaves the vault untouched. This skill is for first-time setup only.
 
@@ -84,11 +85,11 @@ rm -rf .claude/cli
 cp -r "$PLUGIN_ROOT/cli" .claude/cli
 echo "CLI copied: $(ls .claude/cli/commands/*.py | wc -l) command modules"
 
-# The Compass Review Obsidian plugin (copied into the vault by step 5)
+# The Compass Review Obsidian plugin (copied into the vault by `compass review --editor obsidian`, step 4b)
 rm -rf .claude/obsidian
 cp -r "$PLUGIN_ROOT/obsidian" .claude/obsidian
 
-# The Compass Review extension for VS Code and Cursor (its .vsix is installed into the editor by `compass review --install`)
+# The Compass Review extension for VS Code and Cursor (its .vsix is installed into the editor by `compass review --editor`, step 4b)
 rm -rf .claude/vscode
 cp -r "$PLUGIN_ROOT/vscode" .claude/vscode
 
@@ -215,6 +216,15 @@ The master map. Every vault document is linked here. Sections (Vision, Specs, Re
 
 Don't stub empty sections. They appear when content arrives. Then create empty `active.md` and `backlog.md`.
 
+**Git.** `compass review` sends only committed documents and diffs the human's changes against the commit, so the project needs a repository with a commit. When `git rev-parse --is-inside-work-tree` fails, run `git init`. When the repository has no commit yet, commit the scaffolded vault locally, without asking and without pushing:
+
+```bash
+git add -- .compass ':!.compass/tmp'
+git commit -m "Scaffold the Compass vault"
+```
+
+A repository that already has commits is left as it is. When the commit fails because git has no `user.name` or `user.email`, tell the human and go on: reviews then fall back to questions in the terminal until a commit exists.
+
 ### 3B. Existing project - migrate
 
 1. Inventory existing docs, TODOs, specs, decisions.
@@ -262,19 +272,33 @@ Show the draft, then ask through `AskUserQuestion`, exactly one question per cal
 
 Never put several questions in one message or one call. Write only after approval.
 
+### 4b. Choose the review editor
+
+Every document the human is asked to judge opens in one editor. Ask once, through `AskUserQuestion`, exactly one question per call: "Which editor should reviews open in?" The options are the editors that can work: Obsidian always, VS Code when `code` is on the PATH, Cursor when `cursor` is on the PATH. The recommended option comes first, labelled "(Recommended)": Obsidian when the project already has a `.obsidian/` folder or the human has named it, otherwise the first of VS Code and Cursor that is on the PATH, otherwise Obsidian. Each option is one short line saying what choosing it does; "Other" stays open for free text.
+
+Then run the answer (`obsidian`, `vscode` or `cursor`):
+
+```bash
+if command -v python3 >/dev/null 2>&1; then
+  python3 .claude/cli/compass review --editor <answer>
+else
+  python .claude/cli/compass review --editor <answer>
+fi
+```
+
+It writes `review_editor` into `.compass/meta/plugin.yaml` and installs the add-on. For Obsidian it also creates `.compass/.obsidian/` when no vault holds the project and enables the plugin. When its last line is a step for the human ("In Obsidian: Open folder as vault, ..."), give it to the human as it is: Obsidian lists a vault only after he opens it once, and Compass does not edit Obsidian's own vault list.
+
 ### 5. Verify with `compass doctor`
 
 ```bash
 if command -v python3 >/dev/null 2>&1; then
-  python3 .claude/cli/compass review --install
   python3 .claude/cli/compass doctor
 else
-  python .claude/cli/compass review --install
   python .claude/cli/compass doctor
 fi
 ```
 
-What `review --install` does, the Obsidian and editor review steps for the human, doctor's acceptance checks (a FAIL means setup did not fully land: fix it before vision capture) and the two checks it does not cover: `verify.md` in this skill's folder; read it before reporting.
+The review editor's WARN row, the Obsidian and editor review steps for the human, doctor's acceptance checks (a FAIL means setup did not fully land: fix it before vision capture) and the two checks it does not cover: `verify.md` in this skill's folder; read it before reporting.
 
 ### 5b. Offer longer session retention
 
@@ -324,14 +348,16 @@ New project / Existing project with N existing documents
 - [x] 13 agents copied to .claude/agents/
 - [x] 4 rules files copied to .claude/rules/
 - [x] .compass/ vault scaffolded
+- [x] git repository with a first commit
+- [x] review editor set (`review_editor` in plugin.yaml)
 - [x] Hooks registered in .claude/settings.json
 - [x] compass doctor: 0 FAIL
 
-### Obsidian
-Open `.compass/` as a vault: **Obsidian → Open folder as vault → `<project-root>/.compass/`**, then run `compass review --install` and turn on Compass Review (Settings → Community plugins) so reviews open in Obsidian
+### Review editor
+<the editor chosen in step 4b>; for Obsidian, the step `compass review --editor obsidian` printed: **In Obsidian: Open folder as vault, `<project-root>/.compass`, then turn on Compass Review** (Settings → Community plugins)
 
 ### Next Steps
-1. Open `.compass/` in Obsidian
+1. Take the review editor's step above, when there is one
 2. Approve the CLAUDE.md addition
 3. Vision capture is starting - answer the questions to produce vision.md and the spec roadmap
 4. After vision: create specs one at a time with `/compass:spec`

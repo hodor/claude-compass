@@ -66,13 +66,14 @@ rm -rf .claude/cli
 cp -r "$SRC/cli" .claude/cli
 
 # The Compass Review Obsidian plugin, and its copy into the project's
-# Obsidian vault when Obsidian has opened one (never creates .obsidian/)
+# Obsidian vault when Obsidian has opened one (never creates .obsidian/); the
+# VS Code and Cursor extensions are installed only for the project's review editor
 rm -rf .claude/obsidian
 cp -r "$SRC/obsidian" .claude/obsidian
 if command -v python3 >/dev/null 2>&1; then
-  python3 .claude/cli/compass review --install
+  python3 .claude/cli/compass review --install --selected
 else
-  python .claude/cli/compass review --install
+  python .claude/cli/compass review --install --selected
 fi
 
 # Hooks manifest. This file is the source of truth the next step translates

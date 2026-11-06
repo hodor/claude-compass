@@ -146,6 +146,35 @@ def configuration(document):
     return {"root": root, "vault_id": vid}, None
 
 
+def installable(compass_vault):
+    """True when a `.obsidian/` folder holds the project (see
+    `find_obsidian_vault`), so a review can install the plugin there."""
+    return find_obsidian_vault(compass_vault) is not None
+
+
+def pending_step(compass_vault):
+    """The one step only the human can take before reviews open here: opening
+    the folder as a vault in Obsidian, which lists a vault only once it has
+    been opened. None when Obsidian already lists the project's vault."""
+    root = find_obsidian_vault(compass_vault)
+    if root is not None and vault_id(root) is not None:
+        return None
+    target = root if root is not None else Path(compass_vault).resolve()
+    return f"In Obsidian: Open folder as vault, {target}, then turn on Compass Review"
+
+
+def prepare(compass_vault):
+    """Make the project ready for Obsidian reviews: give `compass_vault` a
+    `.obsidian/` folder when no vault holds the project, install the plugin
+    and list it as enabled. Obsidian's own vault list is not touched. Returns
+    one line saying what was done."""
+    root = find_obsidian_vault(compass_vault)
+    if root is None:
+        root = Path(compass_vault).resolve()
+        (root / ".obsidian").mkdir(parents=True, exist_ok=True)
+    return install_plugin(_compass_vault_of(root))
+
+
 def unconfirmed_fix():
     """One line saying what to do when Obsidian has not picked up a request."""
     return ("reload Obsidian (command palette: \"Reload app without saving\") so it loads the "

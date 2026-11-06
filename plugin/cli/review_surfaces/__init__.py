@@ -21,7 +21,18 @@ Each surface is a module (or an object) with:
   needs into the project; one line saying what was done.
 - `doctor(compass_vault)`: `(status, detail, fix)`, status `OK` or `WARN`.
 
-`SURFACES` lists them in the order a review tries them.
+Three more answers are used when a surface has them (every shipped surface
+does); one without them is never selected for being installable, has no step
+for the human, and has nothing to prepare:
+
+- `installable(compass_vault)`: True when a review can set the surface up for
+  the project on first use.
+- `pending_step(compass_vault)`: the one line of a step only the human can
+  take before reviews open here, or None.
+- `prepare(compass_vault)`: what `compass review --editor` does for the
+  surface beyond naming it; one line saying what was done.
+
+`SURFACES` lists them in the order a review prefers them when no editor is named.
 """
 
 from contextlib import contextmanager

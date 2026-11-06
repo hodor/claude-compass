@@ -245,6 +245,20 @@ class Editor:
             return f"failed: `{self.command}` exited {done.returncode}: {_first_line(done.stderr, done.stdout)}"
         return f"installed {vsix.name} with `{self.command}`"
 
+    def installable(self, compass_vault):
+        """True when the editor's command is on the PATH and the extension is
+        shipped, so a review can install it."""
+        return shutil.which(self.command) is not None and shipped_vsix() is not None
+
+    def pending_step(self, compass_vault):
+        """The editor needs no step from the human; always None."""
+        return None
+
+    def prepare(self, compass_vault):
+        """Install the extension, as `--editor` asks; one line saying what was
+        done."""
+        return self.install(compass_vault)
+
     def doctor(self, compass_vault):
         """`(status, detail, fix)` for reviewing in this editor. An editor
         whose command is not on the PATH is OK (reviews go elsewhere); an
@@ -276,5 +290,8 @@ deliver = VSCODE.deliver
 resolve = VSCODE.resolve
 has_focus = VSCODE.has_focus
 install = VSCODE.install
+installable = VSCODE.installable
+pending_step = VSCODE.pending_step
+prepare = VSCODE.prepare
 unconfirmed_fix = VSCODE.unconfirmed_fix
 doctor = VSCODE.doctor
