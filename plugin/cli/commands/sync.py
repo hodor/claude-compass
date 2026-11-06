@@ -297,11 +297,32 @@ def _merge_duplicate_sections(lines):
     return out, merged
 
 
+def _pointer_document_links(vault_root, rel, resolve):
+    """Vault-relative paths the document at `rel` links, when it is a
+    pointer document: a file under `archive/`, the cold home of lists that
+    keep artifacts one click from the index. Any other document yields an
+    empty list, so a spec's body links never stand in for an index line."""
+    if not rel.startswith("archive/"):
+        return []
+    try:
+        text = vaultlib.read_vault_text(vault_root / rel)
+    except OSError:
+        return []
+    paths = []
+    for raw in WIKILINK.findall(text):
+        split_at = next((i for i, c in enumerate(raw) if c in "#|"), len(raw))
+        target = raw[:split_at].strip()
+        if target:
+            paths.extend(vaultlib.resolve_link(resolve, target))
+    return paths
+
+
 def _sync_index(vault_root, records):
     """Heal the root index in both directions. Additions: one section per
     root type dir, one section per unit titled from the unit's `index.md`;
     an artifact counts as already indexed when any existing wikilink in its
-    section resolves to the artifact's file. Removals: an entry line whose
+    section resolves to the artifact's file, or to a pointer document
+    (`_pointer_document_links`) that links it. Removals: an entry line whose
     artifact a listed folder now covers, a duplicate of an earlier entry,
     and a repeated section heading all go - but only when the line's
     description text survives in the artifact itself (`_text_preserved`),
@@ -397,6 +418,7 @@ def _sync_index(vault_root, records):
         }
         section_paths = {_rel_path(vault_root, r) for r in recs}
         indexed_paths = set()
+        pointed_paths = set()
         section_lines = []
         for line in lines[start + 1:end]:
             infos = []
@@ -431,6 +453,9 @@ def _sync_index(vault_root, records):
             for raw, split_at, target, resolved in infos:
                 if resolved:
                     indexed_paths.update(resolved)
+                    for pointer in resolved:
+                        pointed_paths.update(
+                            _pointer_document_links(vault_root, pointer, resolve))
                     if len(resolved) == 1 and "(folder," in updated:
                         folder_rec = folder_by_path.get(resolved[0])
                         if folder_rec is not None:
@@ -460,7 +485,10 @@ def _sync_index(vault_root, records):
         # track the new end or it lands past the next heading.
         end = start + 1 + len(section_lines)
 
-        missing = [r for r in recs if _rel_path(vault_root, r) not in indexed_paths]
+        missing = [
+            r for r in recs
+            if _rel_path(vault_root, r) not in indexed_paths | pointed_paths
+        ]
         if not missing:
             continue
         new_lines = [_entry_line(r, _child_count(r, records)) for r in missing]

@@ -28,7 +28,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 ## Research
 
 - [[research/distribution/index|distribution]] (folder, 6 children) - evidence on shipping and updating Compass across projects and hosts, and prior-art reviews of rival frameworks (GSD)
-- [[research/hermes/index|hermes]] (folder, 3 children) - the hermes host - capabilities, memory mechanics, fit with Compass
+- [[research/hermes/index|hermes]] (folder, 11 children) - the hermes host - capabilities, memory mechanics, fit with Compass
 - [[research/learning/index|learning]] (folder, 5 children) - evidence on capturing knowledge - lesson mechanics, capture failure, detached workers, source-word fidelity
 - [[research/rolling-wave/index|rolling-wave]] (folder, 4 children) - plan detail tracking proximity - receding horizons, flow theory, practice
 - [[research/test-quality/index|test-quality]] (folder, 7 children) - what makes a test suite good and how to measure it
@@ -37,7 +37,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[research/human-surface/index|human-surface]] (folder, 11 children) - how Compass puts things in front of the human: the questions it asks, the documents it hands over for review, and how all of it reads
 - [[RESEARCH-review-in-obsidian]] - a small Obsidian plugin takes the verdict and returns the human; proven on Windows; ranks Compass features for an Obsidian UI
 - [[RESEARCH-review-mockup]] - the review lives in one side panel that follows the human through links
-- [[research/whole-overhead/index|whole-overhead]] (folder, 10 children) - evidence on measuring Compass's whole token overhead on projects agents build, and cutting it biggest area first
+- [[research/whole-overhead/index|whole-overhead]] (folder, 17 children) - evidence on measuring Compass's whole token overhead on projects agents build, and cutting it biggest area first
 
 ## Plans
 
