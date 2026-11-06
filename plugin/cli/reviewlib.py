@@ -25,6 +25,18 @@ A review is two JSON files in the Compass vault's `tmp/review/`:
   `verdict` is `"approved"` when every file is approved, else `"changes"`. An
   entry without a `verdict` takes the top-level one.
 
+- `<id>.verdict.<n>.json`, written by the surface when the human answers some
+  documents of a several-file review and leaves others open: the same shape
+  as `<id>.verdict.json`, its `files` listing only the answered documents,
+  each entry also carrying `index`, the document's 0-based position in the
+  request's `files`; `<n>` is the lowest `index` it carries and the top-level
+  `verdict` is `"approved"` when every entry is approved, else `"changes"`. A
+  document is answered once; the request is answered when `<id>.verdict.json`
+  exists or the `<n>` files together cover every listed document. A waiter
+  that hands such an answer on writes the empty `<id>.verdict.<n>.taken`
+  beside it, so a later `compass review --wait <id>` takes up the next
+  answer. A document the human has answered is no longer under review.
+
 - `<id>.changes.diff`, written here beside the request when the review lists
   a document an earlier review in the vault already listed: `git diff <sha>
   -- <file>` for each listed file whose content differs from the commit its
@@ -36,17 +48,19 @@ A review is two JSON files in the Compass vault's `tmp/review/`:
 
 - `<id>.seen`, an empty file written by the surface beside the request when it
   takes the request up. Its presence tells `compass review` the add-on is
-  loaded and has the request; a request still without one after the
-  acknowledgement window is withdrawn. Removing the request removes it, and
+  loaded and has the request; a request without one after the
+  acknowledgement window makes the waiter print one `waiting:` line and keep
+  waiting. Removing the request removes it, and
   writing a request removes every `.seen` older than `ORPHAN_SECONDS` (an
   hour) whose request is gone. It does not make the request answered.
 
-A request with no verdict is pending; while it is pending every file it
-lists belongs to the human. Removing a pending request's file withdraws it: its
+A request not yet answered is pending; while it is pending every file it
+lists that the human has not answered belongs to the human. Removing a pending request's file withdraws it: its
 waiter ends and the surface drops the review. The surfaces themselves live
 in `review_surfaces`.
 """
 
+import glob
 import json
 import os
 import re
@@ -68,6 +82,7 @@ PER_USER_EDITORS = ("vscode", "cursor")
 YAML_NULLS = ("null", "Null", "NULL", "~")
 _SETTING_LINE = re.compile(rf"^{EDITOR_SETTING}[ \t]*:[ \t]*(.*)$")
 _SHA = re.compile(r"[0-9a-fA-F]{7,64}")
+_PARTIAL_NAME = re.compile(r"\.verdict\.(\d+)\.json$")
 
 
 class GitUnavailable(Exception):
@@ -440,6 +455,14 @@ def verdict_path(request_path):
     return Path(request_path).with_name(name)
 
 
+def taken_path(request_path, index):
+    """The `<id>.verdict.<index>.taken` marker beside a request file; `index`
+    None names the marker of the whole `<id>.verdict.json`."""
+    suffix = ".verdict.taken" if index is None else f".verdict.{index}.taken"
+    name = Path(request_path).name.replace(".request.json", suffix)
+    return Path(request_path).with_name(name)
+
+
 def _valid_mark(entry):
     return (
         isinstance(entry, dict)
@@ -461,22 +484,97 @@ def valid_verdict(verdict, request):
     )
 
 
+def _valid_partial(verdict, request):
+    """Whether `verdict` is a well-formed answer to some documents of
+    `request`: a valid verdict whose `files` entries each carry the `index` of
+    a listed document, none twice."""
+    entries = verdict.get("files") if isinstance(verdict, dict) else None
+    if not valid_verdict(verdict, request) or not entries:
+        return False
+    count = len(request_files(request))
+    seen = [entry.get("index") for entry in entries]
+    return (all(isinstance(i, int) and not isinstance(i, bool) and 0 <= i < count for i in seen)
+            and len(set(seen)) == len(seen))
+
+
+def partial_verdicts(request_path, request):
+    """`[(n, verdict)]` for each valid `<id>.verdict.<n>.json` beside the
+    request, by `n` ascending. A file that is not yet whole JSON or is not a
+    well-formed answer is left out."""
+    prefix = Path(request_path).name.replace(".request.json", ".verdict.")
+    found = []
+    for path in Path(request_path).parent.glob(glob.escape(prefix) + "*.json"):
+        named = _PARTIAL_NAME.search(path.name)
+        if not named or path.name[: -len(named.group(0))] + ".verdict." != prefix:
+            continue
+        verdict = read_json(path)
+        if verdict is not None and _valid_partial(verdict, request):
+            found.append((int(named.group(1)), verdict))
+    return sorted(found, key=lambda item: item[0])
+
+
+def covered_indexes(verdict):
+    """The positions of the documents a `<id>.verdict.<n>.json` answers."""
+    return {entry["index"] for entry in verdict["files"]}
+
+
+def answered_indexes(request_path, request):
+    """The positions, among the request's documents, that the human has
+    answered in `<id>.verdict.<n>.json` files."""
+    covered = set()
+    for _, verdict in partial_verdicts(request_path, request):
+        covered |= covered_indexes(verdict)
+    return covered
+
+
+def is_answered(request_path, request):
+    """Whether the request is answered: its `<id>.verdict.json` exists, or the
+    `<id>.verdict.<n>.json` files together cover every listed document."""
+    if verdict_path(request_path).exists():
+        return True
+    count = len(request_files(request))
+    return count > 1 and len(answered_indexes(request_path, request)) >= count
+
+
+def handed_indexes(request_path, request):
+    """The positions whose answer a waiter already handed on (its `.taken`
+    marker exists)."""
+    handed = set()
+    for n, verdict in partial_verdicts(request_path, request):
+        if taken_path(request_path, n).exists():
+            handed |= covered_indexes(verdict)
+    return handed
+
+
+def find_request(compass_vault, request_id):
+    """`(path, request)` of the request with exactly this id, answered or not,
+    else None."""
+    directory = review_dir(compass_vault)
+    if not request_id or not directory.is_dir():
+        return None
+    for path in sorted(directory.glob("*.request.json")):
+        request = read_json(path)
+        if request is not None and request.get("id") == request_id:
+            return path, request
+    return None
+
+
 def _pending_entries(compass_vault):
-    """`(path, request)` for every request file with no verdict, oldest first."""
+    """`(path, request)` for every request file not yet answered, oldest first."""
     directory = review_dir(compass_vault)
     if not directory.is_dir():
         return []
     out = []
     for path in sorted(directory.glob("*.request.json")):
         request = read_json(path)
-        if request is None or verdict_path(path).exists():
+        if request is None or is_answered(path, request):
             continue
         out.append((path, request))
     return out
 
 
 def pending(compass_vault):
-    """Every request in the vault with no verdict file, oldest first."""
+    """Every request in the vault not yet answered, oldest first."""
     return [request for _, request in _pending_entries(compass_vault)]
 
 
@@ -511,17 +609,38 @@ def request_files(request):
     return [request["file"]] if isinstance(request.get("file"), str) else []
 
 
+def locate(compass_vault, request):
+    """`(surface, [(rel, path)], surface_root)` for the documents `request`
+    lists: the surface it names, each listed file with its resolved path, and
+    the directory the listed paths are relative to. None when the request
+    names no registered surface or a document cannot be placed."""
+    surface = review_surfaces.named(request.get("surface"))
+    rels = request_files(request)
+    if surface is None or not rels:
+        return None
+    placed = [surface.resolve({**request, "file": rel}, compass_vault) for rel in rels]
+    if any(path is None for path in placed):
+        return None
+    root = Path(placed[0])
+    for _ in rels[0].split("/"):
+        root = root.parent
+    return surface, [(rel, Path(path).resolve()) for rel, path in zip(rels, placed)], root
+
+
 def under_review(compass_vault, target):
-    """The pending request that lists `target` among its documents, or None.
-    A request naming no surface, or one that is not registered, is resolved
-    by every registered surface."""
+    """The pending request that lists `target` among the documents the human
+    has not answered, or None. A request naming no surface, or one that is not
+    registered, is resolved by every registered surface."""
     target = Path(target).resolve()
-    for request in pending(compass_vault):
+    for path, request in _pending_entries(compass_vault):
         surface = review_surfaces.named(request.get("surface"))
-        for name in request_files(request):
+        answered = answered_indexes(path, request)
+        for i, name in enumerate(request_files(request)):
+            if i in answered:
+                continue
             for candidate in [surface] if surface else review_surfaces.SURFACES:
-                path = candidate.resolve({**request, "file": name}, compass_vault)
-                if path is not None and _same_path(Path(path).resolve(), target):
+                listed = candidate.resolve({**request, "file": name}, compass_vault)
+                if listed is not None and _same_path(Path(listed).resolve(), target):
                     return request
     return None
 

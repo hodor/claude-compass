@@ -81,35 +81,44 @@
         open();
       });
       row.addEventListener("click", open);
-      row.append(mark, " ", body, " ", count);
+      const sentMark = el("span", "fine row-sent");
+      row.append(mark, " ", body, " ", count, " ", sentMark);
       let choice = null;
+      let rowNote = null;
       if (several) {
-        const choose = (verdict) => (event) => {
+        const sendVerdict = (verdict) => (event) => {
           if (event && event.stopPropagation) event.stopPropagation();
-          send({ type: "choose", index: i, verdict });
+          send({ type: "sendFile", index: i, verdict });
         };
+        rowNote = el("textarea", "row-note");
+        rowNote.rows = 2;
+        rowNote.placeholder = "Note on this file (optional)";
+        rowNote.addEventListener("click", (event) => event.stopPropagation());
+        rowNote.addEventListener("input", () => send({ type: "note", index: i, text: rowNote.value }));
         choice = {
           node: el("div", "row-choice"),
-          approved: button("Approve", "row-approved", choose("approved")),
-          changes: button("Needs changes", "row-changes", choose("changes")),
+          approved: button("Approve", "row-approved", sendVerdict("approved")),
+          changes: button("Needs changes", "row-changes", sendVerdict("changes")),
         };
         choice.node.append(choice.approved, " ", choice.changes);
-        row.append(" ", choice.node);
+        row.append(" ", rowNote, " ", choice.node);
       }
       rows.append(row);
-      parts.rows.push({ row, mark, count, choice });
+      parts.rows.push({ row, mark, count, sentMark, choice, rowNote });
     });
     node.append(rows);
 
-    parts.noteLabel = el("div", "label note-label");
-    parts.note = el("textarea");
-    parts.note.rows = 3;
-    parts.note.placeholder = "Note on this file (optional)";
-    parts.note.addEventListener("input", () => {
-      const index = Number(parts.note.dataset.index);
-      send({ type: "note", index, text: parts.note.value });
-    });
-    node.append(parts.noteLabel, parts.note);
+    if (!several) {
+      parts.noteLabel = el("div", "label note-label");
+      parts.note = el("textarea");
+      parts.note.rows = 3;
+      parts.note.placeholder = "Note on this file (optional)";
+      parts.note.addEventListener("input", () => {
+        const index = Number(parts.note.dataset.index);
+        send({ type: "note", index, text: parts.note.value });
+      });
+      node.append(parts.noteLabel, parts.note);
+    }
 
     parts.feedbackBlock = el("div", "feedback-block");
     parts.feedback = el("ul", "feedback");
@@ -120,9 +129,8 @@
     parts.summary = el("div", "fine");
     const actions = el("div", "actions");
     if (several) {
-      parts.send = button("Send", "primary", () => send({ type: "sendChoices" }));
       parts.approveAll = button("Approve all", "", () => send({ type: "approveAll" }));
-      actions.append(parts.send, parts.approveAll);
+      actions.append(parts.approveAll);
     } else {
       parts.approve = button("Approve", "primary", () => send({ type: "send", verdict: "approved" }));
       parts.changes = button("Needs changes", "", () => send({ type: "send", verdict: "changes" }));
@@ -131,6 +139,7 @@
     foot.append(parts.summary, actions);
     foot.append(el("div", "fine", "Project is the folder holding the vault. Session is the first six characters of the Claude Code session id."));
     if (several) {
+      foot.append(el("div", "fine", "Approve or Needs changes on a file sends that file at once; the others stay open."));
       foot.append(el("div", "fine", "Left and right arrow keys move between files when this card has focus."));
     }
     node.append(foot);
@@ -174,23 +183,34 @@
     parts.nextUnread.disabled = !card.canNextUnread;
 
     card.files.forEach((f, i) => {
-      const { row, mark, count, choice } = parts.rows[i];
+      const { row, mark, count, sentMark, choice, rowNote } = parts.rows[i];
       mark.textContent = f.read ? "read" : "unread";
       mark.classList.toggle("is-read", f.read);
       row.classList.toggle("is-current", i === card.index);
+      row.classList.toggle("is-sent", f.sent);
       count.textContent = f.hasNote ? "1 note" : "no note";
+      sentMark.textContent = f.sent ? `sent: ${f.verdict === "approved" ? "approved" : "needs changes"}` : "";
       if (choice) {
         choice.approved.classList.toggle("is-chosen", f.verdict === "approved");
         choice.changes.classList.toggle("is-chosen", f.verdict === "changes");
+        choice.approved.disabled = f.sent;
+        choice.changes.disabled = f.sent || !f.canChanges;
+        choice.changes.title = choice.changes.disabled && !f.sent ? "Write a note on this file or edit it first" : "";
+      }
+      if (rowNote) {
+        rowNote.readOnly = f.sent;
+        if (rowNote.value !== f.note && document.activeElement !== rowNote) rowNote.value = f.note;
       }
     });
 
-    parts.noteLabel.textContent = card.noteLabel;
-    const noteKey = `${card.id}:${card.index}`;
-    if (parts.note.dataset.key !== noteKey) {
-      parts.note.dataset.key = noteKey;
-      parts.note.dataset.index = String(card.index);
-      parts.note.value = card.note;
+    if (parts.note) {
+      parts.noteLabel.textContent = card.noteLabel;
+      const noteKey = `${card.id}:${card.index}`;
+      if (parts.note.dataset.key !== noteKey) {
+        parts.note.dataset.key = noteKey;
+        parts.note.dataset.index = String(card.index);
+        parts.note.value = card.note;
+      }
     }
 
     fillOutside(card, parts);
@@ -199,11 +219,9 @@
     parts.feedback.textContent = "";
     for (const item of card.feedback) parts.feedback.append(el("li", "", item));
     parts.feedbackBlock.classList.toggle("is-empty", card.feedback.length === 0);
-    if (parts.send) {
-      parts.send.disabled = !card.canSend;
-      parts.send.title = parts.send.disabled
-        ? "Choose Approve or Needs changes on every file; a file that needs changes also needs a note or an edit"
-        : "";
+    if (parts.approveAll) {
+      parts.approveAll.disabled = !card.canApproveAll;
+      parts.approveAll.title = "Approves every file that has no note and has not been sent";
     } else {
       parts.changes.disabled = !card.canChanges;
       parts.changes.title = parts.changes.disabled ? "Write a note first" : "";
