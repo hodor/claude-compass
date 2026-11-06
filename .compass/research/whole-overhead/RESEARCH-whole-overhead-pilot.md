@@ -337,7 +337,7 @@ OpenTelemetry console exporter, tried on a session that loaded one skill and one
 - Calls the session made, read from its transcript: 1 Skill, 1 Agent.
 - Cost of the call: 187345 raw tokens, 72750 weighted.
 
-- Pilot projects discarded: pending.
+- Pilot projects discarded: 40 discarded, 0 kept.
 
 ### Validity of this run
 
