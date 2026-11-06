@@ -200,6 +200,14 @@ STUB_BODY = textwrap.dedent(
         os.makedirs(spec["counts_dir"], exist_ok=True)
         with open(os.path.join(spec["counts_dir"], token + ".count"), "w", encoding="utf-8") as fh:
             fh.write(str(running))
+        barrier = spec.get("barrier")
+        started = len([n for n in os.listdir(spec["counts_dir"]) if n.endswith(".count")])
+        if barrier and started <= barrier:
+            deadline = time.time() + spec.get("barrier_deadline", 90)
+            while time.time() < deadline:
+                if len([n for n in os.listdir(counting_dir) if n.endswith(".active")]) >= barrier:
+                    break
+                time.sleep(0.02)
 
     hold = spec.get("hold_for")
     if hold:
@@ -1104,7 +1112,10 @@ class ConcurrencyTests(CloneHarness):
         """Adversarial where: the pool ignores `--jobs` (all sessions start
         together), is off by one at the bound, runs serially whatever the
         value, or the default is not 3; each stub reports how many stubs are
-        running when it starts."""
+        running when it starts. Each stub waits until `expected_max` stubs are
+        active at once (generous deadline; only the first `expected_max` starters
+        wait, later ones start as slots free up), so the expected overlap is reached
+        however late the interpreters start under load."""
         rows = (
             ("jobs 1", ["--jobs", "1"], 3, 1),
             ("jobs 2 with three sessions", ["--jobs", "2"], 3, 2),
@@ -1120,6 +1131,7 @@ class ConcurrencyTests(CloneHarness):
                     "stream_file": str(self.clean),
                     "concurrency_dir": str(self.stubdir / f"active{index}"),
                     "counts_dir": str(counts),
+                    "barrier": expected_max,
                     "sleep": 1.2,
                 })
                 code, _, _ = self.invoke(*sids, *extra, "--run-id", f"con{index}")
