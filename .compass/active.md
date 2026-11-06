@@ -63,7 +63,7 @@ Plan: [[PLAN-029-crafted-agent-context]]; each task's full text, files and check
 
 - [ ] TASK-261: Split the `obsidian` skill - complexity: M, depends_on: TASK-250
 - [ ] TASK-262: Pointers name the side files - complexity: S, depends_on: TASK-261
-- [ ] TASK-263: The other-host install copies skill side files - complexity: S, depends_on: TASK-250
+- [x] TASK-263: The other-host install copies skill side files - complexity: S, depends_on: TASK-250
 - [ ] TASK-264: The start-here files back under their limit - complexity: M, depends_on: TASK-250
 
 ## Next Up
