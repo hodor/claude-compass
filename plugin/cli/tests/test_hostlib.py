@@ -324,6 +324,108 @@ class MaterializeDshSkillsTests(unittest.TestCase):
         self.assertTrue(
             (project / ".dsh" / "skills" / "compass-lessons").is_dir())
 
+    def _skill_dir(self, src):
+        return src / "skills" / "lessons"
+
+    def _installed(self, project):
+        return project / ".dsh" / "skills" / "compass-lessons"
+
+    def test_side_files_reach_dsh_byte_identical(self):
+        src = self._src_skills()
+        side = {"extra.md": b"# Extra\r\n\r\nCRLF line\r\nunicode \xc3\xa9\n",
+                "other.md": b"no trailing newline"}
+        for name, data in side.items():
+            (self._skill_dir(src) / name).write_bytes(data)
+        project = make_project(self)
+        hostlib.materialize_dsh_skills(project, src / "skills")
+        installed = self._installed(project)
+        for name, data in side.items():
+            self.assertEqual((installed / name).read_bytes(), data, name)
+        self.assertEqual(
+            sorted(p.name for p in installed.iterdir()),
+            ["SKILL.md", "extra.md", "other.md"])
+
+    def test_side_file_does_not_replace_skill_body(self):
+        src = self._src_skills()
+        (self._skill_dir(src) / "extra.md").write_text("side\n",
+                                                       encoding="utf-8")
+        project = make_project(self)
+        hostlib.materialize_dsh_skills(project, src / "skills")
+        text = (self._installed(project) / "SKILL.md").read_text(
+            encoding="utf-8")
+        self.assertIn("name: compass-lessons\n", text)
+        self.assertNotIn("side", text)
+
+    def test_nested_and_non_markdown_files_not_copied(self):
+        # The Claude install copies only top-level `*.md` beside SKILL.md.
+        src = self._src_skills()
+        d = self._skill_dir(src)
+        (d / "sub").mkdir()
+        (d / "sub" / "deep.md").write_text("deep\n", encoding="utf-8")
+        (d / "notes.txt").write_text("txt\n", encoding="utf-8")
+        (d / "extra.md").write_text("side\n", encoding="utf-8")
+        project = make_project(self)
+        hostlib.materialize_dsh_skills(project, src / "skills")
+        installed = self._installed(project)
+        self.assertTrue((installed / "extra.md").is_file())
+        self.assertFalse((installed / "sub").exists())
+        self.assertFalse((installed / "notes.txt").exists())
+
+    def test_side_file_content_refreshed_on_rematerialize(self):
+        src = self._src_skills()
+        side = self._skill_dir(src) / "extra.md"
+        side.write_text("old\n", encoding="utf-8")
+        project = make_project(self)
+        hostlib.materialize_dsh_skills(project, src / "skills")
+        side.write_text("new\n", encoding="utf-8")
+        hostlib.materialize_dsh_skills(project, src / "skills")
+        self.assertEqual(
+            (self._installed(project) / "extra.md").read_text(
+                encoding="utf-8"), "new\n")
+
+    def test_removed_side_file_removed_from_install(self):
+        src = self._src_skills()
+        gone = self._skill_dir(src) / "extra.md"
+        keep = self._skill_dir(src) / "keep.md"
+        gone.write_text("side\n", encoding="utf-8")
+        keep.write_text("keep\n", encoding="utf-8")
+        project = make_project(self)
+        hostlib.materialize_dsh_skills(project, src / "skills")
+        os.remove(gone)
+        hostlib.materialize_dsh_skills(project, src / "skills")
+        installed = self._installed(project)
+        self.assertFalse((installed / "extra.md").exists())
+        self.assertTrue((installed / "keep.md").is_file())
+        self.assertTrue((installed / "SKILL.md").is_file())
+
+    def test_user_folder_untouched_when_skill_has_side_files(self):
+        src = self._src_skills()
+        (self._skill_dir(src) / "extra.md").write_text("side\n",
+                                                       encoding="utf-8")
+        project = make_project(self)
+        mine = project / ".dsh" / "skills" / "my-own"
+        mine.mkdir(parents=True)
+        (mine / "SKILL.md").write_text("---\nname: my-own\n---\nkeep\n",
+                                       encoding="utf-8")
+        (mine / "extra.md").write_text("mine\n", encoding="utf-8")
+        hostlib.materialize_dsh_skills(project, src / "skills")
+        hostlib.materialize_dsh_skills(project, src / "skills")
+        self.assertEqual((mine / "extra.md").read_text(encoding="utf-8"),
+                         "mine\n")
+        self.assertEqual((mine / "SKILL.md").read_text(encoding="utf-8"),
+                         "---\nname: my-own\n---\nkeep\n")
+
+    def test_skill_without_valid_frontmatter_ships_no_side_files(self):
+        src = self._src_skills()
+        bad = src / "skills" / "broken"
+        bad.mkdir()
+        (bad / "SKILL.md").write_text("no frontmatter\n", encoding="utf-8")
+        (bad / "extra.md").write_text("side\n", encoding="utf-8")
+        project = make_project(self)
+        hostlib.materialize_dsh_skills(project, src / "skills")
+        self.assertFalse(
+            (project / ".dsh" / "skills" / "compass-broken").exists())
+
 
 class MaterializeDshInstructionsTests(unittest.TestCase):
     """Rules folded into a fenced managed section of AGENTS.md - the one

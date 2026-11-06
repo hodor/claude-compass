@@ -148,7 +148,9 @@ def materialize_dsh_skills(project_root, skills_src):
     """Write every shipped skill to `.dsh/skills/compass-<name>/SKILL.md`
     in dsh's frontmatter dialect, body verbatim. A skill with a local
     addition (`.compass/meta/local/skills/<name>.md`) carries it after the
-    body under the marker `compass overlay` uses. Compass-owned dirs
+    body under the marker `compass overlay` uses. Every top-level `.md`
+    beside a skill's `SKILL.md` is copied unchanged into the same folder,
+    and one no longer shipped is removed. Compass-owned dirs
     (`compass-*`) not shipped anymore are removed; everything else under
     `.dsh/skills/` belongs to the user and is never touched. Returns the
     number of skills written."""
@@ -181,6 +183,13 @@ def materialize_dsh_skills(project_root, skills_src):
         if block:
             text = text.rstrip("\n") + "\n\n" + block + "\n"
         vaultlib.write_text_lf(dest / "SKILL.md", text)
+        side_files = {f.name: f for f in sorted(skill_dir.glob("*.md"))
+                      if f.name != "SKILL.md"}
+        for stale in dest.glob("*.md"):
+            if stale.name != "SKILL.md" and stale.name not in side_files:
+                stale.unlink()
+        for side_name, side in side_files.items():
+            shutil.copy2(side, dest / side_name)
         written += 1
     for existing in dest_root.iterdir():
         if existing.is_dir() and existing.name.startswith("compass-") \
