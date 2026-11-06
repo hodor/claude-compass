@@ -59,10 +59,8 @@ Plan: [[PLAN-028-whole-overhead-on-real-projects]]; each task's full text, files
 
 Plan: [[PLAN-029-crafted-agent-context]]; each task's full text, files and checks are there.
 
-- [ ] TASK-261: Split the `obsidian` skill - complexity: M, depends_on: TASK-250
+- [x] TASK-261: Split the `obsidian` skill - complexity: M, depends_on: TASK-250
 - [ ] TASK-262: Pointers name the side files - complexity: S, depends_on: TASK-261
-- [x] TASK-264: The start-here files back under their limit - complexity: M, depends_on: TASK-250
-
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].
