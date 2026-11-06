@@ -232,9 +232,10 @@ def reconcile_build(folder, logged):
     def add_cause(name, table, sign):
         raw = _raw_kinds(table)
         weighted = _weigh_kinds(table)
-        entry = causes.setdefault(name, {"cause": name, "weighted": 0.0, "raw": 0})
+        entry = causes.setdefault(name, {"cause": name, "weighted": 0.0, "raw": 0, "models": []})
         entry["weighted"] += weighted
         entry["raw"] += raw
+        entry["models"] = sorted(set(entry["models"]) | {model for model, kinds in table.items() if sum(kinds.values()) > 0})
         signed["raw"] += sign * raw
         signed["weighted"] += sign * weighted
 
@@ -663,8 +664,26 @@ def analyze_console(text, nonce, names):
     return found
 
 
+def invoked_tools(project, private_root=None):
+    """{"skill": n, "agent": n}: the Skill and Agent tool calls in a project's transcripts."""
+    folder = token_profile.transcript_folder(project, private_root)
+    seen = set()
+    for path in _top_level(folder):
+        for item in token_profile._read_lines(path):
+            if item.get("type") != "assistant":
+                continue
+            for block in (item.get("message") or {}).get("content") or []:
+                if isinstance(block, dict) and block.get("type") == "tool_use" and block.get("name") in ("Skill", "Agent"):
+                    seen.add((block["name"], block.get("id")))
+    return {"skill": sum(1 for name, _ in seen if name == "Skill"), "agent": sum(1 for name, _ in seen if name == "Agent")}
+
+
+STREAM_TYPES = frozenset({"system", "assistant", "user", "result", "stream_event", "rate_limit_event"})
+
+
 def split_console(stdout):
-    """(events, rest): the JSON objects of a session's stdout and every other line."""
+    """(events, rest): the stream-json events of a session's stdout and every
+    other line, which includes any object an exporter printed."""
     events, rest = [], []
     for line in stdout.splitlines():
         try:
@@ -672,7 +691,7 @@ def split_console(stdout):
         except ValueError:
             rest.append(line)
             continue
-        if isinstance(value, dict):
+        if isinstance(value, dict) and value.get("type") in STREAM_TYPES:
             events.append(value)
         else:
             rest.append(line)
@@ -691,18 +710,56 @@ def _ratio_text(value):
 
 
 def _share(part, whole):
-    return "n/a" if not whole else f"{part / whole:.1%}"
+    if not whole:
+        return "n/a"
+    return f"{(0 if abs(part) < 0.5 else part) / whole:.1%}"
+
+
+def _reported(build, kind):
+    """The cost-state total of `kind`, n/a when a session of the build wrote none."""
+    state = build["cost_state"]
+    return "n/a" if state.get("missing") else _int(state[kind])
+
+
+def _ordered(builds):
+    return sorted(builds, key=lambda build: (build["label"], build["arm"]))
+
+
+def _findings(builds):
+    """Plain sentences summing up which builds agree and what the named causes cost."""
+    lines = [f"- After the named causes, {sum(1 for b in builds if b['agrees'])} of {len(builds)} builds agree in all three totals "
+             f"(within {TOLERANCE:.1%} of the logged total)."]
+    cut = [(b, c) for b in builds for c in b["causes"] if c["cause"] == UNFINISHED_TURN]
+    if cut:
+        shares = [c["weighted"] / b["logged"]["weighted"] for b, c in cut if b["logged"]["weighted"]]
+        lines.append(
+            f"- Unfinished turn: {len(cut)} builds stopped at a cap; the transcript holds {min(c['weighted'] for _, c in cut):.0f} "
+            f"to {max(c['weighted'] for _, c in cut):.0f} weighted tokens that the run log lacks ({min(shares):.1%} to {max(shares):.1%} of the logged total)."
+        )
+    aux = [(b, c) for b in builds for c in b["causes"] if c["cause"].startswith(AUXILIARY_REQUEST) and b["web_calls"]]
+    if aux:
+        per_call = [c["raw"] / b["web_calls"] for b, c in aux]
+        lines.append(
+            f"- Auxiliary requests: {len(aux)} builds carry raw tokens in the run log (and, where the session wrote it, in `cost-state`) "
+            f"that no transcript record holds, {min(per_call):.0f} to {max(per_call):.0f} per web call; they weigh nothing "
+            "because their model has no list price in the table."
+        )
+    return lines
 
 
 def render_section(result):
     """The report section from counts only."""
-    builds = result.get("builds", [])
+    builds = _ordered(result.get("builds", []))
     lines = [
         HEADING,
         "",
-        "Every build's token records, set side by side: the run log (the counting rule), the sessions' own "
+        "Every build's token records, set side by side (a build killed at a cap wrote no `cost-state`, shown as n/a): the run log (the counting rule), the sessions' own "
         "`cost-state` totals and the deduplicated sum of assistant records over the build session, its subagent "
         "files and its setup session. Capture workers are listed apart. Builds are named by topic letter and run.",
+        "",
+        "#### What the gaps are",
+        "",
+        *_findings(builds),
         "",
         "#### Weighted tokens per build",
         "",
@@ -710,11 +767,11 @@ def render_section(result):
         "|---|---|---|---|---|---|---|---|---|---|",
     ]
     for build in builds:
-        logged, state, found = build["logged"], build["cost_state"], build["records"]
+        logged, found = build["logged"], build["records"]
         gap = found["weighted"] - logged["weighted"]
         lines.append(
             f"| {build['label']} | {build['arm']} | {build['end']} | {_int(logged['weighted'])} "
-            f"| {_int(state['weighted'])} | {_int(found['weighted'])} | {_int(gap)} ({_share(gap, logged['weighted'])}) "
+            f"| {_reported(build, 'weighted')} | {_int(found['weighted'])} | {_int(gap)} ({_share(gap, logged['weighted'])}) "
             f"| {_int(build['workers']['weighted'])} | {_int(build['unattributed']['weighted'])} "
             f"| {'yes' if build['agrees'] else 'no'} |"
         )
@@ -722,14 +779,14 @@ def render_section(result):
         "",
         "#### Raw tokens per build",
         "",
-        "| Build | Logged | Cost-state | Records | Records minus logged | Capture workers | Web calls | Unattributed |",
-        "|---|---|---|---|---|---|---|---|",
+        "| Build | Arm | Logged | Cost-state | Records | Records minus logged | Capture workers | Web calls | Unattributed |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     for build in builds:
-        logged, state, found = build["logged"], build["cost_state"], build["records"]
+        logged, found = build["logged"], build["records"]
         gap = found["raw"] - logged["raw"]
         lines.append(
-            f"| {build['label']} | {_int(logged['raw'])} | {_int(state['raw'])} | {_int(found['raw'])} "
+            f"| {build['label']} | {build['arm']} | {_int(logged['raw'])} | {_reported(build, 'raw')} | {_int(found['raw'])} "
             f"| {_int(gap)} ({_share(gap, logged['raw'])}) | {_int(build['workers']['raw'])} "
             f"| {build['web_calls']} | {_int(build['unattributed']['raw'])} |"
         )
@@ -744,16 +801,20 @@ def render_section(result):
         "- Compaction and resume: named when a `compact_boundary` record, or records of a second session id, "
         "sit beside the gap.",
         "",
-        "| Build | Cause | Weighted | Raw |",
-        "|---|---|---|---|",
+        "| Build | Arm | Cause | Models | Weighted | Raw | Raw per web call |",
+        "|---|---|---|---|---|---|---|",
     ]
     named = 0
     for build in builds:
         for cause in build["causes"]:
             named += 1
-            lines.append(f"| {build['label']} | {cause['cause']} | {_int(cause['weighted'])} | {_int(cause['raw'])} |")
+            per_call = _int(cause["raw"] / build["web_calls"]) if cause["cause"].startswith(AUXILIARY_REQUEST) and build["web_calls"] else "n/a"
+            lines.append(
+                f"| {build['label']} | {build['arm']} | {cause['cause']} | {', '.join(cause.get('models', [])) or 'n/a'} "
+                f"| {_int(cause['weighted'])} | {_int(cause['raw'])} | {per_call} |"
+            )
     if not named:
-        lines.append("| none | none | 0 | 0 |")
+        lines.append("| none | none | none | none | 0 | 0 | n/a |")
 
     lines += ["", "#### Attachment kinds that reached the model", ""]
     attachments = result.get("attachments", {})
@@ -819,7 +880,7 @@ def render_section(result):
             "",
             "#### Console exporter",
             "",
-            "OpenTelemetry console exporter, tried once on a session that loaded one skill and one agent.",
+            "OpenTelemetry console exporter, tried on a session that loaded one skill and one agent.",
             "",
             f"- Output written: {'yes' if otel['wrote_output'] else 'no'}; prompt echoed into it: "
             f"{'yes' if otel['prompt_echoed'] else 'no'}.",
@@ -831,6 +892,14 @@ def render_section(result):
             keys = otel.get(f"{role}_keys") or {}
             if keys:
                 lines.append(f"- The {role} name sits under: {', '.join(f'{k} x{n}' for k, n in sorted(keys.items()))}.")
+        if otel.get("tries", 1) > 1:
+            lines.append(
+                f"- Runs: {otel['tries']}. The first kept only the output lines that are not stream events; "
+                "the next kept the whole standard output."
+            )
+        invoked = otel.get("invoked")
+        if invoked:
+            lines.append(f"- Calls the session made, read from its transcript: {invoked['skill']} Skill, {invoked['agent']} Agent.")
         cost = otel.get("cost")
         if cost:
             lines.append(f"- Cost of the call: {cost['raw']} raw tokens, {_int(cost['weighted'])} weighted.")
@@ -1035,8 +1104,10 @@ def console_exporter(repo_root, private_root, projects_root):
     folder = _result_path(private_root).parent
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "otel-console.txt").write_text(raw_text, encoding="utf-8")
+    (folder / "otel-stdout.txt").write_text(stdout, encoding="utf-8")
     found = analyze_console(raw_text, nonce, names)
     found["cost"] = call_cost([events])
+    found["invoked"] = invoked_tools(project, private_root)
     found["exit"] = code
     return found
 

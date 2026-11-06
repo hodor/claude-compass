@@ -217,6 +217,128 @@ Read from the session transcripts after the run; the pilot's run log does not ho
 - Capture workers are counted by the profile and not by the run log. The six builds started 19 extract-lessons sessions, one per capture opportunity: A1 5, A2 7, B1 2, B2 2, C1 1, C2 2. They come to 3.1% of the Compass arm's profiled weighted tokens. The shares under "Overhead share" come from the run log and so leave them out; the whole-project share that counts them is 78.4% against 77.2% (high).
 - Frozen goal items the Compass arm's own specs dropped, judged against each spec's text. Four items name a toolchain, a build command or the test suite; a spec carries no technology, so they are not counted. Left out entirely: A1 1, B2 1, all others 0. Contradicted: A1 1 (an input format dropped by a spec decision), A2 2 (a different default size for a top list, and unreadable lines skipped where the goal asks for a nonzero exit), B1 1 (actor speed in place of one player action, then every monster). Stated without the goal's number or detail (counts of floors, weapons, monster types, the end-of-run summary's fields): A1 1, B1 5, B2 5, C1 2, C2 3. Every build wrote all the specs it planned (medium).
 
+### Reconciliation and the split by source
+
+Every build's token records, set side by side (a build killed at a cap wrote no `cost-state`, shown as n/a): the run log (the counting rule), the sessions' own `cost-state` totals and the deduplicated sum of assistant records over the build session, its subagent files and its setup session. Capture workers are listed apart. Builds are named by topic letter and run.
+
+#### What the gaps are
+
+- After the named causes, 12 of 12 builds agree in all three totals (within 0.5% of the logged total).
+- Unfinished turn: 4 builds stopped at a cap; the transcript holds 304404 to 485833 weighted tokens that the run log lacks (2.3% to 4.8% of the logged total).
+- Auxiliary requests: 4 builds carry raw tokens in the run log (and, where the session wrote it, in `cost-state`) that no transcript record holds, 11273 to 15546 per web call; they weigh nothing because their model has no list price in the table.
+
+#### Weighted tokens per build
+
+| Build | Arm | End | Logged | Cost-state | Records | Records minus logged | Capture workers | Unattributed | Agrees |
+|---|---|---|---|---|---|---|---|---|---|
+| A1 | baseline | human-done | 393607 | 393607 | 393607 | 0 (0.0%) | 0 | 0 | yes |
+| A1 | compass | human-done | 12891589 | 12891589 | 12891589 | 0 (0.0%) | 600900 | 0 | yes |
+| A2 | baseline | human-done | 272716 | 272716 | 272716 | 0 (0.0%) | 0 | 0 | yes |
+| A2 | compass | wall-time | 13465094 | n/a | 13753033 | 287939 (2.1%) | 702934 | -16465 | yes |
+| B1 | baseline | human-done | 1124850 | 1124850 | 1124850 | 0 (0.0%) | 0 | 0 | yes |
+| B1 | compass | wall-time | 12179224 | n/a | 12505341 | 326117 (2.7%) | 227238 | 0 | yes |
+| B2 | baseline | human-done | 6591838 | 6591838 | 6591838 | 0 (0.0%) | 0 | 0 | yes |
+| B2 | compass | wall-time | 11023124 | n/a | 11370263 | 347138 (3.1%) | 173994 | 0 | yes |
+| C1 | baseline | human-done | 4918986 | 4918986 | 4918986 | 0 (0.0%) | 0 | 0 | yes |
+| C1 | compass | human-done | 1159524 | 1159524 | 1159524 | 0 (0.0%) | 75395 | 0 | yes |
+| C2 | baseline | human-done | 607737 | 607737 | 607737 | 0 (0.0%) | 0 | 0 | yes |
+| C2 | compass | wall-time | 10171728 | n/a | 10657561 | 485833 (4.8%) | 215386 | 0 | yes |
+
+#### Raw tokens per build
+
+| Build | Arm | Logged | Cost-state | Records | Records minus logged | Capture workers | Web calls | Unattributed |
+|---|---|---|---|---|---|---|---|---|
+| A1 | baseline | 1338304 | 1338304 | 1338304 | 0 (0.0%) | 0 | 0 | 0 |
+| A1 | compass | 82557498 | 82557498 | 80831940 | -1725558 (-2.1%) | 3892793 | 111 | 0 |
+| A2 | baseline | 883920 | 883920 | 883920 | 0 (0.0%) | 0 | 0 | 0 |
+| A2 | compass | 83402930 | n/a | 82594811 | -808119 (-1.0%) | 3647261 | 171 | 0 |
+| B1 | baseline | 6618784 | 6618784 | 6618784 | 0 (0.0%) | 0 | 0 | 0 |
+| B1 | compass | 63149682 | n/a | 65549397 | 2399715 (3.8%) | 1265629 | 0 | 0 |
+| B2 | baseline | 78497650 | 78497650 | 78497650 | 0 (0.0%) | 0 | 0 | 0 |
+| B2 | compass | 62669046 | n/a | 62828613 | 159567 (0.3%) | 1007418 | 135 | 0 |
+| C1 | baseline | 57267025 | 57267025 | 57267025 | 0 (0.0%) | 0 | 0 | 0 |
+| C1 | compass | 5073967 | 5073967 | 5073967 | 0 (0.0%) | 393479 | 0 | 0 |
+| C2 | baseline | 2138308 | 2138308 | 2138308 | 0 (0.0%) | 0 | 0 | 0 |
+| C2 | compass | 59618466 | n/a | 60179764 | 561298 (0.9%) | 1325615 | 132 | 0 |
+
+#### Causes of the gaps
+
+- Unfinished turn: a session killed at a cap writes no `cost-state`, and its last turn is in the transcript but never reached a `result` event; counted from the last end-of-turn marker.
+- Auxiliary request: a model's input and output tokens in `cost-state` that no assistant record carries, while its cache tokens match. Inferred when the build wrote no `cost-state` and made web calls.
+- Compaction and resume: named when a `compact_boundary` record, or records of a second session id, sit beside the gap.
+
+| Build | Arm | Cause | Models | Weighted | Raw | Raw per web call |
+|---|---|---|---|---|---|---|
+| A1 | compass | auxiliary request | claude-haiku-5-5 | 0 | 1725558 | 15546 |
+| A2 | compass | unfinished turn | n/a | 304404 | 1497240 | n/a |
+| A2 | compass | auxiliary request (inferred) | n/a | 0 | 2305359 | 13482 |
+| B1 | compass | unfinished turn | n/a | 326117 | 2399715 | n/a |
+| B2 | compass | unfinished turn | n/a | 347138 | 1681456 | n/a |
+| B2 | compass | auxiliary request (inferred) | n/a | 0 | 1521889 | 11273 |
+| C2 | compass | unfinished turn | n/a | 485833 | 2400375 | n/a |
+| C2 | compass | auxiliary request (inferred) | n/a | 0 | 1839077 | 13932 |
+
+#### Attachment kinds that reached the model
+
+| Kind | baseline reached | baseline chars | baseline empty | compass reached | compass chars | compass empty |
+|---|---|---|---|---|---|---|
+| agent_listing_delta | 7 | 25543 | 0 | 187 | 1328533 | 0 |
+| budget_usd | 609 | 57602 | 0 | 3328 | 328325 | 0 |
+| command_permissions | 0 | 0 | 2 | 0 | 0 | 6 |
+| credential_org | 0 | 0 | 7 | 0 | 0 | 191 |
+| date | 8 | 604 | 0 | 191 | 12224 | 0 |
+| deferred_tools_delta | 7 | 2995 | 0 | 50 | 67643 | 0 |
+| deferred_tools_record | 0 | 0 | 370 | 0 | 0 | 1477 |
+| edited_text_file | 68 | 50921 | 0 | 156 | 147409 | 0 |
+| environment | 15 | 7361 | 0 | 246 | 190294 | 0 |
+| hook_additional_context | 0 | 0 | 0 | 23 | 11025 | 0 |
+| hook_success | 0 | 0 | 727 | 0 | 0 | 3922 |
+| instructions | 0 | 0 | 0 | 185 | 2170235 | 0 |
+| mcp_instructions_delta | 0 | 0 | 0 | 19 | 39007 | 0 |
+| model | 7 | 1127 | 0 | 191 | 31373 | 0 |
+| nested_memory | 0 | 0 | 0 | 53 | 81249 | 0 |
+| prompt_snapshot | 0 | 0 | 14 | 0 | 0 | 382 |
+| queued_command | 3 | 2933 | 0 | 15 | 18144 | 0 |
+| remote_session_change | 7 | 4053 | 0 | 187 | 108584 | 0 |
+| session_context | 7 | 7086 | 0 | 191 | 261978 | 0 |
+| silent_turn_reminder | 3 | 399 | 0 | 45 | 5985 | 0 |
+| skill_listing | 7 | 48664 | 0 | 54 | 1357737 | 0 |
+
+- Recorded but never rendered into a request: command_permissions, credential_org, deferred_tools_record, hook_success, prompt_snapshot.
+
+#### Request text against the API's input count
+
+One Compass-arm session, 173 requests rebuilt from the transcript; ratio = API input tokens over the request's UTF-8 bytes divided by 4.
+
+- Pooled ratio: 1.65; first request: 1.40; median 1.64, lowest 1.40, highest 1.71.
+- Requests left out: none.
+- Attachments with rendered text found inside a rebuilt request: 214 of 214.
+
+#### Ablation calls
+
+An isolated `claude -p "hi"` in a bare project and in a project holding one file; real first-request tokens beside the file's bytes divided by 4. The added-bytes column is the growth of the rebuilt request text.
+
+| File | File bytes | Tokens without | Tokens with | Added tokens | Added request bytes | Tokens over file bytes/4 | Tokens over added bytes/4 |
+|---|---|---|---|---|---|---|---|
+| rules file | 9612 | 23616 | 26835 | 3219 | 9962 | 1.34 | 1.29 |
+| skill | 20852 | 23616 | 23686 | 70 | 213 | 0.01 | 1.31 |
+| agent definition | 6670 | 23616 | 23716 | 100 | 286 | 0.06 | 1.40 |
+
+- Cost of the 4 calls: 98007 raw tokens, 41239 weighted.
+
+#### Console exporter
+
+OpenTelemetry console exporter, tried on a session that loaded one skill and one agent.
+
+- Output written: no; prompt echoed into it: no.
+- Event names seen: none.
+- The skill appears by name: no; the agent appears by name: no.
+- Runs: 2. The first kept only the output lines that are not stream events; the next kept the whole standard output.
+- Calls the session made, read from its transcript: 1 Skill, 1 Agent.
+- Cost of the call: 187345 raw tokens, 72750 weighted.
+
+- Pilot projects discarded: pending.
+
 ### Validity of this run
 
 - **The shares are lower bounds.** Four Compass builds (A2, B1, B2, C2) stopped at the 150-minute cap and are counted up to it. The baseline builds all finished. Beyond capture workers, the profile finds 0.29M to 0.49M more weighted tokens than the run log in each capped build; in the two finished builds the two counts match exactly.

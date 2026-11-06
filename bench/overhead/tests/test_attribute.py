@@ -768,6 +768,30 @@ def test_a_name_inside_a_longer_word_is_not_a_match():
     assert found["skill_named"] is False and found["agent_named"] is False
 
 
+def test_invoked_tools_count_each_skill_and_agent_call_once(tmp_path):
+    private = tmp_path / "private"
+    project = tmp_path / "projects" / "proj-aaaaaa"
+    project.mkdir(parents=True)
+    transcripts = attribute.token_profile.transcript_folder(project, private)
+    transcripts.mkdir(parents=True)
+    skill = [{"type": "tool_use", "id": "t1", "name": "Skill", "input": {"skill": "x"}}]
+    agent = [{"type": "tool_use", "id": "t2", "name": "Agent", "input": {"subagent_type": "y"}}]
+    write_session(transcripts, SESSION, [
+        assistant("m1", usage(1, 0, 0, 1), "2026-01-01T00:00:01.000Z", blocks=skill),
+        assistant("m1", usage(1, 0, 0, 1), "2026-01-01T00:00:01.100Z", blocks=skill),
+        assistant("m2", usage(1, 0, 0, 1), "2026-01-01T00:00:02.000Z", blocks=agent),
+    ])
+    assert attribute.invoked_tools(project, private) == {"skill": 1, "agent": 1}
+
+
+def test_an_exporter_object_printed_as_json_is_kept_out_of_the_stream_events():
+    stream = json.dumps({"type": "result", "modelUsage": {}})
+    exporter = json.dumps({"name": "claude_code.tool_result", "attributes": {"tool_name": "Skill"}})
+    events, rest = attribute.split_console("\n".join([stream, exporter, "plain line"]))
+    assert [e["type"] for e in events] == ["result"]
+    assert "claude_code.tool_result" in rest and "plain line" in rest
+
+
 # the report section
 
 
@@ -822,6 +846,20 @@ def test_the_section_lists_every_build_with_its_three_totals_and_each_ablation_r
     assert "0.98" in text
     assert "rules file" in text and "skill" in text
     assert "claude_code.tool_result" in text
+
+
+def test_a_build_whose_session_wrote_no_cost_state_shows_it_as_not_available():
+    text = attribute.render_section(sample_result())
+    rows = {line.split("|")[1].strip() + line.split("|")[2].strip(): line for line in text.splitlines() if line.startswith("| B2 |")}
+    assert "n/a" in rows["B2compass"]
+    clean = [line for line in text.splitlines() if line.startswith("| C1 |")][0]
+    assert "n/a" not in clean.split("|")[5]
+
+
+def test_the_raw_and_cause_tables_name_the_arm_of_each_build():
+    text = attribute.render_section(sample_result())
+    assert "| Build | Arm | Logged |" in text
+    assert "| Build | Arm | Cause |" in text
 
 
 def test_the_section_holds_no_dash_character_and_no_private_detail():
