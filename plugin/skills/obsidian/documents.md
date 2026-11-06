@@ -10,7 +10,7 @@ A ruling made in a spec or ADR is written as a discrete, referenceable bullet, n
 - **Opt-out tags:** a `[informational]` or `[deferred]` bracket tag right after the ID marks the decision non-trackable. It is still parsed and recorded, just never required by the coverage gate. Example: `- **D-07 [deferred]:** revisit connection pooling after the migration lands.`
 - **Discretion subheading:** bullets placed under a subheading whose text ends in "Discretion" (`### Builder discretion`, `### Claude's Discretion`) are non-trackable as a group, without tagging each one.
 - **Citation form:** a plan or task claims a decision with a source-qualified citation, `<doc-stem>/D-NN` (e.g. `SPEC-007-decision-coverage-tracing/D-03`), resolved the same way a wikilink resolves. A bare `D-NN` claims nothing - local IDs collide across documents, so the source name is required.
-- **Link form:** a document citing a decision links the Decisions heading, `[[SPEC-007-decision-coverage-tracing#Decisions]]`, because a callout cannot carry a block id a link could reach. See "Documents the human reads".
+- **Link form:** a document citing a decision links the Decisions heading, `[[SPEC-007-decision-coverage-tracing#Decisions]]`, because a callout cannot carry a block id a link could reach. See file `documents.md`, section "Documents the human reads".
 - **Coverage:** `compass decisions <doc>` lists a document's decisions and exits 1 on a format mismatch (`could-not-parse`). `compass coverage <plan> [--against <doc>...]` checks that a plan covers every trackable decision of its `depends_on` spec and decision sources, and exits 1 on any gap. Documents predating this convention parse as `none-present` and are not retrofitted.
 
 ## Documents the human reads

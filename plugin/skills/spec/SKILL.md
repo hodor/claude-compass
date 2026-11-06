@@ -42,7 +42,7 @@ Anything else is not asked. What research can settle is left to research; what c
 
 When part of an answer belongs to a different spec or a captured note, quote his sentences there verbatim - routing moves his words, it never summarizes them.
 
-If the human states an explicit ruling during the interview (a trade-off resolved, an approach chosen over an alternative), record it as a `- **D-NN:** text` bullet under `## Decisions`, not as prose folded into Problem or Desired Outcome - see the "Decision bullets" convention in the `obsidian` skill. This makes the ruling a checkable claim later plans must cite. Decisions consolidate by topic: when a new ruling refines an existing bullet, merge it there rather than minting another number.
+If the human states an explicit ruling during the interview (a trade-off resolved, an approach chosen over an alternative), record it as a `- **D-NN:** text` bullet under `## Decisions`, not as prose folded into Problem or Desired Outcome - see the `obsidian` skill, file `documents.md`, section "Decision bullets". This makes the ruling a checkable claim later plans must cite. Decisions consolidate by topic: when a new ruling refines an existing bullet, merge it there rather than minting another number.
 
 Somewhere in the interview, look for the spec's KPI: the measurable number that says this worked (a rate reaching a bar, a cost reaching zero). Brainstorm it with the human rather than inventing it - a short research pass is fine when neither of you knows what is measurable - and record it in Desired Outcome. It guides every agent downstream: the planner's pass bars and the validator's probes come from it. Not every spec has one; skip without ceremony when it does not.
 
@@ -52,7 +52,7 @@ Before saving, re-read Problem and Desired Outcome. Multiple distinct problems o
 
 ### 5. Create the spec file and review its taxonomy
 
-Resolve the destination per the `obsidian` skill's "Where a new artifact goes" rule: the owning unit's `specs/` dir, or the root. Write the draft at its best-fit domain, the domain folder whose Scope fits it (a vault with no domains files at the root), as `.compass/specs/SPEC-NNN-descriptive-name.md`, NNN from `compass next-num spec`.
+Resolve the destination per the `obsidian` skill, file `vault-layout.md`, section "Where a new artifact goes": the owning unit's `specs/` dir, or the root. Write the draft at its best-fit domain, the domain folder whose Scope fits it (a vault with no domains files at the root), as `.compass/specs/SPEC-NNN-descriptive-name.md`, NNN from `compass next-num spec`.
 
 Then run `compass placement <path-to-draft>`. It prints where the spec could live, each candidate with the evidence that put it there: existing specs it could sit under (`parents:`), same-level specs it would pair with (`pairs:`), domains whose scope fits (`domains:`), and where its own `taxonomy_hint` points (`hint:`). The ranking is an evidence count, not a validated measure. Apply the parent test to each candidate:
 
@@ -94,7 +94,7 @@ Edit `.compass/index.md`, add the new spec under `## Specs` with `[[wikilinks]]`
 
 ### 6b. Cheap review pass
 
-Before presenting, spawn a reviewer sub-agent on the cheap model tier with exactly this brief: the draft spec's path, the Document Writing rules from the pipeline rules and the `obsidian` skill's `writing-principles.md` (the ornamental test, direct statement, decisions consolidated by topic, a KPI where one exists, resident invariants cited where the work touches them - the Data rule above all). It returns a findings list; apply the edits, don't debate them. This pass exists so nothing falls through the cracks between the rules and the draft - it reviews writing, never substance: the problem and rulings are the human's.
+Before presenting, spawn a reviewer sub-agent on the cheap model tier with exactly this brief: the draft spec's path, the Document Writing rules from the pipeline rules and the `obsidian` skill, file `writing-principles.md` (the ornamental test, direct statement, decisions consolidated by topic, a KPI where one exists, resident invariants cited where the work touches them - the Data rule above all). It returns a findings list; apply the edits, don't debate them. This pass exists so nothing falls through the cracks between the rules and the draft - it reviews writing, never substance: the problem and rulings are the human's.
 
 ### 7. Present for approval
 

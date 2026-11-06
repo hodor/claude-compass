@@ -20,7 +20,7 @@ Decisions consolidate by topic: a ruling that refines an existing decision merge
 
 The test binds everything an agent writes, not only vault documents: code comments, test names and assertion messages, commit bodies, skill and agent text. Each must make sense to a first-time reader who has only the file. State what the thing is, positively; a sentence that only makes sense to someone who watched it get written goes.
 
-Compass documents should be a pleasure to read. Easy to read, short, sweet. Long only when needed. Never verbose. The `obsidian` skill holds the forms (opening picture, callouts, embeds) and the plain words a human reads.
+Compass documents should be a pleasure to read. Easy to read, short, sweet. Long only when needed. Never verbose. The forms (opening picture, callouts, embeds) are in the `obsidian` skill, file `documents.md`, section "Documents the human reads"; the plain words a human reads are in the same skill, file `documents.md`, section "Plain words".
 
 ## Fresh-eyes check
 

@@ -70,7 +70,7 @@ draft → review → approved → active → done → archived
 | `[[filename#Section]]` | Link to a section within a document |
 | `[[filename\|Display Text]]` | Link with custom display text |
 
-Always wikilinks for cross-references. Never relative markdown links. See "Unit folders" below for when a link must be path-qualified.
+Always wikilinks for cross-references. Never relative markdown links. See file `vault-layout.md`, section "Unit folders" for when a link must be path-qualified.
 
 ## Side files
 
