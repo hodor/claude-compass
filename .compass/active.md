@@ -55,16 +55,13 @@ Plan: [[PLAN-028-whole-overhead-on-real-projects]]; each task's full text, files
 
 - [ ] TASK-248: The pilot - complexity: M, depends_on: TASK-244, TASK-246, TASK-247
 - [ ] TASK-249: You grade four pilot builds - complexity: S, depends_on: TASK-248
-- [x] TASK-250: Records reconciled - complexity: M, depends_on: TASK-248, TASK-249
-
 ## PLAN-029 Wave 1: crafted context for launched agents
 
 Plan: [[PLAN-029-crafted-agent-context]]; each task's full text, files and checks are there.
 
 - [ ] TASK-261: Split the `obsidian` skill - complexity: M, depends_on: TASK-250
 - [ ] TASK-262: Pointers name the side files - complexity: S, depends_on: TASK-261
-- [x] TASK-263: The other-host install copies skill side files - complexity: S, depends_on: TASK-250
-- [ ] TASK-264: The start-here files back under their limit - complexity: M, depends_on: TASK-250
+- [x] TASK-264: The start-here files back under their limit - complexity: M, depends_on: TASK-250
 
 ## Next Up
 
