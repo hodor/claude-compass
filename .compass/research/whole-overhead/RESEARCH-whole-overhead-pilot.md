@@ -1,7 +1,7 @@
 ---
 title: "Whole overhead pilot"
 type: research
-status: draft
+status: complete
 confidence: low
 area: workflow
 summary: "Overhead share of Compass over twelve builds on three topics, its spread, the batch size it implies, and the cost of one build"
@@ -21,8 +21,7 @@ flowchart LR
   T --> B["12 judged builds"] --> S["share and batch size"]
 ```
 
-> [!IMPORTANT]
-> You decide: whether the batch size and the cost of one build below are a pace your subscription can carry.
+Approved 2026-11-07: the cost of one build and the pace below are one your subscription can carry.
 
 ## Question
 

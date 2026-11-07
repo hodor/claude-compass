@@ -53,7 +53,7 @@ Plan: [[PLAN-021-control-loops]].
 
 Plan: [[PLAN-028-whole-overhead-on-real-projects]]; each task's full text, files and checks are there.
 
-- [ ] TASK-248: The pilot - complexity: M, depends_on: TASK-244, TASK-246, TASK-247
+- [x] TASK-248: The pilot - complexity: M, depends_on: TASK-244, TASK-246, TASK-247
 - [ ] TASK-249: You grade four pilot builds - complexity: S, depends_on: TASK-248
 ## PLAN-029 Wave 1: crafted context for launched agents
 
