@@ -290,3 +290,18 @@ Choosing option 3 in fork 1 forces option 2 here.
 - Whether Obsidian rereads `community-plugins.json` while running, or rewrites it from memory when the human toggles a plugin.
 - What `fountain-py validate` reports.
 - Whether `compass move` rewrites Obsidian notes' links to a moved script.
+
+## Live check results
+
+> [!todo] You do, round 1: open and close in Obsidian
+> 1. In Obsidian: **Open another vault**, then **Open folder as vault**, and pick the `fountain-live` folder, open in File Explorer now (a scratch folder outside every vault).
+> 2. If it asks about restricted mode, turn it off. In the notes, say whether Fountain was already on or you switched it on in Settings, Community plugins.
+> 3. Open each of the 8 `.fountain` scripts, look at it, and close it. Change nothing.
+> 4. Approve. I fingerprint every script, record the rows below, and send round 2.
+>
+> Rounds 2 to 5 finish check 1: a typed-and-deleted character in each script in Obsidian, then the same in VS Code, then once more in VS Code with scene numbering on. Rounds 6 to 9 cover links, an agent edit while the scripts are open, install, and the two previews side by side. The scratch folder is not one of your vaults.
+
+Versions: Fountain 0.34.3 (bundled), BetterFountain 1.14.3. BetterFountain's two `_crlf` samples arrive from GitHub with LF line endings; the kit's `kit-crlf` copies hold CRLF.
+
+| Id | Step | Script | Result |
+|---|---|---|---|
