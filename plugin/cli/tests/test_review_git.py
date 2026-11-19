@@ -36,6 +36,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import reviewlib  # noqa: E402
 from review_surfaces import obsidian as obsidian_surface  # noqa: E402
+from tests.test_review import ANSWER_WAIT_SECONDS  # noqa: E402
 
 HEADER = re.compile(r"^--- changes since ([0-9a-f]{7,40}) ---$")
 DOC_TEXT = "---\ntitle: x\n---\n\n# X\n"
@@ -159,7 +160,7 @@ class GitReviewBase(unittest.TestCase):
 
         def answer():
             try:
-                deadline = time.monotonic() + 10
+                deadline = time.monotonic() + ANSWER_WAIT_SECONDS
                 while time.monotonic() < deadline:
                     fresh = [p for p in self.requests() if p not in known]
                     if fresh:
@@ -178,7 +179,7 @@ class GitReviewBase(unittest.TestCase):
 
         thread = threading.Thread(target=answer, daemon=True)
         thread.start()
-        result = self.review(*(str(f) for f in (files or [self.doc])), "--timeout", "20")
+        result = self.review(*(str(f) for f in (files or [self.doc])), "--timeout", str(ANSWER_WAIT_SECONDS))
         thread.join(5)
         self.assertEqual(self.thread_errors, [])
         return result

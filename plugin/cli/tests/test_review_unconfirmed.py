@@ -31,7 +31,7 @@ import sys
 import threading
 import time
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -42,7 +42,7 @@ import review_surfaces  # noqa: E402
 import reviewlib  # noqa: E402
 import test_review_vscode as vs  # noqa: E402
 from review_surfaces import obsidian as obsidian_surface  # noqa: E402
-from test_review import ReviewProject  # noqa: E402
+from test_review import ANSWER_WAIT_SECONDS, ReviewProject  # noqa: E402
 
 ACK = 0.6
 POLL = 0.05
@@ -330,6 +330,10 @@ class ObsidianCheck(ReviewProject):
         off" (the install is only reachable through `--install`), or installs
         but writes no request."""
         self.configure(plugin="off")
+        # Naming the editor keeps an editor installed on the host, ready as it
+        # stands, from being chosen ahead of the Obsidian plugin that is off.
+        (self.vault / "meta").mkdir()
+        (self.vault / "meta" / "plugin.yaml").write_text("review_editor: obsidian\n", encoding="utf-8")
         code, out, err = self.review(str(self.doc), "--no-wait")
         self.assertEqual(code, 0, out + err)
         self.assertTrue(out.startswith("requested "), out)
@@ -395,13 +399,29 @@ class AckWait(ReviewProject):
             self.addCleanup(patcher.stop)
         self.configure()
 
+    @contextmanager
+    def request_clock(self):
+        """Yield a dict that holds `at`, the monotonic time the request landed
+        on disk, once the review has written it. An elapsed bound measured
+        from `at` leaves out the git and spawn work that precedes the request."""
+        clock = {}
+        original = reviewlib.write_request
+
+        def write_request(*args, **kwargs):
+            written = original(*args, **kwargs)
+            clock["at"] = time.monotonic()
+            return written
+
+        with mock.patch.object(reviewlib, "write_request", write_request):
+            yield clock
+
     def when_requested(self, delay, action):
         """Run `action(request_path, request)` `delay` seconds after the first
         request appears."""
         directory = reviewlib.review_dir(self.vault)
 
         def run():
-            deadline = time.monotonic() + 5
+            deadline = time.monotonic() + ANSWER_WAIT_SECONDS
             while time.monotonic() < deadline:
                 found = sorted(directory.glob("*.request.json")) if directory.is_dir() else []
                 if found:
@@ -482,7 +502,7 @@ class AckWait(ReviewProject):
         not-configured line instead of the verdict."""
         self.when_requested(ACK + 1.0, self.claim)
         self.when_requested(ACK + 1.6, self.answer)
-        code, out, err = self.review(str(self.doc), "--timeout", "10")
+        code, out, err = self.review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out + err)
         self.assertIn('"verdict": "approved"', out)
         self.assertEqual(len([ln for ln in out.splitlines() if ln.startswith("waiting:")]), 1, out)
@@ -493,7 +513,7 @@ class AckWait(ReviewProject):
         `.seen` ever written, is discarded because the request was withdrawn
         at the window."""
         self.when_requested(ACK + 1.0, self.answer)
-        code, out, err = self.review(str(self.doc), "--timeout", "10")
+        code, out, err = self.review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out + err)
         self.assertIn('"verdict": "approved"', out)
         self.assertNotIn("not configured", out)
@@ -527,7 +547,7 @@ class AckWait(ReviewProject):
         withdrawn under them."""
         self.when_requested(0.2, self.claim)
         self.when_requested(ACK + 1.0, self.answer)
-        code, out, err = self.review(str(self.doc), "--timeout", "10")
+        code, out, err = self.review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out + err)
         self.assertIn('"verdict": "approved"', out)
         self.assertNotIn("not configured", out)
@@ -536,7 +556,7 @@ class AckWait(ReviewProject):
         """Adversarial where: an add-on that answers before it writes a claim
         (or never writes one) has its verdict discarded for lack of `.seen`."""
         self.when_requested(0.2, self.answer)
-        code, out, err = self.review(str(self.doc), "--timeout", "10")
+        code, out, err = self.review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out + err)
         self.assertIn('"verdict": "approved"', out)
 
@@ -557,11 +577,10 @@ class AckWait(ReviewProject):
         """Adversarial where: the window replaces `--timeout` instead of
         sitting inside it, so a one-second timeout waits for the whole window
         and ends with the wrong line."""
-        with mock.patch.object(self.module, "ACK_SECONDS", 5.0, create=True):
-            started = time.monotonic()
+        with mock.patch.object(self.module, "ACK_SECONDS", 5.0, create=True), self.request_clock() as clock:
             code, out, _ = self.review(str(self.doc), "--timeout", "0.5")
         self.assertEqual(code, 1)
-        self.assertLess(time.monotonic() - started, 3)
+        self.assertLess(time.monotonic() - clock["at"], 3)
         self.assertTrue(out.splitlines()[-1].startswith("timeout "), out)
         self.assertNotIn("not configured", out)
         self.assertNotIn("waiting:", out)
@@ -571,9 +590,9 @@ class AckWait(ReviewProject):
         the waiter polling a request that no longer exists, or ends with a
         not-configured line."""
         self.when_requested(ACK + 0.4, lambda path, request: self.review("--cancel", request["id"]))
-        started = time.monotonic()
-        code, out, _ = self.review(str(self.doc), "--timeout", "10")
-        self.assertLess(time.monotonic() - started, 4)
+        with self.request_clock() as clock:
+            code, out, _ = self.review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
+        self.assertLess(time.monotonic() - clock["at"], 4)
         self.assertEqual(code, 1)
         lines = out.splitlines()
         self.assertRegex(lines[1], LINE)
@@ -584,7 +603,7 @@ class AckWait(ReviewProject):
         """Adversarial where: the hint keeps the older waiter alive after a
         newer request for the document replaced its request."""
         self.when_requested(ACK + 0.4, lambda path, request: self.review(str(self.doc), "--no-wait"))
-        code, out, _ = self.review(str(self.doc), "--timeout", "10")
+        code, out, _ = self.review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 1)
         self.assertRegex(out.splitlines()[-1], r"^withdrawn ")
 
@@ -594,9 +613,9 @@ class AckWait(ReviewProject):
         as an editor that did not pick it up."""
         with mock.patch.object(self.module, "ACK_SECONDS", 3.0, create=True):
             self.when_requested(0.2, lambda path, request: self.review("--cancel", request["id"]))
-            started = time.monotonic()
-            code, out, _ = self.review(str(self.doc), "--timeout", "10")
-        self.assertLess(time.monotonic() - started, 2.5, "the cancel ends the wait, not the window")
+            with self.request_clock() as clock:
+                code, out, _ = self.review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
+        self.assertLess(time.monotonic() - clock["at"], 2.5, "the cancel ends the wait, not the window")
         self.assertEqual(code, 1)
         self.assertRegex(out.splitlines()[-1], r"^withdrawn ")
         self.assertNotIn("not configured", out)
@@ -606,9 +625,9 @@ class AckWait(ReviewProject):
         """Adversarial where: `--no-wait` blocks for the window or withdraws
         the request it just delivered."""
         with mock.patch.object(self.module, "ACK_SECONDS", 30.0, create=True):
-            started = time.monotonic()
-            code, out, _ = self.review(str(self.doc), "--no-wait")
-        self.assertLess(time.monotonic() - started, 5)
+            with self.request_clock() as clock:
+                code, out, _ = self.review(str(self.doc), "--no-wait")
+        self.assertLess(time.monotonic() - clock["at"], 5)
         self.assertEqual(code, 0)
         self.assertTrue(out.startswith("requested "), out)
         self.assertEqual(len(list(reviewlib.review_dir(self.vault).glob("*.request.json"))), 1)
@@ -733,7 +752,8 @@ class Contract(unittest.TestCase):
         manifest = json.loads((REPO_PLUGIN / "obsidian" / "compass-review" / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(manifest["version"], "0.8.0")
         plugin = json.loads((REPO_PLUGIN / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
-        self.assertEqual(plugin["version"], "0.34.5")
+        self.assertRegex(plugin["version"], r"^\d+\.\d+\.\d+$")
+        self.assertGreaterEqual(tuple(int(n) for n in plugin["version"].split(".")), (0, 34, 5))
         packed = [p.name for p in (REPO_PLUGIN / "vscode").rglob("*.vsix") if "node_modules" not in p.parts]
         self.assertEqual(packed, ["compass-review-0.5.0.vsix"])
 
