@@ -41,8 +41,8 @@ flowchart LR
   l1 -.->|"live check"| R
 ```
 
-> [!IMPORTANT]
-> You decide: settle the six forks below, each with a recommended option. (1) which Obsidian plugin, (2) `.fountain` or `.fountain.md` on disk, (3) how scripts and Obsidian notes link, (4) how Compass ships a third-party plugin, (5) whether Compass's own tools change, (6) what guards agent edits. Approving takes every recommended option; the live checks then run in the plan (the task list built from this research) before anything ships.
+> [!note] Approved 2026-11-19
+> The recommended option holds on every fork.
 
 ## Question
 
