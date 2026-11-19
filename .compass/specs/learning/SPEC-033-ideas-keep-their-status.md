@@ -39,6 +39,7 @@ The human gives many ideas in conversation. Compass captures lessons and specs, 
 - Each idea records where it led: the doc, spec or decision.
 - When he comes back and asks about anything, the agent can find the idea, its status and its history.
 - Capture is automatic: he never has to ask for it.
+- Only his ideas are kept: "Ideas are the only thing that I'm adding. Everything that you I don't say I'm going to do it, it's thrown away. And you should never add an idea that is something like, me refuting an idea for you." An idea is one he states, or an agent suggestion he explicitly takes up; a suggestion he ignores or rejects gets no entry, his rejection of an agent suggestion is never logged, and his questions to the agent are not ideas.
 - It fits how Compass already works: capture-note, lessons, specs, the review surface, Obsidian.
 - Ideas already given in past sessions can be backfilled into the same record.
 - Ideas are categorized: "we have to categorize it because I was thinking doing this for mostly world building / characters / story / gameplay ideas but I see value in doing more. like getting ai out of the mindset that this has to be something I can do it on my own". Categories are per project and editable by him. (Disrupted's set: World building, Characters, Story, Gameplay, Art direction, How we work, Tools and setup.)

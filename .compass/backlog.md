@@ -141,7 +141,7 @@ Plan: [[PLAN-028-whole-overhead-on-real-projects]].
 Plan: [[PLAN-030-ideas-keep-their-status]]; detailed from TASK-272's record once stage 1 ships.
 
 - [ ] TASK-281: The prompt step copies each human prompt verbatim to the prompt log
-- [ ] TASK-282: The background helper files ideas and drop or park verdicts from the prompt log
+- [ ] TASK-282: The background helper files ideas and drop or park verdicts from the prompt log; it files only ideas he states or agent suggestions he explicitly takes up, never his rejections of agent suggestions or his questions ([[SPEC-033-ideas-keep-their-status]] Desired Outcome)
 - [ ] TASK-283: Live check of stage 2 on this repo
 - [ ] TASK-284: Release 0.37.0
 
