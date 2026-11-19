@@ -29,8 +29,8 @@ flowchart LR
   I --> V["ideas.base table in Obsidian, for him (F6)"]
 ```
 
-> [!IMPORTANT]
-> You decide: approve this research with the recommended option on each fork, or pick another on any of them? The forks: F1 how his words are caught, F2 record shape, F3 how adoption moves status, F4 how a drop said in passing is recorded, F5 done against adopted, F6 where ideas show, F7 numbered or named ideas, F8 what an imported status outside the list becomes. Each is in [[#Forks]].
+> [!note] Approved 2026-11-19
+> The recommended option holds on every fork, F1 to F8.
 
 "He" is the human whose ideas are tracked: the person working with Compass in a project. "His table" is a hand-made table of his past ideas from one project, written for backfill: one section per category, each with the columns number, his words, status, and where it led.
 
