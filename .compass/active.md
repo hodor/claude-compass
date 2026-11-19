@@ -59,7 +59,7 @@ Plan: [[PLAN-028-whole-overhead-on-real-projects]]; each task's full text, files
 Plan: [[PLAN-030-ideas-keep-their-status]]; each task's full text, files and checks are there.
 
 - [ ] TASK-272: Record what `UserPromptSubmit` hands a command on this machine - complexity: S, depends_on: none
-- [ ] TASK-273: Topic folders keep their scope text on undo, and can be renamed - complexity: M, depends_on: none
+- [x] TASK-273: Topic folders keep their scope text on undo, and can be renamed - complexity: M, depends_on: none
 - [ ] TASK-274: Ideas are a numbered artifact type - complexity: S, depends_on: none
 - [ ] TASK-275: The idea record and `compass idea add|status|find` - complexity: M, depends_on: TASK-274
 - [ ] TASK-276: `compass idea import <file>` reads a hand-made table grouped by category headings - complexity: M, depends_on: TASK-273, TASK-275
