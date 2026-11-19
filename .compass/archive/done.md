@@ -535,3 +535,14 @@ Plan: [[PLAN-027-numbered-choices]].
 - [x] TASK-244: You log the sandbox config into your Claude subscription - complexity: S, depends_on: none
 - [x] TASK-246: The session driver and the simulated human - complexity: L, depends_on: TASK-245
 - [x] TASK-247: Topics - complexity: L, depends_on: TASK-245
+
+## 2026-11-19
+
+### PLAN-030 Stage 1: ideas keep their status
+- [x] TASK-272: Record what `UserPromptSubmit` hands a command on this machine - complexity: S, depends_on: none
+- [x] TASK-273: Topic folders keep their scope text on undo, and can be renamed - complexity: M, depends_on: none
+- [x] TASK-274: Ideas are a numbered artifact type - complexity: S, depends_on: none
+
+### PLAN-031 Wave 1: prove screenplays on real editors
+- [x] TASK-285: Bundle Fountain 0.34.3 with its license - complexity: S, depends_on: none
+- [x] TASK-286: The live-check kit: a scratch vault, test scripts and fingerprints - complexity: M, depends_on: TASK-285
