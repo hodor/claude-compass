@@ -293,6 +293,9 @@ Choosing option 3 in fork 1 forces option 2 here.
 
 ## Live check results
 
+> [!warning] Since your last review
+> Round 1 came back approved 22 seconds after it opened, and the scratch folder shows Obsidian never opened it: no `workspace.json` appeared in its `.obsidian` folder, and every script is byte-identical. Nothing is recorded yet. Please do the four steps below, then approve; if you would rather skip the live checks for now, say so in the notes.
+
 > [!todo] You do, round 1: open and close in Obsidian
 > 1. In Obsidian: **Open another vault**, then **Open folder as vault**, and pick the `fountain-live` folder, open in File Explorer now (a scratch folder outside every vault).
 > 2. If it asks about restricted mode, turn it off. In the notes, say whether Fountain was already on or you switched it on in Settings, Community plugins.
