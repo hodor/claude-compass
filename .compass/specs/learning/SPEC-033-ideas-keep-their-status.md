@@ -1,12 +1,13 @@
 ---
 title: "Every Idea Is Kept, in the Human's Words, With Its Status"
 type: spec
-status: draft
+status: approved
+approved: 2026-11-19
 confidence: medium
 area: methodology
 tags: [capture, ideas, verbatim, status, retrieval, learning]
 depends_on: ["[[SPEC-021-capture-in-the-humans-words]]"]
-summary: "every idea the human gives in conversation is captured automatically in his own words, carries a status that stays current and a record of where it led, and any later session can find it (draft)"
+summary: "every idea the human gives in conversation is captured automatically in his own words, carries a status that stays current and a record of where it led, and any later session can find it (approved 2026-11-19)"
 created: 2026-11-19
 updated: 2026-11-19
 ---
@@ -24,9 +25,6 @@ flowchart LR
   S --> X[dropped]
   K --> Q[Later: he asks, the agent finds it, its status and its history]
 ```
-
-> [!important] You decide
-> Is this the problem, in your words? Approving lets research design the idea record against how Compass already captures.
 
 ## Problem
 
