@@ -9,3 +9,7 @@
 *.jpg binary
 *.gif binary
 *.pdf binary
+
+# Bundled third-party plugin bytes and the CRLF test scripts must survive git unchanged.
+plugin/obsidian/fountain/** -text
+plugin/cli/tests/fixtures/fountain/** -text
