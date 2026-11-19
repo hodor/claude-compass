@@ -1,11 +1,12 @@
 ---
 title: "Screenplays Live in the Vault"
 type: spec
-status: draft
+status: approved
+approved: 2026-11-19
 confidence: medium
 area: methodology
 tags: [obsidian, fountain, screenplay, writing, vscode, human-surface]
-summary: "the human writes screenplays inside the vault in Fountain, previews them in Obsidian, keeps editing them in VS Code with BetterFountain, links them like any document, and agents read and edit them (draft)"
+summary: "the human writes screenplays inside the vault in Fountain, previews them in Obsidian, keeps editing them in VS Code with BetterFountain, links them like any document, and agents read and edit them (approved 2026-11-19)"
 created: 2026-11-19
 updated: 2026-11-19
 ---
@@ -20,9 +21,6 @@ flowchart LR
   F --> L[Linked from specs and notes]
   F --> A[Agents read and edit it]
 ```
-
-> [!important] You decide
-> Is this the problem, in your words? Approving lets research find the Obsidian Fountain option and set it up.
 
 ## Problem
 
