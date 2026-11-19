@@ -1,0 +1,9 @@
+{
+  "session_id": "a5c2de21-b0fa-4096-b4e8-e818909cdcd2",
+  "transcript_path": "<HOME>\\.claude\\projects\\<PROJECT_SLUG>\\<SESSION_ID>.jsonl",
+  "cwd": "<PROJECT_DIR>",
+  "prompt_id": "372f2b98-07b3-4f21-a881-40ef39bf02cb",
+  "permission_mode": "default",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "/probecmd alpha beta"
+}

@@ -1,0 +1,9 @@
+{
+  "session_id": "1fb97360-fd8a-49f9-93c0-905d9903f986",
+  "transcript_path": "<HOME>\\.claude\\projects\\<PROJECT_SLUG>\\<SESSION_ID>.jsonl",
+  "cwd": "<PROJECT_DIR>",
+  "prompt_id": "b5795b8b-1b95-4031-9470-d3453efc85b8",
+  "permission_mode": "default",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "<task-notification>\n<task-id>a08d3829b86f646ed</task-id>\n<tool-use-id>toolu_019R4cJKwAMPSBHUE7VxTDy2</tool-use-id>\n<output-file><TEMP>\\claude\\<RUN>\\tasks\\a08d3829b86f646ed.output</output-file>\n<status>completed</status>\n<summary>Agent \"Sleep then report done\" finished</summary>\n<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>\n<result>SUBAGENT-DONE</result>\n<usage><subagent_tokens>36778</subagent_tokens><tool_uses>1</tool_uses><duration_ms>37965</duration_ms></usage>\n</task-notification>"
+}

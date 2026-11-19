@@ -1,0 +1,9 @@
+{
+  "session_id": "fd3a3911-0138-460e-abeb-576742fc2f05",
+  "transcript_path": "<HOME>\\.claude\\projects\\<PROJECT_SLUG>\\<SESSION_ID>.jsonl",
+  "cwd": "<PROJECT_DIR>",
+  "prompt_id": "7a12b7c4-9639-4225-9522-9982cf6bdf99",
+  "permission_mode": "default",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "<task-notification>\n<task-id>b966ks8jb</task-id>\n<tool-use-id>toolu_019Zow7PB3irgK8yb3t1xrpM</tool-use-id>\n<output-file><TEMP>\\claude\\<RUN>\\tasks\\b966ks8jb.output</output-file>\n<status>completed</status>\n<summary>Background command \"Sleep 25 seconds in background\" completed (exit code 0)</summary>\n</task-notification>"
+}
