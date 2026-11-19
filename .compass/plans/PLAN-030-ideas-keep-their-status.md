@@ -143,7 +143,7 @@ updated: 2026-11-19
   - Automated verification: every fixture parses as JSON and holds `prompt` and `session_id`; `git diff --stat .claude/settings.local.json` is empty after removal (or the file matches its pre-task copy); `grep -c "UserPromptSubmit" .compass/research/learning/RESEARCH-ideas-keep-their-status.md` rises.
   - Manual verification: if stream-json cannot reproduce the queued message or the subagent report, the human sends those two in one interactive session with the probe on; otherwise none.
 
-- [ ] TASK-273: Topic folders keep their scope text on undo, and can be renamed - complexity: M, depends_on: none, files: [plugin/cli/commands/make_domain.py, plugin/cli/tests/test_make_domain_rename.py]
+- [x] TASK-273: Topic folders keep their scope text on undo, and can be renamed - complexity: M, depends_on: none, files: [plugin/cli/commands/make_domain.py, plugin/cli/tests/test_make_domain_rename.py]
   - Starts from `make_domain.py:73-107` (`--undo` runs `shutil.rmtree`, deleting the scope text) and `move.py:197` (`_rewrite_links`).
   - `--undo` moves the folder's `index.md` to `archive/domains/<path>/index.md` (a numbered suffix on collision) before removing the empty folder; its output names the archive path.
   - `--rename <old> <new>`: refuses a missing source, an existing target, a target in another type dir, or a new name that is not a valid sibling; moves the folder (`git mv` when tracked, a filesystem rename otherwise), rewrites path-qualified links through `move._rewrite_links`, sets the index's `title` and first tag to the new name, keeps its Scope text byte for byte, and logs a sizing row (`action: rename`). Dry-run by default, `--apply` with `--reason`.
