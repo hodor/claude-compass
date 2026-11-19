@@ -135,3 +135,12 @@ Plan: [[PLAN-028-whole-overhead-on-real-projects]].
 - [ ] TASK-255: Run LOOP-004 batches on the subscription, stopping at any usage-limit event, until the top area's gain falls inside the noise band; each accepted change ships in `plugin/` - decisions: [SPEC-032-whole-overhead-measured-on-real-projects/D-03]
 - [ ] TASK-256: Fresh topics and drift: at intervals agents pick a new batch, measured beside the pool, to show whether the pool has gone stale, and the without-Compass arm is re-measured when the model or Claude Code version changes - decisions: [SPEC-032-whole-overhead-measured-on-real-projects/D-01]
 - [ ] TASK-257: The KPI report after each loop batch: the overhead share against the first baseline with its interval, and whether the agents still finish what they set out to build
+
+## PLAN-030 Stage 2: automatic idea capture
+
+Plan: [[PLAN-030-ideas-keep-their-status]]; detailed from TASK-272's record once stage 1 ships.
+
+- [ ] TASK-281: The prompt step copies each human prompt verbatim to the prompt log
+- [ ] TASK-282: The background helper files ideas and drop or park verdicts from the prompt log
+- [ ] TASK-283: Live check of stage 2 on this repo
+- [ ] TASK-284: Release 0.37.0

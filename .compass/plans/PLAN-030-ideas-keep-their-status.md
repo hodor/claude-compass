@@ -1,7 +1,8 @@
 ---
 title: "Ideas Keep Their Status"
 type: plan
-status: draft
+status: approved
+approved: 2026-11-19
 confidence: medium
 area: methodology
 tags: [capture, ideas, verbatim, status, retrieval, learning, sync, obsidian]
@@ -48,15 +49,15 @@ flowchart LR
   T280 --> T281
 ```
 
-> [!IMPORTANT]
-> You decide: approve stage 1 in full and stage 2's shape. These guesses become binding with it:
-> - [guess] The prompt step records a weak hint, so talk holding only ideas opens a helper pass at the capture interval of 12 turns (`capturelib.py:62-65, 291-318`), not after every prompt; a pass costs about $0.33 (median of 57 runs, finding 9 of the research).
-> - [guess] Naming an idea in a spec, plan or ADR's `ideas:` property moves it to `adopted` whatever that document's own status, a draft spec included.
-> - [guess] The helper files a new idea into the best existing category and creates a category only when none fits, its "What belongs here" line marked `[guess]` for you to edit.
-> - [guess] A repeat is an idea whose words match an existing idea's words exactly; the same idea in other words becomes a second idea.
-> - [guess] An idea's file name is its number plus the first five of his words.
-> - [guess] `compass idea find` with no exact match ranks ideas by words shared with the question and prints the top five.
-> - [guess] If Obsidian cannot group the table view by category folder, the view groups by status and shows the folder as a column.
+> [!note] Approved 2026-11-19
+> Stage 1 in full and stage 2's shape, with these choices:
+> - The prompt step records a weak hint, so talk holding only ideas opens a helper pass at the capture interval of 12 turns (`capturelib.py:62-65, 291-318`), not after every prompt; a pass costs about $0.33 (median of 57 runs, finding 9 of the research).
+> - Naming an idea in a spec, plan or ADR's `ideas:` property moves it to `adopted` whatever that document's own status, a draft spec included.
+> - The helper files a new idea into the best existing category and creates a category only when none fits, its "What belongs here" line marked `[guess]` for you to edit.
+> - A repeat is an idea whose words match an existing idea's words exactly; the same idea in other words becomes a second idea.
+> - An idea's file name is its number plus the first five of his words.
+> - `compass idea find` with no exact match ranks ideas by words shared with the question and prints the top five.
+> - If Obsidian cannot group the table view by category folder, the view groups by status and shows the folder as a column.
 
 ## Goal
 

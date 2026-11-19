@@ -53,14 +53,21 @@ Plan: [[PLAN-021-control-loops]].
 
 Plan: [[PLAN-028-whole-overhead-on-real-projects]]; each task's full text, files and checks are there.
 
-- [x] TASK-248: The pilot - complexity: M, depends_on: TASK-244, TASK-246, TASK-247
 - [ ] TASK-249: You grade four pilot builds - complexity: S, depends_on: TASK-248
-## PLAN-029 Wave 1: crafted context for launched agents
+## PLAN-030 Stage 1: ideas keep their status
 
-Plan: [[PLAN-029-crafted-agent-context]]; each task's full text, files and checks are there.
+Plan: [[PLAN-030-ideas-keep-their-status]]; each task's full text, files and checks are there.
 
-- [x] TASK-261: Split the `obsidian` skill - complexity: M, depends_on: TASK-250
-- [x] TASK-262: Pointers name the side files - complexity: S, depends_on: TASK-261
+- [ ] TASK-272: Record what `UserPromptSubmit` hands a command on this machine - complexity: S, depends_on: none
+- [ ] TASK-273: Topic folders keep their scope text on undo, and can be renamed - complexity: M, depends_on: none
+- [ ] TASK-274: Ideas are a numbered artifact type - complexity: S, depends_on: none
+- [ ] TASK-275: The idea record and `compass idea add|status|find` - complexity: M, depends_on: TASK-274
+- [ ] TASK-276: `compass idea import <file>` reads a hand-made table grouped by category headings - complexity: M, depends_on: TASK-273, TASK-275
+- [ ] TASK-277: sync lists ideas and moves status when a document names one - complexity: M, depends_on: TASK-275
+- [ ] TASK-278: Schema, the Bases view, and the lookup rule - complexity: M, depends_on: TASK-275, TASK-277
+- [ ] TASK-279: Live check of stage 1 on this repo - complexity: S, depends_on: TASK-276, TASK-278
+- [ ] TASK-280: Release 0.36.0 - complexity: S, depends_on: TASK-279
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].
