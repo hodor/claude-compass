@@ -1,0 +1,9 @@
+{
+  "session_id": "fd3a3911-0138-460e-abeb-576742fc2f05",
+  "transcript_path": "<HOME>\\.claude\\projects\\<PROJECT_SLUG>\\<SESSION_ID>.jsonl",
+  "cwd": "<PROJECT_DIR>",
+  "prompt_id": "9e3e9e89-4623-4e3e-92c8-17b7dc37dc36",
+  "permission_mode": "default",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "PROBE-QUEUE-B typed while the first is running. Reply with the word SECOND-DONE."
+}

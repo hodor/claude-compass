@@ -1,0 +1,9 @@
+{
+  "session_id": "ff6a54db-2d5d-4468-9451-976e1ffb804d",
+  "transcript_path": "<HOME>\\.claude\\projects\\<PROJECT_SLUG>\\<SESSION_ID>.jsonl",
+  "cwd": "<PROJECT_DIR>",
+  "prompt_id": "39b8a9c2-a594-4a99-b10c-265ce8b673f4",
+  "permission_mode": "default",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "Responda com uma palavra. Ideia: ação, coração, não, você, à, é, ü, ç, ñ — também emoji 🙂 PROBE-TRES."
+}

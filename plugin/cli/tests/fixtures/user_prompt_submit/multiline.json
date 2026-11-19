@@ -1,0 +1,9 @@
+{
+  "session_id": "2df4eae1-2d66-496e-9ceb-16c522aa6b4e",
+  "transcript_path": "<HOME>\\.claude\\projects\\<PROJECT_SLUG>\\<SESSION_ID>.jsonl",
+  "cwd": "<PROJECT_DIR>",
+  "prompt_id": "e2bba60a-249b-49d6-90ab-ff505ce5f4f5",
+  "permission_mode": "default",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "Reply with one word. Line one: PROBE-TWO\nLine two: second line\n\nLine four after a blank line, with \"quotes\" and a backslash \\ and a tab\there."
+}

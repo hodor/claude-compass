@@ -1,0 +1,9 @@
+{
+  "session_id": "3410089c-a807-4386-9b6c-fdd3604b24b4",
+  "transcript_path": "<HOME>\\.claude\\projects\\<PROJECT_SLUG>\\<SESSION_ID>.jsonl",
+  "cwd": "<PROJECT_DIR>",
+  "prompt_id": "899709a1-e04f-4bf3-90e5-a305facb04bf",
+  "permission_mode": "default",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "Reply with the single word PROBE-ONE."
+}
