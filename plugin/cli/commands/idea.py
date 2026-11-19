@@ -20,6 +20,7 @@ ideas sharing the most words with the text. A miss prints one line, exit 0.
 
 import datetime
 import json
+import os
 import re
 import sys
 
@@ -116,23 +117,69 @@ def _add(args):
         if existing["words"] == words:
             return _fail(f"these words are already {existing['id']} ({existing['category']})")
 
-    highest = next_num._highest(vault_root / "ideas", re.compile(r"^IDEA-(\d+)-"))
-    number = highest + 1
+    ideas_root = vault_root / "ideas"
     today = datetime.date.today().isoformat()
     filed = f"filed from prompt {source}" if source else "filed"
-    text = idealib.render(
-        number, words, status, category,
-        source or "compass idea add", today, f"- {today}: {status} ({filed})")
-    if not idealib.round_trips(text, words):
-        return _fail("these words do not read back unchanged from a property; nothing written")
-    path = folder / f"IDEA-{number:03d}-{idealib.slug(words)}.md"
-    rel = path.relative_to(vault_root).as_posix()
-    if not apply:
-        sys.stdout.write(f"compass idea: would add IDEA-{number:03d} at {rel} (dry-run; pass --apply to write)\n")
+    number, claim = _next_number(ideas_root), None
+    if apply:
+        number, claim = _claim_number(ideas_root)
+    try:
+        text = idealib.render(
+            number, words, status, category,
+            source or "compass idea add", today, f"- {today}: {status} ({filed})")
+        if not idealib.round_trips(text, words):
+            return _fail("these words do not read back unchanged from a property; nothing written")
+        path = folder / f"IDEA-{number:03d}-{idealib.slug(words)}.md"
+        rel = path.relative_to(vault_root).as_posix()
+        if not apply:
+            sys.stdout.write(f"compass idea: would add IDEA-{number:03d} at {rel} (dry-run; pass --apply to write)\n")
+            return 0
+        vaultlib.write_text_lf(path, text)
+        sys.stdout.write(f"compass idea: added IDEA-{number:03d} at {rel}\n")
         return 0
-    vaultlib.write_text_lf(path, text)
-    sys.stdout.write(f"compass idea: added IDEA-{number:03d} at {rel}\n")
-    return 0
+    finally:
+        if claim is not None:
+            _release(claim)
+
+
+def _next_number(ideas_root):
+    """One more than the highest `IDEA-NNN` file name under `ideas/`."""
+    return next_num._highest(ideas_root, re.compile(r"^IDEA-(\d+)-")) + 1
+
+
+def _number_in_use(ideas_root, number):
+    """True when any file under `ideas/` carries `IDEA-<number>-`, whatever its slug."""
+    pattern = re.compile(rf"^IDEA-0*{number}-")
+    return any(pattern.match(path.name) for path in ideas_root.rglob("IDEA-*"))
+
+
+def _release(claim):
+    try:
+        os.remove(claim)
+    except OSError:
+        pass
+
+
+def _claim_number(ideas_root):
+    """Reserve the next idea number across processes. The reservation is a
+    hidden `.IDEA-NNN.claim` file created with exclusive create, so only one
+    process holds a number at a time; a number whose idea file already exists
+    (another process finished between the scan and the claim) is released and
+    the next one tried. Returns (number, claim path); the caller releases the
+    claim after writing the idea file."""
+    number = _next_number(ideas_root)
+    while True:
+        claim = ideas_root / f".IDEA-{number:03d}.claim"
+        try:
+            os.close(os.open(claim, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+        except FileExistsError:
+            number += 1
+            continue
+        if _number_in_use(ideas_root, number):
+            _release(claim)
+            number += 1
+            continue
+        return number, claim
 
 
 def _find_by_id(vault_root, text):
