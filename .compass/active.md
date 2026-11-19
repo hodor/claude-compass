@@ -73,7 +73,7 @@ Plan: [[PLAN-030-ideas-keep-their-status]]; each task's full text, files and che
 Plan: [[PLAN-031-screenplays-in-the-vault]]; each task's full text, files and checks are there.
 
 - [x] TASK-285: Bundle Fountain 0.34.3 with its license - complexity: S, depends_on: none
-- [ ] TASK-286: The live-check kit: a scratch vault, test scripts and fingerprints - complexity: M, depends_on: TASK-285
+- [x] TASK-286: The live-check kit: a scratch vault, test scripts and fingerprints - complexity: M, depends_on: TASK-285
 - [ ] TASK-287: Live check 1, round-trip hashes - complexity: S, depends_on: TASK-286
 - [ ] TASK-288: Live check 2, links on the current Obsidian build - complexity: S, depends_on: TASK-286
 - [ ] TASK-289: Live check 3, an agent's edit reloads in both editors - complexity: S, depends_on: TASK-286
