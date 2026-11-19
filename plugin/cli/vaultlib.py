@@ -292,14 +292,16 @@ def parse_frontmatter_text(text):
     the vault uses: scalar `key: value`, inline `key: [a, b]`, block lists
     of `- item` under a key, and `key: >` / `key: |` block scalars (with
     chomping indicators), whose indented continuation lines fold into the
-    value. Never raises on malformed content; unparseable lines are skipped.
+    value. The closing fence is an unindented `---` line; an indented one
+    is block-scalar content. Never raises on malformed content; unparseable
+    lines are skipped.
     """
     lines = text.splitlines()
     if not lines or lines[0].strip() != "---":
         return {}, "no frontmatter"
     end = None
     for i in range(1, len(lines)):
-        if lines[i].strip() == "---":
+        if lines[i].rstrip() == "---":
             end = i
             break
     if end is None:

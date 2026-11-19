@@ -43,7 +43,7 @@ def _split_frontmatter(lines):
     """Return (frontmatter_lines, body_lines); frontmatter kept verbatim."""
     if lines and lines[0].strip() == "---":
         for i in range(1, len(lines)):
-            if lines[i].strip() == "---":
+            if lines[i].rstrip() == "---":
                 return lines[: i + 1], lines[i + 1 :]
     return [], lines
 

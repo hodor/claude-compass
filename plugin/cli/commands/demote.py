@@ -69,7 +69,7 @@ def _drop_children_count(path):
     body `promote` started from. Line deletion, not a YAML round trip, so
     key order, quoting, and blank lines all survive byte for byte."""
     lines = path.read_text(encoding="utf-8").split("\n")
-    closing = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+    closing = next((i for i in range(1, len(lines)) if lines[i].rstrip() == "---"), None)
     if closing is not None:
         lines = [
             line for i, line in enumerate(lines)
