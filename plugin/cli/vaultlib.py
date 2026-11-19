@@ -14,7 +14,7 @@ from pathlib import Path
 NON_TYPE_DIRS = {"meta", "tmp", "archive", ".annotations"}
 
 # Reserved artifact type directories, scanned even when empty.
-CORE_TYPE_DIRS = ["specs", "plans", "research", "decisions", "lessons", "handoffs", "prs", "loops"]
+CORE_TYPE_DIRS = ["specs", "plans", "research", "decisions", "lessons", "handoffs", "prs", "loops", "ideas"]
 
 # Maps an artifact's `type` frontmatter value to its directory name. Used by
 # numbering; artifact scanning discovers type directories from disk instead.
@@ -27,6 +27,7 @@ TYPE_TO_DIR = {
     "handoff": "handoffs",
     "pr": "prs",
     "loop": "loops",
+    "idea": "ideas",
 }
 
 # A loop folder is `loops/LOOP-NNN-name/`; only its `index.md` is an artifact.
