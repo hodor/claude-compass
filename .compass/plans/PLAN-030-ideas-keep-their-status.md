@@ -151,7 +151,7 @@ updated: 2026-11-19
   - Automated verification: new tests run against temporary vaults: undo leaves the scope text at the archive path with identical bytes; undo twice on same-named folders keeps both copies; rename keeps the scope bytes, rewrites a path-qualified link in another document, leaves a bare link and inline-code mention untouched, and refuses each of the four bad inputs with zero changes; `--title` with quotes and a colon round-trips through `vaultlib.parse_frontmatter`. `python -m pytest plugin/cli/tests -q` passes.
   - Manual verification: none.
 
-- [ ] TASK-274: Ideas are a numbered artifact type - complexity: S, depends_on: none, files: [plugin/cli/vaultlib.py, plugin/cli/commands/next_num.py, plugin/cli/tests/test_idea_type.py]
+- [x] TASK-274: Ideas are a numbered artifact type - complexity: S, depends_on: none, files: [plugin/cli/vaultlib.py, plugin/cli/commands/next_num.py, plugin/cli/tests/test_idea_type.py]
   - Starts from `next_num.py:21-29` and `vaultlib.py:17-30, 88-93`: an `ideas/` holding only category folders is classified as nothing.
   - `ideas` joins `CORE_TYPE_DIRS`; `TYPE_TO_DIR["idea"] = "ideas"`; `PREFIX["idea"] = "IDEA"`.
   - Automated verification: new tests: `next-num idea` returns `001` on an empty vault and one more than the highest `IDEA-NNN` across two category folders; an `ideas/` holding only an empty category folder classifies as a type dir; `make-domain ideas/world-building --class-here x --reason y --apply` succeeds on it; `make-unit ideas` is refused as reserved. `python -m pytest plugin/cli/tests -q` passes.

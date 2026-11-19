@@ -25,6 +25,7 @@ PREFIX = {
     "lesson": "LESSON",
     "pr": "PR",
     "loop": "LOOP",
+    "idea": "IDEA",
 }
 
 
