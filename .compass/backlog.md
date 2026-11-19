@@ -144,3 +144,17 @@ Plan: [[PLAN-030-ideas-keep-their-status]]; detailed from TASK-272's record once
 - [ ] TASK-282: The background helper files ideas and drop or park verdicts from the prompt log
 - [ ] TASK-283: Live check of stage 2 on this repo
 - [ ] TASK-284: Release 0.37.0
+
+## PLAN-031 later: screenplays ship
+
+Plan: [[PLAN-031-screenplays-in-the-vault]]; detailed after Wave 1's live checks.
+
+- [ ] TASK-292: The `fountain` skill, loaded when an agent reads, writes or edits a `.fountain` file: finding D1's rules (what an agent keeps when editing a script), the rules the results of checks 1, 3 and 5 add, the li
+- [ ] TASK-293: The installer and doctor handle a list of bundled plugins - complexity: M, depends_on: TASK-285, TASK-290, files: [plugin/cli/review_surfaces/obsidian.py, plugin/cli/reviewlib.py, plugin/cli/commands/doct
+- [ ] TASK-294: The setup and update skills name the Fountain switch in the step they hand the human, and the update skill counts an `obsidian fountain` WARN, like the review row, as a step only the human can take
+- [ ] TASK-295: `compass fountain-check <file> [--before <path> | --rev <git rev>]` compares a script with its earlier text (default `HEAD`) and reports, one sentence per break with its line and code, an unclosed `/*`, a
+- [ ] TASK-296: Live check 6: in a scratch vault, an agent with the fountain skill makes one edit per rule the check names that breaks it, and one edit that keeps every rule; pass when the check reports each break and no
+- [ ] TASK-297: From checks 1 to 3, decide whether a Compass tool changes (the sync automatic step on script writes, a validate hint for a bare link to an existing script, a `.gitattributes` note for scripts); no change 
+- [ ] TASK-298: Install here with `python plugin/cli/compass self-update --force` and accept in this vault: doctor shows Fountain, the human switches it on, a script committed at `.compass/screenplays/sample.fountain` (a
+- [ ] TASK-299: Release: bump `plugin/.claude-plugin/plugin.json` to the next minor at merge time, commit "Release X.Y.0: screenplays live in the vault", push on the human's word, then `python bench/scripts/fleet_update.
+- [ ] TASK-300: Accept in one other Compass project the human names at the time: its self-update pulls the release, doctor shows Fountain, the human switches it on, one of his scripts opens unchanged in both editors, a n

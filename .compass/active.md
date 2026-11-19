@@ -68,6 +68,18 @@ Plan: [[PLAN-030-ideas-keep-their-status]]; each task's full text, files and che
 - [ ] TASK-279: Live check of stage 1 on this repo - complexity: S, depends_on: TASK-276, TASK-278
 - [ ] TASK-280: Release 0.36.0 - complexity: S, depends_on: TASK-279
 
+## PLAN-031 Wave 1: prove screenplays on real editors
+
+Plan: [[PLAN-031-screenplays-in-the-vault]]; each task's full text, files and checks are there.
+
+- [ ] TASK-285: Bundle Fountain 0.34.3 with its license - complexity: S, depends_on: none
+- [ ] TASK-286: The live-check kit: a scratch vault, test scripts and fingerprints - complexity: M, depends_on: TASK-285
+- [ ] TASK-287: Live check 1, round-trip hashes - complexity: S, depends_on: TASK-286
+- [ ] TASK-288: Live check 2, links on the current Obsidian build - complexity: S, depends_on: TASK-286
+- [ ] TASK-289: Live check 3, an agent's edit reloads in both editors - complexity: S, depends_on: TASK-286
+- [ ] TASK-290: Live check 4, install the way Compass will - complexity: S, depends_on: TASK-286
+- [ ] TASK-291: Live check 5, the two previews side by side - complexity: S, depends_on: TASK-286
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].

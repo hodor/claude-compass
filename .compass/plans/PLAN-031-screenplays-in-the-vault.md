@@ -1,7 +1,8 @@
 ---
 title: "Screenplays in the Vault"
 type: plan
-status: draft
+status: approved
+approved: 2026-11-19
 confidence: medium
 area: methodology
 tags: [obsidian, fountain, screenplay, vscode, install, human-surface]
@@ -48,8 +49,8 @@ flowchart LR
   T294 & T296 & T297 --> T298 --> T299 --> T300
 ```
 
-> [!IMPORTANT]
-> You decide: approve the five live checks you run in Obsidian and VS Code, in one sitting on a scratch vault outside this repo, as the gate for every later task; and that Compass then installs Fountain into every project with an Obsidian vault, listing it as switched on when it first installs it, so a plugin you later turn off stays off (unless check 4 shows Obsidian drops that entry by itself).
+> [!note] Approved 2026-11-19
+> The human approved the five live checks you run in Obsidian and VS Code, in one sitting on a scratch vault outside this repo, as the gate for every later task; and that Compass then installs Fountain into every project with an Obsidian vault, listing it as switched on when it first installs it, so a plugin you later turn off stays off (unless check 4 shows Obsidian drops that entry by itself).
 
 ## Goal
 
