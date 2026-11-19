@@ -122,7 +122,7 @@ Every other test this plan adds lives in a new file.
 
 ### Wave 1 (detailed): prove it on the real editors
 
-- [ ] TASK-285: Bundle Fountain 0.34.3 with its license - complexity: S, depends_on: none, files: [plugin/obsidian/fountain/main.js, plugin/obsidian/fountain/manifest.json, plugin/obsidian/fountain/styles.css, plugin/obsidian/fountain/LICENSE, .gitattributes, README.md, plugin/cli/tests/test_obsidian_bundled_fountain.py]
+- [x] TASK-285: Bundle Fountain 0.34.3 with its license - complexity: S, depends_on: none, files: [plugin/obsidian/fountain/main.js, plugin/obsidian/fountain/manifest.json, plugin/obsidian/fountain/styles.css, plugin/obsidian/fountain/LICENSE, .gitattributes, README.md, plugin/cli/tests/test_obsidian_bundled_fountain.py]
   - `gh release download 0.34.3 -R bgrundmann/obsidian-fountain` into `plugin/obsidian/fountain/`; `LICENSE` from the repo at tag `0.34.3`, byte for byte. `.gitattributes` gains `plugin/obsidian/fountain/** -text` and `plugin/cli/tests/fixtures/fountain/** -text`, so git never rewrites these bytes or the test scripts' line endings. The README's License section gains one line: Compass bundles the Fountain Obsidian plugin 0.34.3 by bgrundmann under the MIT license, text in `plugin/obsidian/fountain/LICENSE`.
   - Automated verification: the new test asserts the SHA-256 of each of the three release files equals the digest in Current State, `manifest.json` reads `id` `fountain` and `version` `0.34.3`, and `LICENSE` begins `MIT License`; `git check-attr text plugin/obsidian/fountain/main.js plugin/cli/tests/fixtures/fountain/pilot.fountain` prints `unset` for both; `grep -n "Fountain" README.md` shows the line; `python -m pytest plugin/cli/tests -q` passes.
   - Manual verification: none.

@@ -152,3 +152,5 @@ An installed project refreshes itself: a `SessionStart` hook runs `compass self-
 ## License
 
 Apache 2.0.
+
+Compass bundles the Fountain Obsidian plugin 0.34.3 by bgrundmann under the MIT license, text in `plugin/obsidian/fountain/LICENSE`.
