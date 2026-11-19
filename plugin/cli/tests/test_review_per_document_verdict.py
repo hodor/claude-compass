@@ -24,6 +24,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import reviewlib  # noqa: E402
+from tests.test_review import ANSWER_WAIT_SECONDS  # noqa: E402
 from tests.test_review_files import MultiFileProject  # noqa: E402
 
 PLAN = "plans/PLAN-001-z.md"
@@ -65,7 +66,7 @@ class PerDocument(MultiFileProject):
         directory = reviewlib.review_dir(self.vault)
 
         def write():
-            deadline = time.monotonic() + 8
+            deadline = time.monotonic() + ANSWER_WAIT_SECONDS
             while time.monotonic() < deadline:
                 waiting = [p for p in sorted(directory.glob("*.request.json"))
                            if not reviewlib.is_answered(p, json.loads(p.read_text(encoding="utf-8")))] \
@@ -99,7 +100,7 @@ class FirstAnswerEndsTheWait(PerDocument):
         `file` line for rows the human has not answered, or leaves out the
         line naming them."""
         self.partial_later([part(SPEC1, 1, "changes", note="rework the intro")])
-        code, out, _ = self.review(*map(str, self.trio), "--timeout", "10")
+        code, out, _ = self.review(*map(str, self.trio), "--timeout", str(ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out)
         rid = out.split()[1]
         self.assertEqual(self.file_lines(out), [f"file {SPEC1} changes read note: rework the intro"])
@@ -113,7 +114,7 @@ class FirstAnswerEndsTheWait(PerDocument):
         open, or the answer is not marked handed on so the next wait prints it
         again."""
         self.partial_later([part(PLAN, 0)])
-        code, out, _ = self.review(*map(str, self.trio), "--timeout", "10")
+        code, out, _ = self.review(*map(str, self.trio), "--timeout", str(ANSWER_WAIT_SECONDS))
         rid = out.split()[1]
         request_path = self.request_path(rid)
         self.assertTrue(reviewlib.taken_path(request_path, 0).exists())
@@ -127,7 +128,7 @@ class FirstAnswerEndsTheWait(PerDocument):
         rows are matched by position in the answer instead of by their index,
         or the open line names a covered row."""
         self.partial_later([part(PLAN, 0), part(SPEC2, 2, note="late")])
-        code, out, _ = self.review(*map(str, self.trio), "--timeout", "10")
+        code, out, _ = self.review(*map(str, self.trio), "--timeout", str(ANSWER_WAIT_SECONDS))
         rid = out.split()[1]
         self.assertEqual(self.file_lines(out), [f"file {PLAN} approved read", f"file {SPEC2} approved read note: late"])
         self.assertEqual(self.open_line(out), [f"still open {rid}: {SPEC1}"])
@@ -136,7 +137,7 @@ class FirstAnswerEndsTheWait(PerDocument):
         """Adversarial where: the open line or a `file` line leaks into a
         one-file review."""
         self.answer(None, extra={"verdict": "approved"})
-        code, out, _ = self.review(str(self.doc), "--timeout", "5")
+        code, out, _ = self.review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out)
         self.assertEqual(self.file_lines(out) + self.open_line(out), [])
 
@@ -145,7 +146,7 @@ class FirstAnswerEndsTheWait(PerDocument):
         review prints an open line, or is handed on without a marker so
         `--wait` hands it again."""
         self.answer([{"file": p, "read": True, "verdict": "approved"} for p in ORDER], extra={"verdict": "approved"})
-        code, out, _ = self.review(*map(str, self.trio), "--timeout", "10")
+        code, out, _ = self.review(*map(str, self.trio), "--timeout", str(ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out)
         rid = out.split()[1]
         self.assertEqual(len(self.file_lines(out)), 3)
@@ -159,7 +160,7 @@ class WaitTakesTheNextAnswer(PerDocument):
     def start(self):
         """Send the request, answer row 2 and take that answer; return the id."""
         self.partial_later([part(SPEC1, 1, "changes", note="rework")])
-        _, out, _ = self.review(*map(str, self.trio), "--timeout", "10")
+        _, out, _ = self.review(*map(str, self.trio), "--timeout", str(ANSWER_WAIT_SECONDS))
         return out.split()[1]
 
     def test_wait_prints_the_next_row_and_never_the_one_already_handed_on(self):
@@ -167,7 +168,7 @@ class WaitTakesTheNextAnswer(PerDocument):
         new one, or prints the lines of rows other than the one answered."""
         rid = self.start()
         self.write_partial(rid, [part(PLAN, 0)])
-        code, out, _ = self.review("--wait", rid, "--timeout", "10")
+        code, out, _ = self.review("--wait", rid, "--timeout", str(ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out)
         self.assertEqual(self.file_lines(out), [f"file {PLAN} approved read"])
         self.assertEqual(self.open_line(out), [f"still open {rid}: {SPEC2}"])
@@ -179,7 +180,7 @@ class WaitTakesTheNextAnswer(PerDocument):
         rid = self.start()
         threading.Timer(0.6, self.write_partial, args=(rid, [part(SPEC2, 2)])).start()
         started = time.monotonic()
-        code, out, _ = self.review("--wait", rid, "--timeout", "10")
+        code, out, _ = self.review("--wait", rid, "--timeout", str(ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out)
         self.assertGreaterEqual(time.monotonic() - started, 0.5)
         self.assertEqual(self.file_lines(out), [f"file {SPEC2} approved read"])
@@ -190,7 +191,7 @@ class WaitTakesTheNextAnswer(PerDocument):
         ever instead of exiting 1."""
         rid = self.start()
         self.write_partial(rid, [part(PLAN, 0), part(SPEC2, 2)])
-        code, out, _ = self.review("--wait", rid, "--timeout", "10")
+        code, out, _ = self.review("--wait", rid, "--timeout", str(ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out)
         self.assertEqual(self.open_line(out), [])
         self.assertEqual(self.review("--status")[1], "")
@@ -204,8 +205,8 @@ class WaitTakesTheNextAnswer(PerDocument):
         rid = self.start()
         self.write_partial(rid, [part(SPEC2, 2)])
         self.write_partial(rid, [part(PLAN, 0)])
-        first = self.review("--wait", rid, "--timeout", "5")
-        second = self.review("--wait", rid, "--timeout", "5")
+        first = self.review("--wait", rid, "--timeout", str(ANSWER_WAIT_SECONDS))
+        second = self.review("--wait", rid, "--timeout", str(ANSWER_WAIT_SECONDS))
         self.assertEqual(self.file_lines(first[1]), [f"file {PLAN} approved read"])
         self.assertEqual(self.open_line(first[1]), [f"still open {rid}: {SPEC2}"])
         self.assertEqual(self.file_lines(second[1]), [f"file {SPEC2} approved read"])
@@ -216,7 +217,7 @@ class WaitTakesTheNextAnswer(PerDocument):
         instead of reporting the withdrawal."""
         rid = self.start()
         threading.Timer(0.5, reviewlib.cancel, args=(self.vault, rid)).start()
-        code, out, _ = self.review("--wait", rid, "--timeout", "10")
+        code, out, _ = self.review("--wait", rid, "--timeout", str(ANSWER_WAIT_SECONDS))
         self.assertEqual((code, out.strip()), (1, f"withdrawn {rid}"))
 
     def test_wait_times_out_with_the_request_id(self):
@@ -351,7 +352,7 @@ class RenamedRow(PerDocument):
         renamed = self.spec2.with_name("SPEC-002-renamed.md")
         self.partial_later([part("specs/SPEC-002-renamed.md", 2, "changes", note="moved")],
                            during=lambda: self.spec2.rename(renamed))
-        code, out, _ = self.review(*map(str, self.trio), "--timeout", "10")
+        code, out, _ = self.review(*map(str, self.trio), "--timeout", str(ANSWER_WAIT_SECONDS))
         renamed.rename(self.spec2)
         self.assertEqual(code, 0, out)
         self.assertEqual(self.file_lines(out),
