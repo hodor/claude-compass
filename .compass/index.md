@@ -69,6 +69,8 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-027-numbered-choices]] - one rule in the always-loaded pipeline rules makes every choice put to the human a numbered list a bare number can answer; the guide skill's prose questions go through the same rule; ships as 0.34.2
 - [[PLAN-028-whole-overhead-on-real-projects]] - a pilot of twelve headless builds on the human's subscription, in throwaway projects outside the repo, with and without Compass, sets the batch size and closes the research's open checks; then a baseline batch, the overhead broken into areas, and a loop that cuts the biggest area first
 - [[PLAN-029-crafted-agent-context]] - slim launched agents by design A: per-agent-type token measure and the initialPrompt check first, then a split obsidian skill and a start-here fix land after the pilot; the lessons skill stays until a paired run shows it can go
+- [[PLAN-030-ideas-keep-their-status]] - one file per idea in category folders holds his words, status, history and where it led; an importer backfills a hand-made table; sync moves status when a spec names an idea; stage 2 catches his words at submit and the background helper files ideas and verdicts
+- [[PLAN-031-screenplays-in-the-vault]] - five live checks of the Fountain plugin in Obsidian and BetterFountain in VS Code come first, in one sitting; then Compass bundles Fountain 0.34.3, installs it into every vault Obsidian has opened, gives agents a fountain skill and a text check, and ships after acceptance here and in one other project
 
 ## Decisions
 
