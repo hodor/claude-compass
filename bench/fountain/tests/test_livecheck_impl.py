@@ -196,10 +196,6 @@ def test_versions_reads_betterfountain_version_and_survives_empty_listing(
     assert "BetterFountain (VS Code): not found" in capsys.readouterr().out
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="versions matches any extension line containing 'betterfountain'",
-)
 def test_versions_ignores_another_extension_whose_id_contains_betterfountain(
     capsys, monkeypatch
 ):
@@ -384,10 +380,6 @@ def test_report_with_zero_steps_is_a_valid_table_with_a_row_per_script(vault):
     ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="report lets json.loads raise on a truncated steps.jsonl line",
-)
 def test_report_with_a_truncated_last_step_line_exits_one_not_a_traceback(vault):
     """Adversarial where: a step log cut off mid-line (a crash during the
     append) makes `report` die with a traceback instead of an error line."""

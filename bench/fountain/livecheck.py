@@ -232,6 +232,8 @@ def cmd_open(args):
     path = script if script.is_absolute() else vault / script
     if not path.is_file():
         raise KitError("no such script: %s" % path)
+    if args.editor in ("vscode", "both") and not shutil.which("code"):
+        raise KitError("the `code` command is not on PATH")
     if args.editor in ("obsidian", "both"):
         launch_obsidian(path)
     if args.editor in ("vscode", "both"):
@@ -336,7 +338,13 @@ def cmd_report(args):
     path = livecheck_dir(vault) / "steps.jsonl"
     steps = []
     if path.is_file():
-        steps = [json.loads(ln) for ln in path.read_text("utf-8").splitlines() if ln.strip()]
+        for number, line in enumerate(path.read_text("utf-8").splitlines(), 1):
+            if not line.strip():
+                continue
+            try:
+                steps.append(json.loads(line))
+            except ValueError:
+                raise KitError("%s: line %d is not valid JSON" % (path, number))
     names = sorted(set(baseline) | {n for s in steps for n in s["scripts"]})
     labels = [s["step"] for s in steps]
     print("| script | " + " | ".join(labels) + " |" if labels else "| script |")
@@ -363,7 +371,7 @@ def cmd_versions(args):
             check=False,
         )
         for line in proc.stdout.splitlines():
-            if "betterfountain" in line.lower():
+            if line.strip().lower().startswith("piersdeseilligny.betterfountain@"):
                 found = line.strip().split("@")[-1]
     print("BetterFountain (VS Code): %s" % found)
 
