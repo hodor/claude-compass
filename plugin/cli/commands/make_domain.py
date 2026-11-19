@@ -157,8 +157,10 @@ def _eol(line):
 
 def _unquote_scalar(value):
     value = value.strip()
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-        return value[1:-1]
+    if len(value) >= 2 and value[0] == value[-1] == '"':
+        return re.sub(r'\\(["\\])', r"\1", value[1:-1])
+    if len(value) >= 2 and value[0] == value[-1] == "'":
+        return value[1:-1].replace("''", "'")
     return value
 
 
@@ -249,11 +251,17 @@ def _rename_problem(vault_root, old_rel, new_rel):
     """The reason `old_rel` cannot be renamed to `new_rel`, or None."""
     layout = vaultlib.classify_root_dirs(vault_root)
     old_parts, new_parts = old_rel.split("/"), new_rel.split("/")
+    for part in old_parts + new_parts:
+        if part in ("", ".", ".."):
+            return "paths must not hold empty, '.' or '..' segments"
     old_root = move._type_root(vault_root, old_parts, layout)
     if old_root == 0 or len(old_parts) <= old_root:
         return f"{old_rel} is not a domain folder inside a type dir"
     if not (vault_root / old_rel / "index.md").is_file():
         return f"no domain at {old_rel}"
+    old_data, _ = vaultlib.parse_frontmatter(vault_root / old_rel / "index.md")
+    if old_data.get("type") != "domain":
+        return f"{old_rel} is not a domain (its index.md is not type: domain)"
     new_root = move._type_root(vault_root, new_parts, layout)
     if new_root == 0 or len(new_parts) <= new_root:
         return f"{new_rel} is not a folder inside a type dir"
