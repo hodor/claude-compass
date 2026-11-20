@@ -546,3 +546,6 @@ Plan: [[PLAN-027-numbered-choices]].
 ### PLAN-031 Wave 1: prove screenplays on real editors
 - [x] TASK-285: Bundle Fountain 0.34.3 with its license - complexity: S, depends_on: none
 - [x] TASK-286: The live-check kit: a scratch vault, test scripts and fingerprints - complexity: M, depends_on: TASK-285
+
+### PLAN-030 Stage 1: ideas keep their status
+- [x] TASK-275: The idea record and `compass idea add|status|find` - complexity: M, depends_on: TASK-274
