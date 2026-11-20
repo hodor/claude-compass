@@ -857,11 +857,13 @@ def _is_idea_file(record):
 
 def _idea_excerpt(words):
     """His words on one line, cut to `IDEA_EXCERPT_LENGTH` characters with a
-    trailing `...` counted inside that length."""
+    trailing `...` counted inside that length. Each `[` gets a backslash
+    before it, so link syntax in his words shows as literal text and never becomes a link;
+    the escape is added after the cut, so a backslash stays with its bracket."""
     flat = re.sub(r"\s*\n\s*", " ", words).strip()
-    if len(flat) <= IDEA_EXCERPT_LENGTH:
-        return flat
-    return flat[:IDEA_EXCERPT_LENGTH - 3].rstrip() + "..."
+    if len(flat) > IDEA_EXCERPT_LENGTH:
+        flat = flat[:IDEA_EXCERPT_LENGTH - 3].rstrip() + "..."
+    return flat.replace("[", "\\[")
 
 
 def _idea_listing(vault_root):
@@ -978,11 +980,13 @@ def _sync_idea_adoption(vault_root, records):
 
 def _adopt_once(text, doc, today):
     """`text` of one idea with `doc` applied, and a short description of the
-    change, or the unchanged text and None when the history already names `doc`."""
+    change, or the unchanged text and None when the history already holds the line sync writes for `doc`."""
     data, _ = vaultlib.parse_frontmatter_text(text)
     status = str(data.get("status", ""))
     history = idealib.history_lines(text.split("\n"))
-    if any(doc in h for h in history):
+    named_by = re.compile(rf"^- \d{{4}}-\d{{2}}-\d{{2}}: named by {re.escape(doc)}$")
+    if any(named_by.match(h) or h.endswith(f"-> adopted ({doc} names it)")
+           for h in history):
         return text, None
     if status in ("new", "exploring"):
         line = f"- {today}: {status} -> adopted ({doc} names it)"
