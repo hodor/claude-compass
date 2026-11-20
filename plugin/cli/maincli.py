@@ -37,7 +37,7 @@ COMMAND_SPECS = [
     ("make-domain", "Create a topic folder with its index.md saying what belongs in it, inside a type dir, at any depth; --undo removes an empty one after archiving its scope text; --rename <old> <new> renames one and rewrites its links (dry-run; --apply to write)."),
     ("make-unit", "Create a workstream folder, optionally git-moving named artifacts into it and rewriting the root index; --undo reverses it (dry-run; --apply to write)."),
     ("move", "Git-move artifacts into a topic folder or back to a type-dir root, rewriting inbound path-qualified links vault-wide (dry-run; --apply to write)."),
-    ("idea", "add | status | find - file an idea in his words, change its status with a dated history line, look one up by id, text or shared words (add and status are dry-run; --apply to write)."),
+    ("idea", "add | status | find | import - file an idea in his words, change its status with a dated history line, look one up by id, text or shared words, or import a hand-made table grouped by category headings (add, status and import are dry-run; --apply to write)."),
     ("placement", "Report where an artifact could sit in its type dir's taxonomy: candidate parents, pairs, topic folders, redirects and hint paths, each with its evidence; --hints reports every pending filing hint (read-only)."),
     ("touched", "Record a working-set marker for the start-here size check."),
     ("admit-check", "Exit 0/1 for whether a spec may join the start-here files."),

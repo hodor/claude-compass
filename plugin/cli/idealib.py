@@ -33,11 +33,13 @@ Pure standard library. Callers write through `vaultlib.write_text_lf`.
 """
 
 import json
+import os
 import re
 import unicodedata
 from pathlib import Path
 
 import vaultlib
+from commands import next_num
 
 STATUSES = ("new", "exploring", "parked", "adopted", "done", "dropped")
 FOLDER_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
@@ -136,7 +138,50 @@ def led_to_line(links):
     return "led_to: [" + ", ".join(vaultlib.yaml_double_quote(x) for x in links) + "]"
 
 
-def render(number, words, status, category, source, today, history_line):
+def next_number(ideas_root):
+    """One more than the highest `IDEA-NNN` file name under `ideas/`."""
+    return next_num._highest(Path(ideas_root), re.compile(r"^IDEA-(\d+)-")) + 1
+
+
+def number_in_use(ideas_root, number):
+    """True when any file under `ideas/` carries `IDEA-<number>-`, whatever its slug."""
+    pattern = re.compile(rf"^IDEA-0*{number}-")
+    return any(pattern.match(path.name) for path in Path(ideas_root).rglob("IDEA-*"))
+
+
+def release(claim):
+    try:
+        os.remove(claim)
+    except OSError:
+        pass
+
+
+def claim_number(ideas_root, preferred=None):
+    """Reserve an idea number across processes. The reservation is a hidden
+    `.IDEA-NNN.claim` file created with exclusive create, so only one process
+    holds a number at a time; a number whose idea file already exists
+    (another process finished between the scan and the claim) is released and
+    the next one tried. `preferred` is tried first; when it is held or in use
+    the search continues from the next number up. Returns (number, claim
+    path); the caller releases the claim after writing the idea file."""
+    ideas_root = Path(ideas_root)
+    number = preferred if preferred else next_number(ideas_root)
+    while True:
+        claim = ideas_root / f".IDEA-{number:03d}.claim"
+        try:
+            os.close(os.open(claim, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+        except FileExistsError:
+            number += 1
+            continue
+        if number_in_use(ideas_root, number):
+            release(claim)
+            number += 1
+            continue
+        return number, claim
+
+
+def render(number, words, status, category, source, today, history_line,
+           led_to=(), led_to_note="", raw_status=""):
     """The full text of a new idea file."""
     tag = category.rsplit("/", 1)[-1]
     lines = [
@@ -145,9 +190,9 @@ def render(number, words, status, category, source, today, history_line):
         "type: idea",
         f"status: {status}",
         *words_property(words),
-        "led_to: []",
-        'led_to_note: ""',
-        'raw_status: ""',
+        led_to_line(led_to),
+        "led_to_note: " + vaultlib.yaml_double_quote(led_to_note),
+        "raw_status: " + vaultlib.yaml_double_quote(raw_status),
         "source: " + vaultlib.yaml_double_quote(source),
         f"tags: [idea, {tag}]",
         f"created: {today}",
