@@ -549,3 +549,6 @@ Plan: [[PLAN-027-numbered-choices]].
 
 ### PLAN-030 Stage 1: ideas keep their status
 - [x] TASK-275: The idea record and `compass idea add|status|find` - complexity: M, depends_on: TASK-274
+
+### PLAN-030 Stage 1: ideas keep their status
+- [x] TASK-276: `compass idea import <file>` reads a hand-made table grouped by category headings - complexity: M, depends_on: TASK-273, TASK-275
