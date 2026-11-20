@@ -59,12 +59,6 @@ flowchart LR
 > - `compass idea find` with no exact match ranks ideas by words shared with the question and prints the top five.
 > - If Obsidian cannot group the table view by category folder, the view groups by status and shows the folder as a column.
 
-> [!todo] You decide: stage 1 works in Obsidian
-> Stage 1 is built (TASK-272 to 278). Its live check passed: `compass idea find`, the link graph, and a fresh session asked "What happened to the idea about categorizing ideas?" all answer with your words, `adopted`, and SPEC-033, from the vault alone.
-> 1. In this vault, open `ideas.base` at the top level.
-> 2. "By category" should show two groups, how-we-work and tools-and-setup, one idea each. "By status" should show IDEA-001 under adopted and IDEA-002 under exploring, with your words in a column.
-> 3. Approve if that is what you see; otherwise say what you see in the notes. Approval releases 0.36.0, and I then send the Disrupted session its import command.
-
 ## Goal
 
 This plan implements [[SPEC-033-ideas-keep-their-status]] (what we need: every idea he gives is kept in his words, with a current status and where it led, findable by any later session) from [[RESEARCH-ideas-keep-their-status]]. Each choice follows the option the human approved at that research's forks F1 to F8: `decided` maps to `adopted` per F5, and an imported status outside the list keeps its text per F8.
@@ -198,13 +192,13 @@ updated: 2026-11-19
   - Automated verification: `test_vault_bases.py` passes with the new base (keys named in the schema, table views); new `test_ideas_text.py` greps `plugin/` for the rule sentence, the `ideas:` key in all three templates, the six statuses, and asserts the pipeline rules stay within 141 lines and 12,419 bytes and hold no em-dash or en-dash character (U+2014, U+2013). `python -m pytest plugin/cli/tests -q` passes.
   - Manual verification: covered in TASK-279.
 
-- [ ] TASK-279: Live check of stage 1 on this repo - complexity: S, depends_on: TASK-276, TASK-278, files: [.compass/ideas/, .compass/specs/learning/SPEC-033-ideas-keep-their-status.md]
+- [x] TASK-279: Live check of stage 1 on this repo - complexity: S, depends_on: TASK-276, TASK-278, files: [.compass/ideas/, .compass/specs/learning/SPEC-033-ideas-keep-their-status.md]
   - `python plugin/cli/compass self-update --force` refreshes `.claude/`. Write, in the session scratchpad, a table in the importer's shape holding ideas this vault already quotes verbatim (the categorize sentence in SPEC-033's Desired Outcome among them), under two category headings; dry-run it, then `--apply`. Add `ideas:` naming the categorize idea to SPEC-033's properties; the hook's sync runs.
   - Ask a fresh headless session in this repo, with `--allowedTools "Read,Grep,Glob,Bash(python:*),Bash(python3:*)"`: "What happened to my idea about categorizing ideas?" Its answer is saved to `.compass/tmp/`.
   - Automated verification: `compass idea find categoriz` prints the idea at `adopted` with SPEC-033 in `led_to` and two history lines; `compass graph impact` on the idea lists SPEC-033 as `citation`; the saved answer contains the verbatim sentence, `adopted` and `SPEC-033`; `compass hot-path` stays at or under 5000; `compass validate` reports no new error.
   - Manual verification: in Obsidian the human opens `ideas.base`: the "By category" view groups by category folder and the "By status" view shows his words and the links. If grouping by `file.folder` shows nothing, the view groups by status with a folder column, and the human sees that version instead.
 
-- [ ] TASK-280: Release 0.36.0 - complexity: S, depends_on: TASK-279, files: [plugin/.claude-plugin/plugin.json]
+- [x] TASK-280: Release 0.36.0 - complexity: S, depends_on: TASK-279, files: [plugin/.claude-plugin/plugin.json]
   - Bump `plugin/.claude-plugin/plugin.json` from 0.35.0 (or from PLAN-031's release, per the merge rule) to the next minor; commit "Release 0.36.0: ideas keep their words, status and history; compass idea imports a table of past ideas"; push master to origin. Each project's next session start self-updates from it.
   - Automated verification: `git log origin/master -1 --oneline` names the release commit; `python -m pytest plugin/cli/tests -q` passes on the release commit.
   - Manual verification: in a project with a hand-made idea table, a new session's `.compass/meta/plugin.yaml` reads the new version and `compass idea import <its table>` prints a dry-run with no skipped rows the human did not expect.

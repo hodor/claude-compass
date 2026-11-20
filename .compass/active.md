@@ -58,9 +58,8 @@ Plan: [[PLAN-028-whole-overhead-on-real-projects]]; each task's full text, files
 
 Plan: [[PLAN-030-ideas-keep-their-status]]; each task's full text, files and checks are there.
 
-- [x] TASK-278: Schema, the Bases view, and the lookup rule - complexity: M, depends_on: TASK-275, TASK-277
-- [ ] TASK-279: Live check of stage 1 on this repo - complexity: S, depends_on: TASK-276, TASK-278
-- [ ] TASK-280: Release 0.36.0 - complexity: S, depends_on: TASK-279
+- [x] TASK-279: Live check of stage 1 on this repo - complexity: S, depends_on: TASK-276, TASK-278
+- [x] TASK-280: Release 0.36.0 - complexity: S, depends_on: TASK-279
 
 ## PLAN-031 Wave 1: prove screenplays on real editors
 
