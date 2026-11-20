@@ -1,8 +1,9 @@
-"""`compass idea add|status|find` - the ideas the human has given, in his words.
+"""`compass idea add|status|find|import` - the ideas the human has given, in his words.
 
     compass idea add --category <slug> --words "<text>" [--source <prompt-id>] [--status <s>] [--apply]
     compass idea status <IDEA-NNN> <status> [--words "<his sentence>" --source <prompt-id>] [--led-to "[[doc]]"] [--apply]
     compass idea find "<text or IDEA-NNN>"
+    compass idea import <file> [--apply]
 
 `add` files one idea as `ideas/<category>/IDEA-NNN-<slug>.md`, numbered from
 the highest `IDEA-NNN` anywhere under `ideas/`. With `--source` the words
@@ -16,17 +17,24 @@ unless `--apply` is passed.
 `find` prints an idea by id; otherwise every idea whose words, `led_to_note`
 or title holds the text (case-insensitive), and with no such hit the five
 ideas sharing the most words with the text. A miss prints one line, exit 0.
+
+`import` reads a hand-made table of ideas grouped under `## <Category>`
+headings (the format is described in `ideaimport.py`), files each row as an
+idea record, and creates the category folders the headings name. It prints one
+line per row and a report of categories to create, remapped numbers, status
+cells that did not match as written, broken links, skipped rows and rows
+already present. Dry-run unless `--apply` is passed.
 """
 
 import datetime
 import json
-import os
 import re
 import sys
+from pathlib import Path
 
 import idealib
+import ideaimport
 import vaultlib
-from commands import next_num
 
 USAGE = __doc__
 
@@ -120,9 +128,9 @@ def _add(args):
     ideas_root = vault_root / "ideas"
     today = datetime.date.today().isoformat()
     filed = f"filed from prompt {source}" if source else "filed"
-    number, claim = _next_number(ideas_root), None
+    number, claim = idealib.next_number(ideas_root), None
     if apply:
-        number, claim = _claim_number(ideas_root)
+        number, claim = idealib.claim_number(ideas_root)
     try:
         text = idealib.render(
             number, words, status, category,
@@ -139,47 +147,7 @@ def _add(args):
         return 0
     finally:
         if claim is not None:
-            _release(claim)
-
-
-def _next_number(ideas_root):
-    """One more than the highest `IDEA-NNN` file name under `ideas/`."""
-    return next_num._highest(ideas_root, re.compile(r"^IDEA-(\d+)-")) + 1
-
-
-def _number_in_use(ideas_root, number):
-    """True when any file under `ideas/` carries `IDEA-<number>-`, whatever its slug."""
-    pattern = re.compile(rf"^IDEA-0*{number}-")
-    return any(pattern.match(path.name) for path in ideas_root.rglob("IDEA-*"))
-
-
-def _release(claim):
-    try:
-        os.remove(claim)
-    except OSError:
-        pass
-
-
-def _claim_number(ideas_root):
-    """Reserve the next idea number across processes. The reservation is a
-    hidden `.IDEA-NNN.claim` file created with exclusive create, so only one
-    process holds a number at a time; a number whose idea file already exists
-    (another process finished between the scan and the claim) is released and
-    the next one tried. Returns (number, claim path); the caller releases the
-    claim after writing the idea file."""
-    number = _next_number(ideas_root)
-    while True:
-        claim = ideas_root / f".IDEA-{number:03d}.claim"
-        try:
-            os.close(os.open(claim, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
-        except FileExistsError:
-            number += 1
-            continue
-        if _number_in_use(ideas_root, number):
-            _release(claim)
-            number += 1
-            continue
-        return number, claim
+            idealib.release(claim)
 
 
 def _find_by_id(vault_root, text):
@@ -301,8 +269,36 @@ def _find(args):
     return 0
 
 
+def _import(args):
+    positionals, _, apply, error = _parse(args, set())
+    if error:
+        return _fail(error)
+    if len(positionals) != 1:
+        return _fail("usage: compass idea import <file> [--apply]")
+    source = Path(positionals[0])
+    try:
+        text = vaultlib.read_vault_text(source)
+    except (OSError, UnicodeDecodeError) as exc:
+        return _fail(f"cannot read {source}: {exc}")
+    vault_root = vaultlib.find_vault_root()
+    result = ideaimport.plan(vault_root, text)
+    problem, moved = None, []
+    if apply:
+        try:
+            problem, moved = ideaimport.apply(
+                vault_root, result, datetime.date.today().isoformat())
+        except OSError as exc:
+            return _fail(f"import stopped part way: {exc}")
+    lines = ideaimport.report(result, source, apply)
+    if apply:
+        lines.append("stopped before writing ideas" if problem else f"wrote {len(result.entries)} idea(s)")
+        lines.extend(moved)
+    sys.stdout.write("\n".join(lines) + "\n")
+    return _fail(problem) if problem else 0
+
+
 def run(args):
-    handlers = {"add": _add, "status": _status, "find": _find}
+    handlers = {"add": _add, "status": _status, "find": _find, "import": _import}
     if not args or args[0] not in handlers:
         sys.stderr.write(USAGE)
         return 1
