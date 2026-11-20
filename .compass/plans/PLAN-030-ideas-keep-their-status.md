@@ -59,6 +59,12 @@ flowchart LR
 > - `compass idea find` with no exact match ranks ideas by words shared with the question and prints the top five.
 > - If Obsidian cannot group the table view by category folder, the view groups by status and shows the folder as a column.
 
+> [!todo] You decide: stage 1 works in Obsidian
+> Stage 1 is built (TASK-272 to 278). Its live check passed: `compass idea find`, the link graph, and a fresh session asked "What happened to the idea about categorizing ideas?" all answer with your words, `adopted`, and SPEC-033, from the vault alone.
+> 1. In this vault, open `ideas.base` at the top level.
+> 2. "By category" should show two groups, how-we-work and tools-and-setup, one idea each. "By status" should show IDEA-001 under adopted and IDEA-002 under exploring, with your words in a column.
+> 3. Approve if that is what you see; otherwise say what you see in the notes. Approval releases 0.36.0, and I then send the Disrupted session its import command.
+
 ## Goal
 
 This plan implements [[SPEC-033-ideas-keep-their-status]] (what we need: every idea he gives is kept in his words, with a current status and where it led, findable by any later session) from [[RESEARCH-ideas-keep-their-status]]. Each choice follows the option the human approved at that research's forks F1 to F8: `decided` maps to `adopted` per F5, and an imported status outside the list keeps its text per F8.
