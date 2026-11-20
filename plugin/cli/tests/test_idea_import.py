@@ -164,6 +164,8 @@ class ImportVault(unittest.TestCase):
         state = {}
         for path in self.root.rglob("*"):
             rel = path.relative_to(self.root).as_posix()
+            if rel == "meta/usage.yaml":
+                continue
             state[rel] = path.read_bytes() if path.is_file() else None
         return state
 

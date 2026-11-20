@@ -116,23 +116,25 @@ def _is_separator(cells):
 
 
 def parse(text):
-    """(sections, rows) from the table text. `sections` maps each category
-    slug to the first heading text that produced it; `rows` holds one dict
-    per table row: line number, slug (None above any usable heading),
-    heading text, cells and the line itself."""
-    sections, rows = {}, []
-    slug, heading_text, state = None, None, None
-    for number, line in enumerate(text.split("\n"), 1):
+    """(sections, rows, loose) from the table text. `sections` maps each
+    category slug to the first heading text that produced it; `rows` holds one
+    dict per table row: line number, slug (None above any usable heading),
+    heading text, cells and the line itself; `loose` holds one dict per run of
+    `|` lines that never reached a separator row: first line number, heading
+    text and the first line."""
+    sections, rows, loose = {}, [], []
+    slug, heading_text, state, first = None, None, None, None
+    for number, line in enumerate(text.split("\n") + [""], 1):
         heading = HEADING.match(line)
-        if heading:
-            heading_text = heading.group(1).strip()
-            slug = category_slug(heading_text) or None
-            if slug:
-                sections.setdefault(slug, heading_text)
+        if heading or not line.lstrip().startswith("|"):
+            if state == "header":
+                loose.append({"line": first[0], "heading": heading_text, "text": first[1]})
             state = None
-            continue
-        if not line.lstrip().startswith("|"):
-            state = None
+            if heading:
+                heading_text = heading.group(1).strip()
+                slug = category_slug(heading_text) or None
+                if slug:
+                    sections.setdefault(slug, heading_text)
             continue
         cells = split_row(line)
         if state == "rows":
@@ -141,8 +143,10 @@ def parse(text):
         elif state == "header" and _is_separator(cells):
             state = "rows"
         else:
+            if state is None:
+                first = (number, line.strip())
             state = "header"
-    return sections, rows
+    return sections, rows, loose
 
 
 def unquote(cell):
@@ -204,8 +208,12 @@ def plan(vault_root, text):
     """Everything the import would do with `text`, written nowhere."""
     vault_root = Path(vault_root)
     ideas_root = vault_root / "ideas"
-    sections, rows = parse(text)
+    sections, rows, loose = parse(text)
     result = Plan()
+    for table in loose:
+        where = f"under {table['heading']!r}" if table["heading"] else "above any heading"
+        result.skipped.append((table["line"], f"table {where} has no separator row",
+                               preview(table["text"])))
     for slug, title in sections.items():
         folder = ideas_root / slug
         if folder.is_dir():
