@@ -26,6 +26,7 @@ import time
 from pathlib import Path
 
 import capturelib
+import idealib
 import vaultlib
 from commands import hot_path
 from commands import sweep
@@ -175,7 +176,7 @@ def _sync_children_counts(records):
         if not lines or lines[0].strip() != "---":
             continue
         closing = next(
-            (i for i in range(1, len(lines)) if lines[i].strip() == "---"), None
+            (i for i in range(1, len(lines)) if lines[i].rstrip() == "---"), None
         )
         if closing is None:
             continue
@@ -357,6 +358,10 @@ def _sync_index(vault_root, records):
         # a second per-lesson listing here would put every summary in the
         # hot path twice. The index's Lessons section is a pointer.
         if record["type_dir"] == "lessons":
+            continue
+        # Idea files are listed by their category index; the root index keeps
+        # the category folder lines.
+        if record["type_dir"] == "ideas" and _is_idea_file(record):
             continue
         # The root index speaks in top-level entries (ADR-021): a folder
         # artifact's line, with its child count, is the pointer to its whole
@@ -721,25 +726,70 @@ def _lesson_listing_line(record):
     return f"- {link} - {summary}" if summary else f"- {link}"
 
 
-def _sync_lessons_indexes(vault_root, records):
-    """Regenerate the `## Lessons` listing of `lessons/index.md` and of every
-    lessons domain's `index.md` from lesson frontmatter, so lessons load like
-    every other type dir: the type-root index carries the high-level surface
-    (domains with counts, loose root lessons), each domain index lists its own
-    members with summaries, and agents grep these instead of a monolithic
-    catalog. Hand-written Scope prose is never touched. Returns the number of
-    index files rewritten."""
-    lessons_dir = vault_root / "lessons"
-    if not lessons_dir.is_dir():
+LESSONS_INDEX_TEXT = (
+    "---\n"
+    'title: "lessons"\n'
+    "type: domain\n"
+    "status: active\n"
+    "tags: [lessons]\n"
+    'summary: "lessons learned - the surface agents grep first; '
+    'compass lessons ranks via meta/lessons-catalog.yaml"\n'
+    "created: {today}\n"
+    "updated: {today}\n"
+    "---\n\n"
+    "# lessons\n\n"
+    "## Scope\n\n"
+    "Class here: lessons learned - 5-line bodies, listed below "
+    "with their summaries.\n"
+)
+
+IDEAS_INDEX_TEXT = (
+    "---\n"
+    'title: "ideas"\n'
+    "type: domain\n"
+    "status: active\n"
+    "tags: [ideas]\n"
+    'summary: "ideas in the words of the human, with their status and where each '
+    'led; compass idea find searches them"\n'
+    "created: {today}\n"
+    "updated: {today}\n"
+    "---\n\n"
+    "# ideas\n\n"
+    "## Scope\n\n"
+    "Class here: ideas in the human's own words, one file each, listed below "
+    "with their status.\n"
+)
+
+IDEA_EXCERPT_LENGTH = 100
+
+
+def _sync_type_indexes(vault_root, records, type_dir, heading, line_for,
+                       count_label, index_text, member_ok=None,
+                       create_for_folders=True):
+    """Regenerate the `heading` listing of `<type_dir>/index.md` and of every
+    domain folder's `index.md` under it from member frontmatter, so a type
+    dir loads like every other: the type-root index carries the high-level
+    surface (folders with counts, loose root members), each folder index
+    lists its own members, and agents grep these instead of crawling files.
+    `line_for(record)` renders one member line; `count_label(members)` is the
+    parenthetical on a folder's line of the type-root index; `index_text` is
+    the type-root index written when it is missing (its `{today}` slots
+    filled), created for a vault with members, and also for one with only
+    folders when `create_for_folders` holds. `member_ok(record)` keeps files
+    that are not members out of every listing. Hand-written Scope prose is
+    never touched. Returns the number of index files rewritten."""
+    type_root = vault_root / type_dir
+    if not type_root.is_dir():
         return 0
     active = [
         r for r in records
-        if r["type_dir"] == "lessons" and r["kind"] != "folder-index"
+        if r["type_dir"] == type_dir and r["kind"] != "folder-index"
         and (r["_data"] or {}).get("status") != "archived"
+        and (member_ok is None or member_ok(r))
     ]
     folders = sorted(
         (r for r in records
-         if r["type_dir"] == "lessons" and r["kind"] == "folder-index"),
+         if r["type_dir"] == type_dir and r["kind"] == "folder-index"),
         key=lambda r: r["name"],
     )
 
@@ -753,58 +803,202 @@ def _sync_lessons_indexes(vault_root, records):
 
     rewritten = 0
     for folder in folders:
-        body = [_lesson_listing_line(r) for r in direct_members(folder["name"])]
+        body = [line_for(r) for r in direct_members(folder["name"])]
         path = folder["path"]
         text = path.read_text(encoding="utf-8")
-        desired = _replace_section(text, "## Lessons", body)
+        desired = _replace_section(text, heading, body)
         if desired != text:
             vaultlib.write_text_lf(path, desired)
             rewritten += 1
 
-    root_index = lessons_dir / "index.md"
-    if not root_index.is_file() and (active or folders):
-        # A vault with lessons but no lessons surface (an install that
-        # predates the index hierarchy) gets a minimal one, so the hot
-        # path's lessons file exists everywhere lessons do.
+    root_index = type_root / "index.md"
+    if not root_index.is_file() and (active or (folders and create_for_folders)):
         today = datetime.date.today().isoformat()
-        vaultlib.write_text_lf(root_index, (
-            "---\n"
-            'title: "lessons"\n'
-            "type: domain\n"
-            "status: active\n"
-            "tags: [lessons]\n"
-            'summary: "lessons learned - the surface agents grep first; '
-            'compass lessons ranks via meta/lessons-catalog.yaml"\n'
-            f"created: {today}\n"
-            f"updated: {today}\n"
-            "---\n\n"
-            "# lessons\n\n"
-            "## Scope\n\n"
-            "Class here: lessons learned - 5-line bodies, listed below "
-            "with their summaries.\n"
-        ))
+        vaultlib.write_text_lf(root_index, index_text.format(today=today))
         rewritten += 1
     if root_index.is_file():
         body = []
         for folder in folders:
-            count = len(direct_members(folder["name"]))
-            summary = (folder["_data"] or {}).get("summary") or ""
             label = folder["path"].parent.name
-            line = f"- [[{folder['name']}/index|{label}]] ({count} lessons)"
+            summary = (folder["_data"] or {}).get("summary") or ""
+            counted = count_label(direct_members(folder["name"]))
+            line = f"- [[{folder['name']}/index|{label}]] ({counted})"
             body.append(f"{line} - {summary}" if summary else line)
         body.extend(
-            _lesson_listing_line(r)
+            line_for(r)
             for r in sorted(
                 (r for r in active if "/" not in r["name"]),
                 key=lambda r: r["name"],
             )
         )
         text = root_index.read_text(encoding="utf-8")
-        desired = _replace_section(text, "## Lessons", body)
+        desired = _replace_section(text, heading, body)
         if desired != text:
             vaultlib.write_text_lf(root_index, desired)
             rewritten += 1
     return rewritten
+
+
+def _sync_lessons_indexes(vault_root, records):
+    """Regenerate the `## Lessons` listing of `lessons/index.md` and of every
+    lessons domain's `index.md`. A vault with lessons but no lessons surface
+    (lesson files with no index) gets a minimal one, so the hot path's
+    lessons file exists everywhere lessons do. Returns the number
+    of index files rewritten."""
+    return _sync_type_indexes(
+        vault_root, records, "lessons", "## Lessons", _lesson_listing_line,
+        lambda members: f"{len(members)} lessons", LESSONS_INDEX_TEXT,
+    )
+
+
+def _is_idea_file(record):
+    return bool(idealib.FILE_PATTERN.match(record["path"].name))
+
+
+def _idea_excerpt(words):
+    """His words on one line, cut to `IDEA_EXCERPT_LENGTH` characters with a
+    trailing `...` counted inside that length. Each `[` gets a backslash
+    before it, so link syntax in his words shows as literal text and never becomes a link;
+    the escape is added after the cut, so a backslash stays with its bracket."""
+    flat = re.sub(r"\s*\n\s*", " ", words).strip()
+    if len(flat) > IDEA_EXCERPT_LENGTH:
+        flat = flat[:IDEA_EXCERPT_LENGTH - 3].rstrip() + "..."
+    return flat.replace("[", "\\[")
+
+
+def _idea_listing(vault_root):
+    """(line_for, count_label) over the ideas as they stand on disk now."""
+    by_rel = {
+        idea["path"].relative_to(vault_root).as_posix(): idea
+        for idea in idealib.load_all(vault_root)
+    }
+
+    def line_for(record):
+        idea = by_rel.get(_rel_path(vault_root, record))
+        link = f"[[{record['path'].stem}]]"
+        if idea is None:
+            return f"- {link}"
+        return f'- {link} - {idea["status"]} - "{_idea_excerpt(idea["words"])}"'
+
+    def count_label(members):
+        counts = {}
+        for record in members:
+            idea = by_rel.get(_rel_path(vault_root, record))
+            if idea is not None:
+                counts[idea["status"]] = counts.get(idea["status"], 0) + 1
+        order = [s for s in idealib.STATUSES if s in counts]
+        order += sorted(s for s in counts if s not in idealib.STATUSES)
+        parts = ", ".join(f"{counts[s]} {s}" for s in order)
+        total = len(members)
+        return f"{total} ideas: {parts}" if parts else f"{total} ideas"
+
+    return line_for, count_label
+
+
+def _sync_ideas_indexes(vault_root, records):
+    """Regenerate the `## Ideas` listing of every ideas category index and
+    of `ideas/index.md`, which is created once an idea file exists. Returns
+    the number of index files rewritten."""
+    line_for, count_label = _idea_listing(vault_root)
+    return _sync_type_indexes(
+        vault_root, records, "ideas", "## Ideas", line_for, count_label,
+        IDEAS_INDEX_TEXT, member_ok=_is_idea_file, create_for_folders=False,
+    )
+
+
+def _named_ideas(record):
+    """The raw `ideas:` entries of a record's frontmatter, as a list."""
+    values = (record["_data"] or {}).get("ideas")
+    if isinstance(values, str):
+        values = [values]
+    if not isinstance(values, list):
+        return []
+    return [str(item) for item in values]
+
+
+def _sync_idea_adoption(vault_root, records):
+    """Move ideas forward for the documents that name them. For every
+    artifact outside `ideas/` whose `ideas:` property links an idea, the
+    artifact joins the idea's `led_to` once. An idea at `new` or `exploring`
+    becomes `adopted` with a history line naming the artifact; an idea at any
+    other status keeps it and gets one `named by` history line the first time
+    the artifact appears. Removing the property later changes nothing, and an
+    idea file is rewritten only when its bytes change. Returns
+    (changes, unresolved): one description per idea change, and one per
+    `ideas:` entry that names no idea."""
+    named = [(r, _named_ideas(r)) for r in sorted(records, key=lambda r: r["name"])
+             if r["type_dir"] != "ideas"]
+    named = [(r, items) for r, items in named if items]
+    if not named:
+        return [], []
+    ideas = {
+        i["path"].relative_to(vault_root).as_posix(): i
+        for i in idealib.load_all(vault_root)
+    }
+    resolve = vaultlib.resolvable_names_map(vault_root)
+    today = datetime.date.today().isoformat()
+    state = {}
+    changes = []
+    unresolved = []
+    for record, items in named:
+        doc = f"[[{_link_name(record)}]]"
+        seen = set()
+        for item in items:
+            raws = WIKILINK.findall(item)
+            if not raws:
+                unresolved.append(f"{doc} ideas entry names no idea: {item}")
+            for raw in raws:
+                target = vaultlib.split_link(raw)[0]
+                paths = vaultlib.resolve_link(resolve, target)
+                idea = ideas.get(paths[0]) if len(paths) == 1 else None
+                if idea is None:
+                    unresolved.append(f"{doc} ideas entry names no idea: [[{raw}]]")
+                    continue
+                if idea["path"] in seen:
+                    continue
+                seen.add(idea["path"])
+                entry = state.get(idea["path"])
+                if entry is None:
+                    try:
+                        entry = {"text": vaultlib.read_vault_text(idea["path"]),
+                                 "changed": False}
+                    except (OSError, UnicodeDecodeError):
+                        continue
+                    state[idea["path"]] = entry
+                entry["text"], note = _adopt_once(entry["text"], doc, today)
+                if note:
+                    entry["changed"] = True
+                    changes.append(f"{idea['id']}: {note}")
+    for path, entry in state.items():
+        if entry["changed"]:
+            try:
+                vaultlib.write_text_lf(path, entry["text"])
+            except OSError:
+                continue
+    return changes, unresolved
+
+
+def _adopt_once(text, doc, today):
+    """`text` of one idea with `doc` applied, and a short description of the
+    change, or the unchanged text and None when the history already holds the line sync writes for `doc`."""
+    data, _ = vaultlib.parse_frontmatter_text(text)
+    status = str(data.get("status", ""))
+    history = idealib.history_lines(text.split("\n"))
+    named_by = re.compile(rf"^- \d{{4}}-\d{{2}}-\d{{2}}: named by {re.escape(doc)}$")
+    if any(named_by.match(h) or h.endswith(f"-> adopted ({doc} names it)")
+           for h in history):
+        return text, None
+    if status in ("new", "exploring"):
+        line = f"- {today}: {status} -> adopted ({doc} names it)"
+        new = idealib.change(text, status, "adopted", [doc], line, today)
+        note = f"{status} -> adopted ({doc} names it)"
+    else:
+        line = f"- {today}: named by {doc}"
+        new = idealib.change(text, status, status, [doc], line, today)
+        note = f"named by {doc}"
+    if new is None:
+        return text, None
+    return new, note
 
 
 def _check_caps(vault_root, records):
@@ -943,7 +1137,9 @@ def sync(vault_root):
     index_added, index_pruned, index_sections_merged = _sync_index(vault_root, records)
     catalog_added, catalog_collisions, catalog_duplicates, catalog_healed = (
         _sync_catalog(vault_root, records))
+    ideas_changed, ideas_unresolved = _sync_idea_adoption(vault_root, records)
     lessons_indexes = _sync_lessons_indexes(vault_root, records)
+    ideas_indexes = _sync_ideas_indexes(vault_root, records)
     logs_deleted, capture_log_pruned = _clean_logs(vault_root)
     return {
         "active_swept": active_swept,
@@ -956,6 +1152,9 @@ def sync(vault_root):
         "catalog_duplicates_removed": catalog_duplicates,
         "catalog_rows_healed": catalog_healed,
         "lessons_indexes": lessons_indexes,
+        "ideas_changed": ideas_changed,
+        "ideas_unresolved": ideas_unresolved,
+        "ideas_indexes": ideas_indexes,
         "tags": _sync_tag_index(vault_root, records),
         "caps": _check_caps(vault_root, records),
         "logs_deleted": logs_deleted,
@@ -993,6 +1192,12 @@ def format_report(report):
         )
     if report.get("lessons_indexes"):
         parts.append(f"lessons indexes refreshed: {report['lessons_indexes']}")
+    for change in report.get("ideas_changed") or []:
+        parts.append(f"idea {change}")
+    for problem in report.get("ideas_unresolved") or []:
+        parts.append(f"idea link broken: {problem}")
+    if report.get("ideas_indexes"):
+        parts.append(f"ideas indexes refreshed: {report['ideas_indexes']}")
     parts.append(f"tags indexed: {report['tags']}")
     if report["caps"]:
         parts.append(f"caps exceeded (warning written): {', '.join(report['caps'])}")

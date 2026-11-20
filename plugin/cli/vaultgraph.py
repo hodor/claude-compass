@@ -7,7 +7,8 @@ owns `graphlib`.
 
 Edge kinds:
 - `depends_on` - a frontmatter `depends_on` wikilink.
-- `citation`   - a frontmatter `lessons:` wikilink (a plan citing a lesson).
+- `citation`   - a frontmatter `lessons:` or `ideas:` wikilink (a plan citing
+  a lesson, a spec adopting an idea).
 - `wikilink`   - a body wikilink outside code fences and inline code spans.
 - `containment` - a folder artifact's `index.md` to a file inside its folder.
 - `index`      - any edge whose source is the root `index.md`; the catalog
@@ -35,10 +36,13 @@ def _target(raw):
 
 
 def _split_frontmatter(text):
+    """The text after the frontmatter block. The closing fence is an
+    unindented `---` line, the same rule `vaultlib.parse_frontmatter_text`
+    applies; an indented one is block-scalar content."""
     lines = text.split("\n")
     if lines and lines[0].strip() == "---":
         for i in range(1, len(lines)):
-            if lines[i].strip() == "---":
+            if lines[i].rstrip() == "---":
                 return "\n".join(lines[i + 1 :])
     return text
 
@@ -97,8 +101,9 @@ def build_graph(vault_root):
         if not error:
             for target in _frontmatter_links(data, "depends_on"):
                 add(rel, resolve_one(target), source_kind or "depends_on")
-            for target in _frontmatter_links(data, "lessons"):
-                add(rel, resolve_one(target), source_kind or "citation")
+            for key in ("lessons", "ideas"):
+                for target in _frontmatter_links(data, key):
+                    add(rel, resolve_one(target), source_kind or "citation")
         for target in _body_links(text):
             add(rel, resolve_one(target), source_kind or "wikilink")
 
