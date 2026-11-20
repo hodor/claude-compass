@@ -1,0 +1,35 @@
+filters:
+  and:
+    - file.ext == "md"
+    - 'type == "idea"'
+properties:
+  status:
+    displayName: Status
+  words:
+    displayName: His words
+  led_to:
+    displayName: Led to
+  led_to_note:
+    displayName: Where it led
+views:
+  - type: table
+    name: "By category"
+    groupBy:
+      property: file.folder
+      direction: ASC
+    order:
+      - file.name
+      - status
+      - words
+      - led_to
+      - led_to_note
+  - type: table
+    name: "By status"
+    groupBy:
+      property: status
+      direction: ASC
+    order:
+      - file.name
+      - words
+      - led_to
+      - led_to_note

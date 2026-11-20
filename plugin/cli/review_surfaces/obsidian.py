@@ -29,7 +29,7 @@ NAME = "obsidian"
 label = "Obsidian"
 PLUGIN_ID = "compass-review"
 PLUGIN_FILES = ("main.js", "manifest.json", "styles.css")
-BASE_FILES = ("review-inbox.base", "lessons.base")
+BASE_FILES = ("review-inbox.base", "lessons.base", "ideas.base")
 ENABLE_STEPS = (
     "in Obsidian, open Settings, then Community plugins; if it shows "
     "\"Turn on community plugins\" (restricted mode), click it; then switch "

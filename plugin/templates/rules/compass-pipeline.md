@@ -91,6 +91,12 @@ Conversation output is never the record - logs, reports, and vault files are. On
 - Two categories, `process` and `domain`, and which agent prioritizes which: the `lessons` skill.
 - Capture is never the human's job. Notice something worth remembering: run `compass capture-note "<one sentence>"` and move on. Never suggest `/compass:learned`, never ask whether to record it, never write a lesson in prose.
 
+## Ideas
+
+- Asked about an idea or what became of something he said: run `compass idea find "<his words or IDEA-NNN>"` and answer with his words, status, where it led and its history.
+- A spec, plan or ADR an idea shaped names it in `ideas:`.
+- Capture is automatic, so never ask him whether to record an idea; only an idea he states, or an agent suggestion he explicitly takes up, is recorded, never his rejection of a suggestion or his questions.
+
 ## Capabilities
 
 Bare `compass` lists every command with a one-liner - check it before assuming a capability is missing. `compass tree` and `compass usage`: the `methodology` skill, its capability index paragraph.
