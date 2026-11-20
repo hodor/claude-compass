@@ -26,8 +26,9 @@ Every vault document needs frontmatter:
 ```yaml
 ---
 title: "Human-readable title"                    # REQUIRED - all
-type: spec | research | plan | task | lesson | decision | handoff  # REQUIRED - all
+type: spec | research | plan | task | lesson | decision | handoff | idea  # REQUIRED - all
 status: draft | review | approved | active | done | archived  # REQUIRED - all
+status: new | exploring | parked | adopted | done | dropped  # idea documents use this set
 confidence: low | medium | high                  # REQUIRED for spec, research, decision
 category: process | domain                       # REQUIRED for lesson
 summary: "one-line summary"                      # REQUIRED for spec, plan, research, decision, lesson, handoff
@@ -45,6 +46,12 @@ author: "human or agent name"                    # REQUIRED for research, handof
 blocked_by: "description or [[link]]"            # OPTIONAL - tasks only
 depends_on: ["[[link1]]", "[[link2]]"]           # OPTIONAL - any document
 supersedes: "[[link]]"                           # OPTIONAL - replacing an older document
+words: "his sentence, exactly as typed"          # REQUIRED for idea - the human's own words, never reworded
+led_to: ["[[doc]]"]                              # OPTIONAL for idea - documents the idea became, appended and never removed
+led_to_note: "free text"                         # OPTIONAL for idea - where the idea went when no document names it
+raw_status: "text"                               # OPTIONAL for idea - the status as first written when imported
+source: "<session_id>:<n>"                       # OPTIONAL for idea - the logged prompt its words came from
+ideas: ["[[IDEA-NNN-slug]]"]                     # OPTIONAL for spec, plan, decision - ideas the document shapes
 ---
 ```
 

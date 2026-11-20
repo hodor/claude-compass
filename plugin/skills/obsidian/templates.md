@@ -29,6 +29,7 @@ confidence: low
 area: <area>
 tags: [tag1, tag2]
 summary: "<one line - the index copies this>"
+ideas: ["[[IDEA-NNN-slug]]"]  # OPTIONAL - ideas this spec shapes
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 ---
@@ -165,6 +166,7 @@ git_branch: "branch-name"
 git_commit: "abc1234"
 author: "name"
 depends_on: ["[[SPEC-NNN-name]]"]
+ideas: ["[[IDEA-NNN-slug]]"]  # OPTIONAL - ideas this plan shapes
 ---
 
 # Title
@@ -330,6 +332,7 @@ git_branch: "branch-name"
 git_commit: "abc1234"
 author: "name"
 supersedes: "[[ADR-NNN-name]]"
+ideas: ["[[IDEA-NNN-slug]]"]  # OPTIONAL - ideas this decision shapes
 ---
 
 # Title
