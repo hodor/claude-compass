@@ -1,4 +1,3 @@
-<!-- WARNING: hot path 5063 / 5000 tokens (index.md 3131, active.md 1242, lessons/index.md 690). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -110,3 +109,7 @@ Indexed in meta/lessons-catalog.yaml (loaded with the hot path); files in `lesso
 - [[LOOP-001-visual-questions]] - Control loop for SPEC-029: drives every point where Compass asks the human something to one AskUserQuestion call per question.
 - [[LOOP-002-no-private-data]] - Control loop keeping private data out of this public repository: deny-listed names, home-directory paths, session ids in paths and tokens, with a pre-commit hook that refuses new ones.
 - [[LOOP-003-session-context]] - Shrinks the text Compass adds to every Claude Code session, as far as it goes with Compass working as well as before.
+
+## Ideas
+- [[ideas/how-we-work/index|how-we-work]] (folder, 1 children) - ideas the human filed under How we work
+- [[ideas/tools-and-setup/index|tools-and-setup]] (folder, 1 children) - ideas the human filed under Tools and setup
