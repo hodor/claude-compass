@@ -226,8 +226,9 @@ class MigrationKeepsEverything(unittest.TestCase):
 
     def test_frontmatter_keys_are_the_same_set_as_before(self):
         """Adversarial where: a `key:` the Bases test finds in the schema
-        lives in no file of the folder after the split."""
-        self.assertEqual(schema_keys(folder_text()), schema_keys(self.old))
+        lives in no file of the folder after the split. Keys added to the
+        schema later are allowed; none of the original keys may be lost."""
+        self.assertLessEqual(schema_keys(self.old), schema_keys(folder_text()))
 
     def test_frontmatter_schema_keys_stay_in_skill_md(self):
         """Adversarial where: the properties table moves to a side file, so
