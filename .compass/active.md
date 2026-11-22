@@ -66,7 +66,7 @@ Plan: [[PLAN-031-screenplays-in-the-vault]]; each task's full text, files and ch
 
 ## PLAN-032 Wave 1: consolidation grounded in sources
 
-Plan: [[plans\PLAN-032-consolidation-grounded-in-sources]]; each task's full text, files and checks are there.
+Plan: [[PLAN-032-consolidation-grounded-in-sources]]; each task's full text, files and checks are there.
 
 - [ ] TASK-301: Register `drift` and `lesson-check` in `COMMAND_SPECS` with one-line help each; handlers arrive in TASK-305 and TASK-306 and report... - complexity: S, depends_on: none
 - [ ] TASK-302: Sync refreshes existing catalog rows from their lesson files: `status`, `category`, `area`, `tags`, `score` and `escalated` are... - complexity: M, depends_on: none
@@ -80,7 +80,7 @@ Plan: [[plans\PLAN-032-consolidation-grounded-in-sources]]; each task's full tex
 
 ## PLAN-034 Wave 1: checking cost follows task and model
 
-Plan: [[plans\PLAN-034-checking-cost-follows-task-and-model]]; each task's full text, files and checks are there.
+Plan: [[PLAN-034-checking-cost-follows-task-and-model]]; each task's full text, files and checks are there.
 
 - [ ] TASK-342: ADR recording ruling 1: a task-difficulty class assigned by judgment under a written rubric and recorded by the harness is allowed under... - complexity: S, depends_on: none
 - [ ] TASK-343: Variant arms and the build's model, repo-local in `bench/overhead/` - complexity: L, depends_on: none

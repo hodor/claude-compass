@@ -161,7 +161,7 @@ Plan: [[PLAN-031-screenplays-in-the-vault]]; detailed after Wave 1's live checks
 
 ## PLAN-032 later tasks (intent only)
 
-Plan: [[plans\PLAN-032-consolidation-grounded-in-sources]]; intent lines are in its Later section.
+Plan: [[PLAN-032-consolidation-grounded-in-sources]]; intent lines are in its Later section.
 
 - [ ] TASK-310
 - [ ] TASK-311
@@ -178,7 +178,7 @@ Plan: [[plans\PLAN-032-consolidation-grounded-in-sources]]; intent lines are in 
 
 ## PLAN-034 later tasks (intent only)
 
-Plan: [[plans\PLAN-034-checking-cost-follows-task-and-model]]; intent lines are in its Later section.
+Plan: [[PLAN-034-checking-cost-follows-task-and-model]]; intent lines are in its Later section.
 
 - [ ] TASK-353
 - [ ] TASK-354
