@@ -52,6 +52,11 @@ import vaultlib
 # A task line: an optional leading indent, a checkbox, then TASK-<id>:.
 TASK_LINE = re.compile(r"^\s*-\s+\[[ xX]\]\s+(TASK-[A-Za-z0-9_-]+):")
 
+# The `complexity:` field of a task line: a letter group (S, M, L, XS, as
+# written) that starts a field and ends at a comma, a bracket, whitespace or
+# the end of the line.
+_COMPLEXITY_FIELD = re.compile(r"(?:^|[\s,])complexity:[ \t]*([A-Za-z]+)(?=[\s,\]]|$)")
+
 # Any heading line, with its hash count in group(1).
 _ANY_HEADING = re.compile(r"^(#{1,6})\s")
 
@@ -66,6 +71,35 @@ _RECORD_HEADING = re.compile(r"^##\s+Waves?\b.*\belaborated\b", re.IGNORECASE)
 # The commit-upfront override token. A trailing comma-separated field on a
 # task line must begin with this, after inline code stripping, to trigger.
 _COMMIT_UPFRONT_TOKEN = "commit-upfront:"
+
+
+def task_complexity(line):
+    """The `complexity:` value of a task line as written (`S`, `M`, `L`,
+    `XS`), or None when the line carries no such field or an empty value.
+    Inline code spans are ignored, so a quoted example is no field; when
+    several fields appear the last one counts, the trailing field list being
+    where a task line states its metadata."""
+    if not isinstance(line, str):
+        return None
+    found = _COMPLEXITY_FIELD.findall(vaultlib.strip_inline_code(line))
+    return found[-1] if found else None
+
+
+def task_letters(text):
+    """`{task id: complexity letter or None}` for every task line of a plan's
+    text outside its `## Wave N elaborated` record regions. Fenced code is
+    ignored. A task id that appears twice keeps its first line."""
+    if not isinstance(text, str):
+        return {}
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    regions, _ = classify_lines(text)
+    stripped, _ = vaultlib.strip_fenced_code(text)
+    letters = {}
+    for number, line in enumerate(stripped.split("\n"), start=1):
+        match = TASK_LINE.match(line)
+        if match and regions.get(number) != "record":
+            letters.setdefault(match.group(1), task_complexity(line))
+    return letters
 
 
 def _triggers_commit_upfront(line):
