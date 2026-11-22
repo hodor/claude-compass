@@ -53,20 +53,26 @@ For each pair of non-escalated lessons, judge overlap:
 - Same `category` AND `area` AND >=2 shared tags AND summaries semantically equivalent
 - OR: bodies say the same rule with different phrasing
 
-If a pair matches, merge:
+A lesson body changes only through a reviewed proposal. This holds for every body change in steps 3 and 4 and for any body change a drift report (`.compass/archive/drift/DRIFT-*.md`) prompts. Write the proposal as one file under `.compass/tmp/proposals/`, one entry per lesson with the old text, the new text, the evidence (the overlapping lines, or the drift finding) and a checkbox. Send it through `compass review <proposal file> --title "Apply these lesson edits?"`. On `not configured`, ask through `AskUserQuestion`, one entry per call. A ticked box applies that entry; an unticked box leaves the lesson as it is; a note beside an entry revises it.
+
+Draft one entry per matching pair, then send the proposal and, for each ticked merge:
 
 - Keep the lesson with higher `score` (or earlier `created` if tied)
 - Sum the `score` values, cap at 10
 - Union the `tags`
 - Union the `seen` arrays, keeping every date (step 5)
 - The losing lesson becomes `status: archived`, its filename is added to the kept lesson's frontmatter as `merged_from: ["LESSON-loser.md"]`
-- The body of the kept lesson is preserved unchanged unless the loser had nuance worth absorbing; if so, compress and fit under the 5-line cap
+- The kept lesson's body stays unless the loser had nuance worth absorbing; the new text then fits the 5-line cap, and every displaced line of the old text moves verbatim into the kept lesson under `## Record (preserved)`
+
+After each edit run `compass lesson-check <lesson>`; it names the failing line when the body exceeds 5 lines or a body or Record line, a `seen` or `tags` entry, or `score` was lost. Fix the edit until the check passes.
 
 Report every merge for the human's audit.
 
 ### 4. Rewrite verbose bodies - never destroying the original
 
-For each lesson body longer than 5 lines: distill the rule + reason into <=5 lines, and move the displaced text - the specific instances, the longer wording - into the same file under a `## Record (preserved)` heading below the body. That section is exempt from the 5-line cap, exactly as an archived lesson's `Superseded:` line is: the cap governs the active guidance competing for read budget, and the record below it is cold detail fetched only when someone opens the file. Nothing is dropped; the hot representation shrinks, the data stays.
+For each lesson body longer than 5 lines, draft a proposal entry (the same proposal file, review and ticks as step 3): the old text, the new text distilling the rule + reason into <=5 lines, the evidence, and a checkbox. For each ticked entry, move the displaced text - the specific instances, the longer wording - verbatim into the same file under a `## Record (preserved)` heading below the body. That section is exempt from the 5-line cap, exactly as an archived lesson's `Superseded:` line is: the cap governs the active guidance competing for read budget, and the record below it is cold detail fetched only when someone opens the file. Nothing is dropped; the hot representation shrinks, the data stays.
+
+After each edit run `compass lesson-check <lesson>` and fix the edit until it passes.
 
 Report every rewrite with before/after for the human's audit.
 
