@@ -734,7 +734,7 @@ class ClassificationTests(unittest.TestCase):
         dash printed by a test is byte 0x97) or, from a PowerShell `>`
         redirect, as UTF-16; a strict UTF-8 read crashes on the first and
         finds no test lines in the second (GitHub #39)."""
-        lines = ("tests/test_foo.py::FooTests::test_a PASSED  — note [ 50%]\n"
+        lines = ("tests/test_foo.py::FooTests::test_a PASSED  \u2014 note [ 50%]\n"
                  "tests/test_foo.py::FooTests::test_b PASSED               [100%]\n")
         for n, encoding in enumerate(("cp1252", "utf-16")):
             task = f"TASK-12{n}"

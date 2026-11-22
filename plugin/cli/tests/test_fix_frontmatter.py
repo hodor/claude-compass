@@ -152,7 +152,7 @@ class LiftSummariesTests(unittest.TestCase):
     def test_em_dash_separator_and_abbreviated_link_lift(self):
         root = self._vault()
         (root / "index.md").write_text(
-            "# Index\n\n## Specs\n\n- [[SPEC-001]] — evict cold entries fast\n",
+            "# Index\n\n## Specs\n\n- [[SPEC-001]] \u2014 evict cold entries fast\n",
             encoding="utf-8")
         self._run(["--lift-summaries", "--apply"])
         data, _ = vaultlib.parse_frontmatter(root / "specs" / "SPEC-001-caching.md")

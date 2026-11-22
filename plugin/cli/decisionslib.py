@@ -55,11 +55,11 @@ _ANY_HEADING = re.compile(r"^(#{1,6})\s")
 _BULLET_COLON = re.compile(
     r"^\s*-\s+\*\*D-([A-Za-z0-9][A-Za-z0-9_-]*)(?:\s*\[([^\]]+)\])?[^:*]*:\*\*\s*(.*)$"
 )
-# Em-dash form: `- **D-NN — title** body`. Compass-authored prose never uses
+# Em-dash form: `- **D-NN U+2014 title** body`. Compass-authored prose never uses
 # em-dashes, but pasted-in content may; accepts U+2014 and U+2013.
 _BULLET_EMDASH = re.compile(
     r"^\s*-\s+\*\*D-([A-Za-z0-9][A-Za-z0-9_-]*)(?:\s*\[([^\]]+)\])?"
-    r"[^*]*[—–][^*]*\*\*\s*(.*)$"
+    r"[^*]*[\u2014\u2013][^*]*\*\*\s*(.*)$"
 )
 # Titled-colon form: `- **D-NN: Title.** body`. A strict superset of the
 # colon form, so it is checked last and only catches bullets the others miss.

@@ -45,7 +45,7 @@ HEADING = re.compile(r"^#\s+(.+)$", re.MULTILINE)
 # en dashes).
 ENTRY_LINE = re.compile(
     r"^\s*-\s+\[\[([^\]]+)\]\]\s*(?:\(folder, \d+ children\))?"
-    r"\s*[-—–]\s+(.*\S)\s*$"
+    r"\s*[-\u2014\u2013]\s+(.*\S)\s*$"
 )
 
 

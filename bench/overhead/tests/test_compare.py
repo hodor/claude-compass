@@ -555,4 +555,4 @@ def test_the_margin_verdict_line_holds_no_em_or_en_dash(tmp_path, plugin, capsys
     _, out = run_outcomes(capsys, tmp_path, plugin, "--margin", "0.5")
 
     assert "worse" in out
-    assert "—" not in out and "–" not in out and "−" not in out
+    assert "\u2014" not in out and "\u2013" not in out and "−" not in out
