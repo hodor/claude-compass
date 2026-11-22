@@ -1,26 +1,22 @@
 ---
 title: "What Recent Anthropic and LLM Research Says Compass Should Change"
 type: research
-status: draft
+status: in-progress
 confidence: low
 area: methodology
 tags: [research, prior-art, anthropic, agents, memory, multi-agent, evals]
 created: 2026-11-21
 updated: 2026-11-21
 author: "orchestrator"
-summary: "planned axes for surveying Anthropic's engineering posts and 2025-2026 LLM agent research for changes Compass should make, awaiting the human's go"
+summary: "approved axes for surveying Anthropic's engineering posts and 2025-2026 LLM agent research for changes Compass should make; axis findings in research/llm-research/"
 ---
 
 # What Recent Anthropic and LLM Research Says Compass Should Change
 
 Seven axes, run in parallel, each returning findings mapped to Compass's four north stars ([[SPEC-001-compass-vision-and-architecture]]): accuracy, perfect memory, near-zero cache misses, low token usage. A reviewer merges them into a ranked list of candidate changes, each naming the spec it touches or the new spec it needs.
 
-> [!question] You decide
-> Run research on these seven axes? Add your own questions below; they lead the list.
-
 ## Your questions
-
--
+- Wondering what's new and what are the things we should adapt our architecture to
 
 ## Axes
 
@@ -30,7 +26,7 @@ Seven axes, run in parallel, each returning findings mapped to Compass's four no
 4. **Multi-agent orchestration and verification.** Sought in arXiv, OpenReview and lab posts: when spawning subagents helps or hurts, LLM-as-judge reliability, self-verification, blinded review. Measured against builder, tester, validator and reviewer.
 5. **Spec-driven and plan-first coding agents.** Sought in GitHub and arXiv: rival frameworks (spec-kit, Kiro, BMAD, Agent OS and others not yet reviewed; GSD is covered in [[research/distribution/index|distribution]]) and benchmark evidence on planning, test-first and specs for coding agents.
 6. **Other labs' and agent vendors' harness engineering.** Sought in engineering posts from OpenAI, Google DeepMind, Cognition, Cursor, Sourcegraph and Factory: harness design, tool design, context management, evaluation of agents.
-7. **Gap mapping.** Sought in the vault itself: every finding from axes 1-6 checked against existing specs, research and lessons, so the result names only what Compass does not already do or decide.
+7. **Gap mapping.** Done by the reviewer, sought in the vault itself: every finding from axes 1-6 checked against existing specs, research and lessons, so the result names only what Compass does not already do or decide.
 
 ## Grading
 
