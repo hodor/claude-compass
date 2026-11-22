@@ -1,7 +1,7 @@
 ---
 title: "Verification Goes Beyond Passing Tests"
 type: spec
-status: draft
+status: approved
 confidence: low
 area: testing
 tags: [testing, verification, validator, reachability, spec-coverage]
@@ -19,7 +19,6 @@ flowchart LR
 ```
 
 > [!IMPORTANT]
-> You decide: promote this spec to approved? Approving makes "tests pass" one check among several before a task counts as done, beside the test quality bar of [[SPEC-013-test-quality]], and lets research start on it.
 
 ## Problem
 
