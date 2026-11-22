@@ -85,7 +85,7 @@ Organize findings into the report format below. Every finding gets a confidence 
 
 A gap the investigation cannot close is reported as a gap, in the document's Gaps section, never filled with a plausible guess. Naming it there is what lets it spawn another research pass instead of reaching a plan unclosed.
 
-If you save the research to `.compass/research/RESEARCH-name.md`, the PostToolUse hook auto-updates `.compass/index.md`. No manual index edit needed.
+If you save the research to `.compass/research/RESEARCH-name.md`, write `model:` in its frontmatter with the exact model id from your own environment line (the "exact model ID is ..." sentence), so the reviewer can tell which model family produced the report. The PostToolUse hook auto-updates `.compass/index.md`. No manual index edit needed.
 
 ### 5. Follow-up
 

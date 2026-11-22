@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE coverage SYSTEM "http://cobertura.sourceforge.net/xml/coverage-04.dtd">
+<coverage line-rate="0.5" branch-rate="0" lines-covered="2" lines-valid="4" timestamp="1" version="2.0.3">
+  <sources>
+    <source>.</source>
+  </sources>
+  <packages>
+    <package name="src" line-rate="0.5" branch-rate="0">
+      <classes>
+        <class name="front.ts" filename="src\front.ts" line-rate="0.5" branch-rate="0">
+          <methods/>
+          <lines>
+            <line number="10" hits="3"/>
+            <line number="11" hits="3"/>
+          </lines>
+        </class>
+        <class name="front.ts$inner" filename="src\front.ts" line-rate="0" branch-rate="0">
+          <methods/>
+          <lines>
+            <line number="20" hits="0"/>
+            <line number="21" hits="0"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>

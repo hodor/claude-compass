@@ -80,6 +80,7 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
 - [ ] TASK-NNN: [Description] - complexity: S, depends_on: none, files: [list], decisions: [<doc-stem>/D-NN, ...]
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
+  - Entry point: <one command a user or program runs that reaches the new code: a CLI command, a server start plus a request, a UI script, a hook command line; a test runner is never one>
 
 **Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before the next wave. Skip if the human asked for `all-phases` mode.
 
@@ -88,6 +89,7 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
 - [ ] TASK-NNN: [Description] - complexity: S, depends_on: none, files: [list], decisions: [<doc-stem>/D-NN, ...], commit-upfront: [reason detail is known now or late change is expensive]
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
+  - Entry point: none: <reason the task changes no executable path>
 
 ## Risks
 - [Risk]: [Mitigation]
@@ -96,9 +98,7 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
 [Open questions from the source spec that must be resolved before approval. The planner must not generate new ones - resolve them during planning.]
 ```
 
-`decisions:` is optional and mirrors `files:` - a list of source-qualified citations (`<doc-stem>/D-NN`) for the decisions a task implements, drawn from the `## Decisions`/`## Decision` bullets of the specs and ADRs this plan depends on. Omit it on tasks that claim nothing.
-
-Every decision this plan claims must live in some task line's `decisions:` field - detailed or intent, never prose alone. Prose may still discuss a decision, naming it bare (`D-04`) or in backticks; either form is discussion, not a claim, and claims nothing toward coverage. The hazard isn't prose upgrading a task-line claim - a task line always wins over prose - it's prose *manufacturing* one: a citation that appears only in prose, for a decision no task line names anywhere, reads `covered` from that prose alone and can pass `--strict` with nothing committed to build it.
+`decisions:` is optional and mirrors `files:` - a list of source-qualified citations (`<doc-stem>/D-NN`) for the decisions a task implements, drawn from the `## Decisions`/`## Decision` bullets of the specs and ADRs this plan depends on. Omit it on tasks that claim nothing. Every decision this plan claims must live in some task line's `decisions:` field - detailed or intent, never prose alone. Prose may still discuss a decision, naming it bare (`D-04`) or in backticks; either form is discussion, not a claim, and claims nothing toward coverage. The hazard isn't prose upgrading a task-line claim - a task line always wins over prose - it's prose *manufacturing* one: a citation that appears only in prose, for a decision no task line names anywhere, reads `covered` from that prose alone and can pass `--strict` with nothing committed to build it.
 
 `lessons:` is optional and mirrors `decisions:` in the same position - a list of catalog lesson filenames (with or without `.md`) the task drew on. `compass lesson-coverage <plan>` audits citations against the catalog; it never gates, so omitting it is always fine.
 

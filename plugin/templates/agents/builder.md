@@ -64,7 +64,13 @@ If the project has a formatter (prettier, black, gofmt, rustfmt, etc.), run it o
 
 Spawn a sub-agent with the diff (`git diff`). Charter: flag unused imports, leftover debug statements, inconsistent naming, missing error handling, anything copy-pasted without adaptation. The human may have added domain-specific review rules in `.claude/CLAUDE.md` or `.compass/lessons/`. Apply them.
 
-Fix any issues. Do not run tests to confirm the fixes - the tester runs next and will catch test failures.
+Then spawn a second sub-agent for correctness against the spec. It has Read and Grep, and receives the diff, the task line, and the output of `compass requirements <spec> --for-task TASK-NNN --plan <plan>`. Charter:
+- Per requirement, give a verdict: met, partial, missing, or contradicts, each with file evidence (`file:line`).
+- Code the requirements do not ask for is surfaced and never removed.
+- A finding it cannot ground in a file is dropped.
+- Skip style: the first reviewer owns it.
+
+Fix any issues from the style review. Fix every partial, missing, and contradicts item from the correctness review before handing off. Do not run tests to confirm the fixes - the tester runs next and will catch test failures.
 
 ### 9. Hand off to the tester
 
@@ -89,7 +95,7 @@ Index updates are automatic. The PostToolUse hook fires `index-sync` on every va
 
 ## Report format
 
-Field lengths: Changes (one line per file), Code Review (one line per finding). Omit Decisions, Code Review if empty. Don't restate the task body - reference it by ID. Do not include test results - the tester reports those separately. Do not include lessons - the `extract-lessons` skill captures them retrospectively at the phase boundary.
+Field lengths: Changes (one line per file), Code Review and Spec Correctness Review (one line per finding). Omit Decisions, Code Review, Spec Correctness Review if empty. Don't restate the task body - reference it by ID. Do not include test results - the tester reports those separately. Do not include lessons - the `extract-lessons` skill captures them retrospectively at the phase boundary.
 
 ```markdown
 ## Build Report
@@ -101,7 +107,11 @@ TASK-NNN ([[PLAN-NNN-name]] Phase N)
 - `path/to/file.py` - [what and why]
 
 ### Code Review
-- `file:line` - [finding, fixed?]
+- `file:line` - [style finding, fixed?]
+
+### Spec Correctness Review
+- `<spec>/<id>` - [met | partial | missing | contradicts] - `file:line` evidence [fixed?]
+- Unrequested code: `file:line` - [what it does; left in place]
 
 ### Decisions
 - [decision]: [why] → [[ADR-NNN-name]]

@@ -278,3 +278,36 @@ def resolve(agent, config=None, environ=None, host=DEFAULT_HOST, warnings=None):
         effort = TIER_EFFORT.get(tier, "high")
 
     return model, effort, source
+
+
+_CLAUDE_TIER_NAMES = frozenset({"opus", "sonnet", "haiku"})
+_GPT_O_SERIES = re.compile(r"^o[134](-.*)?$")
+_FAMILY_PREFIXES = (
+    ("gemini", "gemini"),
+    ("llama", "llama"),
+    ("qwen", "qwen"),
+    ("deepseek", "deepseek"),
+    ("mistral", "mistral"),
+)
+
+
+def family(model):
+    """Model family of a model id: `claude`, `gpt`, `gemini`, `llama`, `qwen`,
+    `deepseek`, `mistral`, `inherit` for `inherit`, else `unknown`.
+
+    Matching is case-insensitive. `claude` covers the bare tier names
+    (`opus`, `sonnet`, `haiku`) and `claude-*` ids; `gpt` covers `gpt-*` and
+    the o-series ids `o1`, `o3`, `o4` with optional `-suffix` forms. The other
+    families match on the id's leading name.
+    """
+    name = (model or "").strip().lower()
+    if name == "inherit":
+        return "inherit"
+    if name in _CLAUDE_TIER_NAMES or name.startswith("claude-"):
+        return "claude"
+    if name.startswith("gpt-") or _GPT_O_SERIES.match(name):
+        return "gpt"
+    for prefix, result in _FAMILY_PREFIXES:
+        if name.startswith(prefix):
+            return result
+    return "unknown"

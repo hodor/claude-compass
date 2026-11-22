@@ -1,6 +1,6 @@
 ---
 name: build
-description: Execute tasks from active.md by spawning builder agents. Handles parallel execution for non-overlapping tasks, the fix loop, and optional validation.
+description: Execute tasks from active.md by spawning builder agents. Handles parallel execution for non-overlapping tasks, the fix loop, and validation.
 version: 1.0.0
 allowed-tools: [Read, Glob, Grep, Bash, Agent, Write, Edit, AskUserQuestion]
 when_to_use: "Use when the user wants to execute planned tasks. Triggers: 'build this', 'execute the tasks', 'run the plan', 'start building', 'implement this'."
@@ -84,7 +84,11 @@ Spawn builder agents to execute tasks. The main conversation orchestrates; it do
 
    Skip the pause (but NOT 7a, 7b or 7d) in `all-phases` mode; pause only after the last phase. Reports, extraction and elaboration still run between phases so lessons and wave promotion happen incrementally.
 
-8. **Validate (optional).** Offer to spawn the validator with the plan file.
+8. **Validate.** For every phase holding a code task (a task whose `files:` include executable source), spawn the validator with the plan file once the phase's merges and post-merge checks pass; a phase with no code task skips it. Its report carries Reachability, Change Dependence and Spec Conformance sections, and each FAIL item names its owning task or `unowned`.
+   - **Owned FAIL.** A Reachability or Spec Conformance FAIL item owned by a task goes to a targeted fix builder on the merged branch, handed the FAIL text only. The validator then reruns those checks: `compass evidence rerun <record>` for each recorded check, then the validator step itself. A task gets at most 3 such cycles; a FAIL still standing after the third goes to the human as an escalation naming the task and the FAIL text.
+   - **Unowned FAIL.** A requirement of the spec that no task owns is appended to the plan under a `## Proposed by validation` heading (created on first use, at the end of the plan) as one `- [ ] TASK-NNN: <gap> per <spec>/<id>` line, with no `decisions:` field. These lines are never written to `active.md`. The phase pause (7c) names them, and `/compass:plan iterate` presents them for approval.
+   - **Clean run.** A validator run with no FAIL items leaves the plan byte-identical.
+   - **Change Dependence.** Its findings go into the phase report only; they raise no fix cycle and add nothing to the plan.
 
 9. **Vault.** Verify each completed task is closed: checked off in the plan, and no longer open in `active.md` - builders check it off there, and the sync sweep moves the checked line to `archive/done.md`. If a builder skipped the checkoff, do it now. The SDK auto-cleans worktrees once their branches are merged.
 
@@ -99,7 +103,7 @@ Spawn builder agents to execute tasks. The main conversation orchestrates; it do
 | TASK-NNN: [desc] | not-required | complete | 3 tests, 1 fail → fixed (cycle 1) | DONE |
 | TASK-NNN: [desc] | - | blocked | - | BLOCKED by TASK-NNN |
 
-Next: run validator? Manual verification items from the plan?
+Next: manual verification items from the plan?
 ```
 
-Ask the two "Next" questions through `AskUserQuestion`, exactly one question per call, in order: "Run the validator?", then "Review the manual verification items from the plan?". For each, the recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text. Never put several questions in one message or one call; the second question waits for the first answer.
+Ask the "Next" question through `AskUserQuestion`, exactly one question per call: "Review the manual verification items from the plan?". The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text.
