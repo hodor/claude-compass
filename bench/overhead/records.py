@@ -25,6 +25,15 @@ Arms. A row's arm is `compass`, `baseline` or a variant id `compass-minus-<part>
 (Compass with one harness part removed); `variant` holds the id for a variant
 and is None otherwise. `build_model` names the model with the most output
 tokens over the session's stretches, None when no `result` event arrived.
+
+Stations. A build row's `stations` maps `<station>|<model>` to integer counts
+read from the project's `.compass/meta/station-log.jsonl`: `spawns`, `bugs`,
+`fails` and `unparsed`, plus `helpful`, `neutral` and `harmful` under a
+`fix-cycle` entry. A station outside a safe name pattern drops its row, a model
+outside it counts under `unknown-model`, and every value is a non-negative
+integer, so no text of a log row reaches the record. A baseline-arm build and a
+build with no project folder carry `{}`; a missing log gives `{}` and a damaged
+line costs only itself.
 """
 
 import json
@@ -72,6 +81,12 @@ UNKNOWN_MODEL = "unknown-model"
 _MODEL_ID = re.compile(r"claude-[a-z0-9.\-]+(\[[a-z0-9]+\])?")
 _COMMIT_ID = re.compile(r"[0-9a-f]{7,64}")
 _VERSION = re.compile(r"\d+\.\d+\.\d+")
+
+STATION_LOG_PARTS = (".compass", "meta", "station-log.jsonl")
+FIX_CYCLE = "fix-cycle"
+STATION_COUNTS = ("spawns", "bugs", "fails", "unparsed")
+FIX_VERDICTS = ("helpful", "neutral", "harmful")
+_SAFE_NAME = re.compile(r"[A-Za-z0-9._\[\]\-]+")
 
 
 class Refused(Exception):
@@ -211,6 +226,59 @@ def build_model(totals):
     return best
 
 
+def _station_rows(project_dir):
+    """The JSON objects of the project's station log, one per readable line.
+    A missing or unreadable log gives none; a damaged line is skipped."""
+    try:
+        data = Path(project_dir).joinpath(*STATION_LOG_PARTS).read_bytes()
+    except (OSError, ValueError):
+        return []
+    found = []
+    for line in data.decode("utf-8", errors="replace").splitlines():
+        try:
+            item = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(item, dict):
+            found.append(item)
+    return found
+
+
+def _safe_name(value):
+    return value if isinstance(value, str) and _SAFE_NAME.fullmatch(value) else None
+
+
+def station_counts(project_dir):
+    """{"<station>|<model>": {count name: int}} from the project's station log.
+
+    Each row adds one spawn and its `bugs`/`fails` counts; an `unparsed` verdict
+    adds an unparsed count and a fix-cycle row adds its `helpful`/`neutral`/`harmful`
+    verdict. A row whose station is not a safe name is dropped; a model that is
+    not one (or is absent) counts under `unknown-model`. Never raises.
+    """
+    counts = {}
+    for item in _station_rows(project_dir):
+        station = _safe_name(item.get("station"))
+        if station is None:
+            continue
+        model = _safe_name(item.get("model")) or UNKNOWN_MODEL
+        entry = counts.get(f"{station}|{model}")
+        if entry is None:
+            entry = dict.fromkeys(STATION_COUNTS, 0)
+            if station == FIX_CYCLE:
+                entry.update(dict.fromkeys(FIX_VERDICTS, 0))
+            counts[f"{station}|{model}"] = entry
+        entry["spawns"] += 1
+        entry["bugs"] += _count(item.get("bugs"))
+        entry["fails"] += _count(item.get("fails"))
+        verdict = item.get("verdict")
+        if verdict == "unparsed":
+            entry["unparsed"] += 1
+        elif station == FIX_CYCLE and verdict in FIX_VERDICTS:
+            entry[verdict] += 1
+    return counts
+
+
 def _check_choice(name, value, allowed, optional=False):
     if value is None and optional:
         return
@@ -218,8 +286,11 @@ def _check_choice(name, value, allowed, optional=False):
         raise ValueError(f"{name} is not one of {', '.join(allowed)}")
 
 
-def record_session(events, *, role, outcome, arm=None, plugin_sha=None, private_root=None):
+def record_session(events, *, role, outcome, arm=None, plugin_sha=None, private_root=None, project_dir=None):
     """Append one record row for the session that produced `events`; return it.
+
+    `project_dir` is the build's project folder; its station log gives the row's
+    `stations` unless `arm` is `baseline` or no folder is given.
 
     Raises ValueError for a role, outcome, arm or commit id outside its allowed
     shape, and Refused when the records folder would sit inside a git work tree.
@@ -257,6 +328,7 @@ def record_session(events, *, role, outcome, arm=None, plugin_sha=None, private_
         "models": totals,
         "weighted": weighted,
         "unpriced_models": unpriced,
+        "stations": {} if arm == "baseline" or project_dir is None else station_counts(project_dir),
     }
     folder.mkdir(parents=True, exist_ok=True)
     with open(folder / f"{row['machine']}.jsonl", "a", encoding="utf-8", newline="\n") as handle:

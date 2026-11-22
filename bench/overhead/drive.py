@@ -571,7 +571,10 @@ def drive_build(
         end, reason = launch.FAILED, f"{PLUGIN_CHANGED}: {'; '.join(changed[:5])}"
 
     outcome = {HUMAN_DONE: launch.DONE, launch.USAGE_LIMIT: launch.USAGE_LIMIT}.get(end, launch.FAILED)
-    records.record_session(events, role="build", outcome=outcome, arm=arm, plugin_sha=head_sha, private_root=private_root)
+    records.record_session(
+        events, role="build", outcome=outcome, arm=arm, plugin_sha=head_sha,
+        private_root=private_root, project_dir=project,
+    )
     return DriveResult(
         end=end, turns=turns, resets_at=resets_at, init_counts=init_counts(events),
         events=events, stderr=setup_stderr + session.stderr_text(), reason=reason,

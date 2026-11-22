@@ -140,7 +140,7 @@ TASK-342, TASK-343, TASK-345, TASK-346 and TASK-350 start in parallel; their fil
   - Automated verification: `diff -r plugin/cli .claude/cli` shows no difference in `stationlib.py`, `capture_signal.py` and `stations.py`; after one spawned tester in this repo, `.compass/meta/station-log.jsonl` has a row with station and model set; `python .claude/cli/compass stations` prints it.
   - Manual verification: none.
 
-- [ ] TASK-349: The bench reads the station record. At a build's close, `records.py` reads the project's `.compass/meta/station-log.jsonl` and writes into the build's row, as allowlisted counts only, the spawns and verdict counts per station and model; a baseline-arm build has none; the private-record leak tests cover the new fields - complexity: S, depends_on: TASK-343, TASK-346, files: [bench/overhead/records.py, bench/overhead/drive.py, bench/overhead/tests/test_records_stations.py]
+- [x] TASK-349: The bench reads the station record. At a build's close, `records.py` reads the project's `.compass/meta/station-log.jsonl` and writes into the build's row, as allowlisted counts only, the spawns and verdict counts per station and model; a baseline-arm build has none; the private-record leak tests cover the new fields - complexity: S, depends_on: TASK-343, TASK-346, files: [bench/overhead/records.py, bench/overhead/drive.py, bench/overhead/tests/test_records_stations.py]
   - Automated verification: `python -m pytest bench/overhead/tests -q` passes: a canned log gives the expected counts; a log row carrying an unexpected text field never reaches the record; a missing log gives zero counts, not an error; the dash check exits 0.
   - Manual verification: none.
 
