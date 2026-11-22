@@ -1,0 +1,11 @@
+{
+  "path": "lessons/subagents/LESSON-subagent-worktrees-fork-stale.md",
+  "notes": [
+    {
+      "text": "Still true by default on Claude Code 2.1.330 (worktree sat at the pushed commit, missing the unpushed one), but the setting worktree.baseRef: \"head\" forks from local HEAD including unpushed commits. Uncommitted files stay invisible, so the checkpoint commit still holds. Separately, plugin/skills/build/SKILL.md:39 says frontmatter isolation 'does nothing'; a trial showed it works for project and plugin agents. See [[research/llm-research/RESEARCH-axis-2b-host-features-gap]] C1, C2.",
+      "by": "reviewer",
+      "date": "2026-11-21",
+      "tags": ["narrowed", "claude-code", "worktrees"]
+    }
+  ]
+}

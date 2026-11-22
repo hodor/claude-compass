@@ -1,0 +1,11 @@
+{
+  "path": "lessons/hooks/LESSON-hook-if-clause-no-or.md",
+  "notes": [
+    {
+      "text": "On Claude Code 2.1.330 a settings-file PostToolUse hook with \"if\": \"Write(*.md)\" fired for a.md and not for a.txt, so the 'settings-file hook entries have no if' clause is stale. The no-|| limit was not re-tested and still stands on the host docs. See [[research/llm-research/RESEARCH-axis-2b-host-features-gap]] C3 and [[research/llm-research/REVIEW-llm-research-for-compass]] B3.",
+      "by": "reviewer",
+      "date": "2026-11-21",
+      "tags": ["outdated", "claude-code", "hooks"]
+    }
+  ]
+}

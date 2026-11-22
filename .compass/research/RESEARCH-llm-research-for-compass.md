@@ -1,7 +1,7 @@
 ---
 title: "What Recent Anthropic and LLM Research Says Compass Should Change"
 type: research
-status: in-progress
+status: complete
 confidence: low
 area: methodology
 tags: [research, prior-art, anthropic, agents, memory, multi-agent, evals]
