@@ -105,6 +105,14 @@ def fixture_lines():
     return STATE.read_text(encoding="utf-8").splitlines()
 
 
+
+def _copy_side_folder(target):
+    """Copy the fixture's subagents side folder beside a transcript copy, so
+    the copy reads the same subagent records as the fixture."""
+    import shutil
+
+    shutil.copytree(STATE.with_suffix("") / "subagents", target.with_suffix("") / "subagents")
+
 class TouchedFilesTests(unittest.TestCase):
     def setUp(self):
         import tempfile
@@ -437,6 +445,7 @@ class NeverRaiseTests(unittest.TestCase):
         session, aborts the scan and drops the records before it."""
         whole = self.call_all(STATE)
         cut = self.tmp / "cut.jsonl"
+        _copy_side_folder(cut)
         cut.write_bytes(
             STATE.read_bytes()
             + b'{"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Edit", "input": {"file_pa'
@@ -448,6 +457,7 @@ class NeverRaiseTests(unittest.TestCase):
         trailing carriage return that breaks line-level parsing."""
         whole = self.call_all(STATE)
         crlf = self.tmp / "crlf.jsonl"
+        _copy_side_folder(crlf)
         crlf.write_bytes(STATE.read_bytes().replace(b"\n", b"\r\n"))
         self.assertEqual(self.call_all(crlf), whole)
 
