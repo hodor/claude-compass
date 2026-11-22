@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import stationlib  # noqa: E402
 
 
-def tester_report(mode, bugs=(), after_bugs=""):
+def make_tester_report(mode, bugs=(), after_bugs=""):
     """A tester report in the `tester.md` report format. `bugs` become the
     bullet items of the Bugs Found section (None omits the section), and
     `after_bugs` is text that follows it."""
@@ -46,8 +46,6 @@ def tester_report(mode, bugs=(), after_bugs=""):
     parts += [after_bugs]
     return "\n".join(parts) + "\n"
 
-
-tester_report.__test__ = False
 
 
 def validator_report(verdict_line="VERDICT: PASS", phase_rows=(), probes=""):
@@ -86,25 +84,25 @@ class ParseReportTests(unittest.TestCase):
         three = THREE_BUGS
         rows = {
             "post-build with three bugs": (
-                "tester", tester_report("Post-build", three), "tester-post", {"bugs": 3}),
+                "tester", make_tester_report("Post-build", three), "tester-post", {"bugs": 3}),
             "post-build with the section omitted counts zero": (
-                "tester", tester_report("Post-build", None), "tester-post", {"bugs": 0}),
+                "tester", make_tester_report("Post-build", None), "tester-post", {"bugs": 0}),
             "post-build with one bug": (
-                "tester", tester_report("Post-build", three[:1]), "tester-post", {"bugs": 1}),
+                "tester", make_tester_report("Post-build", three[:1]), "tester-post", {"bugs": 1}),
             "bullets of the next section are not bugs": (
                 "tester",
-                tester_report("Post-build", three[:2], after_bugs="### Coverage\n- Not covered: a\n- Not covered: b\n"),
+                make_tester_report("Post-build", three[:2], after_bugs="### Coverage\n- Not covered: a\n- Not covered: b\n"),
                 "tester-post", {"bugs": 2}),
             "bugs before a bullet-free trailing section": (
                 "tester",
-                tester_report("Post-build", three, after_bugs="### Coverage\nNothing else.\n"),
+                make_tester_report("Post-build", three, after_bugs="### Coverage\nNothing else.\n"),
                 "tester-post", {"bugs": 3}),
             "pre-build": (
-                "tester", tester_report("Pre-build", None), "tester-pre", {}),
+                "tester", make_tester_report("Pre-build", None), "tester-pre", {}),
             "pre-build whose body shows a Bugs Found section is still pre-build": (
-                "tester", tester_report("Pre-build", three), "tester-pre", {}),
+                "tester", make_tester_report("Pre-build", three), "tester-pre", {}),
             "plugin-scoped agent type": (
-                "compass:tester", tester_report("Post-build", three[:2]), "tester-post", {"bugs": 2}),
+                "compass:tester", make_tester_report("Post-build", three[:2]), "tester-post", {"bugs": 2}),
         }
         for name, (agent, text, station, counts) in rows.items():
             with self.subTest(name=name):
@@ -117,7 +115,7 @@ class ParseReportTests(unittest.TestCase):
     def test_task_id_comes_from_the_report(self):
         """Adversarial where: the task id is invented, taken from a later id
         when several appear, or crashes when none is present."""
-        later = tester_report("Post-build", None) + "\nlater mention of TASK-999\n"
+        later = make_tester_report("Post-build", None) + "\nlater mention of TASK-999\n"
         build = "## Build Report\n\n### Task\nTASK-512 ([[PLAN-034-x]] Phase 2)\n\n### Changes\n- `a.py` - x\n"
         rows = {
             "first id in a tester report wins": ("tester", later, "TASK-346"),
@@ -206,7 +204,7 @@ class TranscriptFixture(unittest.TestCase):
 
 
 class BuildRowTests(TranscriptFixture):
-    REPORT = tester_report(
+    REPORT = make_tester_report(
         "Post-build",
         ["**SECRETBUG-alpha-91:** `src/file.py:42` - repro: `run it` - expected: X / actual: Y"],
         after_bugs="### Coverage\n- Not covered: SECRET-coverage-line-77 because reasons\n",
