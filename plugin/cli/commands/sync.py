@@ -629,6 +629,15 @@ def _split_row_block(block):
     return "".join(lines[:end]), "".join(lines[end:])
 
 
+def _same_score(row_score, file_score):
+    """A row's parsed integer score against the frontmatter's score, equal by
+    value so `007` and `7` do not read as a difference."""
+    try:
+        return row_score == int(str(file_score).strip())
+    except ValueError:
+        return str(row_score) == str(file_score).strip()
+
+
 def _refreshed_row(block, filename, record):
     """The row for `block` rebuilt from the lesson file's frontmatter, or
     None when the row already matches it or cannot be refreshed (a row that
@@ -664,7 +673,7 @@ def _refreshed_row(block, filename, record):
         and old["category"] == str(data["category"])
         and old["area"] == str(data["area"])
         and old["tags"] == [str(t) for t in data["tags"]]
-        and str(old["score"]) == str(data["score"]).strip()
+        and _same_score(old["score"], data["score"])
         and old["summary"] == str(data["summary"])
         and old_escalated == str(data.get("escalated") or "").strip()
     )
