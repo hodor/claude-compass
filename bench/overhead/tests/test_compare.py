@@ -422,3 +422,137 @@ def test_without_margin_any_outcome_difference_still_prints_outcome_differs_and_
     assert "outcome differs, so no token verdict" in out
     assert "| builder" not in out
     assert "worse" not in out
+
+
+def test_goal_shares_count_partly_met_in_the_denominator_but_not_the_numerator(tmp_path):
+    """Adversarial where: a partly met item counted as met (or dropped from the
+    denominator) inflates the variant share; 4 met + 4 partly met of 8 is 0.5,
+    against 1.0 for the full arm, so every pair differs by exactly -0.5."""
+    for name in ("a", "b"):
+        write_outcome(tmp_path / "ob", name, met=8)
+        write_outcome(tmp_path / "oa", name, met=4, partly=4)
+
+    diffs = compare.paired_differences(tmp_path / "ob", tmp_path / "oa")
+
+    assert diffs == [-0.5, -0.5]
+
+
+@pytest.mark.parametrize("name, full_names, variant_names", [
+    ("same count, one name swapped", ["b1", "b2", "b3"], ["b1", "b2", "b9"]),
+    ("variant holds an extra build", ["b1", "b2"], ["b1", "b2", "b3"]),
+    ("variant holds one build fewer", ["b1", "b2", "b3"], ["b1", "b2"]),
+])
+def test_margin_refuses_outcome_folders_naming_different_builds_without_leaking_names(
+        tmp_path, plugin, capsys, name, full_names, variant_names):
+    """Adversarial where: pairing by position or by the shared subset would
+    silently compare the wrong builds; a mismatched set must exit non-zero with
+    no verdict and without printing a file name."""
+    for build in full_names:
+        write_outcome(tmp_path / "ob", build, met=8)
+    for build in variant_names:
+        write_outcome(tmp_path / "oa", build, met=8)
+    write_profile(tmp_path / "before", "a", {"subagent:builder": entry([100, 200])})
+    write_profile(tmp_path / "after", "a", {"subagent:builder": entry([10, 20])})
+
+    code, out = run_outcomes(capsys, tmp_path, plugin, "--margin", "0.25")
+    err = capsys.readouterr().err
+
+    assert code == 2
+    assert "worse" not in out
+    assert "| builder" not in out
+    assert "b9" not in out + err and "b3" not in out + err
+
+
+@pytest.mark.parametrize("side", ["ob", "oa"])
+def test_margin_refuses_a_goal_file_with_zero_items_whichever_arm_holds_it(tmp_path, plugin, capsys, side):
+    """Adversarial where: a verdict file scoring no goal item divides 0 by 0 in
+    the share; it must be refused (exit 2), not crash or read as share 0."""
+    write_pairs(tmp_path, 8, names=["b1", "b2", "b3"])
+    write_outcome(tmp_path / side, "b2", met=0, partly=0, unmet=0)
+
+    code, out = run_outcomes(capsys, tmp_path, plugin, "--margin", "0.25")
+
+    assert code == 2
+    assert "worse" not in out
+
+
+@pytest.mark.parametrize("counts", [
+    {"met": 2, "partly met": -2, "not met": 0},
+    {"met": "many", "not met": 1},
+])
+def test_margin_refuses_unusable_goal_counts_instead_of_a_share_outside_zero_to_one(tmp_path, plugin, capsys, counts):
+    """Adversarial where: counts that cancel to a zero total, or a non-numeric
+    count, must surface as a refusal rather than a traceback."""
+    write_pairs(tmp_path, 8, names=["b1", "b2", "b3"])
+    (tmp_path / "oa" / "b2.json").write_text(json.dumps({"counts": counts}), encoding="utf-8")
+
+    code, out = run_outcomes(capsys, tmp_path, plugin, "--margin", "0.25")
+
+    assert code == 2
+    assert "worse" not in out
+
+
+@pytest.mark.parametrize("margin", ["-0.125", "-1", "abc", ""])
+def test_margin_rejects_a_negative_or_non_numeric_value_with_no_verdict(tmp_path, plugin, capsys, margin):
+    """Adversarial where: a negative margin makes 'not worse' require a gain
+    and a non-numeric one must not reach the comparison; either refusal exits
+    2 (returned or raised by the argument parser) with no verdict printed."""
+    write_pairs(tmp_path, 8)
+
+    try:
+        code, out = run_outcomes(capsys, tmp_path, plugin, "--margin", margin)
+    except SystemExit as stop:
+        code, out = stop.code, capsys.readouterr().out
+
+    assert code == 2
+    assert "worse" not in out
+
+
+def test_margin_without_both_outcome_folders_is_refused(tmp_path, plugin, capsys):
+    """Adversarial where: --margin with no outcome folders has nothing to pair;
+    it must exit 2 rather than fall through to a token-only report."""
+    write_pairs(tmp_path, 8)
+
+    code, out = run(capsys, tmp_path / "before", tmp_path / "after", plugin, "--margin", "0.25")
+
+    assert code == 2
+    assert "| builder" not in out
+
+
+@pytest.mark.parametrize("margin", ["nan", "1.5", "inf"])
+def test_a_margin_beyond_a_fraction_of_goal_items_is_refused(tmp_path, plugin, capsys, margin):
+    """Adversarial where: the margin is a fraction of goal items, so a value
+    above 1 (or not a number) tolerates every possible loss and would read
+    'not worse' for a variant that built nothing."""
+    write_pairs(tmp_path, 0)
+
+    code, out = run_outcomes(capsys, tmp_path, plugin, "--margin", margin)
+
+    assert code == 2
+    assert "not worse" not in out
+
+
+def test_a_verdict_of_not_worse_is_followed_by_the_token_table_and_worse_by_none(tmp_path, plugin, capsys):
+    """Adversarial where: the worse branch returns early and the not-worse
+    branch must still reach the token comparison; a swapped condition would
+    print the table for the losing variant."""
+    write_pairs(tmp_path, 7)
+    _, kept = run_outcomes(capsys, tmp_path, plugin, "--margin", "0.25")
+    write_pairs(tmp_path, 0)
+    _, lost = run_outcomes(capsys, tmp_path, plugin, "--margin", "0.25")
+
+    assert "| builder" in kept
+    assert "| builder" not in lost
+    assert "No token verdict" in lost
+
+
+def test_the_margin_verdict_line_holds_no_em_or_en_dash(tmp_path, plugin, capsys):
+    """Adversarial where: the verdict line is built from a signed bound and a
+    negated margin; a typographic minus in either would break the report's
+    plain-text contract."""
+    write_pairs(tmp_path, 6)
+
+    _, out = run_outcomes(capsys, tmp_path, plugin, "--margin", "0.5")
+
+    assert "worse" in out
+    assert "—" not in out and "–" not in out and "−" not in out
