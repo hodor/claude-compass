@@ -47,6 +47,9 @@ def tester_report(mode, bugs=(), after_bugs=""):
     return "\n".join(parts) + "\n"
 
 
+tester_report.__test__ = False
+
+
 def validator_report(verdict_line="VERDICT: PASS", phase_rows=(), probes=""):
     rows = "\n".join(phase_rows)
     return (
