@@ -21,6 +21,11 @@ import xml.etree.ElementTree as ET
 
 TEST_DIRS = ("tests",)
 TEST_NAME_PATTERNS = ("test_*", "*_test.*", "*.test.*", "*.spec.*")
+SOURCE_EXTENSIONS = frozenset(
+    "py pyw js mjs cjs jsx ts tsx mts cts vue svelte go rs java kt kts scala rb "
+    "php c h cc cpp cxx hpp cs swift m mm lua sh bash ps1 pl r dart ex exs erl "
+    "clj fs groovy".split()
+)
 
 _HUNK = re.compile(r"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 _DRIVE = re.compile(r"^[A-Za-z]:/")
@@ -124,7 +129,12 @@ def _finish(coverage):
 
 
 def _hits(value):
-    return int(float(value))
+    """Hit count as an int; a value that is not a finite number raises
+    ValueError."""
+    try:
+        return int(float(value))
+    except OverflowError as exc:
+        raise ValueError(f"hit count {value!r} is not a finite number") from exc
 
 
 def parse_lcov(text, repo_root=None):
@@ -156,16 +166,10 @@ def parse_lcov(text, repo_root=None):
         elif record.startswith("DA:"):
             fields = record[3:].split(",")
             if len(fields) >= 2:
-                try:
-                    lines[int(fields[0])] = _hits(fields[1])
-                except ValueError:
-                    pass
+                lines[int(fields[0])] = _hits(fields[1])
         elif record.startswith("FNDA:"):
             hits, _, name = record[5:].partition(",")
-            try:
-                fn_hits[name] = _hits(hits)
-            except ValueError:
-                pass
+            fn_hits[name] = _hits(hits)
         elif record.startswith("FN:"):
             body = record[3:]
             match = _FN_RANGE.match(body) or _FN_PLAIN.match(body)
@@ -175,19 +179,38 @@ def parse_lcov(text, repo_root=None):
     return _finish(coverage)
 
 
-def parse_cobertura(text, repo_root=None):
+def _cobertura_path(filename, sources, repo_root, changed):
+    """Repo-relative path of a class file. A `filename` is relative to one of
+    the report's `<source>` directories; when the bare path is not a changed
+    path, the first source prefix that makes it one is used."""
+    bare = repo_relative(filename, repo_root)
+    if not changed or bare in changed:
+        return bare
+    for source in sources:
+        joined = source.replace("\\", "/").rstrip("/") + "/" + filename.replace("\\", "/")
+        candidate = repo_relative(joined, repo_root)
+        if candidate in changed:
+            return candidate
+    return bare
+
+
+def parse_cobertura(text, repo_root=None, changed=None):
     """Parse Cobertura XML. Every `<class>` contributes its `<lines>` to the
-    file named by its `filename`; a `<method>` contributes a function whose
-    hit count is that of its first line."""
+    file named by its `filename`, resolved against the `<source>` directories
+    when `changed` (a collection of repo-relative paths) is given; a `<method>`
+    contributes a function whose hit count is that of its first line."""
     if isinstance(text, str):
         text = _XML_DECLARATION.sub("", text, count=1)
     root = ET.fromstring(text)
+    sources = [
+        (node.text or "").strip() for node in root.iter("source") if (node.text or "").strip()
+    ]
     coverage = {}
     for cls in root.iter("class"):
         filename = cls.get("filename")
         if not filename:
             continue
-        path = repo_relative(filename, repo_root)
+        path = _cobertura_path(filename, sources, repo_root, changed)
         lines = {}
         for line in cls.findall("lines/line"):
             lines[int(line.get("number"))] = _hits(line.get("hits", "0"))
@@ -204,22 +227,33 @@ def parse_cobertura(text, repo_root=None):
     return _finish(coverage)
 
 
-def parse_report(text, repo_root=None):
+def parse_report(text, repo_root=None, changed=None):
     """Parse a coverage report, choosing XML or LCOV from the content."""
-    stripped = text.lstrip("﻿ \t\r\n")
+    stripped = text.lstrip("\ufeff \t\r\n")
     if stripped.startswith("<"):
-        return parse_cobertura(stripped, repo_root)
+        return parse_cobertura(stripped, repo_root, changed)
     return parse_lcov(text, repo_root)
+
+
+def _is_source(path):
+    name = path.rsplit("/", 1)[-1]
+    return "." in name and name.rsplit(".", 1)[1].lower() in SOURCE_EXTENSIONS
 
 
 def evaluate(coverage, changed):
     """Verdict for a diff against a coverage mapping.
 
-    `coverage` is None when no report exists. Returns
+    `coverage` is None when no report exists. A changed file counts only when
+    it is a source-code file or the report names it. Returns
     {"verdict": PASS | FINDING | SKIP | N/A, "reason": str | None, "files": [...]}
     where each file entry carries path, run, total, unrun, unreached_functions
     and measured (False for a changed file the report does not name)."""
-    changed = {path: sorted(set(nums)) for path, nums in changed.items() if nums}
+    named = coverage or {}
+    changed = {
+        path: sorted(set(nums))
+        for path, nums in changed.items()
+        if nums and (path in named or _is_source(path))
+    }
     if not changed:
         return {"verdict": "N/A", "reason": None, "files": []}
     if not coverage:

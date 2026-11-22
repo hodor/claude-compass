@@ -50,7 +50,8 @@ def _git_diff(repo, diff_range):
         proc = subprocess.run(
             [
                 "git", "-C", repo, "-c", "core.quotepath=false",
-                "diff", "-U0", "--no-color", "--no-ext-diff", diff_range,
+                "diff", "-U0", "--no-color", "--no-ext-diff",
+                "--src-prefix=a/", "--dst-prefix=b/", diff_range,
             ],
             capture_output=True,
         )
@@ -62,7 +63,7 @@ def _git_diff(repo, diff_range):
     return proc.stdout.decode("utf-8", "replace"), None
 
 
-def _load_coverage(report_path, repo_root):
+def _load_coverage(report_path, repo_root, changed):
     """Return `(coverage, reason)`: the parsed report, or None with the reason
     no measurement exists."""
     try:
@@ -71,8 +72,8 @@ def _load_coverage(report_path, repo_root):
     except OSError:
         return None, "no measurement"
     try:
-        coverage = reachlib.parse_report(text, repo_root)
-    except (ET.ParseError, ValueError, TypeError):
+        coverage = reachlib.parse_report(text, repo_root, set(changed))
+    except (ET.ParseError, ValueError, TypeError, OverflowError):
         return None, "no measurement: report unreadable"
     if not coverage:
         return None, "no measurement"
@@ -97,7 +98,9 @@ def run(args):
         sys.stderr.write(f"compass reach: {error}\n")
         return 1
     changed = reachlib.changed_lines_from_diff(diff_text)
-    coverage, reason = _load_coverage(options["report"], os.path.abspath(repo))
+    coverage, reason = _load_coverage(
+        options["report"], os.path.abspath(repo), changed
+    )
     result = reachlib.evaluate(coverage, changed)
     if result["verdict"] == "SKIP" and reason:
         result["reason"] = reason
