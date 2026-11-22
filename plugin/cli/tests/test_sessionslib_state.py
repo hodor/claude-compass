@@ -800,5 +800,313 @@ class ImplementationBranchTests(unittest.TestCase):
         self.assertEqual(sl.last_human_request(t), "the request")
 
 
+class ImplementationBranchTests(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.tmp = Path(self._tmp.name)
+
+    def sub_folder(self, name):
+        folder = self.tmp / name / "subagents"
+        folder.mkdir(parents=True)
+        return folder
+
+    def test_touched_files_orders_by_last_touch_not_first_touch(self):
+        """Adversarial where: the index recorded is the path's first touch, so
+        a file re-read late sorts ahead of one last touched earlier."""
+        t = write_lines(
+            self.tmp / "s.jsonl",
+            [
+                use("a", "Read", {"file_path": "A"}),
+                use("b", "Read", {"file_path": "B"}),
+                use("c", "Read", {"file_path": "A"}),
+            ],
+        )
+        self.assertEqual(
+            list(sl.touched_files(t)), [("B", "read", 1), ("A", "read", 2)]
+        )
+
+    def test_one_record_with_two_calls_gives_both_paths_the_record_index(self):
+        """Adversarial where: only the first tool_use block of a record is
+        read, or the second path gets a shifted index."""
+        record = {
+            "type": "assistant",
+            "message": {
+                "content": [
+                    {"type": "tool_use", "id": "a", "name": "Read", "input": {"file_path": "A"}},
+                    {"type": "tool_use", "id": "b", "name": "Edit", "input": {"file_path": "B"}},
+                ]
+            },
+        }
+        t = write_lines(self.tmp / "s.jsonl", ["not json", record])
+        self.assertEqual(
+            list(sl.touched_files(t)), [("A", "read", 1), ("B", "edited", 1)]
+        )
+
+    def test_blank_and_garbage_lines_still_count_toward_the_index(self):
+        """Adversarial where: the index counts only parsed records, so every
+        record after an unparseable or blank line reports a shifted index."""
+        t = write_lines(
+            self.tmp / "s.jsonl",
+            [
+                "{broken",
+                "",
+                use("a", "Edit", {"file_path": "A"}),
+                "garbage",
+                {"type": "system", "subtype": "compact_boundary", "compactMetadata": {"trigger": "auto"}},
+            ],
+        )
+        self.assertEqual(list(sl.touched_files(t)), [("A", "edited", 2)])
+        self.assertEqual(list(sl.compact_boundaries(t)), [(4, "auto")])
+
+    def test_utf8_bom_on_the_first_line_does_not_drop_that_record(self):
+        """Adversarial where: a byte-order mark before the first record makes
+        the line unparseable and its tool call vanishes."""
+        t = self.tmp / "bom.jsonl"
+        t.write_bytes(
+            b"\xef\xbb\xbf" + json.dumps(use("a", "Edit", {"file_path": "A"})).encode() + b"\n"
+        )
+        self.assertEqual(list(sl.touched_files(t)), [("A", "edited", 0)])
+
+    def test_subagent_only_paths_follow_main_paths_and_ignore_other_files(self):
+        """Adversarial where: subagent entries interleave with main entries by
+        raw index, a nested or misnamed file is read, or a path both touched
+        takes the subagent's index."""
+        main = write_lines(
+            self.tmp / "s.jsonl",
+            [
+                human("go"),
+                human("go"),
+                human("go"),
+                use("a", "Read", {"file_path": "M"}),
+            ],
+        )
+        side = self.sub_folder("s")
+        write_lines(
+            side / "agent-b.jsonl",
+            [use("x", "Edit", {"file_path": "FROM_B"}), use("y", "Edit", {"file_path": "M"})],
+        )
+        write_lines(
+            side / "agent-a.jsonl",
+            [human("p"), human("p"), human("p"), human("p"), use("z", "Write", {"file_path": "FROM_A"})],
+        )
+        write_lines(side / "notes.jsonl", [use("n", "Edit", {"file_path": "MISNAMED"})])
+        (side / "agent-dir.jsonl").mkdir()
+        nested = side / "deeper"
+        nested.mkdir()
+        write_lines(nested / "agent-n.jsonl", [use("n", "Edit", {"file_path": "NESTED"})])
+        self.assertEqual(
+            list(sl.touched_files(main)),
+            [("M", "edited", 3), ("FROM_A", "edited", 4), ("FROM_B", "edited", 0)],
+        )
+
+    def test_subagent_read_does_not_downgrade_main_edit(self):
+        """Adversarial where: a later-scanned subagent Read overwrites the
+        `edited` kind the main transcript recorded."""
+        main = write_lines(self.tmp / "s.jsonl", [use("a", "Write", {"file_path": "A"})])
+        write_lines(
+            self.sub_folder("s") / "agent-a.jsonl", [use("b", "Read", {"file_path": "A"})]
+        )
+        self.assertEqual(list(sl.touched_files(main)), [("A", "edited", 0)])
+
+    def test_sidechain_records_in_the_main_file_count(self):
+        """Adversarial where: records flagged isSidechain are filtered out of
+        the path scan."""
+        t = write_lines(
+            self.tmp / "s.jsonl",
+            [dict(use("a", "Edit", {"file_path": "A"}), isSidechain=True)],
+        )
+        self.assertEqual(list(sl.touched_files(t)), [("A", "edited", 0)])
+
+    def test_empty_file_path_and_unrelated_tools_are_not_touches(self):
+        """Adversarial where: an empty `file_path`, or a Grep or Bash call
+        carrying a `file_path` input, is listed as a touched file."""
+        t = write_lines(
+            self.tmp / "s.jsonl",
+            [
+                use("a", "Edit", {"file_path": ""}),
+                use("b", "Grep", {"file_path": "G"}),
+                use("c", "Bash", {"file_path": "B", "command": "ls"}),
+                use("d", "Read", {"file_path": "R"}),
+            ],
+        )
+        self.assertEqual(list(sl.touched_files(t)), [("R", "read", 3)])
+
+    def test_human_request_skips_unreadable_message_shapes(self):
+        """Adversarial where: a human record whose message is a string, absent,
+        or whose origin is a string raises or replaces the real request."""
+        t = write_lines(
+            self.tmp / "s.jsonl",
+            [
+                human("real"),
+                {"type": "user", "origin": {"kind": "human"}, "message": "str"},
+                {"type": "user", "origin": {"kind": "human"}},
+                {"type": "user", "origin": "human", "message": {"content": "later"}},
+            ],
+        )
+        self.assertEqual(sl.last_human_request(t), "real")
+
+    def test_unanswered_and_non_string_answers_are_skipped_siblings_kept(self):
+        """Adversarial where: one question missing from `answers` or answered
+        with a non-string drops or raises for the whole call's pairs."""
+        t = write_lines(
+            self.tmp / "s.jsonl",
+            [
+                {
+                    "type": "user",
+                    "toolUseResult": {
+                        "questions": [
+                            {"question": "one?"},
+                            {"question": "two?"},
+                            {"question": "three?"},
+                            {"question": "four?"},
+                        ],
+                        "answers": {"one?": "1", "three?": ["x"], "four?": "4"},
+                    },
+                }
+            ],
+        )
+        self.assertEqual(list(sl.question_answers(t)), [("one?", "1"), ("four?", "4")])
+
+    def test_runner_prefix_edges_around_cd_and_word_boundary(self):
+        """Adversarial where: a quoted `cd` directory with spaces, a tight
+        `&&`, or leading whitespace defeats the prefix; a runner-like word
+        (`pytest-cov`, `pytests`, `go testing`, `npm testing`) or a `cd`
+        joined by `;` or `||` is taken as a test run."""
+        runs = [
+            'cd "my dir" && pytest -q',
+            "cd 'my dir' && python3 -m pytest",
+            "cd x&& pytest",
+            "cd x &&pytest",
+            "   pytest",
+            "cd a && cd b && cd c && go test ./...",
+            "cd x && npm test:unit",
+        ]
+        not_runs = [
+            "pytest-cov",
+            "pytests",
+            "go testing",
+            "npm testing",
+            "cargo testx",
+            "cd x ; pytest",
+            "cd x || pytest",
+            "cd x && git commit -m 'pytest'",
+            "cd x && echo && pytest",
+            "python -m pytester",
+            "pytest-xdist -n 2",
+        ]
+        for i, cmd in enumerate(runs):
+            with self.subTest(run=cmd):
+                t = write_lines(self.tmp / f"r{i}.jsonl", bash_pair("t", cmd))
+                self.assertEqual(sl.last_test_run(t)[0], cmd)
+        for i, cmd in enumerate(not_runs):
+            with self.subTest(not_run=cmd):
+                t = write_lines(self.tmp / f"n{i}.jsonl", bash_pair("t", cmd))
+                self.assertIsNone(sl.last_test_run(t))
+
+    def test_pathological_cd_chains_match_in_bounded_time(self):
+        """Adversarial where: the `cd ... &&` prefix pattern backtracks
+        catastrophically on a long chain that never reaches a runner."""
+        import time
+
+        for i, cmd in enumerate(
+            ["cd " * 5000, "cd a &&" * 5000 + " ls", 'cd "' * 3000, "cd " + "x " * 20000]
+        ):
+            t = write_lines(self.tmp / f"p{i}.jsonl", bash_pair("t", cmd))
+            start = time.monotonic()
+            self.assertIsNone(sl.last_test_run(t))
+            self.assertLess(time.monotonic() - start, 5)
+
+    def test_non_bash_tool_carrying_a_runner_command_is_not_a_test_run(self):
+        """Adversarial where: any tool whose input has a `command` string
+        starting with a runner counts, not only Bash."""
+        t = write_lines(self.tmp / "s.jsonl", [use("a", "Task", {"command": "pytest"})])
+        self.assertIsNone(sl.last_test_run(t))
+
+    def test_later_run_without_a_result_does_not_borrow_an_earlier_output(self):
+        """Adversarial where: a final test call whose result never arrived
+        (session cut) reports the previous run's stdout."""
+        t = write_lines(
+            self.tmp / "s.jsonl",
+            [*bash_pair("a", "pytest one", "old output"), use("b", "Bash", {"command": "pytest two"})],
+        )
+        self.assertEqual(sl.last_test_run(t), ("pytest two", []))
+
+    def test_string_tool_use_result_falls_back_to_block_content(self):
+        """Adversarial where: a string `toolUseResult` (an error result)
+        discards the result block's text, leaving the tail empty."""
+        result = bash_result("a", "Error: exit 1\nFAILED x")
+        result["toolUseResult"] = "Error: exit 1\nFAILED x"
+        t = write_lines(
+            self.tmp / "s.jsonl", [use("a", "Bash", {"command": "pytest"}), result]
+        )
+        self.assertEqual(sl.last_test_run(t), ("pytest", ["Error: exit 1", "FAILED x"]))
+
+    def test_one_record_with_two_results_pairs_each_by_id(self):
+        """Adversarial where: a record holding two tool_result blocks gives
+        both the same text, so the earlier call's result replaces the later."""
+        t = write_lines(
+            self.tmp / "s.jsonl",
+            [
+                use("a", "Bash", {"command": "ls"}),
+                use("b", "Bash", {"command": "pytest"}),
+                {
+                    "type": "user",
+                    "message": {
+                        "content": [
+                            {"type": "tool_result", "tool_use_id": "a", "content": "listing"},
+                            {"type": "tool_result", "tool_use_id": "b", "content": "1 passed"},
+                        ]
+                    },
+                },
+            ],
+        )
+        self.assertEqual(sl.last_test_run(t), ("pytest", ["1 passed"]))
+
+    def test_crlf_in_stdout_splits_into_clean_lines(self):
+        """Adversarial where: Windows output with CRLF leaves a trailing
+        carriage return on each tail line."""
+        t = write_lines(
+            self.tmp / "s.jsonl", bash_pair("a", "pytest", "one\r\ntwo\r\n1 passed\r\n")
+        )
+        self.assertEqual(sl.last_test_run(t), ("pytest", ["one", "two", "1 passed"]))
+
+    def test_boundary_trigger_of_wrong_type_is_none_and_record_still_listed(self):
+        """Adversarial where: a non-string trigger is passed through, or a
+        boundary with an unreadable trigger is dropped from the list."""
+
+        def boundary(meta):
+            return {"type": "system", "subtype": "compact_boundary", "compactMetadata": meta}
+
+        t = write_lines(
+            self.tmp / "s.jsonl",
+            [
+                boundary({"trigger": 5}),
+                boundary({}),
+                boundary({"trigger": "manual"}),
+                {"type": "user", "subtype": "compact_boundary"},
+            ],
+        )
+        self.assertEqual(
+            list(sl.compact_boundaries(t)), [(0, None), (1, None), (2, "manual")]
+        )
+
+    def test_dotted_directory_and_session_names_still_find_the_side_folder(self):
+        """Adversarial where: the side folder is located by string slicing of
+        the path, so a dotted directory or session name breaks the lookup."""
+        base = self.tmp / "dir.with.dots"
+        base.mkdir()
+        main = write_lines(base / "s.1.jsonl", [use("a", "Read", {"file_path": "A"})])
+        side = base / "s.1" / "subagents"
+        side.mkdir(parents=True)
+        write_lines(side / "agent-a.jsonl", [use("b", "Edit", {"file_path": "B"})])
+        self.assertEqual(
+            list(sl.touched_files(str(main))),
+            [("A", "read", 0), ("B", "edited", 0)],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
