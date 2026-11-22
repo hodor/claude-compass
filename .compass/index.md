@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 5644 / 5000 tokens (index.md 4039, active.md 915, lessons/index.md 690). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 5862 / 5000 tokens (index.md 4257, active.md 915, lessons/index.md 690). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -84,6 +84,8 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-030-ideas-keep-their-status]] - one file per idea in category folders holds his words, status, history and where it led; an importer backfills a hand-made table; sync moves status when a spec names an idea; stage 2 catches his words at submit and the background helper files ideas and verdicts
 - [[PLAN-031-screenplays-in-the-vault]] - five live checks of the Fountain plugin in Obsidian and BetterFountain in VS Code come first, in one sitting; then Compass bundles Fountain 0.34.3, installs it into every project with an Obsidian vault, gives agents a fountain skill and a text check, and ships after acceptance here and in one other project
 - [[PLAN-032-consolidation-grounded-in-sources]] - a zero-token drift scan checks code references, index lines and catalog rows against git and the files they describe, sync keeps catalog rows true to lesson files, a mechanical check guards every lesson edit, and a seeded-staleness probe proves the scan; source pointers, the model judge and the lesson track record follow
+- [[PLAN-033-compaction-keeps-the-session-state]] - after a compaction a hook puts a state block built from the transcript, vault and git (open tasks, files touched, decisions, last request) back in front of the model with no model call, PreCompact tells the host summary which sections to keep, the handoff fills its file trail and decisions from the same command, and a probe pilot in bench/overhead measures what the host summary alone keeps
+- [[PLAN-034-checking-cost-follows-task-and-model]] - instruments first: the bench learns variant arms, a noninferiority guard and builder-review attribution, Compass records every checking spawn with its task, verdict and model, the planner's letter is tested for repeatability, and a pilot sizes the station ablation; checking levels change only in later waves, and only where measurement shows defects caught do not fall
 
 ## Decisions
 
