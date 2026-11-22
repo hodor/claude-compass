@@ -45,13 +45,8 @@ flowchart LR
 ```
 
 > [!IMPORTANT]
-> You decide: which candidates become specs. Recommended:
-> 1. New spec for **A1** (prompt cache as a design input), or a child of [[SPEC-027-compass-uses-fewer-tokens]] (Recommended: child of SPEC-027, since it shares its measure).
-> 2. New spec for **A2** (consolidation grounded in sources), a child of [[SPEC-012-learning-loop]].
-> 3. New spec for **A3** (verification beyond test-pass), a sibling of [[SPEC-013-test-quality]].
-> 4. **A4** and **A5** as one new spec on "the harness is a cost decision tied to the model", under [[SPEC-027-compass-uses-fewer-tokens]].
-> 5. **A6** folds into [[SPEC-025-stop-and-suggest-handoff-at-80-percent-context]]; **A7** gets a new spec only if you want a security line of work.
-> Group B needs no spec: each item edits a skill, a lesson or `hooks.json`. Group C items are tasks under the spec they would settle.
+> [!success] Approved 2026-11-21
+> A1, A2, A3 and A4 with A5 became draft specs; A6 is a proposed addition to [[SPEC-025-stop-and-suggest-handoff-at-80-percent-context]]; A7 has no spec. B1 to B4 were applied.
 
 ## Question
 

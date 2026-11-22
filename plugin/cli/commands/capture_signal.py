@@ -20,12 +20,13 @@ for a loop it was spawned to close, not to reopen.
 import datetime
 import json
 import os
+import re
 import sys
 
 import capturelib
 import vaultlib
 
-# Maps an event's agent_type to the signal kind capture-check's due() reads.
+# Maps an event's normalized agent_type to the signal kind capture-check's due() reads.
 # Any agent_type outside this map (including one absent from the event) gets
 # the default kind. An inline `Agent`-tool spawn carries its type here; a
 # teammate-style (named) spawn arrives with `agent_type` empty and is typed,
@@ -39,6 +40,28 @@ DEFAULT_SIGNAL_KIND = "subagent-finished"
 DEFAULT_AGENT_TYPE = "unknown"
 
 CAPTURES_DIR = "subagent-captures"
+
+
+def normalize_agent_type(raw):
+    """The bare agent name for an event's `agent_type`. An agent loaded from
+    a plugin reports a plugin-scoped type (`compass:builder`); one installed
+    into a project reports the bare name. A single leading `<plugin>:` prefix
+    is stripped so both forms key the same signal. A name that still carries
+    a colon afterwards, an empty value, or a non-string maps to a value that
+    is no known type (the default for empty and non-string)."""
+    if not isinstance(raw, str) or not raw.strip():
+        return DEFAULT_AGENT_TYPE
+    name = raw.strip()
+    _, sep, rest = name.partition(":")
+    if sep:
+        name = rest.strip()
+    return name or DEFAULT_AGENT_TYPE
+
+
+def _filename_stem(agent_type):
+    """`agent_type` reduced to characters safe in a file name on every
+    platform (a colon is not valid in a Windows file name)."""
+    return re.sub(r"[^A-Za-z0-9._-]", "-", agent_type)
 
 # The harness delivers SubagentStop more than once for a single completion -
 # same `agent_id`, milliseconds apart. Recording each delivery would double
@@ -95,7 +118,7 @@ def _write_capture(vault_root, agent_type, agent_id, message):
     directory.mkdir(parents=True, exist_ok=True)
     now = _now()
     timestamp = now.strftime("%Y-%m-%dT%H-%M-%S")
-    path = _unique_path(directory, f"{timestamp}_{agent_type}", ".md")
+    path = _unique_path(directory, f"{timestamp}_{_filename_stem(agent_type)}", ".md")
     frontmatter = (
         "---\n"
         "type: subagent_capture\n"
@@ -148,7 +171,7 @@ def run(args):
             capturelib.record_signal(vault_root, kind, f"teammate:{name}")
             return 0
 
-        agent_type = event.get("agent_type") or DEFAULT_AGENT_TYPE
+        agent_type = normalize_agent_type(event.get("agent_type"))
         agent_id = event.get("agent_id", "")
         message = event.get("last_assistant_message", "")
 

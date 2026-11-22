@@ -370,7 +370,7 @@ class HookStatusTests(unittest.TestCase):
             ("SessionStart", "startup", "Checking for a Compass update"),
             (
                 "SubagentStop",
-                "builder|tester|debug|validator|planner|researcher|reviewer|spec-writer|pr-describe",
+                "builder|compass:builder|tester|compass:tester|debug|compass:debug|validator|compass:validator|planner|compass:planner|researcher|compass:researcher|reviewer|compass:reviewer|spec-writer|compass:spec-writer|pr-describe|compass:pr-describe",
                 "Capturing subagent report",
             ),
         ]

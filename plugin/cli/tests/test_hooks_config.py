@@ -18,7 +18,7 @@ HOOKS_JSON = (
     Path(__file__).resolve().parents[2] / "hooks" / "hooks.json"
 )
 
-ORIGINAL_SUBAGENTSTOP_MATCHER = (
+SUBAGENTSTOP_AGENT_NAMES = (
     "builder|tester|debug|validator|planner|researcher|reviewer|spec-writer|pr-describe"
 )
 
@@ -86,9 +86,18 @@ class HooksJsonTests(unittest.TestCase):
         self.assertIn(prefilter, command)
         self.assertLess(command.index(prefilter), command.index("python"))
 
-    def test_subagentstop_matcher_preserved(self):
+    def test_subagentstop_matcher_lists_bare_and_plugin_scoped_names(self):
+        # Defect class: agents loaded from a plugin report `compass:<name>`
+        # and a bare-name matcher never fires for them.
         group = self.data["hooks"]["SubagentStop"][0]
-        self.assertEqual(group["matcher"], ORIGINAL_SUBAGENTSTOP_MATCHER)
+        alternatives = group["matcher"].split("|")
+        for name in SUBAGENTSTOP_AGENT_NAMES.split("|"):
+            self.assertIn(name, alternatives)
+            self.assertIn(f"compass:{name}", alternatives)
+        self.assertEqual(len(alternatives), len(set(alternatives)))
+        self.assertEqual(
+            len(alternatives), 2 * len(SUBAGENTSTOP_AGENT_NAMES.split("|"))
+        )
 
     def test_every_command_string_references_a_registered_subcommand(self):
         for hook in _iter_hook_entries(self.data["hooks"]):

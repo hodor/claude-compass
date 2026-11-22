@@ -162,6 +162,73 @@ class SubagentStopRedeliveryTests(unittest.TestCase):
         )
 
 
+class PluginScopedAgentTypeTests(unittest.TestCase):
+    """An agent loaded from a plugin reports `agent_type` as `<plugin>:<name>`
+    (`compass:validator`). The scoped and bare forms key the same signal."""
+
+    def _finish(self, agent_type, agent_id="agent-1"):
+        root = make_vault(self)
+        with_vault_env(self, root.parent)
+        feed_stdin(self, {
+            "agent_type": agent_type,
+            "agent_id": agent_id,
+            "last_assistant_message": "done",
+        })
+        with redirect_stdout(io.StringIO()):
+            capture_signal.run(["--hook"])
+        return root, capturelib.load_state(root)
+
+    def test_scoped_names_key_the_same_signal_as_bare_names(self):
+        for scoped, kind in (
+            ("compass:validator", "validator-finished"),
+            ("compass:debug", "debug-finished"),
+            ("compass:builder", "builder-finished"),
+            ("compass:tester", "subagent-finished"),
+        ):
+            with self.subTest(agent_type=scoped):
+                _, state = self._finish(scoped)
+                self.assertEqual(state["signals"][0]["kind"], kind)
+
+    def test_scoped_name_writes_a_capture_with_a_portable_file_name(self):
+        root, _ = self._finish("compass:builder")
+        files = list(captures_dir(root).glob("*_builder.md"))
+        self.assertEqual(len(files), 1)
+        self.assertIn("agent_type: builder\n", files[0].read_text(encoding="utf-8"))
+
+    def test_two_colons_strip_one_prefix_and_stay_untyped(self):
+        """`a:b:validator` is no plugin-scoped validator; typing it would
+        manufacture a strong signal from a malformed name."""
+        root, state = self._finish("a:b:validator")
+        self.assertEqual(state["signals"][0]["kind"], "subagent-finished")
+        captures = list(captures_dir(root).glob("*.md"))
+        self.assertEqual(len(captures), 1)
+        self.assertNotIn(":", captures[0].name)
+
+    def test_unknown_scoped_name_is_the_weak_default(self):
+        _, state = self._finish("compass:unheard-of")
+        self.assertEqual(state["signals"][0]["kind"], "subagent-finished")
+
+    def test_scoped_name_with_empty_agent_is_the_default_type(self):
+        root, state = self._finish("compass:")
+        self.assertEqual(state["signals"][0]["kind"], "subagent-finished")
+        self.assertEqual(len(list(captures_dir(root).glob("*_unknown.md"))), 1)
+
+    def test_empty_agent_type_is_the_default_type(self):
+        root, state = self._finish("")
+        self.assertEqual(state["signals"][0]["kind"], "subagent-finished")
+        self.assertEqual(len(list(captures_dir(root).glob("*_unknown.md"))), 1)
+
+    def test_non_string_agent_type_is_the_default_type(self):
+        _, state = self._finish(["compass:validator"])
+        self.assertEqual(state["signals"][0]["kind"], "subagent-finished")
+
+    def test_only_a_leading_prefix_is_stripped(self):
+        """`validator:compass` leads with the agent name, not a plugin
+        prefix; it must not type as a validator."""
+        _, state = self._finish("validator:compass")
+        self.assertEqual(state["signals"][0]["kind"], "subagent-finished")
+
+
 class TeammateNameTypingTests(unittest.TestCase):
     """A teammate completion arrives with agent_type empty (verified in the
     same payload dump), so the only type information available is the name
