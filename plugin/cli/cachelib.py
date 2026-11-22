@@ -109,13 +109,17 @@ def _records(path):
 
 def _token_count(value):
     """The int a usage value counts as: a bool or None is 0, a number or an
-    integer string its int value; anything else raises ValueError."""
+    integer string its int value; anything else, and any negative value,
+    raises ValueError."""
     if isinstance(value, bool) or value is None:
         return 0
     try:
-        return int(value or 0)
+        count = int(value or 0)
     except (TypeError, ValueError, OverflowError):
         raise ValueError("non-numeric usage value") from None
+    if count < 0:
+        raise ValueError("negative usage value")
+    return count
 
 
 def _split_value(value):
@@ -276,7 +280,8 @@ def _blobs(path, hashes):
     """The `api-request-blob` messages of a transcript for the given hashes."""
     found = {}
     for record in _records(path):
-        if record.get("type") == "api-request-blob" and record.get("hash") in hashes:
+        digest = record.get("hash")
+        if record.get("type") == "api-request-blob" and isinstance(digest, str) and digest in hashes:
             message = record.get("message")
             if isinstance(message, dict):
                 found[record["hash"]] = message
@@ -338,15 +343,31 @@ def _file_kind(path, description):
 
 def _instruction_file_kind(before, after):
     """Kind of the first instruction file, in text order, that differs
-    between two instruction blocks; None when no file differs."""
+    between two instruction blocks, matching files by path; a file that is
+    absent or changed on the later side is found in the earlier side's order,
+    then a file only the later side holds. None when no file differs."""
     old, new = _instruction_files(before), _instruction_files(after)
-    for index in range(max(len(old), len(new))):
-        mine = old[index] if index < len(old) else None
-        theirs = new[index] if index < len(new) else None
-        if mine != theirs:
-            path, description, _ = theirs or mine
+    newer = _by_identity(new)
+    for key, (path, description, body) in _by_identity(old).items():
+        if newer.get(key) != (path, description, body):
+            return _file_kind(path, description)
+    older = _by_identity(old)
+    for key, (path, description, _) in newer.items():
+        if key not in older:
             return _file_kind(path, description)
     return None
+
+
+def _by_identity(files):
+    """Instruction files keyed by path and occurrence number, in text order,
+    so a file is matched with its counterpart however the list around it
+    changed."""
+    keyed = {}
+    seen = {}
+    for path, description, body in files:
+        seen[path] = seen.get(path, 0) + 1
+        keyed[(path, seen[path])] = (path, description, body)
+    return keyed
 
 
 def _blob_difference(old, new):
