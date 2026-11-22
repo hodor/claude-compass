@@ -169,7 +169,9 @@ def collect_findings(repo, vault, base_from="blame"):
 
 
 def count_classes(findings):
-    counts = {}
+    """A count for every class in `CLASS_ORDER` (zero when none was found),
+    plus any other class a finding carries."""
+    counts = {name: 0 for name in CLASS_ORDER}
     for row in findings:
         counts[row["Class"]] = counts.get(row["Class"], 0) + 1
     return counts
@@ -179,8 +181,8 @@ def count_classes(findings):
 
 
 def _cell(text):
-    return (text.replace("\r\n", "\n").replace("\n", "<br>")
-            .replace("|", "\\|"))
+    return (text.replace("\r\n", "\n").replace("\r", "\n")
+            .replace("\n", "<br>").replace("|", "\\|"))
 
 
 def render_report(findings, counts, head, stamp):
