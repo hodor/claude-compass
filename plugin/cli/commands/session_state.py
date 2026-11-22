@@ -174,9 +174,10 @@ def _blocks(record, block_type):
     return [b for b in content if isinstance(b, dict) and b.get("type") == block_type]
 
 
-def _edit_start_lines(transcript):
-    """`{path: line}` of the start line each edited path's last Edit result
-    reports in its `structuredPatch`; a Write or an empty patch has none."""
+def _edit_start_lines(transcript, root):
+    """`{display_path: line}` of the start line each edited path's last Edit
+    result reports in its `structuredPatch`, keyed like the file lists (the
+    path relative to `root`); a Write or an empty patch has none."""
     starts = {}
     for path in [Path(transcript), *sessionslib.subagent_transcripts(transcript)]:
         calls = {}
@@ -196,7 +197,7 @@ def _edit_start_lines(transcript):
                 for block in _blocks(record, "tool_result"):
                     target = calls.get(block.get("tool_use_id"))
                     if target:
-                        starts[target] = line
+                        starts[_relative(target, root)] = line
         except OSError:
             continue
     return starts
@@ -300,7 +301,7 @@ def gather(root, transcript):
         "documents": _safe([], _document_decisions, touched, root),
         "edited": [t for t in reversed(touched) if t[1] == "edited"],
         "read": [t for t in reversed(touched) if t[1] == "read"],
-        "starts": _safe({}, _edit_start_lines, transcript) if has_transcript else {},
+        "starts": _safe({}, _edit_start_lines, transcript, root) if has_transcript else {},
         "dirty": dirty,
         "test_run": test_run,
         "branch": branch,
@@ -358,8 +359,8 @@ def render_block(state):
 def render_handoff(state):
     starts = state["starts"]
     changes = []
-    for display, _, raw in state["edited"]:
-        line = starts.get(raw)
+    for display, _, _ in state["edited"]:
+        line = starts.get(display)
         changes.append(f"- `{display}:{line}`" if line else f"- `{display}`")
     sections = [
         ("Tasks", _capped(state["tasks"], CAPS["tasks"])),
