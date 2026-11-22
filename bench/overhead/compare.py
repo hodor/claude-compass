@@ -126,7 +126,10 @@ def noninferiority(diffs, margin, seed=SEED, resamples=RESAMPLES):
     is the one-sided 95% lower bound (5th percentile) of the mean of `diffs`
     resampled with replacement from a generator seeded with `seed`; the verdict
     is "not worse" when the bound is strictly above minus `margin`, else
-    "worse". Raises ValueError for fewer than two pairs."""
+    "worse". Raises ValueError for fewer than two pairs or a `margin` that is
+    not a finite fraction in [0, 1]."""
+    if not 0 <= margin <= 1:
+        raise ValueError("a margin is a fraction of goal items between 0 and 1")
     if len(diffs) < 2:
         raise ValueError("a noninferiority verdict needs at least two paired builds")
     rng = random.Random(seed)
@@ -225,8 +228,8 @@ def main(argv=None):
     if args.margin is not None and args.outcomes_before is None:
         sys.stderr.write("--margin needs --outcomes-before and --outcomes-after\n")
         return 2
-    if args.margin is not None and args.margin < 0:
-        sys.stderr.write("--margin is a fraction of goal items and cannot be negative\n")
+    if args.margin is not None and not 0 <= args.margin <= 1:
+        sys.stderr.write("--margin is a fraction of goal items between 0 and 1\n")
         return 2
     try:
         before, after = load_profiles(args.before), load_profiles(args.after)
@@ -243,7 +246,7 @@ def main(argv=None):
     if check is not None:
         summary = (
             f"{check['verdict']}: lower bound of goal items met, variant minus full arm, "
-            f"{check['bound']:+.3f} against {-args.margin:+.3f}, over {check['pairs']} paired builds."
+            f"{check['bound'] + 0.0:+.3f} against {0.0 - args.margin:+.3f}, over {check['pairs']} paired builds."
         )
         if check["verdict"] == "worse":
             sys.stdout.write(f"Outcome {summary}\nNo token verdict.\n")
