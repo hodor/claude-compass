@@ -112,7 +112,7 @@ The review left six questions (forks) for the human; each guess below is the opt
 
 ### Wave 1 (detailed): the script half
 
-- [ ] TASK-301: Register `drift` and `lesson-check` in `COMMAND_SPECS` with one-line help each; handlers arrive in TASK-305 and TASK-306 and report not-implemented until then - complexity: S, depends_on: none, files: [plugin/cli/maincli.py]
+- [x] TASK-301: Register `drift` and `lesson-check` in `COMMAND_SPECS` with one-line help each; handlers arrive in TASK-305 and TASK-306 and report not-implemented until then - complexity: S, depends_on: none, files: [plugin/cli/maincli.py]
   - Automated verification: `python -m pytest plugin/cli/tests/test_maincli.py -q` passes (help lists both names); `python plugin/cli/compass --help` prints `drift` and `lesson-check`; `python -m pytest plugin/cli/tests -q` passes.
   - Manual verification: the two help lines read as plain sentences a newcomer understands.
 
