@@ -815,5 +815,369 @@ class StdinDisciplineTests(StateFixture):
         self.assertIn("piped request", json.loads(proc.stdout)["hookSpecificOutput"]["additionalContext"])
 
 
+class MultibyteBudgetTests(StateFixture):
+    def test_request_cut_counts_characters_not_bytes(self):
+        """Adversarial where: the 500-character request cap measured in bytes, halving or
+        splitting a multibyte request."""
+        self.write_transcript(user_human("\u754c" * 600))
+        body = "\n".join(sections(self.block())["Last human request"])
+        self.assertIn("\u754c" * 500, body)
+        self.assertNotIn("\u754c" * 501, body)
+
+    def test_worst_case_block_of_wide_characters_stays_under_8000_characters(self):
+        """Adversarial where: a budget measured in encoded bytes or JSON-escaped length lets
+        wide-character text through, or a cut lands mid-section and breaks the order."""
+        self.init_repo()
+        self.write_active(*[f"- [ ] TASK-{n}: " + "\u4efb" * 300 for n in range(60)])
+        groups = [user_human("\u754c" * 5000)]
+        groups += [edit_of(f"e{n}", f"src/\u6a21\u5757_{n:04d}_" + "\u540d" * 40 + ".py") for n in range(100)]
+        groups += [answer_of(f"q{n}", "\u554f" * 120, "\u7b54" * 120) for n in range(30)]
+        self.write_transcript(*groups)
+        text = self.block()
+        self.assertLess(len(text), 8000)
+        found = list(sections(text))
+        self.assertEqual(found, ORDER[:len(found)])
+        self.assertEqual(found[:2], ORDER[:2])
+
+    def test_hook_payload_is_valid_single_line_json_for_quotes_backslashes_and_control_text(self):
+        """Adversarial where: the request carries quotes, backslashes, emoji, tabs and U+2028
+        into the hook's JSON, breaking the envelope or splitting it over lines."""
+        nasty = 'say "hi" C:\\Users\\x\\n tab\there \U0001F600 sep\u2028end \x1b[0m'
+        folder = self.transcripts_folder()
+        session = self.write_transcript(user_human(nasty), path=folder / f"{SESSION_ID}.jsonl")
+        event = json.dumps({"hook_event_name": "SessionStart", "source": "compact",
+                            "transcript_path": str(session)})
+        code, text = self.run_cmd("--hook", stdin=event)
+        self.assertEqual(code, 0)
+        self.assertEqual(len(text.strip().splitlines()), 1)
+        context = json.loads(text)["hookSpecificOutput"]["additionalContext"]
+        self.assertIn('say "hi" C:\\Users\\x\\n', context)
+        self.assertIn("\U0001F600", context)
+
+
+class RenderBlockSweepTests(unittest.TestCase):
+    def state(self, **over):
+        base = {"request": None, "tasks": [], "answers": [], "documents": [], "edited": [], "read": [],
+                "starts": {}, "dirty": [], "test_run": None, "branch": []}
+        base.update(over)
+        return base
+
+    def test_block_stays_under_8000_characters_and_keeps_a_section_prefix_for_every_load(self):
+        """Adversarial where: a budget boundary off by one lets a section land just past the
+        cap, or lets a later section appear after an earlier one was dropped."""
+        from commands import session_state
+        for width in range(1, 240, 7):
+            for count in (0, 1, 7, 8, 9, 24, 25, 26, 60):
+                state = self.state(
+                    request="r" * 700,
+                    tasks=["- [ ] " + "t" * width] * count,
+                    answers=[("q" * width, "a" * width)] * (count % 12),
+                    documents=["d" * width] * count,
+                    edited=[("e" * width, "edited", "e" * width)] * count,
+                    read=[("r" * width, "read", "r" * width)] * count,
+                    dirty=[" M " + "x" * width] * count,
+                    test_run=("pytest", ["l" * width] * 8),
+                    branch=["main @ abc1234"])
+                text = session_state.render_block(state)
+                self.assertLessEqual(len(text), 8000, (width, count))
+                found = list(sections(text))
+                nonempty = [name for name, _ in session_state.block_sections(state)]
+                self.assertEqual(found, nonempty[:len(found)], (width, count))
+
+    def test_many_short_request_lines_and_long_tasks_both_survive_whole(self):
+        """Adversarial where: a 500-character request made of 250 one-letter lines expands with
+        its `> ` prefixes past what the budget leaves for the 25 open tasks."""
+        from commands import session_state
+        state = self.state(request="a\n" * 300, tasks=[("- [ ] TASK: " + "w " * 200)[:240]] * 60)
+        found = sections(session_state.render_block(state))
+        self.assertIn("Open tasks", found)
+        tasks = items(found["Open tasks"])
+        self.assertEqual(len(tasks), 26)
+        self.assertEqual(tasks[-1], "... and 35 more")
+        self.assertTrue(all(len(t) <= 240 for t in tasks))
+
+
+class PathRenderingTests(StateFixture):
+    def test_backslash_relative_paths_print_with_forward_slashes_and_merge_with_slash_spelling(self):
+        """Adversarial where: a Windows-spelled path (`src\\a.py`) listed twice beside its
+        `src/a.py` spelling, or printed with backslashes."""
+        self.write_transcript(user_human("go"), read_of("r1", "src\\a.py"), edit_of("e1", "src/a.py"))
+        found = sections(self.block())
+        self.assertEqual(items(found["Files edited"]), ["- src/a.py"])
+        self.assertNotIn("Files read", found)
+
+    def test_dot_slash_prefix_is_dropped_and_merges_with_the_bare_spelling(self):
+        """Adversarial where: `./x.py` and `x.py` counted as two files."""
+        self.write_transcript(user_human("go"), read_of("r1", "./x.py"), read_of("r2", "x.py"))
+        self.assertEqual(items(sections(self.block())["Files read"]), ["- x.py"])
+
+    def test_absolute_path_outside_the_project_prints_whole_with_forward_slashes(self):
+        """Adversarial where: a path outside the project rendered as a `../..` chain or left
+        with backslashes."""
+        target = str(self.outside / "elsewhere" / "f.py")
+        self.write_transcript(user_human("go"), edit_of("e1", target))
+        lines = items(sections(self.block())["Files edited"])
+        self.assertEqual(lines, ["- " + target.replace("\\", "/")])
+
+    def test_sibling_folder_sharing_the_project_name_prefix_is_not_inside_the_project(self):
+        """Adversarial where: a prefix comparison treats `proj-other/f.py` as inside `proj`."""
+        target = str(self.root / "proj-other" / "f.py")
+        self.write_transcript(user_human("go"), edit_of("e1", target))
+        lines = items(sections(self.block())["Files edited"])
+        self.assertEqual(lines, ["- " + target.replace("\\", "/")])
+
+    @unittest.skipUnless(os.name == "nt", "drive-letter spelling only exists on Windows")
+    def test_lowercase_drive_letter_spelling_still_prints_relative(self):
+        """Adversarial where: a path spelled with a different drive-letter case is treated as
+        outside the project."""
+        target = str(self.project / "src" / "m.py")
+        target = target[0].lower() + target[1:]
+        self.write_transcript(user_human("go"), edit_of("e1", target))
+        self.assertEqual(items(sections(self.block())["Files edited"]), ["- src/m.py"])
+
+
+class HandoffStartLineTests(StateFixture):
+    def test_start_line_survives_a_later_read_spelled_differently(self):
+        """Adversarial where: the merged display entry keeps the later Read's spelling, so the
+        absolute-path Edit's `path:line` is lost."""
+        target = str(self.project / "src" / "a.py")
+        self.write_transcript(user_human("go"), edit_of("e1", target, start=12), read_of("r1", "src/a.py"))
+        body = "\n".join(sections(self.block("--format", "handoff"))["Recent Changes"])
+        self.assertIn("`src/a.py:12`", body)
+
+    def test_two_edits_of_one_path_show_one_entry_with_a_line(self):
+        """Adversarial where: one file edited twice listed twice in Recent Changes."""
+        self.write_transcript(user_human("go"), edit_of("e1", "a.py", start=3), edit_of("e2", "a.py", start=40))
+        lines = items(sections(self.block("--format", "handoff"))["Recent Changes"])
+        self.assertEqual(len(lines), 1)
+        self.assertRegex(lines[0], r"^- `a\.py:\d+`$")
+
+    def test_edit_with_an_empty_patch_has_no_line_suffix(self):
+        """Adversarial where: a missing start line rendered as `path:None` or `path:0`."""
+        self.write_transcript(user_human("go"), edit_of("e1", "a.py"))
+        lines = items(sections(self.block("--format", "handoff"))["Recent Changes"])
+        self.assertEqual(lines, ["- `a.py`"])
+
+    def test_patch_start_of_zero_or_a_non_integer_gives_no_line_suffix(self):
+        """Adversarial where: a zero or non-integer `newStart` (a malformed record) printed as
+        `path:0`, `path:7` from a string or `path:2.5`."""
+        def odd(call_id, start):
+            patch = [{"oldStart": start, "newStart": start, "lines": []}]
+            return [tool_call(call_id, "Edit", {"file_path": f"{call_id}.py"}),
+                    tool_result(call_id, {"structuredPatch": patch})]
+        self.write_transcript(user_human("go"), odd("z", 0), odd("s", "7"), odd("f", 2.5))
+        lines = items(sections(self.block("--format", "handoff"))["Recent Changes"])
+        self.assertEqual(sorted(lines), ["- `f.py`", "- `s.py`", "- `z.py`"])
+
+    def test_subagent_edit_start_line_is_reported(self):
+        """Adversarial where: start lines read from the main transcript only, so a subagent's
+        Edit prints without its line."""
+        self.write_transcript(user_human("go"))
+        side = self.transcript.with_suffix("") / "subagents"
+        side.mkdir(parents=True)
+        (side / "agent-x1.jsonl").write_text(
+            "".join(json.dumps(r) + "\n" for r in edit_of("s1", "sub.py", start=9)), encoding="utf-8")
+        body = "\n".join(sections(self.block("--format", "handoff"))["Recent Changes"])
+        self.assertIn("`sub.py:9`", body)
+
+
+class DocumentDecisionTests(StateFixture):
+    def test_folder_spec_index_uses_the_folder_name_as_the_stem(self):
+        """Adversarial where: a folder spec's `index.md` stem prefixes every decision with
+        `index/`."""
+        path = self.project / ".compass" / "specs" / "SPEC-910-folder" / "index.md"
+        path.parent.mkdir(parents=True)
+        path.write_text(SPEC_TEXT, encoding="utf-8")
+        self.write_transcript(user_human("go"), read_of("r1", str(path)))
+        body = "\n".join(sections(self.block())["Decisions"])
+        self.assertIn("- SPEC-910-folder/D-01:", body)
+        self.assertNotIn("index/D-", body)
+
+    def test_spec_read_only_by_a_subagent_contributes_its_decisions(self):
+        """Adversarial where: documents scanned from the main transcript's paths only."""
+        spec = self.add_spec("SPEC-911-sub")
+        self.write_transcript(user_human("go"))
+        side = self.transcript.with_suffix("") / "subagents"
+        side.mkdir(parents=True)
+        (side / "agent-x2.jsonl").write_text(
+            "".join(json.dumps(r) + "\n" for r in read_of("s1", str(spec))), encoding="utf-8")
+        self.assertIn("SPEC-911-sub/D-01:", "\n".join(sections(self.block())["Decisions"]))
+
+    def test_spec_read_by_a_project_relative_path_is_found(self):
+        """Adversarial where: a relative `file_path` resolved against the current directory
+        instead of the project root."""
+        self.add_spec("SPEC-912-rel")
+        self.write_transcript(user_human("go"), read_of("r1", ".compass/specs/SPEC-912-rel.md"))
+        os.chdir(self.outside)
+        self.assertIn("SPEC-912-rel/D-01:", "\n".join(sections(self.block())["Decisions"]))
+
+    @unittest.skipUnless(os.name == "nt", "backslash separators only exist on Windows")
+    def test_spec_read_by_a_backslash_path_is_found(self):
+        """Adversarial where: a Windows-separator vault path misses the vault containment test."""
+        self.add_spec("SPEC-913-bs")
+        self.write_transcript(user_human("go"), read_of("r1", ".compass\\specs\\SPEC-913-bs.md"))
+        self.assertIn("SPEC-913-bs/D-01:", "\n".join(sections(self.block())["Decisions"]))
+
+    def test_spec_read_through_a_dotdot_spelling_is_listed_once(self):
+        """Adversarial where: the same spec read as `specs/x.md` and `specs/../specs/x.md` yields
+        its decisions twice, spending the 20-line cap."""
+        spec = self.add_spec("SPEC-914-dup")
+        alias = str(spec.parent / ".." / "specs" / spec.name)
+        self.write_transcript(user_human("go"), read_of("r1", str(spec)), read_of("r2", alias))
+        body = "\n".join(sections(self.block())["Decisions"])
+        self.assertEqual(body.count("SPEC-914-dup/D-01:"), 1)
+
+    def test_spec_deleted_after_being_read_does_not_break_the_block(self):
+        """Adversarial where: a read of a missing file or of a directory raises instead of being
+        skipped."""
+        vault = self.project / ".compass"
+        (vault / "specs").mkdir()
+        self.write_transcript(user_human("go"), read_of("r1", str(vault / "specs" / "gone.md")),
+                              read_of("r2", str(vault / "specs")))
+        self.assertNotIn("Decisions", sections(self.block()))
+
+    def test_decision_line_of_wide_characters_is_cut_at_140_characters(self):
+        """Adversarial where: the 140 cut counts bytes, or leaves the `...` beyond the cap."""
+        spec = self.add_spec("SPEC-915-wide", SPEC_TEXT.replace(
+            "The first decision of foo.", "\u6c7a" * 300))
+        self.write_transcript(user_human("go"), read_of("r1", str(spec)))
+        lines = [ln for ln in sections(self.block())["Decisions"] if "SPEC-915-wide/D-01" in ln]
+        self.assertEqual(len(lines), 1)
+        self.assertLessEqual(len(lines[0]) - 2, 140)
+        self.assertTrue(lines[0].endswith("..."))
+
+
+class GitStateTests(StateFixture):
+    def test_detached_head_names_the_commit_with_a_detached_marker(self):
+        """Adversarial where: a detached HEAD yields no branch section, or an empty branch name
+        before the `@`."""
+        self.init_repo()
+        self.git("checkout", "-q", "--detach")
+        self.write_transcript(user_human("go"))
+        body = "\n".join(sections(self.block())["Branch"]).strip()
+        self.assertRegex(body, r"^\(detached\) @ [0-9a-f]{7,}$")
+
+    def test_repository_without_a_commit_names_the_branch_only(self):
+        """Adversarial where: a fresh repository prints `trunk @ ` with an empty hash, or drops
+        the section."""
+        self.init_repo(commit=False)
+        self.write_transcript(user_human("go"))
+        body = "\n".join(sections(self.block())["Branch"]).strip()
+        self.assertEqual(body, "trunk")
+
+    def test_unicode_and_spaced_file_names_print_unescaped(self):
+        """Adversarial where: git's quoted-octal path escapes reach the block."""
+        self.init_repo()
+        (self.project / "a\u00e7\u00e3o final.txt").write_text("x", encoding="utf-8")
+        self.write_transcript(user_human("go"))
+        body = "\n".join(sections(self.block())["Uncommitted changes"])
+        self.assertNotIn("\\303", body)
+        self.assertIn("a\u00e7\u00e3o final.txt", body)
+
+    def test_compass_changes_alone_leave_the_uncommitted_section_out(self):
+        """Adversarial where: a vault-only change still creates an empty section header."""
+        self.init_repo()
+        (self.project / ".compass" / "active.md").write_text("- [ ] T\n", encoding="utf-8")
+        self.write_transcript(user_human("go"))
+        self.assertNotIn("Uncommitted changes", sections(self.block()))
+
+    def test_git_timeout_leaves_out_the_git_sections_and_exits_zero(self):
+        """Adversarial where: a hung git raises `TimeoutExpired` through the command, taking the
+        whole block with it."""
+        self.write_active("- [ ] TASK-1: kept")
+        self.write_transcript(user_human("go"))
+        with unittest.mock.patch("subprocess.run", side_effect=subprocess.TimeoutExpired("git", 30)):
+            found = sections(self.block())
+        self.assertIn("Open tasks", found)
+        self.assertNotIn("Branch", found)
+        self.assertNotIn("Uncommitted changes", found)
+
+    def test_git_output_in_a_foreign_encoding_is_decoded_with_replacement(self):
+        """Adversarial where: undecodable bytes in a file name raise `UnicodeDecodeError`."""
+        self.write_transcript(user_human("go"))
+        done = subprocess.CompletedProcess(["git"], 0, stdout=b"?? caf\xe9.txt\n", stderr=b"")
+        with unittest.mock.patch("subprocess.run", return_value=done):
+            text = self.block()
+        self.assertIn("caf", sections(text)["Uncommitted changes"][0])
+
+    def test_nonzero_git_exit_is_treated_as_no_output(self):
+        """Adversarial where: stdout of a failed git (partial text before the error) is used."""
+        self.write_transcript(user_human("go"))
+        failed = subprocess.CompletedProcess(["git"], 128, stdout=b"?? half.txt\n", stderr=b"fatal")
+        with unittest.mock.patch("subprocess.run", return_value=failed):
+            found = sections(self.block())
+        self.assertNotIn("Uncommitted changes", found)
+        self.assertNotIn("Branch", found)
+
+
+class OptionAndResolutionTests(StateFixture):
+    def test_equals_spelling_of_both_options_is_honoured(self):
+        """Adversarial where: `--format=handoff` and `--transcript=PATH` ignored, printing the
+        block for the wrong transcript."""
+        self.write_active("- [ ] TASK-1: one")
+        self.write_transcript(user_human("go"), edit_of("e1", "a.py", start=4))
+        code, text = self.run_cmd(f"--transcript={self.transcript}", "--format=handoff")
+        self.assertEqual(code, 0)
+        self.assertEqual(list(sections(text)), ["Tasks", "Recent Changes"])
+        self.assertIn("`a.py:4`", text)
+
+    def test_option_without_a_value_at_the_end_exits_zero_with_the_default(self):
+        """Adversarial where: a trailing `--transcript` indexes past the arguments."""
+        self.write_active("- [ ] TASK-1: one")
+        for flag in ("--transcript", "--format"):
+            code, text = self.run_cmd(flag)
+            self.assertEqual(code, 0)
+            self.assertIn("Open tasks", sections(text))
+
+    def test_session_id_with_a_path_separator_cannot_reach_a_file_outside_the_folder(self):
+        """Adversarial where: `CLAUDE_CODE_SESSION_ID=../evil` joins to a transcript above the
+        project's transcript folder."""
+        folder = self.transcripts_folder()
+        folder.mkdir(parents=True, exist_ok=True)
+        self.write_transcript(user_human("LEAKED request"), path=folder.parent / "evil.jsonl")
+        for value in ("../evil", "..\\evil"):
+            os.environ["CLAUDE_CODE_SESSION_ID"] = value
+            self.assertNotIn("LEAKED", self.run_cmd()[1])
+
+    def test_hook_event_transcript_path_beats_a_newer_transcript_in_the_folder(self):
+        """Adversarial where: the hook ignores the event's `transcript_path` and prints the
+        newest transcript of the folder."""
+        folder = self.transcripts_folder()
+        mine = self.write_transcript(user_human("MINE"), path=self.outside / "mine.jsonl")
+        self.write_transcript(user_human("NEWER"), path=folder / "other.jsonl")
+        event = json.dumps({"hook_event_name": "SessionStart", "source": "compact",
+                            "transcript_path": str(mine)})
+        context = json.loads(self.run_cmd("--hook", stdin=event)[1])["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("MINE", context)
+        self.assertNotIn("NEWER", context)
+
+    def test_hook_event_with_a_missing_transcript_path_falls_back_to_the_folder(self):
+        """Adversarial where: a non-existent `transcript_path` yields an empty block instead of
+        the session's own transcript."""
+        folder = self.transcripts_folder()
+        self.write_transcript(user_human("FALLBACK"), path=folder / f"{SESSION_ID}.jsonl")
+        event = json.dumps({"hook_event_name": "SessionStart", "source": "compact",
+                            "transcript_path": str(self.outside / "nope.jsonl")})
+        context = json.loads(self.run_cmd("--hook", stdin=event)[1])["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("FALLBACK", context)
+
+    def test_active_md_with_crlf_line_endings_lists_its_open_tasks(self):
+        """Adversarial where: CRLF files leave a trailing carriage return in task lines or hide
+        the lines from the matcher."""
+        (self.project / ".compass" / "active.md").write_bytes(
+            b"# Active\r\n- [ ] TASK-1: one\r\n- [x] TASK-2: done\r\n- [ ] TASK-3: two\r\n")
+        self.write_transcript(user_human("go"))
+        lines = items(sections(self.block())["Open tasks"])
+        self.assertEqual(lines, ["- [ ] TASK-1: one", "- [ ] TASK-3: two"])
+
+    def test_task_line_over_240_characters_is_cut_with_an_ellipsis(self):
+        """Adversarial where: one very long task line is kept whole, spending the budget."""
+        self.write_active("- [ ] TASK-1: " + "x" * 600)
+        self.write_transcript(user_human("go"))
+        line = items(sections(self.block())["Open tasks"])[0]
+        self.assertLessEqual(len(line), 240)
+        self.assertTrue(line.endswith("..."))
+
+
 if __name__ == "__main__":
     unittest.main()
