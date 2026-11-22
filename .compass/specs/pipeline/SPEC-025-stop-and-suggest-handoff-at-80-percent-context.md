@@ -29,3 +29,14 @@ KPI: [guess: every session that reaches 80% context usage stops and suggests a h
 - **D-02:** 80% means 80% of the whole context window.
 - **D-03:** Claude Code is built first; dsh follows once dsh hooks receive a transcript path and honor a halt ([[research/pipeline/RESEARCH-context-threshold-stop]]).
 - **D-04:** The suggestion is made once. If the human declines, work continues, and the handoff is suggested one more time at 95% context usage.
+
+## Proposed addition (draft, awaiting the human)
+
+> [!IMPORTANT]
+> You decide: fold this need into the spec? Approving moves it into Problem and Desired Outcome as part of the approved spec; declining leaves the spec as it stands above.
+
+**Problem.** When a session fills, its history is carried forward as a model-written summary: the host's compaction summary, or the handoff Compass suggests at 80%. Research found summaries lose what the next session needs and make runs longer, 13 to 15% on coding tasks, and every summarizing method studied lost the trail of which files were touched ([[research/llm-research/REVIEW-llm-research-for-compass]]). The host (the tool running the model, such as Claude Code) announces compaction before and after it runs, and Compass does nothing at either point, so what survives compaction is left to the host's summary alone.
+
+**Desired outcome.** A session that continues past a full context keeps the state its next step depends on (open tasks, files touched, decisions taken) in front of the model, with as little model-written summary as possible.
+
+KPI: [guess: after a compaction or a handoff, probe questions on recall, artifacts, the next step and decisions taken are answered as well as before it, at fewer tokens than a model-written summary.]

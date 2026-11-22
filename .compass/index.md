@@ -21,7 +21,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[SPEC-001-compass-vision-and-architecture]] — Core vision, principles, architecture, and resolved design decisions
 - [[specs/distribution/index|distribution]] (folder, 4 children) - how Compass reaches and stays current in projects - installs, updates, host CLIs, model resolution
 - [[specs/learning/index|learning]] (folder, 7 children) - how knowledge is captured and fed back - lessons, the capture loop, fidelity to the human's words
-- [[specs/pipeline/index|pipeline]] (folder, 10 children) - the development workflow itself - stages, their ordering, how plans elaborate, what each stage must carry forward
+- [[specs/pipeline/index|pipeline]] (folder, 11 children) - the development workflow itself - stages, their ordering, how plans elaborate, what each stage must carry forward
 - [[specs/vault-structure/index|vault-structure]] (folder, 7 children) - how the vault organizes, bounds, and retrieves its own memory - hierarchy, indexes, graph queries, active-set sweeping, sizing shapes, domain taxonomy
 - [[specs/tooling/index|tooling]] (folder, 3 children) - Compass's own machinery as a surface - capabilities reachable and measured, scaffolding invisible to the human
 - [[specs/human-surface/index|human-surface]] (folder, 4 children) - how Compass puts things in front of the human: the questions it asks, the documents it hands over for review, and how all of it reads
