@@ -88,15 +88,17 @@ Read the matched lesson file's frontmatter.
 
 If `seen` array has fewer than 3 entries: append today's date (YYYY-MM-DD) to `seen`, increment `score` by 1 (cap at 10), update `updated`. Body unchanged. Return `recurrence: <existing-filename>`.
 
-If `seen` already has 3 entries: append today's date to `seen` as always (the recurrence record keeps every date), AND set `escalated: <today>` with `escalation_reason: "recurred 3 times despite being captured - lesson worded too vaguely OR search retrieval failing"`. Increment `score` by 1. Also add `escalated: <today>` to the lesson's row in `.compass/meta/lessons-catalog.yaml` - `compass lessons` ranks escalated rows first, and sync appends rows but never rewrites existing ones, so the flag reaches the catalog here or not at all. Return `escalated: <existing-filename>`.
+If `seen` already has 3 entries: append today's date to `seen` as always (the recurrence record keeps every date), AND set `escalated: <today>` with `escalation_reason: "recurred 3 times despite being captured - lesson worded too vaguely OR search retrieval failing"`. Increment `score` by 1. Sync copies `escalated` into the catalog row, where `compass lessons` ranks escalated rows first. Return `escalated: <existing-filename>`.
 
-An ordinary recurrence (a `seen` date added) touches neither the catalog nor the index - they already point at the same file. Escalation's catalog-row update above is the one exception.
+A recurrence touches neither the catalog nor the index by hand: sync refreshes the existing row from the lesson file.
 
 ### 4b. Write refinement
 
 Edit the matched lesson file's body in place. The new body must still fit within 5 lines. If the refinement would push past 5 lines, compress: keep the most general statement of the rule, and move the displaced specifics into the same file under a `## Record (preserved)` heading below the body - that section is exempt from the 5-line cap, the same exemption an archived lesson's `Superseded:` line has. The cap bounds the active guidance, never the record. Update `updated` in frontmatter.
 
-If the refinement changes the summary, edit the existing catalog row in place. Never insert a row: every row is appended by the sync hook from the lesson file, and a hand-inserted row is a duplicate.
+After the edit, run `compass lesson-check <lesson>`; it names the failing line when the body exceeds 5 lines or a body or Record line, a `seen` or `tags` entry, or `score` was lost. Fix the edit until the check passes.
+
+A changed summary reaches the catalog row through sync, which refreshes existing rows from the lesson file; the skill writes only the lesson file.
 
 Return `refined: <existing-filename>`.
 

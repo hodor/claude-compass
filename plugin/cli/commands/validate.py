@@ -18,7 +18,10 @@ present but naming no row in the log is flagged `sizing_orphaned_id` -
 neither ever changes the exit code, since the vault predates the log and
 every pre-existing shape starts out unrecorded. A block link
 `[[doc#^id]]` whose target resolves to one file with no line ending in `^id`
-is flagged `broken_block_link`.
+is flagged `broken_block_link`. A lesson whose body (the text above its
+`## Record (preserved)` section) runs past the 5-line cap is flagged
+`lesson_body_over_cap`. When the newest row of the `compass drift` run log
+names a report, one `drift_open` warning names that report.
 """
 
 import re
@@ -26,6 +29,8 @@ import sys
 
 import decisionslib
 import vaultlib
+from commands import drift
+from commands import lesson_check
 from commands import sizing
 from commands import sweep
 from commands.hot_path import HOT_PATH_CAP, measure
@@ -263,6 +268,29 @@ def _taxonomy_checks(vault_root, records, warnings):
         )
 
 
+def _check_lesson_cap(rel, path, warnings):
+    """Append a `lesson_body_over_cap` warning when the lesson at `path` has
+    a body longer than `lesson_check.BODY_CAP` lines. The Record section is
+    exempt, exactly as `compass lesson-check` counts."""
+    _, error, after = lesson_check.split_lesson(vaultlib.read_vault_text(path))
+    if error:
+        return
+    count = len(lesson_check.body_lines(after))
+    if count > lesson_check.BODY_CAP:
+        warnings.append(
+            f"lesson_body_over_cap: {rel}: {count} lines (cap {lesson_check.BODY_CAP})")
+
+
+def _check_drift_open(vault_root, warnings):
+    """Append a `drift_open` warning when the latest `compass drift` run left
+    a report; a later clean run clears it."""
+    latest = drift.latest_open_report(vault_root)
+    if latest:
+        report, total = latest
+        warnings.append(
+            f"drift_open: {'/'.join(drift.DRIFT_DIR)}/{report}: {total} finding(s)")
+
+
 def check_vault(vault_root):
     """Return (errors, warnings), each a list of human-readable strings."""
     errors, warnings = [], []
@@ -292,6 +320,8 @@ def check_vault(vault_root):
 
         _check_links(rel, path.read_text(encoding="utf-8"), resolve, warnings,
                      attachments, vault_root)
+        if data.get("type") == "lesson":
+            _check_lesson_cap(rel, path, warnings)
 
     for rel in TOP_LEVEL_FILES:
         path = vault_root / rel
@@ -313,6 +343,7 @@ def check_vault(vault_root):
     _reconcile_sizing(vault_root, layout, records, warnings)
     _check_loops_shape(vault_root, layout, warnings)
     _taxonomy_checks(vault_root, records, warnings)
+    _check_drift_open(vault_root, warnings)
 
     _, active_sections = sweep.collect(vault_root)
     lingering = sum(
@@ -436,6 +467,23 @@ def _block_link_sentence(details):
     return f"{location}: the link{named} points to a marked line that is missing{reason}."
 
 
+def _lesson_cap_sentence(details):
+    location, rest = _split_location(details)
+    counts = re.match(r"(\d+) lines \(cap (\d+)\)", rest)
+    held = (f"runs {counts.group(1)} lines, past the {counts.group(2)} a lesson may keep"
+            if counts else "runs past the lines a lesson may keep")
+    return (f"{location}: the guidance text of this lesson {held}; move the extra "
+            f"lines under its preserved record.")
+
+
+def _drift_open_sentence(details):
+    location, rest = _split_location(details)
+    count = re.match(r"(\d+) ", rest)
+    found = f"{count.group(1)} place(s)" if count else "places"
+    return (f"{location}: the last drift check found {found} where text no longer "
+            f"matches the file or code it describes; read this report and fix them.")
+
+
 # Each known code maps to a function turning its details into the sentence a
 # person reads. The sentence leads with the location; `plain_finding` appends
 # the code in brackets.
@@ -454,6 +502,8 @@ PLAIN_SENTENCES = {
     "unclassified_root_folder": _unmarked_folder_sentence,
     "loop_misshapen": _misshapen_loop_sentence,
     "broken_block_link": _block_link_sentence,
+    "lesson_body_over_cap": _lesson_cap_sentence,
+    "drift_open": _drift_open_sentence,
 }
 
 
