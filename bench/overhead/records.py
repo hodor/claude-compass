@@ -30,7 +30,7 @@ Stations. A build row's `stations` maps `<station>|<model>` to integer counts
 read from the project's `.compass/meta/station-log.jsonl`: `spawns`, `bugs`,
 `fails` and `unparsed`, plus `helpful`, `neutral` and `harmful` under a
 `fix-cycle` entry. A station outside a safe name pattern drops its row, a model
-outside it counts under `unknown-model`, and every value is a non-negative
+that is not a Claude model id counts under `unknown-model`, and every value is a non-negative
 integer, so no text of a log row reaches the record. A baseline-arm build and a
 build with no project folder carry `{}`; a missing log gives `{}` and a damaged
 line costs only itself.
@@ -237,7 +237,7 @@ def _station_rows(project_dir):
     for line in data.decode("utf-8", errors="replace").splitlines():
         try:
             item = json.loads(line)
-        except ValueError:
+        except (ValueError, RecursionError):
             continue
         if isinstance(item, dict):
             found.append(item)
@@ -254,14 +254,14 @@ def station_counts(project_dir):
     Each row adds one spawn and its `bugs`/`fails` counts; an `unparsed` verdict
     adds an unparsed count and a fix-cycle row adds its `helpful`/`neutral`/`harmful`
     verdict. A row whose station is not a safe name is dropped; a model that is
-    not one (or is absent) counts under `unknown-model`. Never raises.
+    not a Claude model id (or is absent) counts under `unknown-model`. Never raises.
     """
     counts = {}
     for item in _station_rows(project_dir):
         station = _safe_name(item.get("station"))
         if station is None:
             continue
-        model = _safe_name(item.get("model")) or UNKNOWN_MODEL
+        model = _model_key(item.get("model"))
         entry = counts.get(f"{station}|{model}")
         if entry is None:
             entry = dict.fromkeys(STATION_COUNTS, 0)
