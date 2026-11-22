@@ -572,3 +572,296 @@ def test_find_cli_prints_the_point_with_trigger_and_token_counts(project_dir, po
     (line,) = [line for line in out.splitlines() if line.strip()]
     assert point in line
     assert "auto" in line and "150000" in line and "20000" in line
+
+
+# implementation-revealed defect classes -------------------------------------
+
+
+def _ask_question(index, question, answer_text, answers=None):
+    """An assistant AskUserQuestion call and the user record that answers it."""
+    call = assistant(index, "", ("AskUserQuestion", {"questions": [{"question": question}]}))
+    reply = tool_result(index + 1, answer_text)
+    if answers is not None:
+        reply["toolUseResult"] = {"answers": answers}
+    return [call, reply]
+
+
+def _decision_records(question, answer_text):
+    edit = assistant(1, "", ("Edit", {"file_path": "a/b.py", "old_string": "x", "new_string": "y"}))
+    return [user(0, "go"), edit, tool_result(2, "ok"), *_ask_question(3, question, answer_text),
+            boundary(5), summary(6)]
+
+
+def test_decision_question_text_does_not_contain_the_chosen_option(tmp_path, private_root):
+    """Adversarial where: the decision probe quotes the AskUserQuestion text
+    verbatim, and a question that lists its own options ("Flat files or a
+    database?") hands the grader's expected answer to the model under test."""
+    question = "Which storage do we use, Flat files or a database?"
+    folder = tmp_path / "p"
+    folder.mkdir()
+    text = f'User has answered your questions: "{question}"="Flat files". You can now continue.'
+
+    _, built = build_point(folder, _decision_records(question, text), private_root=private_root)
+
+    decision = probe_by_id(built)["decision"]
+    assert decision["expected"] == "Flat files"
+    assert decision["expected"].casefold() not in decision["question"].casefold()
+
+
+def test_decision_answer_with_a_backslash_does_not_abort_the_whole_build(tmp_path, private_root):
+    """Adversarial where: the fallback parser of the answer text feeds the raw
+    capture to json.loads, so an answer such as `C:\\dir` (an invalid JSON
+    escape) raises and one odd answer costs the point every probe."""
+    folder = tmp_path / "p"
+    folder.mkdir()
+    text = 'User has answered your questions: "Where do the logs go?"="C:\\dir\\logs". You can now continue.'
+
+    _, built = build_point(folder, _decision_records("Where do the logs go?", text), private_root=private_root)
+
+    assert "artifact" in probe_by_id(built)
+
+
+def test_decision_is_read_from_structured_answers_when_present_and_skips_declined_questions(
+        tmp_path, private_root):
+    """Adversarial where: the structured `toolUseResult.answers` ignored in favor
+    of text, or a declined question (is_error) taken as the user's choice."""
+    folder = tmp_path / "p"
+    folder.mkdir()
+    declined = _ask_question(3, "Second question?", "The user declined")
+    declined[1]["message"]["content"][0]["is_error"] = True
+    records = [
+        user(0, "go"),
+        *_ask_question(1, "First question?", "irrelevant text", answers={"First question?": "Option Alpha"}),
+        *declined,
+        boundary(5), summary(6),
+    ]
+
+    _, built = build_point(folder, records, private_root=private_root)
+
+    decision = probe_by_id(built)["decision"]
+    assert decision["expected"] == "Option Alpha"
+    assert "Second question" not in decision["question"]
+
+
+def test_edit_paths_are_cwd_relative_deduplicated_and_exclude_reads_and_sidechains(tmp_path, private_root):
+    """Adversarial where: absolute or backslash spellings of one file counted as
+    several paths, a Read or a sidechain edit counted as an edit, or a path
+    outside the working folder mangled by the cwd prefix strip."""
+    folder = tmp_path / "p"
+    folder.mkdir()
+    cwd = "C:\\work\\proj"
+    edit = {"old_string": "x", "new_string": "y"}
+    first = assistant(1, "", ("Edit", {"file_path": "C:\\work\\proj\\src\\a.py", **edit}))
+    again = assistant(2, "", ("Write", {"file_path": "c:/WORK/proj/src/a.py", "content": "z"}))
+    outside = assistant(3, "", ("MultiEdit", {"file_path": "C:\\work\\project2\\b.py", "edits": []}))
+    read = assistant(4, "", ("Read", {"file_path": "C:\\work\\proj\\read-only.py"}))
+    side = assistant(5, "", ("Edit", {"file_path": "C:\\work\\proj\\side.py", **edit}))
+    side["isSidechain"] = True
+    blank = assistant(6, "", ("Edit", {"file_path": "   ", **edit}))
+    for item in (first, again, outside, read, side, blank):
+        item["cwd"] = cwd
+    records = [user(0, "go"), first, again, outside, read, side, blank, boundary(7), summary(8)]
+
+    _, built = build_point(folder, records, private_root=private_root)
+
+    assert probe_by_id(built)["artifact"]["expected"] == ["src/a.py", "C:/work/project2/b.py"]
+
+
+@pytest.mark.parametrize("reply", [
+    "[]", '"TASK-12"', "42", "null", "", "   ", "{not json", "```json\n[1, 2]\n```",
+])
+def test_grade_counts_a_reply_without_a_json_object_as_unparsed(point, repo, private_root, fake_reply, reply):
+    """Adversarial where: a reply that is valid JSON but not an object (array,
+    string, number, null) or is empty slips past the parser as a parsed reply
+    and a crash or a stray score follows."""
+    graded = _graded(point, repo, private_root, fake_reply, lambda built: reply)
+
+    assert graded["unparsed"] is True
+    assert all(
+        (score == {"precision": 0.0, "recall": 0.0}) if isinstance(score, dict) else score == 0.0
+        for score in graded["scores"].values())
+
+
+def test_grade_wrong_value_types_score_zero_without_raising(point, repo, private_root, fake_reply):
+    """Adversarial where: a model that answers an artifact probe with a string
+    (or a list holding non-strings) and string probes with numbers or lists, so
+    the scorer iterates characters or raises on a non-string."""
+    def reply(built):
+        return {"artifact": "src/app/main.py", "recall-1": 7, "recall-2": ["3 failed"],
+                "continuation": 12, "decision": None}
+
+    graded = _graded(point, repo, private_root, fake_reply, reply)
+
+    assert graded["unparsed"] is False
+    assert graded["scores"]["artifact"] == {"precision": 0.0, "recall": 0.0}
+    assert [graded["scores"][k] for k in ("recall-1", "recall-2", "continuation", "decision")] == [0.0] * 4
+
+
+def test_grade_artifact_list_with_junk_entries_and_duplicates_does_not_inflate_precision(
+        point, repo, private_root, fake_reply):
+    """Adversarial where: non-string and blank entries counted in the denominator
+    or the same path listed twice counted as two hits."""
+    def reply(built):
+        path = built["probes"][0]["expected"][0]
+        assert built["probes"][0]["id"] == "artifact"
+        return {"artifact": [path, f"./{path}", path.replace("/", "\\"), "", "  ", 5, None]}
+
+    graded = _graded(point, repo, private_root, fake_reply, reply)
+
+    assert graded["scores"]["artifact"]["precision"] == 1.0
+    assert round(graded["scores"]["artifact"]["recall"], 2) == 0.33
+
+
+def test_grade_continuation_is_case_insensitive_but_two_ids_in_one_answer_score_zero(
+        point, repo, private_root, fake_reply):
+    """Adversarial where: an answer that hedges with every id it can think of
+    scoring as a hit, or a lower-case id missed on spelling."""
+    built = probe.build(point, private_root=private_root)
+    expected = probe_by_id(built)["continuation"]["expected"]
+    fake_reply.reply(json.dumps({"continuation": expected.lower()}))
+    _ask(point, "host-summary", repo, private_root, fake_reply)
+    fake_reply.reply(json.dumps({"continuation": f"{expected} or PLAN-999"}))
+    _ask(point, "none", repo, private_root, fake_reply)
+
+    graded = probe.grade(point, private_root=private_root)
+
+    assert graded["host-summary"]["scores"]["continuation"] == 1.0
+    assert graded["none"]["scores"]["continuation"] == 0.0
+
+
+def test_grade_decision_needs_the_whole_option_not_a_fragment_of_a_longer_word(
+        point, repo, private_root, fake_reply):
+    """Adversarial where: the decision match is a bare substring, so the option
+    `Flat` is credited for an answer that names `Flatten`."""
+    built = probe.build(point, private_root=private_root)
+    expected = probe_by_id(built)["decision"]["expected"]
+    fake_reply.reply(json.dumps({"decision": f"{expected}ter"}))
+    _ask(point, "host-summary", repo, private_root, fake_reply)
+    fake_reply.reply(json.dumps({"decision": f"  The user chose  {expected.upper()}  indeed"}))
+    _ask(point, "none", repo, private_root, fake_reply)
+
+    graded = probe.grade(point, private_root=private_root)
+
+    assert graded["host-summary"]["scores"]["decision"] == 0.0
+    assert graded["none"]["scores"]["decision"] == 1.0
+
+
+def test_grade_refuses_a_private_root_inside_a_git_work_tree_without_writing(point, repo):
+    """Adversarial where: grade files, which hold the reply text, written into a
+    repository when the refusal is checked only on build and ask."""
+    inside = repo / "overhead"
+
+    with pytest.raises(probe.Refused):
+        probe.grade(point, private_root=inside)
+    assert probe.main(["--private-root", str(inside), "grade", point]) == 2
+
+    assert not (inside / "probes").exists()
+
+
+def test_a_not_yet_existing_private_root_below_a_git_work_tree_is_refused(point, repo):
+    """Adversarial where: the work-tree check stops at the first missing folder,
+    so a private root several levels below the repository passes."""
+    deep = repo / "a" / "b" / "c"
+
+    with pytest.raises(probe.Refused):
+        probe.build(point, private_root=deep)
+
+    assert not (repo / "a").exists()
+
+
+def test_a_build_that_finds_no_probe_source_leaves_nothing_frozen(tmp_path, private_root):
+    """Adversarial where: a failed build leaves a key file behind, so the retry
+    after the transcript is fixed is refused as already frozen."""
+    folder = tmp_path / "p"
+    folder.mkdir()
+    write_transcript(folder, "t.jsonl", [user(0, "hi"), assistant(1, "just talk"), boundary(2), summary(3)])
+    (found,) = probe.find(folder)
+
+    with pytest.raises(ValueError):
+        probe.build(found["point"], private_root=private_root)
+    edited = [user(0, "hi"), assistant(1, "x", ("Edit", {"file_path": "a.py"})), boundary(2), summary(3)]
+    write_transcript(folder, "t.jsonl", edited)
+    built = probe.build(found["point"], private_root=private_root)
+
+    assert [item["id"] for item in built["probes"]] == ["artifact"]
+
+
+def test_build_of_an_index_that_is_not_a_boundary_is_refused_and_writes_nothing(point, private_root):
+    """Adversarial where: a point whose index was shifted by one (or is out of
+    range) builds a key from the wrong split of the history."""
+    transcript, _, number = point.rpartition("#")
+
+    for bad in (f"{transcript}#{int(number) + 1}", f"{transcript}#9999", transcript, f"{transcript}#x"):
+        with pytest.raises(ValueError):
+            probe.build(bad, private_root=private_root)
+
+    assert not (private_root / "probes").exists() or not list((private_root / "probes").rglob("*.json"))
+
+
+def test_ask_host_summary_does_not_carry_a_summary_of_a_later_compaction(
+        tmp_path, repo, private_root, fake_reply):
+    """Adversarial where: a summary of a later compaction (past the next
+    boundary) is carried instead of failing, so the arm is scored on text that
+    belongs to another point."""
+    folder = tmp_path / "p"
+    folder.mkdir()
+    records = [
+        user(0, "go"), assistant(1, "x", ("Edit", {"file_path": "a.py"})),
+        boundary(2), user(3, "more work"),
+        boundary(4), summary(5, "LATERSUMMARY"),
+    ]
+    write_transcript(folder, "t.jsonl", records)
+    first_point = probe.find(folder)[0]["point"]
+    probe.build(first_point, private_root=private_root)
+
+    with pytest.raises(probe.NoSummary):
+        _ask(first_point, "host-summary", repo, private_root, fake_reply)
+
+    assert fake_reply.calls() == []
+
+
+def test_ask_stores_nothing_when_the_session_does_not_end_done(point, repo, private_root, fake_reply):
+    """Adversarial where: a usage-limit or crashed session stores an empty reply
+    that grade later counts as an unparsed answer of the arm."""
+    probe.build(point, private_root=private_root)
+    fake_reply.mode("limit")
+
+    assert probe.main(
+        ["--private-root", str(private_root), "ask", point, "--arm", "none"],
+        claude_cmd=fake_reply.command, repo_root=repo) == 1
+
+    assert not list((private_root / "probes").rglob("ask-*.json"))
+    assert probe.grade(point, private_root=private_root) == {}
+
+
+def test_report_carried_tokens_are_the_input_over_the_floor_clamped_at_zero(private_root):
+    """Adversarial where: carried tokens computed as the raw input total, a
+    negative difference shown, or the floor arm given a non-zero cost."""
+    probes = private_root / "probes"
+
+    def grade_file(folder, arm, tokens, scores):
+        (probes / folder).mkdir(parents=True, exist_ok=True)
+        (probes / folder / f"grade-{arm}.json").write_text(json.dumps(
+            {"arm": arm, "unparsed": False, "scores": scores, "input_tokens": tokens}), encoding="utf-8")
+
+    scores = {"artifact": {"precision": 1.0, "recall": 0.5}, "recall-1": 1.0, "recall-2": 0.0}
+    grade_file("one", "none", 100, scores)
+    grade_file("one", "host-summary", 700, scores)
+    grade_file("two", "none", 500, scores)
+    grade_file("two", "host-summary", 300, scores)
+    grade_file("three", "host-summary", 900, scores)
+
+    rows = {(_cells(line)[0], _cells(line)[1]): _cells(line)
+            for line in probe.report(private_root=private_root).splitlines()[2:]}
+
+    assert rows[("host-summary", "artifact")][2:] == ["3", "0.50", "0", "300"]
+    assert rows[("host-summary", "recall")][3] == "0.50"
+    assert rows[("none", "artifact")][2:] == ["2", "0.50", "0", "0"]
+
+
+def test_report_on_an_empty_private_root_is_the_header_alone(private_root):
+    """Adversarial where: a report over a store that holds no grades raises on
+    the missing folder or divides by zero."""
+    lines = probe.report(private_root=private_root).splitlines()
+
+    assert len(lines) == 2 and lines[0].startswith("| arm |")
