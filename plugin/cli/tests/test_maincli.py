@@ -24,6 +24,16 @@ class HelpTests(unittest.TestCase):
         for name in ALL_COMMANDS:
             self.assertIn(name, text)
 
+    def test_help_lists_drift_and_lesson_check(self):
+        """Adversarial where: a command registered without a help line, or
+        missing from the registry, never reaches `compass --help`."""
+        out = io.StringIO()
+        with self.assertRaises(SystemExit), redirect_stdout(out):
+            maincli.main(["--help"])
+        text = out.getvalue()
+        self.assertRegex(text, r"\bdrift\b\s+\S")
+        self.assertRegex(text, r"\blesson-check\b\s+\S")
+
     def test_no_args_prints_help_and_returns_0(self):
         out = io.StringIO()
         with redirect_stdout(out):
