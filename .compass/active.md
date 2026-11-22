@@ -94,6 +94,18 @@ Plan: [[PLAN-034-checking-cost-follows-task-and-model]]; each task's full text, 
 - [ ] TASK-351: Two smoke builds on the subscription, one at a time - complexity: S, depends_on: TASK-343, TASK-346, TASK-349
 - [ ] TASK-352: The per-part spread pilot - complexity: M, depends_on: TASK-344, TASK-345, TASK-351
 
+## PLAN-033 Wave 1: compaction keeps the session state
+
+Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, files and checks are there.
+
+- [ ] TASK-330: Transcript readers for the session state - complexity: M, depends_on: none
+- [ ] TASK-331: `compass session-state` prints the state block - complexity: M, depends_on: TASK-330
+- [ ] TASK-332: Register the compaction hooks - complexity: S, depends_on: TASK-331
+- [ ] TASK-333: The handoff takes its mechanical sections from the command - complexity: S, depends_on: TASK-331
+- [ ] TASK-334: Live compaction trial in this repo - complexity: S, depends_on: TASK-332, TASK-333
+- [ ] TASK-335: Probe runner in `bench/overhead` - complexity: M, depends_on: none
+- [ ] TASK-336: Pilot on recorded compactions - complexity: S, depends_on: TASK-335
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].

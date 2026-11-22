@@ -1,7 +1,8 @@
 ---
 title: "Compaction Keeps the Session State"
 type: plan
-status: draft
+status: approved
+approved: 2026-11-21
 confidence: medium
 area: methodology
 tags: [handoff, compaction, context-window, hooks, precompact, sessionstart, session-continuity, probes]
@@ -32,8 +33,6 @@ flowchart LR
   T336 --> L
 ```
 
-> [!IMPORTANT]
-> You decide: approve this plan, making binding the three defaults marked `[guess: ...]` below (both tracks run at once, the probe lives in `bench/overhead`, decisions enter the block only from structured sources), the 8,000-character block budget, and Wave 1 as written.
 
 ## Goal
 
