@@ -38,7 +38,10 @@ cache creation + input)` tokens.
   requests are comparable (same parameters and shape), the kind of the first
   differing block; `counts` has every `cachelib.KINDS` entry, `n` is the
   comparable pairs and `pairs` all pairs.
-- `subagents.<type>`: `first_request_hit` (tokens-weighted, the headline),
+- `subagents.<type>`: one entry per known agent type: the agent files shipped
+  in `templates/agents/`, the host's built-in types and `unknown` (a transcript
+  without a type); any other type name is counted under `other`, so no
+  project-derived name reaches the output. `first_request_hit` (tokens-weighted, the headline),
   `first_request_read_share` (the share of first requests that read anything),
   `whole_hit`, and `first_difference` over consecutive same-type siblings of
   one parent ordered by start.
@@ -58,7 +61,9 @@ refused. `--compare FILE` reads a saved object and prints, per measure present
 in both, `<label>: before <b> after <a> change <c>` instead of the text report
 (on stderr when `--json` is given); it exits 1 when the first-request hit or
 the next-session read share fell by more than 5.0 points, the change taken
-from the unrounded values and rounded to one decimal. A saved object whose
+from the unrounded values and rounded to one decimal, or when one of the two
+has a value in the saved object and none now (a window without data), naming
+the measure on stderr. A saved object whose
 `main.first_request_hit` or `main.next_session_read_share` is not a measure
 with a finite number or null value is refused.
 
@@ -117,6 +122,10 @@ MAIN_ROWS = (
     ("cost_after_gap_share", "main cost after gaps over 1 hour", "ratio"),
 )
 SUBAGENT_HEADLINE = "first_request_hit"
+BUILT_IN_AGENTS = ("general-purpose", "Explore", "Plan", "statusline-setup",
+                   "claude-code-guide", "fork")
+OTHER_AGENT = "other"
+UNKNOWN_AGENT = "unknown"
 
 
 class UsageError(Exception):
@@ -309,6 +318,25 @@ def _started(path):
     return _when(cachelib.session_summary(path).started_at)
 
 
+def _known_agent_types():
+    """The agent type names a subagent row may carry: the agent files shipped
+    beside the CLI (`templates/agents/*.md` of the plugin, or `agents/*.md` of
+    an install), the host's built-in types and `unknown`."""
+    root = Path(__file__).resolve().parents[2]
+    names = set(BUILT_IN_AGENTS) | {UNKNOWN_AGENT}
+    for folder in (root / "templates" / "agents", root / "agents"):
+        try:
+            names.update(p.stem for p in folder.glob("*.md") if p.is_file())
+        except OSError:
+            continue
+    return names
+
+
+def _row_type(kind, known):
+    """The key a subagent of type `kind` is counted under."""
+    return kind if kind in known else OTHER_AGENT
+
+
 def _agent_type(path):
     meta = path.with_name(path.name[: -len(".jsonl")] + ".meta.json")
     try:
@@ -349,7 +377,7 @@ def _read_main(tally, sessions):
         previous = path
 
 
-def _read_subagents(tally, session_path):
+def _read_subagents(tally, session_path, known):
     """Fold the subagents of one parent session into `tally`."""
     try:
         paths = sessionslib.subagent_transcripts(session_path)
@@ -361,7 +389,7 @@ def _read_subagents(tally, session_path):
         if not reqs:
             continue
         kind = _agent_type(path)
-        stats = tally.subagents.setdefault(kind, _SubagentType())
+        stats = tally.subagents.setdefault(_row_type(kind, known), _SubagentType())
         first = reqs[0]
         stats.whole.add(sum(r.cache_read_input_tokens for r in reqs),
                         sum(_tokens(r) for r in reqs))
@@ -375,7 +403,7 @@ def _read_subagents(tally, session_path):
         rows.sort(key=lambda row: (row[0], row[1] or datetime.min.replace(tzinfo=timezone.utc),
                                    row[2]))
         for (_, _, _, earlier), (_, _, _, later) in zip(rows, rows[1:]):
-            tally.subagents[kind].diff.add(cachelib.compare_first_requests(earlier, later))
+            tally.subagents[_row_type(kind, known)].diff.add(cachelib.compare_first_requests(earlier, later))
 
 
 def _read_loops(tally, vault):
@@ -394,11 +422,11 @@ def _read_loops(tally, vault):
                  totals.run_count)
 
 
-def _read_project(tally, folder, vault, cutoff):
-    """Fold one project's transcript folder and loop ledgers into `tally`."""
+def _read_project(tally, folders, vault, cutoff):
+    """Fold one project's transcript folders and loop ledgers into `tally`."""
     sessions = []
     in_window = []
-    for path in _transcripts(folder):
+    for path in [p for folder in folders for p in _transcripts(folder)]:
         started = _started(path)
         if started is None or started < cutoff:
             continue
@@ -406,10 +434,11 @@ def _read_project(tally, folder, vault, cutoff):
         reqs = cachelib.requests(path)
         if reqs:
             sessions.append((path, started, reqs))
-    sessions.sort(key=lambda row: (row[1], row[0].name))
+    sessions.sort(key=lambda row: (row[1], str(row[0])))
     _read_main(tally, sessions)
+    known = _known_agent_types()
     for path in in_window:
-        _read_subagents(tally, path)
+        _read_subagents(tally, path, known)
     _read_loops(tally, vault)
 
 
@@ -426,39 +455,50 @@ def _first_cwd(folder):
     return None
 
 
+def _project_of(start, honor_env=False):
+    """(transcript folder, vault) of the project whose vault is the nearest
+    `.compass/` at or above `start`, read from its main checkout; raises
+    FileNotFoundError when there is none."""
+    found = vaultlib.find_vault_root(start, honor_env=honor_env)
+    main = sessionslib.main_checkout(found.parent)
+    vault = main / ".compass"
+    return sessionslib.transcripts_dir(main), vault if vault.is_dir() else found
+
+
 def _vault_projects():
-    """(transcript folder, vault) of every project folder whose first recorded
-    cwd is an existing directory holding a `.compass/` directory."""
+    """([transcript folders], vault) of every project whose vault lies at or
+    above the first recorded cwd of a transcript folder, that cwd being an
+    existing directory. A project's folders are those of its root and of the
+    subfolders sessions started in; folders recording one cwd count once."""
     root = sessionslib.config_dir() / "projects"
     try:
         folders = sorted(p for p in root.iterdir() if p.is_dir())
     except OSError:
         return []
-    found = []
+    projects = {}
     seen = set()
     for folder in folders:
         cwd = _first_cwd(folder)
         if cwd is None:
             continue
         try:
-            vault = Path(cwd) / ".compass"
-            if not vault.is_dir():
+            if not Path(cwd).is_dir():
                 continue
-            key = vault.resolve()
-        except (OSError, ValueError):
+            _, vault = _project_of(cwd)
+            vault_key, cwd_key = vault.resolve(), Path(cwd).resolve()
+        except (OSError, ValueError, FileNotFoundError):
             continue
-        if key not in seen:
-            seen.add(key)
-            found.append((folder, vault))
-    return found
+        if cwd_key in seen:
+            continue
+        seen.add(cwd_key)
+        projects.setdefault(vault_key, (vault, []))[1].append(folder)
+    return [(group, vault) for vault, group in projects.values()]
 
 
 def _this_project():
-    """(transcript folder, vault) of the project holding the working directory."""
-    found = vaultlib.find_vault_root()
-    main = sessionslib.main_checkout(found.parent)
-    vault = main / ".compass"
-    return sessionslib.transcripts_dir(main), vault if vault.is_dir() else found
+    """([transcript folder], vault) of the project holding the working directory."""
+    folder, vault = _project_of(None, honor_env=True)
+    return [folder], vault
 
 
 def collect(options, cutoff):
@@ -468,8 +508,8 @@ def collect(options, cutoff):
         projects = _vault_projects()
     else:
         projects = [_this_project()]
-    for folder, vault in projects:
-        _read_project(tally, folder, vault, cutoff)
+    for folders, vault in projects:
+        _read_project(tally, folders, vault, cutoff)
     reads = sorted(tally.first_reads)
     median = float(statistics.median(reads)) if reads else None
     return {
@@ -643,7 +683,9 @@ def compare(before_data, data):
         lines.append(_compare_row(label, kind, before, after))
         if key in dict(GUARDED):
             points = _points(before, after)
-            if points is not None and points < -FALL_LIMIT_POINTS:
+            if before is not None and after is None:
+                failures.append(f"{label} has no data in this window")
+            elif points is not None and points < -FALL_LIMIT_POINTS:
                 failures.append(f"{label} fell {-points:.1f} points (limit {FALL_LIMIT_POINTS})")
     before_agents = before_data.get("subagents")
     for kind, stats in data["subagents"].items():

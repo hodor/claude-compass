@@ -272,10 +272,11 @@ def test_compare_refuses_values_a_comparison_cannot_use(world, text):
     assert_failed(world.run(proj, "--compare", str(path)))
 
 
-def test_compare_null_current_value_prints_not_available_and_does_not_fail(world):
+def test_compare_null_current_value_prints_not_available_and_fails_the_guard(world):
     """Adversarial where: a window with no data (after is null, n=0) against a
-    real before value must format as `n/a` for both the change and the exit
-    code, never subtract None."""
+    real before value must format as `n/a`, never subtract None, and must fail
+    the guard naming each guarded measure without data, so a run that read
+    nothing cannot pass as unchanged."""
     proj = world.project("LEAKPOST-EMPTY")
     before = _before(
         world,
@@ -286,7 +287,7 @@ def test_compare_null_current_value_prints_not_available_and_does_not_fail(world
         },
     )
     result = world.run(proj, "--compare", str(before))
-    assert result.returncode == 0, result.stderr
+    assert_failed(result, "first-request hit", "next-session read share", "no data")
     assert "main first-request hit: before 90.0% after n/a change n/a" in result.stdout
     assert (
         "main first-request read median: before 5000 after n/a change n/a"
@@ -473,4 +474,61 @@ def test_text_report_with_a_non_ascii_agent_type_does_not_crash_a_narrow_pipe(wo
     result = world.run(proj, env=env)
     assert result.returncode == 0, result.stderr
     assert "traceback" not in result.stderr.lower()
-    assert "subagent agente-" in result.stdout
+    assert "subagent other " in result.stdout
+    assert "agente" not in result.stdout
+
+
+# ---- subagent rows are keyed only by known agent types -----------------------
+
+
+def test_subagent_rows_key_only_known_types_and_count_the_rest_as_other(world):
+    """Adversarial where: a teammate's free-text `agentType` (project-derived
+    words) must not become a row key in text, `--json` or a saved file; two
+    unknown names pool in `other`, and built-in, shipped and `unknown` types
+    keep their own rows."""
+    proj = world.project("LEAKPOST-TYPES")
+    parent = world.session(proj, "a", 0, [1], [use(100, 100, 0)])
+    world.subagent(parent, "t1", "LEAKTEAM-alpha", 2, [3], [use(100, 100, 0)], proj)
+    world.subagent(parent, "t2", "LEAKTEAM-beta", 4, [5], [use(0, 200, 0)], proj)
+    world.subagent(parent, "t3", "Explore", 6, [7], [use(100, 100, 0)], proj)
+    world.subagent(parent, "t4", "builder", 8, [9], [use(100, 100, 0)], proj)
+    world.subagent(parent, "t5", None, 10, [11], [use(100, 100, 0)], proj)
+    saved = world.root / "types.json"
+    result = world.run(proj, "--json", "--save", str(saved))
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert set(data["subagents"]) == {"other", "Explore", "builder", "unknown"}
+    assert data["subagents"]["other"]["whole_hit"]["n"] == 2
+    assert data["subagents"]["other"]["first_request_hit"]["value"] == pytest.approx(0.25)
+    text = world.run(proj)
+    for out in (result.stdout, saved.read_text(encoding="utf-8"), text.stdout):
+        assert "LEAKTEAM" not in out
+
+
+def test_subagent_siblings_of_unlike_unknown_types_are_not_paired(world):
+    """Adversarial where: two unknown type names folded into `other` must not
+    be compared with each other as same-type siblings."""
+    proj = world.project("LEAKPOST-PAIRS")
+    parent = world.session(proj, "a", 0, [1], [use(100, 100, 0)])
+    world.subagent(parent, "t1", "LEAKTEAM-alpha", 2, [3], [use(100, 100, 0)], proj)
+    world.subagent(parent, "t2", "LEAKTEAM-beta", 4, [5], [use(100, 100, 0)], proj)
+    data = world.json(proj)
+    assert data["subagents"]["other"]["first_difference"]["pairs"] == 0
+
+
+# ---- --all-compass finds a vault above the recorded cwd ----------------------
+
+
+def test_all_compass_counts_a_session_started_in_a_subfolder_of_a_vault_project(world):
+    """Adversarial where: a session whose first cwd is a subfolder of the
+    project (the vault is an ancestor) must count, and be counted once with a
+    session started at the root; a folder with no vault above stays skipped."""
+    proj = world.project("LEAKPOST-SUB")
+    sub = proj / "deep" / "er"
+    sub.mkdir(parents=True)
+    world.session(sub, "a", 0, [1], [use(500, 500, 0)])
+    bare = world.project("LEAKPOST-BARE", vault=False)
+    world.session(bare, "b", 5, [6], [use(500, 500, 0)])
+    data = world.json(proj, "--all-compass")
+    assert data["projects"] == 1
+    assert data["main"]["first_request_hit"]["n"] == 1
