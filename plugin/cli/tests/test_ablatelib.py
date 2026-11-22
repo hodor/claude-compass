@@ -109,7 +109,7 @@ def add_merge(repo, branch, files, message, eol="\n"):
 
 def build_repo(tmp_path, base_files, branch_files, task="TASK-402", autocrlf=None, eol="\n"):
     repo = tmp_path / "repo"
-    repo.mkdir()
+    repo.mkdir(parents=True, exist_ok=True)
     git(repo, "init", "-q", "-b", "main")
     if autocrlf is not None:
         git(repo, "config", "core.autocrlf", autocrlf)
