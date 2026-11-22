@@ -49,7 +49,8 @@ ZERO_SHA = "0" * 40
 _REF = re.compile(
     r"(?P<path>[\w.\-/@+]+):(?P<spec>\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)"
 )
-_FENCE = re.compile(r"^\s{0,3}(```|~~~)")
+_FENCE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")
+_FENCE_CLOSE = re.compile(r"^\s{0,3}(`{3,}|~{3,})\s*$")
 _SPAN = re.compile(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)")
 _HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 _BLAME_HEADER = re.compile(r"^([0-9a-f]{40}) \d+ (\d+)(?: \d+)?$")
@@ -184,12 +185,20 @@ def _ranges(spec):
 
 def _document_refs(rel, text, tops):
     refs = []
-    in_fence = False
+    opener = None
     for number, line in enumerate(text.split("\n"), 1):
-        if _FENCE.match(line):
-            in_fence = not in_fence
-            continue
-        for token in _reference_tokens(line, in_fence):
+        if opener is None:
+            match = _FENCE.match(line)
+            if match:
+                opener = match.group(1)
+                continue
+        else:
+            close = _FENCE_CLOSE.match(line)
+            if (close and close.group(1)[0] == opener[0]
+                    and len(close.group(1)) >= len(opener)):
+                opener = None
+                continue
+        for token in _reference_tokens(line, opener is not None):
             parsed = _parse_token(token, tops)
             if parsed is None:
                 continue
@@ -336,16 +345,29 @@ def _parse_diff(text):
     return files
 
 
+def _run_diff(repo, base, head, paths):
+    return _git(repo, "diff", "-U0", "--no-renames", "--no-color",
+                "--no-ext-diff", "--no-textconv",
+                "--src-prefix=a/", "--dst-prefix=b/",
+                base, head, "--", *paths)
+
+
 def _diff_paths(repo, base, head, paths):
+    """Diff entries by path for the cited paths between `base` and `head`.
+    A chunk git rejects (a pathspec escaping the repository) is retried one
+    path at a time; a path git still rejects maps to None."""
     merged = {}
     for chunk in _chunks(paths):
-        code, out = _git(repo, "diff", "-U0", "--no-renames", "--no-color",
-                         "--no-ext-diff", "--no-textconv",
-                         "--src-prefix=a/", "--dst-prefix=b/",
-                         base, head, "--", *chunk)
-        if code != 0:
-            return None
-        merged.update(_parse_diff(out))
+        code, out = _run_diff(repo, base, head, chunk)
+        if code == 0:
+            merged.update(_parse_diff(out))
+            continue
+        for path in chunk:
+            code, out = _run_diff(repo, base, head, [path])
+            if code == 0:
+                merged.update(_parse_diff(out))
+            else:
+                merged[path] = None
     return merged
 
 
@@ -379,7 +401,7 @@ def _gather_history(repo, refs, bases, head, pool):
         lambda b: _diff_paths(repo, b, head, sorted(paths_by_base[b])), order)))
     needs_log = [
         base for base in order
-        if diffs[base] and any(e["deleted"] for e in diffs[base].values())
+        if diffs[base] and any(e["deleted"] for e in diffs[base].values() if e)
     ]
     renames = dict(zip(needs_log, pool.map(
         lambda b: _rename_log(repo, b, head), needs_log)))
@@ -502,6 +524,8 @@ def _classify(ref, base, head, diffs, renames, blobs):
         return _record(ref, base, "unchanged", old, old)
     table = diffs.get(base)
     if table is None:
+        return _record(ref, base, "unclassifiable", old)
+    if path in table and table[path] is None:
         return _record(ref, base, "unclassifiable", old)
     entry = table.get(path)
     if entry is None:
