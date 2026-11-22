@@ -46,7 +46,7 @@ _ID = re.compile(r"\b(?:TASK|PLAN)-\d+\b")
 _ID_ANY_CASE = re.compile(r"\b(?:task|plan)-\d+\b", re.IGNORECASE)
 _ERROR_LINE = re.compile(r"^\s*(?:E\s+)?([A-Za-z_][\w.]*(?:Error|Exception):\s*\S.*?)\s*$")
 _FAILED_COUNT = re.compile(r"\b\d+ failed\b")
-_ANSWER_PAIR = re.compile(r'"((?:[^"\\]|\\.)*)"="((?:[^"\\]|\\.)*)"')
+_ANSWER_PAIR = re.compile(r'"(.*?)"="(.*?)"(?=, "|\.\s|\.$|$)', re.DOTALL)
 _MODEL_ID = re.compile(r"claude-[A-Za-z0-9.\-]+(\[[A-Za-z0-9]+\])?")
 _BOUNDARY = ("system", "compact_boundary")
 
@@ -279,10 +279,7 @@ def _answers_of(record, result):
     if isinstance(answers, dict):
         return {q: a for q, a in answers.items() if isinstance(q, str) and isinstance(a, str)}
     text = _text_of(result.get("content"))
-    return {
-        json.loads(f'"{q}"'): json.loads(f'"{a}"')
-        for q, a in _ANSWER_PAIR.findall(text)
-    }
+    return dict(_ANSWER_PAIR.findall(text))
 
 
 def _last_decision(history):
@@ -302,6 +299,13 @@ def _last_decision(history):
             if question.strip() and answer.strip():
                 return question.strip(), answer.strip()
     return None
+
+
+def _without_answer(question, answer):
+    """`question` with every occurrence of `answer` replaced by a gap, so a question
+    that lists its own options never carries the chosen one."""
+    gapped = re.sub(re.escape(answer), "[...]", question, flags=re.IGNORECASE)
+    return gapped if answer.casefold() not in gapped.casefold() else "(the question text is withheld)"
 
 
 def _last_model(history):
@@ -344,8 +348,8 @@ def _probe_set(history):
         question, answer = decision
         probes.append({
             "id": "decision", "type": "decision", "expected": answer,
-            "question": f'The user was asked: "{question}" Which option did the user choose? '
-                        "Give the option text alone.",
+            "question": f'The user was asked: "{_without_answer(question, answer)}" '
+                        "Which option did the user choose? Give the option text alone.",
         })
     return probes
 
@@ -476,7 +480,9 @@ def _score_text(value, expected, whole_words):
         return 0.0
     if whole_words:
         return 1.0 if re.search(rf"(?<!\w){re.escape(wanted)}(?!\w)", given) else 0.0
-    return 1.0 if wanted in given else 0.0
+    before = r"(?<!\d)(?<!\d[.,])" if wanted[0].isdigit() else ""
+    after = r"(?!\d)" if wanted[-1].isdigit() else ""
+    return 1.0 if re.search(f"{before}{re.escape(wanted)}{after}", given) else 0.0
 
 
 def _score_id(value, expected):
@@ -636,7 +642,7 @@ def main(argv, *, claude_cmd=None, repo_root=None, parent_env=None):
         return 1
     except (
         Refused, AlreadyFrozen, NotBuilt, NoSummary, ValueError,
-        launch.Refused, sandbox.Refused, records.Refused,
+        launch.Refused, sandbox.Refused, records.Refused, OSError,
     ) as error:
         print(str(error), file=sys.stderr)
         return 2
