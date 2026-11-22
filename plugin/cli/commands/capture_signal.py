@@ -24,6 +24,7 @@ import re
 import sys
 
 import capturelib
+import stationlib
 import vaultlib
 
 # Maps an event's normalized agent_type to the signal kind capture-check's due() reads.
@@ -146,6 +147,16 @@ def _already_recorded(vault_root, agent_id):
     return False
 
 
+def _append_station_row(vault_root, event, message):
+    """Append the finished subagent's station row to the vault's station
+    log. A failure here is swallowed: the capture and signal are already
+    recorded and the turn must not fail over a log write."""
+    try:
+        stationlib.append_row(vault_root, stationlib.build_row(event, message))
+    except Exception:
+        pass
+
+
 def run(args):
     if "--hook" not in args:
         # Nothing to do outside the hook path, and stdin is never touched,
@@ -182,6 +193,7 @@ def run(args):
         capturelib.record_signal(
             vault_root, SIGNAL_KINDS.get(agent_type, DEFAULT_SIGNAL_KIND), ref
         )
+        _append_station_row(vault_root, event, message)
     except Exception:
         pass  # best-effort: capture bookkeeping must never fail the turn
     return 0

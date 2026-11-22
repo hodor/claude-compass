@@ -101,6 +101,7 @@ from collections import Counter
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
 
+import stationlib
 import vaultlib
 
 try:
@@ -1235,6 +1236,15 @@ def _run_cycle(args):
     return 0
 
 
+def _append_station_row(vault_root, task, number, verdict):
+    """Append the judged cycle to the station log as a `fix-cycle` row. A
+    failing write leaves the cycle command's output and exit code unchanged."""
+    try:
+        stationlib.append_row(vault_root, stationlib.fix_cycle_row(task, number, verdict))
+    except Exception:
+        pass
+
+
 def _append_cycle(task, statuses, vault_root, log_path):
     """Judge `statuses` against the task's last logged cycle and append the
     new cycle. Returns `(report, None)`, or `(None, error)` with the log left
@@ -1270,6 +1280,7 @@ def _append_cycle(task, statuses, vault_root, log_path):
         "failing": [list(key) for key in sorted(failing, key=lambda test: (test[0] or "", test[1]))],
     })
     vaultlib.write_text_lf(log_path, "".join(json.dumps(row) + "\n" for row in rows))
+    _append_station_row(vault_root, task, number, verdict)
 
     lines = [f"cycle {number}: {verdict} - fixed {len(fixed)}, new {len(new)}, still failing {len(still)}"]
     if new:
