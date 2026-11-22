@@ -145,6 +145,11 @@ Plan: [[PLAN-030-ideas-keep-their-status]]; detailed from TASK-272's record once
 - [ ] TASK-283: Live check of stage 2 on this repo
 - [ ] TASK-284: Release 0.37.0
 
+Requested by the Disrupted hub session, 2026-11-21, for stage 2's detailing. The human chose the "Manager way" there: "yeah manager way is better we should be able to search all ideas and make decisions later, I rather like that". Each idea goes in his words into its home design doc under an "## Open ideas (Roger's words, not yet worked in)" block, each line ending "(IDEA-NNN)", with the IDEA file's `led_to` pointing at that doc; with no home doc, a small draft doc is created in the right domain folder and indexed. He also said "I'm worried everything is idea to you now".
+- `compass idea add --doc <file>` appends the idea line to that doc's Open ideas block and sets `led_to`.
+- `compass idea find` also searches Open ideas blocks.
+- TASK-282's filter also excludes his concerns, alongside questions and rejections of agent suggestions.
+
 ## PLAN-031 later: screenplays ship
 
 Plan: [[PLAN-031-screenplays-in-the-vault]]; detailed after Wave 1's live checks.
