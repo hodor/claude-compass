@@ -44,7 +44,7 @@ def _parse(args):
         if arg == "--json":
             options["json"] = True
         elif arg in ("--for-task", "--plan"):
-            if i + 1 >= len(args):
+            if i + 1 >= len(args) or args[i + 1].startswith("--"):
                 return None, f"{arg} needs a value"
             options["task" if arg == "--for-task" else "plan"] = args[i + 1]
             i += 1
