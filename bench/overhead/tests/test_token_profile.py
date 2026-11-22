@@ -532,3 +532,219 @@ def test_the_by_agent_flag_prints_only_the_per_agent_table(tmp_path, capsys, mon
     assert "subagent:builder" in out
     assert "Weighted tokens:" not in out
     assert "Active skill" not in out
+
+
+def write_child(folder, parent_session, agent_id, agent_type, usages, parent_agent_id=None, meta=True):
+    """A subagent session `agent-<agent_id>` under `parent_session`. Its
+    `.meta.json` names `parent_agent_id` as the spawning agent when one is given;
+    `meta=False` writes no `.meta.json` at all."""
+    agents = folder / parent_session / "subagents"
+    agents.mkdir(parents=True, exist_ok=True)
+    if meta:
+        record = {"agentType": agent_type}
+        if parent_agent_id is not None:
+            record["parentAgentId"] = parent_agent_id
+        (agents / f"agent-{agent_id}.meta.json").write_text(json.dumps(record), encoding="utf-8")
+    lines = [user_text("b" * 300)]
+    for index, one in enumerate(usages):
+        lines.append(assistant(f"{agent_id}-{index}", one, [{"type": "text", "text": "ok"}], sidechain=True))
+    write_session(agents, f"agent-{agent_id}", lines)
+
+
+def test_a_child_of_a_builder_is_filed_as_the_builders_review_and_other_sessions_keep_their_type(folder):
+    """Adversarial where: a review child filed by agent type alone lands in
+    `subagent:general-purpose` and cannot be told from the unrelated
+    general-purpose session; a filter that renames every general-purpose
+    session, or leaves the builder's tokens inflated by the child's, fails.
+    Weights: input 1, output 5."""
+    write_session(folder, SECRET_SESSION, build_lines())
+    write_child(folder, SECRET_SESSION, "b1", "builder", [usage(input_=100, output=10)])
+    write_child(folder, SECRET_SESSION, "r1", "general-purpose", [usage(input_=70, output=4)], parent_agent_id="b1")
+    write_child(folder, SECRET_SESSION, "g1", "general-purpose", [usage(input_=33, output=1)])
+
+    summary = token_profile.profile_folder(folder)
+
+    assert summary["sessions"] == {"build": 1, "subagent:builder": 1, "subagent:builder-review": 1,
+                                   "subagent:general-purpose": 1}
+    assert summary["by_kind"]["subagent:builder"]["weighted"] == pytest.approx(150)
+    assert summary["by_kind"]["subagent:builder-review"]["weighted"] == pytest.approx(90)
+    assert summary["by_kind"]["subagent:general-purpose"]["weighted"] == pytest.approx(38)
+    by_agent = summary["by_agent"]
+    assert by_agent["subagent:builder-review"]["sessions"] == 1
+    assert by_agent["subagent:builder-review"]["mean"] == pytest.approx(90)
+    assert by_agent["subagent:builder"]["mean"] == pytest.approx(150)
+    assert by_agent["subagent:general-purpose"]["mean"] == pytest.approx(38)
+
+
+def test_every_child_of_a_builder_is_its_review_whatever_its_own_type(folder):
+    """Adversarial where: attribution keyed on the child being `general-purpose`
+    misses a `reviewer` child, and one that stops at the first child of a
+    builder misses the second."""
+    write_session(folder, SECRET_SESSION, build_lines())
+    write_child(folder, SECRET_SESSION, "b1", "builder", [usage(input_=100)])
+    write_child(folder, SECRET_SESSION, "r1", "general-purpose", [usage(input_=10)], parent_agent_id="b1")
+    write_child(folder, SECRET_SESSION, "r2", "reviewer", [usage(input_=30)], parent_agent_id="b1")
+
+    summary = token_profile.profile_folder(folder)
+
+    assert summary["sessions"]["subagent:builder-review"] == 2
+    assert "subagent:general-purpose" not in summary["sessions"]
+    assert "subagent:reviewer" not in summary["sessions"]
+    assert summary["by_agent"]["subagent:builder-review"]["mean"] == pytest.approx(20)
+    assert sorted(summary["by_agent"]["subagent:builder-review"]["session_weighted"]) == [10, 30]
+
+
+@pytest.mark.parametrize("parent_agent_id", [
+    pytest.param("zz9", id="parent-id-names-no-session"),
+    pytest.param(None, id="meta-has-no-parentAgentId"),
+    pytest.param("", id="empty-parent-id"),
+    pytest.param("b", id="parent-id-is-only-a-prefix-of-the-builders-id"),
+    pytest.param("b12", id="builders-id-is-only-a-prefix-of-the-parent-id"),
+    pytest.param("v1", id="parent-is-a-validator-session"),
+])
+def test_a_child_whose_parent_is_not_a_builder_session_keeps_its_own_type(folder, parent_agent_id):
+    """Adversarial where: matching the parent id loosely (prefix, substring,
+    empty string) or defaulting an unresolved parent to builder files an
+    unrelated child as `subagent:builder-review`."""
+    write_session(folder, SECRET_SESSION, build_lines())
+    write_child(folder, SECRET_SESSION, "b1", "builder", [usage(input_=100)])
+    write_child(folder, SECRET_SESSION, "v1", "validator", [usage(input_=40)])
+    write_child(folder, SECRET_SESSION, "c1", "general-purpose", [usage(input_=33)], parent_agent_id=parent_agent_id)
+
+    summary = token_profile.profile_folder(folder)
+
+    assert summary["sessions"] == {"build": 1, "subagent:builder": 1, "subagent:validator": 1,
+                                   "subagent:general-purpose": 1}
+    assert "subagent:builder-review" not in summary["by_agent"]
+
+
+def test_a_subagent_with_no_meta_json_does_not_raise_and_its_tokens_stay_counted(folder):
+    """Adversarial where: reading `parentAgentId` from a `.meta.json` that is
+    absent raises FileNotFoundError, for the child itself or for a parent that
+    no meta file describes, or drops the session's tokens."""
+    write_session(folder, SECRET_SESSION, build_lines())
+    write_child(folder, SECRET_SESSION, "b1", "builder", [usage(input_=100)])
+    write_child(folder, SECRET_SESSION, "r1", "general-purpose", [usage(input_=70)], parent_agent_id="b1")
+    write_child(folder, SECRET_SESSION, "n1", "general-purpose", [usage(input_=11)], meta=False)
+    write_child(folder, SECRET_SESSION, "n2", "general-purpose", [usage(input_=22)], parent_agent_id="n1")
+
+    summary = token_profile.profile_folder(folder)
+
+    assert summary["by_kind"]["subagent:builder-review"]["weighted"] == pytest.approx(70)
+    assert summary["by_kind"]["subagent:builder"]["weighted"] == pytest.approx(100)
+    assert summary["by_kind"]["subagent:general-purpose"]["weighted"] == pytest.approx(22)
+    assert summary["sessions"]["subagent:general-purpose"] == 1
+    assert summary["by_kind"]["subagent:unknown"]["weighted"] == pytest.approx(11)
+
+
+def test_the_by_agent_flag_lists_the_builder_review_row(tmp_path, capsys, monkeypatch):
+    """Adversarial where: the new kind exists in the summary but the table
+    `--by-agent` prints drops it, or pools it away from the builder row."""
+    monkeypatch.setattr(token_profile, "wait_until_quiet", lambda folder: True)
+    root = tmp_path / "private"
+    project = tmp_path / "proj-abc123"
+    project.mkdir()
+    transcripts = token_profile.transcript_folder(project, root)
+    transcripts.mkdir(parents=True)
+    write_session(transcripts, SECRET_SESSION, build_lines())
+    write_child(transcripts, SECRET_SESSION, "b1", "builder", [usage(input_=100, output=10)])
+    write_child(transcripts, SECRET_SESSION, "r1", "general-purpose", [usage(input_=70, output=4)],
+                parent_agent_id="b1")
+    plugin = tmp_path / "plugin"
+    (plugin / "agents").mkdir(parents=True)
+    (plugin / "agents" / "builder.md").write_text("x", encoding="utf-8")
+
+    code = token_profile.main([str(project), "--private-root", str(root), "--by-agent", "--plugin-root", str(plugin)])
+
+    out = capsys.readouterr().out
+    assert code == 0
+    cells = [[cell.strip() for cell in line.split("|")] for line in out.splitlines()]
+    first_cells = {row[1] for row in cells if len(row) > 2}
+    assert "subagent:builder-review" in first_cells, out
+    assert "subagent:builder" in first_cells, out
+    assert "(other)" not in first_cells, out
+
+
+def write_raw_meta(folder, parent_session, agent_id, text):
+    """Overwrite `agent-<agent_id>.meta.json` under `parent_session` with `text` verbatim."""
+    path = folder / parent_session / "subagents" / f"agent-{agent_id}.meta.json"
+    path.write_text(text, encoding="utf-8")
+
+
+@pytest.mark.parametrize("child_meta, kind", [
+    pytest.param('["builder", "b1"]', "subagent:unknown", id="child-meta-is-a-json-list"),
+    pytest.param('{"agentType": "general-purpose", "parentAgentId": 1}', "subagent:general-purpose",
+                 id="parent-id-is-an-int"),
+    pytest.param('{"agentType": "general-purpose", "parentAgentId": ["b1"]}', "subagent:general-purpose",
+                 id="parent-id-is-a-list"),
+    pytest.param('{"agentType": "general-purpose", "parentAgentId": "b1"', "subagent:unknown",
+                 id="child-meta-is-truncated-json"),
+])
+def test_a_malformed_child_meta_json_never_raises_and_never_files_a_review(folder, child_meta, kind):
+    """Adversarial where: `parentAgentId` read without a type check lets a
+    non-string id reach the dict lookup (a list raises TypeError as an
+    unhashable key), and a non-dict or truncated meta raises on `.get`."""
+    write_session(folder, SECRET_SESSION, build_lines())
+    write_child(folder, SECRET_SESSION, "b1", "builder", [usage(input_=100)])
+    write_child(folder, SECRET_SESSION, "c1", "general-purpose", [usage(input_=33)])
+    write_raw_meta(folder, SECRET_SESSION, "c1", child_meta)
+
+    summary = token_profile.profile_folder(folder)
+
+    assert "subagent:builder-review" not in summary["sessions"]
+    assert summary["by_kind"]["subagent:builder"]["weighted"] == pytest.approx(100)
+    assert summary["by_kind"][kind]["weighted"] == pytest.approx(33)
+
+
+@pytest.mark.parametrize("parent_meta", [
+    pytest.param("not json at all", id="parent-meta-is-garbage"),
+    pytest.param('{"agentType": ["builder"]}', id="parent-agent-type-is-a-list"),
+    pytest.param('{"agentType": "builder agent"}', id="parent-agent-type-fails-the-name-pattern"),
+    pytest.param('{"agentType": "Builder"}', id="parent-agent-type-differs-in-case"),
+])
+def test_a_parent_whose_own_type_cannot_be_read_as_builder_does_not_make_its_children_reviews(folder, parent_meta):
+    """Adversarial where: the parent test compares a raw `agentType` value
+    instead of the validated one, or defaults an unreadable parent type to
+    builder, filing the child as a review."""
+    write_session(folder, SECRET_SESSION, build_lines())
+    write_child(folder, SECRET_SESSION, "b1", "builder", [usage(input_=100)])
+    write_raw_meta(folder, SECRET_SESSION, "b1", parent_meta)
+    write_child(folder, SECRET_SESSION, "c1", "general-purpose", [usage(input_=33)], parent_agent_id="b1")
+
+    summary = token_profile.profile_folder(folder)
+
+    assert "subagent:builder-review" not in summary["sessions"]
+    assert summary["by_kind"]["subagent:general-purpose"]["weighted"] == pytest.approx(33)
+
+
+def test_review_attribution_is_one_level_deep_and_stays_inside_its_own_session_folder(folder):
+    """Adversarial where: attribution that follows the parent chain files a
+    review's own child as a review, and one that pools agent ids across
+    top-level sessions files a child of another session's builder as a review."""
+    other = "0a1b2c3d-aaaa-4bbb-8ccc-ddddeeeeffff"
+    write_session(folder, SECRET_SESSION, build_lines())
+    write_child(folder, SECRET_SESSION, "b1", "builder", [usage(input_=100)])
+    write_child(folder, SECRET_SESSION, "r1", "general-purpose", [usage(input_=10)], parent_agent_id="b1")
+    write_child(folder, SECRET_SESSION, "g2", "general-purpose", [usage(input_=7)], parent_agent_id="r1")
+    write_session(folder, other, build_lines())
+    write_child(folder, other, "x1", "general-purpose", [usage(input_=50)], parent_agent_id="b1")
+
+    summary = token_profile.profile_folder(folder)
+
+    assert summary["sessions"]["subagent:builder-review"] == 1
+    assert summary["by_kind"]["subagent:builder-review"]["weighted"] == pytest.approx(10)
+    assert summary["sessions"]["subagent:general-purpose"] == 2
+    assert summary["by_kind"]["subagent:general-purpose"]["weighted"] == pytest.approx(57)
+
+
+@pytest.mark.parametrize("source, expected", [
+    ("output:subagent:builder-review", "output:subagent:builder-review"),
+    ("output:subagent:builder-reviewer", "output:(other)"),
+    ("output:subagent:Builder-review", "output:(other)"),
+])
+def test_the_builder_review_kind_passes_the_public_vocabulary_without_widening_it(source, expected):
+    """Adversarial where: the review kind is absent from the fixed public
+    names (so a published report folds it into `(other)`), or is admitted by a
+    prefix match that also lets `subagent:builder-reviewer` through. `known`
+    holds no review name, so only the fixed entry can admit it."""
+    assert token_profile.public_source(source, frozenset({"builder"})) == expected

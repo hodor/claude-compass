@@ -19,6 +19,16 @@ The run log, the pool, the goals and the records live under the private root;
 a private root inside a git work tree is refused.
 
     python pilot.py --private-root DIR --projects-root DIR [--report FILE]
+        [--arms ARM ARM ...] [--topics ID ID ...]
+
+`--arms` names the arms to build, `compass`, `baseline` or a variant id
+`compass-minus-<part>` (default: `compass` and `baseline`). A variant arm builds
+in a worktree of HEAD with `bench/overhead/variants/<part>.patch` applied
+(`variants.make`), which is the build's `repo_root`. `--topics` replays pool
+topics with their frozen goals: no probe, pick or freeze runs, and every named
+topic is built in every named arm. Builds already closed in the run log are not
+built again, so a variant replay pairs with the Compass builds a first run
+logged.
 
 Exit codes: 0 complete, 1 blocked or refused, 3 usage limit.
 """
@@ -44,6 +54,7 @@ import sandbox
 import stats
 import token_profile
 import topics
+import variants
 
 ARMS = records.ARMS
 WINDOW_HOURS = stats.WINDOW_SECONDS / 3600
@@ -250,6 +261,7 @@ class _Pilot:
     def __init__(
         self, *, repo_root, private_root, projects_root, claude_cmd, parent_env, probe_size,
         topic_count, runs_per_arm, pick, freeze, judge, drive, new_project, clock, profile=None,
+        arms=ARMS, topic_ids=None, variant_trees=None,
     ):
         self.repo_root = Path(repo_root)
         self.private_root = Path(private_root)
@@ -264,6 +276,9 @@ class _Pilot:
         self.profile = profile or self._profile_without_waiting
         self.waits_for_workers = profile is None
         self.log_path = run_log_path(self.private_root)
+        self.arms = tuple(arms)
+        self.topic_ids = None if topic_ids is None else list(topic_ids)
+        self.variant_trees = variant_trees or {}
 
     def session_options(self):
         return {
@@ -321,6 +336,8 @@ class _Pilot:
     # stages
 
     def pilot_topics(self):
+        if self.topic_ids is not None:
+            return list(self.topic_ids)
         return [e["topic"] for e in self.events("picked") if e["stage"] == "pilot"]
 
     def probe_topics(self):
@@ -364,7 +381,7 @@ class _Pilot:
         slots = []
         for index, topic_id in enumerate(self.pilot_topics()):
             for run in range(1, self.runs_per_arm + 1):
-                arms = ARMS if (index + run) % 2 == 1 else tuple(reversed(ARMS))
+                arms = self.arms if (index + run) % 2 == 1 else tuple(reversed(self.arms))
                 slots.extend((topic_id, arm, run) for arm in arms)
         return slots
 
@@ -445,6 +462,8 @@ class _Pilot:
             str(project), "--arm", arm, "--opening-file", str(opening), "--brief-file", str(brief),
             "--human-folder", str(folder / "human"), "--private-root", str(self.private_root),
         ]
+        if arm in self.variant_trees:
+            argv += ["--repo-root", str(self.variant_trees[arm])]
 
         marks = self.record_marks()
         printed = io.StringIO()
@@ -509,25 +528,36 @@ class _Pilot:
     def aggregates(self, closed):
         """Aggregates over the closed builds. Builds that ended done or were
         stopped by a cap, and have a judged verdict, enter the shares; failed
-        and capped builds are counted."""
+        and capped builds are counted. Only builds of the pilot's topics in the
+        pilot's arms enter. With a variant arm, the logged `compass` builds of
+        those topics enter the shares too, as the pairs of the variant, without
+        being built again."""
+        topics_here = self.pilot_topics()
+        paired_arms = set(self.arms)
+        if any(records.is_variant(arm) for arm in self.arms):
+            paired_arms.add("compass")
+        logged = [e for e in closed if e["topic"] in topics_here and e["arm"] in paired_arms]
+        closed = [e for e in logged if e["arm"] in self.arms]
         judged = {self.key(e) for e in self.events("judged")}
-        counted = [e for e in closed if _finished(e) and self.key(e) in judged]
+        counted = [e for e in logged if _finished(e) and self.key(e) in judged]
         by_column = {"weighted": {}, "raw": {}}
         for event in counted:
             for column, groups in by_column.items():
-                arms = groups.setdefault(event["topic"], {"compass": {}, "baseline": {}})
-                arms[event["arm"]][event["run"]] = event[column]
+                arms = groups.setdefault(event["topic"], {})
+                arms.setdefault(event["arm"], {})[event["run"]] = event[column]
         paired = {}
         for column, groups in by_column.items():
             paired[column] = {}
             for topic_id, arms in groups.items():
-                runs = sorted(set(arms["compass"]) & set(arms["baseline"]))
+                runs = sorted(set(arms.get("compass", {})) & set(arms.get("baseline", {})))
                 if runs:
                     paired[column][topic_id] = {
                         arm: [arms[arm][run] for run in runs] for arm in ARMS
                     }
-        out = {"weighted_share": None, "raw_share": None, "topic_shares": {}, "within_sd": None,
-               "df": None, "between_sd": None, "interval": None, "batch": None}
+        out = {"arms": list(self.arms), "weighted_share": None, "raw_share": None, "topic_shares": {},
+               "within_sd": None, "df": None, "between_sd": None, "interval": None, "batch": None,
+               "variants": {variant: self.variant_shares(by_column, variant)
+                            for variant in self.arms if records.is_variant(variant)}}
         for column in ("weighted", "raw"):
             with contextlib.suppress(ValueError):
                 out[f"{column}_share"] = stats.overall_share(paired[column])
@@ -544,7 +574,7 @@ class _Pilot:
             out["interval"] = None if low is None else (low, high)
         out["failed_builds"] = sum(1 for e in closed if not _finished(e))
         out["unjudged_builds"] = sum(1 for e in closed if _finished(e) and self.key(e) not in judged)
-        out["capped_by_arm"] = {arm: sum(1 for e in counted if e["arm"] == arm and _capped(e)) for arm in ARMS}
+        out["capped_by_arm"] = {arm: sum(1 for e in counted if e["arm"] == arm and _capped(e)) for arm in self.arms}
         if out["within_sd"] is not None and out["weighted_share"] is not None:
             with contextlib.suppress(ValueError):
                 out["batch"] = stats.batch_plan(out["weighted_share"], out["within_sd"], out["df"])
@@ -555,13 +585,33 @@ class _Pilot:
         with contextlib.suppress(ValueError):
             out["builds_per_window"] = stats.builds_per_window(seconds)
         out["mean_weighted_by_arm"] = {
-            arm: _mean([e["weighted"] for e in closed if e["arm"] == arm]) for arm in ARMS
+            arm: _mean([e["weighted"] for e in closed if e["arm"] == arm]) for arm in self.arms
         }
         out["mean_raw_by_arm"] = {
-            arm: _mean([e["raw"] for e in closed if e["arm"] == arm]) for arm in ARMS
+            arm: _mean([e["raw"] for e in closed if e["arm"] == arm]) for arm in self.arms
         }
         out["judged"] = self.judged_counts()
         out["profile"] = self.profiles(closed, counted)
+        return out
+
+    @staticmethod
+    def variant_shares(by_column, variant):
+        """{"weighted_share", "raw_share", "pairs"}: the share of the variant's
+        builds against the Compass builds of the same topic and run index, None
+        where no pair exists."""
+        out = {"weighted_share": None, "raw_share": None, "pairs": 0}
+        for column in ("weighted", "raw"):
+            matched = {}
+            for topic_id, arms in by_column[column].items():
+                runs = sorted(set(arms.get("compass", {})) & set(arms.get(variant, {})))
+                if runs:
+                    matched[topic_id] = {
+                        arm: [arms[arm][run] for run in runs] for arm in ("compass", variant)
+                    }
+            pairs = stats.variant_pairs(matched, variant)
+            out["pairs"] = len(pairs)
+            with contextlib.suppress(ValueError):
+                out[f"{column}_share"] = stats.share(pairs)
         return out
 
     def _profile_without_waiting(self, project):
@@ -579,7 +629,7 @@ class _Pilot:
         if self.waits_for_workers and closed:
             token_profile.wait_until_quiet(token_profile.transcript_folder(closed[-1]["project"], self.private_root))
         counted_keys = {self.key(event) for event in counted}
-        by_arm = {arm: [] for arm in ARMS}
+        by_arm = {arm: [] for arm in self.arms}
         whole = {}
         profiled = set()
         for event in closed:
@@ -594,53 +644,110 @@ class _Pilot:
             (folder / f"{name}.json").write_text(json.dumps(summary, indent=1), encoding="utf-8")
             by_arm[event["arm"]].append(summary)
             if self.key(event) in counted_keys:
-                arms = whole.setdefault(event["topic"], {"compass": {}, "baseline": {}})
-                arms[event["arm"]][event["run"]] = summary["weighted"]
+                arms = whole.setdefault(event["topic"], {})
+                arms.setdefault(event["arm"], {})[event["run"]] = summary["weighted"]
         paired = {}
         for topic_id, arms in whole.items():
-            runs = sorted(set(arms["compass"]) & set(arms["baseline"]))
+            runs = sorted(set(arms.get("compass", {})) & set(arms.get("baseline", {})))
             if runs:
                 paired[topic_id] = {arm: [arms[arm][run] for run in runs] for arm in ARMS}
         share = None
         with contextlib.suppress(ValueError):
             share = stats.overall_share(paired)
         return {
-            "profiled": {arm: len(by_arm[arm]) for arm in ARMS},
+            "profiled": {arm: len(by_arm[arm]) for arm in self.arms},
             "whole_project_share": share,
-            "arms": {arm: _mean_profile(by_arm[arm]) for arm in ARMS},
+            "arms": {arm: _mean_profile(by_arm[arm]) for arm in self.arms},
         }
 
     def judged_counts(self):
-        totals = {arm: {} for arm in ARMS}
+        totals = {arm: {} for arm in self.arms}
         for event in self.events("judged"):
+            if event["arm"] not in totals:
+                continue
             for name, count in (event.get("counts") or {}).items():
                 totals[event["arm"]][name] = totals[event["arm"]].get(name, 0) + count
         return totals
+
+
+def _check_arms(arms):
+    if not arms:
+        raise PilotError("a pilot needs at least one arm")
+    for arm in arms:
+        if not records.is_arm(arm):
+            raise PilotError(f"arm {arm!r} is not compass, baseline or {records.VARIANT_PREFIX}<part>")
+    if len(set(arms)) != len(arms):
+        raise PilotError("an arm is named twice")
+
+
+def _check_topic_ids(topic_ids, private_root):
+    if not topic_ids:
+        raise PilotError("no topic ids were named")
+    if len(set(topic_ids)) != len(topic_ids):
+        raise PilotError("a topic id is named twice")
+    pool = {entry["id"] for entry in topics.load_pool(private_root)}
+    for topic_id in topic_ids:
+        if topic_id not in pool:
+            raise PilotError(f"topic {topic_id} is not in the pool")
+        try:
+            goals.require_goals(topic_id, private_root)
+        except goals.GoalsMissing as error:
+            raise PilotError(f"topic {topic_id} has no frozen goals") from error
+
+
+def _make_variant_trees(arms, repo_root, private_root):
+    """{variant arm: worktree}: a fresh worktree of HEAD with the variant's patch
+    applied, for each variant arm; a worktree left by an earlier run is replaced."""
+    trees = {}
+    variants_root = Path(private_root) / "variants"
+    for arm in arms:
+        if records.is_variant(arm):
+            part = arm[len(records.VARIANT_PREFIX):]
+            variants.discard(part, repo_root=repo_root, variants_root=variants_root)
+            trees[arm] = variants.make(part, repo_root=repo_root, variants_root=variants_root)
+    return trees
 
 
 def run_pilot(
     *, repo_root, private_root, projects_root, report_path=None, claude_cmd=None, parent_env=None,
     probe_size=10, topic_count=3, runs_per_arm=2, pick=topics.pick_topic, freeze=goals.write_goals,
     judge=judge_module.judge_project, drive=drive_module.main, new_project=sandbox.new_project,
-    clock=time.monotonic, profile=None,
+    clock=time.monotonic, profile=None, arms=None, topic_ids=None,
 ):
     """Run the pilot, or resume it from its run log, and return a PilotResult.
 
     Topic, goal and judge sessions get `claude_cmd` and `parent_env`; builds go
     through `drive`, which runs the real claude command. Raises records.Refused,
     before any session or file write, when `private_root` is inside a git work tree.
+
+    `arms` (default `compass` and `baseline`) lists the arms to build. A variant
+    arm builds in a fresh worktree of HEAD under `<private_root>/variants`, which
+    is passed to `drive` as `--repo-root`; the logged `compass` builds of the named
+    topics are read into the aggregates as the variant's pairs even when `compass`
+    is not in `arms`. With `topic_ids`, no probe, pick or
+    freeze runs: the named pool topics are built with their frozen goals. PilotError
+    is raised, before any session, for an arm outside the accepted forms, a repeated
+    arm or topic id, a topic id outside the pool and a topic without frozen goals.
     """
     topics.check_private_root(private_root)
+    arms = ARMS if arms is None else tuple(arms)
+    _check_arms(arms)
+    if topic_ids is not None:
+        topic_ids = list(topic_ids)
+        _check_topic_ids(topic_ids, private_root)
+    variant_trees = _make_variant_trees(arms, repo_root, private_root)
     pilot = _Pilot(
         repo_root=repo_root, private_root=private_root, projects_root=projects_root,
         claude_cmd=claude_cmd, parent_env=parent_env, probe_size=probe_size,
         topic_count=topic_count, runs_per_arm=runs_per_arm, pick=pick, freeze=freeze,
         judge=judge, drive=drive, new_project=new_project, clock=clock, profile=profile,
+        arms=arms, topic_ids=topic_ids, variant_trees=variant_trees,
     )
     try:
         try:
-            pilot.pick_stage()
-            pilot.freeze_stage()
+            if topic_ids is None:
+                pilot.pick_stage()
+                pilot.freeze_stage()
             pilot.build_stage()
         except topics.SessionError as error:
             if error.status != launch.USAGE_LIMIT:
@@ -806,14 +913,20 @@ def render_report(result, repo_root):
         f"- Builds that fit one {WINDOW_HOURS:g}-hour window: "
         f"{_number(agg.get('builds_per_window'), 0, 'no build with a positive duration')}.",
     ]
-    for arm in ARMS:
+    report_arms = agg.get("arms") or ARMS
+    for arm in report_arms:
         lines.append(
             f"- Mean weighted tokens, {arm} arm: {_number(agg.get('mean_weighted_by_arm', {}).get(arm), 0)};"
             f" mean raw tokens: {_number(agg.get('mean_raw_by_arm', {}).get(arm), 0)}."
         )
+    for variant, found in agg.get("variants", {}).items():
+        lines.append(
+            f"- Weighted share of {variant} against the Compass builds of the same topic and run: "
+            f"{_percent(found['weighted_share'])} over {found['pairs']} pairs; raw share: {_percent(found['raw_share'])}."
+        )
     lines += _profile_lines(agg.get("profile"), token_profile.compass_names(Path(repo_root) / "plugin"))
     lines += ["", "### Judge", ""]
-    for arm in ARMS:
+    for arm in report_arms:
         counts = agg.get("judged", {}).get(arm, {})
         text = ", ".join(f"{name} {count}" for name, count in sorted(counts.items())) or "none judged"
         lines.append(f"- Goal items, {arm} arm: {text}.")
@@ -864,8 +977,8 @@ def _profile_lines(profile, known):
         f"- Builds profiled: {', '.join(f'{arm} {count}' for arm, count in profile['profiled'].items())}.",
         f"- Overhead share over whole projects (weighted): {_percent(profile.get('whole_project_share'))}.",
     ]
-    for arm in ARMS:
-        means = profile["arms"].get(arm)
+    for arm in profile["arms"]:
+        means = profile["arms"][arm]
         if means is None:
             continue
         total = means["weighted"] or 1.0
@@ -906,6 +1019,8 @@ def main(argv=None):
     parser.add_argument("--private-root", default=None)
     parser.add_argument("--projects-root", default=None)
     parser.add_argument("--report", default=None)
+    parser.add_argument("--arms", nargs="+", default=None, metavar="ARM")
+    parser.add_argument("--topics", nargs="+", default=None, metavar="ID")
     args = parser.parse_args(argv)
     repo_root = Path(__file__).resolve().parents[2]
     private_root = Path(args.private_root) if args.private_root else topics.private_dir()
@@ -913,8 +1028,9 @@ def main(argv=None):
         result = run_pilot(
             repo_root=repo_root, private_root=private_root,
             projects_root=args.projects_root or sandbox.DEFAULT_PROJECTS_ROOT, report_path=args.report,
+            arms=args.arms, topic_ids=args.topics,
         )
-    except (records.Refused, launch.Refused, sandbox.Refused) as error:
+    except (records.Refused, launch.Refused, sandbox.Refused, PilotError, variants.VariantError) as error:
         sys.stderr.write(f"refused: {error}\n")
         return 2
     print(json.dumps({

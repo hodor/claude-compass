@@ -37,9 +37,14 @@ with a build identity, so the real home folder is out of reach.
 The setup and build sessions are recorded together as one role `build` row; the simulated human
 records its own sessions, so its tokens stay out of the build's count.
 
-    python drive.py PROJECT --arm {compass,baseline} --opening-file FILE
-        --brief-file FILE --human-folder DIR [--max-minutes N] [--max-turns N]
-        [--max-budget-usd N]
+    python drive.py PROJECT --arm {compass,baseline,compass-minus-PART}
+        --opening-file FILE --brief-file FILE --human-folder DIR
+        [--repo-root DIR] [--max-minutes N] [--max-turns N] [--max-budget-usd N]
+
+An arm `compass-minus-<part>` is Compass with one harness part removed; it runs
+like the "compass" arm from the worktree `--repo-root` names (made by
+`variants.py make <part>`), which is required for a variant arm. `--repo-root`
+otherwise defaults to this repository.
 """
 
 import argparse
@@ -404,12 +409,12 @@ def drive_build(
     has uncommitted changes (or, in the "compass" arm, the remote head cannot be
     read).
     """
-    if arm not in records.ARMS:
-        raise ValueError(f"arm is not one of {', '.join(records.ARMS)}")
+    if not records.is_arm(arm):
+        raise ValueError(f"arm is not one of {', '.join(records.ARMS)} or {records.VARIANT_PREFIX}<part>")
     project = Path(project)
     repo_root = Path(repo_root)
     private_root = Path(private_root) if private_root is not None else launch.default_private_root()
-    compass = arm == "compass"
+    compass = arm != "baseline"
 
     head_sha = launch.check_plugin_clean(repo_root, require_plugin=compass)
     pinned_sha = remote_head(repo_root) if compass else None
@@ -566,20 +571,32 @@ def drive_build(
         end, reason = launch.FAILED, f"{PLUGIN_CHANGED}: {'; '.join(changed[:5])}"
 
     outcome = {HUMAN_DONE: launch.DONE, launch.USAGE_LIMIT: launch.USAGE_LIMIT}.get(end, launch.FAILED)
-    records.record_session(events, role="build", outcome=outcome, arm=arm, plugin_sha=head_sha, private_root=private_root)
+    records.record_session(
+        events, role="build", outcome=outcome, arm=arm, plugin_sha=head_sha,
+        private_root=private_root, project_dir=project,
+    )
     return DriveResult(
         end=end, turns=turns, resets_at=resets_at, init_counts=init_counts(events),
         events=events, stderr=setup_stderr + session.stderr_text(), reason=reason,
     )
 
 
+def _arm_argument(value):
+    if not records.is_arm(value):
+        raise argparse.ArgumentTypeError(
+            f"{value!r} is not one of {', '.join(records.ARMS)} or {records.VARIANT_PREFIX}<part>"
+        )
+    return value
+
+
 def _build_parser():
     parser = argparse.ArgumentParser(description="Drive one build session with a simulated human.")
     parser.add_argument("project")
-    parser.add_argument("--arm", required=True, choices=records.ARMS)
+    parser.add_argument("--arm", required=True, type=_arm_argument)
     parser.add_argument("--opening-file", required=True)
     parser.add_argument("--brief-file", required=True)
     parser.add_argument("--human-folder", required=True)
+    parser.add_argument("--repo-root")
     parser.add_argument("--max-minutes", type=float, default=DEFAULT_MAX_WALL_SECONDS / 60)
     parser.add_argument("--max-turns", type=int, default=DEFAULT_MAX_TURNS)
     parser.add_argument("--max-budget-usd", type=float, default=DEFAULT_MAX_BUDGET_USD)
@@ -589,19 +606,23 @@ def _build_parser():
 
 def main(argv=None):
     args = _build_parser().parse_args(argv)
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = Path(args.repo_root) if args.repo_root else Path(__file__).resolve().parents[2]
     private_root = Path(args.private_root) if args.private_root else launch.default_private_root()
     project = Path(args.project)
     try:
+        if records.is_variant(args.arm) and not args.repo_root:
+            raise ValueError("a variant arm needs --repo-root, the worktree `variants.py make` creates")
         opening = Path(args.opening_file).read_text(encoding="utf-8")
         brief = json.loads(Path(args.brief_file).read_text(encoding="utf-8"))
         readme = None
-        if args.arm == "compass":
+        if args.arm != "baseline":
             readme = (repo_root / "README.md").read_text(encoding="utf-8")
         folder = Path(args.human_folder)
         folder.mkdir(parents=True, exist_ok=True)
+        # The simulated human sees a build with Compass or without it; a variant is a Compass build.
         who = human_module.SimulatedHuman(
-            brief, folder=folder, repo_root=repo_root, arm=args.arm,
+            brief, folder=folder, repo_root=repo_root,
+            arm="baseline" if args.arm == "baseline" else "compass",
             state_file=private_root / "human-state" / f"{project_key(project)}.json",
             private_root=private_root, readme=readme, timeout=HUMAN_TIMEOUT_SECONDS,
         )

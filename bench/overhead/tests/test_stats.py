@@ -266,3 +266,63 @@ def test_builds_per_window_refuses_nothing_to_average(seconds):
     """Adversarial where: an empty list or zero mean divides by zero."""
     with pytest.raises(ValueError):
         stats.builds_per_window(seconds)
+
+
+VARIANT = "compass-minus-post-tester"
+
+
+def arms(compass, baseline, variant=None):
+    out = {"compass": list(compass), "baseline": list(baseline)}
+    if variant is not None:
+        out[VARIANT] = list(variant)
+    return out
+
+
+def test_a_variant_arm_leaves_the_compass_baseline_aggregates_unchanged():
+    """Adversarial where: aggregating by arm key must not let an extra arm in a
+    topic change the compass-versus-baseline share, the topic shares or the
+    pooled spread (a variant counted as a second baseline or compass run)."""
+    with_variant = {
+        "A": arms([100, 100], [50, 60], [90, 20]),
+        "B": arms([100, 100], [80, 60], [10, 10]),
+    }
+
+    assert stats.overall_share(with_variant) == pytest.approx(stats.overall_share(TWO_TOPICS))
+    assert stats.topic_shares(with_variant) == pytest.approx(stats.topic_shares(TWO_TOPICS))
+    assert stats.pooled_within_sd(with_variant) == pytest.approx(stats.pooled_within_sd(TWO_TOPICS))
+
+
+def test_variant_pairs_pair_each_variant_run_with_the_compass_run_of_the_same_topic_and_index():
+    """Adversarial where: pairing a variant with `baseline`, pairing by sorted
+    order or by the topic mean instead of by run index, or crossing runs between
+    topics. Run 1 of A pairs compass 100 with variant 150, run 2 pairs 200 with
+    90 (sorted pairing would give (100, 90) and (200, 150)); topic C has no
+    variant arm and adds no pair."""
+    topics = {
+        "A": arms([100, 200], [11, 12], [150, 90]),
+        "B": arms([300], [13], [270]),
+        "C": arms([500, 500], [14, 15]),
+    }
+
+    pairs = stats.variant_pairs(topics, VARIANT)
+
+    assert sorted(pairs) == [(100, 150), (200, 90), (300, 270)]
+    assert stats.share(pairs) == pytest.approx((600 - 510) / 600)
+
+
+@pytest.mark.parametrize("arm", ["baseline", "compass", "compass-minus-", "compass-plus-x", "compass-minus-post-tester\n"])
+def test_variant_pairs_refuse_an_id_that_is_not_a_variant(arm):
+    """Adversarial where: asking for the `baseline` (or the full compass arm
+    against itself) must raise, not quietly return compass-versus-baseline pairs
+    under a variant's name."""
+    with pytest.raises(ValueError):
+        stats.variant_pairs({"A": arms([100], [50], [90])}, arm)
+
+
+def test_variant_pairs_refuse_a_topic_whose_variant_runs_do_not_match_its_compass_runs():
+    """Adversarial where: a variant with one run against two compass runs
+    silently dropping the unpaired run biases the share; the mismatch must
+    raise, in either direction."""
+    for compass, variant in (([100, 200], [90]), ([100], [90, 80])):
+        with pytest.raises(ValueError):
+            stats.variant_pairs({"A": arms(compass, [50] * len(compass), variant)}, VARIANT)

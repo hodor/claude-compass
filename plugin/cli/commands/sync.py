@@ -214,7 +214,7 @@ def _covered_by_folder_line(record):
 # em, or en dashes). Only lines of this shape are ever prune candidates.
 ENTRY_PATTERN = re.compile(
     r"^\s*-\s+\[\[[^\]]+\]\]\s*(?:\(folder, \d+ children\))?"
-    r"\s*(?:[-—–]\s+(?P<desc>.*\S))?\s*$"
+    r"\s*(?:[-\u2014\u2013]\s+(?P<desc>.*\S))?\s*$"
 )
 
 

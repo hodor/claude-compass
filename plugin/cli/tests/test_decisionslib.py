@@ -145,7 +145,7 @@ class OtherGrammarTests(unittest.TestCase):
 
     def test_em_dash_form(self):
         decisions, outcome = extract(
-            "## Decisions\n\n- **D-01 — Parser first** pasted content.\n"
+            "## Decisions\n\n- **D-01 \u2014 Parser first** pasted content.\n"
         )
         self.assertEqual(outcome, "parsed")
         self.assertEqual(decisions[0]["id"], "D-01")

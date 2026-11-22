@@ -657,3 +657,98 @@ def test_a_capped_smoke_build_that_met_no_goal_yet_does_not_block(repo, private_
 
     assert result.status == "complete"
     assert len(world.drives) == 12
+
+
+def seed_pool(world, repo, private_root, count):
+    """Pool topics with frozen goals, made by the world's own pick and freeze,
+    then forgotten as calls so a later run's calls can be counted from zero."""
+    ids = []
+    for index in range(count):
+        entry = world.pick(seeded=bool(index % 2), seed=index, repo_root=repo, private_root=private_root)
+        world.freeze(entry["id"], repo_root=repo, private_root=private_root)
+        ids.append(entry["id"])
+    world.picks.clear()
+    world.freezes.clear()
+    return ids
+
+
+def test_a_run_with_topic_ids_replays_those_pool_topics_without_picking_or_freezing(
+    repo, private_root, projects_root,
+):
+    """Adversarial where: a replay that still probes and picks new topics, or
+    re-freezes the goals of the named ones (changing what the build is judged
+    against), or that drives a pool topic nobody named, so the variant arm and
+    the full arm would not see the same topics and goals."""
+    world = World(private_root)
+    ids = seed_pool(world, repo, private_root, 3)
+    chosen = [ids[2], ids[0]]
+    goals_before = {t: (topics.topics_dir(private_root) / "goals" / f"{t}.json").read_bytes() for t in ids}
+
+    result = go(world, repo, private_root, projects_root, topic_ids=chosen, arms=("compass", "baseline"))
+
+    assert result.status == "complete"
+    assert world.picks == []
+    assert world.freezes == []
+    assert set(result.topics) == set(chosen)
+    for topic_id in ids:
+        runs = sum(1 for d in world.drives if d["topic"] == topic_id)
+        assert runs == (4 if topic_id in chosen else 0), topic_id
+    assert {d["arm"] for d in world.drives} == {"compass", "baseline"}
+    assert len(log_events(private_root, "build-closed")) == 8
+    for topic_id in ids:
+        assert (topics.topics_dir(private_root) / "goals" / f"{topic_id}.json").read_bytes() == goals_before[topic_id]
+
+
+@pytest.mark.parametrize("bad", [["t-deadbeef"], "mixed"], ids=["only unknown", "one known one unknown"])
+def test_a_topic_id_outside_the_pool_is_refused_before_any_session(bad, repo, private_root, projects_root):
+    """Adversarial where: a mistyped id silently skipped (or replaced by a fresh
+    pick) runs a smaller or different batch than the one the variant was meant
+    to be compared on; with one good id beside the bad one, the good topic must
+    not be driven before the refusal."""
+    world = World(private_root)
+    ids = seed_pool(world, repo, private_root, 2)
+    chosen = [ids[0], "t-deadbeef"] if bad == "mixed" else bad
+
+    with pytest.raises((pilot.PilotError, ValueError)):
+        go(world, repo, private_root, projects_root, topic_ids=chosen, arms=("compass", "baseline"))
+
+    assert world.drives == []
+    assert world.picks == [] and world.freezes == [] and world.judges == []
+
+
+@pytest.mark.parametrize(
+    "bad_arms",
+    [("compass", "bogus"), ("compass", "compass-minus-"), ("compass", "baseline-minus-x"), ("compass", "compass-minus-a b")],
+)
+def test_an_arm_outside_the_accepted_forms_is_refused_before_any_session(bad_arms, repo, private_root, projects_root):
+    """Adversarial where: an unvalidated arm id reaches drive as `--arm` and
+    fails after the picks, goals and projects were already spent."""
+    world = World(private_root)
+    ids = seed_pool(world, repo, private_root, 1)
+
+    with pytest.raises((pilot.PilotError, ValueError)):
+        go(world, repo, private_root, projects_root, topic_ids=ids, arms=bad_arms)
+
+    assert world.drives == [] and world.picks == [] and world.freezes == []
+
+
+def test_main_passes_arms_and_topic_ids_through_to_run_pilot(monkeypatch, tmp_path):
+    """Adversarial where: the `--arms` and `--topics` flags parsed but not
+    forwarded (a variant replay silently running the default pilot), or forwarded
+    as one joined string instead of a list of ids."""
+    seen = {}
+
+    def fake_run_pilot(**kwargs):
+        seen.update(kwargs)
+        return type("R", (), {"status": "complete", "closed": 0, "refused": 0, "resets_at": None})()
+
+    monkeypatch.setattr(pilot, "run_pilot", fake_run_pilot)
+
+    code = pilot.main([
+        "--private-root", str(tmp_path / "private"), "--projects-root", str(tmp_path / "projects"),
+        "--arms", "compass", "compass-minus-post-tester", "--topics", "t-0000000a", "t-0000000b",
+    ])
+
+    assert code == 0
+    assert list(seen["arms"]) == ["compass", "compass-minus-post-tester"]
+    assert list(seen["topic_ids"]) == ["t-0000000a", "t-0000000b"]
