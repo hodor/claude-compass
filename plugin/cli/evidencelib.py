@@ -34,7 +34,8 @@ EVIDENCE_DIR = Path(".compass") / "evidence"
 VERDICT_PREFIXES = ("REACH:", "ABLATE:", "REQ:")
 NOT_STARTED_EXIT = 127
 
-_NAME = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?$")
+_NAME = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?")
+_SHA = re.compile(r"[0-9a-f]{4,64}")
 
 
 class EvidenceError(Exception):
@@ -42,7 +43,7 @@ class EvidenceError(Exception):
 
 
 def _check_name(kind, value):
-    if not isinstance(value, str) or not _NAME.match(value):
+    if not isinstance(value, str) or not _NAME.fullmatch(value):
         raise EvidenceError(
             f"invalid {kind} {value!r}: use letters, digits, '.', '_' and '-', "
             "starting and ending with a letter, digit, '_' or '-'"
@@ -230,6 +231,8 @@ def _recorded_fields(path, record):
     if not argv or Path(cwd).is_absolute() or ".." in parts:
         raise EvidenceError(f"record {path} holds an unusable command or cwd")
     validate_slug(check)
+    if not _SHA.fullmatch(sha):
+        raise EvidenceError(f"record {path} holds a sha that is not hexadecimal: {sha!r}")
     return argv, sha, cwd, exit_code, check, tree
 
 
