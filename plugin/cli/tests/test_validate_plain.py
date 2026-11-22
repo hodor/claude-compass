@@ -45,7 +45,7 @@ KNOWN_CODES = {
     "frontmatter_missing_field", "cap_exceeded", "active_done",
     "sizing_unrecorded", "sizing_orphaned_id", "folder_over_ceiling",
     "empty_scope", "taxonomy_hints", "unclassified_root_folder",
-    "loop_misshapen", "broken_block_link",
+    "loop_misshapen", "broken_block_link", "lesson_body_over_cap",
 }
 
 # What the table's sentence for a code must say, as a lowercase fragment that
@@ -65,6 +65,7 @@ SENTENCE_FRAGMENT = {
     "taxonomy_hints": "filing hint",
     "unclassified_root_folder": "workstream",
     "loop_misshapen": "loop",
+    "lesson_body_over_cap": "preserved record",
 }
 
 # Coined terms the Terms table replaces, found in prose a person reads.
