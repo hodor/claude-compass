@@ -1352,6 +1352,25 @@ class SessionStateHostBoundaryTests(unittest.TestCase):
         self.assertEqual(len(commands), 1, commands)
         self.assertTrue(commands[0].endswith(" session-state-audit --hook"), commands)
 
+    def test_skip_reads_the_command_not_the_status_message(self):
+        # Adversarial where: the skip scans the whole hook dict (or the
+        # group), so a kept hook whose statusMessage says " session-state "
+        # is dropped with the command that actually runs it.
+        command = (
+            '[ -f "$CLAUDE_PROJECT_DIR/.claude/cli/compass" ] || exit 0; '
+            'if command -v python3 >/dev/null 2>&1; then python3 '
+            '"$CLAUDE_PROJECT_DIR/.claude/cli/compass" sync --hook; '
+            'else python "$CLAUDE_PROJECT_DIR/.claude/cli/compass" sync --hook; fi')
+        project = make_project(self)
+        manifest = project / "manifest.json"
+        manifest.write_text(json.dumps({"hooks": {"SessionStart": [{
+            "hooks": [{"type": "command", "command": command,
+                       "statusMessage": "Runs after session-state is printed, a session-state follow-up"}],
+        }]}}), encoding="utf-8")
+        out = hostlib.materialize_dsh_hooks(project, manifest)
+        groups = json.loads(out.read_text(encoding="utf-8"))["hooks"]["SessionStart"]
+        self.assertEqual(len(groups), 1)
+
     def test_dsh_hooks_file_has_no_session_state_command(self):
         # Adversarial where: the compact SessionStart group is carried into
         # `.dsh/hooks.json` as a plain SessionStart group (dsh has no

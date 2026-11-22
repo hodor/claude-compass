@@ -430,3 +430,197 @@ class MergeSettingsCompactionTests(unittest.TestCase):
         first = self._merged(project)
         self_update.merge_settings(project, HOOKS_JSON)
         self.assertEqual(self._merged(project), first)
+
+
+CLI_ROOT = Path(__file__).resolve().parents[1]
+
+
+class CompactionHookExecutionTests(unittest.TestCase):
+    """The compaction hook command strings run through `sh` against a
+    project with the real CLI installed: event shapes the host sends, shell
+    quoting of the event on its way to the CLI, and the interpreter-choice
+    branch."""
+
+    def setUp(self):
+        manifest = json.loads(HOOKS_JSON.read_text(encoding="utf-8"))["hooks"]
+        compact = [g for g in manifest["SessionStart"] if g.get("matcher") == "compact"]
+        self.commands = {
+            "SessionStart": compact[0]["hooks"][0]["command"],
+            "PreCompact": manifest["PreCompact"][0]["hooks"][0]["command"],
+        }
+        self.shell = _shell()
+        if self.shell is None:
+            self.skipTest("no POSIX shell available")
+
+    def _project(self, real_cli=True, name="proj"):
+        base = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, base, True)
+        project = base / name
+        (project / ".compass").mkdir(parents=True)
+        if real_cli:
+            shutil.copytree(
+                CLI_ROOT, project / ".claude" / "cli",
+                ignore=shutil.ignore_patterns("tests", "__pycache__", ".ruff_cache"))
+        return project
+
+    def _stub_cli(self, project, body):
+        cli = project / ".claude" / "cli"
+        cli.mkdir(parents=True)
+        (cli / "compass").write_text(body, encoding="utf-8")
+
+    def _run(self, project, command, event, env_extra=None):
+        env = {**os.environ, "CLAUDE_PROJECT_DIR": project.as_posix()}
+        env.pop("COMPASS_WORKER_SESSION", None)
+        env.update(env_extra or {})
+        return subprocess.run(
+            [self.shell, "-c", command], input=event, text=True,
+            capture_output=True, env=env, cwd=project, timeout=120)
+
+    def test_sessionstart_compact_prints_one_json_context_object(self):
+        # Adversarial where: the hook's stdout is not a single JSON object
+        # with hookSpecificOutput.additionalContext, so the host cannot
+        # inject the state block after a compaction.
+        project = self._project()
+        event = json.dumps({"hook_event_name": "SessionStart", "source": "compact"})
+        result = self._run(project, self.commands["SessionStart"], event)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        out = json.loads(result.stdout)
+        self.assertEqual(out["hookSpecificOutput"]["hookEventName"], "SessionStart")
+        self.assertIsInstance(out["hookSpecificOutput"]["additionalContext"], str)
+
+    def test_precompact_prints_plain_summary_instructions(self):
+        # Adversarial where: PreCompact output is wrapped as JSON (the host
+        # reads PreCompact stdout as plain text) or is empty.
+        project = self._project()
+        event = json.dumps({"hook_event_name": "PreCompact", "trigger": "auto"})
+        result = self._run(project, self.commands["PreCompact"], event)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(result.stdout.startswith("When summarizing"), result.stdout[:80])
+
+    def test_sessionstart_sources_other_than_compact_print_nothing(self):
+        # Adversarial where: a startup or resume event reaching the command
+        # (a hand-merged settings file may drop the matcher) prints the
+        # state block into a fresh session.
+        project = self._project()
+        for source in ("startup", "resume", "clear"):
+            event = json.dumps({"hook_event_name": "SessionStart", "source": source})
+            result = self._run(project, self.commands["SessionStart"], event)
+            self.assertEqual((result.returncode, result.stdout), (0, ""), source)
+
+    def test_malformed_and_empty_events_exit_zero_silently(self):
+        # Adversarial where: a truncated or empty stdin raises out of the
+        # JSON parse and the hook exits non-zero (exit 2 blocks the
+        # compaction), or prints a traceback into the context.
+        project = self._project()
+        for event in ("", "   \n", "{not json", "[1, 2]", "null"):
+            for name, command in self.commands.items():
+                result = self._run(project, command, event)
+                self.assertEqual(result.returncode, 0, (name, event, result.stderr))
+                self.assertEqual(result.stdout, "", (name, event))
+
+    def test_subagent_events_print_nothing_with_real_cli(self):
+        # Adversarial where: a subagent's PreCompact receives the main
+        # agent's summary instructions, or its SessionStart receives a state
+        # block built from the main transcript.
+        project = self._project()
+        for name, command in self.commands.items():
+            event = json.dumps({"hook_event_name": name, "source": "compact",
+                                "agent_id": "a1", "agent_type": "builder"})
+            result = self._run(project, command, event)
+            self.assertEqual((result.returncode, result.stdout), (0, ""), name)
+
+    def test_project_path_with_spaces_reaches_the_cli(self):
+        # Adversarial where: an unquoted $CLAUDE_PROJECT_DIR splits at the
+        # space, so the existence check or the interpreter call fails on a
+        # project under a path like `My Projects`.
+        project = self._project(name="my projects")
+        event = json.dumps({"hook_event_name": "PreCompact"})
+        result = self._run(project, self.commands["PreCompact"], event)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(result.stdout.startswith("When summarizing"), result.stdout[:80])
+
+    def test_event_text_reaches_the_cli_byte_for_byte(self):
+        # Adversarial where: the event is forwarded through a printf format
+        # string or echo, so `%` sequences, backslash escapes or a leading
+        # `-n` are interpreted and the CLI parses a different payload.
+        project = self._project(real_cli=False)
+        sink = project / "stdin.txt"
+        self._stub_cli(
+            project,
+            "import pathlib, sys\n"
+            f"pathlib.Path({sink.as_posix()!r}).write_bytes(sys.stdin.buffer.read())\n")
+        payload = ('{"hook_event_name":"PreCompact","custom_instructions":'
+                   '"100%s %d \\\\n \\t -n -e \\u00e9 $HOME `x`"}')
+        for command in self.commands.values():
+            sink.unlink(missing_ok=True)
+            result = self._run(project, command, payload)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(sink.read_bytes().decode("utf-8"), payload)
+
+    def _fake_interpreters(self, names):
+        bindir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, bindir, True)
+        log = bindir / "log.txt"
+        for name in names:
+            script = bindir / name
+            script.write_bytes((
+                "#!/bin/sh\n"
+                f'echo "{name} $(basename "$1") $2 $3 stdin=$(cat)" >> "{log.as_posix()}"\n'
+            ).encode("utf-8"))
+            script.chmod(0o755)
+        return bindir, log
+
+    def _path_without_python(self, bindir):
+        path = os.pathsep.join([str(bindir), str(Path(self.shell).parent)])
+        probe = subprocess.run(
+            [self.shell, "-c", "command -v python3 >/dev/null 2>&1"],
+            env={**os.environ, "PATH": path}, capture_output=True, text=True)
+        return path, probe.returncode == 0
+
+    def test_falls_back_to_python_when_python3_is_absent(self):
+        # Adversarial where: the else branch (a machine with only `python`)
+        # drops the event from stdin or the subcommand from argv, since it
+        # is a separate copy of the pipeline from the python3 branch.
+        bindir, log = self._fake_interpreters(["python"])
+        path, found = self._path_without_python(bindir)
+        if found:
+            self.skipTest("python3 is on the minimal PATH")
+        project = self._project(real_cli=False)
+        self._stub_cli(project, "")
+        for command in self.commands.values():
+            log.unlink(missing_ok=True)
+            result = self._run(project, command, '{"source":"compact"}', {"PATH": path})
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                log.read_text(encoding="utf-8").strip(),
+                'python compass session-state --hook stdin={"source":"compact"}')
+
+    def test_python3_is_preferred_and_receives_the_event(self):
+        # Adversarial where: both interpreters run (double output), or the
+        # python3 branch loses the event on stdin.
+        bindir, log = self._fake_interpreters(["python3", "python"])
+        path, _ = self._path_without_python(bindir)
+        project = self._project(real_cli=False)
+        self._stub_cli(project, "")
+        for command in self.commands.values():
+            log.unlink(missing_ok=True)
+            result = self._run(project, command, '{"source":"compact"}', {"PATH": path})
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                log.read_text(encoding="utf-8").strip(),
+                'python3 compass session-state --hook stdin={"source":"compact"}')
+
+    @unittest.expectedFailure
+    def test_main_agent_event_mentioning_agent_id_text_is_not_skipped(self):
+        # Adversarial where: the shell prefilter matches the substring
+        # `agent_id` anywhere in the raw event, so a main-agent PreCompact
+        # whose `custom_instructions` (text the human typed after /compact)
+        # mentions agent_id or agent_type exits before Python and the
+        # summary instructions are never delivered. The CLI's own check is
+        # key-based, so the shell is wider than the contract it mirrors.
+        project = self._project()
+        event = json.dumps({"hook_event_name": "PreCompact",
+                            "custom_instructions": "keep the agent_id handling notes"})
+        result = self._run(project, self.commands["PreCompact"], event)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(result.stdout.startswith("When summarizing"), repr(result.stdout[:60]))
