@@ -158,3 +158,33 @@ Plan: [[PLAN-031-screenplays-in-the-vault]]; detailed after Wave 1's live checks
 - [ ] TASK-298: Install here with `python plugin/cli/compass self-update --force` and accept in this vault: doctor shows Fountain, the human switches it on, a script committed at `.compass/screenplays/sample.fountain` (a
 - [ ] TASK-299: Release: bump `plugin/.claude-plugin/plugin.json` to the next minor at merge time, commit "Release X.Y.0: screenplays live in the vault", push on the human's word, then `python bench/scripts/fleet_update.
 - [ ] TASK-300: Accept in one other Compass project the human names at the time: its self-update pulls the release, doctor shows Fountain, the human switches it on, one of his scripts opens unchanged in both editors, a n
+
+## PLAN-032 later tasks (intent only)
+
+Plan: [[plans\PLAN-032-consolidation-grounded-in-sources]]; intent lines are in its Later section.
+
+- [ ] TASK-310
+- [ ] TASK-311
+- [ ] TASK-312
+- [ ] TASK-313
+- [ ] TASK-314
+- [ ] TASK-315
+- [ ] TASK-316
+- [ ] TASK-317
+- [ ] TASK-318
+- [ ] TASK-319
+- [ ] TASK-320
+- [ ] TASK-321
+
+## PLAN-034 later tasks (intent only)
+
+Plan: [[plans\PLAN-034-checking-cost-follows-task-and-model]]; intent lines are in its Later section.
+
+- [ ] TASK-353
+- [ ] TASK-354
+- [ ] TASK-355
+- [ ] TASK-356
+- [ ] TASK-357
+- [ ] TASK-358
+- [ ] TASK-359
+- [ ] TASK-360

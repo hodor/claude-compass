@@ -1,7 +1,8 @@
 ---
 title: "Consolidation Grounded in Sources"
 type: plan
-status: draft
+status: approved
+approved: 2026-11-21
 confidence: medium
 area: methodology
 tags: [lessons, consolidation, drift, provenance, track-record, delta-edits, learning-loop]
@@ -43,8 +44,6 @@ flowchart LR
   W1 -->|probe passes, first real report read| L
 ```
 
-> [!IMPORTANT]
-> You decide: approve Wave 1 as written and the shape of the Later list, or overturn any of the marked guesses below (the six forks from the review and the correction-admission pairing).
 
 ## Goal
 

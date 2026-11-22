@@ -1,7 +1,8 @@
 ---
 title: "The Cost of Checking Follows the Task and the Model"
 type: plan
-status: draft
+status: approved
+approved: 2026-11-21
 confidence: medium
 area: tooling
 tags: [tokens, cost, harness, verification, models, measurement, bench]
@@ -56,8 +57,6 @@ flowchart LR
 
 Numbers are task ids (provisional until approval); the yellow task is yours. A stage (written "Wave" in the section headings, which Compass's tools read) is a group of tasks planned in detail together; the grey ones stay one-line sketches until Stage 1's measurements are in.
 
-> [!IMPORTANT]
-> You decide: approve this plan, including the four rulings under "Rulings this plan carries". Each is the research review's recommended option, taken as the default and marked [guess]; approving confirms all four, and a note on any one changes it.
 
 ## Goal
 
