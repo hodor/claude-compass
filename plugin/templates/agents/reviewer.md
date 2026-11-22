@@ -44,10 +44,13 @@ From each agent's output, extract discrete claims, findings, and recommendations
 ```
 | Claim | Agent 1 | Agent 2 | Agent 3 | Agent 4 | Agent 5 | Agreement |
 |-------|---------|---------|---------|---------|---------|-----------|
+| Model (family) | opus | sonnet | sonnet | unknown | sonnet | |
 | X uses pattern A | YES (high) | YES (high) | YES (med) | YES (high) | YES (high) | 100% |
-| Y is deprecated | YES (med) | YES (low) | NO (med) | YES (med) | - | 60% |
+| Y is deprecated | NO (med) | YES (low) | YES (med) | - | YES (med) | 60% (3 of 5 share sonnet) |
 | Z should use lib Q | YES (high) | NO (high) | - | YES (med) | NO (med) | 40% |
 ```
+
+The `Model (family)` row comes from each input's `model:` frontmatter, resolved with `compass resolve-model --family`; an input with no `model:` reads `unknown`. When every agent agreeing on a claim shares one family, its Agreement cell adds `(n of m share <family>)`, n being the agreeing agents (all of that family) and m the agents in the matrix. Those claims are counted apart in the Convergence Summary, in a `Same-family agreement` row listing them. The percentage, the counts and the category never change.
 
 ### 4. Classify and consolidate
 
@@ -89,6 +92,7 @@ N agents | Question: [original]
 | Converged (≥80%) | N | claim1, claim2 |
 | Partial (50-79%) | N | claim3 |
 | Divergent (<50%) | N | claim4 |
+| Same-family agreement (counted apart, also in its category above) | N | claim5 |
 
 ### Converged (high confidence)
 1. **[Claim]** - 5/5 agents
