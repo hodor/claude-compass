@@ -97,8 +97,11 @@ def _checkpoint_files(repo, task):
     it). Empty when there is no readable checkpoint."""
     path = Path(repo) / ".compass" / "tmp" / "test-checkpoints" / f"{task}.json"
     try:
-        record = json.loads(path.read_text(encoding="utf-8"))
-        return [e["path"] for e in record.get("files", []) if isinstance(e.get("path"), str)]
+        entries = json.loads(path.read_text(encoding="utf-8")).get("files", [])
+        return [
+            e["path"] for e in entries
+            if isinstance(e, dict) and isinstance(e.get("path"), str)
+        ]
     except (OSError, ValueError, AttributeError, TypeError):
         return []
 
@@ -211,6 +214,7 @@ def ablate(repo, task, cmd, refactor=False, merge=None):
         test_patch = _text(done.stdout)
 
     worktree = _worktree_path(repo, task)
+    _git(repo, "worktree", "prune")
     if worktree.exists():
         _remove_worktree(repo, worktree)
     worktree.parent.mkdir(parents=True, exist_ok=True)
