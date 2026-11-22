@@ -13,7 +13,15 @@ test result (`recorded.builder_tests`, or a top-level `tests`). When the two
 sets' outcome counts differ, the report says "outcome differs" and prints no
 token comparison, since a cheaper set that built less is not a saving.
 
-    python compare.py BEFORE AFTER [--outcomes-before DIR --outcomes-after DIR] [--plugin-root DIR]
+With `--margin FRACTION` the outcome check is a noninferiority check instead.
+The two folders pair their builds by file name; per pair the difference is the
+share of goal items met in the variant (`--outcomes-after`) minus the share met
+in the full arm (`--outcomes-before`). A one-sided 95% bootstrap lower bound of
+the mean difference (2000 resamples, fixed seed) above minus the margin reads
+"not worse"; otherwise "worse" and no token comparison. The line carries the
+bound and the pair count; fewer than two pairs are refused.
+
+    python compare.py BEFORE AFTER [--outcomes-before DIR --outcomes-after DIR [--margin FRACTION]] [--plugin-root DIR]
 """
 
 import argparse
@@ -85,6 +93,46 @@ def load_outcomes(folder):
         key = str(result) if result is not None else "none"
         tests[key] = tests.get(key, 0) + 1
     return {"goals": goals, "tests": tests}
+
+
+def load_goal_shares(folder):
+    """{file name: share of goal items met} for each outcome file in `folder`.
+    Raises ValueError when the folder holds no file, a file has no goal counts,
+    or a file scores no goal item."""
+    shares = {}
+    for path in _json_files(folder):
+        counts = _load(path).get("counts")
+        if not isinstance(counts, dict):
+            raise ValueError("an outcome file has no goal counts")
+        total = sum(int(counts.get(score) or 0) for score in SCORES)
+        if total == 0:
+            raise ValueError("an outcome file scores no goal item")
+        shares[path.name] = int(counts.get("met") or 0) / total
+    return shares
+
+
+def paired_differences(full_folder, variant_folder):
+    """[variant share - full share] per build present in both outcome folders,
+    ordered by file name. Raises ValueError when the two folders name different
+    builds."""
+    full, variant = load_goal_shares(full_folder), load_goal_shares(variant_folder)
+    if full.keys() != variant.keys():
+        raise ValueError("the two outcome folders do not hold the same builds")
+    return [variant[name] - full[name] for name in sorted(full)]
+
+
+def noninferiority(diffs, margin, seed=SEED, resamples=RESAMPLES):
+    """{"verdict", "bound", "pairs"} for per-build differences `diffs`: `bound`
+    is the one-sided 95% lower bound (5th percentile) of the mean of `diffs`
+    resampled with replacement from a generator seeded with `seed`; the verdict
+    is "not worse" when the bound is strictly above minus `margin`, else
+    "worse". Raises ValueError for fewer than two pairs."""
+    if len(diffs) < 2:
+        raise ValueError("a noninferiority verdict needs at least two paired builds")
+    rng = random.Random(seed)
+    means = sorted(sum(rng.choices(diffs, k=len(diffs))) / len(diffs) for _ in range(resamples))
+    bound = float(means[int(0.05 * (resamples - 1))])
+    return {"verdict": "not worse" if bound > -margin else "worse", "bound": bound, "pairs": len(diffs)}
 
 
 def bootstrap_interval(before, after, seed=SEED, resamples=RESAMPLES):
@@ -168,20 +216,39 @@ def main(argv=None):
     parser.add_argument("after")
     parser.add_argument("--outcomes-before")
     parser.add_argument("--outcomes-after")
+    parser.add_argument("--margin", type=float)
     parser.add_argument("--plugin-root", default=str(Path(__file__).resolve().parents[2] / "plugin"))
     args = parser.parse_args(argv)
     if (args.outcomes_before is None) != (args.outcomes_after is None):
         sys.stderr.write("give both --outcomes-before and --outcomes-after, or neither\n")
         return 2
+    if args.margin is not None and args.outcomes_before is None:
+        sys.stderr.write("--margin needs --outcomes-before and --outcomes-after\n")
+        return 2
+    if args.margin is not None and args.margin < 0:
+        sys.stderr.write("--margin is a fraction of goal items and cannot be negative\n")
+        return 2
     try:
         before, after = load_profiles(args.before), load_profiles(args.after)
         outcomes = None
-        if args.outcomes_before is not None:
+        check = None
+        if args.margin is not None:
+            check = noninferiority(paired_differences(args.outcomes_before, args.outcomes_after), args.margin)
+        elif args.outcomes_before is not None:
             outcomes = load_outcomes(args.outcomes_before), load_outcomes(args.outcomes_after)
     except ValueError as error:
         sys.stderr.write(f"{error}\n")
         return 2
     lines = []
+    if check is not None:
+        summary = (
+            f"{check['verdict']}: lower bound of goal items met, variant minus full arm, "
+            f"{check['bound']:+.3f} against {-args.margin:+.3f}, over {check['pairs']} paired builds."
+        )
+        if check["verdict"] == "worse":
+            sys.stdout.write(f"Outcome {summary}\nNo token verdict.\n")
+            return 0
+        lines += [f"Outcome {summary}", ""]
     if outcomes is not None:
         if outcomes[0] != outcomes[1]:
             sys.stdout.write(
