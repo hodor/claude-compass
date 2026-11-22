@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 5493 / 5000 tokens (index.md 3888, active.md 915, lessons/index.md 690). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 5644 / 5000 tokens (index.md 4039, active.md 915, lessons/index.md 690). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -30,16 +30,17 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 
 - [[research/distribution/index|distribution]] (folder, 6 children) - evidence on shipping and updating Compass across projects and hosts, and prior-art reviews of rival frameworks (GSD)
 - [[research/hermes/index|hermes]] (folder, 11 children) - the hermes host - capabilities, memory mechanics, fit with Compass
-- [[research/learning/index|learning]] (folder, 6 children) - evidence on capturing knowledge - lesson mechanics, capture failure, detached workers, source-word fidelity
+- [[research/learning/index|learning]] (folder, 7 children) - evidence on capturing knowledge - lesson mechanics, capture failure, detached workers, source-word fidelity
 - [[research/rolling-wave/index|rolling-wave]] (folder, 4 children) - plan detail tracking proximity - receding horizons, flow theory, practice
-- [[research/test-quality/index|test-quality]] (folder, 7 children) - what makes a test suite good and how to measure it
+- [[research/test-quality/index|test-quality]] (folder, 8 children) - what makes a test suite good and how to measure it
 - [[research/vault-structure/index|vault-structure]] (folder, 10 children) - evidence on organizing and retrieving vault memory - hierarchy, tiers, RAG, graphs, taxonomy
-- [[research/pipeline/index|pipeline]] (folder, 16 children) - evidence on the pipeline as a method - benchmarks, scientific rigor, decision-coverage mechanics
+- [[research/pipeline/index|pipeline]] (folder, 17 children) - evidence on the pipeline as a method - benchmarks, scientific rigor, decision-coverage mechanics
 - [[research/human-surface/index|human-surface]] (folder, 12 children) - how Compass puts things in front of the human: the questions it asks, the documents it hands over for review, and how all of it reads
 - [[RESEARCH-review-in-obsidian]] - a small Obsidian plugin takes the verdict and returns the human; proven on Windows; ranks Compass features for an Obsidian UI
 - [[RESEARCH-review-mockup]] - the review lives in one side panel that follows the human through links
 - [[RESEARCH-llm-research-for-compass]] - approved axes for surveying Anthropic's engineering posts and 2025-2026 LLM agent research for changes Compass should make; axis findings in research/llm-research/
-- [[research/whole-overhead/index|whole-overhead]] (folder, 17 children) - evidence on measuring Compass's whole token overhead on projects agents build, and cutting it biggest area first
+- [[research/whole-overhead/index|whole-overhead]] (folder, 19 children) - evidence on measuring Compass's whole token overhead on projects agents build, and cutting it biggest area first
+  - [[research/whole-overhead/checking-cost/index|checking-cost]] (folder) - research for SPEC-034: how Compass sizes tasks, what its checking stations cost per task, and how a part-by-part re-baseline on a model change would run
   - [[research/llm-research/RESEARCH-axis-6-harness-engineering]] - What OpenAI, Manus, Cursor, Cognition, Amp, Factory, OpenHands, Cline, Gemini CLI and a 2026 source-code survey say about harness design, checked against what Compass already does; reports only what the earlier context prior-art review did not cover
   - [[research/llm-research/RESEARCH-axis-2-host-features]] - Claude Code 2.1.330 hook, skill, subagent, plugin, memory and compaction features mapped against Compass hooks, CLI and skills; first pass, API-side features pending
   - [[research/llm-research/RESEARCH-axis-3-agent-memory]] - 2025-2026 agent-memory papers against Compass's hot path, 5-line lessons and consolidation: helpful/harmful counters, delta-only curation, masking over summarizing, length-alone degradation, sleep-time precompute
@@ -82,6 +83,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[PLAN-029-crafted-agent-context]] - slim launched agents by design A: per-agent-type token measure and the initialPrompt check first, then a split obsidian skill and a start-here fix land after the pilot; the lessons skill stays until a paired run shows it can go
 - [[PLAN-030-ideas-keep-their-status]] - one file per idea in category folders holds his words, status, history and where it led; an importer backfills a hand-made table; sync moves status when a spec names an idea; stage 2 catches his words at submit and the background helper files ideas and verdicts
 - [[PLAN-031-screenplays-in-the-vault]] - five live checks of the Fountain plugin in Obsidian and BetterFountain in VS Code come first, in one sitting; then Compass bundles Fountain 0.34.3, installs it into every project with an Obsidian vault, gives agents a fountain skill and a text check, and ships after acceptance here and in one other project
+- [[PLAN-032-consolidation-grounded-in-sources]] - a zero-token drift scan checks code references, index lines and catalog rows against git and the files they describe, sync keeps catalog rows true to lesson files, a mechanical check guards every lesson edit, and a seeded-staleness probe proves the scan; source pointers, the model judge and the lesson track record follow
 
 ## Decisions
 
