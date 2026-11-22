@@ -6,6 +6,7 @@ edited to invoke a command that was renamed or never added to
 
 import json
 import os
+import shutil
 import sys
 import unittest
 from pathlib import Path
@@ -131,6 +132,49 @@ class HooksJsonTests(unittest.TestCase):
                 hook["command"].startswith('[ -f "$CLAUDE_PROJECT_DIR/.claude/cli/compass" ] || exit 0; '),
                 hook["command"][:80],
             )
+
+    def _guard_hook(self):
+        return next(
+            h for group in self.data["hooks"]["PreToolUse"]
+            for h in group["hooks"] if "guard --hook" in h["command"]
+        )
+
+    def test_guard_fails_closed_and_no_other_hook_does(self):
+        # Defect class: a guard that crashes or times out lets a destructive
+        # subagent call through; the other hooks must keep their default so
+        # a fault in them never blocks the user's turn.
+        self.assertEqual(self._guard_hook().get("onFailure"), "block")
+        for hook in _iter_hook_entries(self.data["hooks"]):
+            if hook is not self._guard_hook() and "guard --hook" not in hook.get("command", ""):
+                self.assertNotIn("onFailure", hook, hook["command"][:80])
+
+    def test_guard_shell_exits_zero_for_main_agent_and_missing_cli(self):
+        # Defect class: with onFailure "block", any non-zero shell exit blocks;
+        # a main-agent event or a project without the CLI must exit 0 before
+        # Python is reached.
+        import subprocess
+        import tempfile
+
+        sh = shutil.which("sh")
+        if sh is None:
+            self.skipTest("no POSIX sh available")
+        command = self._guard_hook()["command"]
+        main_agent_event = json.dumps({"tool_name": "Bash", "tool_input": {"command": "ls"}})
+        with tempfile.TemporaryDirectory() as project:
+            env = dict(os.environ, CLAUDE_PROJECT_DIR=project)
+            missing = subprocess.run(
+                [sh, "-c", command], input=main_agent_event, text=True,
+                env=env, capture_output=True,
+            )
+            self.assertEqual(missing.returncode, 0, missing.stderr)
+            cli_dir = Path(project) / ".claude" / "cli"
+            cli_dir.mkdir(parents=True)
+            (cli_dir / "compass").write_text("raise SystemExit(1)\n", encoding="utf-8")
+            present = subprocess.run(
+                [sh, "-c", command], input=main_agent_event, text=True,
+                env=env, capture_output=True,
+            )
+            self.assertEqual(present.returncode, 0, present.stderr)
 
 
 if __name__ == "__main__":
