@@ -9,6 +9,6 @@ Otherwise:
 - Read the `target` lesson file's frontmatter. Set `status: archived`, update `updated` to today. Do not move or delete the file.
 - Guarantee the file's frontmatter carries the full field set (title, type, status, category, area, tags, score, summary): copy any missing field from the lesson's catalog row before the row is touched. An archived lesson's file must stand alone - consolidate later drops archived rows from the catalog, and a field living only in the row would be destroyed with it.
 - Append the input `body` (the superseding reason) to the lesson body on a new line, prefixed `Superseded:`. This edit is exempt from the 5-line body cap - an archived lesson is retired reference material, not active guidance competing for read budget.
-- Update the matching row in `.compass/meta/lessons-catalog.yaml` to `status: archived`.
+- The catalog row follows the file: sync refreshes its `status` from the frontmatter, so the skill writes only the lesson file.
 
 Return `archived: <target-filename>`.

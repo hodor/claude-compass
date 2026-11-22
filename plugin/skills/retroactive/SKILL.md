@@ -112,7 +112,7 @@ Ask through `AskUserQuestion`, exactly one question per call: "Did this work rev
 
 Never put several questions in one message or one call.
 
-If yes, create a lesson in `.compass/lessons/` and append to `lessons-catalog.yaml`.
+If yes, hand the lesson to `lesson-write`; it writes the lesson file, and sync adds the catalog row.
 
 ### 10. Offer plan traceability
 
