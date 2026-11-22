@@ -390,3 +390,354 @@ def test_render_report_between_model_agreement_is_the_share_of_tasks_the_models_
     assert any(abs(v - 0.75) <= 0.006 for v in _numbers_in(report)), sorted(_numbers_in(report))
     for i in range(8):
         assert "TASK-%d" % (800 + i) in report
+
+
+# ---------------------------------------------------------------------------
+# Implementation-revealed cases: reply parsing, Later-section exclusion, the
+# prompt's letter hygiene, resume and usage-limit halt, aggregate-only report,
+# and the default runner's exit-code handling.
+# ---------------------------------------------------------------------------
+
+def _read_json(path):
+    import json
+
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def _plan_table():
+    return "| Size | Scope |\n|---|---|\n| S | Single file |\n| M | 2-5 files |\n| L | 5+ files |"
+
+
+def test_parse_reply_reads_the_session_letter_and_words_lines_only():
+    """Adversarial where: a session echoing the template (`letter: X`), writing
+    markdown bold, lower case, CRLF line ends, or a prose sentence containing
+    `letter: M` mid-line gets a wrong letter or a letter taken from a word like
+    `Medium`; the parser must return the last real line-start `letter: S|M|L`
+    and None otherwise."""
+    rows = {
+        "plain": ("letter: M\nwords: 2-5 files", ("M", "2-5 files")),
+        "lower_case": ("letter: m\nwords: a", ("M", "a")),
+        "bold_letter": ("**letter:** L\nwords: 5+ files", ("L", "5+ files")),
+        "template_echo_then_answer": ("`letter: X`\nletter: S\nwords: single file", ("S", "single file")),
+        "last_wins": ("letter: M\nletter: L\nwords: w", ("L", "w")),
+        "crlf": ("letter: S\r\nwords: abc\r\n", ("S", "abc")),
+        "word_not_letter": ("letter: Medium\nwords: x", (None, "x")),
+        "mid_line_prose": ("My letter: M\nwords: x", (None, "x")),
+        "template_only": ("letter: X\nwords: y", (None, "y")),
+        "empty": ("", (None, "")),
+        "none": (None, (None, "")),
+    }
+    for name, (reply, expected) in rows.items():
+        assert letters.parse_reply(reply) == expected, name
+
+
+def _write_plan(folder, stem, text):
+    path = Path(folder) / ("%s.md" % stem)
+    path.write_text(text, encoding="utf-8", newline="")
+    return path
+
+
+def _task(n, letter="M"):
+    return "- [ ] TASK-%d: thing %d - complexity: %s, depends_on: none\n" % (n, n, letter)
+
+
+def test_plan_tasks_leaves_out_lines_under_a_later_heading(tmp_path):
+    """Adversarial where: the `## Later` intent section is sampled as if it
+    were detailed (it is still a task line with a letter), or the exclusion
+    never ends and swallows the tasks of the next sibling section, or a
+    `## Later` written inside a code fence switches it on; every row names the
+    task numbers that must remain."""
+    rows = {
+        "later_to_end": ("## Goal\ng\n\n## Tasks\n" + _task(1) + "\n## Later (intent only)\n" + _task(2), [1]),
+        "resumes_at_sibling": ("## Later\n" + _task(1) + "\n## Next\n" + _task(2), [2]),
+        "subheading_stays_later": ("## Later\n### Wave\n" + _task(1) + "\n## Next\n" + _task(2), [2]),
+        "h3_later_ends_at_h3": ("## Wave\n### Later\n" + _task(1) + "### Other\n" + _task(2), [2]),
+        "fenced_later_is_not_a_heading": ("## A\n```\n## Later\n```\n" + _task(3), [3]),
+        "crlf_file": (
+            ("## Later\n" + _task(1) + "## B\n" + _task(2)).replace("\n", "\r\n"),
+            [2],
+        ),
+        "checked_task_counts": ("## A\n- [x] TASK-5: done - complexity: S, depends_on: none\n", [5]),
+    }
+    for name, (text, expected) in rows.items():
+        path = _write_plan(tmp_path, "PLAN-900-%s" % name, text)
+        found = letters.plan_tasks(path)
+        got = sorted(int(t.id.rsplit("TASK-", 1)[1]) for t in found)
+        assert got == expected, name
+        assert all(t.id.startswith("PLAN-900/") for t in found), name
+
+
+@pytest.mark.xfail(strict=True, reason="a heading that merely begins with `Later` (such as `Lateral`) is read as the Later section")
+def test_plan_tasks_keeps_a_heading_that_only_starts_with_later(tmp_path):
+    """Adversarial where: the Later check is a prefix match, so `## Lateral
+    thinking` hides its detailed tasks from the sample."""
+    path = _write_plan(tmp_path, "PLAN-901-x", "## Lateral thinking\n" + _task(7))
+    assert [t.id for t in letters.plan_tasks(path)] == ["PLAN-901/TASK-7"]
+
+
+def test_build_prompt_never_carries_the_original_letter_or_refuses():
+    """Adversarial where: the field is stripped from the common positions but
+    a second `complexity: X` mentioned inside the description, or the field at
+    the very end, stays in what the session reads; a prose mention the
+    stripper cannot remove must stop the batch (Refused) rather than reach a
+    session."""
+    for name, line in {
+        "middle": "- [ ] TASK-9: Build it - complexity: L, depends_on: none, files: [`a.py`]",
+        "last": "- [ ] TASK-9: Build it - depends_on: none, complexity: L",
+        "last_after_dash": "- [ ] TASK-9: Build it - files: [`a.py`] - complexity: L",
+        "twice": "- [ ] TASK-9: Sizing (complexity: L) here - complexity: L, depends_on: none",
+    }.items():
+        task = letters.Task("PLAN-902/TASK-9", "L", line, "the plan goal")
+        prompt = letters.build_prompt(task, _plan_table())
+        assert not re.search(r"complexity:\s*[SML]", prompt), name
+        assert "the plan goal" in prompt and _plan_table() in prompt, name
+        assert "TASK-9:" in prompt, name
+
+    stuck = letters.Task(
+        "PLAN-902/TASK-9", "M", "- [ ] TASK-9: see `complexity: M` rule - complexity: M, depends_on: none", "g"
+    )
+    with pytest.raises(letters.Refused):
+        letters.build_prompt(stuck, _plan_table())
+
+
+class ScriptedRunner:
+    """Fake runner. `replies` is a list cycled through, or a function of
+    (call index, argv); raises UsageLimit once `limit_after` calls were served."""
+
+    def __init__(self, replies, limit_after=None):
+        self.replies = replies
+        self.limit_after = limit_after
+        self.calls = 0
+
+    def __call__(self, argv, cwd):
+        if self.limit_after is not None and self.calls >= self.limit_after:
+            raise letters.UsageLimit("usage limit reached")
+        if callable(self.replies):
+            reply = self.replies(self.calls, argv)
+        else:
+            reply = self.replies[self.calls % len(self.replies)]
+        self.calls += 1
+        return reply
+
+
+def _batch_tasks():
+    return [
+        letters.Task(
+            "PLAN-903/TASK-%d" % i, "SML"[i % 3],
+            "- [ ] TASK-%d: t%d - complexity: %s, a: b" % (i, i, "SML"[i % 3]), "goal",
+        )
+        for i in range(1, 5)
+    ]
+
+
+def test_run_batch_resumes_after_a_usage_limit_without_repeating_finished_sessions(tmp_path):
+    """Adversarial where: a halt at the usage limit loses the finished
+    sessions (so a resume repeats and re-bills them), or the resumed run
+    returns different letters from the ones recorded before the halt. The halt
+    falls at 7 of 24 sessions, an index that is not a task or model boundary."""
+    tasks = _batch_tasks()
+    models = ["strong-a", "balanced-b"]
+    config = {"ids": [t.id for t in tasks], "models": models, "sessions": 3, "seed": 5}
+    progress = tmp_path / "state" / "p.json"
+    cycle = ["letter: S\nwords: a", "letter: M\nwords: b", "letter: L\nwords: c"]
+
+    halted = ScriptedRunner(lambda n, argv: cycle[n % 3], limit_after=7)
+    with pytest.raises(letters.UsageLimit):
+        letters.run_batch(tasks, models, 3, _plan_table(), runner=halted, progress_path=progress, config=config)
+    assert len(_read_json(progress)["done"]) == 7
+
+    resumed = ScriptedRunner(["letter: M\nwords: z"])
+    results = letters.run_batch(tasks, models, 3, _plan_table(), runner=resumed, progress_path=progress, config=config)
+    assert resumed.calls == 24 - 7
+    assert [r["task"] for r in results] == [t.id for t in tasks]
+    assert all(len(r["ratings"][m]) == 3 for r in results for m in models)
+    assert results[0]["ratings"]["strong-a"] == ["S", "M", "L"]
+
+
+def test_run_batch_refuses_a_progress_file_of_another_configuration(tmp_path):
+    """Adversarial where: resuming a progress file written for other tasks,
+    models, session counts or seed mixes two measurements into one report; a
+    refusal must come before any session runs."""
+    tasks = _batch_tasks()
+    progress = tmp_path / "p.json"
+    base = {"ids": [t.id for t in tasks], "models": ["a", "b"], "sessions": 3, "seed": 5}
+    letters.run_batch(
+        tasks[:1], ["a", "b"], 3, _plan_table(), runner=ScriptedRunner(["letter: M"]), progress_path=progress, config=base
+    )
+    for name, change in {"seed": {"seed": 6}, "sessions": {"sessions": 4}, "models": {"models": ["a", "c"]}}.items():
+        runner = ScriptedRunner(["letter: M"])
+        with pytest.raises(letters.Refused):
+            letters.run_batch(
+                tasks, ["a", "b"], 3, _plan_table(), runner=runner, progress_path=progress, config={**base, **change}
+            )
+        assert runner.calls == 0, name
+
+
+def test_run_batch_retries_a_reply_without_a_letter_then_gives_up(tmp_path):
+    """Adversarial where: a reply with no `letter:` line is recorded as a
+    letter (or as None), or retried forever; it gets a bounded number of
+    fresh sessions and then stops the batch with nothing saved for it."""
+    task = _batch_tasks()[:1]
+    config = {"ids": [task[0].id], "models": ["a", "b"], "sessions": 2, "seed": 0}
+
+    flaky = ScriptedRunner(lambda n, argv: "I think medium" if n == 0 else "letter: L\nwords: w")
+    results = letters.run_batch(
+        task, ["a", "b"], 2, _plan_table(), runner=flaky, progress_path=tmp_path / "ok.json", config=config
+    )
+    assert flaky.calls == 5
+    assert results[0]["ratings"] == {"a": ["L", "L"], "b": ["L", "L"]}
+
+    hopeless = ScriptedRunner(["no letter here"])
+    with pytest.raises(letters.SessionFailed):
+        letters.run_batch(
+            task, ["a", "b"], 2, _plan_table(), runner=hopeless, progress_path=tmp_path / "bad.json", config=config
+        )
+    assert hopeless.calls == letters.ATTEMPTS
+    bad = tmp_path / "bad.json"
+    assert not bad.exists() or _read_json(bad)["done"] == {}
+
+
+def _vault_plans(folder):
+    plans = Path(folder) / "plans"
+    plans.mkdir()
+    body = "## Goal\nGOALSENTINEL for this plan.\n\n## Tasks\n"
+    for i, letter in enumerate("SSSMMMLLL", start=1):
+        body += "- [ ] TASK-%d: TITLESENTINEL%d work - complexity: %s, depends_on: none\n" % (i, i, letter)
+    (plans / "PLAN-904-x.md").write_text(body, encoding="utf-8")
+    return plans
+
+
+def _run_args(tmp_path, plans, name="out.md", progress="prog/p.json", extra=()):
+    return [
+        "--n", "6", "--seed", "3", "--plans", str(plans),
+        "run", "--out", str(tmp_path / name), "--strong", "model-strong-x", "--balanced", "model-balanced-y",
+        "--private-root", str(tmp_path / "priv"), "--progress", str(tmp_path / progress), *extra,
+    ]
+
+
+def test_main_run_exits_3_on_a_usage_limit_then_resumes_to_a_report_without_task_text(tmp_path):
+    """Adversarial where: the usage-limit halt exits 1 (or 0 with a partial
+    report) so the operator cannot tell to rerun; the resumed run leaves the
+    finished sessions out of the report; or the report leaks the task title,
+    the plan goal, or the text a session quoted in its `words:` line."""
+    plans = _vault_plans(tmp_path)
+    args = _run_args(tmp_path, plans)
+    out = tmp_path / "out.md"
+
+    halted = ScriptedRunner(["letter: M\nwords: QUOTEDSENTINEL 2-5 files"], limit_after=9)
+    assert letters.main(args, runner=halted) == letters.EXIT_USAGE_LIMIT == 3
+    assert not out.exists()
+    assert len(_read_json(tmp_path / "prog" / "p.json")["done"]) == 9
+
+    resumed = ScriptedRunner(["letter: S\nwords: QUOTEDSENTINEL single file"])
+    assert letters.main(args, runner=resumed) == 0
+    assert resumed.calls == 6 * 2 * 3 - 9
+
+    report = out.read_text(encoding="utf-8")
+    for leaked in ("TITLESENTINEL", "GOALSENTINEL", "QUOTEDSENTINEL", "depends_on"):
+        assert leaked not in report, leaked
+    assert len(set(re.findall(r"PLAN-904/TASK-\d+", report))) == 6
+    assert "model-strong-x" in report and "model-balanced-y" in report
+
+
+def test_main_run_refuses_a_foreign_progress_file_and_equal_models(tmp_path):
+    """Adversarial where: a changed seed silently reuses another draw's
+    progress, or two identical model names produce a 'between models' figure
+    that compares a model with itself; both must exit 1 before any session."""
+    plans = _vault_plans(tmp_path)
+    assert letters.main(_run_args(tmp_path, plans), runner=ScriptedRunner(["letter: M\nwords: w"])) == 0
+
+    runner = ScriptedRunner(["letter: M\nwords: w"])
+    changed_seed = _run_args(tmp_path, plans)
+    changed_seed[changed_seed.index("--seed") + 1] = "4"
+    assert letters.main(changed_seed, runner=runner) == 1
+
+    same = _run_args(tmp_path, plans, progress="other.json")
+    same[same.index("--balanced") + 1] = "model-strong-x"
+    assert letters.main(same, runner=runner) == 1
+    assert runner.calls == 0
+
+
+@pytest.mark.xfail(strict=True, reason="--sessions 1 runs the whole batch and then dies in the kappa step with an uncaught ValueError")
+def test_main_run_rejects_a_single_session_before_spending_any(tmp_path):
+    """Adversarial where: Fleiss' kappa needs at least two sessions per model,
+    yet `--sessions 1` is accepted and every session runs before the report
+    step raises; the check belongs before the first session."""
+    plans = _vault_plans(tmp_path)
+    runner = ScriptedRunner(["letter: M\nwords: w"])
+    code = letters.main(_run_args(tmp_path, plans, extra=("--sessions", "1")), runner=runner)
+    assert code == 1 and runner.calls == 0
+
+
+def test_main_dry_run_prints_ids_and_one_prompt_without_the_original_letter(tmp_path, capsys, monkeypatch):
+    """Adversarial where: the dry run launches a session, writes a progress
+    file, or prints a prompt that still carries the first task's original
+    letter."""
+    plans = _vault_plans(tmp_path)
+
+    def refuse(*a, **kw):
+        raise AssertionError("dry run started a subprocess")
+
+    monkeypatch.setattr(letters.subprocess, "run", refuse)
+    assert letters.main(["--n", "6", "--seed", "3", "--plans", str(plans), "--dry-run"]) == 0
+    shown = capsys.readouterr().out
+    assert len(set(re.findall(r"^PLAN-904/TASK-\d+$", shown, re.MULTILINE))) == 6
+    prompt = shown.split("prompt of", 1)[1]
+    assert not re.search(r"complexity:\s*[SML]", prompt)
+    assert "GOALSENTINEL" in prompt
+    assert not (tmp_path / "prog").exists()
+
+
+class _Done:
+    def __init__(self, returncode, stdout="", stderr=""):
+        self.returncode, self.stdout, self.stderr = returncode, stdout, stderr
+
+
+def _stub_claude_on_path(folder):
+    stub = Path(folder) / "bin"
+    stub.mkdir()
+    for name in ("claude.cmd", "claude.exe", "claude"):
+        (stub / name).write_text("", encoding="utf-8")
+        try:
+            (stub / name).chmod(0o755)
+        except OSError:
+            pass
+    return {"PATH": str(stub), "ANTHROPIC_API_KEY": "must-not-pass", "KEEP": "1"}
+
+
+def test_default_runner_maps_exit_codes_and_isolates_the_session(tmp_path, monkeypatch):
+    """Adversarial where: a zero-exit reply in which the model quotes the
+    words `usage limit` is taken as a halt; a nonzero exit without the phrase
+    is taken as a limit (the batch would stop forever instead of failing); the
+    session inherits the operator's API key or runs without stdin closed or in
+    the wrong folder."""
+    parent = _stub_claude_on_path(tmp_path)
+    seen = {}
+    queue = []
+
+    def fake_run(command, **kwargs):
+        seen.update(kwargs, command=command)
+        return queue.pop(0)
+
+    monkeypatch.setattr(letters.subprocess, "run", fake_run)
+    argv = letters.session_command("m", "p")
+    folder = tmp_path / "work"
+    folder.mkdir()
+
+    queue.append(_Done(0, "letter: M\nwords: the usage limit text"))
+    reply = letters.default_runner(argv, folder, private_root=tmp_path / "priv", parent_env=parent)
+    assert reply.startswith("letter: M")
+    assert seen["cwd"] == str(folder)
+    assert seen["stdin"] == subprocess.DEVNULL
+    assert "ANTHROPIC_API_KEY" not in seen["env"]
+    assert seen["env"]["CLAUDE_CONFIG_DIR"].startswith(str(tmp_path / "priv"))
+    assert seen["command"][1:] == argv[1:]
+
+    queue.append(_Done(1, "", "Claude usage limit reached. Resets at 3pm"))
+    with pytest.raises(letters.UsageLimit):
+        letters.default_runner(argv, folder, private_root=tmp_path / "priv", parent_env=parent)
+
+    queue.append(_Done(1, "", "network down"))
+    with pytest.raises(letters.SessionFailed) as caught:
+        letters.default_runner(argv, folder, private_root=tmp_path / "priv", parent_env=parent)
+    assert not isinstance(caught.value, letters.UsageLimit)
