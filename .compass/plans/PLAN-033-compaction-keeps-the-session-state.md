@@ -95,7 +95,7 @@ This plan implements the compaction-survival need of [[specs/pipeline/SPEC-025-s
 
 ### Wave 1 (detailed): put the state back, and measure the host summary
 
-- [ ] TASK-330: Transcript readers for the session state - complexity: M, depends_on: none, files: [plugin/cli/sessionslib.py, plugin/cli/tests/test_sessionslib_state.py, plugin/cli/tests/fixtures/transcripts/state-session.jsonl], lessons: [LESSON-hook-payloads-observe-before-coding]
+- [x] TASK-330: Transcript readers for the session state - complexity: M, depends_on: none, files: [plugin/cli/sessionslib.py, plugin/cli/tests/test_sessionslib_state.py, plugin/cli/tests/fixtures/transcripts/state-session.jsonl], lessons: [LESSON-hook-payloads-observe-before-coding]
   - Before coding, the builder mines one real local transcript holding Read, Edit, Write, `AskUserQuestion`, a pytest run and a `compact_boundary`, and writes a fixture holding the record shapes only, every path, prompt and output replaced by neutral text.
   - New readers in `sessionslib.py`, each a generator over the main transcript and, where named, its `subagents/` files, all following the module's never-raise contract:
     - `touched_files(transcript)`: ordered `(path, kind, last_index)` for Read, Edit, Write and MultiEdit `input.file_path`, kind `edited` beating `read` for the same path, sidechain records and subagent files included.
