@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 5862 / 5000 tokens (index.md 4257, active.md 915, lessons/index.md 690). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 5924 / 5000 tokens (index.md 4319, active.md 915, lessons/index.md 690). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -40,6 +40,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[RESEARCH-review-mockup]] - the review lives in one side panel that follows the human through links
 - [[RESEARCH-llm-research-for-compass]] - approved axes for surveying Anthropic's engineering posts and 2025-2026 LLM agent research for changes Compass should make; axis findings in research/llm-research/
 - [[research/whole-overhead/index|whole-overhead]] (folder, 19 children) - evidence on measuring Compass's whole token overhead on projects agents build, and cutting it biggest area first
+  - [[research/whole-overhead/prompt-cache/index|prompt-cache]] (folder) - three research axes on how Compass's text hits the provider prompt cache: measured hit rate, what changes the session-start prefix, and cache lifetime for subagents and loops
   - [[research/whole-overhead/checking-cost/index|checking-cost]] (folder) - research for SPEC-034: how Compass sizes tasks, what its checking stations cost per task, and how a part-by-part re-baseline on a model change would run
   - [[research/llm-research/RESEARCH-axis-6-harness-engineering]] - What OpenAI, Manus, Cursor, Cognition, Amp, Factory, OpenHands, Cline, Gemini CLI and a 2026 source-code survey say about harness design, checked against what Compass already does; reports only what the earlier context prior-art review did not cover
   - [[research/llm-research/RESEARCH-axis-2-host-features]] - Claude Code 2.1.330 hook, skill, subagent, plugin, memory and compaction features mapped against Compass hooks, CLI and skills; first pass, API-side features pending
