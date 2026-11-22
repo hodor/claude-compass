@@ -54,8 +54,9 @@ DSH_EVENTS = {
 
 # Hook commands left out of `.dsh/hooks.json`: context-check measures from
 # `transcript_path` and halts with `continue: false`, and dsh hooks receive
-# an empty transcript path and only log the halt.
-DSH_SKIPPED_COMMANDS = (" context-check ",)
+# an empty transcript path and only log the halt; session-state reads the
+# same transcript to build its block, so it has nothing to read there either.
+DSH_SKIPPED_COMMANDS = (" context-check ", " session-state ")
 
 # plugin.yaml nests its fields under a `plugin:` mapping, so the field is
 # usually indented; a top-level `hosts:` is accepted too.
