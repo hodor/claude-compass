@@ -198,3 +198,27 @@ Plan: [[PLAN-033-compaction-keeps-the-session-state]]; intent lines are in its L
 - [ ] TASK-339
 - [ ] TASK-340
 - [ ] TASK-341
+
+## PLAN-035 later tasks (intent only)
+
+Plan: [[PLAN-035-prompt-cache-is-a-design-input]]; intent lines are in its Later section.
+
+- [ ] TASK-424
+- [ ] TASK-425
+- [ ] TASK-426
+- [ ] TASK-427
+- [ ] TASK-428
+- [ ] TASK-429
+- [ ] TASK-430
+
+## PLAN-036 later tasks (intent only)
+
+Plan: [[PLAN-036-verification-beyond-test-pass]]; intent lines are in its Later section.
+
+- [ ] TASK-413
+- [ ] TASK-414
+- [ ] TASK-415
+- [ ] TASK-416
+- [ ] TASK-417
+- [ ] TASK-418
+- [ ] TASK-419

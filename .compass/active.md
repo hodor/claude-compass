@@ -106,6 +106,33 @@ Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, fi
 - [ ] TASK-335: Probe runner in `bench/overhead` - complexity: M, depends_on: none
 - [ ] TASK-336: Pilot on recorded compactions - complexity: S, depends_on: TASK-335
 
+## PLAN-035 Wave 1: prompt cache as a design input
+
+Plan: [[PLAN-035-prompt-cache-is-a-design-input]]; each task's full text, files and checks are there.
+
+- [ ] TASK-420: Cache readers over host transcripts, in a new `plugin/cli/cachelib.py`, standard library only, read-only, never raising on a malformed... - complexity: M, depends_on: none
+- [ ] TASK-421: `compass cache [--all-compass] [--days N] [--json] [--save [FILE]] [--compare FILE]` in `plugin/cli/commands/cache.py`, registered in... - complexity: M, depends_on: TASK-420
+- [ ] TASK-422: Ship Wave 1 to this repo: bump the minor version in `plugin/.claude-plugin/plugin.json` from its value at merge, and copy `cachelib.py`,... - complexity: S, depends_on: TASK-421
+- [ ] TASK-423: Record the baseline - complexity: S, depends_on: TASK-421
+
+## PLAN-036 Wave 1: verification beyond test-pass
+
+Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files and checks are there.
+
+- [ ] TASK-400: `compass requirements <spec>` lists a spec's requirements - complexity: M, depends_on: none
+- [ ] TASK-401: `compass reach --report <file> --diff <range> [--repo <dir>]` intersects a coverage report with a diff - complexity: L, depends_on: none
+- [ ] TASK-402: `compass ablate TASK-NNN --cmd "<test command with {tests}>" [--refactor] [--merge <sha>]` checks that the task's tests depend on its code - complexity: L, depends_on: none
+- [ ] TASK-403: `compass evidence run --task TASK-NNN --check <slug> -- <command...>` keeps a check rerunnable; `compass evidence rerun <record>` reruns... - complexity: M, depends_on: none
+- [ ] TASK-405: Model family - complexity: S, depends_on: none
+- [ ] TASK-404: Register the commands: four `COMMAND_SPECS` lines in `plugin/cli/maincli.py` for `requirements`, `reach`, `ablate` and `evidence`, in... - complexity: S, depends_on: TASK-400, TASK-401, TASK-402, TASK-403, TASK-405
+- [ ] TASK-407: The entry point is named in the plan, and research reports name their model - complexity: S, depends_on: none
+- [ ] TASK-406: Validator steps 4h, 4i and 4j in `plugin/templates/agents/validator.md`, each per task, each run through `compass evidence run --task... - complexity: M, depends_on: TASK-404, TASK-407
+- [ ] TASK-408: The builder's review adds correctness against the spec - complexity: S, depends_on: TASK-404
+- [ ] TASK-409: The build loop takes the validator's new FAILs - complexity: M, depends_on: TASK-404
+- [ ] TASK-410: The reviewer matrix records model family - complexity: S, depends_on: TASK-404, TASK-407
+- [ ] TASK-411: Release and local refresh: bump `plugin/.claude-plugin/plugin.json` to the next minor, run `python plugin/cli/compass self-update... - complexity: S, depends_on: TASK-406, TASK-408, TASK-409, TASK-410
+- [ ] TASK-412: The planted-defect probe, the spec's KPI. `bench/verification/planted.py` builds a throwaway Python project in a temp folder with its... - complexity: M, depends_on: TASK-411
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].

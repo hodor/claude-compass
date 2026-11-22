@@ -1,7 +1,8 @@
 ---
 title: "Verification Goes Beyond Passing Tests"
 type: plan
-status: draft
+status: approved
+approved: 2026-11-21
 confidence: medium
 area: testing
 tags: [testing, verification, validator, reachability, ablation, spec-coverage, evidence, model-family]
@@ -46,8 +47,6 @@ flowchart LR
 
 Numbers are task ids (provisional until approval). A wave is a group of tasks planned in detail together; the grey box stays one-line sketches until the probe in TASK-412 reports.
 
-> [!IMPORTANT]
-> You decide: approve this plan, including the twelve rulings under "Rulings this plan carries". Each is the research review's recommended option or the planner's, taken as the default and marked [guess] where it is used; approving confirms all twelve, and a note on any one changes it.
 
 ## Goal
 

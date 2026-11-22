@@ -1,7 +1,8 @@
 ---
 title: "The Prompt Cache Is a Design Input"
 type: plan
-status: draft
+status: approved
+approved: 2026-11-21
 confidence: medium
 area: tooling
 tags: [tokens, cost, prompt-caching, measurement, subagents, session-start, git-status, ttl]
@@ -40,8 +41,6 @@ flowchart TB
   classDef gate fill:#fde68a,stroke:#b45309
 ```
 
-> [!IMPORTANT]
-> You decide: approve the plan and answer Gate 1 (which number counts as a subagent's first-request hit). Gates 2 and 3 come later, each after the measurement it rests on.
 
 ## Goal
 
