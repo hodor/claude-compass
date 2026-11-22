@@ -37,7 +37,9 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[research/human-surface/index|human-surface]] (folder, 12 children) - how Compass puts things in front of the human: the questions it asks, the documents it hands over for review, and how all of it reads
 - [[RESEARCH-review-in-obsidian]] - a small Obsidian plugin takes the verdict and returns the human; proven on Windows; ranks Compass features for an Obsidian UI
 - [[RESEARCH-review-mockup]] - the review lives in one side panel that follows the human through links
+- [[RESEARCH-llm-research-for-compass]] - planned axes for surveying Anthropic's engineering posts and 2025-2026 LLM agent research for changes Compass should make, awaiting the human's go
 - [[research/whole-overhead/index|whole-overhead]] (folder, 17 children) - evidence on measuring Compass's whole token overhead on projects agents build, and cutting it biggest area first
+- [[RESEARCH-llm-research-for-compass]] - planned axes for surveying Anthropic's engineering posts and 2025-2026 LLM agent research for changes Compass should make, awaiting the human's go
 
 ## Plans
 
