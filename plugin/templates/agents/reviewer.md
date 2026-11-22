@@ -44,9 +44,9 @@ From each agent's output, extract discrete claims, findings, and recommendations
 ```
 | Claim | Agent 1 | Agent 2 | Agent 3 | Agent 4 | Agent 5 | Agreement |
 |-------|---------|---------|---------|---------|---------|-----------|
-| Model (family) | opus | sonnet | sonnet | unknown | sonnet | |
+| Model (family) | gpt-5 (gpt) | claude-sonnet-4-5 (claude) | claude-opus-4-1 (claude) | unknown | claude-sonnet-4-5 (claude) | |
 | X uses pattern A | YES (high) | YES (high) | YES (med) | YES (high) | YES (high) | 100% |
-| Y is deprecated | NO (med) | YES (low) | YES (med) | - | YES (med) | 60% (3 of 5 share sonnet) |
+| Y is deprecated | NO (med) | YES (low) | YES (med) | - | YES (med) | 60% (3 of 5 share claude) |
 | Z should use lib Q | YES (high) | NO (high) | - | YES (med) | NO (med) | 40% |
 ```
 
