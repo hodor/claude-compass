@@ -544,5 +544,261 @@ class NeverRaiseTests(unittest.TestCase):
         self.assertIn((good_start + 6, "manual"), boundaries)
 
 
+class ImplementationBranchTests(unittest.TestCase):
+    """Branches and helpers of the readers that the public contract does not name."""
+
+    def setUp(self):
+        import tempfile
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.tmp = Path(self._tmp.name)
+
+    def sub(self, main, name, lines):
+        folder = main.with_suffix("") / "subagents"
+        folder.mkdir(parents=True, exist_ok=True)
+        return write_lines(folder / name, lines)
+
+    def test_subagent_only_paths_follow_main_paths_in_file_name_order(self):
+        """Adversarial where: entries sort by raw index across files, so a
+        subagent path with a small index lands before a main-transcript path,
+        or subagent files are visited in directory order not by name."""
+        main = write_lines(
+            self.tmp / "s.jsonl",
+            [
+                use("a", "Read", {"file_path": "m1"}),
+                "",
+                "",
+                "",
+                "",
+                use("b", "Read", {"file_path": "m2"}),
+            ],
+        )
+        self.sub(main, "agent-b.jsonl", [use("c", "Edit", {"file_path": "sB"})])
+        self.sub(
+            main,
+            "agent-a.jsonl",
+            ["", "", "", "", "", "", use("d", "Edit", {"file_path": "sA"})],
+        )
+        self.assertEqual(
+            [p for p, _, _ in sl.touched_files(main)], ["m1", "m2", "sA", "sB"]
+        )
+
+    def test_subagent_touch_changes_kind_but_not_the_main_last_index(self):
+        """Adversarial where: a subagent record's index overwrites the index of
+        a path the main transcript also touched."""
+        main = write_lines(
+            self.tmp / "s.jsonl",
+            [
+                use("a", "Read", {"file_path": "shared"}),
+                "",
+                "",
+                use("b", "Read", {"file_path": "other"}),
+            ],
+        )
+        self.sub(
+            main,
+            "agent-a.jsonl",
+            [""] * 9 + [use("c", "Edit", {"file_path": "shared"})],
+        )
+        got = {p: (k, i) for p, k, i in sl.touched_files(main)}
+        self.assertEqual(got["shared"], ("edited", 0))
+
+    def test_side_folder_ignores_files_that_are_not_agent_transcripts(self):
+        """Adversarial where: the side-folder glob admits `other.jsonl`, a
+        `.meta.json` sibling, or a directory named like a transcript."""
+        main = write_lines(self.tmp / "s.jsonl", [use("a", "Read", {"file_path": "m"})])
+        self.sub(main, "other.jsonl", [use("b", "Edit", {"file_path": "other"})])
+        self.sub(main, "agent-z.meta.json", [use("b", "Edit", {"file_path": "meta"})])
+        (main.with_suffix("") / "subagents" / "agent-dir.jsonl").mkdir()
+        self.assertEqual([p for p, _, _ in sl.touched_files(main)], ["m"])
+
+    def test_untracked_tool_names_and_empty_paths_are_not_touches(self):
+        """Adversarial where: any tool carrying `file_path` (Grep, NotebookEdit)
+        counts, or an empty `file_path` is listed as a path."""
+        t = write_lines(
+            self.tmp / "s.jsonl",
+            [
+                use("a", "Grep", {"file_path": "g.py"}),
+                use("b", "NotebookEdit", {"file_path": "n.ipynb"}),
+                use("c", "Edit", {"file_path": ""}),
+                use("d", "Edit", {"file_path": "real.py"}),
+            ],
+        )
+        self.assertEqual(list(sl.touched_files(t)), [("real.py", "edited", 3)])
+
+    def test_record_index_counts_blank_garbage_and_unicode_separator_lines(self):
+        """Adversarial where: indexing counts only parsed records, or a raw
+        U+2028 / U+0085 inside a record splits it into two lines."""
+        raw = json.dumps(
+            {
+                "type": "assistant",
+                "message": {"content": [{"type": "text", "text": "a b\u0085c"}]},
+            },
+            ensure_ascii=False,
+        )
+        t = write_lines(
+            self.tmp / "s.jsonl",
+            ["", "   ", "{bad", raw, use("a", "Edit", {"file_path": "x.py"})],
+        )
+        self.assertEqual(list(sl.touched_files(t)), [("x.py", "edited", 4)])
+
+    def test_cd_prefix_forms_and_non_prefix_separators(self):
+        """Adversarial where: the `cd <dir> &&` prefix fails on quoted or
+        spaced directories, on `&&` without spaces or followed by a newline, or
+        a `;` separator or a name longer than the runner counts as a run."""
+        runs = [
+            'cd "dir with space" && pytest',
+            "cd 'dir with space'&&pytest",
+            "cd a&&cd b&&pytest -q",
+            "cd a &&\npytest",
+            "  pytest",
+            "python3 -m pytest",
+        ]
+        not_runs = [
+            "cd a; pytest",
+            "pytest-xdist",
+            "pytestx",
+            "cd a && echo pytest",
+            "cd a ||pytest",
+        ]
+        for i, cmd in enumerate(runs):
+            with self.subTest(run=cmd):
+                t = write_lines(self.tmp / f"r{i}.jsonl", bash_pair("t", cmd))
+                self.assertEqual(sl.last_test_run(t)[0], cmd)
+        for i, cmd in enumerate(not_runs):
+            with self.subTest(not_run=cmd):
+                t = write_lines(self.tmp / f"n{i}.jsonl", bash_pair("t", cmd))
+                self.assertIsNone(sl.last_test_run(t))
+
+    def test_long_cd_chains_classify_quickly(self):
+        """Adversarial where: the `cd` prefix pattern backtracks without bound
+        on a long chain that never reaches a runner."""
+        import time
+
+        for cmd in [
+            "cd a&&" * 4000 + "ls",
+            "cd a && " * 4000 + "ls",
+            "cd " + "&&" * 5000 + "x",
+        ]:
+            t = write_lines(self.tmp / "long.jsonl", bash_pair("t", cmd))
+            started = time.monotonic()
+            self.assertIsNone(sl.last_test_run(t))
+            self.assertLess(time.monotonic() - started, 2.0)
+
+    def test_runner_in_a_non_bash_tool_call_is_not_a_run(self):
+        """Adversarial where: any tool call with a `command` input counts."""
+        t = write_lines(self.tmp / "s.jsonl", [use("a", "Task", {"command": "pytest"})])
+        self.assertIsNone(sl.last_test_run(t))
+
+    def test_stdout_falls_back_to_result_content_and_handles_crlf(self):
+        """Adversarial where: a non-text `toolUseResult.stdout` yields an empty
+        tail instead of the block content, or CRLF output leaves a carriage
+        return on lines."""
+
+        def result(tool_use_result, content="c1\nc2"):
+            return {
+                "type": "user",
+                "message": {
+                    "content": [
+                        {"type": "tool_result", "tool_use_id": "a", "content": content}
+                    ]
+                },
+                "toolUseResult": tool_use_result,
+            }
+
+        rows = {
+            "stdout_none": (result({"stdout": None}), ["c1", "c2"]),
+            "string_result": (result("plain string"), ["c1", "c2"]),
+            "crlf": (result({"stdout": "l1\r\nl2\r\n"}), ["l1", "l2"]),
+        }
+        for name, (record, tail) in rows.items():
+            with self.subTest(name=name):
+                t = write_lines(
+                    self.tmp / f"{name}.jsonl",
+                    [use("a", "Bash", {"command": "pytest"}), record],
+                )
+                self.assertEqual(sl.last_test_run(t), ("pytest", tail))
+
+    def test_run_without_a_result_yet_has_an_empty_tail_not_an_earlier_one(self):
+        """Adversarial where: a later run that has no result inherits the
+        output of the earlier run."""
+        t = write_lines(
+            self.tmp / "s.jsonl",
+            [
+                *bash_pair("a", "pytest first", "old\n"),
+                use("b", "Bash", {"command": "pytest second"}),
+            ],
+        )
+        self.assertEqual(sl.last_test_run(t), ("pytest second", []))
+
+    def test_unanswered_and_non_text_answers_are_skipped_individually(self):
+        """Adversarial where: one unanswered or non-text answer drops the
+        whole call's pairs, or an answer key absent from `questions` is listed."""
+        t = write_lines(
+            self.tmp / "s.jsonl",
+            [
+                {
+                    "type": "user",
+                    "toolUseResult": {
+                        "questions": [
+                            {"question": "Q1"},
+                            {"question": "Q2"},
+                            {"question": "Q3"},
+                        ],
+                        "answers": {"Q1": "a", "Q3": 5, "Extra": "x"},
+                    },
+                }
+            ],
+        )
+        self.assertEqual(list(sl.question_answers(t)), [("Q1", "a")])
+
+    def test_boundary_trigger_shapes_and_record_type(self):
+        """Adversarial where: a non-text trigger is passed through, a record of
+        another type carrying the subtype counts, or a subagent file's
+        boundary is merged into the main transcript's list."""
+        main = write_lines(
+            self.tmp / "s.jsonl",
+            [
+                {
+                    "type": "system",
+                    "subtype": "compact_boundary",
+                    "compactMetadata": {"trigger": 5},
+                },
+                {"type": "user", "subtype": "compact_boundary"},
+                {"type": "system", "subtype": "other"},
+                {
+                    "type": "system",
+                    "subtype": "compact_boundary",
+                    "compactMetadata": {},
+                },
+            ],
+        )
+        self.sub(
+            main,
+            "agent-a.jsonl",
+            [
+                {
+                    "type": "system",
+                    "subtype": "compact_boundary",
+                    "compactMetadata": {"trigger": "auto"},
+                }
+            ],
+        )
+        self.assertEqual(list(sl.compact_boundaries(main)), [(0, None), (3, None)])
+
+    def test_origin_that_is_not_an_object_never_qualifies(self):
+        """Adversarial where: `origin` written as the bare string "human" is
+        accepted by a truthiness or substring check."""
+        t = write_lines(
+            self.tmp / "s.jsonl",
+            [
+                human("the request"),
+                {"type": "user", "message": {"content": "later"}, "origin": "human"},
+            ],
+        )
+        self.assertEqual(sl.last_human_request(t), "the request")
+
+
 if __name__ == "__main__":
     unittest.main()
