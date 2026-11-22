@@ -264,3 +264,101 @@ def test_records_inside_a_git_work_tree_are_refused_and_nothing_is_written(
         if p.is_file() and ".git" not in p.relative_to(folder).parts and p.name != ".git"
     ]
     assert written == []
+
+
+VARIANT = "compass-minus-post-tester"
+
+
+def test_a_variant_arm_is_recorded_with_its_id_and_the_full_arms_have_no_variant(project, private_root):
+    """Adversarial where: a variant build recorded as plain `compass` (its id
+    dropped) is indistinguishable from a full Compass build in the records, and
+    a full build or a baseline build that carries a variant id corrupts the
+    pairing of variants with the full arm."""
+    events = fake_claude.events_for("clean", project)
+
+    rows = {arm: record(events, private_root, arm=arm) for arm in ("compass", "baseline", VARIANT, None)}
+
+    assert rows[VARIANT]["arm"] == VARIANT
+    assert rows[VARIANT]["variant"] == VARIANT
+    for arm in ("compass", "baseline", None):
+        assert rows[arm]["variant"] is None, arm
+    persisted = read_rows(private_root)
+    assert [row["variant"] for row in persisted] == [None, None, VARIANT, None]
+
+
+@pytest.mark.parametrize(
+    "arm",
+    [
+        "compass-minus-",
+        "compass-minus",
+        "compass-plus-tester",
+        "baseline-minus-tester",
+        "xcompass-minus-tester",
+        "Compass-minus-tester",
+        "compass-minus-Tester",
+        "compass-minus-post tester",
+        "compass-minus-post-tester\n",
+        "compass-minus-../tester",
+        "compass-minus-a/b",
+        "compass-minus-a\b",
+        "compass-minus-harpsichord tuner notes",
+        "",
+    ],
+)
+def test_an_arm_outside_the_accepted_forms_is_refused_and_nothing_is_written(arm, project, private_root):
+    """Adversarial where: a prefix check alone accepts `compass-minus-` with no
+    part, a trailing newline (re.match with `$`), a path separator or free text
+    after the prefix, and so lets topic text or a path into a record row."""
+    with pytest.raises(ValueError):
+        record(fake_claude.events_for("clean", project), private_root, arm=arm)
+
+    assert not (private_root / "records").exists() or list((private_root / "records").iterdir()) == []
+
+
+def test_a_one_letter_part_is_the_shortest_accepted_variant(project, private_root):
+    """Adversarial where: the shortest legal variant id (`compass-minus-a`) is
+    the boundary of the part pattern; requiring two characters would refuse it."""
+    row = record(fake_claude.events_for("clean", project), private_root, arm="compass-minus-a")
+
+    assert row["arm"] == "compass-minus-a"
+
+
+BUILD_MODEL = [
+    ("the model with the most output tokens", [{MAIN: (10, 90, 0, 0), SUB: (10, 20, 0, 0)}], MAIN),
+    (
+        "output decides, not input: the other model has the larger input and cache",
+        [{MAIN: (5000, 10, 9000, 400), SUB: (1, 500, 0, 0)}],
+        SUB,
+    ),
+    ("the winner listed second in modelUsage", [{SUB: (1, 20, 0, 0), MAIN: (5, 90, 0, 0)}], MAIN),
+    (
+        "output summed across a clear (200 + 150 beats 300), not the last segment alone (150 loses)",
+        [[{MAIN: (10, 200, 0, 0), SUB: (1, 300, 0, 0)}], [{MAIN: (10, 150, 0, 0)}]],
+        MAIN,
+    ),
+]
+
+
+@pytest.mark.parametrize("label,segments,expected", BUILD_MODEL, ids=[row[0] for row in BUILD_MODEL])
+def test_build_model_is_the_model_with_the_most_output_tokens(label, segments, expected, project, private_root):
+    """Adversarial where: taking the first key of modelUsage, the model with the
+    most input or cache tokens, or only the last segment after a clear, names the
+    wrong model for the build, and every model-versus-model comparison then
+    pairs builds that ran different models."""
+    if not isinstance(segments[0], list):
+        segments = [segments]
+    events = fake_claude.stream_from_segments(segments, project)
+
+    row = record(events, private_root)
+
+    assert row["build_model"] == expected
+    assert read_rows(private_root)[0]["build_model"] == expected
+
+
+def test_a_session_with_no_result_event_has_no_build_model(project, private_root):
+    """Adversarial where: a crashed session has no modelUsage; inventing a
+    model (a default id) or raising would lose the row."""
+    row = record(fake_claude.events_for("crash", project), private_root)
+
+    assert "build_model" in row
+    assert row["build_model"] is None
