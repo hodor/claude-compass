@@ -69,7 +69,7 @@ python bench/overhead/variants.py discard post-tester
 
 `drive.py PROJECT --arm compass-minus-<part> --repo-root <worktree> ...` runs a variant build like a Compass build from that worktree; `--repo-root` is required for a variant arm.
 
-`pilot.py --arms ARM [ARM ...]` names the arms to build (default `compass baseline`). For each variant arm the pilot replaces any worktree left by an earlier run with a fresh one under `<private root>/variants` and passes it to `drive.py` as `--repo-root`. `pilot.py --topics ID [ID ...]` replays pool topics with their frozen goals: no probe, pick or freeze runs, an id outside the pool or without frozen goals is refused before any session, and builds already closed in the run log are not built again, so a variant replay pairs with the Compass builds a first run logged.
+`pilot.py --arms ARM [ARM ...]` names the arms to build (default `compass baseline`). For each variant arm the pilot replaces any worktree left by an earlier run with a fresh one under `<private root>/variants` and passes it to `drive.py` as `--repo-root`. `pilot.py --topics ID [ID ...]` replays pool topics with their frozen goals: no probe, pick or freeze runs, an id outside the pool or without frozen goals is refused before any session, and builds already closed in the run log are not built again, so a variant replay pairs with the Compass builds a first run logged: with a variant arm named, the aggregates read those logged `compass` builds as the variant's pairs even when `compass` is not in `--arms`, without building them again. `make` first prunes stale worktree registrations, so a crash that left one does not block the next `make`.
 
 ```bash
 python bench/overhead/pilot.py --arms compass compass-minus-post-tester --topics t-1a2b3c4d t-5e6f7a8b

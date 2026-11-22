@@ -99,6 +99,7 @@ def make(part, *, repo_root, variants_root, patch_dir=None):
         raise VariantError(f"{target} exists; discard it first")
 
     target.parent.mkdir(parents=True, exist_ok=True)
+    _git(repo_root, "worktree", "prune")
     added = _git(repo_root, "worktree", "add", "--detach", str(target), "HEAD")
     if added.returncode != 0:
         _remove(repo_root, target)

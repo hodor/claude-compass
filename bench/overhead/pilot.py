@@ -529,10 +529,17 @@ class _Pilot:
         """Aggregates over the closed builds. Builds that ended done or were
         stopped by a cap, and have a judged verdict, enter the shares; failed
         and capped builds are counted. Only builds of the pilot's topics in the
-        pilot's arms enter."""
-        closed = [e for e in closed if e["topic"] in self.pilot_topics() and e["arm"] in self.arms]
+        pilot's arms enter. With a variant arm, the logged `compass` builds of
+        those topics enter the shares too, as the pairs of the variant, without
+        being built again."""
+        topics_here = self.pilot_topics()
+        paired_arms = set(self.arms)
+        if any(records.is_variant(arm) for arm in self.arms):
+            paired_arms.add("compass")
+        logged = [e for e in closed if e["topic"] in topics_here and e["arm"] in paired_arms]
+        closed = [e for e in logged if e["arm"] in self.arms]
         judged = {self.key(e) for e in self.events("judged")}
-        counted = [e for e in closed if _finished(e) and self.key(e) in judged]
+        counted = [e for e in logged if _finished(e) and self.key(e) in judged]
         by_column = {"weighted": {}, "raw": {}}
         for event in counted:
             for column, groups in by_column.items():
@@ -715,7 +722,9 @@ def run_pilot(
 
     `arms` (default `compass` and `baseline`) lists the arms to build. A variant
     arm builds in a fresh worktree of HEAD under `<private_root>/variants`, which
-    is passed to `drive` as `--repo-root`. With `topic_ids`, no probe, pick or
+    is passed to `drive` as `--repo-root`; the logged `compass` builds of the named
+    topics are read into the aggregates as the variant's pairs even when `compass`
+    is not in `arms`. With `topic_ids`, no probe, pick or
     freeze runs: the named pool topics are built with their frozen goals. PilotError
     is raised, before any session, for an arm outside the accepted forms, a repeated
     arm or topic id, a topic id outside the pool and a topic without frozen goals.
