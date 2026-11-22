@@ -221,7 +221,7 @@ def index_inventory():
             entries.append((rel(path), number, entry.group("desc"), resolved[0]))
     out = []
     for file, number, desc, target in entries:
-        if target_uses[target] != 1:
+        if target_uses[target] != 1 or target.startswith("lessons/"):
             continue
         target_path = vault / target
         text = vaultlib.read_vault_text(target_path)
@@ -232,10 +232,10 @@ def index_inventory():
             continue
         out.append({"file": file, "line": number, "target": rel(target_path),
                     "target_summary_line": span})
-    return out, set(target_uses)
+    return out
 
 
-def catalog_inventory(indexed, records):
+def catalog_inventory(records):
     catalog = vault / "meta" / "lessons-catalog.yaml"
     if not catalog.is_file():
         return []
@@ -275,8 +275,6 @@ def catalog_inventory(indexed, records):
             continue
         if not re.match(r"^score:\s*\d+\s*$", lesson_lines[score_line - 1]):
             continue
-        if os.path.relpath(paths[0], vault).replace(os.sep, "/") in indexed:
-            continue
         out.append({"file": rel(catalog), "line": fields["score"],
                     "score_line": fields["score"], "summary_line": fields["summary"],
                     "lesson": rel(paths[0]), "lesson_score_line": score_line,
@@ -288,9 +286,8 @@ if mode == "scan":
     json.dump(scan(), sys.stdout)
 else:
     records = scan()
-    index, indexed = index_inventory()
-    json.dump({"records": records, "index": index,
-               "catalog": catalog_inventory(indexed, records)}, sys.stdout)
+    json.dump({"records": records, "index": index_inventory(),
+               "catalog": catalog_inventory(records)}, sys.stdout)
 '''
 
 
@@ -469,7 +466,7 @@ def main(argv=None, *, repo_root=None):
 
     target = Path(args.target)
     target.parent.mkdir(parents=True, exist_ok=True)
-    _git(target.parent, "clone", "-q", "--local", os.fspath(repo), os.fspath(target))
+    _git(target.parent, "clone", "-q", "--local", "--no-hardlinks", os.fspath(repo), os.fspath(target))
     baseline = _run_worker("inventory", target)
     seed_list = finalize_catalog_lines(
         draw_seeds(build_candidates(target, baseline), args.seed))
