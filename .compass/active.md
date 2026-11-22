@@ -113,7 +113,7 @@ Plan: [[PLAN-035-prompt-cache-is-a-design-input]]; each task's full text, files 
 - [x] TASK-420: Cache readers over host transcripts, in a new `plugin/cli/cachelib.py`, standard library only, read-only, never raising on a malformed... - complexity: M, depends_on: none
 - [x] TASK-421: `compass cache [--all-compass] [--days N] [--json] [--save [FILE]] [--compare FILE]` in `plugin/cli/commands/cache.py`, registered in... - complexity: M, depends_on: TASK-420
 - [ ] TASK-422: Ship Wave 1 to this repo: bump the minor version in `plugin/.claude-plugin/plugin.json` from its value at merge, and copy `cachelib.py`,... - complexity: S, depends_on: TASK-421
-- [ ] TASK-423: Record the baseline - complexity: S, depends_on: TASK-421
+- [x] TASK-423: Record the baseline - complexity: S, depends_on: TASK-421
 
 ## PLAN-036 Wave 1: verification beyond test-pass
 
