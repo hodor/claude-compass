@@ -47,6 +47,15 @@ _GIT_GLOBAL_OPTION = (
     rf"|(?!{_VALUE_OPTION}(?![\w-]))--?[A-Za-z][\w-]*(?:={_ARG})?)"
 )
 _GIT_COMMIT = re.compile(rf"{_GIT_COMMAND}(?:{_GIT_GLOBAL_OPTION})*\s+commit(?![\w-])")
+# A test runner at the start of a command, after any `cd <dir> &&` prefixes. A
+# runner word later in the command (a commit message, a heredoc body, an
+# argument) is not a test run.
+_TEST_RUN = re.compile(
+    rf"\s*(?:cd\s+{_ARG}\s*&&\s*)*"
+    r"(?:pytest|python3?\s+-m\s+pytest|npm\s+test|npx\s+vitest|cargo\s+test|go\s+test)(?![\w-])"
+)
+TEST_TAIL_LINES = 8
+_EDIT_TOOLS = ("Edit", "Write", "MultiEdit")
 _PLAN_ID = re.compile(r"\bPLAN-(\d+)\b")
 _TASK_ID = re.compile(r"\bTASK-(\d+)\b")
 
@@ -257,3 +266,153 @@ def task_ids(transcript):
 def is_active(transcript, now=None):
     now = time.time() if now is None else now
     return now - os.stat(transcript).st_mtime <= ACTIVE_WINDOW_SECONDS
+
+
+def _numbered_records(path):
+    """Yield `(index, record)` for each parseable line of `path`, the index
+    being the 0-based position of the line in the file. An unreadable file
+    yields what was read before the failure."""
+    try:
+        with open(path, "rb") as fh:
+            for index, raw in enumerate(fh):
+                record = context_check._parse(raw)
+                if record is not None:
+                    yield index, record
+    except (OSError, ValueError):
+        return
+
+
+def _tool_calls(record):
+    """The `(id, name, input)` of each tool call of a record, `input` always a dict."""
+    calls = []
+    for block in _blocks(record, "tool_use"):
+        name = block.get("name")
+        tool_input = block.get("input")
+        if isinstance(name, str):
+            calls.append((block.get("id"), name, tool_input if isinstance(tool_input, dict) else {}))
+    return calls
+
+
+def _side_transcripts(transcript):
+    try:
+        return subagent_transcripts(transcript)
+    except OSError:
+        return []
+
+
+def touched_files(transcript):
+    """`(path, kind, last_index)` for each file the session read or changed.
+
+    `path` is the tool call's `file_path` verbatim. `kind` is `edited` for
+    Edit, Write and MultiEdit and `read` for Read; a path with both is
+    `edited`. `last_index` is the index of the last record of the main
+    transcript that touched the path. Subagent transcripts count toward
+    `kind`; a path only they touched takes the index of its last record in
+    the subagent file and follows the main transcript's paths. Entries come
+    in ascending `last_index`."""
+    found = {}
+    for rank, path in enumerate([Path(transcript), *_side_transcripts(transcript)]):
+        for index, record in _numbered_records(path):
+            for _, name, tool_input in _tool_calls(record):
+                target = tool_input.get("file_path")
+                if not isinstance(target, str) or not target:
+                    continue
+                if name in _EDIT_TOOLS:
+                    kind = "edited"
+                elif name == "Read":
+                    kind = "read"
+                else:
+                    continue
+                entry = found.get(target)
+                if entry is None:
+                    found[target] = [kind, index, rank]
+                    continue
+                if kind == "edited":
+                    entry[0] = "edited"
+                if entry[2] == rank:
+                    entry[1] = index
+    ordered = sorted(found.items(), key=lambda item: (item[1][2], item[1][1]))
+    return [(target, kind, index) for target, (kind, index, _) in ordered]
+
+
+def last_human_request(transcript):
+    """The text of the last user record the human typed: string content,
+    `origin.kind == "human"`, neither `isMeta` nor `isCompactSummary`. Task
+    notifications, peer messages, summaries and tool results never qualify."""
+    request = None
+    for _, record in _numbered_records(transcript):
+        if record.get("type") != "user" or record.get("isMeta") or record.get("isCompactSummary"):
+            continue
+        origin = record.get("origin")
+        if not isinstance(origin, dict) or origin.get("kind") != "human":
+            continue
+        message = record.get("message")
+        content = message.get("content") if isinstance(message, dict) else None
+        if isinstance(content, str):
+            request = content
+    return request
+
+
+def question_answers(transcript):
+    """`(question, answer)` for each answered AskUserQuestion entry, in file
+    order, read from the call result's `toolUseResult`."""
+    pairs = []
+    for _, record in _numbered_records(transcript):
+        result = record.get("toolUseResult")
+        if not isinstance(result, dict):
+            continue
+        questions = result.get("questions")
+        answers = result.get("answers")
+        if not isinstance(questions, list) or not isinstance(answers, dict):
+            continue
+        for entry in questions:
+            question = entry.get("question") if isinstance(entry, dict) else None
+            if isinstance(question, str) and isinstance(answers.get(question), str):
+                pairs.append((question, answers[question]))
+    return pairs
+
+
+def _result_text(record):
+    """`{tool_use_id: stdout}` of the tool results of a record; the stdout is
+    `toolUseResult.stdout` when it is text, else the result block's content."""
+    result = record.get("toolUseResult")
+    stdout = result.get("stdout") if isinstance(result, dict) else None
+    texts = {}
+    for block in _blocks(record, "tool_result"):
+        text = stdout if isinstance(stdout, str) else block.get("content")
+        if isinstance(block.get("tool_use_id"), str) and isinstance(text, str):
+            texts[block["tool_use_id"]] = text
+    return texts
+
+
+def last_test_run(transcript):
+    """`(command, tail_lines)` of the last Bash call that runs a test runner
+    (see `_TEST_RUN`), with the last `TEST_TAIL_LINES` lines of its stdout, or
+    None when the session ran no tests. A result pairs to its call by
+    tool-use id."""
+    last_id = None
+    last_command = None
+    outputs = {}
+    for _, record in _numbered_records(transcript):
+        for call_id, name, tool_input in _tool_calls(record):
+            command = tool_input.get("command")
+            if name == "Bash" and isinstance(command, str) and _TEST_RUN.match(command):
+                last_id, last_command = call_id, command
+        if record.get("type") == "user":
+            outputs.update(_result_text(record))
+    if last_command is None:
+        return None
+    return last_command, outputs.get(last_id, "").splitlines()[-TEST_TAIL_LINES:]
+
+
+def compact_boundaries(transcript):
+    """`(index, trigger)` for each `compact_boundary` record, in file order;
+    `trigger` is None when the record carries no readable one."""
+    found = []
+    for index, record in _numbered_records(transcript):
+        if record.get("type") != "system" or record.get("subtype") != "compact_boundary":
+            continue
+        metadata = record.get("compactMetadata")
+        trigger = metadata.get("trigger") if isinstance(metadata, dict) else None
+        found.append((index, trigger if isinstance(trigger, str) else None))
+    return found

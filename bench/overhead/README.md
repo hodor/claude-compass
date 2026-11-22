@@ -15,6 +15,7 @@ Repo-local tooling that measures how many tokens Compass adds to a real build. N
 | `compare.py` | `compare.py BEFORE AFTER`: per agent type, the mean weighted tokens per launch in two folders of saved profiles, the change and a bootstrap 95% interval over sessions (fixed seed). |
 | `grade.py` | `prepare` copies four judged pilot builds (two per arm) under neutral names and writes a grading sheet for each; `score` compares the filled sheets with the judge. |
 | `attribute.py` | Reconciles each pilot build's run-log total with the sessions' `cost-state` totals and the deduplicated assistant records and names the cause of each gap; lists the attachment kinds that reached the model; rebuilds one session's requests; runs the ablation calls and the console exporter probe; writes the report section and discards the pilot projects. |
+| `probe.py` | Ground-truth probes over recorded compaction points: `find`, `build`, `ask`, `grade`, `report`. |
 | `tests/` | pytest suite. `tests/fake_claude.py` replays canned `stream-json` in place of `claude`. |
 
 Standard library only. Run the suite from the repository root:
@@ -94,3 +95,17 @@ Add `--margin FRACTION` to replace that exact-equality check with a noninferiori
 `attribute.py measure` reads the pilot run log and each build's transcripts and stores aggregates under `<private root>/attribution/result.json`. Per build it sets three totals side by side: the run log's, the sessions' `cost-state` totals, and the sum of assistant records deduplicated by message id over the session, its `subagents/` files and its setup session (capture workers are listed apart). A gap is named when the transcript shows its cause: an unfinished turn (a session killed at a cap writes no `cost-state`, and its last turn never reached a `result` event), an auxiliary request (a model's input and output tokens in `cost-state` that no assistant record carries; inferred when the build wrote no `cost-state` and made web calls), a compaction, or a resume. A build agrees when what remains is within 0.5% of the logged total.
 
 `ablate` runs `claude -p "hi"` in a bare project and in projects holding one Compass file each (a rules file, a skill, an agent definition) and gives each file's real first-request tokens beside its bytes divided by 4; `otel` tries the console OpenTelemetry exporter once; `report` writes the results as one section of the pilot report; `discard` removes every project under the projects root except those named with `--keep`, and only when that section is committed.
+
+## Compaction probes
+
+`probe.py` measures what a compaction keeps. It reads Claude Code transcripts (never writes them) and stores everything under `<private root>/probes/`, a folder refused inside a git work tree. Its transcript readers are its own code, apart from `plugin/cli/sessionslib.py`, so the readers that build the carried session state never grade it. A POINT is `<transcript path>#<boundary line index>`.
+
+| Command | What it does |
+|---|---|
+| `--private-root DIR find --project-dir DIR` | Lists the compaction points of a project folder: POINT, trigger, pre tokens, post tokens (tab separated). |
+| `build POINT` | Freezes the probe set from the history before the boundary: the edited paths (`artifact`), up to two literals from failing tool results (`recall`: the last exception line and the last `N failed` count), the last `TASK-N` or `PLAN-N` id the assistant named (`continuation`), and the last `AskUserQuestion` with the option chosen (`decision`). A probe with no source is absent. A second build of a point is refused. |
+| `ask POINT --arm host-summary\|none` | Runs one `--tools ""` session on the point's model in a fresh sandbox project. `host-summary` carries the `isCompactSummary` record after the boundary; `none` carries nothing. The reply and the session's token counts are stored. |
+| `grade POINT` | Scores each stored reply: artifact precision and recall over normalized paths (`./` and slash direction ignored), recall and decision by normalized substring, continuation by exact id. A reply that is no JSON object scores 0 everywhere and counts as unparsed. |
+| `report` | A markdown table per arm and probe type: points, mean score, unparsed points of the arm, and mean carried tokens (a session's input-side tokens minus the `none` arm's at the same point). It holds no path, prompt, id or answer text. |
+
+Exit status is 0, 1 for a session that did not end `done`, 2 for a refusal or a bad argument.

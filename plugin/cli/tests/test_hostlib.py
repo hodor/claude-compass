@@ -1312,3 +1312,84 @@ class DshAdditionEdgeTests(unittest.TestCase):
         self.assertTrue(skill.endswith("Line one.\nLine two.\nLine three.\n"))
         self.assertIn("Rule one.\nRule two.", agents)
         self.assertEqual(agents.count("# Wikilinks"), 1)
+
+
+class SessionStateHostBoundaryTests(unittest.TestCase):
+    """The dsh hooks file leaves the compaction command out: dsh gives
+    the hook an empty transcript path and has no PreCompact or compact
+    SessionStart source, so the command would only start Python."""
+
+    def _materialized_commands(self):
+        project = make_project(self)
+        hostlib.materialize_dsh_hooks(project, MANIFEST)
+        data = json.loads(
+            (project / ".dsh" / "hooks.json").read_text(encoding="utf-8"))
+        return data, [h["command"] for groups in data["hooks"].values()
+                      for g in groups for h in g["hooks"]]
+
+    def test_skip_matches_the_subcommand_word_only(self):
+        # Adversarial where: the skip entry lacks the surrounding spaces and
+        # so also drops a group whose command merely contains the words, or
+        # is missing and keeps the group.
+        def group(subcommand):
+            command = (
+                '[ -f "$CLAUDE_PROJECT_DIR/.claude/cli/compass" ] || exit 0; '
+                'if command -v python3 >/dev/null 2>&1; then python3 '
+                f'"$CLAUDE_PROJECT_DIR/.claude/cli/compass" {subcommand} --hook; '
+                'else python "$CLAUDE_PROJECT_DIR/.claude/cli/compass" '
+                f'{subcommand} --hook; fi')
+            return {"hooks": [{"type": "command", "command": command}]}
+
+        project = make_project(self)
+        manifest = project / "manifest.json"
+        manifest.write_text(json.dumps({"hooks": {"SessionStart": [
+            group("session-state"), group("session-state-audit")]}}),
+            encoding="utf-8")
+        out = hostlib.materialize_dsh_hooks(project, manifest)
+        commands = [h["command"] for g in json.loads(
+            out.read_text(encoding="utf-8"))["hooks"]["SessionStart"]
+            for h in g["hooks"]]
+        self.assertEqual(len(commands), 1, commands)
+        self.assertTrue(commands[0].endswith(" session-state-audit --hook"), commands)
+
+    def test_skip_reads_the_command_not_the_status_message(self):
+        # Adversarial where: the skip scans the whole hook dict (or the
+        # group), so a kept hook whose statusMessage says " session-state "
+        # is dropped with the command that actually runs it.
+        command = (
+            '[ -f "$CLAUDE_PROJECT_DIR/.claude/cli/compass" ] || exit 0; '
+            'if command -v python3 >/dev/null 2>&1; then python3 '
+            '"$CLAUDE_PROJECT_DIR/.claude/cli/compass" sync --hook; '
+            'else python "$CLAUDE_PROJECT_DIR/.claude/cli/compass" sync --hook; fi')
+        project = make_project(self)
+        manifest = project / "manifest.json"
+        manifest.write_text(json.dumps({"hooks": {"SessionStart": [{
+            "hooks": [{"type": "command", "command": command,
+                       "statusMessage": "Runs after session-state is printed, a session-state follow-up"}],
+        }]}}), encoding="utf-8")
+        out = hostlib.materialize_dsh_hooks(project, manifest)
+        groups = json.loads(out.read_text(encoding="utf-8"))["hooks"]["SessionStart"]
+        self.assertEqual(len(groups), 1)
+
+    def test_dsh_hooks_file_has_no_session_state_command(self):
+        # Adversarial where: the compact SessionStart group is carried into
+        # `.dsh/hooks.json` as a plain SessionStart group (dsh has no
+        # matcher source for it), running at every dsh session start.
+        data, commands = self._materialized_commands()
+        self.assertFalse(any("session-state" in c for c in commands), commands)
+        self.assertNotIn("PreCompact", data["hooks"])
+        self.assertNotIn(
+            "compact", [g.get("matcher") for g in data["hooks"]["SessionStart"]])
+
+    def test_dsh_hooks_file_keeps_every_other_command(self):
+        # Adversarial where: the skip drops the whole SessionStart event or
+        # more groups than the one it names.
+        data, commands = self._materialized_commands()
+        for subcommand in ("guard --hook", "sync --hook", "capture-signal --hook",
+                           "capture-check --hook", "self-update --hook"):
+            self.assertTrue(
+                any(c.endswith(" " + subcommand) for c in commands),
+                f"{subcommand} missing from {commands}")
+        self.assertEqual(
+            [g.get("matcher") for g in data["hooks"]["SessionStart"]],
+            ["startup", None])

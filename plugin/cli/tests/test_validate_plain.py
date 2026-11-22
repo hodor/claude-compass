@@ -356,7 +356,7 @@ class HookStatusTests(unittest.TestCase):
         context check, the update check, the subagent report), changing what
         the loop shows for no reason. Every hook keeps a status text and the
         count of hooks is unchanged."""
-        self.assertEqual(len(self.entries), 10)
+        self.assertEqual(len(self.entries), 12)
         coined = [
             ("capture opportunity", re.compile(r"capture opportunit", re.I)),
             ("signal", re.compile(r"signal", re.I)),

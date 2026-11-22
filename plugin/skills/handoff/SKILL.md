@@ -23,16 +23,15 @@ A handoff is read first by the next session. Keep it lean. Use `file:line` refer
 
 1. **Read hot path.** `.compass/index.md`, `.compass/active.md`, `.compass/meta/lessons-catalog.yaml`.
 
-2. **Git state.**
+2. **Session state.** The command builds the mechanical sections from the transcript, the vault and git; no model call.
    ```bash
+   compass session-state --format handoff
    git rev-parse --abbrev-ref HEAD
    git rev-parse --short HEAD
-   git log --oneline -5
-   git status --short
-   git diff --stat
    ```
+   The command prints `## Tasks`, `## Recent Changes`, `## Decisions` and `## Uncommitted Changes` in the handoff template's shape. The two `git rev-parse` lines fill the frontmatter's `git_branch` and `git_commit`.
 
-3. **Meaningful-work check.** If no tasks advanced, no decisions made, no files modified: report "no meaningful work to hand off" and stop. Don't create empty handoffs.
+3. **Meaningful-work check.** Read the command's output. If it lists no edited files, no decisions from answers and no open-task change: report "no meaningful work to hand off" and stop. Don't create empty handoffs.
 
 4. **Reconcile index.md.** Walk the vault, find anything not yet linked in `index.md`, add it under the right section. This is the single most important step - the next session reads index.md first. A document not in it is invisible.
 
@@ -44,7 +43,7 @@ A handoff is read first by the next session. Keep it lean. Use `file:line` refer
    - If a plan is currently being executed: `.compass/handoffs/<PLAN-NNN>/YYYY-MM-DD_HH-MM-SS_description.md` (creates the subdirectory if needed). Plan-grouped handoffs make `resume <PLAN-NNN>` work.
    - Otherwise: `.compass/handoffs/YYYY-MM-DD_HH-MM-SS_description.md` (flat).
 
-6. **Write the handoff.** Field lengths: Session Summary (2-3 sentences), notes (one line each). Omit Decisions, Learnings, Blockers, Uncommitted Changes, Context for Resuming if empty.
+6. **Write the handoff.** Paste the command's four sections (Tasks, Recent Changes, Decisions, Uncommitted Changes) verbatim at the places marked below. Write the rest: Start Here, Session Summary, Learnings, Blockers, Action Items, and Context for Resuming, which holds the failed approaches (they have no mechanical source). Field lengths: Session Summary (2-3 sentences), notes (one line each). Omit Learnings, Blockers, Context for Resuming if empty; the command leaves out a section with nothing in it.
 
    ```markdown
    ---
@@ -69,16 +68,11 @@ A handoff is read first by the next session. Keep it lean. Use `file:line` refer
    ## Session Summary
    [2-3 sentences]
 
-   ## Tasks
-   | Task | Status | Notes |
-   |------|--------|-------|
-   | [Task] | done / in-progress / blocked | [one line] |
+   [command output: ## Tasks]
 
-   ## Recent Changes
-   - `file:line` - [one line]
+   [command output: ## Recent Changes]
 
-   ## Decisions
-   - [decision]: [one-line why]
+   [command output: ## Decisions]
 
    ## Learnings
    - [surprise]
@@ -86,14 +80,13 @@ A handoff is read first by the next session. Keep it lean. Use `file:line` refer
    ## Blockers
    - [what stopped progress]
 
-   ## Uncommitted Changes
-   [git status --short + diff --stat]
+   [command output: ## Uncommitted Changes]
 
    ## Action Items
    1. [ ] [first thing]
 
    ## Context for Resuming
-   [Nuance lost without this: edge cases, abandoned approaches, "almost working" state]
+   [Failed and abandoned approaches, edge cases, "almost working" state: nuance lost without this]
    ```
 
 7. **Annotate the plan** (if one is active):
