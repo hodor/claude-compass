@@ -67,6 +67,7 @@ COMMAND_SPECS = [
     ("loop", "new | status | activate | pause | resume | review | run | check | baseline | schedule | reconcile | sense-context | usage-scan - control loops: a sensor, a controller and an actuator that move the project toward an end state under a budget."),
     ("review", "Put a document in front of the human in Obsidian through the Compass Review plugin and wait for the verdict; --no-wait returns after sending, --status lists pending reviews; --editor <obsidian|vscode|cursor> picks the editor reviews open in."),
     ("retention","Report the effective cleanupPeriodDays (how long Claude Code keeps sessions); --set N writes it to the user's settings.json."),
+    ("session-state", "Automatic step around a compaction, and the handoff's mechanical sections: print the session's open tasks, files touched, decisions and git state, built from the transcript, vault and git with no model call."),
 ]
 
 
