@@ -80,6 +80,7 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
 - [ ] TASK-NNN: [Description] - complexity: S, depends_on: none, files: [list], decisions: [<doc-stem>/D-NN, ...]
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
+  - Entry point: <one command a user or program runs that reaches the new code: a CLI command, a server start plus a request, a UI script, a hook command line; a test runner is never one>
 
 **Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before the next wave. Skip if the human asked for `all-phases` mode.
 
@@ -88,6 +89,7 @@ depends_on: ["[[SPEC-NNN-name]]", "[[RESEARCH-name]]"]
 - [ ] TASK-NNN: [Description] - complexity: S, depends_on: none, files: [list], decisions: [<doc-stem>/D-NN, ...], commit-upfront: [reason detail is known now or late change is expensive]
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
+  - Entry point: none: <reason the task changes no executable path>
 
 ## Risks
 - [Risk]: [Mitigation]

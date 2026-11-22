@@ -95,6 +95,7 @@ updated: YYYY-MM-DD
 git_branch: "branch-name"
 git_commit: "abc1234"
 author: "name"
+model: "<exact model id>"
 ---
 
 # Title
@@ -198,9 +199,11 @@ What must be true before starting.
 - [ ] TASK-NNN: Description - files: [path/to/file], complexity: S/M/L, depends_on: none, decisions: [<doc-stem>/D-NN, ...]
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
+  - Entry point: <one command a user or program runs that reaches the new code: a CLI command, a server start plus a request, a UI script, a hook command line; a test runner is never one>
 - [ ] TASK-NNN: Description - files: [path/to/file], complexity: S/M/L, depends_on: TASK-NNN, decisions: [<doc-stem>/D-NN, ...]
   - Automated verification: [commands/tests]
   - Manual verification: [human checks]
+  - Entry point: none: <reason the task changes no executable path>
 
 > **Pause here for human confirmation before proceeding to next phase.**
 
