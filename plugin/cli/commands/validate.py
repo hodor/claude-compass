@@ -20,7 +20,8 @@ every pre-existing shape starts out unrecorded. A block link
 `[[doc#^id]]` whose target resolves to one file with no line ending in `^id`
 is flagged `broken_block_link`. A lesson whose body (the text above its
 `## Record (preserved)` section) runs past the 5-line cap is flagged
-`lesson_body_over_cap`.
+`lesson_body_over_cap`. When the newest row of the `compass drift` run log
+names a report, one `drift_open` warning names that report.
 """
 
 import re
@@ -28,6 +29,7 @@ import sys
 
 import decisionslib
 import vaultlib
+from commands import drift
 from commands import lesson_check
 from commands import sizing
 from commands import sweep
@@ -279,6 +281,16 @@ def _check_lesson_cap(rel, path, warnings):
             f"lesson_body_over_cap: {rel}: {count} lines (cap {lesson_check.BODY_CAP})")
 
 
+def _check_drift_open(vault_root, warnings):
+    """Append a `drift_open` warning when the latest `compass drift` run left
+    a report; a later clean run clears it."""
+    latest = drift.latest_open_report(vault_root)
+    if latest:
+        report, total = latest
+        warnings.append(
+            f"drift_open: {'/'.join(drift.DRIFT_DIR)}/{report}: {total} finding(s)")
+
+
 def check_vault(vault_root):
     """Return (errors, warnings), each a list of human-readable strings."""
     errors, warnings = [], []
@@ -331,6 +343,7 @@ def check_vault(vault_root):
     _reconcile_sizing(vault_root, layout, records, warnings)
     _check_loops_shape(vault_root, layout, warnings)
     _taxonomy_checks(vault_root, records, warnings)
+    _check_drift_open(vault_root, warnings)
 
     _, active_sections = sweep.collect(vault_root)
     lingering = sum(
@@ -463,6 +476,14 @@ def _lesson_cap_sentence(details):
             f"lines under its preserved record.")
 
 
+def _drift_open_sentence(details):
+    location, rest = _split_location(details)
+    count = re.match(r"(\d+) ", rest)
+    found = f"{count.group(1)} place(s)" if count else "places"
+    return (f"{location}: the last drift check found {found} where text no longer "
+            f"matches the file or code it describes; read this report and fix them.")
+
+
 # Each known code maps to a function turning its details into the sentence a
 # person reads. The sentence leads with the location; `plain_finding` appends
 # the code in brackets.
@@ -482,6 +503,7 @@ PLAIN_SENTENCES = {
     "loop_misshapen": _misshapen_loop_sentence,
     "broken_block_link": _block_link_sentence,
     "lesson_body_over_cap": _lesson_cap_sentence,
+    "drift_open": _drift_open_sentence,
 }
 
 
