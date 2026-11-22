@@ -632,8 +632,9 @@ def test_a_subagent_with_no_meta_json_does_not_raise_and_its_tokens_stay_counted
 
     assert summary["by_kind"]["subagent:builder-review"]["weighted"] == pytest.approx(70)
     assert summary["by_kind"]["subagent:builder"]["weighted"] == pytest.approx(100)
-    assert summary["by_kind"]["subagent:general-purpose"]["weighted"] == pytest.approx(33)
-    assert summary["sessions"]["subagent:general-purpose"] == 2
+    assert summary["by_kind"]["subagent:general-purpose"]["weighted"] == pytest.approx(22)
+    assert summary["sessions"]["subagent:general-purpose"] == 1
+    assert summary["by_kind"]["subagent:unknown"]["weighted"] == pytest.approx(11)
 
 
 def test_the_by_agent_flag_lists_the_builder_review_row(tmp_path, capsys, monkeypatch):
@@ -657,5 +658,8 @@ def test_the_by_agent_flag_lists_the_builder_review_row(tmp_path, capsys, monkey
 
     out = capsys.readouterr().out
     assert code == 0
-    assert "subagent:builder-review" in out
-    assert out.replace("subagent:builder-review", "").count("subagent:builder") == 1
+    cells = [[cell.strip() for cell in line.split("|")] for line in out.splitlines()]
+    first_cells = {row[1] for row in cells if len(row) > 2}
+    assert "subagent:builder-review" in first_cells, out
+    assert "subagent:builder" in first_cells, out
+    assert "(other)" not in first_cells, out
