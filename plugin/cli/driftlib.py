@@ -1,6 +1,11 @@
-"""Classify code references in vault documents against git history.
+"""Detect drift between vault documents and the sources they restate.
 
-A code reference is `path:N`, `path:N-M` or a comma list of those, written
+Three scans share the module: `scan_refs` classifies code references against
+git history, `scan_index_lines` compares index lines with the `summary` of the
+document each links, and `scan_catalog` compares lesson-catalog rows with
+their lesson files.
+
+Code references: a code reference is `path:N`, `path:N-M` or a comma list of those, written
 inside an inline code span or a fenced code block. For each cited line range
 the scan finds a base commit (the commit that last changed the citing line, or
 the commit that added the citing document), diffs the cited path from that
@@ -13,6 +18,11 @@ has deleted paths, and one long-lived `git cat-file --batch` for blob reads.
 Independent calls run on a thread pool. The working tree is never consulted
 for cited paths; documents are read from the working tree so line numbers
 match what a human sees, and uncommitted citing lines are unclassifiable.
+
+The text scans read documents from the working tree. Only an index line that
+differs from its target costs git calls: one `git blame` per index document
+and per target holding such a line, for the commit times that say which side
+changed last.
 """
 
 import os
@@ -21,10 +31,17 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+import vaultlib
+from commands.sync import ENTRY_PATTERN
+
 CLASSES = (
     "unchanged", "changed-elsewhere", "shifted", "changed",
     "moved", "missing", "unclassifiable", "malformed",
 )
+INDEX_CLASSES = ("index-drift", "no-summary", "unresolved-link", "ambiguous-link")
+CATALOG_CLASSES = ("catalog-drift", "missing")
+CATALOG_FIELDS = ("status", "category", "area", "tags", "score", "summary",
+                  "escalated")
 
 SKIPPED_VAULT_DIRS = ("archive", "tmp")
 ZERO_SHA = "0" * 40
@@ -37,6 +54,10 @@ _SPAN = re.compile(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)")
 _HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 _BLAME_HEADER = re.compile(r"^([0-9a-f]{40}) \d+ (\d+)(?: \d+)?$")
 _SHA = re.compile(r"^[0-9a-f]{40}$")
+_WIKILINK = re.compile(r"\[\[([^\]]+)\]\]")
+_SUMMARY_KEY = re.compile(r"^summary:")
+_CATALOG_ROW = re.compile(r"^  - file:")
+_CATALOG_FIELD = re.compile(r"^    ([A-Za-z0-9_]+):")
 
 _ENV = dict(os.environ, GIT_OPTIONAL_LOCKS="0")
 _MAX_ARG_CHARS = 16000
@@ -506,3 +527,310 @@ def _classify(ref, base, head, diffs, renames, blobs):
                        _slice(new_lines, new_start, shifted_end),
                        {"new_line": new_start})
     return _record(ref, base, cls, old, _slice(new_lines, start, end))
+
+
+# Index lines and catalog rows ---------------------------------------------
+
+
+def _repo_rel(repo, path):
+    return os.path.relpath(os.path.abspath(path), os.path.abspath(repo)).replace(
+        os.sep, "/")
+
+
+def _index_documents(vault):
+    """Every `index.md` under the vault, skipping the vault-root `archive/`
+    and `tmp/` and any hidden directory."""
+    root = os.fspath(vault)
+    found = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        at_root = os.path.relpath(dirpath, root) == "."
+        dirnames[:] = sorted(
+            d for d in dirnames
+            if not d.startswith(".") and not (at_root and d in SKIPPED_VAULT_DIRS)
+        )
+        if "index.md" in filenames:
+            found.append(os.path.join(dirpath, "index.md"))
+    return sorted(found)
+
+
+def _summary_span(lines):
+    """First and last 1-based line of the frontmatter `summary:` value, or
+    None. A block scalar's indented continuation lines belong to the span."""
+    if not lines or lines[0].strip() != "---":
+        return None
+    start = last = None
+    for number in range(2, len(lines) + 1):
+        line = lines[number - 1]
+        if line.rstrip() == "---":
+            break
+        if start is None:
+            if _SUMMARY_KEY.match(line):
+                start = last = number
+        elif not line.strip() or line[0] in " \t":
+            if line.strip():
+                last = number
+        else:
+            break
+    return None if start is None else (start, last)
+
+
+def _read_target(vault, rel, cache):
+    """`(summary or None, span or None)` for a vault-relative document."""
+    if rel not in cache:
+        summary, span = None, None
+        try:
+            text = vaultlib.read_vault_text(vault / rel)
+        except OSError:
+            text = None
+        if text is not None:
+            data, _error = vaultlib.parse_frontmatter_text(text)
+            value = data.get("summary")
+            if isinstance(value, str) and value.strip():
+                summary = value
+                span = _summary_span(text.split("\n"))
+        cache[rel] = (summary, span)
+    return cache[rel]
+
+
+def _blame_times(repo, rel, numbers):
+    """Map line number -> committer time for the committed lines among
+    `numbers` of one document; uncommitted lines and untracked documents
+    are absent."""
+    spans = _merge_ranges(numbers)
+    args = ["blame", "--porcelain"]
+    if len(spans) <= _MAX_BLAME_RANGES:
+        for first, last in spans:
+            args += ["-L", f"{first},{last}"]
+    code, out = _git(repo, *args, "--", rel)
+    if code != 0:
+        return {}
+    shas, times, current = {}, {}, None
+    for line in out.split("\n"):
+        if line.startswith("\t"):
+            continue
+        match = _BLAME_HEADER.match(line)
+        if match:
+            current = match.group(1)
+            shas[int(match.group(2))] = current
+        elif line.startswith("committer-time ") and current:
+            try:
+                times[current] = int(line.split()[1])
+            except (IndexError, ValueError):
+                pass
+    return {
+        number: times[sha] for number, sha in shas.items()
+        if sha != ZERO_SHA and sha in times
+    }
+
+
+def _blame_all(repo, wanted):
+    """Run `_blame_times` for {document: line numbers} on a thread pool and
+    return {document: {line: time}}."""
+    docs = sorted(wanted)
+    if not docs:
+        return {}
+    workers = max(2, min(8, os.cpu_count() or 4))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        results = pool.map(lambda d: _blame_times(repo, d, wanted[d]), docs)
+        return dict(zip(docs, results))
+
+
+def _text_record(file, line, cls, target=None, old=None, current=None):
+    return {
+        "file": file, "line": line, "class": cls, "target": target,
+        "field": None, "old_text": old, "current_text": current, "newer": None,
+    }
+
+
+def scan_index_lines(repo_root, vault_dir):
+    """Compare each index entry line's description with its target's summary.
+
+    Every `index.md` under `vault_dir` is read; a line shaped as sync's
+    entry pattern with a description is checked against the `summary` of the
+    document its leading wikilink resolves to. Returns records sorted by
+    (file, line): `index-drift` (description differs, with `newer` naming the
+    side whose last change is later), `no-summary`, `unresolved-link` and
+    `ambiguous-link`. A line that agrees with its target yields no record.
+    """
+    repo = os.fspath(repo_root)
+    vault = Path(os.path.abspath(vault_dir))
+    mapping = vaultlib.resolvable_names_map(vault)
+    targets = {}
+    records = []
+    drifted = []
+    for path in _index_documents(vault):
+        try:
+            text = vaultlib.read_vault_text(path)
+        except OSError:
+            continue
+        rel = _repo_rel(repo, path)
+        lines = text.split("\n")
+        fenced, _open = vaultlib.fence_mask(lines)
+        for number, line in enumerate(lines, 1):
+            if fenced[number - 1]:
+                continue
+            entry = ENTRY_PATTERN.match(line)
+            if not entry or entry.group("desc") is None:
+                continue
+            desc = entry.group("desc")
+            link = _WIKILINK.search(line)
+            name = vaultlib.split_link(link.group(1))[0] if link else ""
+            resolved = vaultlib.resolve_link(mapping, name) if name else []
+            if not resolved:
+                records.append(_text_record(rel, number, "unresolved-link", old=desc))
+                continue
+            if len(resolved) > 1:
+                records.append(_text_record(rel, number, "ambiguous-link", old=desc))
+                continue
+            target = _repo_rel(repo, vault / resolved[0])
+            summary, span = _read_target(vault, resolved[0], targets)
+            if summary is None:
+                records.append(_text_record(
+                    rel, number, "no-summary", target, desc))
+            elif summary != desc:
+                record = _text_record(
+                    rel, number, "index-drift", target, desc, summary)
+                records.append(record)
+                drifted.append((record, span))
+    _assign_newer(repo, drifted)
+    records.sort(key=lambda rec: (rec["file"], rec["line"]))
+    return records
+
+
+def _assign_newer(repo, drifted):
+    """Set `newer` on each drift record from the committer times of the
+    index line and of the target's summary lines."""
+    wanted = {}
+    for record, span in drifted:
+        wanted.setdefault(record["file"], set()).add(record["line"])
+        if span:
+            wanted.setdefault(record["target"], set()).update(
+                range(span[0], span[1] + 1))
+    times = _blame_all(repo, wanted)
+    for record, span in drifted:
+        index_time = times.get(record["file"], {}).get(record["line"])
+        target_times = [
+            times.get(record["target"], {}).get(number)
+            for number in range(span[0], span[1] + 1)
+        ] if span else []
+        if index_time is None or not target_times or None in target_times:
+            continue
+        target_time = max(target_times)
+        if target_time > index_time:
+            record["newer"] = "target"
+        elif target_time < index_time:
+            record["newer"] = "index"
+
+
+def _catalog_rows(lines):
+    """Split catalog lines into rows: each a dict with `line` (the
+    `- file:` line), `fields` (field name -> its line) and `data` (the row
+    parsed as frontmatter)."""
+    rows = []
+    block = []
+
+    def flush():
+        if not block:
+            return
+        body = [block[0][1][4:]]
+        fields = {}
+        for number, text in block[1:]:
+            body.append(text[4:] if text.startswith("    ") else text.lstrip())
+            match = _CATALOG_FIELD.match(text)
+            if match:
+                fields[match.group(1)] = number
+        data, _error = vaultlib.parse_frontmatter_text(
+            "---\n" + "\n".join(body) + "\n---\n")
+        rows.append({"line": block[0][0], "fields": fields, "data": data})
+        block.clear()
+
+    for number, text in enumerate(lines, 1):
+        if _CATALOG_ROW.match(text):
+            flush()
+            block.append((number, text))
+        elif block:
+            if text.strip() and text[0] not in " \t":
+                flush()
+            else:
+                block.append((number, text))
+    flush()
+    return rows
+
+
+def _lesson_files(vault):
+    found = {}
+    root = vault / "lessons"
+    if root.is_dir():
+        for path in sorted(root.rglob("*.md")):
+            found.setdefault(path.name, path)
+    return found
+
+
+def _blank(value):
+    return None if value in (None, "", []) else value
+
+
+def _field_text(value):
+    if value is None:
+        return None
+    if isinstance(value, list):
+        return "[" + ", ".join(value) + "]"
+    return str(value)
+
+
+def _same_field(field, row_value, file_value):
+    if field == "score" and row_value is not None and file_value is not None:
+        try:
+            return int(row_value) == int(file_value)
+        except (TypeError, ValueError):
+            pass
+    return row_value == file_value
+
+
+def scan_catalog(repo_root, vault_dir):
+    """Compare lesson-catalog rows with the lesson file of the same filename.
+
+    Rows of `<vault_dir>/meta/lessons-catalog.yaml` are matched to lesson
+    files anywhere under `<vault_dir>/lessons`. Returns records sorted by
+    (file, line): one `catalog-drift` record per differing field, one
+    `missing` record per row with no lesson file. A row's `escalated` that
+    the file lacks is not drift.
+    """
+    repo = os.fspath(repo_root)
+    vault = Path(os.path.abspath(vault_dir))
+    catalog = vault / "meta" / "lessons-catalog.yaml"
+    try:
+        text = vaultlib.read_vault_text(catalog)
+    except OSError:
+        return []
+    rel = _repo_rel(repo, catalog)
+    lessons = _lesson_files(vault)
+    records = []
+    for row in _catalog_rows(text.split("\n")):
+        filename = _blank(row["data"].get("file"))
+        if not isinstance(filename, str):
+            continue
+        path = lessons.get(filename)
+        if path is None:
+            records.append(_text_record(rel, row["line"], "missing"))
+            continue
+        try:
+            data, _error = vaultlib.parse_frontmatter_text(
+                vaultlib.read_vault_text(path))
+        except OSError:
+            continue
+        target = _repo_rel(repo, path)
+        for field in CATALOG_FIELDS:
+            row_value = _blank(row["data"].get(field))
+            file_value = _blank(data.get(field))
+            if field == "escalated" and file_value is None:
+                continue
+            if _same_field(field, row_value, file_value):
+                continue
+            record = _text_record(
+                rel, row["fields"].get(field, row["line"]), "catalog-drift",
+                target, _field_text(row_value), _field_text(file_value))
+            record["field"] = field
+            records.append(record)
+    records.sort(key=lambda rec: (rec["file"], rec["line"]))
+    return records
