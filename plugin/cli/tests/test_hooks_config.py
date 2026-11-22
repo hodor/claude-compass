@@ -225,7 +225,7 @@ PRE_COMPACTION_SESSIONSTART_GROUPS = [
 ]
 
 NOT_INSTALLED_GUARD = '[ -f "$CLAUDE_PROJECT_DIR/.claude/cli/compass" ] || exit 0; '
-AGENT_PREFILTER = 'case "$input" in *agent_id*|*agent_type*) exit 0;; esac;'
+AGENT_PREFILTER = "case \"$input\" in *'\"agent_id\"'*|*'\"agent_type\"'*) exit 0;; esac;"
 
 
 def _shell():
@@ -610,7 +610,6 @@ class CompactionHookExecutionTests(unittest.TestCase):
                 log.read_text(encoding="utf-8").strip(),
                 'python3 compass session-state --hook stdin={"source":"compact"}')
 
-    @unittest.expectedFailure
     def test_main_agent_event_mentioning_agent_id_text_is_not_skipped(self):
         # Adversarial where: the shell prefilter matches the substring
         # `agent_id` anywhere in the raw event, so a main-agent PreCompact
