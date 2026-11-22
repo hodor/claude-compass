@@ -187,6 +187,27 @@ class RecordTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("already exists", err)
 
+    def test_record_file_mixing_class_and_module_level_tests_exits_0(self):
+        """Adversarial where a test file holds both a test class and
+        module-level test functions, so sorting the recorded ids compares
+        a class name against the None class of a module-level function."""
+        repo_root = make_repo_vault(self)
+        write_file(
+            repo_root,
+            "tests/test_mixed.py",
+            "import unittest\n\n\nclass Alpha(unittest.TestCase):\n"
+            "    def test_a(self):\n        pass\n\n\n"
+            "def test_module_level():\n    pass\n",
+        )
+        sha = git_commit_all(repo_root, "test(TASK-106): mixed file")
+        with_vault_env(self, repo_root)
+        code, out, err = run_cli(["record", "TASK-106", "tests/test_mixed.py", "--commit", sha])
+        self.assertEqual(code, 0, out + err)
+        record = json.loads(checkpoint_path(repo_root, "TASK-106").read_text(encoding="utf-8"))
+        self.assertEqual(
+            record["files"][0]["ids"], [[None, "test_module_level"], ["Alpha", "test_a"]]
+        )
+
 
 class NestedRepoTests(unittest.TestCase):
     """A workspace whose code lives in a nested repository the workspace's

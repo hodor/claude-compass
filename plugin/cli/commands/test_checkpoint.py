@@ -646,9 +646,12 @@ def _run_record(args):
                 sys.stderr.write(f"compass test-checkpoint record: {rel} does not parse: {parse_error}\n")
                 return 1
             ids = sorted(
-                [class_name, func_name]
-                for (class_name, func_name) in _function_occurrences(tree)
-                if func_name.startswith("test")
+                (
+                    [class_name, func_name]
+                    for (class_name, func_name) in _function_occurrences(tree)
+                    if func_name.startswith("test")
+                ),
+                key=lambda pair: (pair[0] or "", pair[1]),
             )
         else:
             # A recorded non-Python file (a JS harness, a data fixture)
