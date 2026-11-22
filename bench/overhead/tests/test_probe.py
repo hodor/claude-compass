@@ -59,6 +59,8 @@ import hashlib
 import json
 import re
 import shutil
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -865,3 +867,304 @@ def test_report_on_an_empty_private_root_is_the_header_alone(private_root):
     lines = probe.report(private_root=private_root).splitlines()
 
     assert len(lines) == 2 and lines[0].startswith("| arm |")
+
+
+# more implementation-revealed branches ----------------------------------------
+
+
+def _plain_edit(index, path, tool="Edit"):
+    return assistant(index, "", (tool, {"file_path": path, "old_string": "x", "new_string": "y"}))
+
+
+def _pair(index, text="", structured=None):
+    call = assistant(index, "", ("AskUserQuestion", {"questions": []}))
+    result = tool_result(index + 1, text)
+    if structured is not None:
+        result["toolUseResult"] = {"answers": structured}
+    return [call, result]
+
+
+def _with_summary(*middle):
+    """An edit, then `middle`, then a boundary and a summary."""
+    records = [user(0, "go"), _plain_edit(1, "a.py"), tool_result(2, "ok"), *middle]
+    n = len(records)
+    return records + [boundary(n), summary(n + 1)]
+
+
+def _new_folder(tmp_path, name="p"):
+    path = tmp_path / name
+    path.mkdir()
+    return path
+
+
+@pytest.mark.parametrize("answer", ["Flat files", "first line\nsecond line", "D:\\new\\table"])
+def test_decision_answer_is_kept_verbatim_from_the_text_form(tmp_path, private_root, answer):
+    """Adversarial where: the text-form answer decoded with json.loads, so a free-text
+    answer holding a raw newline raises out of build and `D:\\new\\table` silently
+    becomes a newline and a tab, freezing a corrupted expected answer."""
+    text = f'User has answered your questions: "Which store?"="{answer}". You can now continue.'
+    records = _with_summary(*_pair(3, text=text))
+
+    _, built = build_point(_new_folder(tmp_path), records, private_root=private_root)
+
+    assert probe_by_id(built)["decision"]["expected"] == answer
+
+
+def test_recall_reads_only_error_results_strips_the_pytest_prefix_and_text_blocks(tmp_path, private_root):
+    """Adversarial where: an exception line read from a successful result (a Read of
+    a log), a pytest `E   ` prefix left in the literal, a `raise X: ...` source line
+    taken for an exception line, or text-block content ignored."""
+    blocks = [{"type": "text", "text": "E   AssertionError: assert 1 == 2"}, {"type": "text", "text": "2 failed, 1 passed"}]
+    records = _with_summary(
+        assistant(3, "read", ("Read", {"file_path": "log"})),
+        tool_result(4, "KeyError: not-an-error\n9 failed", is_error=False),
+        assistant(5, "run", ("Bash", {"command": "pytest"})),
+        tool_result(6, "    raise ValueError: source line", is_error=True),
+        assistant(7, "run", ("Bash", {"command": "pytest"})),
+        tool_result(8, blocks, is_error=True),
+    )
+
+    _, built = build_point(_new_folder(tmp_path), records, private_root=private_root)
+
+    recalls = [item for item in built["probes"] if item["type"] == "recall"]
+    assert [item["expected"] for item in recalls] == ["AssertionError: assert 1 == 2", "2 failed"]
+    assert "exception" in recalls[0]["question"] and "N failed" in recalls[1]["question"]
+
+
+def test_a_lone_failed_count_is_asked_with_the_count_question(tmp_path, private_root):
+    """Adversarial where: a failed-count recall literal paired with the exception-line
+    question because the literal sits in the first recall slot."""
+    records = _with_summary(
+        assistant(3, "run", ("Bash", {"command": "pytest"})), tool_result(4, "5 failed, 1 passed", is_error=True))
+
+    _, built = build_point(_new_folder(tmp_path), records, private_root=private_root)
+
+    recalls = [item for item in built["probes"] if item["type"] == "recall"]
+    assert [(i["id"], i["expected"]) for i in recalls] == [("recall-1", "5 failed")]
+    assert "N failed" in recalls[0]["question"]
+
+
+def test_continuation_ignores_thinking_tool_inputs_user_text_sidechains_and_lowercase(tmp_path, private_root):
+    """Adversarial where: the continuation id taken from a thinking block, a tool
+    input, a user message, a subagent record or a lowercase mention instead of the
+    last id the assistant named in its visible text."""
+    thinking = _record("assistant", 4, message={"role": "assistant", "model": FIXTURE_MODEL, "content": [
+        {"type": "thinking", "thinking": "maybe TASK-99"}]})
+    side = assistant(8, "now TASK-96")
+    side["isSidechain"] = True
+    records = [
+        user(0, "work on TASK-97"), assistant(1, "Next is PLAN-3 then TASK-7"), _plain_edit(2, "a.py"),
+        tool_result(3, "ok"), thinking, assistant(5, "", ("Bash", {"command": "echo TASK-98"})),
+        user(6, "what about TASK-95"), assistant(7, "lowercase task-94 only"), side,
+        boundary(9), summary(10),
+    ]
+
+    _, built = build_point(_new_folder(tmp_path), records, private_root=private_root)
+
+    assert probe_by_id(built)["continuation"]["expected"] == "TASK-7"
+
+
+def test_build_uses_the_last_usable_model_id(tmp_path, private_root):
+    """Adversarial where: a `<synthetic>` or space-bearing model id of the last
+    assistant record becomes the `--model` argument of every probe session."""
+    odd = assistant(3, "late")
+    odd["message"]["model"] = "<synthetic>"
+    spaced = assistant(4, "later")
+    spaced["message"]["model"] = "claude-haiku-4-5 --dangerous"
+
+    _, built = build_point(_new_folder(tmp_path), _with_summary(odd, spaced), private_root=private_root)
+
+    assert built["model"] == FIXTURE_MODEL
+
+
+def test_a_git_file_marks_a_linked_worktree_and_is_refused(point, tmp_path):
+    """Adversarial where: only a `.git` folder is recognised, so a linked worktree
+    (whose `.git` is a file) takes probe files."""
+    linked = tmp_path / "linked"
+    linked.mkdir()
+    (linked / ".git").write_text("gitdir: ../elsewhere\n", encoding="utf-8")
+
+    with pytest.raises(probe.Refused):
+        probe.build(point, private_root=linked / "root")
+
+    assert not (linked / "root").exists()
+
+
+def test_a_private_root_reaching_a_work_tree_through_dotdot_is_refused(point, repo, tmp_path):
+    """Adversarial where: a `..` segment hides the work tree from a lexical parent
+    check, so build writes the key into the repository."""
+    sneaky = tmp_path / "elsewhere" / ".." / "repo" / "o"
+
+    with pytest.raises(probe.Refused):
+        probe.build(point, private_root=sneaky)
+
+    assert not (repo / "o").exists()
+
+
+def test_concurrent_builds_of_one_point_freeze_exactly_one_key(point, private_root):
+    """Adversarial where: an exists-then-write check with no exclusive create, so
+    simultaneous builds both pass the check and the later one replaces the key."""
+    gate = threading.Barrier(8)
+
+    def attempt(_):
+        gate.wait()
+        try:
+            probe.build(point, private_root=private_root)
+            return "built"
+        except probe.AlreadyFrozen:
+            return "refused"
+
+    with ThreadPoolExecutor(8) as pool:
+        outcomes = list(pool.map(attempt, range(8)))
+
+    assert (outcomes.count("built"), outcomes.count("refused")) == (1, 7)
+
+
+def test_cli_turns_a_missing_transcript_and_unbuilt_points_into_exit_two(
+        tmp_path, repo, private_root, fake_reply, capsys):
+    """Adversarial where: a point naming a transcript that no longer exists raises a
+    traceback instead of exit status 2, or ask and grade of an unbuilt point do."""
+    folder = _new_folder(tmp_path)
+    write_transcript(folder, "t.jsonl", _with_summary())
+    (found,) = probe.find(folder)
+    root = str(private_root)
+
+    codes = [
+        probe.main(["--private-root", root, "build", f"{folder / 'gone.jsonl'}#3"]),
+        probe.main(["--private-root", root, "grade", found["point"]]),
+        probe.main(["--private-root", root, "ask", found["point"], "--arm", "none"],
+                   claude_cmd=fake_reply.command, repo_root=repo),
+        probe.main(["find", "--project-dir", str(folder / "nope")]),
+    ]
+
+    assert codes == [2, 2, 2, 2]
+    assert "Traceback" not in capsys.readouterr().err
+    assert fake_reply.calls() == []
+
+
+def test_ask_carries_the_first_non_blank_summary_after_its_boundary_and_nothing_else(
+        tmp_path, repo, private_root, fake_reply):
+    """Adversarial where: a blank summary, a subagent's summary or ordinary text after
+    the boundary taken as the carried text, or block-list summary content dropped."""
+    blocks = _record("user", 7, message={"role": "user", "content": [
+        {"type": "text", "text": "REALSUMMARY part one"}, {"type": "text", "text": "part two"}]},
+        isCompactSummary=True)
+    side = summary(5, "SIDESUMMARY")
+    side["isSidechain"] = True
+    folder = _new_folder(tmp_path)
+    write_transcript(folder, "t.jsonl", [
+        user(0, "go"), _plain_edit(1, "a.py"), boundary(2),
+        user(3, "AFTERTEXT go on"), summary(4, "   "), side, blocks])
+    (found,) = probe.find(folder)
+    probe.build(found["point"], private_root=private_root)
+    fake_reply.reply("{}")
+
+    _ask(found["point"], "host-summary", repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    assert "REALSUMMARY part one\npart two" in call["stdin"]
+    for absent in ("SIDESUMMARY", "AFTERTEXT"):
+        assert absent not in call["stdin"]
+
+
+def test_a_transcript_without_a_summary_fails_the_host_arm_and_still_runs_the_floor(
+        tmp_path, repo, private_root, fake_reply):
+    """Adversarial where: the host arm sending its questions with nothing carried, or
+    the floor arm requiring a summary it never uses."""
+    folder = _new_folder(tmp_path)
+    write_transcript(folder, "t.jsonl", [user(0, "go"), _plain_edit(1, "a.py"), boundary(2), user(3, "next")])
+    (found,) = probe.find(folder)
+    probe.build(found["point"], private_root=private_root)
+    fake_reply.reply("{}")
+
+    with pytest.raises(probe.NoSummary):
+        _ask(found["point"], "host-summary", repo, private_root, fake_reply)
+    assert probe.main(["--private-root", str(private_root), "ask", found["point"], "--arm", "host-summary"],
+                      claude_cmd=fake_reply.command, repo_root=repo) == 2
+    assert fake_reply.calls() == []
+    _ask(found["point"], "none", repo, private_root, fake_reply)
+
+    assert len(fake_reply.calls()) == 1
+
+
+def test_crlf_bom_invalid_bytes_and_non_ascii_text_survive_build_ask_and_grade(
+        tmp_path, repo, private_root, fake_reply):
+    """Adversarial where: CRLF endings or a BOM shifting the boundary index, invalid
+    UTF-8 in an unrelated line aborting the read, or a non-ASCII path or question
+    mangled on its way into the key, the prompt or the grade."""
+    path_text = "src/café/日本.py"
+    records = [
+        user(0, "go"), _plain_edit(1, path_text), tool_result(2, "ok"),
+        *_pair(3, structured={"Qual armazenamento café?": "Só arquivos"}),
+        boundary(5), summary(6, "SUMTEXT café"),
+    ]
+    folder = _new_folder(tmp_path)
+    body = "\r\n".join(json.dumps(r, ensure_ascii=False) for r in records) + "\r\n"
+    raw = b"\xef\xbb\xbf" + body.encode("utf-8").replace(b'"go"', b'"g\xffo"')
+    (folder / "t.jsonl").write_bytes(raw)
+    (found,) = probe.find(folder)
+    assert found["boundary"] == 5
+
+    built = probe.build(found["point"], private_root=private_root)
+
+    assert probe_by_id(built)["artifact"]["expected"] == [path_text]
+    key_file = probe._point_dir(found["point"], private_root) / "key.json"
+    assert json.loads(key_file.read_bytes().decode("utf-8"))["probes"] == built["probes"]
+    fake_reply.reply(json.dumps({"artifact": ["./src/café/日本.py"], "decision": "Só arquivos"}, ensure_ascii=False))
+    _ask(found["point"], "host-summary", repo, private_root, fake_reply)
+    (call,) = fake_reply.calls()
+    assert "Qual armazenamento café?" in call["stdin"] and "SUMTEXT café" in call["stdin"]
+    graded = probe.grade(found["point"], private_root=private_root)["host-summary"]
+    assert graded["scores"]["artifact"] == {"precision": 1.0, "recall": 1.0}
+    assert graded["scores"]["decision"] == 1.0
+
+
+@pytest.mark.parametrize("value, expected, precision, recall", [
+    (["src/./app//main.py/"], ["src/app/main.py"], 1.0, 1.0),
+    (["src/app/../app/main.py"], ["src/app/main.py"], 1.0, 1.0),
+    (["a.py"], ["./a.py", "a.py"], 1.0, 1.0),
+    (["/a.py"], ["a.py"], 0.0, 0.0),
+    (["../a.py"], ["a.py"], 0.0, 0.0),
+    (["a.py", "b.py"], ["a.py", "b.py", "c.py", "d.py"], 1.0, 0.5),
+])
+def test_artifact_scoring_identity_table(value, expected, precision, recall):
+    """Adversarial where: dot segments, a doubled slash, a trailing slash, an
+    expected side that keeps a leading `./`, or an absolute or parent-relative
+    lookalike changing which paths count as the same file."""
+    assert probe._score_artifact(value, expected) == {"precision": precision, "recall": recall}
+
+
+@pytest.mark.parametrize("value, expected, whole, score", [
+    ("The  LOG said\n bad frame width 17", "Bad frame width 17", False, 1.0),
+    ("C++ it is", "C++", True, 1.0),
+    ("só ARQUIVOS", "Só arquivos", True, 1.0),
+    ("(Recommended) Flat files", "(Recommended) Flat files", True, 1.0),
+    ("anything", "", True, 0.0),
+    ("TASK-12", "TASK-12", False, 1.0),
+])
+def test_text_scoring_normalization_table(value, expected, whole, score):
+    """Adversarial where: whitespace or case folding missing, a pattern built from an
+    option holding regex metacharacters (`C++`, parentheses) raising or mismatching,
+    and an empty expected answer matching everything."""
+    assert probe._score_text(value, expected, whole) == score
+
+
+@pytest.mark.parametrize("value, expected, score", [
+    ("TASK-123", "TASK-12", 0.0),
+    ("TASK-1", "TASK-12", 0.0),
+    ("PLAN-12", "TASK-12", 0.0),
+    ("TASK 12", "TASK-12", 0.0),
+    ("It is TASK-12.", "TASK-12", 1.0),
+    (["TASK-12"], "TASK-12", 0.0),
+])
+def test_continuation_scoring_table(value, expected, score):
+    """Adversarial where: an id matched as a prefix or inside a longer number, the
+    same number under another prefix, or a non-string value accepted."""
+    assert probe._score_id(value, expected) == score
+
+
+def test_recall_count_is_not_credited_for_a_different_count_sharing_its_digits():
+    """Adversarial where: the substring grader credits `13 failed` for the frozen
+    literal `3 failed`, so a wrong count earns full marks on the likeliest recall
+    literal."""
+    assert probe._score_text("13 failed", "3 failed", False) == 0.0
