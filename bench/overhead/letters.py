@@ -170,8 +170,9 @@ def exact_agreement(ratings):
 
 def session_command(model, prompt):
     """The argv of one `claude -p` session on `model`: no tool, no saved
-    session, no MCP server, no user settings; `prompt` is the last argument,
-    after `--`, so a leading dash cannot be read as a flag."""
+    session, no MCP server, no user settings, structured `stream-json` output;
+    `prompt` is the last argument, after `--`, so a leading dash cannot be read
+    as a flag."""
     return [
         "claude", "-p",
         "--model", model,
@@ -179,7 +180,8 @@ def session_command(model, prompt):
         "--no-session-persistence",
         "--strict-mcp-config",
         "--setting-sources", "project,local",
-        "--output-format", "text",
+        "--output-format", "stream-json",
+        "--verbose",
         "--",
         prompt,
     ]
@@ -215,8 +217,13 @@ def run_session(model, prompt, *, runner, cwd_factory=None):
 
 
 def default_runner(argv, cwd, *, private_root=None, parent_env=None):
-    """Run `argv` in `cwd` as an isolated Claude Code session and return its
-    standard output. Raises UsageLimit or SessionFailed on a nonzero exit."""
+    """Run `argv` in `cwd` as an isolated Claude Code session and return the
+    reply text of its final `result` event.
+
+    The session's end is classified from its `stream-json` events as
+    `launch.classify` does, never by searching text for limit words: a usage
+    limit raises UsageLimit, any other failure SessionFailed.
+    """
     import launch
 
     private_root = Path(private_root) if private_root is not None else launch.default_private_root()
@@ -228,15 +235,19 @@ def default_runner(argv, cwd, *, private_root=None, parent_env=None):
         capture_output=True, text=True, encoding="utf-8", errors="replace",
         timeout=SESSION_TIMEOUT,
     )
-    if done.returncode != 0:
-        said = (done.stdout + "\n" + done.stderr).lower()
-        error = UsageLimit if "usage limit" in said else SessionFailed
-        raise error("claude exited %d: %s" % (done.returncode, (done.stderr or done.stdout).strip()[-300:]))
-    return done.stdout
+    events = launch._parse_events(done.stdout)
+    status, resets_at = launch.classify(events, done.returncode, not done.stdout.strip(), lambda: False)
+    if status == launch.USAGE_LIMIT:
+        raise UsageLimit("usage limit reached%s" % (" (resets at %s)" % resets_at if resets_at else ""))
+    if status != launch.DONE:
+        raise SessionFailed("claude exited %d: %s" % (done.returncode, (done.stderr or done.stdout).strip()[-300:]))
+    results = [event for event in events if event.get("type") == "result"]
+    reply = results[-1].get("result")
+    return reply if isinstance(reply, str) else ""
 
 
 _REPLY_LETTER = re.compile(r"^[ \t>*_`]*letter[ \t*_`]*:[ \t*_`]*([SML])\b", re.IGNORECASE | re.MULTILINE)
-_REPLY_WORDS = re.compile(r"^[ \t>*_`]*words[ \t*_`]*:[ \t]*(.+)$", re.IGNORECASE | re.MULTILINE)
+_REPLY_WORDS = re.compile(r"^[ \t>*_`]*words[ \t*_`]*:[ \t*_]*(.+)$", re.IGNORECASE | re.MULTILINE)
 
 
 def parse_reply(text):
@@ -252,6 +263,9 @@ def parse_reply(text):
 
 _TASK_LINE = re.compile(r"^- \[[ xX]\] (TASK-\d+):")
 _HEADING = re.compile(r"^(#{1,6})[ \t]+(.*?)\s*$")
+# A Later section title: the word `Later` then a word boundary, so `Lateral`
+# does not match and `Later (intent only)` does.
+_LATER_TITLE = re.compile(r"Later\b", re.IGNORECASE)
 _FENCE = re.compile(r"^\s*(```|~~~)")
 
 
@@ -303,7 +317,7 @@ def plan_tasks(path):
             level = len(heading.group(1))
             if later_level is not None and level <= later_level:
                 later_level = None
-            if later_level is None and heading.group(2).lower().startswith("later"):
+            if later_level is None and _LATER_TITLE.match(heading.group(2)):
                 later_level = level
             continue
         if later_level is not None:
@@ -357,6 +371,8 @@ def build_prompt(task, table):
     line = strip_letter(task.line)
     if parse_letter(line) is not None or re.search(r"complexity:[ \t]*[SML]\b", line):
         raise Refused("the original letter is still in the prompt of %s" % task.id)
+    if task.goal and _FIELD_ANYWHERE.search(task.goal):
+        raise Refused("the plan goal of %s carries a `complexity:` field" % task.id)
     parts = [
         "You are a planner giving one task its complexity letter, S, M or L, "
         "using only the rubric below. Do not use tools.",
@@ -597,6 +613,10 @@ def main(argv=None, *, runner=None):
     run.add_argument("--progress", help="progress file (default <private root>/letters-progress.json)")
     run.add_argument("--dry-run", action="store_true", default=argparse.SUPPRESS, help="same as the top-level --dry-run")
     args = parser.parse_args(argv)
+    sessions = getattr(args, "sessions", DEFAULT_SESSIONS)
+    if args.n < 1 or sessions < 2:
+        print("letters: --n must be at least 1 and --sessions at least 2 (kappa needs two raters)", file=sys.stderr)
+        return 1
     if args.command is None and not args.dry_run:
         parser.error("give the `run` command or --dry-run")
     dry = args.dry_run

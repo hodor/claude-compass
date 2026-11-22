@@ -467,7 +467,6 @@ def test_plan_tasks_leaves_out_lines_under_a_later_heading(tmp_path):
         assert all(t.id.startswith("PLAN-900/") for t in found), name
 
 
-@pytest.mark.xfail(strict=True, reason="a heading that merely begins with `Later` (such as `Lateral`) is read as the Later section")
 def test_plan_tasks_keeps_a_heading_that_only_starts_with_later(tmp_path):
     """Adversarial where: the Later check is a prefix match, so `## Lateral
     thinking` hides its detailed tasks from the sample."""
@@ -658,7 +657,6 @@ def test_main_run_refuses_a_foreign_progress_file_and_equal_models(tmp_path):
     assert runner.calls == 0
 
 
-@pytest.mark.xfail(strict=True, reason="--sessions 1 runs the whole batch and then dies in the kappa step with an uncaught ValueError")
 def test_main_run_rejects_a_single_session_before_spending_any(tmp_path):
     """Adversarial where: Fleiss' kappa needs at least two sessions per model,
     yet `--sessions 1` is accepted and every session runs before the report
@@ -707,8 +705,9 @@ def _stub_claude_on_path(folder):
 
 def test_default_runner_maps_exit_codes_and_isolates_the_session(tmp_path, monkeypatch):
     """Adversarial where: a zero-exit reply in which the model quotes the
-    words `usage limit` is taken as a halt; a nonzero exit without the phrase
-    is taken as a limit (the batch would stop forever instead of failing); the
+    words `usage limit` is taken as a halt; a nonzero exit without a rejected
+    rate-limit event is taken as a limit (the batch would stop forever instead
+    of failing); a halt is read from structured events, not from text; the
     session inherits the operator's API key or runs without stdin closed or in
     the wrong folder."""
     parent = _stub_claude_on_path(tmp_path)
@@ -724,7 +723,13 @@ def test_default_runner_maps_exit_codes_and_isolates_the_session(tmp_path, monke
     folder = tmp_path / "work"
     folder.mkdir()
 
-    queue.append(_Done(0, "letter: M\nwords: the usage limit text"))
+    import json
+
+    def events(*items):
+        return "\n".join(json.dumps(item) for item in items) + "\n"
+
+    answer = "letter: M\nwords: the usage limit text"
+    queue.append(_Done(0, events({"type": "result", "is_error": False, "result": answer})))
     reply = letters.default_runner(argv, folder, private_root=tmp_path / "priv", parent_env=parent)
     assert reply.startswith("letter: M")
     assert seen["cwd"] == str(folder)
@@ -733,11 +738,16 @@ def test_default_runner_maps_exit_codes_and_isolates_the_session(tmp_path, monke
     assert seen["env"]["CLAUDE_CONFIG_DIR"].startswith(str(tmp_path / "priv"))
     assert seen["command"][1:] == argv[1:]
 
-    queue.append(_Done(1, "", "Claude usage limit reached. Resets at 3pm"))
+    queue.append(_Done(1, events({"type": "rate_limit_event", "rate_limit_info": {"status": "rejected", "resetsAt": 1}})))
     with pytest.raises(letters.UsageLimit):
         letters.default_runner(argv, folder, private_root=tmp_path / "priv", parent_env=parent)
 
     queue.append(_Done(1, "", "network down"))
+    with pytest.raises(letters.SessionFailed) as caught:
+        letters.default_runner(argv, folder, private_root=tmp_path / "priv", parent_env=parent)
+    assert not isinstance(caught.value, letters.UsageLimit)
+
+    queue.append(_Done(1, "", "Claude usage limit reached. Resets at 3pm"))
     with pytest.raises(letters.SessionFailed) as caught:
         letters.default_runner(argv, folder, private_root=tmp_path / "priv", parent_env=parent)
     assert not isinstance(caught.value, letters.UsageLimit)
