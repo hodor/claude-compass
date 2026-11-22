@@ -12,24 +12,38 @@ no known form gets its agent type as the station and `verdict: unparsed`.
 """
 
 import datetime
+import contextlib
 import json
+import os
 import re
+import time
 from pathlib import Path
 
 import modelslib
 import sessionslib
 
+try:
+    import msvcrt
+except ImportError:
+    msvcrt = None
+    import fcntl
+
 LOG_PARTS = ("meta", "station-log.jsonl")
+LOCK_PARTS = ("meta", "station-log.lock")
+LOCK_ATTEMPTS = 400
+LOCK_RETRY_SECONDS = 0.025
 UNPARSED = "unparsed"
 DEFAULT_AGENT_TYPE = "unknown"
 TRANSCRIPT_SOURCE = "transcript"
 
-_HEADING = re.compile(r"^(#{1,6})[ \t]+(.*?)[ \t]*$")
+_HEADING = re.compile(r"^(#{1,6})[ \t]+(.*)$")
 _TASK_ID = re.compile(r"\bTASK-\d+\b")
 _MODE_VALUE = re.compile(r"^(pre|post)-build\b", re.IGNORECASE)
 _VERDICT_LINE = re.compile(r"^\s*\**VERDICT:\**\s*(PASS|FAIL|PARTIAL)\b")
 _BULLET = re.compile(r"^[-*][ \t]+(.*\S)")
-_NONE_ITEM = re.compile(r"^\W*none\W*$", re.IGNORECASE)
+_NONE_ITEM = re.compile(r"^\W*(none|no\s+bugs?|n/a)\b", re.IGNORECASE)
+_FAIL_CELL = re.compile(r"^\W*FAIL\b")
+_CHECKS_CELL = re.compile(r"^\W*(\d+)\s*/\s*(\d+)\b")
 
 
 def _bare_agent(raw):
@@ -48,7 +62,7 @@ def _section(lines, title, max_level):
     for index, line in enumerate(lines):
         match = _HEADING.match(line)
         if start is None:
-            if match and match.group(2).lower().startswith(title.lower()):
+            if match and match.group(2).strip().lower().startswith(title.lower()):
                 start = index + 1
         elif match and len(match.group(1)) <= max_level:
             return lines[start:index]
@@ -82,6 +96,20 @@ def _parse_tester(lines):
     return {"station": "tester-post", "bugs": count}
 
 
+def _is_fail_row(line):
+    """Whether a Phase Results table row reports a failure: a cell after the
+    task cell that starts with FAIL, or a checks cell `N/M` with N below M."""
+    if not line.lstrip().startswith("|"):
+        return False
+    for cell in line.strip().strip("|").split("|")[1:]:
+        if _FAIL_CELL.match(cell):
+            return True
+        checks = _CHECKS_CELL.match(cell)
+        if checks and int(checks.group(1)) < int(checks.group(2)):
+            return True
+    return False
+
+
 def _parse_validator(lines):
     verdict = None
     for line in lines:
@@ -91,7 +119,7 @@ def _parse_validator(lines):
     if verdict is None:
         return None
     phase = _section(lines, "Phase Results", 3) or []
-    fails = sum(1 for ln in phase if ln.lstrip().startswith("|") and "FAIL" in ln)
+    fails = sum(1 for ln in phase if _is_fail_row(ln))
     return {"station": "validator", "result": verdict, "fails": fails}
 
 
@@ -170,17 +198,67 @@ def fix_cycle_row(task, cycle, verdict):
     }
 
 
+@contextlib.contextmanager
+def _log_lock(path):
+    """Hold an exclusive OS lock on the sidecar file `path`, retrying while
+    another process holds it. The OS drops the lock when its holder dies. When
+    the lock stays held past the retry budget the body runs unlocked: a row
+    is worth more than strict ordering."""
+    fd = os.open(path, os.O_RDWR | os.O_CREAT | getattr(os, "O_BINARY", 0), 0o666)
+    held = False
+    try:
+        for _ in range(LOCK_ATTEMPTS):
+            try:
+                if msvcrt:
+                    os.lseek(fd, 0, os.SEEK_SET)
+                    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                else:
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                held = True
+                break
+            except OSError:
+                time.sleep(LOCK_RETRY_SECONDS)
+        try:
+            yield
+        finally:
+            if held:
+                if msvcrt:
+                    os.lseek(fd, 0, os.SEEK_SET)
+                    msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+                else:
+                    fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        os.close(fd)
+
+
 def append_row(vault_dir, row):
     """Append `row` as one JSON line to the vault's station log, creating the
-    meta folder when absent and starting a new line after a log whose last line
-    has no trailing newline."""
-    path = Path(vault_dir).joinpath(*LOG_PARTS)
+    meta folder when absent. The tail check and the write run under a sidecar
+    lock, so rows from concurrent processes never interleave; a log whose last
+    line has no trailing newline gets one ahead of the row in the same write."""
+    vault = Path(vault_dir)
+    path = vault.joinpath(*LOG_PARTS)
     path.parent.mkdir(parents=True, exist_ok=True)
-    line = json.dumps(row, ensure_ascii=False) + "\n"
-    with open(path, "ab+") as fh:
-        fh.seek(0, 2)
-        if fh.tell():
-            fh.seek(-1, 2)
-            if fh.read(1) != b"\n":
-                fh.write(b"\n")
-        fh.write(line.encode("utf-8"))
+    line = (json.dumps(row) + "\n").encode("utf-8")
+    with _log_lock(vault.joinpath(*LOCK_PARTS)):
+        if not _ends_with_newline(path):
+            line = b"\n" + line
+        flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_BINARY", 0)
+        fd = os.open(path, flags, 0o644)
+        try:
+            os.write(fd, line)
+        finally:
+            os.close(fd)
+
+
+def _ends_with_newline(path):
+    """True for a missing or empty log or one whose last byte is a newline."""
+    try:
+        with open(path, "rb") as fh:
+            fh.seek(0, os.SEEK_END)
+            if fh.tell() == 0:
+                return True
+            fh.seek(-1, os.SEEK_END)
+            return fh.read(1) == b"\n"
+    except FileNotFoundError:
+        return True
