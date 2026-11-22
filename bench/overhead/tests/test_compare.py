@@ -292,3 +292,133 @@ def test_the_report_text_holds_no_em_or_en_dash(tmp_path, plugin, capsys):
     _, out = run(capsys, tmp_path / "before", tmp_path / "after", plugin)
 
     assert chr(0x2013) not in out and chr(0x2014) not in out
+
+
+PAIR_NAMES = [f"build{index}" for index in range(7)]
+
+
+def write_pairs(tmp_path, variant_met, full_met=8, items=8, names=PAIR_NAMES, variant_overrides=None):
+    """Full arm in `ob`, variant arm in `oa`, one outcome file per paired build."""
+    overrides = variant_overrides or {}
+    for name in names:
+        met = overrides.get(name, variant_met)
+        write_outcome(tmp_path / "ob", name, met=full_met, unmet=items - full_met)
+        write_outcome(tmp_path / "oa", name, met=met, unmet=items - met)
+    write_profile(tmp_path / "before", "a", {"subagent:builder": entry([100, 200])})
+    write_profile(tmp_path / "after", "a", {"subagent:builder": entry([10, 20])})
+
+
+def run_outcomes(capsys, tmp_path, plugin, *extra):
+    return run(capsys, tmp_path / "before", tmp_path / "after", plugin,
+               "--outcomes-before", str(tmp_path / "ob"), "--outcomes-after", str(tmp_path / "oa"), *extra)
+
+
+@pytest.mark.parametrize("name, diffs, margin, verdict, bound", [
+    ("loses exactly the margin", [-0.25] * 4, 0.25, "worse", -0.25),
+    ("just inside the margin", [-0.234375] * 4, 0.25, "not worse", -0.234375),
+    ("just outside the margin", [-0.265625] * 4, 0.25, "worse", -0.265625),
+    ("zero margin, zero change is not strictly above", [0.0] * 4, 0.0, "worse", 0.0),
+    ("variant better than full", [0.5] * 3, 0.25, "not worse", 0.5),
+    ("two pairs is the smallest accepted set", [-0.125, -0.125], 0.25, "not worse", -0.125),
+])
+def test_noninferiority_needs_the_bound_strictly_above_minus_the_margin(name, diffs, margin, verdict, bound):
+    """Adversarial where: a bound sitting exactly on minus the margin must read
+    "worse" (>= instead of > flips it), and one step inside must read "not
+    worse" (an off-by-one tolerance flips it)."""
+    result = compare.noninferiority(diffs, margin)
+
+    assert result["verdict"] == verdict
+    assert result["bound"] == pytest.approx(bound, abs=1e-12)
+    assert result["pairs"] == len(diffs)
+
+
+def test_noninferiority_refuses_fewer_than_two_pairs():
+    """Adversarial where: one pair has no spread to resample, so a verdict from
+    it would be a false certainty; zero pairs must not divide by zero."""
+    with pytest.raises(ValueError):
+        compare.noninferiority([], 0.25)
+    with pytest.raises(ValueError):
+        compare.noninferiority([-0.125], 0.25)
+    assert compare.noninferiority([-0.125, -0.125], 0.25)["pairs"] == 2
+
+
+def test_noninferiority_bound_is_the_one_sided_fifth_percentile_of_resampled_means():
+    """Adversarial where: a two-sided (2.5th percentile) or upper-tail bound
+    reads a different number from the one-sided 95% bound. Twenty builds, four
+    of them losing the whole item share (-1): the resampled mean is -K/20 with
+    K binomial(20, 0.2); P(K>=7)=0.087 and P(K>=8)=0.032 put the 5th percentile
+    at -0.35 and the 2.5th at -0.40."""
+    diffs = [-1.0] * 4 + [0.0] * 16
+
+    result = compare.noninferiority(diffs, 0.36)
+
+    assert result["bound"] == pytest.approx(-0.35, abs=1e-9)
+    assert result["verdict"] == "not worse"
+    assert compare.noninferiority(diffs, 0.34)["verdict"] == "worse"
+
+
+def test_noninferiority_is_repeatable_whatever_the_global_random_state_and_leaves_its_input_alone():
+    """Adversarial where: a bound drawn from the global `random` module moves
+    between runs, and a sort done in place reorders the caller's list."""
+    diffs = [0.125, -0.5, 0.25, -0.125, 0.0, -0.375]
+    original = list(diffs)
+
+    random.seed(1)
+    first = compare.noninferiority(diffs, 0.25)
+    random.seed(2)
+    second = compare.noninferiority(diffs, 0.25)
+
+    assert first == second
+    assert diffs == original
+
+
+@pytest.mark.parametrize("name, variant_met, margin, verdict", [
+    ("loses exactly the margin", 6, "0.25", "worse"),
+    ("one step inside the margin", 7, "0.25", "not worse"),
+    ("same outcome as the full arm", 8, "0.25", "not worse"),
+    ("loses more than a looser margin allows", 4, "0.3", "worse"),
+    ("loses less than a looser margin allows", 6, "0.3", "not worse"),
+])
+def test_margin_prints_the_verdict_with_the_pair_count_instead_of_the_equality_guard(
+        tmp_path, plugin, capsys, name, variant_met, margin, verdict):
+    """Adversarial where: with --margin the equality guard must not fire on a
+    tolerated loss, and the verdict line must carry the pair count (seven
+    builds; no other number in the line is a 7)."""
+    write_pairs(tmp_path, variant_met)
+
+    code, out = run_outcomes(capsys, tmp_path, plugin, "--margin", margin)
+
+    verdict_line = next(line for line in out.splitlines() if "worse" in line)
+    assert code == 0
+    assert "outcome differs" not in out
+    assert ("not worse" in verdict_line) == (verdict == "not worse")
+    assert "7" in verdict_line
+
+
+def test_margin_with_one_paired_build_is_refused_as_too_few(tmp_path, plugin, capsys):
+    """Adversarial where: a single pair would print a confident verdict from no
+    spread at all."""
+    write_pairs(tmp_path, 8, names=["build0"])
+
+    code, out = run_outcomes(capsys, tmp_path, plugin, "--margin", "0.25")
+
+    assert code != 0
+    assert "worse" not in out
+
+
+@pytest.mark.parametrize("name, variant_met, full_met", [
+    ("one build lost one goal item", 7, 8),
+    ("the variant met more than the full arm", 8, 6),
+])
+def test_without_margin_any_outcome_difference_still_prints_outcome_differs_and_no_token_verdict(
+        tmp_path, plugin, capsys, name, variant_met, full_met):
+    """Adversarial where: adding --margin must leave the exact-equality guard
+    intact when it is absent, in either direction of the difference."""
+    write_pairs(tmp_path, 8, full_met=full_met, variant_overrides={"build3": variant_met})
+
+    code, out = run_outcomes(capsys, tmp_path, plugin)
+
+    assert code == 0
+    assert "outcome differs, so no token verdict" in out
+    assert "| builder" not in out
+    assert "worse" not in out
