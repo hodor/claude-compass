@@ -27,6 +27,7 @@ from pathlib import Path
 
 import capturelib
 import idealib
+import lessonslib
 import vaultlib
 from commands import hot_path
 from commands import sweep
@@ -529,10 +530,12 @@ def _catalog_row(filename, data):
 
 
 def _sync_catalog(vault_root, records):
-    """Append missing lesson rows to the root catalog, aggregating lessons
-    from unit `lessons/` dirs so nested lessons stay on the hot path. The
-    filename is the row key; two lesson files sharing a filename are a
-    collision - reported, and only the first (by vault path) gets a row.
+    """Bring the root catalog in line with the lesson files, aggregating
+    lessons from unit `lessons/` dirs so nested lessons stay on the hot
+    path. Missing rows are appended and existing rows are refreshed from
+    their lesson file (`_refresh_rows`). The filename is the row key; two
+    lesson files sharing a filename are a collision - reported, and only
+    the first (by vault path) gets a row.
     The empty-list marker `lessons: []` is replaced with the block-sequence
     header `lessons:` the moment any row sits under it, whether newly
     appended in this run or already present, so the file is always valid
@@ -541,7 +544,7 @@ def _sync_catalog(vault_root, records):
     removed is returned so the repair is reported rather than silent."""
     catalog_path = vault_root / "meta" / "lessons-catalog.yaml"
     if not catalog_path.is_file():
-        return 0, [], 0, 0
+        return 0, [], 0, 0, 0, []
     text = vaultlib.read_vault_text(catalog_path)
     text, duplicates_removed = _collapse_duplicate_rows(text)
     existing = set(re.findall(r'file:\s*"?([^"\n]+)"?', text))
@@ -552,10 +555,13 @@ def _sync_catalog(vault_root, records):
             # index.md is a scope note, not a lesson.
             continue
         by_filename.setdefault(record["path"].name, []).append(record)
+    for recs in by_filename.values():
+        recs.sort(key=lambda r: _rel_path(vault_root, r))
     text, healed = _heal_misparsed_rows(text, by_filename)
+    text, refreshed, unpreserved = _refresh_rows(text, by_filename)
     rows, collisions = [], []
     for filename in sorted(by_filename):
-        recs = sorted(by_filename[filename], key=lambda r: _rel_path(vault_root, r))
+        recs = by_filename[filename]
         if len(recs) > 1:
             paths = ", ".join(_rel_path(vault_root, r) for r in recs)
             collisions.append(f"{filename}: {paths}")
@@ -566,12 +572,12 @@ def _sync_catalog(vault_root, records):
             rows.append(row)
 
     corrupted = bool(existing) and bool(LESSONS_EMPTY_MARKER.search(text))
-    if rows or corrupted or duplicates_removed or healed:
+    if rows or corrupted or duplicates_removed or healed or refreshed:
         text = LESSONS_EMPTY_MARKER.sub("lessons:", text, count=1)
         if rows:
             text = text.rstrip("\n") + "\n" + "\n".join(rows) + "\n"
         vaultlib.write_text_lf(catalog_path, text)
-    return len(rows), collisions, duplicates_removed, healed
+    return len(rows), collisions, duplicates_removed, healed, refreshed, unpreserved
 
 
 CATALOG_ROW_START = re.compile(r"(?m)^(?=  - file: )")
@@ -605,6 +611,97 @@ def _heal_misparsed_rows(text, by_filename):
     if not healed:
         return text, 0
     return head + "".join(kept), healed
+
+
+def _split_row_block(block):
+    """Split a catalog block into its row lines and whatever follows them
+    (blank lines, comments), so a rewrite replaces the row alone."""
+    lines = block.splitlines(keepends=True)
+    end = 0
+    for line in lines:
+        bare = line.rstrip("\r\n")
+        if end == 0:
+            if not lessonslib.ROW_START.match(bare):
+                break
+        elif not lessonslib.FIELD.match(bare):
+            break
+        end += 1
+    return "".join(lines[:end]), "".join(lines[end:])
+
+
+def _refreshed_row(block, filename, record):
+    """The row for `block` rebuilt from the lesson file's frontmatter, or
+    None when the row already matches it or cannot be refreshed (a row that
+    does not parse, a lesson lacking a required field). Returns
+    (row_or_None, summary_unpreserved).
+
+    `summary` follows the file only when the row's old text survives in the
+    lesson file (`_text_preserved`); otherwise the row keeps its summary and
+    the caller reports it. `escalated` follows the file when the file
+    carries one; a row's own `escalated` stays when the file has none."""
+    data = dict(record["_data"] or {})
+    if _catalog_row(filename, data) is None:
+        return None, False
+    row_part, _ = _split_row_block(block)
+    try:
+        parsed = lessonslib.parse_catalog(row_part)
+    except lessonslib.MalformedRow:
+        return None, False
+    if len(parsed) != 1:
+        return None, False
+    old = parsed[0]
+    old_escalated = old["escalated"].strip()
+    unpreserved = False
+    if old["summary"] != str(data["summary"]) and not _text_preserved(
+        old["summary"], record
+    ):
+        data["summary"] = old["summary"]
+        unpreserved = True
+    if data.get("escalated") in (None, "") and old_escalated:
+        data["escalated"] = old_escalated
+    same = (
+        old["status"] == str(data["status"])
+        and old["category"] == str(data["category"])
+        and old["area"] == str(data["area"])
+        and old["tags"] == [str(t) for t in data["tags"]]
+        and str(old["score"]) == str(data["score"]).strip()
+        and old["summary"] == str(data["summary"])
+        and old_escalated == str(data.get("escalated") or "").strip()
+    )
+    return (None if same else _catalog_row(filename, data)), unpreserved
+
+
+def _refresh_rows(text, by_filename):
+    """Rewrite each existing catalog row whose fields differ from its lesson
+    file, keeping every other byte of the catalog. A row with no lesson file,
+    or whose file lacks a required field, is left as it is. Returns (text,
+    refreshed, unpreserved) where `unpreserved` lists the filenames whose
+    summary could not follow the file because the row's old text is gone
+    from it."""
+    blocks = CATALOG_ROW_START.split(text)
+    if len(blocks) < 2:
+        return text, 0, []
+    head, rows = blocks[0], blocks[1:]
+    refreshed, unpreserved, kept = 0, [], []
+    for block in rows:
+        match = re.match(r'  - file:\s*"?([^"\n]+)"?', block)
+        recs = by_filename.get(match.group(1)) if match else None
+        if not recs:
+            kept.append(block)
+            continue
+        row, blocked = _refreshed_row(block, match.group(1), recs[0])
+        if blocked:
+            unpreserved.append(match.group(1))
+        if row is None:
+            kept.append(block)
+            continue
+        row_part, tail = _split_row_block(block)
+        ending = "\n" if row_part.endswith("\n") else ""
+        kept.append(row + ending + tail)
+        refreshed += 1
+    if not refreshed:
+        return text, 0, unpreserved
+    return head + "".join(kept), refreshed, unpreserved
 
 
 def _collapse_duplicate_rows(text):
@@ -1135,8 +1232,8 @@ def sync(vault_root):
     _load_data(records)
     children_counts = _sync_children_counts(records)
     index_added, index_pruned, index_sections_merged = _sync_index(vault_root, records)
-    catalog_added, catalog_collisions, catalog_duplicates, catalog_healed = (
-        _sync_catalog(vault_root, records))
+    (catalog_added, catalog_collisions, catalog_duplicates, catalog_healed,
+     catalog_refreshed, catalog_unpreserved) = _sync_catalog(vault_root, records)
     ideas_changed, ideas_unresolved = _sync_idea_adoption(vault_root, records)
     lessons_indexes = _sync_lessons_indexes(vault_root, records)
     ideas_indexes = _sync_ideas_indexes(vault_root, records)
@@ -1151,6 +1248,8 @@ def sync(vault_root):
         "catalog_collisions": catalog_collisions,
         "catalog_duplicates_removed": catalog_duplicates,
         "catalog_rows_healed": catalog_healed,
+        "catalog_rows_refreshed": catalog_refreshed,
+        "catalog_summary_unpreserved": catalog_unpreserved,
         "lessons_indexes": lessons_indexes,
         "ideas_changed": ideas_changed,
         "ideas_unresolved": ideas_unresolved,
@@ -1190,6 +1289,10 @@ def format_report(report):
         parts.append(
             f"catalog rows healed (block-scalar summary): {report['catalog_rows_healed']}"
         )
+    if report.get("catalog_rows_refreshed"):
+        parts.append(f"catalog rows refreshed: {report['catalog_rows_refreshed']}")
+    for filename in report.get("catalog_summary_unpreserved") or []:
+        parts.append(f"summary_unpreserved: {filename}")
     if report.get("lessons_indexes"):
         parts.append(f"lessons indexes refreshed: {report['lessons_indexes']}")
     for change in report.get("ideas_changed") or []:
