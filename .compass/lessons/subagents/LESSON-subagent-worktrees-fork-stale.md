@@ -6,14 +6,16 @@ category: process
 area: workflow
 tags: [worktree, subagents, parallel-builders, stale-base, orchestration, git]
 created: 2026-07-24
-updated: 2026-07-24
+updated: 2026-11-21
 score: 5
-summary: "Worktree-isolated subagents fork from a pre-session commit; without a fast-forward to master and committed prior waves, they see a world where earlier work does not exist"
+summary: "Worktree subagents fork from the remote default branch unless worktree.baseRef is \"head\"; uncommitted files are always invisible"
 seen: []
 ---
 
-A worktree-isolated subagent's branch can fork from a commit predating the session, not current HEAD; relative paths inside the worktree then show a world without the plans, ADRs, or prior-wave code the task depends on.
-Two-part protocol: the orchestrator commits each wave's output to master before spawning the next, and every spawned builder first fast-forwards its worktree branch to master and verifies its named prerequisites exist, stopping loudly if not.
-Uncommitted files in the main checkout are invisible to every worktree; anything a subagent must read has to be committed, or addressed by absolute path into the main checkout.
-Direct main-checkout writes may also be permission-blocked for isolated agents, so the reliable loop is: fast-forward worktree, build there, report a carry-back file list, orchestrator copies back, runs the suite, commits.
-Surfaced by parallel builders halting on missing PLAN/ADR files that existed only uncommitted; the halt-and-report protocol caught it before any wrong-base code was written.
+By default a worktree-isolated subagent forks from the pushed/remote base, missing unpushed local commits; `worktree.baseRef: "head"` forks from local HEAD (verified on 2.1.330).
+Uncommitted and untracked files stay invisible to every worktree: commit each wave's output before spawning the next, or address files by absolute path.
+Without `baseRef: "head"`, each builder first fast-forwards its worktree branch to master and stops loudly if named prerequisites are missing.
+Direct main-checkout writes may be permission-blocked for isolated agents: build in the worktree, report a carry-back list, orchestrator copies back, runs the suite, commits.
+
+## Record (preserved)
+Surfaced by parallel builders halting on missing PLAN/ADR files that existed only uncommitted. The `baseRef` setting and the working frontmatter `isolation` came from [[RESEARCH-axis-2b-host-features-gap]] C1, C2.
