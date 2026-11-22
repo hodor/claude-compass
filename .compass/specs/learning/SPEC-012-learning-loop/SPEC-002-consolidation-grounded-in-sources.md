@@ -1,7 +1,7 @@
 ---
 title: "Consolidation Is Grounded in Sources"
 type: spec
-status: draft
+status: approved
 confidence: low
 area: methodology
 tags: [lessons, consolidation, memory, drift, learning-loop]
@@ -19,7 +19,6 @@ flowchart LR
 ```
 
 > [!IMPORTANT]
-> You decide: promote this spec to approved? Approving makes rechecking memory against its sources a need of [[SPEC-012-learning-loop]], and lets research start on it.
 
 ## Problem
 
