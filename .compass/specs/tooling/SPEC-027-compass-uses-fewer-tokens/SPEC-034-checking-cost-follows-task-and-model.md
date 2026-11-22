@@ -1,7 +1,7 @@
 ---
 title: "The Cost of Checking Follows the Task and the Model"
 type: spec
-status: draft
+status: approved
 confidence: low
 area: tooling
 tags: [tokens, cost, harness, verification, models, measurement]
@@ -20,7 +20,6 @@ flowchart LR
 ```
 
 > [!IMPORTANT]
-> You decide: promote this spec to approved? Approving adds the need below as a child of [[SPEC-027-compass-uses-fewer-tokens]].
 
 ## Problem
 
