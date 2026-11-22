@@ -16,7 +16,9 @@ records.py.
 Sessions. A top-level session is `setup` when its first message runs
 `/compass:setup` and it was typed no other message, `capture-worker` when its first message
 starts the extract-lessons skill, and `build` otherwise; a subagent session is
-`subagent:<agent type>`.
+`subagent:<agent type>`, except that a subagent session whose parent (the
+`parentAgentId` of its `.meta.json`, matched exactly to another session's agent
+id) is a `builder` session is `subagent:builder-review`.
 
 Sources. A response's context holds the request prefix (the system prompt and
 each tool definition, read from the request shape the transcript stores) and
@@ -64,6 +66,9 @@ import records
 
 CAPTURE_PROMPT = "Read the file .claude/skills/extract-lessons/SKILL.md"
 SKILL_BODY_START = "Base directory for this skill"
+# The kind of a subagent session whose parent is a builder session: the
+# builder's own review of its diff.
+BUILDER_REVIEW_KIND = "subagent:builder-review"
 # Characters counted for an image or document block, whose base64 data says
 # nothing about its token count.
 MEDIA_CHARS = 6000
@@ -418,13 +423,38 @@ def _reported_totals(model_usage):
     return totals
 
 
-def _agent_type(meta_path):
+def _agent_meta(meta_path):
+    """(agent type, parent agent id) of a subagent's `.meta.json`; the type is
+    `unknown` and the parent `None` when the file is absent or unreadable."""
     try:
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return "unknown"
-    agent = meta.get("agentType") if isinstance(meta, dict) else None
-    return agent if isinstance(agent, str) and _SKILL_NAME.fullmatch(agent) else "unknown"
+        return "unknown", None
+    if not isinstance(meta, dict):
+        return "unknown", None
+    agent = meta.get("agentType")
+    parent = meta.get("parentAgentId")
+    return (
+        agent if isinstance(agent, str) and _SKILL_NAME.fullmatch(agent) else "unknown",
+        parent if isinstance(parent, str) and parent else None,
+    )
+
+
+def _agent_type(meta_path):
+    return _agent_meta(meta_path)[0]
+
+
+def _subagent_kinds(agent_paths):
+    """{path: `subagent:<kind>`} for the subagent sessions of one top-level
+    session. A session whose parent (by exact agent id) is a `builder` session
+    is `subagent:builder-review`; every other session is `subagent:<agent type>`."""
+    metas = {path: _agent_meta(path.with_name(path.stem + ".meta.json")) for path in agent_paths}
+    types = {path.stem.removeprefix("agent-"): agent for path, (agent, _) in metas.items()}
+    kinds = {}
+    for path, (agent, parent) in metas.items():
+        review = parent is not None and types.get(parent) == "builder"
+        kinds[path] = BUILDER_REVIEW_KIND if review else f"subagent:{agent}"
+    return kinds
 
 
 def profile_folder(folder):
@@ -438,9 +468,10 @@ def profile_folder(folder):
         lines = _read_lines(path)
         family = [profile_session(lines, session_kind(lines))]
         parent_ids = frozenset(family[0]["counted_ids"])
-        for agent_path in sorted((folder / path.stem / "subagents").glob("*.jsonl")):
-            agent = _agent_type(agent_path.with_name(agent_path.stem + ".meta.json"))
-            family.append(profile_session(_read_lines(agent_path), f"subagent:{agent}", skip_ids=parent_ids))
+        agent_paths = sorted((folder / path.stem / "subagents").glob("*.jsonl"))
+        kinds = _subagent_kinds(agent_paths)
+        for agent_path in agent_paths:
+            family.append(profile_session(_read_lines(agent_path), kinds[agent_path], skip_ids=parent_ids))
         family[0]["family_models"] = _family_models(family)
         sessions.extend(family)
     return summarize(sessions)
@@ -582,7 +613,9 @@ def _public_name(name, known):
     bare = name[len("compass:"):] if name.startswith("compass:") else name
     if bare in known or name in ("none", "preloaded", "unnamed", "build", "setup", "capture-worker"):
         return name
-    if name.startswith("subagent:") and (name[len("subagent:"):] in known or name == "subagent:general-purpose"):
+    if name.startswith("subagent:") and (
+        name[len("subagent:"):] in known or name in ("subagent:general-purpose", BUILDER_REVIEW_KIND)
+    ):
         return name
     return "(other)"
 
