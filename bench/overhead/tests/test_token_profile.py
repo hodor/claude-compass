@@ -277,7 +277,7 @@ def test_compass_names_cover_the_plugins_skills_and_its_agent_templates(tmp_path
 
 
 @pytest.mark.parametrize("path", [
-    "C:\work\p\.claude\skills\plan\SKILL.md",
+    r"C:\work\p\.claude\skills\plan\SKILL.md",
     "C:/work/p/.claude/skills/plan/SKILL.md",
 ])
 def test_reading_a_skill_file_in_the_main_session_moves_the_phase_to_that_skill(folder, path):
