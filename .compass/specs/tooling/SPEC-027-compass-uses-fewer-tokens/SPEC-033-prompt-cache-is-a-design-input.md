@@ -1,7 +1,7 @@
 ---
 title: "The Prompt Cache Is a Design Input"
 type: spec
-status: draft
+status: approved
 confidence: low
 area: tooling
 tags: [tokens, cost, prompt-caching, measurement, subagents]
@@ -19,7 +19,6 @@ flowchart LR
 ```
 
 > [!IMPORTANT]
-> You decide: promote this spec to approved? Approving makes the cache hit rate a measure Compass is held to, alongside the token count of [[SPEC-027-compass-uses-fewer-tokens]], and lets research start on it.
 
 ## Problem
 
