@@ -29,7 +29,7 @@ except ImportError:
     import fcntl
 
 LOG_PARTS = ("meta", "station-log.jsonl")
-LOCK_PARTS = ("meta", "station-log.lock")
+LOCK_PARTS = ("tmp", "station-log.lock")
 LOCK_ATTEMPTS = 400
 LOCK_RETRY_SECONDS = 0.025
 UNPARSED = "unparsed"
@@ -240,7 +240,9 @@ def append_row(vault_dir, row):
     path = vault.joinpath(*LOG_PARTS)
     path.parent.mkdir(parents=True, exist_ok=True)
     line = (json.dumps(row) + "\n").encode("utf-8")
-    with _log_lock(vault.joinpath(*LOCK_PARTS)):
+    lock_path = vault.joinpath(*LOCK_PARTS)
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with _log_lock(lock_path):
         if not _ends_with_newline(path):
             line = b"\n" + line
         flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_BINARY", 0)
