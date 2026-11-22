@@ -136,7 +136,7 @@ This plan implements the compaction-survival need of [[specs/pipeline/SPEC-025-s
   - Automated verification: `grep -c "hook_additional_context" <trial transcript>` is at least 1 per run and the attachment contains `Compass session state`; `grep -n "## Trial with Compass hooks" .compass/research/pipeline/compaction-survival/RESEARCH-axis-1-compaction-hooks.md` finds the section; `python .claude/cli/compass validate` reports nothing new for the research.
   - Manual verification: the human reads the recorded block and summary for the manual run and confirms the stop and the handoff behaved as he expects.
 
-- [ ] TASK-335: Probe runner in `bench/overhead` - complexity: M, depends_on: none, files: [bench/overhead/probe.py, bench/overhead/tests/test_probe.py, bench/overhead/tests/fixtures/probe-session.jsonl, bench/overhead/README.md]
+- [x] TASK-335: Probe runner in `bench/overhead` - complexity: M, depends_on: none, files: [bench/overhead/probe.py, bench/overhead/tests/test_probe.py, bench/overhead/tests/fixtures/probe-session.jsonl, bench/overhead/README.md]
   - Standard library only; reads transcripts read-only; writes under `<private root>/probes/`, which, like the records folder, is refused inside a git work tree. Its ground-truth readers are its own code, separate from `plugin/cli/sessionslib.py`, so the readers that build the mechanical block are never the ones that grade it.
   - Subcommands:
     - `find --project-dir DIR`: lists compaction points (transcript, boundary index, trigger, pre and post tokens) in a Claude Code project folder.
