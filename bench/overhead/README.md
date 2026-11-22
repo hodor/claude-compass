@@ -9,6 +9,8 @@ Repo-local tooling that measures how many tokens Compass adds to a real build. N
 | `sandbox.py` | Throwaway projects under a projects root: `new`, `list`, `keep PROJECT --to DIR`, `discard PROJECT [--config-dir DIR]`. |
 | `launch.py` | One isolated headless `claude -p` session; reads `stream-json` and classifies the end as `done`, `failed` or `usage-limit`. |
 | `records.py` | Counts a session's tokens, adds list-price weights, appends one allowlisted row to the private records. |
+| `variants.py` | `make <part>` creates a git worktree of HEAD with `variants/<part>.patch` applied and committed and prints its path; `discard <part>` removes it. |
+| `pilot.py` | The pilot: probe, frozen topics, judged builds, report; `--arms` and `--topics` replay pool topics in chosen arms, variants included. |
 | `token_profile.py` | Where a build's tokens go, read from its session transcripts; `--by-agent` prints the mean and median weighted tokens per launch of each subagent type and each source family's share; `--json` saves the profile. |
 | `compare.py` | `compare.py BEFORE AFTER`: per agent type, the mean weighted tokens per launch in two folders of saved profiles, the change and a bootstrap 95% interval over sessions (fixed seed). |
 | `grade.py` | `prepare` copies four judged pilot builds (two per arm) under neutral names and writes a grading sheet for each; `score` compares the filled sheets with the judge. |
@@ -50,9 +52,30 @@ A session starts only when `git status` reports `plugin/` clean (and, with `plug
 
 ## Records
 
-The private root is `~/.compass/overhead/`. `record_session` appends one row per session to `records/<machine id>.jsonl`, where the machine id is `sensorlib.machine_id()` from `plugin/cli`. A row holds a timestamp, the machine id, role (`build`, `human`, `topic`, `goal`, `judge`), outcome, arm (`compass`, `baseline` or null), commit id, Claude Code version, result count, summed duration, per-model counts of `input`, `output`, `cache_read` and `cache_write` tokens, a list-price weighted total and the list of unpriced models. No topic, path, prompt, session id or model output is stored. A records folder inside a git work tree is refused.
+The private root is `~/.compass/overhead/`. `record_session` appends one row per session to `records/<machine id>.jsonl`, where the machine id is `sensorlib.machine_id()` from `plugin/cli`. A row holds a timestamp, the machine id, role (`build`, `human`, `topic`, `goal`, `judge`), outcome, arm (`compass`, `baseline`, a variant id `compass-minus-<part>` or null), `variant` (the id for a variant arm, else null), `build_model` (the model with the most output tokens over the session, null when no result event arrived), commit id, Claude Code version, result count, summed duration, per-model counts of `input`, `output`, `cache_read` and `cache_write` tokens, a list-price weighted total and the list of unpriced models. No topic, path, prompt, session id or model output is stored. A records folder inside a git work tree is refused.
 
 Counting takes each stretch's last `modelUsage` totals (a stretch ends at a `/clear`, which shows as a new `system/init` event) and sums the stretches. The weight of a token is its list price relative to fresh input of the same model: output 5, cache write 1.25, cache read 0.1 (0.05 for the Opus 5.5 and Sonnet 5.5 families, 0.025 for Fable 5.1 and Mythos 5.1). A model outside the table adds no weight; its tokens are counted and its id appears in `unpriced_models`.
+
+## Variant arms
+
+A variant is Compass with one harness part removed, built under the arm `compass-minus-<part>` (`<part>` is `[a-z][a-z0-9-]*`). Its patch lives in `bench/overhead/variants/<part>.patch`; the first, `post-tester.patch`, removes the post-build and post-merge tester spawns from `plugin/skills/build/SKILL.md` and the "It always runs" line from `plugin/skills/autopilot/SKILL.md`, and keeps the pre-build tester.
+
+```bash
+python bench/overhead/variants.py make post-tester      # prints <variants root>/post-tester
+python bench/overhead/variants.py discard post-tester
+```
+
+`make` creates a detached worktree of HEAD under `~/.compass/overhead/variants/<part>` (`--variants-root` overrides), applies the patch and commits it, so the worktree is one commit above HEAD, its `plugin/` is clean and its HEAD is what `check_plugin_clean` and `pin_commit` use. The repository's own work tree, index, HEAD and `plugin/` are never touched. A part name outside the pattern, a missing or empty patch and a patch that does not apply are refused, and a failed `make` leaves no folder and no worktree registration. Generate a patch with `git diff` against HEAD in a scratch clone, never in this checkout.
+
+`drive.py PROJECT --arm compass-minus-<part> --repo-root <worktree> ...` runs a variant build like a Compass build from that worktree; `--repo-root` is required for a variant arm.
+
+`pilot.py --arms ARM [ARM ...]` names the arms to build (default `compass baseline`). For each variant arm the pilot replaces any worktree left by an earlier run with a fresh one under `<private root>/variants` and passes it to `drive.py` as `--repo-root`. `pilot.py --topics ID [ID ...]` replays pool topics with their frozen goals: no probe, pick or freeze runs, an id outside the pool or without frozen goals is refused before any session, and builds already closed in the run log are not built again, so a variant replay pairs with the Compass builds a first run logged.
+
+```bash
+python bench/overhead/pilot.py --arms compass compass-minus-post-tester --topics t-1a2b3c4d t-5e6f7a8b
+```
+
+`stats.variant_pairs(topics, variant)` pairs run i of the variant with run i of the full Compass arm of the same topic; the pilot's aggregates report each variant's weighted and raw share against Compass over those pairs.
 
 ## Comparing launches
 

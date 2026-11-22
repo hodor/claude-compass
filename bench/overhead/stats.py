@@ -15,6 +15,8 @@ import math
 import random
 import statistics
 
+import records
+
 Z_CONFIDENCE = statistics.NormalDist().inv_cdf(0.975)
 Z_POWER = statistics.NormalDist().inv_cdf(0.8)
 WINDOW_SECONDS = 18000
@@ -48,6 +50,24 @@ def topic_shares(topics):
 def overall_share(topics):
     """The share over every pair of every topic."""
     return share([pair for topic in topics.values() for pair in _pairs(topic)])
+
+
+def variant_pairs(topics, variant):
+    """[(compass total, variant total), ...]: run i of `variant` paired with run
+    i of the full Compass arm of the same topic. Topics without the variant arm
+    add no pair. ValueError for an id that is not `compass-minus-<part>` and for
+    a topic whose variant and compass runs differ in number."""
+    if not records.is_variant(variant):
+        raise ValueError("a variant id is compass-minus- and a lower-case part name")
+    pairs = []
+    for name, topic in topics.items():
+        if variant not in topic:
+            continue
+        compass, runs = topic["compass"], topic[variant]
+        if len(compass) != len(runs):
+            raise ValueError(f"topic {name} has {len(runs)} variant runs for {len(compass)} compass runs")
+        pairs.extend(zip(compass, runs))
+    return pairs
 
 
 def _pair_share(compass, baseline):

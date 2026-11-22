@@ -1,0 +1,41 @@
+diff --git a/plugin/skills/autopilot/SKILL.md b/plugin/skills/autopilot/SKILL.md
+index 896de02..81b5338 100644
+--- a/plugin/skills/autopilot/SKILL.md
++++ b/plugin/skills/autopilot/SKILL.md
+@@ -117,7 +117,6 @@ Estimated [S/M] | Actual [S/M/L] | [one line why if differed]
+ - Doing the research yourself instead of spawning the researcher.
+ - Writing a quick inline plan instead of spawning the planner.
+ - Writing code yourself instead of spawning the builder.
+-- Skipping the tester because "this is small." It always runs.
+ - Skipping the validator because "everything passed." It's the final gate.
+ - Rushing checkpoints - present findings and wait for real confirmation.
+ - Continuing past a weak research phase instead of respawning.
+diff --git a/plugin/skills/build/SKILL.md b/plugin/skills/build/SKILL.md
+index 9bf5330..5222573 100644
+--- a/plugin/skills/build/SKILL.md
++++ b/plugin/skills/build/SKILL.md
+@@ -36,18 +36,18 @@ Spawn builder agents to execute tasks. The main conversation orchestrates; it do
+    In a parallel phase, every selected task's pre-build pass and checkpoint completes before any builder in that phase spawns. The station is a wave of its own, not interleaved with the build wave it gates.
+ 
+ 4. **Execute:**
+-   - Parallel-safe tasks (non-overlapping `files:`): spawn one builder per task in parallel. Spawn each builder in its own worktree: the Agent tool's `isolation: "worktree"` parameter creates one, and so does `isolation: worktree` in the agent's frontmatter. With `worktree.baseRef: "head"` in the project settings the worktree forks from local HEAD; without it, it forks from the remote default branch and misses unpushed commits. The builder then runs in `.claude/worktrees/agent-<id>` on branch `worktree-agent-<id>`, and the spawn result names both. Record the (task, branch, worktree) tuple for each. The builder's first action, before writing any code, is to fast-forward its worktree branch to the working branch and confirm the checkpointed test files from step 3 exist; it halts loudly and reports if they do not. Once a builder finishes, spawn the `tester` in post-build mode against its diff, handing it the worktree path so it reads and runs the suite there, never in the orchestrator's checkout.
+-   - Serial tasks: spawn one at a time in dependency order, wait for the builder and its post-build tester before the next.
++   - Parallel-safe tasks (non-overlapping `files:`): spawn one builder per task in parallel. Spawn each builder in its own worktree: the Agent tool's `isolation: "worktree"` parameter creates one, and so does `isolation: worktree` in the agent's frontmatter. With `worktree.baseRef: "head"` in the project settings the worktree forks from local HEAD; without it, it forks from the remote default branch and misses unpushed commits. The builder then runs in `.claude/worktrees/agent-<id>` on branch `worktree-agent-<id>`, and the spawn result names both. Record the (task, branch, worktree) tuple for each. The builder's first action, before writing any code, is to fast-forward its worktree branch to the working branch and confirm the checkpointed test files from step 3 exist; it halts loudly and reports if they do not.
++   - Serial tasks: spawn one at a time in dependency order, wait for the builder before the next.
+ 
+-5. **Fix loop.** If testers report bugs, ask: "Tester found N issues in TASK-NNN. Fix? (yes / skip / abort)". On yes, send the bug diagnosis (not the full task) to the same builder with SendMessage, so the fix lands in its existing worktree and branch; a fresh spawn would open a second worktree that knows nothing of the first. Then run `compass test-checkpoint verify TASK-NNN --tree <worktree path> --expect-checkpoint` against that builder's worktree - without `--tree` the check reads the orchestrator's own checkout, where nothing in the fix loop is changing, and stays silent through the entire cycle. A `modified` result is surfaced to the human before the cycle continues, naming the changed assertion, rather than folded silently into the next one. Spawn the tester in post-build mode again to confirm the fix, then run `compass test-checkpoint cycle TASK-NNN --evidence <the run file the tester verified against>` - once at fix-loop entry (cycle 0), then after every confirmation. It prints `cycle N: helpful|neutral|harmful` and `escalate: yes|no`; a harmful cycle ends the loop and goes to the human with the new and vanished tests the command lists. Green at fix-loop entry and at every cycle after means **no failures outside `compass test-checkpoint open-ids`** - the checkpointed tests of tasks not yet landed are expected reds, not new bugs. Max 3 cycles per task, then escalate.
++5. **Fix loop.** If testers report bugs, ask: "Tester found N issues in TASK-NNN. Fix? (yes / skip / abort)". On yes, send the bug diagnosis (not the full task) to the same builder with SendMessage, so the fix lands in its existing worktree and branch; a fresh spawn would open a second worktree that knows nothing of the first. Then run `compass test-checkpoint verify TASK-NNN --tree <worktree path> --expect-checkpoint` against that builder's worktree - without `--tree` the check reads the orchestrator's own checkout, where nothing in the fix loop is changing, and stays silent through the entire cycle. A `modified` result is surfaced to the human before the cycle continues, naming the changed assertion, rather than folded silently into the next one. Then run `compass test-checkpoint cycle TASK-NNN --evidence <the run file the tester verified against>` - once at fix-loop entry (cycle 0), then after every confirmation. It prints `cycle N: helpful|neutral|harmful` and `escalate: yes|no`; a harmful cycle ends the loop and goes to the human with the new and vanished tests the command lists. Green at fix-loop entry and at every cycle after means **no failures outside `compass test-checkpoint open-ids`** - the checkpointed tests of tasks not yet landed are expected reds, not new bugs. Max 3 cycles per task, then escalate.
+ 
+-6. **Merge branches back.** Once all builders + testers for a phase pass - pass meaning green as defined above, no failures outside `compass test-checkpoint open-ids` - merge each task branch into the orchestrator's branch in `depends_on` order:
++6. **Merge branches back.** Once all builders for a phase finish, merge each task branch into the orchestrator's branch in `depends_on` order:
+    ```bash
+    git merge --no-ff <task-branch> -m "Merge TASK-NNN: <description>"
+    ```
+-   After each merge, spawn the `tester` agent on the merged state to catch cross-task integration issues, then run the mandatory post-merge `compass test-checkpoint verify TASK-NNN` against the merged branch for that task - the only check that sees what actually landed rather than what a worktree contained mid-build. Do not run tests yourself; the tester handles all test execution. If a merge conflicts, halt and present the list of remaining branches to the human - planner enforces file exclusivity so conflicts mean either a planner bug or a builder that wrote outside its `files:`.
++   After each merge, run the mandatory post-merge `compass test-checkpoint verify TASK-NNN` against the merged branch for that task - the only check that sees what actually landed rather than what a worktree contained mid-build. Do not run tests yourself. If a merge conflicts, halt and present the list of remaining branches to the human - planner enforces file exclusivity so conflicts mean either a planner bug or a builder that wrote outside its `files:`.
+ 
+-7. **Phase pause.** When all tasks in a phase are done and the post-merge tester and post-merge verify both report passing, run 7a, then 7b, then 7d, then 7c in that order:
++7. **Phase pause.** When all tasks in a phase are done and the post-merge verify reports passing, run 7a, then 7b, then 7d, then 7c in that order:
+ 
+    **7a. Assemble phase reports from SubagentStop captures.** The SubagentStop hook has already captured each subagent's final message to `.compass/tmp/subagent-captures/<timestamp>_<agent_type>.md`. For this phase:
+ 

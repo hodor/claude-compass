@@ -20,6 +20,11 @@ same model: output 5, cache write 1.25, cache read 0.1 (0.05 for the Opus 5.5
 and Sonnet 5.5 families, 0.025 for the Fable 5.1 and Mythos 5.1 families). A
 model id outside the table adds no weight; its tokens are still counted and the
 row names it under `unpriced_models`.
+
+Arms. A row's arm is `compass`, `baseline` or a variant id `compass-minus-<part>`
+(Compass with one harness part removed); `variant` holds the id for a variant
+and is None otherwise. `build_model` names the model with the most output
+tokens over the session's stretches, None when no `result` event arrived.
 """
 
 import json
@@ -39,6 +44,8 @@ from launch import default_private_root  # noqa: E402
 ROLES = ("build", "human", "topic", "goal", "judge")
 OUTCOMES = ("done", "failed", "usage-limit")
 ARMS = ("compass", "baseline")
+VARIANT_PREFIX = "compass-minus-"
+_VARIANT_ARM = re.compile(r"compass-minus-[a-z][a-z0-9-]*")
 
 KINDS = ("input", "output", "cache_read", "cache_write")
 _USAGE_FIELDS = {
@@ -184,6 +191,26 @@ def _inside_work_tree(folder):
     return False
 
 
+def is_variant(arm):
+    """True when `arm` is a variant id: `compass-minus-` and a lower-case part name."""
+    return isinstance(arm, str) and _VARIANT_ARM.fullmatch(arm) is not None
+
+
+def is_arm(arm):
+    """True when `arm` is `compass`, `baseline` or a variant id."""
+    return arm in ARMS or is_variant(arm)
+
+
+def build_model(totals):
+    """The model of `count_tokens` output with the most output tokens (the first
+    one on a tie), or None when `totals` is empty."""
+    best = None
+    for model, counts in totals.items():
+        if best is None or counts["output"] > totals[best]["output"]:
+            best = model
+    return best
+
+
 def _check_choice(name, value, allowed, optional=False):
     if value is None and optional:
         return
@@ -201,7 +228,8 @@ def record_session(events, *, role, outcome, arm=None, plugin_sha=None, private_
     events = list(events)
     _check_choice("role", role, ROLES)
     _check_choice("outcome", outcome, OUTCOMES)
-    _check_choice("arm", arm, ARMS, optional=True)
+    if arm is not None and not is_arm(arm):
+        raise ValueError(f"arm is not one of {', '.join(ARMS)} or {VARIANT_PREFIX}<part>")
     if plugin_sha is not None:
         if not isinstance(plugin_sha, str) or not _COMMIT_ID.fullmatch(plugin_sha.lower()):
             raise ValueError("plugin_sha is not a hexadecimal commit id")
@@ -220,6 +248,8 @@ def record_session(events, *, role, outcome, arm=None, plugin_sha=None, private_
         "role": role,
         "outcome": outcome,
         "arm": arm,
+        "variant": arm if is_variant(arm) else None,
+        "build_model": build_model(totals),
         "plugin_sha": plugin_sha,
         "claude_code_version": _first_version(events),
         "results": _count_results(events),
