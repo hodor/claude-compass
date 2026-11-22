@@ -96,7 +96,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[ADR-017-capability-index-and-usage-record]] - bare compass is the progressive-disclosure index made reachable by one rule line; dispatch records every invocation; compass usage lists never-used commands explicitly; clean-tmp retires; admission control's fate decided by data (tree's retirement undone by SPEC-022 D-08)
 - [[decisions/distribution/index|distribution]] (folder, 3 children) - rulings on installing, updating, and configuring Compass across projects
 - [[decisions/learning/index|learning]] (folder, 5 children) - rulings on capture and feedback - lessons, workers, signal handling, source-word fidelity
-- [[decisions/pipeline/index|pipeline]] (folder, 3 children) - rulings on the development workflow stages and gates
+- [[decisions/pipeline/index|pipeline]] (folder, 4 children) - rulings on the development workflow stages and gates
 - [[decisions/vault-structure/index|vault-structure]] (folder, 9 children) - rulings on how the vault organizes, bounds, and retrieves its own memory
 
 ## Active Work
