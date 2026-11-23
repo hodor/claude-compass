@@ -555,3 +555,29 @@ Plan: [[PLAN-027-numbered-choices]].
 
 ### PLAN-030 Stage 1: ideas keep their status
 - [x] TASK-277: sync lists ideas and moves status when a document names one - complexity: M, depends_on: TASK-275
+
+### PLAN-030 Stage 1: ideas keep their status
+- [x] TASK-278: Schema, the Bases view, and the lookup rule - complexity: M, depends_on: TASK-275, TASK-277
+
+### PLAN-030 Stage 1: ideas keep their status
+
+Plan: [[PLAN-030-ideas-keep-their-status]]; each task's full text, files and checks are there.
+
+- [x] TASK-279: Live check of stage 1 on this repo - complexity: S, depends_on: TASK-276, TASK-278
+- [x] TASK-280: Release 0.36.0 - complexity: S, depends_on: TASK-279
+
+## 2026-11-21
+
+### PLAN-034 Wave 1: checking cost follows task and model
+- [x] TASK-342: ADR recording ruling 1: a task-difficulty class assigned by judgment under a written rubric and recorded by the harness is allowed under... - complexity: S, depends_on: none
+- [x] TASK-343: Variant arms and the build's model, repo-local in `bench/overhead/` - complexity: L, depends_on: none
+- [x] TASK-344: A noninferiority guard in `compare.py` - complexity: S, depends_on: TASK-343
+- [x] TASK-345: The builder's review attributed - complexity: S, depends_on: none
+- [x] TASK-346: Every checking spawn recorded, shipped in `plugin/` - complexity: M, depends_on: none
+- [x] TASK-347: The letter parsed and the stations report, shipped in `plugin/` - complexity: M, depends_on: TASK-346
+- [x] TASK-349: The bench reads the station record - complexity: S, depends_on: TASK-343, TASK-346
+
+## 2026-11-22
+
+### PLAN-033 Wave 1: compaction keeps the session state
+- [x] TASK-336: Pilot on recorded compactions - complexity: S, depends_on: TASK-335

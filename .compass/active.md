@@ -82,14 +82,7 @@ Plan: [[PLAN-032-consolidation-grounded-in-sources]]; each task's full text, fil
 
 Plan: [[PLAN-034-checking-cost-follows-task-and-model]]; each task's full text, files and checks are there.
 
-- [x] TASK-342: ADR recording ruling 1: a task-difficulty class assigned by judgment under a written rubric and recorded by the harness is allowed under... - complexity: S, depends_on: none
-- [x] TASK-343: Variant arms and the build's model, repo-local in `bench/overhead/` - complexity: L, depends_on: none
-- [x] TASK-344: A noninferiority guard in `compare.py` - complexity: S, depends_on: TASK-343
-- [x] TASK-345: The builder's review attributed - complexity: S, depends_on: none
-- [x] TASK-346: Every checking spawn recorded, shipped in `plugin/` - complexity: M, depends_on: none
-- [x] TASK-347: The letter parsed and the stations report, shipped in `plugin/` - complexity: M, depends_on: TASK-346
 - [ ] TASK-348: Release and local refresh: bump `plugin/.claude-plugin/plugin.json` to the next minor, run `python plugin/cli/compass self-update... - complexity: S, depends_on: TASK-346, TASK-347
-- [x] TASK-349: The bench reads the station record - complexity: S, depends_on: TASK-343, TASK-346
 - [ ] TASK-350: Letter repeatability, measured - complexity: M, depends_on: none
 - [ ] TASK-351: Two smoke builds on the subscription, one at a time - complexity: S, depends_on: TASK-343, TASK-346, TASK-349
 - [ ] TASK-352: The per-part spread pilot - complexity: M, depends_on: TASK-344, TASK-345, TASK-351
@@ -104,8 +97,6 @@ Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, fi
 - [ ] TASK-333: The handoff takes its mechanical sections from the command - complexity: S, depends_on: TASK-331
 - [ ] TASK-334: Live compaction trial in this repo - complexity: S, depends_on: TASK-332, TASK-333
 - [ ] TASK-335: Probe runner in `bench/overhead` - complexity: M, depends_on: none
-- [ ] TASK-336: Pilot on recorded compactions - complexity: S, depends_on: TASK-335
-
 ## PLAN-035 Wave 1: prompt cache as a design input
 
 Plan: [[PLAN-035-prompt-cache-is-a-design-input]]; each task's full text, files and checks are there.
