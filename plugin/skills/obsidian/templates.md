@@ -51,14 +51,16 @@ What exists today that's relevant? What has been tried?
 - As a [role], I want [goal], so that [benefit]
 
 ## Desired Outcome
-What does success look like when this is done?
+- **O-01:** What does success look like when this is done?
 
 ## Success Criteria
-- [ ] Criterion 1
+- [ ] **S-01:** Criterion 1
 - [ ] Criterion 2
 
 ## Constraints
-Hard limits - technical, legal, organizational, time.
+- **C-01:** Hard limits - technical, legal, organizational, time.
+
+Requirement ids (`O-01`, `S-01`, `C-01`) are optional, written once and never renumbered; a new bullet takes the next unused number.
 
 ## Decisions (made by the human)
 Explicit rulings made during the interview - a trade-off resolved, an approach chosen. Record each as a `- **D-NN:** text` bullet in a callout (see file `documents.md`, section "Decision bullets"), not as prose elsewhere in the spec.
