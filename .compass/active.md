@@ -78,28 +78,10 @@ Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files a
 
 - [ ] TASK-412: The planted-defect probe, the spec's KPI. `bench/verification/planted.py` builds a throwaway Python project in a temp folder with its... - complexity: M, depends_on: TASK-411
 
-## PLAN-032 Wave 2: the scan runs itself and fixes what git proves
-
-Plan: [[PLAN-032-consolidation-grounded-in-sources]]; each task's full text, files and checks are there.
-
-- [ ] TASK-310: ADR: the drift recheck runs outside consolidation's no-cadence rule; host, run gate, report dedupe and auto-fix boundary - complexity: S, depends_on: none
-- [ ] TASK-312: `compass drift --apply` rewrites git-proven refs and target-newer index lines; net-zero shifts become `unchanged` - complexity: M, depends_on: none
-- [ ] TASK-311: The scan runs itself from the `SessionStart` hook, detached and gated on HEAD; report dedupe; doctor row - complexity: L, depends_on: TASK-310, TASK-312
-## PLAN-036 Wave 2: authored ids, red kinds, reach runs the entry point
-
-Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files and checks are there.
-
-- [ ] TASK-414: Requirement ids written at spec time - complexity: M, depends_on: TASK-400
-- [ ] TASK-415: The checkpoint keeps the kind of each red, and `compass ablate` names a test whose only red was a collection error as unproven - complexity: M, depends_on: TASK-402
-- [ ] TASK-416: `compass reach --run "<command>" --lang python|node` produces the coverage report itself, then intersects it as `--report` does - complexity: L, depends_on: TASK-401, TASK-406
-
 ## PLAN-033 Wave 2: the mechanical block as a probe arm, and the arm comparison
 
 Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, files and checks are there. TASK-339 runs headless model sessions and waits for the human's go.
 
-- [ ] TASK-337: `session-state` renders the state as it stood at a compaction boundary - complexity: M, depends_on: none
-- [ ] TASK-432: Probe grading takes the pilot's three lessons, and the report gains paired intervals - complexity: M, depends_on: none
-- [ ] TASK-433: The probe gains `mechanical` and `compass` arms - complexity: M, depends_on: TASK-337, TASK-432
 - [ ] TASK-339: The arm comparison on every recorded compaction (needs the human's go) - complexity: S, depends_on: TASK-433
 
 ## Next Up
