@@ -7,7 +7,7 @@ confidence: medium
 area: tooling
 tags: [tokens, cost, harness, verification, models, measurement, bench]
 created: 2026-11-21
-updated: 2026-11-21
+updated: 2026-11-22
 git_branch: "master"
 git_commit: "6faced1"
 author: "planner"
@@ -180,3 +180,18 @@ The dash check, as in PLAN-028: `python -c "import pathlib,sys; bad=[str(p) for 
 - **A variant could be overwritten by self-update.** TASK-351's first build checks `.claude/` against the variant commit before any pilot build runs.
 - **Subscription pace.** Fourteen builds at about three per five-hour window take several windows; runs are one at a time and halt at the first usage-limit event.
 - **The letter may prove too unsteady to key on.** Then TASK-354 tightens the rubric, and if agreement stays low, Stage 2 keys checking on escalation alone, the other half of ruling 2.
+
+## Wave 2 elaborated
+
+No intent line is promoted. Every one of them waits on a Stage 1 outcome that has not been observed: TASK-350 and TASK-352 have not run, and [[ADR-024-difficulty-class-is-judged-not-scored]] awaits approval. The pause point already places Stage 2's detail after those three manual checks.
+
+- TASK-353 waits on TASK-352: its batch size, the noninferiority margin and the per-part spread all come from the pilot report.
+- TASK-354 waits on TASK-350: the rubric is tightened only where the repeatability test shows planners disagree.
+- TASK-355 waits on TASK-350 and on ADR-024's approval: whether the table is keyed on the letter at all, or checking keys on escalation alone (the last risk above), depends on the letter's measured agreement, and keying on a judged class rests on ruling 1.
+- TASK-356 waits on TASK-353: a cell drops below full checking only where the ablation shows defects caught do not fall.
+- TASK-357 waits on TASK-352 through TASK-358: the advisory names a re-baseline and compares against its record, and both are defined by the re-baseline TASK-358 runs, whose per-part batch size comes from the pilot's spread. The re-baseline runs in the repo-local `bench/overhead/`, so whether a shipped `doctor` row should name it is settled by TASK-358's shape. The 45 rows now in `.compass/meta/station-log.jsonl` carry a model on every row and no Claude Code version, so a host change cannot be noticed from them yet; the transcripts carry one in their `version` field.
+- TASK-358 waits on TASK-352 and TASK-353: the pilot's spread sizes each part's batch, and ruling 4 re-measures the stations first.
+- TASK-359 waits on TASK-353 or TASK-358 finding a part that does not help.
+- TASK-360 waits on TASK-356: the KPI compares checking-station tokens per letter against full checking, which differs only once levels are read.
+
+What the station log shows after Wave 1, read with `compass stations`: 45 rows over S, M and L tasks on one model; 17 of the 19 builder rows are `unparsed`, since a builder report has no verdict form; 13 rows match no plan task, 10 with no task id and 3 with `TASK-40`, which names no task. 32 of the 45 rows are 16 spawns written twice within the same second, and two `tester-post` rows for TASK-346 with model `claude-env-pin-7` and source `env` are the fixture of `plugin/cli/tests/test_capture_signal_station.py`, whose report and capture file reached this vault's `.compass/meta/` and `.compass/tmp/subagent-captures/` during a test run.
