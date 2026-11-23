@@ -190,9 +190,8 @@ Plan: [[PLAN-034-checking-cost-follows-task-and-model]]; intent lines are in its
 
 Plan: [[PLAN-033-compaction-keeps-the-session-state]]; intent lines are in its Later section.
 
-- [ ] TASK-337
 - [ ] TASK-338
-- [ ] TASK-339
+- [ ] TASK-434
 - [ ] TASK-340
 - [ ] TASK-341
 

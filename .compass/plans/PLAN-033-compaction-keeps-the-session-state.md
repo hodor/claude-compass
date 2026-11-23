@@ -7,7 +7,7 @@ confidence: medium
 area: methodology
 tags: [handoff, compaction, context-window, hooks, precompact, sessionstart, session-continuity, probes]
 created: 2026-11-21
-updated: 2026-11-21
+updated: 2026-11-22
 git_branch: "master"
 git_commit: "6faced1"
 author: "planner"
@@ -29,8 +29,14 @@ flowchart LR
   subgraph B[Track B: measure the host summary]
     T335[TASK-335 probe runner] --> T336[TASK-336 pilot on recorded compactions]
   end
-  T334 --> L[Later: mechanical and handoff arms, comparison, judge]
-  T336 --> L
+  subgraph W2[Wave 2: the block as a probe arm]
+    T337[TASK-337 state at a boundary] --> T433[TASK-433 mechanical and compass arms]
+    T432[TASK-432 grading from the pilot] --> T433
+    T433 --> T339[TASK-339 arm comparison, waits for the go]
+  end
+  T334 --> T337
+  T336 --> T432
+  T339 --> L[Later: handoff and before arms, judge, block revision]
 ```
 
 
@@ -42,7 +48,9 @@ This plan implements the compaction-survival need of [[specs/pipeline/SPEC-025-s
 
 **Wave 1** runs two tracks side by side. Track A teaches Compass to read a session transcript for the facts the next step needs (which files were read and edited, what the human last asked, which structured questions he answered), adds one command that prints those facts with the open tasks, the decisions of the specs in play and the git state as a short block, and hooks it in twice: right after a compaction the block goes back into the model's context, and right before one the host's summarizer is told which sections to keep. The handoff skill then takes its file list, decisions and uncommitted changes from the same command, so the model writes only intent and the next step. Track B builds a probe runner in the benchmark folder and pilots it on compactions already recorded in this repo's past sessions: it asks a fresh model, given only the host's summary, what files were changed, what a past error said, which task was in progress and what the human chose, and grades the answers by script. Wave 1 ends at two gates: a live compaction in this repo shows the block arriving and the stop still working, and the human reads the pilot's numbers.
 
-**Later** compares the arms the KPI names. It depends on what the pilot shows: whether script-graded probes yield enough questions per compaction, and how far the host summary falls short. Only then is it worth adding the mechanical block and the handoff as answer arms, comparing tokens and answers with an interval, adding a judge for free-text decisions, and tuning what the block carries.
+**Wave 2** puts the mechanical block to the test the host summary took in the pilot. Compass learns to print the block as it stood at a past compaction: the transcript up to that point, and the vault and git as of the last commit before it. The probe then asks a fresh model its questions given only that block, or given the host summary followed by the block, which is what a Compass session holds after a compaction. Grading takes the pilot's three lessons: files are also scored over the stretch since the previous compaction alone, a correct but shortened error quote counts, and the scarce recall and decision probes join continuation in one pooled score, with an interval only where enough points exist. The wave ends at the comparison on every recorded compaction in this repo. That run spends subscription sessions, so it waits for the human's go, and its gate is the human reading the verdict.
+
+**Later** adds the two arms that need a session rebuilt at the compaction point: a handoff written there, and the full history before it as the KPI's "as well as before" reference. Then come a judge for free-text answers and a revision of what the block carries, each chosen from the comparison's numbers.
 
 ## Current State
 
@@ -155,11 +163,49 @@ This plan implements the compaction-survival need of [[specs/pipeline/SPEC-025-s
 
 **Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before the next wave. Skip if the human asked for `all-phases` mode.
 
+### Wave 2 (detailed): the mechanical block as a probe arm, and the arm comparison
+
+TASK-337 and TASK-432 touch disjoint files and run side by side; TASK-433 needs both; TASK-339 runs last.
+
+- [ ] TASK-337: `session-state` renders the state as it stood at a compaction boundary - complexity: M, depends_on: none, files: [plugin/cli/commands/session_state.py, plugin/cli/tests/test_session_state.py, plugin/cli/tests/fixtures/transcripts/state-two-boundaries.jsonl], lessons: [LESSON-scratch-vaults-need-compass-dir]
+  - `--until INDEX`: the transcript sections (last human request, question answers, files edited and read, edit start lines, last test run) read only the main transcript's lines before INDEX, and only those records of its `subagents/` files whose `timestamp` is at or before the boundary record's. A line at INDEX that is not a `compact_boundary` record, or an INDEX past the end, exits 1 with `not a compaction boundary` on stderr.
+  - `--at COMMIT`: the open tasks come from `git show COMMIT:.compass/active.md`, and the D-NN lines of each touched spec or ADR from `git show COMMIT:<path>`; a file absent at that commit contributes nothing. The uncommitted-changes section is left out, and the branch line reads `at <short commit>`. An unknown commit exits 1 naming it.
+  - Each flag works alone. Without either, the output is byte-identical to the current command's on the existing fixtures. Both are refused beside `--hook` (exit 1 with the usage line), so the hook path never reads them. The module's usage text names both.
+  - Automated verification: `python -m pytest plugin/cli/tests/test_session_state.py -q` passes: on a fixture holding two boundaries, with an Edit, a Read, a human prompt, an `AskUserQuestion` answer and a pytest run on each side of the second, `--until <second boundary>` lists only the edits, reads, answer and test run before it and prints the prompt before it; a subagent record stamped after the boundary is left out and one stamped before it is kept; `--until` on a line that is not a boundary exits 1, as does an index past the end; in a temporary git repository holding `.compass/` whose `active.md` and a spec's D-NN bullets change between two commits, `--at <first>` prints the first commit's open tasks and D-NN lines, no uncommitted-changes section with a dirty work tree, and a branch line naming the first commit; `--at` with an unknown commit exits 1; `--hook --until 3` exits 1 and prints no JSON; every existing test passes unchanged. `python -m pytest plugin/cli/tests -q` passes.
+  - Manual verification: the human reads the block `--until` and `--at` render for one of his recorded compactions and confirms it reads as the state of that moment.
+  - Entry point: `python plugin/cli/compass session-state --transcript <transcript> --until <boundary index> --at <commit>`
+
+- [ ] TASK-432: Probe grading takes the pilot's three lessons, and the report gains paired intervals - complexity: M, depends_on: none, files: [bench/overhead/probe.py, bench/overhead/tests/test_probe.py, bench/overhead/tests/fixtures/probe-two-boundaries.jsonl, bench/overhead/README.md]
+  - Files over the latest stretch: `build` stores on the artifact probe a second set, `expected_recent`: the Edit, Write and MultiEdit paths made after the last earlier `compact_boundary` on the point's side, or all of them when there is none. `grade` scores the one reply twice, `artifact` against the whole trail and `artifact-recent` against `expected_recent`; an empty `expected_recent` gives no `artifact-recent` score. `build` on a point whose frozen key lacks the field adds it and leaves every other field as it was; a key holding it is refused as before.
+  - A shortened error quote counts: an exception-line literal `<Name>: <message>` scores 1 when the reply holds `<Name>` as a whole word and the message's first clause, which is the message up to its first `,`, `;`, `:`, ` (` or ` - ` [guess: the pilot's miss quoted exactly this much; a message with no such separator must appear whole]. The `N failed` literal is matched as before.
+  - A pooled state score: per point and arm, the mean of its recall, continuation and decision scores, present when the point has at least one of them.
+  - `report` keeps its table, which gains `artifact-recent` and `state` rows, and adds one table per arm other than `host-summary`: for each probe type, the number of points graded in both arms, the mean of (arm score minus host-summary score) over them, and its 95% paired bootstrap interval, resampling points with replacement under `compare.SEED` and `compare.RESAMPLES`. Under 10 pairs the interval reads `too few points` [guess: the pilot's recall and decision types, at 3 points each, are the case this guards]. The output holds no path, prompt, id or answer text, as before.
+  - Automated verification: `python -m pytest bench/overhead/tests -q -p no:cacheprovider` passes: on a fixture with two boundaries, the second point's `expected_recent` holds only the edits between them while `expected` holds all; a reply naming exactly the recent edits scores `artifact-recent` 1.0 and `artifact` under 1; a point with no edit since the earlier boundary has no `artifact-recent` score; `build` on a frozen key without `expected_recent` adds it with `expected` and every question unchanged, and the next `build` is refused; the literal `ValueError: the point is not a compaction boundary, line 12` is matched by a reply holding `ValueError: the point is not a compaction boundary` and by neither a reply holding only `ValueError` nor one holding only the message; `3 failed` is still not matched by `13 failed`; a point with continuation 1 and decision 0 has state 0.5, and one with an artifact probe alone has none; a paired interval over 12 points where the arm wins every point lies above 0, 9 pairs print `too few points`, and the same input gives the same interval twice; `report` output holds no fixture path or prompt string. Then `grade` on each of the 8 pilot points and `report`, over the stored replies with no model call, give the host-summary `artifact`, `continuation` and `decision` means of the pilot (0.31, 0.33, 0.67).
+  - Manual verification: none.
+  - Entry point: `python bench/overhead/probe.py report`
+
+- [ ] TASK-433: The probe gains `mechanical` and `compass` arms - complexity: M, depends_on: TASK-337, TASK-432, files: [bench/overhead/probe.py, bench/overhead/tests/test_probe.py, bench/overhead/README.md], lessons: [LESSON-scratch-vaults-need-compass-dir]
+  - `mechanical`: the carried text is the block `python <repo_root>/plugin/cli/compass session-state --transcript <point transcript> --until <boundary index> --at <commit> --format block` prints, run with cwd at the key's `cwd` and `CLAUDE_PROJECT_DIR` removed from its environment. `compass`: the host summary followed by that block, the order the trial ("Trial with Compass hooks") recorded in a Compass session after a compaction. At a subagent point `compass` carries the host summary alone, since the hook prints nothing for an event carrying `agent_id`.
+  - The commit is the last one on the boundary record's `gitBranch` whose committer date is at or before the boundary's `timestamp` (`git -C <cwd> log -1 --before=<timestamp> --format=%H <branch>`), or on `HEAD` when that branch no longer exists [guess: worktree branches are deleted after their merge]. When no commit qualifies, or the command exits non-zero or prints nothing, `ask` starts no session and writes `ask-<arm>.json` holding `"no_state": true` and no reply; `grade` skips it and `report` prints the no-state count per arm under its tables.
+  - `ask-<arm>.json` also stores the carried block, under the private root, so a run is auditable without rendering it again.
+  - Automated verification: `python -m pytest bench/overhead/tests -q -p no:cacheprovider` passes, through the fake `claude` the existing `ask` tests use and the real `session-state` on a temporary git repository holding a committed `.compass/active.md`: the `mechanical` prompt holds `Compass session state`, the fixture's edited path and the committed open task, and no summary text; the `compass` prompt holds the summary text before the block; at a subagent point the `compass` prompt holds the summary and no block; a boundary stamped before the repository's first commit writes the no-state record and starts no session; a branch absent from the repository falls back to `HEAD`; the `session-state` process sees no `CLAUDE_PROJECT_DIR`; `report` counts one no-state point. `python -m pytest plugin/cli/tests -q` passes.
+  - Manual verification: none (TASK-339 runs it).
+  - Entry point: `python bench/overhead/probe.py ask <point> --arm mechanical`
+
+- [ ] TASK-339: The arm comparison on every recorded compaction - complexity: S, depends_on: TASK-433, files: [.compass/research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison.md, .compass/research/pipeline/compaction-survival/index.md]
+  - **Needs the human's go before it runs.** It starts headless model sessions on his subscription: with the pilot's 21 points, 13 new points take 4 sessions each and the 8 pilot points 2 each, 68 sessions, against the pilot's 16 (125,341 weighted tokens for its 10 Opus sessions). The agent asks for the go with the count `find` gives at that time and the pilot's cost beside it, and starts nothing before the answer.
+  - `find` over this repo's transcripts, taking every point it lists. `build` on each point not yet built, and on the 8 pilot points to add `expected_recent`. `ask` with `mechanical` and `compass` on every point, and with `host-summary` and `none` on the points the pilot did not ask. `grade` on every point, which regrades the pilot's stored replies under TASK-432's recall rule with no model call, then `report`.
+  - `RESEARCH-probe-arm-comparison.md` (type research, summary in frontmatter, linked from the folder index) holds the report's tables, the carried tokens per arm, the no-state count, the run's cost in weighted tokens, and the verdict per probe type for `mechanical` and `compass` against `host-summary`: better when the paired interval's low end is above 0, worse when its high end is below 0, not distinguishable otherwise, and whether the arm carries fewer tokens. Types under 10 pairs are reported with no verdict. The handoff and before arms are named as not yet run. No path, prompt, session id or answer text.
+  - Automated verification: `grep -n "| mechanical | artifact-recent" .compass/research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison.md` finds the row; `grep -n "RESEARCH-probe-arm-comparison" .compass/research/pipeline/compaction-survival/index.md` finds the link; `grep -cE "[0-9a-f]{8}-[0-9a-f]{4}-" .compass/research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison.md` prints 0; `python .claude/cli/compass validate` reports nothing new.
+  - Manual verification: the human reads the comparison and says which Later tasks to run.
+  - Entry point: `python bench/overhead/probe.py report`
+
+**Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before the next wave. Skip if the human asked for `all-phases` mode.
+
 ## Later (intent only)
 
-- [ ] TASK-337: `session-state` renders the state as it stood at a given compaction boundary, and the probe gains a `mechanical` arm built from it - files: [plugin/cli/commands/session_state.py, plugin/cli/tests/test_session_state.py, bench/overhead/probe.py, bench/overhead/tests/test_probe.py]
 - [ ] TASK-338: The probe gains a `handoff` arm: a headless session given the pre-boundary history writes a handoff through the handoff skill, and the probes run against it - files: [bench/overhead/probe.py, bench/overhead/tests/test_probe.py]
-- [ ] TASK-339: Arm comparison for the KPI: per-type scores and carried tokens of host summary, mechanical block, handoff and the no-text floor, with a bootstrap interval over compaction points, written as the KPI verdict in the research - files: [bench/overhead/probe.py, .compass/research/pipeline/compaction-survival/RESEARCH-probe-pilot.md]
+- [ ] TASK-434: The probe gains a `before` arm, the KPI's reference: the answerer holds the history before the boundary from the last earlier boundary on, through the rebuilt session TASK-338 proves if it loads, else as rendered text - files: [bench/overhead/probe.py, bench/overhead/tests/test_probe.py]
 - [ ] TASK-340: A judge for decision and free-text continuation probes, reference answer in its prompt, with a one-time hand-graded agreement sample in the `grade.py` pattern - files: [bench/overhead/probe.py, bench/overhead/grade.py]
 - [ ] TASK-341: Revise the block's sections and caps from the comparison: sections that add no probe score lose their characters - files: [plugin/cli/commands/session_state.py, plugin/cli/tests/test_session_state.py]
 
@@ -176,3 +222,14 @@ This plan implements the compaction-survival need of [[specs/pipeline/SPEC-025-s
 ## Inherited Questions (from spec)
 
 None open. The review's three questions are taken on their recommended options and marked `[guess: ...]` above for the human to overturn at approval.
+
+## Wave 2 elaborated
+
+Elaborated 2026-11-22 from Wave 1's verified outcomes: the live trial ([[research/pipeline/compaction-survival/RESEARCH-axis-1-compaction-hooks]], section "Trial with Compass hooks") and the pilot ([[research/pipeline/compaction-survival/RESEARCH-probe-pilot]]), both approved by the human, who judged the comparison worth running and has not yet allowed further subscription-spending runs.
+
+- **TASK-337, changed: split in two.** It keeps the plugin half and gains its detail: the pilot's points are past compactions in this repo, whose `active.md`, specs and git state have moved on since, so the block at a boundary reads the transcript up to that boundary (`--until`) and the vault and git at the last commit before it (`--at`). The probe arm moved to TASK-433, so the plugin change and the grading change run in parallel. The trial's real block ran 3,145 to 3,332 characters, under the 8,000 cap, so no cap changes.
+- **TASK-339, changed: arms, intervals, document and the go.** It compares `mechanical` and `compass` (summary then block, the order the trial recorded) with `host-summary` and the floor; the handoff column arrives with TASK-338 and the reference with TASK-434. Intervals cover artifact, artifact-recent, continuation and the pooled state score, since the pilot found recall and decision probes at only 3 of 8 points each. The verdict goes into a new document, leaving the pilot's record as it stands. The pilot's whole pool of 21 points replaces a sample. The task runs only after the human's go, as he has allowed no subscription-spending run yet.
+- **TASK-432, added** from the pilot's three lessons: an artifact score over the edits since the previous compaction (the whole-trail key hides how much each arm keeps of the latest stretch, and the mechanical arm would win it by construction); a recall rule accepting the error name plus the message's first clause (the pilot's one quoted answer scored 0 for stopping short of the last clause); and the state score pooling recall, continuation and decision (too scarce for an interval of their own).
+- **TASK-433, added:** the probe half of the intent TASK-337 carried, with the `compass` arm beside `mechanical`, because the trial showed a Compass session holds both texts after a compaction and TASK-341 needs to know what the block adds to the summary.
+- **TASK-434, added to Later:** the SPEC-025 KPI asks for answers "as well as before" the compaction, and axis 4 finding 19 names the full pre-compaction context as that reference arm; no line held it. It shares TASK-338's open question, whether a session rebuilt at the compaction point loads, so it stays intent.
+- TASK-338, TASK-340 and TASK-341 stay in Later, each depending on the comparison's numbers or on a rebuilt session no run has shown yet.

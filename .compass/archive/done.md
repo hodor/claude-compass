@@ -639,3 +639,9 @@ Plan: [[PLAN-035-prompt-cache-is-a-design-input]]; each task's full text, files 
 
 ### PLAN-032 Wave 2: the scan runs itself and fixes what git proves
 - [x] TASK-321: Ship Wave 2 (release: push only on the human's word): version bump and `self-update --force` - complexity: S, depends_on: TASK-309, TASK-311, TASK-312
+
+### PLAN-035 Wave 2: the cached start stays stable
+
+Plan: [[PLAN-035-prompt-cache-is-a-design-input]]; the task's full text, files and checks are there.
+
+- [x] TASK-427: Tests pin that every non-compaction SessionStart command prints nothing on a no-op run, and that no new one joins unproven - complexity: S, depends_on: none
