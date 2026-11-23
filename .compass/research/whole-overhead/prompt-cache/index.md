@@ -42,3 +42,5 @@ Axes 1 and 2 both found that a new session reuses about 7.8K tokens of the previ
 ## Results
 
 Review: [[REVIEW-prompt-cache]].
+
+Baseline recorded by `compass cache`: [[RESEARCH-cache-baseline-measured]].
