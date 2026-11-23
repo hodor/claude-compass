@@ -18,5 +18,6 @@ Class here: host and OS quirks - line endings, shells, Windows
 ## Lessons
 
 - [[lessons/platform/LESSON-autocrlf-churns-lf-writers|LESSON-autocrlf-churns-lf-writers]] - With core.autocrlf=true and no .gitattributes, git checks files out as CRLF; a tool that writes LF rewrites them every run, causing perpetual diffs
+- [[lessons/platform/LESSON-load-deferred-ask-tool-before-asking|LESSON-load-deferred-ask-tool-before-asking]] - AskUserQuestion can be a deferred tool in Claude Code; load it with ToolSearch before a gate question or the question silently degrades to plain text
 - [[lessons/platform/LESSON-windows-crlf-breaks-linux-container-scripts|LESSON-windows-crlf-breaks-linux-container-scripts]] - Python `open(p, 'w')` on Windows writes CRLF; mount that into a Linux container and bash chokes on $'\\r'
 - [[lessons/platform/LESSON-windows-heredoc-backslash-escapes|LESSON-windows-heredoc-backslash-escapes]] - Git Bash heredocs on Windows collapse backslash escapes; scratchpad script files carry code patches instead

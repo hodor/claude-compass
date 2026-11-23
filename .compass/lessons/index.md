@@ -22,11 +22,11 @@ Archived lessons live in `archive/lessons/`.
 
 - [[lessons/distribution/index|distribution]] (4 lessons) - installing, updating, and shipping Compass surfaces - what update owns, version lag, config copies in shipped prose
 - [[lessons/experiments/index|experiments]] (6 lessons) - designing measurements and experiments that can actually falsify
-- [[lessons/hooks/index|hooks]] (5 lessons) - hook registration, payloads, and firing semantics
+- [[lessons/hooks/index|hooks]] (6 lessons) - hook registration, payloads, and firing semantics
 - [[lessons/instructions/index|instructions]] (2 lessons) - writing instructions agents follow - prose economy, thresholds that become Goodhart targets
 - [[lessons/pipeline/index|pipeline]] (7 lessons) - how work passes the human's gates - adversarial review before approval, walkthroughs in his words, verifying reversibility before acting unasked
-- [[lessons/platform/index|platform]] (3 lessons) - host and OS quirks - line endings, shells, Windows
-- [[lessons/subagents/index|subagents]] (8 lessons) - spawning, briefing, and supervising agents
+- [[lessons/platform/index|platform]] (4 lessons) - host and OS quirks - line endings, shells, Windows
+- [[lessons/subagents/index|subagents]] (12 lessons) - spawning, briefing, and supervising agents
 - [[lessons/test-quality/index|test-quality]] (6 lessons) - what makes tests and their evaluation mean something
 - [[lessons/vault-structure/index|vault-structure]] (11 lessons) - vault mechanics - indexes, links, discovery, placement
 - [[LESSON-parallel-research-check-siblings-first]] - Research agents fanned out onto one spec should read sibling docs in the target domain folder first, and scope around what a sibling already owns

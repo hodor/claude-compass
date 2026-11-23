@@ -10,13 +10,15 @@ import io
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+CLI_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, CLI_DIR)
 
 import capturelib  # noqa: E402
 from commands import capture_signal  # noqa: E402
@@ -152,6 +154,44 @@ class StationRowTests(StationRowCase):
         self.spawn("tester", post_build_report(BUGS), agent_id="dup-2")
         self.assertEqual(len(self.rows()), 2)
 
+    def test_concurrent_redeliveries_of_one_completion_append_one_row(self):
+        """Adversarial where: the harness delivers SubagentStop twice for one
+        completion as concurrent processes (same agent_id), and each reads the
+        capture state before another has saved the id, so each records. Every
+        process stalls inside the state read to hold that window open; the
+        capture files, the signals and the rows must still be one each."""
+        driver = (
+            "import sys, time\n"
+            f"sys.path.insert(0, {CLI_DIR!r})\n"
+            "import capturelib\n"
+            "from commands import capture_signal\n"
+            "real = capturelib.load_state\n"
+            "def slow(root):\n"
+            "    state = real(root)\n"
+            "    time.sleep(0.4)\n"
+            "    return state\n"
+            "capturelib.load_state = slow\n"
+            "sys.exit(capture_signal.run(['--hook']))\n"
+        )
+        event = json.dumps({
+            "agent_type": "tester", "agent_id": "race-1",
+            "last_assistant_message": post_build_report(BUGS),
+        })
+        env = dict(os.environ, CLAUDE_PROJECT_DIR=str(self.project))
+        procs = [
+            subprocess.Popen(
+                [sys.executable, "-c", driver], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, env=env, cwd=str(self.project),
+            )
+            for _ in range(3)
+        ]
+        for proc in procs:
+            proc.communicate(event.encode("utf-8"), timeout=60)
+            self.assertEqual(proc.returncode, 0)
+        self.assertEqual(len(self.rows()), 1)
+        self.assertEqual(len(list((self.root / "tmp" / "subagent-captures").glob("*.md"))), 1)
+        self.assertEqual(len(capturelib.load_state(self.root)["signals"]), 1)
+
     def test_unmatched_report_is_logged_as_unparsed_with_its_agent_station(self):
         """Adversarial where: a tester report with no Mode section is
         dropped from the log or filed under a guessed station, so spawns go
@@ -204,6 +244,10 @@ class StationRowIsBestEffortTests(StationRowCase):
         bare = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, bare, True)
         os.environ["CLAUDE_PROJECT_DIR"] = str(bare)
+        # With no vault in the project dir the lookup climbs from the working
+        # directory, so the working directory sits in the bare project too.
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(bare)
         self.assertEqual(self.spawn("tester", post_build_report(BUGS)), 0)
         self.assertFalse((bare / ".compass").exists())
 

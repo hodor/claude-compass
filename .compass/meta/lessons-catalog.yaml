@@ -5,7 +5,7 @@ lessons:
     category: process
     area: methodology
     tags: [review, plans, specs, adversarial, multi-lens, measurement]
-    score: 8
+    score: 9
     summary: "Review specs/plans with 3 adversarial lenses before approval, and have reviewers measure against the real corpus, not opine"
   - file: "LESSON-append-only-index-misses-mutations.md"
     status: active
@@ -90,13 +90,13 @@ lessons:
     area: workflow
     tags: [hooks, if-clause, permission-rules, plugin-config]
     score: 5
-    summary: "Settings hook entries have no `if` clause; select tools via matcher, filter paths in the command"
+    summary: "Settings-file hooks support an `if` clause (verified on 2.1.330); `||` inside it is untested, use a pipe matcher"
   - file: "LESSON-hook-payloads-observe-before-coding.md"
     status: active
     category: process
     area: workflow
     tags: [hooks, payloads, parsing, tool-output, evidence]
-    score: 5
+    score: 6
     summary: "Observe the real emission or code path first; assumed shapes and reported causes ship dead work under a green suite"
   - file: "LESSON-hooks-load-only-from-settings.md"
     status: active
@@ -110,7 +110,7 @@ lessons:
     category: process
     area: methodology
     tags: [research-synthesis, human-practice, agent-methodology, rationing, literature-import]
-    score: 5
+    score: 7
     summary: "Name the precondition a borrowed mechanism needs before importing it; mark every finding maps or metaphor"
   - file: "LESSON-installer-removes-only-what-it-installed.md"
     status: active
@@ -152,7 +152,7 @@ lessons:
     category: process
     area: workflow
     tags: [cli, vault-root, isolation, probes, hooks, env-var]
-    score: 5
+    score: 6
     summary: "CLAUDE_PROJECT_DIR redirects the compass CLI only when it contains .compass; otherwise cwd-walk silently targets the enclosing vault"
   - file: "LESSON-sizing-unrecorded-blind-to-born-folder.md"
     status: active
@@ -181,7 +181,7 @@ lessons:
     area: workflow
     tags: [worktree, subagents, parallel-builders, stale-base, orchestration, git]
     score: 5
-    summary: "Worktree-isolated subagents fork from a pre-session commit; without a fast-forward to master and committed prior waves, they see a world where earlier work does not exist"
+    summary: "Worktree subagents fork from the remote default branch unless worktree.baseRef is \"head\"; uncommitted files are always invisible"
   - file: "LESSON-suite-size-is-not-coverage.md"
     status: active
     category: process
@@ -299,7 +299,7 @@ lessons:
     category: process
     area: workflow
     tags: [hooks, config-duplication, code-sweep, skill-templates]
-    score: 5
+    score: 6
     summary: "A code sweep for a duplicated config value misses copies embedded in skill prose or templates"
   - file: "LESSON-vendored-test-suite-must-be-layout-aware.md"
     status: active
@@ -313,7 +313,7 @@ lessons:
     category: process
     area: methodology
     tags: [cli, next-num, numbering, domain-folders, scope]
-    score: 5
+    score: 6
     summary: "compass next-num <type> <domain/path> builds type_dir/scope; a scope that already includes the type dir doubles it and silently answers 001"
   - file: "LESSON-teammate-spawn-omit-name.md"
     status: active
@@ -341,7 +341,7 @@ lessons:
     category: process
     area: methodology
     tags: [verification, headroom, compression, bash-output, exactness]
-    score: 5
+    score: 6
     summary: "Headroom-compressed Bash output can drop words; verify exact text via Read or grep before judging it"
   - file: "LESSON-self-update-silent-on-bad-repository-url.md"
     status: active
@@ -392,3 +392,45 @@ lessons:
     tags: [testing, delimiters, markers, adversarial, block-rewrite]
     score: 5
     summary: "Code that rewrites a span between marker lines must be tested with content quoting the marker; first-occurrence find cuts or duplicates text"
+  - file: "LESSON-load-deferred-ask-tool-before-asking.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [askuserquestion, toolsearch, deferred-tools, claude-code, gates]
+    score: 5
+    summary: "AskUserQuestion can be a deferred tool in Claude Code; load it with ToolSearch before a gate question or the question silently degrades to plain text"
+  - file: "LESSON-plugin-dir-plus-setup-double-registers-hooks.md"
+    status: active
+    category: domain
+    area: devops
+    tags: [hooks, plugin-dir, setup, double-registration, install-drift]
+    score: 5
+    summary: "--plugin-dir plus /compass:setup in one session registers each hook twice and lists skills twice; capture-check and sync run twice per event"
+  - file: "LESSON-research-briefs-forbid-local-paths.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [subagents, briefs, researcher, privacy, vault]
+    score: 5
+    summary: "Researchers copy home paths, session ids and work project names into vault files; brief them to write none of these"
+  - file: "LESSON-researcher-briefs-demand-early-output-file.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [subagents, briefs, researcher, turn-limits, output-file]
+    score: 5
+    summary: "Researchers on broad web axes exhaust their 30-turn limit before writing; briefs must say to write the output file early and append per finding"
+  - file: "LESSON-parallel-builders-share-one-git-index.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [git, parallel-builders, worktree, staging, commit]
+    score: 6
+    summary: "Builders sharing one worktree share one index; a sibling's commit takes your staged files under its message"
+  - file: "LESSON-orchestrating-briefs-require-foreground-spawns.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [subagents, orchestration, background, foreground, stall]
+    score: 5
+    summary: "A lead agent that spawns background children ends its turn 'waiting' with no live children and stalls; briefs must require foreground spawns"

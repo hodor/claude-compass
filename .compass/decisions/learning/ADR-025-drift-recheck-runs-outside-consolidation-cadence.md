@@ -1,7 +1,8 @@
 ---
 title: "The Drift Recheck Runs on Its Own at Session Start and Fixes Only What Git Proves"
 type: decision
-status: draft
+status: accepted
+approved: 2026-11-22
 confidence: medium
 area: methodology
 tags: [drift, consolidation, cadence, hooks, provenance, delta-edits]
@@ -29,8 +30,6 @@ flowchart LR
   X --> P["Everything else stays<br/>report-only for a person"]
 ```
 
-> [!IMPORTANT]
-> You decide: may the drift scan run by itself each time a session opens on a new commit, and may code apply the three git-proven fixes in D-04 without asking? Approving makes D-01 to D-04 binding on how `compass drift` is hooked and what `--apply` may rewrite.
 
 ## Context
 

@@ -128,6 +128,34 @@ class ParseReportTests(unittest.TestCase):
             parsed = stationlib.parse_report("debug", "## Debug Report: boom\n\n### Root Cause\nx\n")
             self.assertFalse(parsed["task"])
 
+    def test_task_id_is_never_a_digit_prefix_of_another_id_the_report_names(self):
+        """Adversarial where: a report that cites a shorter id beside the
+        real one (`TASK-40` to show it differs from `TASK-402`) is logged
+        under the shorter id, which names no task. Rows: the shorter id
+        first, the shorter id last, a lone short id, unrelated ids, a prefix
+        chain, and a Mode section naming the task after a heading that cites
+        another."""
+        def tester(body):
+            return "## Test Report\n\n### Mode\nPre-build\n\n### Tests Written\n" + body
+
+        rows = {
+            "shorter id cited before the real one": (
+                tester("- aliasing: TASK-40 onto TASK-402\n"), "TASK-402"),
+            "shorter id cited after the real one": (
+                tester("- TASK-403 ids\n- vs TASK-40\n"), "TASK-403"),
+            "a lone short id is a real id": (tester("- for TASK-40 only\n"), "TASK-40"),
+            "unrelated ids keep the first": (tester("- TASK-12 then TASK-402\n"), "TASK-12"),
+            "prefix chain": (tester("- TASK-1 and TASK-10 and TASK-100\n"), "TASK-100"),
+        }
+        for name, (text, expected) in rows.items():
+            with self.subTest(name=name):
+                self.assertEqual(stationlib.parse_report("tester", text)["task"], expected)
+        mode_wins = (
+            "## Test Report for TASK-77\n\n### Mode\nPre-build (TASK-405)\n\n### Tests Written\n- x\n"
+        )
+        with self.subTest(name="tester Mode section names the task"):
+            self.assertEqual(stationlib.parse_report("tester", mode_wins)["task"], "TASK-405")
+
     def test_unmatched_reports_fall_back_to_agent_type_and_unparsed(self):
         """Adversarial where: a report that matches no known form is
         guessed into a tester station, crashes the parser, or loses its

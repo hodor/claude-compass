@@ -104,6 +104,14 @@ Plan: [[PLAN-032-consolidation-grounded-in-sources]]; each task's full text, fil
 - [ ] TASK-311: The scan runs itself from the `SessionStart` hook, detached and gated on HEAD; report dedupe; doctor row - complexity: L, depends_on: TASK-310, TASK-312
 - [ ] TASK-321: Ship Wave 2 (release: push only on the human's word): version bump and `self-update --force` - complexity: S, depends_on: TASK-309, TASK-311, TASK-312
 
+## PLAN-036 Wave 2: authored ids, red kinds, reach runs the entry point
+
+Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files and checks are there.
+
+- [ ] TASK-414: Requirement ids written at spec time - complexity: M, depends_on: TASK-400
+- [ ] TASK-415: The checkpoint keeps the kind of each red, and `compass ablate` names a test whose only red was a collection error as unproven - complexity: M, depends_on: TASK-402
+- [ ] TASK-416: `compass reach --run "<command>" --lang python|node` produces the coverage report itself, then intersects it as `--report` does - complexity: L, depends_on: TASK-401, TASK-406
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].

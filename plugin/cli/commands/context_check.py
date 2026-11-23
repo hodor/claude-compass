@@ -194,13 +194,25 @@ def _parse(raw):
     return record if isinstance(record, dict) else None
 
 
+def _is_compact_boundary(record):
+    return record.get("type") == "system" and record.get("subtype") == "compact_boundary"
+
+
 def measure(transcript_path, cached_model=None):
     """Return (used, model_id) for a transcript, either None when unknown.
     The scan stops once both are known. With a cached model id it stops at
     the usage line before the latest one: a model switch shows as a model
-    line between two API calls, and the hook runs after every call."""
+    line between two API calls, and the hook runs after every call.
+
+    Usage never crosses a compaction boundary: a hook that runs after a
+    compaction but before the first post-compaction assistant line reaches
+    the transcript (the host runs a tool while its message is still being
+    written) sees only the boundary, and the pre-compaction usage behind it
+    describes a context that no longer exists, so usage is unknown."""
     used = model = None
     for record in _records_backward(transcript_path):
+        if used is None and _is_compact_boundary(record):
+            break
         if model is None:
             model = _model_of(record)
         record_used = _used_of(record)

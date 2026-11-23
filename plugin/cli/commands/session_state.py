@@ -174,10 +174,27 @@ def _blocks(record, block_type):
     return [b for b in content if isinstance(b, dict) and b.get("type") == block_type]
 
 
+def _leading_context(lines):
+    """The number of unchanged context lines (` `-prefixed) that open a
+    `structuredPatch` hunk before its first `-` or `+` line; 0 when the hunk
+    holds no changed line or `lines` is not a list of strings."""
+    if not isinstance(lines, list):
+        return 0
+    count = 0
+    for text in lines:
+        if not isinstance(text, str):
+            return 0
+        if text.startswith(("-", "+")):
+            return count
+        count += 1
+    return 0
+
+
 def _edit_start_lines(transcript, root):
-    """`{display_path: line}` of the start line each edited path's last Edit
-    result reports in its `structuredPatch`, keyed like the file lists (the
-    path relative to `root`); a Write or an empty patch has none."""
+    """`{display_path: line}` of the first changed line of each edited path's
+    last Edit result, keyed like the file lists (the path relative to `root`):
+    the first hunk's `newStart` in its `structuredPatch` plus the context
+    lines that open the hunk. A Write or an empty patch has none."""
     starts = {}
     for path in [Path(transcript), *sessionslib.subagent_transcripts(transcript)]:
         calls = {}
@@ -194,6 +211,7 @@ def _edit_start_lines(transcript, root):
                 line = patch[0].get("newStart") or patch[0].get("oldStart")
                 if isinstance(line, bool) or not isinstance(line, int) or line < 1:
                     continue
+                line += _leading_context(patch[0].get("lines"))
                 for block in _blocks(record, "tool_result"):
                     target = calls.get(block.get("tool_use_id"))
                     if target:
