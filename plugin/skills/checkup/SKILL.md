@@ -14,7 +14,7 @@ Scans your project's Compass installation and reports problems with actionable f
 
 ### 1. Install (`compass doctor`)
 
-Run `compass doctor` first. Its six checks are install-drift checks - whether the plugin landed the way `/compass:setup` or `/compass:update` intended - not vault content: `plugin.yaml` has a version, the automatic steps (hooks) are registered in a settings file Claude Code actually reads (plus the informational `TeammateIdle` row), `.claude/cli/` has a module for every command `maincli.py` declares, `.claude/agents/` is present and non-empty, `.claude/skills/` is present and non-empty, `.compass/meta/lessons-catalog.yaml` exists. Report its table verbatim under Install; a FAIL row already names its own fix command, so don't re-derive one.
+Run `compass doctor` first. Its six checks are install-drift checks - whether the plugin landed the way `/compass:setup` or `/compass:update` intended - not vault content: `plugin.yaml` has a version, the automatic steps (hooks) are registered in a settings file Claude Code actually reads (plus the informational `TeammateIdle` row), `.claude/cli/` has a module for every command `maincli.py` declares, `.claude/agents/` is present and non-empty, `.claude/skills/` is present and non-empty, `.compass/meta/lessons-catalog.yaml` exists. Report its table verbatim under Install; a FAIL row already names its own fix command, so don't re-derive one. Its `drift scan` row says when the automatic reference check last ran and how many findings it left open; a WARN row means that check has not run or is over a week behind the code.
 
 ### 2. Agents
 

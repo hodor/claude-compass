@@ -41,7 +41,7 @@ import sys
 
 import capturelib
 import vaultlib
-from commands import retention, unit_check
+from commands import drift, retention, unit_check
 
 OK, WARN, FAIL = "OK", "WARN", "FAIL"
 
@@ -612,6 +612,47 @@ def _retention_check():
     return Check("session retention", OK, f"cleanupPeriodDays is {days} ({label} settings)")
 
 
+DRIFT_STALE_DAYS = 7
+DRIFT_FIX = "run `compass drift` to scan the vault's references against the code"
+
+
+def _drift_check(vault_root):
+    """Row for the drift log. OK names the newest run's date, HEAD and open
+    findings; WARN when the log holds no row, or the newest row is more than
+    `DRIFT_STALE_DAYS` old while HEAD differs from the row's. Read-only."""
+    import datetime
+
+    name = "drift scan"
+    try:
+        row = drift._newest_row(vault_root)
+        if row is None:
+            return Check(name, WARN, "no drift scan has run in this vault", DRIFT_FIX)
+        counts = row.get("counts")
+        open_findings = sum(n for n in counts.values() if isinstance(n, int))             if isinstance(counts, dict) else 0
+        run_head = row.get("head") if isinstance(row.get("head"), str) else ""
+        try:
+            ran = datetime.datetime.strptime(
+                row["at"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+        except (KeyError, TypeError, ValueError):
+            return Check(name, WARN, "the newest drift log row has no readable date",
+                         DRIFT_FIX)
+        detail = (f"last scan {ran.strftime('%Y-%m-%d')} at {run_head[:7] or 'no commit'}, "
+                  f"{open_findings} open finding(s)")
+        age = datetime.datetime.now(datetime.timezone.utc) - ran
+        if age > datetime.timedelta(days=DRIFT_STALE_DAYS):
+            try:
+                head = drift._head(vault_root.parent)
+            except drift.DriftError:
+                head = None
+            if head and head != run_head:
+                return Check(name, WARN,
+                             f"{detail}; over {DRIFT_STALE_DAYS} days old and HEAD has moved",
+                             DRIFT_FIX)
+        return Check(name, OK, detail)
+    except Exception as exc:
+        return Check(name, WARN, f"drift scan check failed: {_flatten(exc)}", DRIFT_FIX)
+
+
 def _review_surface_checks(vault_root):
     """One `<surface> review` row per review surface (see `review_surfaces`)."""
     import reviewlib
@@ -651,6 +692,7 @@ def _run_checks():
     checks.append(_overlay_check(vault_root))
     checks.append(_worker_ledger_check(vault_root))
     checks.append(_retention_check())
+    checks.append(_drift_check(vault_root))
     checks.extend(_review_surface_checks(vault_root))
     checks.append(_review_editor_check(vault_root))
     checks.extend(_host_checks(vault_root, project_root))
