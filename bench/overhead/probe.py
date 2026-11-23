@@ -3,16 +3,19 @@
 A compaction point is one `system/compact_boundary` record of a Claude Code
 transcript. `find` lists the points of a project folder; `build` freezes, from
 the history before a boundary, a set of questions with their expected answers;
-`ask` puts the questions to a fresh tool-less session that carries either the
-host's own summary (the `isCompactSummary` record after the boundary) or
-nothing; `grade` scores the reply against the frozen answers; `report`
-aggregates the grades per arm and probe type.
+`ask` puts the questions to a fresh tool-less session that carries one arm's
+text: the host's own summary (the `isCompactSummary` record after the boundary),
+the state block `compass session-state` renders at the boundary, both (summary
+first), or nothing; `grade` scores the reply against the frozen answers;
+`report` aggregates the grades per arm and probe type.
 
 Transcripts are read and never written. Everything else is stored under
 `<private root>/probes/<point key>/`:
 
     key.json            the frozen probe set (questions and expected answers)
-    ask-<arm>.json      the raw reply and the session's token counts
+    ask-<arm>.json      the raw reply, the session's token counts and, for an arm
+                        carrying a state block, that block; a point with no commit
+                        to read the state at holds `"no_state": true` and no reply
     grade-<arm>.json    the scores of that reply
 
 The transcript readers in this file are separate from the ones that build the
@@ -24,8 +27,11 @@ import hashlib
 import json
 import posixpath
 import random
+import os
 import re
+import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import compare
@@ -36,7 +42,9 @@ import topics
 from launch import default_private_root
 from topics import SessionError
 
-ARMS = ("host-summary", "none")
+ARMS = ("host-summary", "none", "mechanical", "compass")
+# The arms whose carried text includes the state block.
+BLOCK_ARMS = ("mechanical", "compass")
 EDIT_TOOLS = ("Edit", "Write", "MultiEdit")
 RECALL_CAP = 2
 PROBE_TYPES = ("artifact", "artifact-recent", "recall", "continuation", "decision", "state")
@@ -48,6 +56,8 @@ MIN_PAIRS = 10
 
 # Seconds a probe session may run before it is killed.
 SESSION_TIMEOUT = 600
+# Seconds `git` and `compass session-state` may run before the point has no state.
+STATE_TIMEOUT = 120
 
 _ID = re.compile(r"\b(?:TASK|PLAN)-\d+\b")
 _ID_ANY_CASE = re.compile(r"\b(?:task|plan)-\d+\b", re.IGNORECASE)
@@ -445,6 +455,80 @@ def _carried_text(point):
     raise NoSummary("the transcript holds no compact summary after the boundary")
 
 
+def _run_quiet(command, *, cwd=None, env=None):
+    """(exit code, stdout) of `command`, or None when it cannot start or times out."""
+    try:
+        done = subprocess.run(
+            command, cwd=cwd, env=env, capture_output=True, timeout=STATE_TIMEOUT,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return done.returncode, done.stdout.decode("utf-8", errors="replace")
+
+
+def _epoch_second(stamp):
+    """The whole second of an ISO 8601 `stamp` as epoch seconds, or None."""
+    if not isinstance(stamp, str):
+        return None
+    try:
+        moment = datetime.fromisoformat(stamp.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return int(moment.timestamp())
+
+
+def _commit_at_boundary(cwd, boundary):
+    """The last commit of the boundary record's `gitBranch` committed at or before
+    the boundary's `timestamp`, read in `cwd`; HEAD stands in for a branch that is
+    no longer there. None when no commit qualifies or git cannot say."""
+    second = _epoch_second(boundary.get("timestamp"))
+    if second is None or not isinstance(cwd, str) or not cwd.strip():
+        return None
+    branch = boundary.get("gitBranch")
+    ref = "HEAD"
+    if isinstance(branch, str) and branch.strip() and branch != "HEAD":
+        candidate = f"refs/heads/{branch.strip()}"
+        found = _run_quiet(["git", "-C", cwd, "rev-parse", "--verify", "--quiet", f"{candidate}^{{commit}}"])
+        if found is not None and found[0] == 0:
+            ref = candidate
+    found = _run_quiet(["git", "-C", cwd, "log", "-1", f"--before={second}", "--format=%H", ref, "--"])
+    if found is None or found[0] != 0:
+        return None
+    return found[1].strip() or None
+
+
+def _state_block(point, key, repo_root, parent_env):
+    """The block `compass session-state` renders for `point` at the boundary and at
+    the last commit before it, or None when the point has no commit or the command
+    prints nothing or fails."""
+    transcript, index = _point_parts(point)
+    _, boundary, _ = _history(point)
+    cwd = key.get("cwd")
+    commit = _commit_at_boundary(cwd, boundary)
+    if commit is None:
+        return None
+    env = dict(os.environ if parent_env is None else parent_env)
+    env.pop("CLAUDE_PROJECT_DIR", None)
+    command = [
+        sys.executable, str(Path(repo_root) / "plugin" / "cli" / "compass"), "session-state",
+        "--transcript", transcript, "--until", str(index), "--at", commit, "--format", "block",
+    ]
+    done = _run_quiet(command, cwd=cwd, env=env)
+    if done is None or done[0] != 0 or not done[1].strip():
+        return None
+    return done[1].strip()
+
+
+def _is_subagent_point(point):
+    """Whether the boundary belongs to a subagent transcript, where a SessionStart
+    event carries `agent_id` and the hook prints nothing."""
+    _, boundary, _ = _history(point)
+    return boundary.get("isSidechain") is True
+
+
 def _prompt(carried, probes):
     lines = []
     if carried is not None:
@@ -474,8 +558,11 @@ def _reply_text(events):
 
 def ask(point, arm, *, repo_root, private_root=None, claude_cmd=None, parent_env=None):
     """Run one tool-less session over the frozen questions of `point` and store its
-    reply. Raises ValueError for an arm outside ARMS, Refused, NotBuilt, NoSummary
-    (host-summary arm) and SessionError when the session does not end `done`."""
+    reply. A block arm (`mechanical`, `compass`) carries the state block of the
+    boundary; a point with no block to carry stores `"no_state": true` and starts no
+    session. Raises ValueError for an arm outside ARMS, Refused, NotBuilt, NoSummary
+    (arms carrying the host summary) and SessionError when the session does not end
+    `done`."""
     if arm not in ARMS:
         raise ValueError(f"the arm is one of {', '.join(ARMS)}")
     _check_private_root(private_root)
@@ -483,7 +570,16 @@ def ask(point, arm, *, repo_root, private_root=None, claude_cmd=None, parent_env
     model = key.get("model")
     if not isinstance(model, str) or not _MODEL_ID.fullmatch(model):
         raise NotBuilt("the point's probe set names no usable model")
-    carried = _carried_text(point) if arm == "host-summary" else None
+    summary = _carried_text(point) if arm in ("host-summary", "compass") else None
+    block = None
+    if arm in BLOCK_ARMS and not (arm == "compass" and _is_subagent_point(point)):
+        block = _state_block(point, key, repo_root, parent_env)
+        if block is None:
+            stored = {"point": point, "arm": arm, "no_state": True}
+            topics.write_json(_point_dir(point, private_root) / f"ask-{arm}.json", stored)
+            return stored
+    parts = [part.rstrip() for part in (summary, block) if part is not None]
+    carried = "\n\n".join(parts) if parts else None
     root = Path(private_root) if private_root is not None else default_private_root()
     project = sandbox.new_project(root / "probe-projects")
     result = launch.run_session(
@@ -497,6 +593,8 @@ def ask(point, arm, *, repo_root, private_root=None, claude_cmd=None, parent_env
         "point": point, "arm": arm, "reply": _reply_text(result.events),
         "tokens": records.count_tokens(result.events),
     }
+    if block is not None:
+        stored["block"] = block
     topics.write_json(_point_dir(point, private_root) / f"ask-{arm}.json", stored)
     return stored
 
@@ -632,7 +730,10 @@ def grade(point, *, private_root=None):
         path = folder / f"ask-{arm}.json"
         if not path.is_file():
             continue
-        result = _grade_reply(key, topics.read_json(path))
+        stored = topics.read_json(path)
+        if stored.get("no_state") is True:
+            continue
+        result = _grade_reply(key, stored)
         topics.write_json(folder / f"grade-{arm}.json", result)
         graded[arm] = result
     return graded
@@ -746,6 +847,14 @@ def report(*, private_root=None):
             table = _paired_table(arm, points)
             if table:
                 lines += ["", *table]
+    no_state = {arm: 0 for arm in ARMS}
+    for folder in folders:
+        for arm in ARMS:
+            path = folder / f"ask-{arm}.json"
+            if path.is_file() and topics.read_json(path).get("no_state") is True:
+                no_state[arm] += 1
+    lines += [""] if any(no_state.values()) else []
+    lines += [f"no-state points, {arm}: {count}" for arm, count in sorted(no_state.items()) if count]
     return "\n".join(lines) + "\n"
 
 
