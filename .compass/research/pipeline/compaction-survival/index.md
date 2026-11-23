@@ -27,3 +27,7 @@ grading: allowed.
 ## Review
 
 All four axes are written. Consolidation: [[research/pipeline/compaction-survival/REVIEW-compaction-survival]].
+
+## Measurements
+
+- [[research/pipeline/compaction-survival/RESEARCH-probe-pilot]] - Eight recorded compactions, two arms, 16 tool-less sessions: the host summary scores artifact recall 0.31, continuation 0.33, decision 0.67 and recall 0.00 against a floor of 0.00 everywhere; no reply failed to parse; artifact and continuation probes are frequent enough to compare arms, recall and decision are not
