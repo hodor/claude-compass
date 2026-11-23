@@ -69,14 +69,25 @@ def _section(lines, title, max_level):
     return None if start is None else lines[start:]
 
 
+def _first_task_id(text):
+    """The first task id in `text` that is not a digit-prefix of another id
+    named in the same text. A report that cites `TASK-40` beside `TASK-402`
+    (to show the two differ) means the longer id; the shorter is never read as
+    the report's task. A lone id is returned as written."""
+    ids = _TASK_ID.findall(text)
+    for found in ids:
+        if not any(other != found and other.startswith(found) for other in ids):
+            return found
+    return None
+
+
 def _task_id(agent, lines, text):
-    if agent == "builder":
-        task_lines = _section(lines, "Task", 6)
-        found = _TASK_ID.search("\n".join(task_lines)) if task_lines else None
-        if found:
-            return found.group(0)
-    found = _TASK_ID.search(text)
-    return found.group(0) if found else None
+    """The task id a report names: a builder's Task section first, a tester's
+    Mode section next, then the report as a whole."""
+    section = {"builder": "Task", "tester": "Mode"}.get(agent)
+    section_lines = _section(lines, section, 6) if section else None
+    found = _first_task_id("\n".join(section_lines)) if section_lines else None
+    return found or _first_task_id(text)
 
 
 def _parse_tester(lines):
@@ -199,7 +210,7 @@ def fix_cycle_row(task, cycle, verdict):
 
 
 @contextlib.contextmanager
-def _log_lock(path):
+def file_lock(path):
     """Hold an exclusive OS lock on the sidecar file `path`, retrying while
     another process holds it. The OS drops the lock when its holder dies. When
     the lock stays held past the retry budget the body runs unlocked: a row
@@ -242,7 +253,7 @@ def append_row(vault_dir, row):
     line = (json.dumps(row) + "\n").encode("utf-8")
     lock_path = vault.joinpath(*LOCK_PARTS)
     lock_path.parent.mkdir(parents=True, exist_ok=True)
-    with _log_lock(lock_path):
+    with file_lock(lock_path):
         if not _ends_with_newline(path):
             line = b"\n" + line
         flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_BINARY", 0)
