@@ -1032,6 +1032,10 @@ def _fix_document(lines, records):
 def apply_fixes(repo_root, records):
     """Rewrite every correction among `records` that the scans prove.
 
+    A line that also carries a correction the scans do not prove is left
+    whole: rewriting one reference moves the line's blame base to the new
+    commit and the other reference would stop reading as stale.
+
     Returns `(applied, skipped)`. `applied` has one dict per rewritten record:
     `file`, `line`, `class`, `old`, `new` and the `record` itself. `skipped`
     has one dict per citing document left alone (`file`, `count` of
@@ -1040,9 +1044,10 @@ def apply_fixes(repo_root, records):
     does not resolve.
     """
     repo = os.fspath(repo_root)
+    blocked = {(r["file"], r["line"]) for r in records if not _fix_kind(r)}
     wanted = {}
     for record in records:
-        if _fix_kind(record):
+        if _fix_kind(record) and (record["file"], record["line"]) not in blocked:
             wanted.setdefault(record["file"], []).append(record)
     if not wanted or _rev_parse(repo, "HEAD") is None:
         return [], []
