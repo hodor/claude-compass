@@ -23,10 +23,12 @@ import argparse
 import hashlib
 import json
 import posixpath
+import random
 import re
 import sys
 from pathlib import Path
 
+import compare
 import launch
 import records
 import sandbox
@@ -37,7 +39,12 @@ from topics import SessionError
 ARMS = ("host-summary", "none")
 EDIT_TOOLS = ("Edit", "Write", "MultiEdit")
 RECALL_CAP = 2
-PROBE_TYPES = ("artifact", "recall", "continuation", "decision")
+PROBE_TYPES = ("artifact", "artifact-recent", "recall", "continuation", "decision", "state")
+# The probe types whose scores pool into the per point `state` score.
+STATE_TYPES = ("recall", "continuation", "decision")
+# The reference arm of the paired tables and the fewest pairs that get an interval.
+REFERENCE_ARM = "host-summary"
+MIN_PAIRS = 10
 
 # Seconds a probe session may run before it is killed.
 SESSION_TIMEOUT = 600
@@ -45,6 +52,8 @@ SESSION_TIMEOUT = 600
 _ID = re.compile(r"\b(?:TASK|PLAN)-\d+\b")
 _ID_ANY_CASE = re.compile(r"\b(?:task|plan)-\d+\b", re.IGNORECASE)
 _ERROR_LINE = re.compile(r"^\s*(?:E\s+)?([A-Za-z_][\w.]*(?:Error|Exception):\s*\S.*?)\s*$")
+_ERROR_LITERAL = re.compile(r"^([A-Za-z_][\w.]*(?:Error|Exception)):\s*(\S.*)$", re.DOTALL)
+_CLAUSE_END = re.compile(r",|;|:| \(| - ")
 _FAILED_COUNT = re.compile(r"\b\d+ failed\b")
 _ANSWER_PAIR = re.compile(r'"(.*?)"="(.*?)"(?=, "|\.\s|\.$|$)', re.DOTALL)
 _MODEL_ID = re.compile(r"claude-[A-Za-z0-9.\-]+(\[[A-Za-z0-9]+\])?")
@@ -336,12 +345,23 @@ def _last_model(history):
     return model
 
 
+def _since_last_boundary(history):
+    """The records of `history` after its last compaction boundary, or all of them
+    when it holds none."""
+    start = 0
+    for position, record in enumerate(history):
+        if _is_boundary(record):
+            start = position + 1
+    return history[start:]
+
+
 def _probe_set(history):
     probes = []
     paths = _edited_paths(history)
     if paths:
         probes.append({
             "id": "artifact", "type": "artifact", "expected": paths,
+            "expected_recent": _edited_paths(_since_last_boundary(history)),
             "question": "Which files did the assistant create or modify with its edit tools in "
                         "this session? List every path.",
         })
@@ -372,14 +392,31 @@ def _probe_set(history):
     return probes
 
 
+def _add_expected_recent(point, path, private_root):
+    """Add `expected_recent` to the artifact probe of a key frozen without it, leaving
+    every other field as it was. Raises AlreadyFrozen when there is nothing to add."""
+    try:
+        key = _load_key(point, private_root)
+    except NotBuilt:
+        raise AlreadyFrozen("the point already has a frozen probe set") from None
+    artifact = next((p for p in key["probes"] if isinstance(p, dict) and p.get("type") == "artifact"), None)
+    if artifact is None or "expected_recent" in artifact:
+        raise AlreadyFrozen("the point already has a frozen probe set")
+    history, _, _ = _history(point)
+    artifact["expected_recent"] = _edited_paths(_since_last_boundary(history))
+    topics.write_json(path, key)
+    return key
+
+
 def build(point, *, private_root=None):
-    """Freeze the probe set of `point` and return it. Raises Refused for a private
-    root inside a git work tree, AlreadyFrozen for a second build of a point, and
-    ValueError for a point that is no boundary or has no probe source."""
+    """Freeze the probe set of `point` and return it; a key frozen without the
+    artifact probe's `expected_recent` gains it and nothing else. Raises Refused for
+    a private root inside a git work tree, AlreadyFrozen for a second build of a
+    point, and ValueError for a point that is no boundary or has no probe source."""
     _check_private_root(private_root)
     path = _point_dir(point, private_root) / "key.json"
     if path.exists():
-        raise AlreadyFrozen("the point already has a frozen probe set")
+        return _add_expected_recent(point, path, private_root)
     history, _, _ = _history(point)
     model = _last_model(history)
     probes = _probe_set(history)
@@ -505,6 +542,27 @@ def _score_text(value, expected, whole_words):
     return 1.0 if re.search(f"{before}{re.escape(wanted)}{after}", given) else 0.0
 
 
+def _has_phrase(given, phrase):
+    """True when the normalized `phrase` occurs in `given`, not inside a longer word."""
+    before = r"(?<!\w)" if phrase[0].isalnum() or phrase[0] == "_" else ""
+    after = r"(?!\w)" if phrase[-1].isalnum() or phrase[-1] == "_" else ""
+    return re.search(f"{before}{re.escape(phrase)}{after}", given) is not None
+
+
+def _score_error(value, expected):
+    """1 when the reply holds the exception name as a whole word and the first clause
+    of the message (the message up to its first `,`, `;`, `:`, ` (` or ` - `); a
+    message with no such separator must appear whole. `expected` is `<Name>: <message>`."""
+    if not isinstance(value, str):
+        return 0.0
+    match = _ERROR_LITERAL.match(expected)
+    name = _norm_text(match.group(1))
+    message = _norm_text(match.group(2))
+    clause = _CLAUSE_END.split(message, maxsplit=1)[0].strip() or message
+    given = _norm_text(value)
+    return 1.0 if _has_phrase(given, name) and _has_phrase(given, clause) else 0.0
+
+
 def _score_id(value, expected):
     if not isinstance(value, str):
         return 0.0
@@ -518,6 +576,8 @@ def _score(item, value, cwd=None):
         return _score_artifact(value, item["expected"], cwd)
     if kind == "continuation":
         return _score_id(value, item["expected"])
+    if kind == "recall" and _ERROR_LITERAL.match(str(item["expected"])):
+        return _score_error(value, item["expected"])
     return _score_text(value, item["expected"], whole_words=kind == "decision")
 
 
@@ -553,6 +613,9 @@ def _grade_reply(key, stored):
     for item in key["probes"]:
         value = reply.get(item["id"]) if reply is not None else None
         scores[item["id"]] = _score(item, value, cwd)
+        recent = item.get("expected_recent")
+        if item.get("type") == "artifact" and isinstance(recent, list) and recent:
+            scores[f"{item['id']}-recent"] = _score_artifact(value, recent, cwd)["recall"]
     return {
         "point": stored.get("point"), "arm": stored.get("arm"), "unparsed": reply is None,
         "scores": scores, "input_tokens": _input_tokens(stored.get("tokens")),
@@ -579,27 +642,73 @@ def grade(point, *, private_root=None):
 
 
 def _type_of(probe_id):
-    return probe_id.split("-")[0]
+    return probe_id if probe_id == "artifact-recent" else probe_id.split("-")[0]
 
 
 def _point_scores(scores):
     """{probe type: score} of one graded point; recall's probes are averaged and
-    artifact's score is its recall."""
+    artifact's score is its recall. `state` is the mean of the recall, continuation
+    and decision scores the point has, absent when it has none of them."""
     grouped = {}
     for probe_id, score in scores.items():
         value = score["recall"] if isinstance(score, dict) else score
         grouped.setdefault(_type_of(probe_id), []).append(float(value))
-    return {kind: sum(values) / len(values) for kind, values in grouped.items()}
+    means = {kind: sum(values) / len(values) for kind, values in grouped.items()}
+    pooled = [means[kind] for kind in STATE_TYPES if kind in means]
+    if pooled:
+        means["state"] = sum(pooled) / len(pooled)
+    return means
 
 
 def _mean(values):
     return sum(values) / len(values)
 
 
+def _paired_interval(differences):
+    """(low, high) of the 95% bootstrap interval of the mean of `differences`,
+    resampling the points with replacement from a generator seeded with compare.SEED."""
+    rng = random.Random(compare.SEED)
+    means = sorted(
+        sum(rng.choices(differences, k=len(differences))) / len(differences)
+        for _ in range(compare.RESAMPLES)
+    )
+    low = means[int(0.025 * (compare.RESAMPLES - 1))]
+    high = means[int(round(0.975 * (compare.RESAMPLES - 1)))]
+    return float(low), float(high)
+
+
+def _paired_table(arm, points):
+    """The rows comparing `arm` with the reference arm: per probe type, the points
+    scored in both arms, the mean of (arm minus reference) and its paired interval."""
+    lines = []
+    for kind in PROBE_TYPES:
+        differences = [
+            scores[arm][kind] - scores[REFERENCE_ARM][kind] for scores in points
+            if kind in scores.get(arm, {}) and kind in scores.get(REFERENCE_ARM, {})
+        ]
+        if not differences:
+            continue
+        if len(differences) < MIN_PAIRS:
+            interval = "too few points"
+        else:
+            low, high = _paired_interval(differences)
+            interval = f"[{low:.2f}, {high:.2f}]"
+        lines.append(f"| {arm} | {kind} | {len(differences)} | {_mean(differences):.2f} | {interval} |")
+    if not lines:
+        return []
+    header = [
+        f"| arm | probe | pairs | mean difference from {REFERENCE_ARM} | 95% paired interval |",
+        "|---|---|---|---|---|",
+    ]
+    return header + lines
+
+
 def report(*, private_root=None):
-    """A markdown table of the stored grades, per arm and probe type."""
+    """A markdown table of the stored grades, per arm and probe type, followed by one
+    table per arm other than the reference arm holding its paired differences."""
     folders = sorted(p for p in _probes_dir(private_root).glob("*") if p.is_dir())
     per_arm = {}
+    points = []
     for folder in folders:
         grades = {}
         for arm in ARMS:
@@ -607,15 +716,18 @@ def report(*, private_root=None):
             if path.is_file():
                 grades[arm] = topics.read_json(path)
         floor = grades.get("none", {}).get("input_tokens")
+        point_scores = {}
         for arm, graded in grades.items():
             entry = per_arm.setdefault(arm, {"scores": {}, "unparsed": 0, "carried": []})
             entry["unparsed"] += 1 if graded.get("unparsed") else 0
-            for kind, score in _point_scores(graded.get("scores", {})).items():
+            point_scores[arm] = _point_scores(graded.get("scores", {}))
+            for kind, score in point_scores[arm].items():
                 entry["scores"].setdefault(kind, []).append(score)
             if arm == "none":
                 entry["carried"].append(0)
             elif isinstance(floor, int):
                 entry["carried"].append(max(0, graded.get("input_tokens", 0) - floor))
+        points.append(point_scores)
     lines = [
         "| arm | probe | points | mean score | unparsed | mean carried tokens |",
         "|---|---|---|---|---|---|",
@@ -629,6 +741,11 @@ def report(*, private_root=None):
                 lines.append(
                     f"| {arm} | {kind} | {len(values)} | {_mean(values):.2f} | {entry['unparsed']} | {carried} |"
                 )
+    for arm in sorted(per_arm):
+        if arm != REFERENCE_ARM:
+            table = _paired_table(arm, points)
+            if table:
+                lines += ["", *table]
     return "\n".join(lines) + "\n"
 
 

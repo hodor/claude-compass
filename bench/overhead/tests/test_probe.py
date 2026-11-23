@@ -527,7 +527,7 @@ def test_report_gives_per_arm_rows_and_leaks_no_session_content(point, repo, pri
     lines = [line for line in text.splitlines() if line.strip().startswith("|")]
     header = _cells(lines[0])
     assert header[:2] == ["arm", "probe"] and "carried" in lines[0].lower()
-    rows = {(_cells(line)[0], _cells(line)[1]): _cells(line) for line in lines[2:]}
+    rows = _main_rows(text)
     for kind in ("artifact", "recall", "continuation", "decision"):
         host, floor = rows[("host-summary", kind)], rows[("none", kind)]
         assert host[2] == floor[2] == "1"
@@ -928,8 +928,7 @@ def test_report_carried_tokens_are_the_input_over_the_floor_clamped_at_zero(priv
     grade_file("two", "host-summary", 300, scores)
     grade_file("three", "host-summary", 900, scores)
 
-    rows = {(_cells(line)[0], _cells(line)[1]): _cells(line)
-            for line in probe.report(private_root=private_root).splitlines()[2:]}
+    rows = _main_rows(probe.report(private_root=private_root))
 
     assert rows[("host-summary", "artifact")][2:] == ["3", "0.50", "0", "300"]
     assert rows[("host-summary", "recall")][3] == "0.50"
