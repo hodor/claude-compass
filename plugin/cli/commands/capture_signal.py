@@ -70,6 +70,7 @@ def _filename_stem(agent_type):
 # finish, so the cadence would read two events where one happened. Ids seen
 # recently are held in the capture state and re-delivery is dropped.
 SEEN_AGENTS_MAX = 40
+SIGNAL_LOCK_NAME = "capture-signal.lock"
 
 
 def _now():
@@ -135,7 +136,8 @@ def _write_capture(vault_root, agent_type, agent_id, message):
 def _already_recorded(vault_root, agent_id):
     """Whether this completion was already recorded, and remember it when it
     was not. An empty id identifies nothing, so it is never deduped - two
-    unrelated completions must not collapse into one."""
+    unrelated completions must not collapse into one. Called with the
+    vault's signal lock held."""
     if not agent_id:
         return False
     state = capturelib.load_state(vault_root)
@@ -145,6 +147,17 @@ def _already_recorded(vault_root, agent_id):
     state["seen_agents"] = (seen + [agent_id])[-SEEN_AGENTS_MAX:]
     capturelib.save_state(vault_root, state)
     return False
+
+
+def _signal_lock(vault_root):
+    """The exclusive lock every capture-signal event holds while it reads and
+    writes the capture state and files. The re-deliveries of one completion
+    arrive as concurrent processes; without it each reads the state before the
+    other has saved the id (or while the other is mid-write) and every one of
+    them records."""
+    lock_path = vault_root / "tmp" / SIGNAL_LOCK_NAME
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    return stationlib.file_lock(lock_path)
 
 
 def _append_station_row(vault_root, event, message):
@@ -179,7 +192,8 @@ def run(args):
             name = event.get("teammate_name") or "unknown"
             vault_root = vaultlib.find_vault_root()
             kind = SIGNAL_KINDS.get(name.split("-")[0], DEFAULT_SIGNAL_KIND)
-            capturelib.record_signal(vault_root, kind, f"teammate:{name}")
+            with _signal_lock(vault_root):
+                capturelib.record_signal(vault_root, kind, f"teammate:{name}")
             return 0
 
         agent_type = normalize_agent_type(event.get("agent_type"))
@@ -187,13 +201,14 @@ def run(args):
         message = event.get("last_assistant_message", "")
 
         vault_root = vaultlib.find_vault_root()
-        if _already_recorded(vault_root, agent_id):
-            return 0
-        ref = _write_capture(vault_root, agent_type, agent_id, message)
-        capturelib.record_signal(
-            vault_root, SIGNAL_KINDS.get(agent_type, DEFAULT_SIGNAL_KIND), ref
-        )
-        _append_station_row(vault_root, event, message)
+        with _signal_lock(vault_root):
+            if _already_recorded(vault_root, agent_id):
+                return 0
+            ref = _write_capture(vault_root, agent_type, agent_id, message)
+            capturelib.record_signal(
+                vault_root, SIGNAL_KINDS.get(agent_type, DEFAULT_SIGNAL_KIND), ref
+            )
+            _append_station_row(vault_root, event, message)
     except Exception:
         pass  # best-effort: capture bookkeeping must never fail the turn
     return 0
