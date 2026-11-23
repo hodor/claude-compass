@@ -211,9 +211,6 @@ def test_empty_evidence_marks_every_id_absent():
         "tests/test_a.py::test_a": "absent"}
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "_red_kinds reads pytest and unittest lines only; `not ok` TAP lines that "
-    "_parse_run_evidence accepts leave the failing test `absent`"))
 def test_tap_failure_line_is_a_fail_kind():
     """Adversarial where: `record --red-evidence` accepts `node --test` TAP
     output everywhere else, but a TAP `not ok` line is dropped here, so a

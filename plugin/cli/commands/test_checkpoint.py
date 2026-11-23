@@ -858,7 +858,9 @@ def _red_kinds(text, file_records):
     run output `text`. An id is `path::Class::name` (`path::name` for a
     module-level test) and its kind is one of:
 
-    - `fail` or `error`: the run printed that status for the test;
+    - `fail` or `error`: the run printed that status for the test (a TAP
+      `not ok` line is `fail`; TAP lines carry no path, so they match a
+      module-level id by name);
     - `passed`: the run printed it green, so it was never red;
     - `collection`: no status line, and the run reports a collection error
       for the test's file (pytest `ERROR collecting <path>`, unittest
@@ -869,10 +871,18 @@ def _red_kinds(text, file_records):
     or `error` when any occurrence was, otherwise `passed`."""
     pytest_seen = []  # (path, class_name, test_name, kind)
     unittest_seen = []  # (module, class_name, test_name, kind)
+    tap_seen = []  # (test_name, kind)
     broken_paths = []
     broken_modules = []
     pending = None  # (name, path) unittest header awaiting its trailer
     for line in text.splitlines():
+        tap = _TAP_LINE_RE.match(line.rstrip())
+        if tap:
+            pending = None
+            kind = ("absent" if tap.group("directive")
+                    else "fail" if tap.group("not") else "passed")
+            tap_seen.append((re.sub(r"\\(.)", r"\1", tap.group("name")), kind))
+            continue
         stripped = line.strip()
         pytest_match = (_PYTEST_LINE_RE.match(stripped)
                         or _PYTEST_SUMMARY_RE.match(stripped))
@@ -927,6 +937,8 @@ def _red_kinds(text, file_records):
                 if seen_name == test_name and seen_class == class_name
                 and _same_test_module(module, path)
             ]
+            if class_name is None:
+                seen += [kind for tap_name, kind in tap_seen if tap_name == test_name]
             failing = [kind for kind in seen if kind in _FAILING_STATUSES]
             if failing:
                 kind = failing[0]
