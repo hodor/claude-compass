@@ -6,6 +6,7 @@ edited to invoke a command that was renamed or never added to
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -14,9 +15,12 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import maincli  # noqa: E402
 from commands import self_update  # noqa: E402
+from test_drift_hook import LOCK, log_row, log_rows, plain_repo, write_log  # noqa: E402
+from test_self_update import PLUGIN_YAML, make_plugin_tree  # noqa: E402
 
 HOOKS_JSON = (
     Path(__file__).resolve().parents[2] / "hooks" / "hooks.json"
@@ -667,3 +671,124 @@ class CompactionHookExecutionTests(unittest.TestCase):
         result = self._run(project, self.commands["PreCompact"], event)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(result.stdout.startswith("When summarizing"), repr(result.stdout[:60]))
+
+
+# The `--hook` subcommands every SessionStart group other than `compact` runs.
+# Each prints nothing on a run where nothing happened, so the text the host
+# adds to a session's first request stays identical from one start to the next.
+SILENT_SESSIONSTART_COMMANDS = ["capture-check --hook", "drift --hook", "self-update --hook"]
+HOOK_SUBCOMMAND = re.compile(r'compass" (\S+ --hook)')
+
+
+def non_compaction_sessionstart_commands(manifest):
+    """The `<subcommand> --hook` of every command in the SessionStart groups
+    that do not carry the `compact` matcher, sorted."""
+    found = []
+    for group in manifest["hooks"]["SessionStart"]:
+        if group.get("matcher") == "compact":
+            continue
+        for hook in group["hooks"]:
+            match = HOOK_SUBCOMMAND.search(hook["command"])
+            found.append(match.group(1) if match else hook["command"])
+    return sorted(found)
+
+
+def assert_sessionstart_commands_are_pinned(case, manifest):
+    case.assertEqual(
+        non_compaction_sessionstart_commands(manifest), SILENT_SESSIONSTART_COMMANDS)
+
+
+class SessionStartSilenceTests(unittest.TestCase):
+    """SessionStart output is added to the session's first request, so a hook
+    that prints there, or prints something that varies, changes the cached
+    start. The commands of the `startup` group and of the group without a
+    matcher are fixed here, and each prints nothing on a no-op run."""
+
+    def _manifest(self):
+        return json.loads(HOOKS_JSON.read_text(encoding="utf-8"))
+
+    def test_the_non_compaction_sessionstart_commands_are_exactly_the_silent_three(self):
+        # Adversarial where: a new SessionStart command joins the startup or
+        # matcherless group without a silence case below, a listed one is
+        # duplicated or dropped, or the helper compares nothing and passes on
+        # a manifest it should reject.
+        assert_sessionstart_commands_are_pinned(self, self._manifest())
+
+        for name, change in (
+            ("a fourth startup command", lambda groups: groups[0]["hooks"].append({
+                "type": "command",
+                "command": '[ -f "$CLAUDE_PROJECT_DIR/.claude/cli/compass" ] || exit 0; '
+                           'python "$CLAUDE_PROJECT_DIR/.claude/cli/compass" banner --hook',
+            })),
+            ("a duplicated listed command", lambda groups: groups[0]["hooks"].append(
+                dict(groups[0]["hooks"][0]))),
+            ("a dropped listed command", lambda groups: groups[0]["hooks"].pop()),
+        ):
+            with self.subTest(name):
+                doctored = self._manifest()
+                change(doctored["hooks"]["SessionStart"])
+                with self.assertRaises(AssertionError):
+                    assert_sessionstart_commands_are_pinned(self, doctored)
+
+    def test_the_compact_group_is_outside_the_pinned_set(self):
+        # Adversarial where: the helper counts the compact group, so the one
+        # command allowed to print (the state block after a compaction) fails
+        # the pin, or a command moved into that group escapes it unseen.
+        commands = non_compaction_sessionstart_commands(self._manifest())
+        self.assertNotIn("session-state --hook", commands)
+        doctored = self._manifest()
+        doctored["hooks"]["SessionStart"][-1]["hooks"].append({
+            "type": "command", "command": 'x compass" banner --hook'})
+        self.assertEqual(
+            non_compaction_sessionstart_commands(doctored), SILENT_SESSIONSTART_COMMANDS)
+
+    def _run(self, project, args, stdin="", env_extra=None):
+        env = {**os.environ, "CLAUDE_PROJECT_DIR": str(project),
+               "DSH_HOME": str(Path(project).parent / "no-dsh-home")}
+        env.pop("COMPASS_WORKER_SESSION", None)
+        env.update(env_extra or {})
+        return subprocess.run(
+            [sys.executable, str(CLI_ROOT / "compass"), *args],
+            input=stdin, capture_output=True, text=True, env=env,
+            cwd=str(project), timeout=120)
+
+    def _assert_silent(self, done):
+        self.assertEqual((done.returncode, done.stdout, done.stderr), (0, "", ""))
+
+    def test_self_update_in_local_mode_at_the_installed_version_prints_nothing(self):
+        # Adversarial where: an up-to-date install prints a refresh notice, or
+        # an unreachable network turns a check that needs none into a banner or
+        # a traceback.
+        base = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, base, True)
+        project = base / "project"
+        (project / ".compass" / "meta").mkdir(parents=True)
+        (project / ".claude").mkdir()
+        make_plugin_tree(project / "plugin", version="0.9.0")
+        (project / ".compass" / "meta" / "plugin.yaml").write_text(
+            PLUGIN_YAML.format(source=str(project / "plugin")), encoding="utf-8")
+        unreachable = {"HTTPS_PROXY": "http://127.0.0.1:9", "HTTP_PROXY": "http://127.0.0.1:9",
+                       "GIT_TERMINAL_PROMPT": "0"}
+        self._assert_silent(self._run(project, ["self-update", "--hook"], env_extra=unreachable))
+
+    def test_capture_check_below_its_interval_with_no_signal_prints_nothing(self):
+        # Adversarial where: the SessionStart event on stdin or the first turn
+        # bump makes the pickup print, or open an opportunity, when nothing is
+        # open and nothing is due.
+        project = plain_repo(self)
+        event = json.dumps({"hook_event_name": "SessionStart", "source": "startup"})
+        self._assert_silent(self._run(project, ["capture-check", "--hook"], stdin=event))
+        self.assertEqual(
+            list((Path(project) / ".compass" / "tmp").glob("capture-opportunities/*")), [])
+
+    def test_drift_with_the_newest_row_at_head_prints_nothing_and_spawns_no_scan(self):
+        # Adversarial where: an unchanged HEAD still starts a scan (a lock
+        # file appears, a new log row follows) or announces that it did not.
+        project = plain_repo(self)
+        head = subprocess.run(
+            ["git", "-C", str(project), "rev-parse", "HEAD"],
+            check=True, capture_output=True, text=True).stdout.strip()
+        write_log(project, [log_row(head)])
+        self._assert_silent(self._run(project, ["drift", "--hook"]))
+        self.assertFalse((Path(project) / LOCK).exists())
+        self.assertEqual([row["head"] for row in log_rows(project)], [head])
