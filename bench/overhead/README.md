@@ -102,7 +102,7 @@ Add `--margin FRACTION` to replace that exact-equality check with a noninferiori
 
 | Command | What it does |
 |---|---|
-| `--private-root DIR find --project-dir DIR` | Lists the compaction points of a project folder: POINT, trigger, pre tokens, post tokens (tab separated). |
+| `--private-root DIR find --project-dir DIR` | Lists the compaction points of a project folder, its session transcripts and the subagent transcripts under each session's `subagents/` folder: POINT, trigger, pre tokens, post tokens (tab separated). A point's history is the records on its boundary's side, so a subagent transcript, whose records are all sidechain records, builds from its own records. |
 | `build POINT` | Freezes the probe set from the history before the boundary: the edited paths (`artifact`), up to two literals from failing tool results (`recall`: the last exception line and the last `N failed` count), the last `TASK-N` or `PLAN-N` id the assistant named (`continuation`), and the last `AskUserQuestion` with the option chosen (`decision`). A probe with no source is absent. A second build of a point is refused. |
 | `ask POINT --arm host-summary\|none` | Runs one `--tools ""` session on the point's model in a fresh sandbox project. `host-summary` carries the `isCompactSummary` record after the boundary; `none` carries nothing. The reply and the session's token counts are stored. |
 | `grade POINT` | Scores each stored reply: artifact precision and recall over normalized paths (`./` and slash direction ignored), recall and decision by normalized substring, continuation by exact id. A reply that is no JSON object scores 0 everywhere and counts as unparsed. |

@@ -136,10 +136,13 @@ def _history(point):
     boundary = _record(lines[index]) if index < len(lines) else None
     if boundary is None or not _is_boundary(boundary):
         raise ValueError("the point is not a compaction boundary")
+    # A subagent's own transcript marks every record, its boundary included, as a
+    # sidechain; the history of a point is the records on the boundary's side.
+    side = boundary.get("isSidechain") is True
     before, after = [], []
     for position, line in enumerate(lines):
         record = _record(line)
-        if record is None or record.get("isSidechain") is True:
+        if record is None or (record.get("isSidechain") is True) != side:
             continue
         if position < index:
             before.append(record)
@@ -151,13 +154,19 @@ def _history(point):
 # find -----------------------------------------------------------------------
 
 
+def _transcripts(folder):
+    """The session transcripts directly inside `folder` and the subagent
+    transcripts in each session's `subagents/` folder."""
+    return sorted(folder.glob("*.jsonl")) + sorted(folder.glob("*/subagents/*.jsonl"))
+
+
 def find(project_dir):
-    """The compaction points of the transcripts directly inside `project_dir`."""
+    """The compaction points of the session and subagent transcripts of `project_dir`."""
     folder = Path(project_dir)
     if not folder.is_dir():
         raise ValueError(f"{folder} is not a folder")
     found = []
-    for path in sorted(folder.glob("*.jsonl")):
+    for path in _transcripts(folder):
         if not path.is_file():
             continue
         for index, line in enumerate(_lines(path)):

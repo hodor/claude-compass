@@ -8,7 +8,7 @@ would sit inside a git work tree (checked before any write).
 
     find(project_dir) -> [point, ...]
         one dict per compaction boundary in the `*.jsonl` files directly inside
-        `project_dir`: {"point": str, "transcript": str, "boundary": int,
+        `project_dir` and in its `*/subagents/` folders: {"point": str, "transcript": str, "boundary": int,
         "trigger": str, "pre_tokens": int, "post_tokens": int or None}.
         `boundary` is the 0-based line index of the `system/compact_boundary`
         record; `point["point"]` is the POINT string every other command takes
@@ -667,6 +667,34 @@ def test_edit_paths_are_cwd_relative_deduplicated_and_exclude_reads_and_sidechai
     _, built = build_point(folder, records, private_root=private_root)
 
     assert probe_by_id(built)["artifact"]["expected"] == ["src/a.py", "C:/work/project2/b.py"]
+
+
+def test_a_subagent_transcript_point_is_found_and_built_from_its_sidechain_records(tmp_path, private_root):
+    """Adversarial where: a finder that never looks in a session's subagents
+    folder, or a history reader that drops every record of a subagent transcript
+    because each one is marked as a sidechain, so its point builds no probe."""
+    folder = tmp_path / "p"
+    (folder / "sess" / "subagents").mkdir(parents=True)
+    edit = {"old_string": "x", "new_string": "y"}
+    records = [
+        user(0, "go"),
+        assistant(1, "working on TASK-9", ("Edit", {"file_path": "sub.py", **edit})),
+        boundary(2),
+        summary(3),
+    ]
+    for item in records:
+        item["isSidechain"] = True
+    main_side = assistant(4, "TASK-1", ("Edit", {"file_path": "main.py", **edit}))
+    write_transcript(folder / "sess" / "subagents", "agent-x.jsonl", records + [main_side])
+    write_transcript(folder, "sess.jsonl", [user(0, "hi"), assistant(1, "hello")])
+
+    (found,) = probe.find(folder)
+    built = probe.build(found["point"], private_root=private_root)
+
+    assert Path(found["transcript"]).name == "agent-x.jsonl"
+    assert probe_by_id(built)["artifact"]["expected"] == ["sub.py"]
+    assert probe_by_id(built)["continuation"]["expected"] == "TASK-9"
+    assert probe._carried_text(found["point"]).startswith("SUMTEXT")
 
 
 @pytest.mark.parametrize("reply", [
