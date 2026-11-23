@@ -632,6 +632,8 @@ def _read_target(vault, rel, cache):
         summary, span = None, None
         try:
             text = vaultlib.read_vault_text(vault / rel)
+            with open(vault / rel, "rb") as handle:
+                raw = handle.read()
         except OSError:
             text = None
         if text is not None:
@@ -639,7 +641,7 @@ def _read_target(vault, rel, cache):
             value = data.get("summary")
             if isinstance(value, str) and value.strip():
                 summary = value
-                span = _summary_span(text.split("\n"))
+                span = _summary_span(_index_lines(raw))
         cache[rel] = (summary, span)
     return cache[rel]
 
@@ -694,6 +696,18 @@ def _text_record(file, line, cls, target=None, old=None, current=None):
     }
 
 
+def _index_lines(data):
+    """Lines of a vault document's bytes under the line model `apply_fixes`
+    edits: split on LF alone, so a lone CR stays inside its line and line
+    numbers agree with the rewrite. A BOM and one trailing CR per line are
+    dropped from the view."""
+    text = data.decode("utf-8", "surrogateescape")
+    if text.startswith("﻿"):
+        text = text[1:]
+    return [line[:-1] if line.endswith("\r") else line
+            for line in text.split("\n")]
+
+
 def scan_index_lines(repo_root, vault_dir):
     """Compare each index entry line's description with its target's summary.
 
@@ -712,11 +726,12 @@ def scan_index_lines(repo_root, vault_dir):
     drifted = []
     for path in _index_documents(vault):
         try:
-            text = vaultlib.read_vault_text(path)
+            with open(path, "rb") as handle:
+                data = handle.read()
         except OSError:
             continue
         rel = _repo_rel(repo, path)
-        lines = text.split("\n")
+        lines = _index_lines(data)
         fenced, _open = vaultlib.fence_mask(lines)
         for number, line in enumerate(lines, 1):
             if fenced[number - 1]:
