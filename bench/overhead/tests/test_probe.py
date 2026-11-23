@@ -1861,3 +1861,363 @@ def test_recent_window_of_a_subagent_point_is_cut_by_its_own_earlier_boundary_on
 
     assert sorted(artifact["expected"]) == ["mid.py", "new.py", "old.py"]
     assert sorted(artifact["expected_recent"]) == ["mid.py", "new.py"]
+
+
+# mechanical and compass arms --------------------------------------------------
+#
+# These tests run the real `plugin/cli/compass session-state` (through a copy of
+# plugin/cli committed in a temporary repository, which `ask` receives as its
+# repo_root) over a temporary git repository holding a committed
+# `.compass/active.md`. The fake `claude` is the only stand-in.
+
+import os  # noqa: E402
+import subprocess  # noqa: E402
+from datetime import datetime, timedelta, timezone  # noqa: E402
+
+PLUGIN_CLI = Path(__file__).resolve().parents[3] / "plugin" / "cli"
+BLOCK_TITLE = "Compass session state"
+STATE_SUMMARY = "ZQCARRIEDSUMMARY"
+OPEN_TASK = "ZQOPENTASK"
+SIDE_TASK = "ZQSIDETASK"
+LATER_TASK = "ZQLATERTASK"
+ORPHAN_TASK = "ZQORPHANTASK"
+EDITED_PATH = "src/zq_edited.py"
+LATER_EDIT = "src/zq_after.py"
+UNCOMMITTED_FILE = "zq-uncommitted.txt"
+
+
+def _utc(hour, minute=0, second=0, micro=0):
+    return datetime(2026, 2, 1, hour, minute, second, micro, tzinfo=timezone.utc)
+
+
+FIRST_COMMIT = _utc(0, 30)
+SIDE_COMMIT = _utc(1, 0)
+LATE_BRANCH_COMMIT = _utc(3, 0)
+SECOND_COMMIT = _utc(5, 0)
+BOUNDARY_STAMP = _utc(2, 0, 0, 789000)
+
+
+def _iso(moment):
+    return moment.strftime("%Y-%m-%dT%H:%M:%S.") + f"{moment.microsecond // 1000:03d}Z"
+
+
+def _git_at(cwd, *args, moment=None):
+    """Run git in `cwd`; with `moment`, author and committer dates are that instant."""
+    env = dict(os.environ)
+    if moment is not None:
+        env["GIT_COMMITTER_DATE"] = env["GIT_AUTHOR_DATE"] = f"{int(moment.timestamp())} +0000"
+    command = [
+        "git", "-c", "user.name=tester", "-c", "user.email=tester@example.invalid",
+        "-c", "commit.gpgsign=false", *args,
+    ]
+    subprocess.run(command, cwd=cwd, env=env, capture_output=True, text=True, check=True)
+
+
+def _commit_active(work, task, moment):
+    (work / ".compass").mkdir(exist_ok=True)
+    (work / ".compass" / "active.md").write_text(
+        f"# Active\n\n- [ ] TASK-1: {task} the committed open task\n- [x] TASK-2: finished\n", encoding="utf-8")
+    _git_at(work, "add", ".compass/active.md")
+    _git_at(work, "commit", "-q", "-m", task, moment=moment)
+
+
+@pytest.fixture(scope="module")
+def cli_repo(tmp_path_factory):
+    """A committed repository whose plugin/cli is a copy of this repository's, so
+    `plugin/cli/compass` is the real command and plugin/ is clean for `launch`."""
+    root = tmp_path_factory.mktemp("cli-repo")
+    shutil.copytree(PLUGIN_CLI, root / "plugin" / "cli", ignore=shutil.ignore_patterns(
+        "__pycache__", "tests", "*.pyc"))
+    (root / ".gitignore").write_text("__pycache__/\n*.pyc\n", encoding="utf-8")
+    _git_at(root, "init", "-q")
+    _git_at(root, "add", ".")
+    _git_at(root, "commit", "-q", "-m", "plugin cli", moment=FIRST_COMMIT)
+    return root
+
+
+@pytest.fixture
+def state_repo(tmp_path):
+    """The project folder of the compacted session: `main` holds a commit at
+    00:30 and a later one at 05:00, `side` a commit at 01:00, and `late` (an
+    orphan branch) one commit at 03:00. HEAD is `main`; one file is untracked."""
+    work = tmp_path / "work"
+    (work / ".compass").mkdir(parents=True)
+    _git_at(work, "init", "-q", "-b", "main")
+    _commit_active(work, OPEN_TASK, FIRST_COMMIT)
+    _git_at(work, "switch", "-q", "-c", "side")
+    _commit_active(work, SIDE_TASK, SIDE_COMMIT)
+    _git_at(work, "switch", "-q", "main")
+    _commit_active(work, LATER_TASK, SECOND_COMMIT)
+    _git_at(work, "switch", "-q", "--orphan", "late")
+    _commit_active(work, ORPHAN_TASK, LATE_BRANCH_COMMIT)
+    _git_at(work, "switch", "-q", "main")
+    (work / UNCOMMITTED_FILE).write_text("scratch\n", encoding="utf-8")
+    return work
+
+
+def _boundary_state_point(tmp_path, private_root, cwd, *, branch="main", stamp=BOUNDARY_STAMP,
+                 subagent=False, with_summary=True, name="state-point"):
+    """Freeze a point whose boundary record carries `branch`, `cwd` and `stamp`:
+    an edit before it, a summary after it (when `with_summary`) and a second edit
+    after the summary. With `subagent`, every record belongs to a subagent transcript."""
+    folder = tmp_path / name
+    folder.mkdir()
+
+    def mark(record):
+        record["cwd"] = str(cwd)
+        if branch is not None:
+            record["gitBranch"] = branch
+        if subagent:
+            record["isSidechain"] = True
+        return record
+
+    stamped = boundary(3)
+    stamped["timestamp"] = _iso(stamp)
+    records = [mark(user(0, "go")), mark(_plain_edit(1, EDITED_PATH)), mark(tool_result(2, "ok")), mark(stamped)]
+    if with_summary:
+        records.append(mark(summary(4, f"{STATE_SUMMARY} the session edited the decoder.")))
+    records.append(mark(_plain_edit(5, LATER_EDIT)))
+    if subagent:
+        (folder / "sess" / "subagents").mkdir(parents=True)
+        write_transcript(folder / "sess" / "subagents", "agent-x.jsonl", records)
+        write_transcript(folder, "sess.jsonl", [user(0, "hi"), assistant(1, "hello")])
+    else:
+        write_transcript(folder, "t.jsonl", records)
+    (found,) = probe.find(folder)
+    assert found["boundary"] == 3
+    probe.build(found["point"], private_root=private_root)
+    return found["point"]
+
+
+def _ask_state(point, arm, cli_repo, private_root, fake_reply, parent_env=None):
+    return probe.ask(
+        point, arm, repo_root=cli_repo, private_root=private_root,
+        claude_cmd=fake_reply.command, parent_env=parent_env)
+
+
+def _stored_ask(point, private_root, arm):
+    return topics.read_json(probe._point_dir(point, private_root) / f"ask-{arm}.json")
+
+
+def test_mechanical_prompt_holds_the_state_block_at_the_boundary_and_no_summary(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: the mechanical arm that carries the compact summary
+    instead of (or beside) the block, a block cut at the wrong line or taken from
+    HEAD or the working tree instead of the boundary's commit, or an arm the
+    command line does not accept."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+    fake_reply.reply("{}")
+
+    code = probe.main(
+        ["--private-root", str(private_root), "ask", point, "--arm", "mechanical"],
+        claude_cmd=fake_reply.command, repo_root=cli_repo)
+
+    assert code == 0
+    (call,) = fake_reply.calls()
+    prompt = call["stdin"]
+    assert BLOCK_TITLE in prompt
+    assert EDITED_PATH in prompt
+    assert OPEN_TASK in prompt
+    assert STATE_SUMMARY not in prompt
+    for stale in (LATER_EDIT, LATER_TASK, SIDE_TASK, UNCOMMITTED_FILE):
+        assert stale not in prompt
+
+
+def test_compass_prompt_holds_the_summary_before_the_state_block(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a compass arm that drops the block, drops the summary,
+    or puts the block first (the trial recorded the summary, then the hook's block)."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+    fake_reply.reply("{}")
+
+    _ask_state(point, "compass", cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    prompt = call["stdin"]
+    assert STATE_SUMMARY in prompt and BLOCK_TITLE in prompt
+    assert prompt.index(STATE_SUMMARY) < prompt.index(BLOCK_TITLE)
+    block = prompt[prompt.index(BLOCK_TITLE):]
+    assert EDITED_PATH in block and OPEN_TASK in block
+
+
+def test_compass_prompt_at_a_subagent_point_holds_the_summary_and_no_block(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a block carried at a subagent compaction, where the
+    hook prints nothing for an event carrying `agent_id`, so the arm would hold
+    text the real session never received; or a summary dropped with it."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo, subagent=True)
+    fake_reply.reply("{}")
+
+    _ask_state(point, "compass", cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    prompt = call["stdin"]
+    assert STATE_SUMMARY in prompt
+    assert BLOCK_TITLE not in prompt
+    assert OPEN_TASK not in prompt
+
+
+@pytest.mark.parametrize("branch, stamp, present, absent", [
+    pytest.param("side", BOUNDARY_STAMP, SIDE_TASK, (OPEN_TASK, LATER_TASK, ORPHAN_TASK),
+                 id="a-branch-other-than-head-is-the-one-searched"),
+    pytest.param("deleted-worktree-branch", BOUNDARY_STAMP, OPEN_TASK, (SIDE_TASK, LATER_TASK),
+                 id="an-absent-branch-falls-back-to-head"),
+    pytest.param("HEAD", BOUNDARY_STAMP, OPEN_TASK, (SIDE_TASK, LATER_TASK),
+                 id="a-detached-branch-name-reads-head"),
+    pytest.param(None, BOUNDARY_STAMP, OPEN_TASK, (SIDE_TASK, LATER_TASK),
+                 id="a-boundary-record-without-a-branch-reads-head"),
+    pytest.param("main", FIRST_COMMIT, OPEN_TASK, (LATER_TASK,),
+                 id="a-stamp-equal-to-a-commit-date-takes-that-commit"),
+    pytest.param("main", SECOND_COMMIT - timedelta(seconds=1), OPEN_TASK, (LATER_TASK,),
+                 id="a-stamp-one-second-before-a-commit-leaves-it-out"),
+    pytest.param("main", SECOND_COMMIT + timedelta(milliseconds=500), LATER_TASK, (OPEN_TASK,),
+                 id="a-stamp-half-a-second-after-a-commit-takes-it"),
+    pytest.param("main", SECOND_COMMIT + timedelta(hours=1), LATER_TASK, (OPEN_TASK, SIDE_TASK),
+                 id="a-stamp-after-every-commit-takes-the-last"),
+])
+def test_the_block_is_taken_at_the_last_commit_on_the_branch_by_the_boundary_stamp(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply, branch, stamp, present, absent):
+    """Adversarial where: the commit chosen by the wrong branch (HEAD when the
+    record names another), a missing branch that aborts instead of reading HEAD,
+    an exclusive comparison at the boundary instant, a stamp with milliseconds
+    that git misreads, or the first or newest commit taken whatever the stamp."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo, branch=branch, stamp=stamp)
+    fake_reply.reply("{}")
+
+    _ask_state(point, "mechanical", cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    assert present in call["stdin"]
+    for other in absent:
+        assert other not in call["stdin"]
+
+
+@pytest.mark.parametrize("arm", ["mechanical", "compass"])
+@pytest.mark.parametrize("where, branch, stamp", [
+    pytest.param("repo", "main", FIRST_COMMIT - timedelta(seconds=1), id="boundary-before-the-first-commit"),
+    pytest.param("repo", "late", BOUNDARY_STAMP, id="branch-with-no-commit-by-the-stamp"),
+    pytest.param("plain", "main", BOUNDARY_STAMP, id="folder-that-is-no-repository"),
+    pytest.param("gone", "main", BOUNDARY_STAMP, id="folder-that-no-longer-exists"),
+])
+def test_a_point_with_no_qualifying_commit_stores_a_no_state_record_and_starts_no_session(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply, arm, where, branch, stamp):
+    """Adversarial where: a point with no commit by its stamp that falls back to
+    HEAD (a commit that postdates nothing it knew), raises on a git failure
+    instead of recording it, or starts a session that answers from no state and
+    is graded as a failure of the arm."""
+    cwd = {"repo": state_repo, "plain": tmp_path / "plain", "gone": tmp_path / "gone"}[where]
+    if where == "plain":
+        cwd.mkdir()
+    point = _boundary_state_point(tmp_path, private_root, cwd, branch=branch, stamp=stamp)
+
+    _ask_state(point, arm, cli_repo, private_root, fake_reply)
+
+    assert fake_reply.calls() == []
+    stored = _stored_ask(point, private_root, arm)
+    assert stored["no_state"] is True
+    assert not stored.get("reply")
+
+
+@pytest.mark.parametrize("arm", ["mechanical", "compass"])
+@pytest.mark.parametrize("through_parent_env", [False, True], ids=["process-environment", "parent-env-argument"])
+def test_the_session_state_process_sees_no_claude_project_dir(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply, monkeypatch, arm, through_parent_env):
+    """Adversarial where: a CLAUDE_PROJECT_DIR left in the child's environment
+    redirects the command to another project's vault (the decoy), so the block is
+    built from the wrong project or fails; or the variable is deleted from the
+    caller's own environment instead of the child's."""
+    decoy = tmp_path / "decoy"
+    (decoy / ".compass").mkdir(parents=True)
+    (decoy / ".compass" / "active.md").write_text("- [ ] TASK-99: ZQDECOYTASK\n", encoding="utf-8")
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(decoy))
+    parent_env = dict(os.environ) if through_parent_env else None
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+    fake_reply.reply("{}")
+
+    _ask_state(point, arm, cli_repo, private_root, fake_reply, parent_env=parent_env)
+
+    (call,) = fake_reply.calls()
+    assert OPEN_TASK in call["stdin"] and EDITED_PATH in call["stdin"]
+    assert "ZQDECOYTASK" not in call["stdin"]
+    assert os.environ["CLAUDE_PROJECT_DIR"] == str(decoy)
+    if parent_env is not None:
+        assert parent_env["CLAUDE_PROJECT_DIR"] == str(decoy)
+
+
+@pytest.mark.parametrize("arm", ["mechanical", "compass"])
+def test_the_ask_file_stores_the_carried_block_beside_the_reply(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply, arm):
+    """Adversarial where: an ask file that keeps the reply but not the block the
+    session was given, so a run cannot be audited without rendering the state
+    again (and a re-rendering later would read a different repository), or a stored
+    block that differs from the one in the prompt."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+    fake_reply.reply('{"artifact": []}')
+
+    _ask_state(point, arm, cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    stored = _stored_ask(point, private_root, arm)
+    blocks = [
+        value for key, value in stored.items()
+        if key != "reply" and isinstance(value, str) and BLOCK_TITLE in value
+    ]
+    assert len(blocks) == 1
+    assert OPEN_TASK in blocks[0] and EDITED_PATH in blocks[0]
+    assert blocks[0].strip() in call["stdin"]
+    assert stored["reply"] == '{"artifact": []}'
+    assert "tokens" in stored
+
+
+def test_the_mechanical_arm_needs_no_compact_summary(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a mechanical arm that reads the host summary first and
+    fails with NoSummary on a transcript that holds none, though its carried text
+    is the block alone."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo, with_summary=False)
+    fake_reply.reply("{}")
+
+    _ask_state(point, "mechanical", cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    assert BLOCK_TITLE in call["stdin"] and OPEN_TASK in call["stdin"]
+
+
+def test_grade_skips_a_no_state_record_and_still_grades_the_arms_beside_it(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a no-state record (no reply) graded as an unparsed
+    answer and scored 0 in every probe, which charges the arm for a commit that
+    does not exist, or a grade that raises on the record and loses the other arms."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo, stamp=FIRST_COMMIT - timedelta(seconds=1))
+    _ask_state(point, "mechanical", cli_repo, private_root, fake_reply)
+    _store_reply(point, private_root, "host-summary", {"artifact": [EDITED_PATH]})
+
+    graded = probe.grade(point, private_root=private_root)
+
+    assert set(graded) == {"host-summary"}
+    folder = probe._point_dir(point, private_root)
+    assert (folder / "grade-host-summary.json").is_file()
+    assert not (folder / "grade-mechanical.json").exists()
+
+
+def test_report_counts_the_no_state_points_of_each_arm_and_scores_none_of_them(two_points, private_root):
+    """Adversarial where: no-state points missing from the report (a silent loss
+    of data points), counted over all arms together instead of per arm, or scored
+    as zero rows that drag the arm's means down."""
+    first, second = two_points
+    probe.build(first, private_root=private_root)
+    _store_reply(first, private_root, "host-summary", {"artifact": ["src/app/main.py"]})
+    probe.grade(first, private_root=private_root)
+    for point, arm in ((first, "mechanical"), (first, "compass"), (second, "compass")):
+        topics.write_json(
+            probe._point_dir(point, private_root) / f"ask-{arm}.json",
+            {"point": point, "arm": arm, "no_state": True})
+
+    text = probe.report(private_root=private_root)
+
+    rows = _main_rows(text)
+    assert ("host-summary", "artifact") in rows
+    assert not [key for key in rows if key[0] in ("mechanical", "compass")]
+    assert re.search(r"no[- ]state", text, re.IGNORECASE)
+    assert re.search(r"mechanical\D*\b1\b", text)
+    assert re.search(r"compass\D*\b2\b", text)
