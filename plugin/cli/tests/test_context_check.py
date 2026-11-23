@@ -265,6 +265,26 @@ class SecondOfferTests(ContextCheckFixture):
         self.append(assistant_line(cache_read=161_000))
         self.assertIn("80%", self.hook()["stopReason"])
 
+    def test_usage_before_a_compaction_boundary_is_not_read_after_it(self):
+        # Defect class: a hook that runs after a compaction, before the first
+        # post-compaction assistant line is written, reports the
+        # pre-compaction percent (observed live: 35% shown at 22%).
+        os.environ["COMPASS_CONTEXT_THRESHOLD"] = "20"
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=70_000),
+                   {"type": "system", "subtype": "compact_boundary",
+                    "compactMetadata": {"trigger": "auto", "preTokens": 70_000}},
+                   model_line(STANDARD_MODEL))
+        self.assertIsNone(self.hook())
+        self.assertEqual(context_check.measure(self.transcript, STANDARD_MODEL), (None, STANDARD_MODEL))
+        self.append(assistant_line(cache_read=44_000))
+        self.assertIn("22%", self.hook()["stopReason"])
+
+    def test_boundary_older_than_the_latest_usage_does_not_hide_it(self):
+        self.write(model_line(STANDARD_MODEL), assistant_line(cache_read=190_000),
+                   {"type": "system", "subtype": "compact_boundary"},
+                   assistant_line(cache_read=30_000), assistant_line(cache_read=170_000))
+        self.assertIn("85%", self.hook()["stopReason"])
+
     def test_state_from_the_single_level_version_counts_as_offered_at_80(self):
         # Defect class: an older `halted: true` entry is read as never
         # offered, so a session that already declined is stopped again.
