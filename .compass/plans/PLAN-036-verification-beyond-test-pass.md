@@ -7,7 +7,7 @@ confidence: medium
 area: testing
 tags: [testing, verification, validator, reachability, ablation, spec-coverage, evidence, model-family]
 created: 2026-11-21
-updated: 2026-11-21
+updated: 2026-11-22
 git_branch: "master"
 git_commit: "9a33f39"
 author: "planner"
@@ -34,18 +34,27 @@ flowchart LR
     T411["411 Release and<br/>local refresh"]
     T412["412 Planted-defect<br/>probe"]
   end
+  subgraph W2["Wave 2: authored ids, red kinds, reach runs the entry point"]
+    T414["414 Requirement ids<br/>written in the spec"]
+    T415["415 Red kind kept,<br/>unproven tests named"]
+    T416["416 Reach runs the<br/>entry point itself"]
+  end
   subgraph LT["Later: after the probe reports"]
-    L["413 to 419"]:::later
+    L["413, 417, 418, 419"]:::later
   end
   T400 & T401 & T402 & T403 --> T404
   T405 --> T404
   T404 --> T406 & T408 & T409 & T410
   T407 --> T406
   T406 & T408 & T409 & T410 --> T411 --> T412 --> L
+  T400 --> T414
+  T402 --> T415
+  T401 & T406 --> T416
+  T414 & T415 & T416 --> L
   classDef later fill:#eee,color:#000
 ```
 
-Numbers are task ids (provisional until approval). A wave is a group of tasks planned in detail together; the grey box stays one-line sketches until the probe in TASK-412 reports.
+Numbers are task ids. A wave is a group of tasks planned in detail together; the grey box stays one-line sketches until the probe in TASK-412 reports.
 
 
 ## Goal
@@ -56,7 +65,9 @@ This plan implements [[SPEC-034-verification-beyond-test-pass]] based on [[resea
 
 **Wave 1** builds four mechanical `compass` commands and wires them into the agents. One lists a spec's requirements with stable ids. One reads a coverage report from a run of the task's entry-point command and names every changed line that did not run, refusing to call a missing measurement 0%. One reverts the task's code in a scratch copy and reports which of its tests stay green. One wraps any check so its command, commit, exit code and full output are kept, and can rerun it later. The validator gains three per-task steps that use them; the builder's review adds a second reviewer that judges the diff against the spec; the build loop sends the validator's new FAIL items back to fix builders; the research reviewer's matrix records each agent's model family. The wave ends with a release into this repo and a probe on a small seeded project with one planted instance of each failure, which measures the spec's KPI. It stops at the human's reading of the probe's numbers.
 
-**Later** waves act on what the probe shows: how much of the spec check a command can carry, spec-time requirement ids, per-language driver help for servers, hooks and UI actions, and the verified per-spawn model once [[PLAN-034-checking-cost-follows-task-and-model]] records it.
+**Wave 2** builds what Wave 1's merged commands already make possible, none of it waiting on the probe. A spec can carry its own requirement ids, so an id stays put when a line is added above it. The test checkpoint keeps why each test was red before the build, so a test that only ever failed to import is named unproven instead of passing as evidence. `compass reach` can run the entry point under coverage itself instead of the validator assembling each recipe by hand. It stops when its automated checks pass.
+
+**Later** waves act on what the probe shows: how much of the spec check a command can carry, a second probe on a Node project, and the verified per-spawn model once [[PLAN-034-checking-cost-follows-task-and-model]] records it.
 
 ## Rulings this plan carries
 
@@ -89,7 +100,7 @@ This plan implements [[SPEC-034-verification-beyond-test-pass]] based on [[resea
 
 ## What We're NOT Doing
 
-- No change to the pre-build tester station, the checkpoint format or `compass test-checkpoint` (red kind is a Later line).
+- No change in Wave 1 to the pre-build tester station, the checkpoint format or `compass test-checkpoint`; the red kind is TASK-415 in Wave 2, which adds one key and leaves every other field as it is.
 - No mutation gate; per-function stubbing stays an on-demand diagnostic.
 - No scaling of checks by task difficulty; that is [[PLAN-034-checking-cost-follows-task-and-model]].
 - No edit to any approved spec to add ids; TASK-400 derives ids from the existing text.
@@ -155,12 +166,30 @@ TASK-400, TASK-401, TASK-402, TASK-403, TASK-405 and TASK-407 start in parallel;
 
 **Pause point:** when the automated checks pass, wait for the human to confirm TASK-412's manual check before the next wave is detailed.
 
+### Wave 2 (detailed): authored ids, red kinds, reach runs the entry point
+
+TASK-414, TASK-415 and TASK-416 start in parallel; their files are disjoint. Each keeps the Wave 1 command behavior TASK-412 measures: `compass requirements` on a spec without authored ids, `compass ablate` on a test whose red was its own failure, and `compass reach --report` print what they print today, so the probe's numbers stay comparable whichever lands first. Contact point: TASK-416 edits step 4h of `plugin/templates/agents/validator.md`, and TASK-413 later edits step 4j of the same file. None of the three adds a command, so `plugin/cli/maincli.py` is untouched; a `COMMAND_SPECS` one-liner that `test_plain_words.py` then flags is reworded in the same task.
+
+- [ ] TASK-414: Requirement ids written at spec time. A bullet under `## Desired Outcome`, `## Success Criteria` or `## Constraints` may open with an authored id in the D-NN bullet shape, `- **O-01:** text`, `- **S-01:** text` or `- **C-01:** text` (a checkbox bullet as `- [ ] **S-01:** text`); `requirementslib.py` keeps that id for the row and strips it from the row's text before hashing, so an id survives a bullet inserted above it. Authored and derived ids compare by prefix and number (`O-3` equals `O-03`), a derived id skips every number an authored id of its prefix already holds in the spec, and the `KPI:` line stays `K-1`. Two rows with the same id exit 1 naming both line numbers [guess: an error, since a duplicate id makes a citation ambiguous]. An authored id inside a fenced block is text. The Spec template in `plugin/skills/obsidian/templates.md` shows one authored id in each of the three sections and one sentence: ids are optional, written once, never renumbered, and a new bullet takes the next unused number. `plugin/skills/spec/SKILL.md` adds the same rule in one sentence beside its Decisions paragraph - complexity: M, depends_on: TASK-400, files: [plugin/cli/requirementslib.py, plugin/cli/tests/test_requirementslib_authored.py, plugin/skills/obsidian/templates.md, plugin/skills/spec/SKILL.md], lessons: [LESSON-untestable-criterion-is-a-spec-defect, LESSON-test-delimited-blocks-with-the-delimiter-quoted]
+  - Automated verification: `python -m pytest plugin/cli/tests/test_requirementslib_authored.py plugin/cli/tests/test_requirementslib.py plugin/cli/tests/test_requirements_command.py -q`; tests cover a bullet inserted above an authored `O-02` (its id and hash unchanged, the derived ids below it shift), a section mixing `C-01` authored with two unauthored bullets (derived `C-2`, `C-3`), `O-3` beside an authored `O-03` (duplicate, exit 1 naming both lines), the checkbox form, an authored id inside a fence (text), a spec with D-NN bullets beside authored O ids (`compass coverage` on it prints the same summary line as on the spec without them), and [[SPEC-034-verification-beyond-test-pass]] itself (rows unchanged from TASK-400's output); `grep -n "\*\*O-01:\*\*" plugin/skills/obsidian/templates.md` and `grep -n "never renumbered" plugin/skills/spec/SKILL.md` match; `python -m pytest plugin/cli/tests -q` is green.
+  - Manual verification: none.
+  - Entry point: `python plugin/cli/compass requirements <a spec carrying an authored id>`
+
+- [ ] TASK-415: The checkpoint keeps the kind of each red, and `compass ablate` names a test whose only red was a collection error as unproven. `compass test-checkpoint record` with `--red-evidence <path>` parses that file with `_parse_run_evidence` and stores `red_kinds` in the record, one entry per checkpointed test id: `fail` or `error` from its status line, `collection` when the id is absent and the evidence carries a collection-error line for its file (pytest `ERROR collecting <path>` or `ImportError while importing test module`, unittest `Failed to import test module: <module>`), `passed` when it shows `ok`, `absent` otherwise. The collection-error line shapes are read from a real pytest and unittest run before the patterns are written. An unreadable or missing evidence file still writes the record, without `red_kinds`, and warns on stderr; `verify`, `open-ids` and `cycle` read a record with or without the key exactly as today. `ablatelib.py` reads `red_kinds` from the checkpoint it already loads: a test whose kind is `collection` and that does not flip is printed `unproven: <id>` instead of under `unflipped` or `collection-error`, and leaves the verdict as it is [guess: reported, never a FINDING, since every task that adds a new module would otherwise read FINDING on revert]; a test whose kind is `fail` keeps today's handling. `plugin/templates/agents/tester.md` step 5 asks for the runner's verbose output (`pytest -v`, `unittest -v`, TAP) as the red evidence so each test's kind can be read - complexity: M, depends_on: TASK-402, files: [plugin/cli/commands/test_checkpoint.py, plugin/cli/ablatelib.py, plugin/cli/commands/ablate.py, plugin/templates/agents/tester.md, plugin/cli/tests/test_test_checkpoint_red_kind.py, plugin/cli/tests/test_ablate_unproven.py], lessons: [LESSON-revert-to-prove-a-regression-test, LESSON-hook-payloads-observe-before-coding]
+  - Automated verification: `python -m pytest plugin/cli/tests/test_test_checkpoint_red_kind.py plugin/cli/tests/test_ablate_unproven.py -q`; tests cover a pytest `-v` evidence file holding one FAILED test, one ERROR test and a collection error in a second file (kinds `fail`, `error`, `collection`), the unittest import-failure form, a test green in the red run (`passed`), evidence saved as UTF-16 and as cp1252, a missing evidence path (record written, no `red_kinds`, warning), a pre-existing record without the key (verify unchanged, ablate prints no `unproven` line), a throwaway repo whose task adds a new module with a checkpointed `collection` test (`unproven:` line, verdict PASS), and the same test with kind `fail` that stays green on revert (`unflipped`, FINDING as today); `python -m pytest plugin/cli/tests -q` is green; `grep -n "pytest -v" plugin/templates/agents/tester.md` matches in step 5.
+  - Manual verification: none.
+  - Entry point: `python plugin/cli/compass test-checkpoint record TASK-NNN <test files> --commit <sha> --red-evidence <red-run output>`, then `python plugin/cli/compass ablate TASK-NNN --cmd "python -m pytest -v {tests}"`
+
+- [ ] TASK-416: `compass reach --run "<command>" --lang python|node --diff <range> [--repo <dir>] [--python <interpreter>]` produces the coverage report itself, then intersects it as `--report` does; `--run` and `--report` are exclusive. Python: [guess: one route for the measured recipes, the `.pth` plus `COVERAGE_PROCESS_START` route] Compass writes an rc file under `.compass/tmp/reach/<UTC>/` (`source` the repo, the TASK-401 test patterns omitted, `parallel = true`, `concurrency = thread, multiprocessing`, `data_file` in that folder), writes `compass_reach_cov.pth` into the interpreter's site-packages for the run and removes it in a `finally`, runs the command through the shell with `COVERAGE_PROCESS_START` set to the rc's absolute path, so the command itself, its Python children, Pool workers and a shell-wrapped hook process are all measured, then runs `coverage combine` and `coverage xml`. The interpreter is `--python`, else `venv/` or `.venv/` in the repo, else `python` on PATH. Node: `npx --no-install c8 --reporter=lcov --report-dir <that folder> <command>`, then the LCOV path. Guards, each its own `SKIP` reason and never a percentage: an interpreter outside a virtual environment (the `.pth` would reach every Python process on the machine), coverage missing or older than 7.10, c8 not installed, a `.pth` of that name already present, and no data file after the run (a hard-killed server). A server is measured when the command is a driver that starts it, sends its requests and stops it through its graceful path. The command's exit code prints as `run exit: N` and leaves the verdict to the report. Step 4h of `plugin/templates/agents/validator.md` names `compass reach --run` as the route for the CLI, child process, Pool, hook and server-driver recipes and keeps the hand recipes for a UI action - complexity: L, depends_on: TASK-401, TASK-406, files: [plugin/cli/reachlib.py, plugin/cli/commands/reach.py, plugin/cli/tests/test_reach_run.py, plugin/templates/agents/validator.md], lessons: [LESSON-suite-size-is-not-coverage, LESSON-verify-wiring-by-call-site-grep]
+  - Automated verification: `python -m pytest plugin/cli/tests/test_reach_run.py plugin/cli/tests/test_reach_command.py plugin/cli/tests/test_reachlib.py -q`; tests run in a throwaway repo with a venv created in the test's temp folder (`--system-site-packages`, skipped when the running interpreter lacks coverage 7.10 or later) and cover a CLI script calling the new function (PASS), a new helper it never calls (FINDING naming its lines), a Python child started through `subprocess` and a Pool worker (their lines reached), a shell wrapper launching Python as a hook does (reached), a driver that hard-kills its server child (`SKIP`, no data), an interpreter outside a venv (`SKIP`), a pre-existing `compass_reach_cov.pth` (`SKIP`, the file left as it was), no `compass_reach_cov.pth` left in site-packages after a command that fails, and `--run` with `--report` (exit 1); a Node case runs only when `npx --no-install c8 --version` succeeds; the TASK-401 tests pass unchanged; `grep -n "compass reach --run" plugin/templates/agents/validator.md` matches in 4h; `python -m pytest plugin/cli/tests -q` is green.
+  - Manual verification: none.
+  - Entry point: `python plugin/cli/compass reach --run "python -m <package> <args>" --lang python --diff HEAD~1..HEAD`
+
+**Pause point:** when Wave 2's automated checks pass, it is done; the next wave is detailed after TASK-412's probe report and the human's reading of it.
+
 ## Later (intent only)
 
 - [ ] TASK-413: Tune 4j's split between commands and judgment where TASK-412 showed a miss or a false positive, then rerun the probe and keep the change only if it flags more with no new false positive - files: [plugin/templates/agents/validator.md, .compass/research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md]
-- [ ] TASK-414: Requirement ids written at spec time: the spec template gives Desired Outcome, Success Criteria and Constraints bullets optional `O-NN`/`C-NN` ids that `requirementslib` prefers over derived ones, so an id survives an edit above it - files: [plugin/skills/obsidian/templates.md, plugin/cli/requirementslib.py, plugin/skills/spec/SKILL.md]
-- [ ] TASK-415: The checkpoint records the kind of each red (own failure, or import or collection error), and `compass ablate` reports a test whose only red was a collection error as unproven until it flips - files: [plugin/cli/commands/test_checkpoint.py, plugin/templates/agents/tester.md, plugin/cli/ablatelib.py]
-- [ ] TASK-416: `compass reach --run "<command>" --lang python|node` produces the report itself for the measured recipes (CLI, server with graceful stop, subprocess, Pool, hook `.pth` route), with the guard that the data file exists and names the source files - files: [plugin/cli/reachlib.py, plugin/cli/commands/reach.py]
 - [ ] TASK-417: The reviewer reads each agent's verified model from the station log of [[PLAN-034-checking-cost-follows-task-and-model]] TASK-346 instead of the report's self-stated `model:`, and flags a mismatch between the two - files: [plugin/templates/agents/reviewer.md]
 - [ ] TASK-418: A second planted-defect probe on a Node project with a server route and a one-line function, through c8 LCOV - files: [bench/verification/planted.py, .compass/research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md]
 - [ ] TASK-419: Release of the later wave and local refresh - files: [plugin/.claude-plugin/plugin.json]
@@ -171,8 +200,21 @@ TASK-400, TASK-401, TASK-402, TASK-403, TASK-405 and TASK-407 start in parallel;
 - **Derived requirement ids shift when a spec is edited above them.** The text hash makes a shift visible; TASK-414 adds authored ids.
 - **A coverage run fails silently upstream of the report.** TASK-401's guards turn a missing or foreign report into SKIP, never 0% or PASS; a measured-but-wrong child process is still possible, so 4h lists each recipe's silent failure.
 - **The validator's turn budget.** Three more steps per task may exceed it on a large wave; TASK-406 raises `maxTurns`, and TASK-412 records turns used.
+- **The `.pth` file of `reach --run` outlives a killed run.** It loads coverage into every process of that interpreter; TASK-416 confines it to a virtual environment, removes it in a `finally`, gives it one fixed name, and refuses to run while a file of that name is present, so a leftover is reported on the next run.
 - **Evidence files grow the repo.** Outputs are text and kept per task; a later move to a colder home stays possible under the Data rule, since `rerun` needs only the JSON and the sha.
 
 ## Inherited Questions (from spec)
 
 None open. The review's eight disagreements and its gate question are settled by the rulings above, pending the human's approval.
+
+## Wave 2 elaborated
+
+Inputs read: the Wave 1 merge (01bff99, TASK-400 to TASK-410 checked, suites green at CLI 2766 and bench 1129), `compass coverage` (no trackable decisions, PASS) and `compass lesson-coverage` (6 cited, 1 surfaced but uncited, PASS). TASK-411 and TASK-412 have not run. Three intent lines rest only on commands Wave 1 merged and tested, so they are promoted; four wait on something not yet observed and stay under Later.
+
+- **TASK-414:** the intent named `O-NN`/`C-NN` ids for three sections; the detail adds `S-NN` for Success Criteria, the section the intent listed, since TASK-400 derives `S-n` rows there. The bullet shape is the D-NN one because `decisionslib` scans bold-id bullets only inside a Decisions section, so `- **O-01:**` under Desired Outcome cannot read as a malformed decision (checked in `plugin/cli/decisionslib.py`, `extract_decisions`). The duplicate-id error and the numeric comparison of `O-3` and `O-03` are new, from TASK-400's derived numbering, which an authored id could otherwise collide with.
+- **TASK-415:** the intent's "unproven until it flips" became a reported line that leaves the verdict alone, from TASK-402's code: `ablatelib.py` already prints `collection-error` for a test that vanishes once the task's code is reverted, which is every test of a task that adds a new module, so a FINDING there would fire on every such task. `test_checkpoint.py` was owned by [[PLAN-034-checking-cost-follows-task-and-model]] TASK-346 during Wave 1; that task is done, so the file is free. `ablate.py` joins the file list for its output docstring. [[LESSON-hook-payloads-observe-before-coding]], surfaced but uncited by `compass lesson-coverage`, is cited here for reading the real collection-error lines before writing patterns.
+- **TASK-416:** the intent's five recipes collapse into one Python route, the `.pth` plus `COVERAGE_PROCESS_START` route that [[research/test-quality/beyond-test-pass/RESEARCH-reachability]] measured on a hook stand-in, since with it every Python process the command starts measures itself; the virtual-environment guard and the leftover-file guard are new, from that route writing into site-packages. The intent's guard "the data file exists and names the source files" is split: no data file is a new `SKIP`, and a report naming none of the changed files is TASK-401's existing `SKIP`, reused. `validator.md` joins the file list so 4h calls the new route; without a call site the flag would ship unused.
+- **TASK-413 stays:** it tunes 4j from the misses and false positives TASK-412 reports.
+- **TASK-417 stays:** the station log of TASK-346 records tester, validator, builder and debug stations (`plugin/cli/stationlib.py`), and a row carries no field naming the research report it came from, so the reviewer cannot yet match a row to a report's `model:`; PLAN-034 TASK-348, which checks the rows live in this repo, has not run.
+- **TASK-418 stays:** it reuses `bench/verification/planted.py`, which TASK-412 writes.
+- **TASK-419 stays:** it releases the later wave, TASK-413 included, so it waits on TASK-413; Wave 2's changes reach `.claude/` through it.
