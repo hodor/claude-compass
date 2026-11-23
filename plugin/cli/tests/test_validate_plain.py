@@ -332,6 +332,9 @@ class HookStatusTests(unittest.TestCase):
         self.assertEqual(len(found), 1, f"{event}/{matcher}: {found}")
         return found[0]
 
+    def statuses_for(self, event, matcher):
+        return [s for e, m, s, _ in self.entries if e == event and m == matcher]
+
     def test_loop_hook_lines_carry_the_agreed_wording_verbatim(self):
         """Adversarial where: the index-update and lesson-check status texts
         get a paraphrase near the agreed wording (a different verb, a
@@ -356,7 +359,7 @@ class HookStatusTests(unittest.TestCase):
         context check, the update check, the subagent report), changing what
         the loop shows for no reason. Every hook keeps a status text and the
         count of hooks is unchanged."""
-        self.assertEqual(len(self.entries), 12)
+        self.assertEqual(len(self.entries), 13)
         coined = [
             ("capture opportunity", re.compile(r"capture opportunit", re.I)),
             ("signal", re.compile(r"signal", re.I)),
@@ -370,7 +373,6 @@ class HookStatusTests(unittest.TestCase):
         unchanged = [
             ("PreToolUse", "Bash|Write|Edit|MultiEdit", "Compass guard"),
             ("PostToolUse", None, "Checking context usage"),
-            ("SessionStart", "startup", "Checking for a Compass update"),
             (
                 "SubagentStop",
                 "builder|compass:builder|tester|compass:tester|debug|compass:debug|validator|compass:validator|planner|compass:planner|researcher|compass:researcher|reviewer|compass:reviewer|spec-writer|compass:spec-writer|pr-describe|compass:pr-describe",
@@ -380,6 +382,10 @@ class HookStatusTests(unittest.TestCase):
         for event, matcher, expected in unchanged:
             with self.subTest(event=event, matcher=matcher):
                 self.assertEqual(self.status_for(event, matcher), expected)
+        startup = self.statuses_for("SessionStart", "startup")
+        self.assertIn("Checking for a Compass update", startup)
+        self.assertIn("Checking the vault's references against the code", startup)
+        self.assertEqual(len(startup), 2, startup)
 
     def test_rewording_status_texts_leaves_every_hook_command_alone(self):
         """Adversarial where: the edit that rewords a `statusMessage` also

@@ -232,6 +232,44 @@ def _shell():
     return shutil.which("sh") or shutil.which("bash")
 
 
+DRIFT_STATUS = "Checking the vault's references against the code"
+DRIFT_COMMAND = (
+    '[ -f "$CLAUDE_PROJECT_DIR/.claude/cli/compass" ] || exit 0; '
+    'if command -v python3 >/dev/null 2>&1; then '
+    'python3 "$CLAUDE_PROJECT_DIR/.claude/cli/compass" drift --hook; '
+    'else python "$CLAUDE_PROJECT_DIR/.claude/cli/compass" drift --hook; fi'
+)
+
+
+class DriftScanHookTests(unittest.TestCase):
+    """The SessionStart `startup` entry that runs `drift --hook`."""
+
+    def setUp(self):
+        self.hooks = json.loads(HOOKS_JSON.read_text(encoding="utf-8"))["hooks"]
+
+    def _drift_hooks(self):
+        return [(g.get("matcher"), h)
+                for event, groups in self.hooks.items() if event == "SessionStart"
+                for g in groups for h in g["hooks"] if "drift" in h.get("command", "")]
+
+    def test_startup_registers_the_drift_scan_once_with_the_neighbour_guard(self):
+        # Adversarial where: the entry is missing, sits under another event
+        # or matcher (a scan on every resume, clear and compaction), runs
+        # without the not-installed guard (fails a session in a project
+        # Compass is not set up in), tries only python3 or only python, or
+        # carries no plain status text so the session shows a blank line.
+        found = self._drift_hooks()
+        self.assertEqual([m for m, _ in found], ["startup"])
+        hook = found[0][1]
+        self.assertEqual(hook["type"], "command")
+        self.assertEqual(hook["command"], DRIFT_COMMAND)
+        self.assertEqual(hook["statusMessage"], DRIFT_STATUS)
+        self.assertGreater(hook["timeout"], 0)
+        elsewhere = [e for e, groups in self.hooks.items() if e != "SessionStart"
+                     for g in groups for h in g["hooks"] if "drift" in h.get("command", "")]
+        self.assertEqual(elsewhere, [])
+
+
 class CompactionHooksTests(unittest.TestCase):
     """The SessionStart `compact` group and the PreCompact group run
     `session-state --hook` under the same guard and prefilter the
@@ -291,10 +329,16 @@ class CompactionHooksTests(unittest.TestCase):
         self.assertEqual([g.get("matcher") for g in owners], ["compact"])
 
     def test_other_sessionstart_groups_are_unchanged(self):
-        # Adversarial where: adding the compact group rewrites or drops the
-        # self-update or the capture-check group.
-        others = [g for g in self._manifest()["hooks"]["SessionStart"]
-                  if g.get("matcher") != "compact"]
+        # Adversarial where: adding the compact group or the drift scan
+        # rewrites or drops the self-update or the capture-check group. The
+        # drift hook is set aside, wherever it sits, before the comparison.
+        others = []
+        for group in self._manifest()["hooks"]["SessionStart"]:
+            if group.get("matcher") == "compact":
+                continue
+            kept = [h for h in group["hooks"] if "drift" not in h["command"]]
+            if kept:
+                others.append({**group, "hooks": kept})
         self.assertEqual(others, PRE_COMPACTION_SESSIONSTART_GROUPS)
 
     def test_description_mentions_both_registrations(self):
