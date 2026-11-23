@@ -6,7 +6,7 @@ confidence: high
 area: methodology
 tags: [compaction, hooks, precompact, postcompact, sessionstart, claude-code, transcript]
 created: 2026-11-21
-updated: 2026-11-21
+updated: 2026-11-22
 git_branch: master
 git_commit: 6faced1
 author: researcher
@@ -99,6 +99,34 @@ Repository mining in its "how does an existing system behave" shape, run as an e
 
 ## Gaps
 
-- `trigger: "auto"` was not produced (no `/compact` command to drive it); `--autocompact <tokens>` (at least 100k) exists in `claude --help` and could drive it with a long enough session.
+- `trigger: "auto"` was not produced (no `/compact` command to drive it); `--autocompact <tokens>` (at least 100k) exists in `claude --help` and could drive it with a long enough session. Produced in the trial with Compass hooks below.
 - PreCompact `decision: "block"` JSON and `onFailure: "block"` were not run; auto-compaction blocking was not run.
 - The exact PreCompact stdout size cap lives in a docs section (`#precompact-output`) past the part of the page that could be read.
+
+## Trial with Compass hooks
+
+2026-11-22, Claude Code 2.1.330, haiku 5.5, this repo with the installed Compass hooks (PreCompact and SessionStart `compact` running `session-state --hook`), the 1M window disabled so the stop's percent is of a 200,000 window. Each run read and edited a scratch file holding a codeword, then read padding files to fill the context. Driven through the stream-json route of finding 1, one resumed process per step. Cost: about $0.23 at API prices for both runs together.
+
+| | Run 1, manual `/compact` | Run 2, `--autocompact 100000` |
+|---|---|---|
+| Compactions (trigger) | 1 (`manual`) | 7 (`auto`) |
+| Block attachment after the summary, titled `Compass session state` | 1 of 1 | 7 of 7 |
+| Edited scratch path in the block | yes | 7 of 7 |
+| Attachment length (characters) | 3,147 | 3,145 to 3,332 |
+| Compaction blocked | no | no |
+| Summary length (characters) | 4,400 | 3,933 to 7,359 |
+| Summary keeps the five asked-for items | intent, changed path, rules, next step; no decision was taken | intent, changed path, decision with its reason, rule, next step in 7 of 7 |
+| Scratch codeword (HERON-17, LYNX-44) in the summary | 1 of 1 | 4 of 7 (lost once summaries summarize summaries) |
+| Stop halted before compaction | at 35% (threshold 30) | at 35% (threshold 25) |
+| Re-armed after compaction | yes: first call at 23%, state `offered` back to 0 | yes: first call at 10%, `offered` back to 0 |
+| Next crossing halted after the step in progress | at 31% (threshold 24) | at 29% (threshold 25) |
+| Handoff sections match `session-state --format handoff` | Tasks, Recent Changes yes; Decisions, Uncommitted Changes absent in both | Tasks, Recent Changes, Uncommitted Changes yes; Decisions absent in both |
+
+- **PreCompact runs on `auto` too.** A logging hook beside Compass's recorded PreCompact with `trigger: "auto"` before each logged compaction. On manual its stdout is echoed in the `/compact` output line; on auto nothing in the transcript shows it.
+- **The summary keeps the host's own nine numbered headings.** The five items are present as content, not as sections in the asked-for order.
+- **The 10,000-character SessionStart cap is not reached.** The real block ran 3,145 to 3,332 characters with 58 to 59 open tasks (25 shown).
+- **`postTokens` is not the next call's context.** The first call after a compaction measured 11,000 to 48,000 tokens above `postTokens`; twice the host kept recent large tool results in the preserved segment, landed at 34 to 35% of the window, and compacted again on the next call.
+- **The stop read pre-compaction usage once** (fixed). A hook that ran after the boundary but before the first post-compaction assistant line reached the transcript reported 35% when the context held 22%. Usage behind the latest boundary now counts as unknown.
+- **The handoff's `path:line` pointed at the hunk start** (fixed): the host's `structuredPatch` opens with up to three context lines, so a change on line 3 printed as line 1.
+- **Two handoff skill frictions.** The bare `compass` in the skill is not on the Bash PATH, so the first call fails and the model retries through the installed CLI path; and in run 1 the model judged a scratch-only edit not worth a handoff although the skill's check passes when an edited file is listed.
+- Grade: high for the table (transcript records, hook log and state file read by script); medium for the auto PreCompact steering, observed through a logging hook and the summaries only.
