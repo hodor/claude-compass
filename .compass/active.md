@@ -64,35 +64,18 @@ Plan: [[PLAN-031-screenplays-in-the-vault]]; each task's full text, files and ch
 - [ ] TASK-290: Live check 4, install the way Compass will - complexity: S, depends_on: TASK-286
 - [ ] TASK-291: Live check 5, the two previews side by side - complexity: S, depends_on: TASK-286
 
-## PLAN-032 Wave 1: consolidation grounded in sources
-
-Plan: [[PLAN-032-consolidation-grounded-in-sources]]; each task's full text, files and checks are there.
-
-- [ ] TASK-309: Ship Wave 1: bump `plugin/.claude-plugin/plugin.json` minor version and copy the changed `plugin/` files (both new command modules,... - complexity: S, depends_on: TASK-307, TASK-308
-
 ## PLAN-034 Wave 1: checking cost follows task and model
 
 Plan: [[PLAN-034-checking-cost-follows-task-and-model]]; each task's full text, files and checks are there.
 
-- [ ] TASK-348: Release and local refresh: bump `plugin/.claude-plugin/plugin.json` to the next minor, run `python plugin/cli/compass self-update... - complexity: S, depends_on: TASK-346, TASK-347
 - [ ] TASK-350: Letter repeatability, measured - complexity: M, depends_on: none
 - [ ] TASK-351: Two smoke builds on the subscription, one at a time - complexity: S, depends_on: TASK-343, TASK-346, TASK-349
 - [ ] TASK-352: The per-part spread pilot - complexity: M, depends_on: TASK-344, TASK-345, TASK-351
-
-## PLAN-035 Wave 1: prompt cache as a design input
-
-Plan: [[PLAN-035-prompt-cache-is-a-design-input]]; each task's full text, files and checks are there.
-
-- [x] TASK-420: Cache readers over host transcripts, in a new `plugin/cli/cachelib.py`, standard library only, read-only, never raising on a malformed... - complexity: M, depends_on: none
-- [x] TASK-421: `compass cache [--all-compass] [--days N] [--json] [--save [FILE]] [--compare FILE]` in `plugin/cli/commands/cache.py`, registered in... - complexity: M, depends_on: TASK-420
-- [ ] TASK-422: Ship Wave 1 to this repo: bump the minor version in `plugin/.claude-plugin/plugin.json` from its value at merge, and copy `cachelib.py`,... - complexity: S, depends_on: TASK-421
-- [x] TASK-423: Record the baseline - complexity: S, depends_on: TASK-421
 
 ## PLAN-036 Wave 1: verification beyond test-pass
 
 Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files and checks are there.
 
-- [ ] TASK-411: Release and local refresh: bump `plugin/.claude-plugin/plugin.json` to the next minor, run `python plugin/cli/compass self-update... - complexity: S, depends_on: TASK-406, TASK-408, TASK-409, TASK-410
 - [ ] TASK-412: The planted-defect probe, the spec's KPI. `bench/verification/planted.py` builds a throwaway Python project in a temp folder with its... - complexity: M, depends_on: TASK-411
 
 ## PLAN-032 Wave 2: the scan runs itself and fixes what git proves
@@ -102,8 +85,6 @@ Plan: [[PLAN-032-consolidation-grounded-in-sources]]; each task's full text, fil
 - [ ] TASK-310: ADR: the drift recheck runs outside consolidation's no-cadence rule; host, run gate, report dedupe and auto-fix boundary - complexity: S, depends_on: none
 - [ ] TASK-312: `compass drift --apply` rewrites git-proven refs and target-newer index lines; net-zero shifts become `unchanged` - complexity: M, depends_on: none
 - [ ] TASK-311: The scan runs itself from the `SessionStart` hook, detached and gated on HEAD; report dedupe; doctor row - complexity: L, depends_on: TASK-310, TASK-312
-- [ ] TASK-321: Ship Wave 2 (release: push only on the human's word): version bump and `self-update --force` - complexity: S, depends_on: TASK-309, TASK-311, TASK-312
-
 ## PLAN-036 Wave 2: authored ids, red kinds, reach runs the entry point
 
 Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files and checks are there.

@@ -156,7 +156,7 @@ TASK-400, TASK-401, TASK-402, TASK-403, TASK-405 and TASK-407 start in parallel;
   - Automated verification: `grep -n "Model (family)" plugin/templates/agents/reviewer.md` matches inside the matrix example; `grep -n "share <family>\|share a family" plugin/templates/agents/reviewer.md` matches; `grep -n "^model:\|model:" plugin/templates/agents/researcher.md` finds the frontmatter instruction.
   - Manual verification: none.
 
-- [ ] TASK-411: Release and local refresh: bump `plugin/.claude-plugin/plugin.json` to the next minor, run `python plugin/cli/compass self-update --force` so `.claude/` carries TASK-400 to TASK-410 - complexity: S, depends_on: TASK-406, TASK-408, TASK-409, TASK-410, files: [plugin/.claude-plugin/plugin.json]
+- [x] TASK-411: Release and local refresh: bump `plugin/.claude-plugin/plugin.json` to the next minor, run `python plugin/cli/compass self-update --force` so `.claude/` carries TASK-400 to TASK-410 - complexity: S, depends_on: TASK-406, TASK-408, TASK-409, TASK-410, files: [plugin/.claude-plugin/plugin.json]
   - Automated verification: `python .claude/cli/compass reach --help` and `python .claude/cli/compass evidence --help` exit 0; `grep -n "4j" .claude/agents/validator.md` matches; `grep -n "compass requirements" .claude/agents/builder.md` matches; `python -m pytest plugin/cli/tests -q` is green.
   - Manual verification: none.
 

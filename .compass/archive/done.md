@@ -615,3 +615,27 @@ Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, fi
 - [x] TASK-408: The builder's review adds correctness against the spec - complexity: S, depends_on: TASK-404
 - [x] TASK-409: The build loop takes the validator's new FAILs - complexity: M, depends_on: TASK-404
 - [x] TASK-410: The reviewer matrix records model family - complexity: S, depends_on: TASK-404, TASK-407
+
+### PLAN-032 Wave 1: consolidation grounded in sources
+
+Plan: [[PLAN-032-consolidation-grounded-in-sources]]; each task's full text, files and checks are there.
+
+- [x] TASK-309: Ship Wave 1: bump `plugin/.claude-plugin/plugin.json` minor version and copy the changed `plugin/` files (both new command modules,... - complexity: S, depends_on: TASK-307, TASK-308
+
+### PLAN-034 Wave 1: checking cost follows task and model
+- [x] TASK-348: Release and local refresh: bump `plugin/.claude-plugin/plugin.json` to the next minor, run `python plugin/cli/compass self-update... - complexity: S, depends_on: TASK-346, TASK-347
+
+### PLAN-035 Wave 1: prompt cache as a design input
+
+Plan: [[PLAN-035-prompt-cache-is-a-design-input]]; each task's full text, files and checks are there.
+
+- [x] TASK-420: Cache readers over host transcripts, in a new `plugin/cli/cachelib.py`, standard library only, read-only, never raising on a malformed... - complexity: M, depends_on: none
+- [x] TASK-421: `compass cache [--all-compass] [--days N] [--json] [--save [FILE]] [--compare FILE]` in `plugin/cli/commands/cache.py`, registered in... - complexity: M, depends_on: TASK-420
+- [x] TASK-422: Ship Wave 1 to this repo: bump the minor version in `plugin/.claude-plugin/plugin.json` from its value at merge, and copy `cachelib.py`,... - complexity: S, depends_on: TASK-421
+- [x] TASK-423: Record the baseline - complexity: S, depends_on: TASK-421
+
+### PLAN-036 Wave 1: verification beyond test-pass
+- [x] TASK-411: Release and local refresh: bump `plugin/.claude-plugin/plugin.json` to the next minor, run `python plugin/cli/compass self-update... - complexity: S, depends_on: TASK-406, TASK-408, TASK-409, TASK-410
+
+### PLAN-032 Wave 2: the scan runs itself and fixes what git proves
+- [x] TASK-321: Ship Wave 2 (release: push only on the human's word): version bump and `self-update --force` - complexity: S, depends_on: TASK-309, TASK-311, TASK-312

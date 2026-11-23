@@ -136,7 +136,7 @@ TASK-342, TASK-343, TASK-345, TASK-346 and TASK-350 start in parallel; their fil
   - Automated verification: `python -m pytest plugin/cli/tests -q` passes: a task line with `complexity: M,` mid-line, one with it last, one without and one with `XS` parse as M, M, none, XS; a row for an unknown task is counted apart; `python plugin/cli/compass stations` runs against this vault and exits 0; the dash check exits 0.
   - Manual verification: none.
 
-- [ ] TASK-348: Release and local refresh: bump `plugin/.claude-plugin/plugin.json` to the next minor, run `python plugin/cli/compass self-update --force` so `.claude/` carries TASK-346 and TASK-347 in this repo, and confirm the hook writes rows here - complexity: S, depends_on: TASK-346, TASK-347, files: [plugin/.claude-plugin/plugin.json]
+- [x] TASK-348: Release and local refresh: bump `plugin/.claude-plugin/plugin.json` to the next minor, run `python plugin/cli/compass self-update --force` so `.claude/` carries TASK-346 and TASK-347 in this repo, and confirm the hook writes rows here - complexity: S, depends_on: TASK-346, TASK-347, files: [plugin/.claude-plugin/plugin.json]
   - Automated verification: `diff -r plugin/cli .claude/cli` shows no difference in `stationlib.py`, `capture_signal.py` and `stations.py`; after one spawned tester in this repo, `.compass/meta/station-log.jsonl` has a row with station and model set; `python .claude/cli/compass stations` prints it.
   - Manual verification: none.
 
