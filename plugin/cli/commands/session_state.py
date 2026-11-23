@@ -264,7 +264,7 @@ def _touched(transcript, root):
 
 def _open_tasks(root, at=None):
     if at:
-        text = _git(root, "show", f"{at}:.compass/active.md") or ""
+        text = _git(root, "show", f"{at}:./.compass/active.md") or ""
     else:
         try:
             text = (root / ".compass" / "active.md").read_text(encoding="utf-8", errors="replace")
@@ -295,7 +295,7 @@ def _document_decisions(touched, root, at=None):
             if path.suffix.lower() != ".md":
                 continue
             if at:
-                text = _git(root, "show", f"{at}:.compass/{inside.as_posix()}")
+                text = _git(root, "show", f"{at}:./.compass/{inside.as_posix()}")
                 if text is None:
                     continue
             else:
