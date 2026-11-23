@@ -50,6 +50,7 @@ import re
 import subprocess
 import sys
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -76,6 +77,7 @@ REPORT_GLOB = "DRIFT-*.md"
 LOCK_NAME = "drift.lock"
 LOCK_STALE_SECONDS = 600
 LOCK_ENV = "COMPASS_DRIFT_LOCK"
+LOCK_TOKEN_ENV = "COMPASS_DRIFT_LOCK_TOKEN"
 COMPASS_SCRIPT = Path(__file__).resolve().parent.parent / "compass"
 KEY_COLUMNS = ("Class", "File", "Line", "Cites")
 CLEAN = "clean"
@@ -381,43 +383,54 @@ def _append_log(folder, row):
 
 def _take_lock(path):
     """Create the lock file exclusively; a lock older than `LOCK_STALE_SECONDS`
-    is replaced. True when this process now holds the lock."""
+    is replaced. Returns the token written into the lock when this process now
+    holds it, None otherwise."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    token = f"{os.getpid()}-{uuid.uuid4().hex}"
     for _ in range(2):
         try:
             with open(path, "x", encoding="utf-8") as handle:
-                handle.write(f"{os.getpid()}\n")
-            return True
+                handle.write(token + "\n")
+            return token
         except FileExistsError:
             try:
                 age = time.time() - os.stat(path).st_mtime
             except OSError:
                 continue
             if age <= LOCK_STALE_SECONDS:
-                return False
+                return None
             try:
                 os.remove(path)
             except OSError:
-                return False
+                return None
         except OSError:
-            return False
-    return False
+            return None
+    return None
 
 
-def _release_lock(path):
+def _release_lock(path, token=None):
+    """Remove the lock. With a token, the lock is removed only while it still
+    holds that token, so a scan whose stale lock a later hook reclaimed leaves
+    the later scan's lock in place."""
     try:
+        if token is not None:
+            with open(path, encoding="utf-8") as handle:
+                if handle.read().strip() != token:
+                    return
         os.remove(path)
     except OSError:
         pass
 
 
-def _spawn_scan(project, lock):
+def _spawn_scan(project, lock, token):
     """Start a detached `compass drift` for `project`; it removes `lock` when
-    it ends. False when the process could not be started."""
+    it ends, provided the lock still holds `token`. False when the process
+    could not be started."""
     argv = [sys.executable, str(COMPASS_SCRIPT), "drift"]
     kwargs = {
         "cwd": project,
-        "env": {**os.environ, "CLAUDE_PROJECT_DIR": project, LOCK_ENV: lock},
+        "env": {**os.environ, "CLAUDE_PROJECT_DIR": project, LOCK_ENV: lock,
+                LOCK_TOKEN_ENV: token},
         "stdin": subprocess.DEVNULL,
         "stdout": subprocess.DEVNULL,
         "stderr": subprocess.DEVNULL,
@@ -447,10 +460,11 @@ def run_hook():
         if row is not None and row.get("head") == head:
             return 0
         lock = os.path.join(os.fspath(vault), "tmp", LOCK_NAME)
-        if not _take_lock(lock):
+        token = _take_lock(lock)
+        if token is None:
             return 0
-        if not _spawn_scan(project, lock):
-            _release_lock(lock)
+        if not _spawn_scan(project, lock, token):
+            _release_lock(lock, token)
     except (OSError, DriftError):
         pass
     return 0
@@ -504,11 +518,12 @@ def run(args):
     if "--hook" in args:
         return run_hook()
     lock = os.environ.get(LOCK_ENV)
+    token = os.environ.get(LOCK_TOKEN_ENV)
     try:
         return _run_scan(args)
     finally:
         if lock:
-            _release_lock(lock)
+            _release_lock(lock, token)
 
 
 def _run_scan(args):

@@ -141,6 +141,45 @@ class LockReleaseTests(unittest.TestCase):
         self.assertFalse((Path(repo) / LOCK).exists())
 
 
+class LockOwnershipTests(unittest.TestCase):
+    def test_a_scan_whose_stale_lock_was_reclaimed_leaves_the_new_lock(self):
+        """Adversarial where: a scan running past the stale bound has its lock
+        reclaimed by a later hook, then its own exit removes the later scan's
+        lock, so a third session start spawns a scan beside the second."""
+        repo = plain_repo(self)
+        lock = Path(repo) / LOCK
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        first = drift._take_lock(str(lock))
+        self.assertIsNotNone(first)
+        stamp = time.time() - (drift.LOCK_STALE_SECONDS + 1)
+        os.utime(lock, (stamp, stamp))
+        second = drift._take_lock(str(lock))
+        self.assertIsNotNone(second)
+        self.assertNotEqual(first, second)
+        env = {drift.LOCK_ENV: str(lock), drift.LOCK_TOKEN_ENV: first}
+        with mock.patch.dict(os.environ, env):
+            code, _out, _err = run_drift(self, repo)
+        self.assertEqual(code, 0)
+        self.assertTrue(lock.exists(), "the first scan removed the second scan's lock")
+        self.assertEqual(lock.read_text(encoding="utf-8").strip(), second)
+        with mock.patch.dict(os.environ, {drift.LOCK_ENV: str(lock),
+                                          drift.LOCK_TOKEN_ENV: second}):
+            code, _out, _err = run_drift(self, repo)
+        self.assertEqual(code, 0)
+        self.assertFalse(lock.exists(), "the owning scan left its lock behind")
+
+    def test_the_spawned_scan_receives_the_token_the_hook_wrote(self):
+        """Adversarial where: the hook writes one token and hands the scan
+        another (or none), so the scan can never release its own lock."""
+        repo = plain_repo(self)
+        write_log(repo, [log_row("0" * 40)])
+        _code, _out, spawned = run_hook(self, repo)
+        self.assertEqual(len(spawned), 1)
+        token = spawned[0][1]["env"][drift.LOCK_TOKEN_ENV]
+        written = (Path(repo) / LOCK).read_text(encoding="utf-8").strip()
+        self.assertEqual(token, written)
+
+
 class LockBoundaryTests(unittest.TestCase):
     def test_staleness_bound_sits_between_599_and_601_seconds(self):
         """Adversarial where: the stale bound is off by a minute (a 599 s lock
