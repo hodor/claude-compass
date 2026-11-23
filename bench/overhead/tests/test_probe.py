@@ -2221,3 +2221,339 @@ def test_report_counts_the_no_state_points_of_each_arm_and_scores_none_of_them(t
     assert re.search(r"no[- ]state", text, re.IGNORECASE)
     assert re.search(r"mechanical\D*\b1\b", text)
     assert re.search(r"compass\D*\b2\b", text)
+
+
+# mechanical and compass arms: implementation-visible branches ------------------
+
+def _fake_compass_source():
+    return '''\
+import json, os, sys, time
+case = os.environ.get("ZQ_CASE", "ok")
+log = os.environ.get("ZQ_LOG")
+if log:
+    with open(log, "w", encoding="utf-8") as handle:
+        json.dump({"argv": sys.argv[1:], "cwd": os.getcwd(), "env": dict(os.environ)}, handle)
+if case == "blank":
+    sys.stdout.write("  \\n\\t\\n")
+elif case == "fail":
+    print("ZQFAILED partial block")
+    sys.exit(3)
+elif case == "padded":
+    sys.stdout.buffer.write(b"\\n\\n  ZQPADDED first line\\n  second line\\n\\n\\n")
+elif case == "bytes":
+    sys.stdout.buffer.write(b"ZQBYTES \\xff\\xfe tail\\n")
+elif case == "hang":
+    time.sleep(60)
+else:
+    print("ZQFAKEBLOCK")
+'''
+
+
+def _fake_cli_repo(tmp_path):
+    """A committed repository whose `plugin/cli/compass` is a script driven by ZQ_CASE."""
+    root = tmp_path / "fake-cli-repo"
+    (root / "plugin" / "cli").mkdir(parents=True)
+    (root / "plugin" / "cli" / "compass").write_text(_fake_compass_source(), encoding="utf-8")
+    _git_at(root, "init", "-q")
+    _git_at(root, "add", ".")
+    _git_at(root, "commit", "-q", "-m", "fake cli", moment=FIRST_COMMIT)
+    return root
+
+
+def _point_with_stamp(tmp_path, private_root, cwd, stamp, *, branch="main", name="stamp-point"):
+    """A point whose boundary record carries `stamp` verbatim (None leaves the field out)."""
+    folder = tmp_path / name
+    folder.mkdir()
+    stamped = boundary(3)
+    if stamp is None:
+        stamped.pop("timestamp", None)
+    else:
+        stamped["timestamp"] = stamp
+    records = [user(0, "go"), _plain_edit(1, EDITED_PATH), tool_result(2, "ok"), stamped,
+               summary(4, f"{STATE_SUMMARY} summary."), _plain_edit(5, LATER_EDIT)]
+    for record in records:
+        record["cwd"] = str(cwd)
+        record["gitBranch"] = branch
+    write_transcript(folder, "t.jsonl", records)
+    (found,) = probe.find(folder)
+    probe.build(found["point"], private_root=private_root)
+    return found["point"]
+
+
+@pytest.mark.parametrize("stamp, present, absent", [
+    pytest.param("2026-02-01T05:00:00Z", LATER_TASK, (OPEN_TASK,), id="z-suffix-on-the-commit-second"),
+    pytest.param("2026-02-01T07:00:00+02:00", LATER_TASK, (OPEN_TASK,), id="positive-offset-naming-the-commit-instant"),
+    pytest.param("2026-02-01T06:59:59+02:00", OPEN_TASK, (LATER_TASK,), id="positive-offset-one-second-short"),
+    pytest.param("2026-02-01T00:00:00-05:00", LATER_TASK, (OPEN_TASK,), id="negative-offset-naming-the-commit-instant"),
+    pytest.param("2026-02-01T05:00:00.999999Z", LATER_TASK, (OPEN_TASK,), id="microseconds-past-the-commit-second"),
+    pytest.param("2026-02-01T04:59:59.999999Z", OPEN_TASK, (LATER_TASK,), id="microseconds-just-short-of-the-commit"),
+    pytest.param("2026-02-01T05:00:00", LATER_TASK, (OPEN_TASK,), id="no-zone-is-read-as-utc"),
+])
+def test_the_boundary_stamp_is_compared_as_an_instant_whatever_its_zone_or_fraction(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply, stamp, present, absent):
+    """Adversarial where: a stamp compared as text or with its offset dropped
+    (02:00+02:00 read as 07:00 or as 05:00), a fraction rounded up past the next
+    second, or a zone-less stamp read in the machine's local zone, any of which
+    picks a different commit by hours or by one second at the line."""
+    point = _point_with_stamp(tmp_path, private_root, state_repo, stamp)
+    fake_reply.reply("{}")
+
+    _ask_state(point, "mechanical", cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    assert present in call["stdin"]
+    for other in absent:
+        assert other not in call["stdin"]
+
+
+@pytest.mark.parametrize("stamp", [
+    pytest.param(None, id="no-timestamp-field"),
+    pytest.param("", id="empty-stamp"),
+    pytest.param("yesterday at noon", id="not-a-time"),
+    pytest.param("2026-13-45T99:00:00Z", id="out-of-range-fields"),
+])
+def test_a_boundary_with_no_usable_stamp_is_a_no_state_point_and_starts_no_session(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply, stamp):
+    """Adversarial where: a missing or unparsable stamp that raises out of `ask`
+    (losing the run) or falls back to HEAD, which would grade the arm on a state
+    from after the compaction."""
+    point = _point_with_stamp(tmp_path, private_root, state_repo, stamp)
+
+    _ask_state(point, "mechanical", cli_repo, private_root, fake_reply)
+
+    assert fake_reply.calls() == []
+    assert _stored_ask(point, private_root, "mechanical")["no_state"] is True
+
+
+def test_branch_names_with_slashes_and_tag_namesakes_are_resolved_as_branches(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a slashed branch name (`feature/deep/name`) cut at its
+    first slash or not found, a branch name that is also a tag (git reads the tag
+    first for a bare name), and a branch name that is no valid ref at all (which
+    must read HEAD, not abort)."""
+    _git_at(state_repo, "switch", "-q", "-c", "feature/deep/name", "main~1")
+    _commit_active(state_repo, "ZQSLASHTASK", _utc(1, 30))
+    _git_at(state_repo, "switch", "-q", "main")
+    _git_at(state_repo, "tag", "side", "main~1")
+    rows = [
+        ("feature/deep/name", "ZQSLASHTASK", OPEN_TASK),
+        ("side", SIDE_TASK, "ZQSLASHTASK"),
+        ("bad..name", OPEN_TASK, "ZQSLASHTASK"),
+        ("with space", OPEN_TASK, "ZQSLASHTASK"),
+    ]
+    for number, (branch, present, absent) in enumerate(rows):
+        point = _point_with_stamp(tmp_path, private_root, state_repo, _iso(BOUNDARY_STAMP),
+                                  branch=branch, name=f"p{number}")
+        fake_reply.reply("{}")
+        before = len(fake_reply.calls())
+
+        _ask_state(point, "mechanical", cli_repo, private_root, fake_reply)
+
+        prompt = fake_reply.calls()[before]["stdin"]
+        assert present in prompt, branch
+        assert absent not in prompt, branch
+
+
+def test_the_session_state_command_gets_the_boundary_arguments_the_working_folder_and_an_intact_environment(
+        tmp_path, private_root, state_repo, fake_reply, monkeypatch):
+    """Adversarial where: an argument list with the wrong index, commit or format,
+    a command run in the caller's folder instead of the key's `cwd`, and an
+    environment rebuilt from nothing (PATH and every other variable gone) while
+    CLAUDE_PROJECT_DIR is removed."""
+    fake = _fake_cli_repo(tmp_path)
+    monkeypatch.setenv("ZQ_MARK", "kept")
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+    transcript = next((tmp_path / "state-point").glob("*.jsonl"))
+    log = tmp_path / "state-command.json"
+    parent_env = dict(os.environ, ZQ_LOG=str(log), CLAUDE_PROJECT_DIR=str(tmp_path / "decoy"))
+    fake_reply.reply("{}")
+
+    _ask_state(point, "mechanical", fake, private_root, fake_reply, parent_env=parent_env)
+
+    seen = json.loads(log.read_text(encoding="utf-8"))
+    argv = seen["argv"]
+    assert argv[0] == "session-state"
+    flags = dict(zip(argv[1::2], argv[2::2]))
+    assert set(flags) == {"--transcript", "--until", "--at", "--format"}
+    assert Path(flags["--transcript"]).samefile(transcript)
+    assert flags["--until"] == "3"
+    assert flags["--format"] == "block"
+    first = subprocess.run(["git", "-C", str(state_repo), "rev-parse", "main~1"],
+                           capture_output=True, text=True, check=True).stdout.strip()
+    assert flags["--at"] == first
+    assert Path(seen["cwd"]).samefile(state_repo)
+    assert "CLAUDE_PROJECT_DIR" not in seen["env"]
+    assert seen["env"].get("ZQ_MARK") == "kept"
+    assert seen["env"].get("PATH") == os.environ.get("PATH")
+
+
+@pytest.mark.parametrize("case, carried, stored_block", [
+    pytest.param("padded", "ZQPADDED first line\n  second line", "ZQPADDED first line\n  second line",
+                 id="outer-whitespace-trimmed-inner-kept"),
+    pytest.param("bytes", "ZQBYTES", None, id="invalid-utf8-bytes-are-replaced-not-fatal"),
+])
+def test_the_block_is_the_commands_output_trimmed_and_decoded_leniently(
+        tmp_path, private_root, state_repo, fake_reply, case, carried, stored_block):
+    """Adversarial where: a trailing newline left in the stored block, an inner
+    indent removed along with the outer whitespace, or a UnicodeDecodeError from
+    stray bytes that loses the point."""
+    fake = _fake_cli_repo(tmp_path)
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+    fake_reply.reply("{}")
+
+    _ask_state(point, "mechanical", fake, private_root, fake_reply,
+               parent_env=dict(os.environ, ZQ_CASE=case))
+
+    (call,) = fake_reply.calls()
+    assert carried in call["stdin"]
+    stored = _stored_ask(point, private_root, "mechanical")
+    if stored_block is not None:
+        assert stored["block"] == stored_block
+    assert stored["block"] == stored["block"].strip()
+
+
+@pytest.mark.parametrize("case", [
+    pytest.param("blank", id="whitespace-only-output"),
+    pytest.param("fail", id="non-zero-exit-with-partial-output"),
+])
+@pytest.mark.parametrize("arm", ["mechanical", "compass"])
+def test_a_command_that_prints_nothing_usable_or_fails_leaves_a_no_state_record(
+        tmp_path, private_root, state_repo, fake_reply, case, arm):
+    """Adversarial where: whitespace-only output carried as an empty block (the
+    session then answers from no state and is graded as the arm's failure), or the
+    partial output of a failed command carried as if it were the block."""
+    fake = _fake_cli_repo(tmp_path)
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+
+    _ask_state(point, arm, fake, private_root, fake_reply, parent_env=dict(os.environ, ZQ_CASE=case))
+
+    assert fake_reply.calls() == []
+    stored = _stored_ask(point, private_root, arm)
+    assert stored["no_state"] is True
+    assert "block" not in stored
+
+
+def test_a_command_that_outlives_the_state_timeout_leaves_a_no_state_record(
+        tmp_path, private_root, state_repo, fake_reply, monkeypatch):
+    """Adversarial where: a hung `session-state` that stalls the whole probe run
+    (no timeout) or escapes as a TimeoutExpired instead of a no-state record."""
+    monkeypatch.setattr(probe, "STATE_TIMEOUT", 8)
+    fake = _fake_cli_repo(tmp_path)
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+
+    _ask_state(point, "mechanical", fake, private_root, fake_reply,
+               parent_env=dict(os.environ, ZQ_CASE="hang"))
+
+    assert fake_reply.calls() == []
+    assert _stored_ask(point, private_root, "mechanical")["no_state"] is True
+
+
+def test_the_compass_arm_without_a_usable_summary_raises_before_any_session(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a compass arm whose summary is missing that runs on the
+    block alone (and so is graded as the arm that holds both texts), or reaches
+    the session with an empty first part."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo, with_summary=False)
+
+    with pytest.raises(probe.NoSummary):
+        _ask_state(point, "compass", cli_repo, private_root, fake_reply)
+
+    assert fake_reply.calls() == []
+
+
+def test_the_compass_arm_at_a_subagent_point_needs_no_repository_state(
+        tmp_path, private_root, cli_repo, fake_reply):
+    """Adversarial where: the repository lookup made before the subagent test, so
+    a subagent point whose working folder is gone becomes a no-state point though
+    its arm carries the summary alone and needs no state."""
+    point = _boundary_state_point(tmp_path, private_root, tmp_path / "gone", subagent=True)
+    fake_reply.reply("{}")
+
+    _ask_state(point, "compass", cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    assert STATE_SUMMARY in call["stdin"]
+    stored = _stored_ask(point, private_root, "compass")
+    assert "no_state" not in stored
+    assert "block" not in stored
+
+
+def test_the_mechanical_arm_at_a_subagent_point_renders_the_block_from_the_subagent_transcript(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: the subagent special case applied to the mechanical arm
+    too (the arm is the block alone, so a subagent point would lose its only text),
+    or `--until` indexing the wrong transcript for a subagent point."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo, subagent=True)
+    fake_reply.reply("{}")
+
+    _ask_state(point, "mechanical", cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    assert BLOCK_TITLE in call["stdin"] and OPEN_TASK in call["stdin"]
+    assert STATE_SUMMARY not in call["stdin"]
+
+
+def test_a_working_folder_inside_the_repository_resolves_the_same_commit(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a key `cwd` that is a subfolder of the repository (a
+    session that had changed into `src/`) failing the commit lookup or the vault
+    lookup, so most real points would be no-state points."""
+    sub = state_repo / "src"
+    sub.mkdir()
+    point = _point_with_stamp(tmp_path, private_root, sub, _iso(BOUNDARY_STAMP))
+    fake_reply.reply("{}")
+
+    _ask_state(point, "mechanical", cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    assert OPEN_TASK in call["stdin"]
+
+
+def _graded_point(tmp_path, private_root, cwd, cli_repo, fake_reply, name, arms):
+    point = _boundary_state_point(tmp_path, private_root, cwd, name=name)
+    fake_reply.reply(json.dumps({"artifact": [EDITED_PATH]}))
+    _store_reply(point, private_root, "host-summary", {"artifact": [EDITED_PATH]})
+    for arm in arms:
+        _ask_state(point, arm, cli_repo, private_root, fake_reply)
+    probe.grade(point, private_root=private_root)
+    return point
+
+
+def test_report_over_graded_and_no_state_points_counts_each_apart_and_leaks_no_block(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a no-state point folded into an arm's `points` column or
+    mean, one arm's no-state count charged to the other, the no-state line missing
+    for the arm that has them, or the stored block (state text, paths, tasks)
+    reaching the report."""
+    _graded_point(tmp_path, private_root, state_repo, cli_repo, fake_reply, "graded", ("mechanical", "compass"))
+    _graded_point(tmp_path, private_root, tmp_path / "gone", cli_repo, fake_reply, "stateless", ("mechanical", "compass"))
+
+    text = probe.report(private_root=private_root)
+
+    rows = _main_rows(text)
+    assert rows[("mechanical", "artifact")][2] == "1"
+    assert rows[("compass", "artifact")][2] == "1"
+    assert rows[("host-summary", "artifact")][2] == "2"
+    lines = text.splitlines()
+    assert "no-state points, compass: 1" in lines
+    assert "no-state points, mechanical: 1" in lines
+    assert not [line for line in lines if line.startswith("no-state points, host-summary")]
+    for secret in (BLOCK_TITLE, OPEN_TASK, EDITED_PATH, STATE_SUMMARY, UNCOMMITTED_FILE):
+        assert secret not in text
+
+
+def test_a_point_asked_again_into_no_state_drops_the_grade_of_its_earlier_reply(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a stale `grade-<arm>.json` left behind when a re-run of
+    `ask` stores a no-state record (the commit no longer resolves), so the report
+    scores the old reply and counts the same point as no-state too."""
+    point = _graded_point(tmp_path, private_root, state_repo, cli_repo, fake_reply, "regraded", ("mechanical",))
+    assert (probe._point_dir(point, private_root) / "grade-mechanical.json").is_file()
+    topics.write_json(probe._point_dir(point, private_root) / "ask-mechanical.json",
+                      {"point": point, "arm": "mechanical", "no_state": True})
+
+    probe.grade(point, private_root=private_root)
+    text = probe.report(private_root=private_root)
+
+    assert ("mechanical", "artifact") not in _main_rows(text)
+    assert "no-state points, mechanical: 1" in text.splitlines()
