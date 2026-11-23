@@ -68,14 +68,6 @@ Plan: [[PLAN-031-screenplays-in-the-vault]]; each task's full text, files and ch
 
 Plan: [[PLAN-032-consolidation-grounded-in-sources]]; each task's full text, files and checks are there.
 
-- [ ] TASK-301: Register `drift` and `lesson-check` in `COMMAND_SPECS` with one-line help each; handlers arrive in TASK-305 and TASK-306 and report... - complexity: S, depends_on: none
-- [ ] TASK-302: Sync refreshes existing catalog rows from their lesson files: `status`, `category`, `area`, `tags`, `score` and `escalated` are... - complexity: M, depends_on: none
-- [ ] TASK-303: `driftlib.py` code-reference classifier - complexity: M, depends_on: none
-- [ ] TASK-304: Add the text checks to `driftlib.py`: each `[[link]] - desc` line in every `index.md` (parsed with sync's `ENTRY_PATTERN`) against its... - complexity: S, depends_on: TASK-303
-- [ ] TASK-305: `compass drift` command - complexity: M, depends_on: TASK-301, TASK-304
-- [ ] TASK-306: `compass lesson-check <lesson> [--base REV]` mechanical admission check, base default `HEAD` - complexity: M, depends_on: TASK-301, TASK-305
-- [ ] TASK-307: Skills edit lessons by delta - complexity: M, depends_on: TASK-302, TASK-306
-- [ ] TASK-308: Seeded-staleness probe for the script half ([[AXIS-5-gap-pass]] f4-f5) - complexity: M, depends_on: TASK-305
 - [ ] TASK-309: Ship Wave 1: bump `plugin/.claude-plugin/plugin.json` minor version and copy the changed `plugin/` files (both new command modules,... - complexity: S, depends_on: TASK-307, TASK-308
 
 ## PLAN-034 Wave 1: checking cost follows task and model
@@ -87,16 +79,6 @@ Plan: [[PLAN-034-checking-cost-follows-task-and-model]]; each task's full text, 
 - [ ] TASK-351: Two smoke builds on the subscription, one at a time - complexity: S, depends_on: TASK-343, TASK-346, TASK-349
 - [ ] TASK-352: The per-part spread pilot - complexity: M, depends_on: TASK-344, TASK-345, TASK-351
 
-## PLAN-033 Wave 1: compaction keeps the session state
-
-Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, files and checks are there.
-
-- [ ] TASK-330: Transcript readers for the session state - complexity: M, depends_on: none
-- [ ] TASK-331: `compass session-state` prints the state block - complexity: M, depends_on: TASK-330
-- [ ] TASK-332: Register the compaction hooks - complexity: S, depends_on: TASK-331
-- [ ] TASK-333: The handoff takes its mechanical sections from the command - complexity: S, depends_on: TASK-331
-- [ ] TASK-334: Live compaction trial in this repo - complexity: S, depends_on: TASK-332, TASK-333
-- [ ] TASK-335: Probe runner in `bench/overhead` - complexity: M, depends_on: none
 ## PLAN-035 Wave 1: prompt cache as a design input
 
 Plan: [[PLAN-035-prompt-cache-is-a-design-input]]; each task's full text, files and checks are there.
@@ -110,17 +92,6 @@ Plan: [[PLAN-035-prompt-cache-is-a-design-input]]; each task's full text, files 
 
 Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files and checks are there.
 
-- [ ] TASK-400: `compass requirements <spec>` lists a spec's requirements - complexity: M, depends_on: none
-- [ ] TASK-401: `compass reach --report <file> --diff <range> [--repo <dir>]` intersects a coverage report with a diff - complexity: L, depends_on: none
-- [ ] TASK-402: `compass ablate TASK-NNN --cmd "<test command with {tests}>" [--refactor] [--merge <sha>]` checks that the task's tests depend on its code - complexity: L, depends_on: none
-- [ ] TASK-403: `compass evidence run --task TASK-NNN --check <slug> -- <command...>` keeps a check rerunnable; `compass evidence rerun <record>` reruns... - complexity: M, depends_on: none
-- [ ] TASK-405: Model family - complexity: S, depends_on: none
-- [ ] TASK-404: Register the commands: four `COMMAND_SPECS` lines in `plugin/cli/maincli.py` for `requirements`, `reach`, `ablate` and `evidence`, in... - complexity: S, depends_on: TASK-400, TASK-401, TASK-402, TASK-403, TASK-405
-- [ ] TASK-407: The entry point is named in the plan, and research reports name their model - complexity: S, depends_on: none
-- [ ] TASK-406: Validator steps 4h, 4i and 4j in `plugin/templates/agents/validator.md`, each per task, each run through `compass evidence run --task... - complexity: M, depends_on: TASK-404, TASK-407
-- [ ] TASK-408: The builder's review adds correctness against the spec - complexity: S, depends_on: TASK-404
-- [ ] TASK-409: The build loop takes the validator's new FAILs - complexity: M, depends_on: TASK-404
-- [ ] TASK-410: The reviewer matrix records model family - complexity: S, depends_on: TASK-404, TASK-407
 - [ ] TASK-411: Release and local refresh: bump `plugin/.claude-plugin/plugin.json` to the next minor, run `python plugin/cli/compass self-update... - complexity: S, depends_on: TASK-406, TASK-408, TASK-409, TASK-410
 - [ ] TASK-412: The planted-defect probe, the spec's KPI. `bench/verification/planted.py` builds a throwaway Python project in a temp folder with its... - complexity: M, depends_on: TASK-411
 
