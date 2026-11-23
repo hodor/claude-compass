@@ -67,6 +67,7 @@ import pytest
 
 import fake_claude
 import probe
+import topics
 from fake_reply_claude import fake_reply  # noqa: F401  (pytest fixture)
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "probe-session.jsonl"
@@ -1242,3 +1243,434 @@ def test_recall_count_is_not_credited_for_a_different_count_sharing_its_digits()
     literal `3 failed`, so a wrong count earns full marks on the likeliest recall
     literal."""
     assert probe._score_text("13 failed", "3 failed", False) == 0.0
+
+
+# latest-stretch artifact, shortened error quotes, pooled state, paired intervals ----
+
+TWO_BOUNDARIES = Path(__file__).resolve().parent / "fixtures" / "probe-two-boundaries.jsonl"
+FIRST_EDITS = ["src/alpha.py", "src/beta.py"]
+ALL_EDITS = ["src/alpha.py", "src/beta.py", "src/gamma.py", "docs/delta.md"]
+RECENT_EDITS = ["src/gamma.py", "docs/delta.md", "src/alpha.py"]
+FIXTURE_STRINGS = (
+    "alpha.py", "beta.py", "gamma.py", "delta.md", "epsilon", "zeta", "work/sample", "widgets",
+    "FIXSUMMARY", "claude-haiku",
+)
+
+
+@pytest.fixture
+def two_points(tmp_path):
+    """The two boundary points of the two-boundary fixture, earlier one first."""
+    folder = tmp_path / "two-boundaries"
+    folder.mkdir()
+    shutil.copy(TWO_BOUNDARIES, folder / "probe-two-boundaries.jsonl")
+    found = probe.find(folder)
+    assert [item["boundary"] for item in found] == [5, 15]
+    return [item["point"] for item in found]
+
+
+def _store_reply(point, private_root, arm, reply):
+    """Store the raw reply of `arm` the way `ask` stores it, without a session."""
+    text = reply if isinstance(reply, str) else json.dumps(reply)
+    stored = {"point": point, "arm": arm, "reply": text, "tokens": {}}
+    topics.write_json(probe._point_dir(point, private_root) / f"ask-{arm}.json", stored)
+
+
+def _score_value(score):
+    """The number of a score: an artifact-style score reads as its recall."""
+    return score["recall"] if isinstance(score, dict) else score
+
+
+def _write_grade(private_root, folder, arm, scores):
+    target = private_root / "probes" / folder
+    target.mkdir(parents=True, exist_ok=True)
+    topics.write_json(target / f"grade-{arm}.json", {
+        "point": folder, "arm": arm, "unparsed": False, "scores": scores, "input_tokens": 0})
+
+
+def _table_blocks(text):
+    """The markdown tables of `text`, each a list of its lines, first table first."""
+    blocks, current = [], []
+    for line in text.splitlines():
+        if line.strip().startswith("|"):
+            current.append(line)
+        elif current:
+            blocks.append(current)
+            current = []
+    if current:
+        blocks.append(current)
+    return blocks
+
+
+def _paired_row(text, kind):
+    """(cells, line) of the row for probe type `kind` in a table after the first one."""
+    for block in _table_blocks(text)[1:]:
+        for line in block:
+            if kind in _cells(line):
+                return _cells(line), line
+    raise AssertionError(f"no paired row for {kind}:\n{text}")
+
+
+def _decimals(line):
+    return [float(number) for number in re.findall(r"[-+]?\d+\.\d+", line)]
+
+
+def _main_rows(text):
+    return {(_cells(line)[0], _cells(line)[1]): _cells(line) for line in _table_blocks(text)[0][2:]}
+
+
+# build: expected_recent
+
+def test_build_stores_the_edits_made_since_the_previous_boundary(two_points, private_root):
+    """Adversarial where: expected_recent taken as the whole trail, as only the paths
+    new since the earlier boundary (dropping a path edited again), as including a
+    Read path or an edit after the boundary, or as cut by an earlier boundary only
+    when one exists (the first point must keep every edit)."""
+    first = probe_by_id(probe.build(two_points[0], private_root=private_root))["artifact"]
+    second_key = probe.build(two_points[1], private_root=private_root)
+    second = probe_by_id(second_key)["artifact"]
+
+    assert sorted(first["expected"]) == sorted(FIRST_EDITS)
+    assert sorted(first["expected_recent"]) == sorted(FIRST_EDITS)
+    assert sorted(second["expected"]) == sorted(ALL_EDITS)
+    assert sorted(second["expected_recent"]) == sorted(RECENT_EDITS)
+    stored = topics.read_json(probe._point_dir(two_points[1], private_root) / "key.json")
+    assert sorted(probe_by_id(stored)["artifact"]["expected_recent"]) == sorted(RECENT_EDITS)
+    assert "zeta" not in json.dumps(second_key) and "epsilon" not in json.dumps(second_key)
+
+
+def _three_boundaries():
+    return [
+        user(0, "go"), _plain_edit(1, "a.py"), tool_result(2, "ok"), boundary(3), summary(4),
+        _plain_edit(5, "b.py"), tool_result(6, "ok"), boundary(7), summary(8),
+        _plain_edit(9, "c.py", "Write"), tool_result(10, "ok"), boundary(11), summary(12),
+    ]
+
+
+def _sidechain_boundary_between_edits():
+    marker = boundary(2)
+    marker["isSidechain"] = True
+    return [user(0, "go"), _plain_edit(1, "a.py"), marker, _plain_edit(3, "b.py"), tool_result(4, "ok"),
+            boundary(5), summary(6)]
+
+
+def _quoted_marker_between_edits():
+    quote = 'log line {"type": "system", "subtype": "compact_boundary"} was printed'
+    return [user(0, "go"), _plain_edit(1, "a.py"), user(2, quote), _plain_edit(3, "b.py"),
+            tool_result(4, "ok"), boundary(5), summary(6)]
+
+
+@pytest.mark.parametrize("name, records, boundary_index, expected, recent", [
+    ("middle of three boundaries", _three_boundaries(), 7, ["a.py", "b.py"], ["b.py"]),
+    ("last of three boundaries", _three_boundaries(), 11, ["a.py", "b.py", "c.py"], ["c.py"]),
+    ("sidechain boundary is another side", _sidechain_boundary_between_edits(), 5, ["a.py", "b.py"],
+     ["a.py", "b.py"]),
+    ("quoted marker is no boundary", _quoted_marker_between_edits(), 5, ["a.py", "b.py"], ["a.py", "b.py"]),
+])
+def test_recent_window_starts_after_the_last_earlier_boundary_on_the_points_side(
+        tmp_path, private_root, name, records, boundary_index, expected, recent):
+    """Adversarial where: the window cut at the first boundary instead of the last
+    earlier one, cut by a subagent's boundary or by text that quotes the marker, or
+    one that keeps the edits made before the cut."""
+    folder = _new_folder(tmp_path)
+    write_transcript(folder, "t.jsonl", records)
+    (found,) = [item for item in probe.find(folder) if item["boundary"] == boundary_index]
+
+    artifact = probe_by_id(probe.build(found["point"], private_root=private_root))["artifact"]
+
+    assert sorted(artifact["expected"]) == sorted(expected), name
+    assert sorted(artifact["expected_recent"]) == sorted(recent), name
+
+
+def test_build_on_a_key_without_expected_recent_adds_it_and_changes_nothing_else(two_points, private_root):
+    """Adversarial where: a migrating build that re-derives the whole key (and so
+    replaces the frozen questions, model or expected paths the stored replies were
+    graded against), rewrites stored replies, or leaves the key open to a further
+    build once the field is back."""
+    probe.build(two_points[1], private_root=private_root)
+    folder = probe._point_dir(two_points[1], private_root)
+    legacy = topics.read_json(folder / "key.json")
+    artifact = probe_by_id(legacy)["artifact"]
+    del artifact["expected_recent"]
+    artifact["question"] = "FROZEN WORDING of the artifact question"
+    artifact["expected"] = ["src/alpha.py", "docs/delta.md"]
+    legacy["model"] = "claude-opus-4-1"
+    topics.write_json(folder / "key.json", legacy)
+    _store_reply(two_points[1], private_root, "host-summary", {"artifact": ["src/alpha.py"]})
+    reply_before = (folder / "ask-host-summary.json").read_bytes()
+
+    probe.build(two_points[1], private_root=private_root)
+
+    migrated = topics.read_json(folder / "key.json")
+    assert sorted(probe_by_id(migrated)["artifact"]["expected_recent"]) == sorted(RECENT_EDITS)
+    del probe_by_id(migrated)["artifact"]["expected_recent"]
+    assert migrated == legacy
+    assert (folder / "ask-host-summary.json").read_bytes() == reply_before
+    with pytest.raises(probe.AlreadyFrozen):
+        probe.build(two_points[1], private_root=private_root)
+
+
+# grade: artifact-recent
+
+def test_grade_scores_the_one_reply_against_the_whole_trail_and_against_the_recent_edits(
+        two_points, private_root):
+    """Adversarial where: artifact-recent scored against the whole trail (the same
+    number as artifact), against the paths new since the boundary, or a reply naming
+    only an old edit credited on the latest stretch."""
+    probe.build(two_points[1], private_root=private_root)
+    _store_reply(two_points[1], private_root, "host-summary", {"artifact": RECENT_EDITS})
+    _store_reply(two_points[1], private_root, "none", {"artifact": ["src/beta.py"]})
+
+    graded = probe.grade(two_points[1], private_root=private_root)
+
+    host, floor = graded["host-summary"]["scores"], graded["none"]["scores"]
+    assert _score_value(host["artifact-recent"]) == 1.0
+    assert host["artifact"]["recall"] == 0.75 and host["artifact"]["precision"] == 1.0
+    assert _score_value(floor["artifact-recent"]) == 0.0
+    assert floor["artifact"]["recall"] == 0.25
+
+
+def test_a_point_with_no_edit_since_the_earlier_boundary_has_no_artifact_recent_score(
+        tmp_path, private_root):
+    """Adversarial where: an empty recent set scored as a perfect or a zero score
+    (0/0 reported as 1.0 or 0.0), so the arm is rewarded or punished for a probe the
+    point never had; the artifact score must stay."""
+    folder = _new_folder(tmp_path)
+    write_transcript(folder, "t.jsonl", [
+        user(0, "go"), _plain_edit(1, "a.py"), tool_result(2, "ok"), boundary(3), summary(4),
+        user(5, "next"), assistant(6, "reading", ("Read", {"file_path": "a.py"})), tool_result(7, "ok"),
+        boundary(8), summary(9)])
+    (found,) = [item for item in probe.find(folder) if item["boundary"] == 8]
+    built = probe_by_id(probe.build(found["point"], private_root=private_root))["artifact"]
+    _store_reply(found["point"], private_root, "host-summary", {"artifact": ["a.py"]})
+
+    graded = probe.grade(found["point"], private_root=private_root)["host-summary"]
+
+    assert not built.get("expected_recent")
+    assert graded["scores"]["artifact"] == {"precision": 1.0, "recall": 1.0}
+    assert "artifact-recent" not in graded["scores"]
+    assert "artifact-recent" not in probe.report(private_root=private_root)
+
+
+def test_a_key_frozen_before_expected_recent_existed_still_grades_without_that_score(
+        two_points, private_root):
+    """Adversarial where: a stored key without the field makes grade raise or invent
+    a score, so the pilot's replies cannot be regraded."""
+    probe.build(two_points[1], private_root=private_root)
+    folder = probe._point_dir(two_points[1], private_root)
+    legacy = topics.read_json(folder / "key.json")
+    del probe_by_id(legacy)["artifact"]["expected_recent"]
+    topics.write_json(folder / "key.json", legacy)
+    _store_reply(two_points[1], private_root, "host-summary", {"artifact": ALL_EDITS})
+
+    graded = probe.grade(two_points[1], private_root=private_root)["host-summary"]
+
+    assert graded["scores"]["artifact"] == {"precision": 1.0, "recall": 1.0}
+    assert "artifact-recent" not in graded["scores"]
+
+
+# grade: shortened error quote
+
+NAMED = "ValueError: the point is not a compaction boundary, line 12"
+
+
+@pytest.mark.parametrize("literal, reply, score", [
+    (NAMED, "ValueError: the point is not a compaction boundary", 1.0),
+    (NAMED, NAMED, 1.0),
+    (NAMED, "A ValueError was raised because the point is not a compaction boundary", 1.0),
+    (NAMED, "ValueError", 0.0),
+    (NAMED, "the point is not a compaction boundary", 0.0),
+    (NAMED, "NotValueError: the point is not a compaction boundary", 0.0),
+    (NAMED, "KeyError: the point is not a compaction boundary", 0.0),
+    (NAMED, "ValueError: the point is not a compaction", 0.0),
+    ("KeyError: ghost", "KeyError: ghost", 1.0),
+    ("KeyError: ghost", "KeyError", 0.0),
+    ("AttributeError: no attribute", "AttributeError: no", 0.0),
+    ("ValueError: pre-built frame", "ValueError: pre-built frame", 1.0),
+    ("ValueError: pre-built frame", "ValueError: pre", 0.0),
+    ("ValueError: foo(bar)", "ValueError: foo(bar)", 1.0),
+    ("ValueError: foo(bar)", "ValueError: foo", 0.0),
+    ("TypeError: expected int (got str)", "TypeError: expected int", 1.0),
+    ("RuntimeError: stalled - giving up", "RuntimeError: stalled", 1.0),
+    ("OSError: cannot open: file x", "OSError: cannot open", 1.0),
+    ("KeyError: bad key; retry later", "KeyError: bad key", 1.0),
+    ("ValueError: a, b; c", "ValueError: a", 1.0),
+    ("KeyError: a+b*c", "KeyError: a+b*c", 1.0),
+    ("KeyError: a+b*c", "KeyError: aabbc", 0.0),
+    ("3 failed", "3 failed, 2 passed", 1.0),
+    ("3 failed", "13 failed", 0.0),
+    ("3 failed", "3", 0.0),
+])
+def test_recall_scores_the_error_name_and_the_messages_first_clause(
+        tmp_path, private_root, literal, reply, score):
+    """Adversarial where: a quote that stops short of the last clause scored 0 (the
+    pilot's miss), the name or the message alone credited, a name that is only the
+    tail of a longer word credited, a separator that is not one (`-` without
+    spaces, `(` without a space) cutting the message early, a message without
+    separator accepted by a prefix, regex characters in the message mismatching,
+    or the `N failed` literal changed by the new rule."""
+    text = f"{literal}, 1 passed in 0.10s" if literal.endswith(" failed") else literal
+    folder = _new_folder(tmp_path)
+    write_transcript(folder, "t.jsonl", [
+        user(0, "run it"), assistant(1, "running", ("Bash", {"command": "pytest"})),
+        tool_result(2, text, is_error=True), boundary(3), summary(4)])
+    (found,) = probe.find(folder)
+    built = probe.build(found["point"], private_root=private_root)
+    assert [item["expected"] for item in built["probes"]] == [literal]
+    _store_reply(found["point"], private_root, "host-summary", {"recall-1": reply})
+
+    graded = probe.grade(found["point"], private_root=private_root)["host-summary"]
+
+    assert graded["scores"]["recall-1"] == score
+
+
+# report: rows, state, intervals
+
+def _state_point(tmp_path, private_root, name, middle, reply):
+    folder = _new_folder(tmp_path, name)
+    records = [user(0, "go"), _plain_edit(1, "a.py"), tool_result(2, "ok"), *middle]
+    records += [boundary(len(records)), summary(len(records) + 1)]
+    write_transcript(folder, "t.jsonl", records)
+    (found,) = probe.find(folder)
+    built = probe.build(found["point"], private_root=private_root)
+    _store_reply(found["point"], private_root, "host-summary", reply)
+    probe.grade(found["point"], private_root=private_root)
+    return built
+
+
+def test_state_score_pools_recall_continuation_and_decision_per_point(tmp_path, private_root):
+    """Adversarial where: the state of a point averaged over its probes (a recall
+    pair counted twice) instead of over the three types, a point with no recall,
+    continuation or decision probe given a state of 0 or 1, or the artifact score
+    mixed in."""
+    decided = [assistant(3, "Next is TASK-5."), *_pair(4, structured={"Which storage?": "Flat files"})]
+    _state_point(tmp_path, private_root, "a", decided, {"continuation": "TASK-5", "decision": "Other"})
+    recalled = [
+        assistant(3, "Now on TASK-8."), assistant(4, "", ("Bash", {"command": "pytest"})),
+        tool_result(5, "KeyError: alpha9\n3 failed, 1 passed", is_error=True),
+        *_pair(6, structured={"Which storage?": "Flat files"})]
+    _state_point(tmp_path, private_root, "c", recalled, {
+        "recall-1": "KeyError: alpha9", "recall-2": "9 failed", "continuation": "TASK-8",
+        "decision": "Flat files"})
+    _state_point(tmp_path, private_root, "b", [], {"artifact": ["a.py"]})
+
+    rows = _main_rows(probe.report(private_root=private_root))
+
+    assert rows[("host-summary", "state")][2:4] == ["2", "0.67"]
+    assert rows[("host-summary", "artifact")][2] == "3"
+    assert rows[("host-summary", "continuation")][2] == "2"
+
+
+def test_report_rows_keep_artifact_and_artifact_recent_apart(two_points, private_root):
+    """Adversarial where: artifact-recent folded into the artifact row (its probe id
+    shares the `artifact` prefix) so both rows read the same, or a point with no
+    state probe given a state row."""
+    probe.build(two_points[1], private_root=private_root)
+    _store_reply(two_points[1], private_root, "host-summary", {"artifact": RECENT_EDITS})
+    _store_reply(two_points[1], private_root, "none", {"artifact": ["src/beta.py"]})
+    probe.grade(two_points[1], private_root=private_root)
+
+    rows = _main_rows(probe.report(private_root=private_root))
+
+    assert rows[("host-summary", "artifact")][2:4] == ["1", "0.75"]
+    assert rows[("host-summary", "artifact-recent")][2:4] == ["1", "1.00"]
+    assert rows[("none", "artifact")][2:4] == ["1", "0.25"]
+    assert rows[("none", "artifact-recent")][2:4] == ["1", "0.00"]
+    assert ("host-summary", "state") not in rows
+
+
+def _recall_pair(host, arm):
+    return ({"recall-1": host[0], "recall-2": host[1]}, {"recall-1": arm[0], "recall-2": arm[1]})
+
+
+def test_paired_interval_lies_above_zero_when_the_arm_wins_every_point(private_root):
+    """Adversarial where: an interval that includes 0 for 12 points that all favour
+    the arm, a sign flipped (host minus arm), or a count and mean taken over
+    something other than the 12 points graded in both arms."""
+    pairs = [_recall_pair((0.0, 0.0), (1.0, 1.0 if number < 6 else 0.0)) for number in range(12)]
+    for number, (host, arm) in enumerate(pairs):
+        _write_grade(private_root, f"point-{number:02d}", "host-summary", host)
+        _write_grade(private_root, f"point-{number:02d}", "none", arm)
+
+    cells, line = _paired_row(probe.report(private_root=private_root), "recall")
+
+    assert "12" in cells and "too few points" not in line
+    numbers = _decimals(line)
+    assert len(numbers) >= 3 and all(number > 0 for number in numbers)
+    assert any(abs(number - 0.75) < 1e-9 for number in numbers)
+
+
+def test_paired_interval_spans_zero_on_a_balanced_split_and_repeats_exactly(private_root):
+    """Adversarial where: an interval that is the min and max of the differences, the
+    point estimate alone, or one that changes between two runs of the same input
+    (an unseeded generator)."""
+    for number in range(12):
+        host, arm = (1.0, 0.0) if number % 2 else (0.0, 1.0)
+        _write_grade(private_root, f"point-{number:02d}", "host-summary", {"continuation": host})
+        _write_grade(private_root, f"point-{number:02d}", "none", {"continuation": arm})
+
+    first = probe.report(private_root=private_root)
+    second = probe.report(private_root=private_root)
+
+    assert first == second
+    numbers = sorted(_decimals(_paired_row(first, "continuation")[1]))
+    assert len(numbers) >= 3
+    assert -0.9 < numbers[0] <= -0.4 and 0.4 <= numbers[-1] < 0.9
+    assert any(abs(number) < 1e-9 for number in numbers)
+
+
+@pytest.mark.parametrize("paired", [9, 10])
+def test_paired_interval_needs_ten_points_graded_in_both_arms(private_root, paired):
+    """Adversarial where: the too-few-points cut at 9 or 11 instead of 10, a point
+    graded in one arm only (or lacking the probe type in one arm) counted as a pair,
+    or a mean over the arm's own points instead of the paired differences (the arm
+    carries 4 extra points scoring 0, so a mean of means reads 0.71 rather than 1.00)."""
+    for number in range(paired):
+        _write_grade(private_root, f"paired-{number:02d}", "host-summary", {"continuation": 0.0})
+        _write_grade(private_root, f"paired-{number:02d}", "none", {"continuation": 1.0})
+    for number in range(4):
+        _write_grade(private_root, f"arm-only-{number}", "none", {"continuation": 0.0})
+    for number in range(3):
+        _write_grade(private_root, f"host-only-{number}", "host-summary", {"continuation": 1.0})
+    for number in range(2):
+        _write_grade(private_root, f"lacking-{number}", "host-summary", {"continuation": 1.0})
+        _write_grade(private_root, f"lacking-{number}", "none", {"recall-1": 1.0})
+
+    cells, line = _paired_row(probe.report(private_root=private_root), "continuation")
+
+    assert str(paired) in cells
+    if paired < 10:
+        assert "too few points" in line
+    else:
+        assert "too few points" not in line
+        numbers = _decimals(line)
+        assert len(numbers) >= 3 and all(abs(number - 1.0) < 1e-9 for number in numbers)
+
+
+def test_one_paired_table_per_arm_other_than_host_summary(private_root):
+    """Adversarial where: a paired table for the reference arm against itself, or none
+    for the other arm."""
+    _write_grade(private_root, "only", "host-summary", {"continuation": 1.0})
+    alone = probe.report(private_root=private_root)
+    _write_grade(private_root, "only", "none", {"continuation": 0.0})
+
+    both = probe.report(private_root=private_root)
+
+    assert len(_table_blocks(alone)) == 1
+    assert len(_table_blocks(both)) == 2
+    assert _cells(_table_blocks(both)[0][0])[:2] == ["arm", "probe"]
+
+
+def test_report_with_paired_tables_holds_no_fixture_path_prompt_or_answer(two_points, private_root, tmp_path):
+    """Adversarial where: the new tables print a path, a prompt, a summary line, a
+    model name, the point string or a quoted answer from the two-boundary fixture."""
+    for point in two_points:
+        probe.build(point, private_root=private_root)
+        _store_reply(point, private_root, "host-summary", {"artifact": ALL_EDITS})
+        _store_reply(point, private_root, "none", {"artifact": ["src/beta.py"], "decision": "ANSWERLEAK"})
+        probe.grade(point, private_root=private_root)
+
+    text = probe.report(private_root=private_root)
+
+    assert len(_table_blocks(text)) >= 2
+    for secret in (*FIXTURE_STRINGS, str(tmp_path), "ANSWERLEAK", *two_points):
+        assert secret not in text
