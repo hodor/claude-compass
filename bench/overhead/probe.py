@@ -53,7 +53,7 @@ _ID = re.compile(r"\b(?:TASK|PLAN)-\d+\b")
 _ID_ANY_CASE = re.compile(r"\b(?:task|plan)-\d+\b", re.IGNORECASE)
 _ERROR_LINE = re.compile(r"^\s*(?:E\s+)?([A-Za-z_][\w.]*(?:Error|Exception):\s*\S.*?)\s*$")
 _ERROR_LITERAL = re.compile(r"^([A-Za-z_][\w.]*(?:Error|Exception)):\s*(\S.*)$", re.DOTALL)
-_CLAUSE_END = re.compile(r",|;|:| \(| - ")
+_CLAUSE_END = re.compile(r",|;|:(?=\s|$)| \(| - ")
 _FAILED_COUNT = re.compile(r"\b\d+ failed\b")
 _ANSWER_PAIR = re.compile(r'"(.*?)"="(.*?)"(?=, "|\.\s|\.$|$)', re.DOTALL)
 _MODEL_ID = re.compile(r"claude-[A-Za-z0-9.\-]+(\[[A-Za-z0-9]+\])?")
@@ -551,7 +551,7 @@ def _has_phrase(given, phrase):
 
 def _score_error(value, expected):
     """1 when the reply holds the exception name as a whole word and the first clause
-    of the message (the message up to its first `,`, `;`, `:`, ` (` or ` - `); a
+    of the message (the message up to its first `,`, `;`, `: `, ` (` or ` - `); a
     message with no such separator must appear whole. `expected` is `<Name>: <message>`."""
     if not isinstance(value, str):
         return 0.0
