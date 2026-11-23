@@ -99,14 +99,14 @@ def test_coverage_rc_omits_tests_and_installed_packages_one_per_line():
     run = rc_parser(reachlib.coverage_rc("/w", "/w/.coverage"))["run"]
     omit = [line.strip() for line in run["omit"].splitlines() if line.strip()]
     for expected in (
-        "*/tests/*",
-        "*/test_*",
-        "*/*_test.*",
-        "*/*.spec.*",
-        "*/site-packages/*",
-        "*/venv/*",
-        "*/.venv/*",
-        "*/node_modules/*",
+        "/w/**/tests/**",
+        "/w/**/test_*",
+        "/w/**/*_test.*",
+        "/w/**/*.spec.*",
+        "/w/**/site-packages/**",
+        "/w/**/venv/**",
+        "/w/**/.venv/**",
+        "/w/**/node_modules/**",
     ):
         assert expected in omit
 

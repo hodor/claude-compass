@@ -35,7 +35,7 @@ SOURCE_EXTENSIONS = frozenset(
 PTH_NAME = "compass_reach_cov.pth"
 PTH_BODY = "import coverage; coverage.process_startup()\n"
 MIN_COVERAGE = (7, 10)
-_NON_SOURCE_OMIT = ("*/.venv/*", "*/venv/*", "*/site-packages/*", "*/node_modules/*")
+_NON_SOURCE_DIRS = (".venv", "venv", "site-packages", "node_modules")
 
 _HUNK = re.compile(r"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 _DRIVE = re.compile(r"^[A-Za-z]:/")
@@ -329,11 +329,14 @@ def coverage_version(text):
 
 def coverage_rc(repo, data_file):
     """Text of a coverage rc file measuring the files under `repo`, omitting
-    test files and installed packages, writing one data file per process next
-    to `data_file` and following threads and multiprocessing workers."""
-    omit = [f"*/{part}/*" for part in TEST_DIRS]
-    omit += [f"*/{pat}" for pat in TEST_NAME_PATTERNS]
-    omit += _NON_SOURCE_OMIT
+    test files and installed packages beneath the repository (patterns are
+    anchored at `repo`, so a repository inside a folder named `tests` or `venv`
+    is still measured), writing one data file per process next to `data_file`
+    and following threads and multiprocessing workers."""
+    root = str(repo).replace("\\", "/").rstrip("/")
+    omit = [f"{root}/**/{part}/**" for part in TEST_DIRS]
+    omit += [f"{root}/**/{pat}" for pat in TEST_NAME_PATTERNS]
+    omit += [f"{root}/**/{part}/**" for part in _NON_SOURCE_DIRS]
     posix = lambda path: str(path).replace("\\", "/")
     lines = [
         "[run]",
