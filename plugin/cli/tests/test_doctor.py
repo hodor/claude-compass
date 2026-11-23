@@ -1014,7 +1014,10 @@ for _surface_row in ("obsidian review", "vscode review", "cursor review", "revie
 
 
 def ledger_rows(payload):
-    return [row for row in payload["checks"] if row["check"] not in PRE_TASK_093_CHECKS]
+    """The worker-ledger rows: every row outside the baseline set and the
+    `drift scan` row, which every run carries and `DriftScanRowTests` covers."""
+    return [row for row in payload["checks"]
+            if row["check"] not in PRE_TASK_093_CHECKS and row["check"] != "drift scan"]
 
 
 def capture_root(project_root):
