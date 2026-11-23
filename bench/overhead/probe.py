@@ -317,6 +317,15 @@ def _without_answer(question, answer):
     return gapped if answer.casefold() not in gapped.casefold() else "(the question text is withheld)"
 
 
+def _last_cwd(history):
+    """The working folder of the last record before the boundary that names one."""
+    cwd = None
+    for record in history:
+        if isinstance(record.get("cwd"), str) and record["cwd"].strip():
+            cwd = record["cwd"]
+    return cwd
+
+
 def _last_model(history):
     model = None
     for record in history:
@@ -376,7 +385,7 @@ def build(point, *, private_root=None):
     probes = _probe_set(history)
     if model is None or not probes:
         raise ValueError("the history before the boundary holds no assistant model or no probe source")
-    key = {"point": point, "model": model, "probes": probes}
+    key = {"point": point, "model": model, "cwd": _last_cwd(history), "probes": probes}
     try:
         topics.write_json(path, key, exclusive=True)
     except FileExistsError:
@@ -469,11 +478,13 @@ def _norm_text(text):
     return " ".join(str(text).split()).casefold()
 
 
-def _score_artifact(value, expected):
+def _score_artifact(value, expected, cwd=None):
+    """Precision and recall of the paths in `value`; a reply path below `cwd`
+    counts in its cwd-relative form, the form the expected paths are frozen in."""
     wanted = {_norm_path(p) for p in expected}
     if not isinstance(value, list):
         return {"precision": 0.0, "recall": 0.0}
-    given = {_norm_path(p) for p in value if isinstance(p, str) and p.strip()}
+    given = {_norm_path(_relative_to(p.strip(), cwd)) for p in value if isinstance(p, str) and p.strip()}
     hits = len(given & wanted)
     return {
         "precision": hits / len(given) if given else 0.0,
@@ -501,10 +512,10 @@ def _score_id(value, expected):
     return 1.0 if ids == {str(expected).upper()} else 0.0
 
 
-def _score(item, value):
+def _score(item, value, cwd=None):
     kind = item.get("type")
     if kind == "artifact":
-        return _score_artifact(value, item["expected"])
+        return _score_artifact(value, item["expected"], cwd)
     if kind == "continuation":
         return _score_id(value, item["expected"])
     return _score_text(value, item["expected"], whole_words=kind == "decision")
@@ -520,15 +531,28 @@ def _input_tokens(tokens):
     )
 
 
+def _key_cwd(key):
+    """The point's working folder: the one frozen in its key, else the last one
+    its transcript names before the boundary, else None."""
+    if isinstance(key.get("cwd"), str):
+        return key["cwd"]
+    try:
+        history, _, _ = _history(key.get("point"))
+    except (OSError, ValueError, TypeError):
+        return None
+    return _last_cwd(history)
+
+
 def _grade_reply(key, stored):
     try:
         reply = topics.reply_object(stored.get("reply") if isinstance(stored.get("reply"), str) else "")
     except ValueError:
         reply = None
+    cwd = _key_cwd(key)
     scores = {}
     for item in key["probes"]:
         value = reply.get(item["id"]) if reply is not None else None
-        scores[item["id"]] = _score(item, value)
+        scores[item["id"]] = _score(item, value, cwd)
     return {
         "point": stored.get("point"), "arm": stored.get("arm"), "unparsed": reply is None,
         "scores": scores, "input_tokens": _input_tokens(stored.get("tokens")),

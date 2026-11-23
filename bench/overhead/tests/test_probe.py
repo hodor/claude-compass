@@ -669,6 +669,52 @@ def test_edit_paths_are_cwd_relative_deduplicated_and_exclude_reads_and_sidechai
     assert probe_by_id(built)["artifact"]["expected"] == ["src/a.py", "C:/work/project2/b.py"]
 
 
+def test_grade_matches_an_absolute_reply_path_below_the_working_folder(tmp_path, repo, private_root, fake_reply):
+    """Adversarial where: the key holds cwd-relative paths but a reply that names
+    the same files by absolute path, in either slash direction and any case of
+    the folder, scores 0, while a path outside the folder or a bare suffix of a
+    deeper file still counts as a miss."""
+    folder = tmp_path / "p"
+    folder.mkdir()
+    cwd = r"C:\work\proj"
+    edit = {"old_string": "x", "new_string": "y"}
+    first = assistant(1, "", ("Edit", {"file_path": r"C:\work\proj\src\a.py", **edit}))
+    second = assistant(2, "", ("Edit", {"file_path": r"C:\work\proj\tests\test_a.py", **edit}))
+    for item in (first, second):
+        item["cwd"] = cwd
+    point, built = build_point(folder, [user(0, "go"), first, second, boundary(3), summary(4)], private_root=private_root)
+    assert built["cwd"] == cwd
+    fake_reply.reply(json.dumps({"artifact": ["c:/WORK/proj/src/a.py", r"C:\other\tests\test_a.py", "test_a.py"]}))
+    _ask(point, "host-summary", repo, private_root, fake_reply)
+
+    graded = probe.grade(point, private_root=private_root)["host-summary"]
+
+    assert graded["scores"]["artifact"]["recall"] == pytest.approx(0.5)
+    assert graded["scores"]["artifact"]["precision"] == pytest.approx(1 / 3, abs=0.01)
+
+
+def test_grade_reads_the_working_folder_from_the_transcript_when_the_key_has_none(
+        tmp_path, repo, private_root, fake_reply):
+    """Adversarial where: a key frozen before the working folder was stored grades
+    absolute reply paths as misses instead of reading the folder from its transcript."""
+    folder = tmp_path / "p"
+    folder.mkdir()
+    edit = {"old_string": "x", "new_string": "y"}
+    first = assistant(1, "", ("Edit", {"file_path": "/work/proj/src/a.py", **edit}))
+    first["cwd"] = "/work/proj"
+    point, built = build_point(folder, [user(0, "go"), first, boundary(2), summary(3)], private_root=private_root)
+    key_file = probe._point_dir(point, private_root) / "key.json"
+    key = json.loads(key_file.read_text(encoding="utf-8"))
+    del key["cwd"]
+    key_file.write_text(json.dumps(key), encoding="utf-8")
+    fake_reply.reply(json.dumps({"artifact": ["/work/proj/src/a.py"]}))
+    _ask(point, "host-summary", repo, private_root, fake_reply)
+
+    graded = probe.grade(point, private_root=private_root)["host-summary"]
+
+    assert graded["scores"]["artifact"] == {"precision": 1.0, "recall": 1.0}
+
+
 def test_a_subagent_transcript_point_is_found_and_built_from_its_sidechain_records(tmp_path, private_root):
     """Adversarial where: a finder that never looks in a session's subagents
     folder, or a history reader that drops every record of a subagent transcript
