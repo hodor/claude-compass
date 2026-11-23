@@ -10,7 +10,16 @@ comes from the session transcript (and its subagent transcripts), the vault
 or git, so a missing source leaves its section out and nothing else.
 
     compass session-state [--transcript PATH] [--format block|handoff]
+                          [--until INDEX] [--at COMMIT]
     compass session-state --hook
+
+`--until INDEX` reads the transcript sections only up to the compaction
+boundary on line INDEX (0-based, counting every physical line of the file):
+the main transcript's earlier lines and the subagent records stamped at or
+before the boundary's own timestamp. `--at COMMIT` takes the open tasks and
+the D-NN decisions from that commit, leaves out the uncommitted changes and
+names the commit in the branch line. Each works alone, and both are refused
+beside `--hook`.
 
 `block` prints the sections under a title, in the order they survive when the
 whole stays under the character budget: the last sections are dropped first.
@@ -26,6 +35,8 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 import decisionslib
@@ -33,12 +44,14 @@ import sessionslib
 import vaultlib
 
 USAGE = """\
-compass session-state [--transcript PATH] [--format block|handoff]
+compass session-state [--transcript PATH] [--format block|handoff] [--until INDEX] [--at COMMIT]
 compass session-state --hook
 
 Print the session's open tasks, files touched, decisions and git state, built
 from the transcript, the vault and git. --hook reads a SessionStart or
-PreCompact event on stdin.
+PreCompact event on stdin. --until INDEX renders the transcript sections as
+they stood at the compaction boundary on line INDEX; --at COMMIT takes the open
+tasks, decisions and branch line from that commit. Both are refused beside --hook.
 """
 
 BUDGET = 7900
@@ -115,21 +128,30 @@ def _git(root, *args):
     return result.stdout.decode("utf-8", errors="replace")
 
 
+class UsageError(Exception):
+    """A request the command refuses; `run` prints it and exits 1."""
+
+
 def _parse_args(args):
-    options = {"hook": False, "transcript": None, "format": "block"}
+    options = {"hook": False, "transcript": None, "format": "block", "until": None, "at": None}
+    valued = ("--transcript", "--format", "--until", "--at")
     index = 0
     while index < len(args):
         arg = args[index]
         if arg == "--hook":
             options["hook"] = True
-        elif arg in ("--transcript", "--format"):
+        elif arg in valued:
             if index + 1 < len(args):
                 index += 1
                 options[arg[2:]] = args[index]
-        elif arg.startswith("--transcript=") or arg.startswith("--format="):
+            elif arg in ("--until", "--at"):
+                raise UsageError(f"{arg} needs a value")
+        elif arg.startswith(tuple(f"{flag}=" for flag in valued)):
             key, _, value = arg[2:].partition("=")
             options[key] = value
         index += 1
+    if options["hook"] and (options["until"] is not None or options["at"] is not None):
+        raise UsageError("--until and --at are not available with --hook")
     return options
 
 
@@ -240,11 +262,14 @@ def _touched(transcript, root):
     return [(display, kind, raw) for display, (kind, raw) in merged.items()]
 
 
-def _open_tasks(root):
-    try:
-        text = (root / ".compass" / "active.md").read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return []
+def _open_tasks(root, at=None):
+    if at:
+        text = _git(root, "show", f"{at}:.compass/active.md") or ""
+    else:
+        try:
+            text = (root / ".compass" / "active.md").read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return []
     return [_cut(line, TASK_LINE_CHARS) for line in text.splitlines() if _OPEN_TASK.match(line)]
 
 
@@ -252,9 +277,11 @@ def _doc_stem(path):
     return path.parent.name if path.stem == "index" else path.stem
 
 
-def _document_decisions(touched, root):
+def _document_decisions(touched, root, at=None):
     """`<doc-stem>/D-NN: <text>` lines for each vault document the session
-    read or edited, the most recently touched document first."""
+    read or edited, the most recently touched document first. With `at`, each
+    document's text is its content at that commit and a document absent there
+    contributes nothing."""
     try:
         vault = (root / ".compass").resolve()
     except OSError:
@@ -264,10 +291,17 @@ def _document_decisions(touched, root):
         path = Path(raw) if os.path.isabs(raw) else root / raw
         try:
             path = path.resolve()
-            path.relative_to(vault)
-            if path.suffix.lower() != ".md" or not path.is_file():
+            inside = path.relative_to(vault)
+            if path.suffix.lower() != ".md":
                 continue
-            text = path.read_text(encoding="utf-8", errors="replace")
+            if at:
+                text = _git(root, "show", f"{at}:.compass/{inside.as_posix()}")
+                if text is None:
+                    continue
+            else:
+                if not path.is_file():
+                    continue
+                text = path.read_text(encoding="utf-8", errors="replace")
         except (OSError, ValueError):
             continue
         decisions, _ = decisionslib.extract_decisions(text)
@@ -303,20 +337,26 @@ def _git_sections(root):
     return dirty, []
 
 
-def gather(root, transcript):
+def gather(root, transcript, at=None):
     """Every section's raw material as one dict; each source that is absent
-    or unreadable contributes an empty value."""
+    or unreadable contributes an empty value. With `at` (a full commit hash),
+    the open tasks and vault decisions come from that commit, the uncommitted
+    changes are left out and the branch line reads `at <short commit>`."""
     transcript = Path(transcript) if transcript else None
     has_transcript = transcript is not None and transcript.is_file()
     touched = _safe([], _touched, transcript, root) if has_transcript else []
     answers = _safe([], sessionslib.question_answers, transcript) if has_transcript else []
-    dirty, branch = _git_sections(root)
+    if at:
+        short = (_git(root, "rev-parse", "--short", at) or "").strip()
+        dirty, branch = [], [f"at {short or at}"]
+    else:
+        dirty, branch = _git_sections(root)
     test_run = _safe(None, sessionslib.last_test_run, transcript) if has_transcript else None
     return {
         "request": _safe(None, sessionslib.last_human_request, transcript) if has_transcript else None,
-        "tasks": _open_tasks(root),
+        "tasks": _open_tasks(root, at),
         "answers": answers,
-        "documents": _safe([], _document_decisions, touched, root),
+        "documents": _safe([], _document_decisions, touched, root, at),
         "edited": [t for t in reversed(touched) if t[1] == "edited"],
         "read": [t for t in reversed(touched) if t[1] == "read"],
         "starts": _safe({}, _edit_start_lines, transcript, root) if has_transcript else {},
@@ -389,6 +429,64 @@ def render_handoff(state):
     return "\n".join(f"## {name}\n" + "\n".join(lines) + "\n" for name, lines in sections if lines)
 
 
+def _resolve_commit(root, ref):
+    """The full hash of commit `ref`, or a UsageError naming it."""
+    full = None if ref.startswith("-") else _git(root, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}")
+    if not full or not full.strip():
+        raise UsageError(f"unknown commit: {ref}")
+    return full.strip()
+
+
+def _parse_line(raw):
+    try:
+        record = json.loads(raw.decode("utf-8", errors="replace"))
+    except ValueError:
+        return None
+    return record if isinstance(record, dict) else None
+
+
+def _stamp(record):
+    """The record's `timestamp` as an aware datetime, or None."""
+    value = record.get("timestamp") if isinstance(record, dict) else None
+    if not isinstance(value, str):
+        return None
+    try:
+        moment = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
+
+
+def _cut_transcript(transcript, until, folder):
+    """Write into `folder` a copy of `transcript` holding the lines before
+    line `until`, with a `subagents/` side holding each subagent record
+    stamped at or before the boundary record's timestamp; return the copy's
+    path. A UsageError when line `until` is not a compact_boundary record."""
+    transcript = Path(transcript)
+    if re.fullmatch(r"\d+", until or "") is None:
+        raise UsageError(f"not a compaction boundary: --until needs a line number, got {until}")
+    index = int(until)
+    with open(transcript, "rb") as handle:
+        lines = handle.readlines()
+    boundary = _parse_line(lines[index]) if index < len(lines) else None
+    if not boundary or boundary.get("type") != "system" or boundary.get("subtype") != "compact_boundary":
+        raise UsageError(f"not a compaction boundary: line {until}")
+    cut = Path(folder) / transcript.name
+    cut.write_bytes(b"".join(lines[:index]))
+    limit = _stamp(boundary)
+    side = cut.with_suffix("") / "subagents"
+    for path in sessionslib.subagent_transcripts(transcript):
+        kept = []
+        with open(path, "rb") as handle:
+            for raw in handle:
+                moment = _stamp(_parse_line(raw))
+                if limit is not None and moment is not None and moment <= limit:
+                    kept.append(raw if raw.endswith(b"\n") else raw + b"\n")
+        side.mkdir(parents=True, exist_ok=True)
+        (side / path.name).write_bytes(b"".join(kept))
+    return cut
+
+
 def _hook(options, root):
     """The hook's stdout text for the event on stdin, empty when the event is
     not one this command answers."""
@@ -411,18 +509,29 @@ def _hook(options, root):
     return json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": context}})
 
 
+def _state_text(options, root):
+    at = _resolve_commit(root, options["at"]) if options["at"] is not None else None
+    transcript = _resolve_transcript(options["transcript"], root)
+    if options["until"] is not None:
+        if transcript is None:
+            raise UsageError("not a compaction boundary: no transcript")
+        with tempfile.TemporaryDirectory(prefix="compass-state-") as folder:
+            state = gather(root, _cut_transcript(transcript, options["until"], folder), at)
+    else:
+        state = gather(root, transcript, at)
+    return render_handoff(state) if options["format"] == "handoff" else render_block(state)
+
+
 def run(args):
     try:
         options = _parse_args(args)
         root = _project_root()
-        if options["hook"]:
-            text = _hook(options, root)
-        else:
-            transcript = _resolve_transcript(options["transcript"], root)
-            state = gather(root, transcript)
-            text = render_handoff(state) if options["format"] == "handoff" else render_block(state)
+        text = _hook(options, root) if options["hook"] else _state_text(options, root)
         if text:
             sys.stdout.write(text if text.endswith("\n") else text + "\n")
+    except UsageError as exc:
+        sys.stderr.write(f"{exc}\n{USAGE}")
+        return 1
     except Exception as exc:  # a failing state block must never block a compaction
         try:
             import bugs
