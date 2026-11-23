@@ -46,14 +46,14 @@ If the automated-verification bullets are too abstract to derive a concrete equi
 
 **4. Run the filter on your own output.** Run `compass test-smells` on the test files you just wrote. Fix every gate finding, or delete the test if it cannot survive the filter - a test that cannot survive the filter was not worth writing, and the checkpoint expects clean entry. Advisory findings are reported alongside the summary, not silently dropped and not auto-fixed.
 
-**5. Run the suite and record the red evidence.** Run the full suite. Record the exact command and its verbatim failing output:
+**5. Run the suite and record the red evidence.** Run the full suite with the runner's verbose output, one line per test (`pytest -v`, `python -m unittest -v`, `node --test` TAP), so each test's own status can be read from the saved run. Record the exact command and its verbatim failing output:
 
 ```
 **Command run:** [exact command]
 **Output:** [actual output]
 ```
 
-An import or collection error counts as red, but label it as such in the report - a test that has only ever failed to import has not yet been seen to fail for its own reason. The post-build station's `--against-run` check is what later proves it passes for a real one.
+An import or collection error counts as red, but label it as such in the report - a test that has only ever failed to import has not yet been seen to fail for its own reason; `compass test-checkpoint record --red-evidence <file>` stores each test's kind (`fail`, `error`, `collection`, `passed`, `absent`) from the saved output, and `compass ablate` reports a collection-only red that stays green or vanishes without the code as `unproven:`, never a finding. The post-build station's `--against-run` check is what later proves it passes for a real one.
 
 **6. Format.** If the project has a formatter, run it on your test files.
 

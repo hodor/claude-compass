@@ -10,6 +10,13 @@ runs is `unflipped`; one green at baseline that vanishes from the second run
 (its file no longer imports) is a `collection_error`; one not green at
 baseline is `baseline_red` and takes no part in the verdict.
 
+A task's checkpoint may record, per test, why the test was red before the
+build (`red_kinds`, written by `compass test-checkpoint record
+--red-evidence`). A test whose recorded red was a collection error (its
+module did not import yet) says nothing about the code it tests, so when it
+is `unflipped` or a `collection_error` it is reported as `unproven` and takes
+no part in the verdict; a `flipped` test of that kind stays `flipped`.
+
 Per-test outcomes come from the run-output parser in
 `commands/test_checkpoint.py`, so the test command must print one line per
 test in a format that parser reads (`pytest -v`, `unittest -v`, TAP).
@@ -106,6 +113,23 @@ def _checkpoint_files(repo, task):
         return []
 
 
+def _collection_red_ids(repo, task):
+    """Ids (`name` or `Class.name`) of the task's checkpointed tests whose
+    only recorded red kind is `collection`. Empty when the checkpoint is
+    unreadable or carries no `red_kinds`."""
+    path = Path(repo) / ".compass" / "tmp" / "test-checkpoints" / f"{task}.json"
+    try:
+        red_kinds = json.loads(path.read_text(encoding="utf-8")).get("red_kinds", {})
+        kinds_by_id = {}
+        for key, kind in red_kinds.items():
+            segments = key.split("::")
+            test_id = ".".join(segments[-2:]) if len(segments) >= 3 else segments[-1]
+            kinds_by_id.setdefault(test_id, set()).add(kind)
+    except (OSError, ValueError, AttributeError, TypeError):
+        return set()
+    return {test_id for test_id, kinds in kinds_by_id.items() if kinds == {"collection"}}
+
+
 def _name_status(repo, merge):
     """`[(status_letter, path)]` for `<merge>^1..<merge>`, or None with git's
     message as the second value when the diff cannot be taken."""
@@ -154,6 +178,23 @@ def _test_ids(output):
     }
 
 
+def _run_after_revert(worktree, cmd, selected, expected):
+    """Test statuses from running `selected` with the task's code reverted.
+    One test file that fails to import can interrupt a combined run before
+    any other file runs; when tests of `expected` are then missing and
+    several files were selected, each file runs on its own and the statuses
+    merge, a non-`ok` status outranking `ok` for the same id."""
+    after = _test_ids(_run_tests(worktree, cmd, selected))
+    if len(selected) < 2 or not (expected - set(after)):
+        return after
+    merged = {}
+    for path in selected:
+        for test_id, status in _test_ids(_run_tests(worktree, cmd, [path])).items():
+            if merged.get(test_id, "ok") == "ok":
+                merged[test_id] = status
+    return merged
+
+
 def _new_test_names(repo, merge, name_status, test_files, checkpoint_files, test_patch):
     """Names of the tests the task introduced: every test in a checkpointed
     file or a test file the merge adds, plus the tests defined on added lines
@@ -173,10 +214,10 @@ def ablate(repo, task, cmd, refactor=False, merge=None):
     """Run the ablation and return the result dict (see `format_report`).
 
     Keys: verdict (`PASS`, `FINDING`, `SKIP`), merge, flipped, unflipped,
-    baseline_red, collection_errors, reason."""
+    baseline_red, collection_errors, unproven, reason."""
     result = {
         "verdict": "SKIP", "merge": None, "flipped": [], "unflipped": [],
-        "baseline_red": [], "collection_errors": [], "reason": None,
+        "baseline_red": [], "collection_errors": [], "unproven": [], "reason": None,
     }
     sha = find_merge_commit(repo, task, merge)
     if sha is None:
@@ -238,17 +279,19 @@ def ablate(repo, task, cmd, refactor=False, merge=None):
             if applied.returncode != 0:
                 result["reason"] = _text(applied.stderr).strip() or "git apply -R failed"
                 return result
-            after = _test_ids(_run_tests(worktree, cmd, selected))
+            after = _run_after_revert(worktree, cmd, selected, green)
             candidates = {i for i in green if after.get(i) != "ok" and i in after}
             if candidates:
-                rerun = _test_ids(_run_tests(worktree, cmd, selected))
+                rerun = _run_after_revert(worktree, cmd, selected, green)
                 candidates = {i for i in candidates if rerun.get(i) != "ok"}
             collection = {i for i in green if i not in after}
         else:
             candidates, collection = set(), set()
+        unproven = (collection | (green - candidates)) & _collection_red_ids(repo, task)
         result["flipped"] = sorted(candidates)
-        result["collection_errors"] = sorted(collection)
-        result["unflipped"] = sorted(green - candidates - collection)
+        result["unproven"] = sorted(unproven)
+        result["collection_errors"] = sorted(collection - unproven)
+        result["unflipped"] = sorted(green - candidates - collection - unproven)
     finally:
         _remove_worktree(repo, worktree)
 
@@ -270,7 +313,7 @@ def format_report(result):
     """One `label: id` line per test, then the verdict as the last line."""
     lines = []
     for label, key in (
-        ("flipped", "flipped"), ("unflipped", "unflipped"),
+        ("flipped", "flipped"), ("unproven", "unproven"), ("unflipped", "unflipped"),
         ("baseline-red", "baseline_red"), ("collection-error", "collection_errors"),
     ):
         lines.extend(f"{label}: {test_id}" for test_id in result.get(key, []))
