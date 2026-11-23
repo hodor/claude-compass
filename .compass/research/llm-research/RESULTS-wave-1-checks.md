@@ -1,7 +1,8 @@
 ---
 title: "Release 0.37.0: the checks only you can make, and the runs that spend your subscription"
 type: research
-status: draft
+status: complete
+approved: 2026-11-22
 area: methodology
 tags: [build, manual-verification, release, subscription]
 created: 2026-11-22
@@ -18,8 +19,7 @@ flowchart LR
   R --> S["Four runs on your subscription"]
 ```
 
-> [!IMPORTANT]
-> You decide: tick each run below you allow to spend subscription usage, tick one git snapshot option, and approve if the four results read right to you. An unticked run does not run; nothing else waits on it.
+> [!success] Approved 2026-11-22: the four results read right and the compaction comparison is worth running. No git snapshot option and no run was ticked, so the snapshot stays on and none of the four runs is allowed yet.
 
 ## What shipped
 
