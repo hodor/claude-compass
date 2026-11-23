@@ -1,4 +1,4 @@
-<!-- WARNING: hot path 7082 / 5000 tokens (index.md 4535, active.md 1857, lessons/index.md 690). Run /compass:consolidate before next session. -->
+<!-- WARNING: hot path 6786 / 5000 tokens (index.md 4646, active.md 1450, lessons/index.md 690). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -51,6 +51,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
   - [[research/llm-research/RESEARCH-axis-1b-anthropic-engineering-gap]] - Gap pass over six partly-read Anthropic engineering posts plus the missing 29th post; adds containment-first design, pass^k, absolute-path tool poka-yoke, think-tool deprecation, and trust-boundary lessons
   - [[research/llm-research/RESEARCH-axis-2b-host-features-gap]] - Gap pass on axis 2: Compass looprunner/proctree/self_update versus /goal, --bg, /loop and marketplace auto-update; prompt-cache ordering for always-loaded text; host trials of first-pass findings 7, 8, 21, 24, 25, 26
   - [[research/llm-research/REVIEW-llm-research-for-compass]] - Eight axis files merged and gap-mapped against the vault: seven architecture candidates, nine host-trial or doc fixes, nine measurements; strongest are cache-aware context, source-grounded consolidation, verification beyond test-pass and difficulty-scaled checking
+  - [[research/llm-research/RESULTS-wave-1-checks]] - release 0.37.0 ships the first waves of PLAN-032 to PLAN-036; this page holds their manual checks, Gate 2 of the prompt-cache plan, and the four runs that need your go before they spend subscription usage
 
 ## Plans
 
@@ -95,7 +96,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[ADR-001-methodology-as-skill-with-vault]] - Methodology lives in a skill; project state in per-project `.compass/` Obsidian-compatible vault
 - [[ADR-017-capability-index-and-usage-record]] - bare compass is the progressive-disclosure index made reachable by one rule line; dispatch records every invocation; compass usage lists never-used commands explicitly; clean-tmp retires; admission control's fate decided by data (tree's retirement undone by SPEC-022 D-08)
 - [[decisions/distribution/index|distribution]] (folder, 3 children) - rulings on installing, updating, and configuring Compass across projects
-- [[decisions/learning/index|learning]] (folder, 5 children) - rulings on capture and feedback - lessons, workers, signal handling, source-word fidelity
+- [[decisions/learning/index|learning]] (folder, 6 children) - rulings on capture and feedback - lessons, workers, signal handling, source-word fidelity
 - [[decisions/pipeline/index|pipeline]] (folder, 4 children) - rulings on the development workflow stages and gates
 - [[decisions/vault-structure/index|vault-structure]] (folder, 9 children) - rulings on how the vault organizes, bounds, and retrieves its own memory
 
@@ -111,6 +112,8 @@ See [[backlog]].
 
 - [[2026-10-29_09-30-00_issues-then-loops-then-workflow-spec]] - PLAN-026 shipped as 0.34.0 and pushed; next: fix the four open GitHub issues, finish PLAN-021 Wave 2 (control loops), then spec Claude Code workflow scripts to keep Compass runs off the context
 - [[handoff-pointers|Older handoffs]] - every earlier handoff, oldest first
+- [[2026-11-22_19-09-13_scripted-trial-334]] - Handoff: scripted trial 334 (scratch edit, pad reads)
+- [[2026-11-22_19-19-42_scratch-edit-trial-334]] - Handoff: scratch-edit trial 334
 
 ## Lessons
 
