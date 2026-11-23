@@ -660,7 +660,113 @@ KNOWN_BASELINE_CHECKS = {
 
 
 def non_baseline_rows(payload):
-    return [row for row in payload["checks"] if row["check"] not in KNOWN_BASELINE_CHECKS]
+    """The rows beyond the baseline set and the `drift scan` row, which every
+    install carries and whose status depends on a log the fixtures do not
+    write."""
+    return [row for row in payload["checks"]
+            if row["check"] not in KNOWN_BASELINE_CHECKS and row["check"] != "drift scan"]
+
+
+def git_in(project, *args):
+    import subprocess
+    done = subprocess.run(["git", "-C", str(project), *args], check=True,
+                          capture_output=True, text=True, encoding="utf-8")
+    return done.stdout.strip()
+
+
+def git_project(test_case):
+    """A complete install inside a git repository with two commits. Returns
+    (project, first commit, current HEAD)."""
+    project = make_project(test_case)
+    with_project_env(test_case, project)
+    build_complete_install(project)
+    git_in(project, "init", "-q")
+    git_in(project, "config", "user.name", "Tester")
+    git_in(project, "config", "user.email", "tester@example.invalid")
+    git_in(project, "config", "commit.gpgsign", "false")
+    git_in(project, "add", "-A")
+    git_in(project, "commit", "-q", "-m", "first")
+    first = git_in(project, "rev-parse", "HEAD")
+    (project / "later.txt").write_text("later", encoding="utf-8")
+    git_in(project, "add", "-A")
+    git_in(project, "commit", "-q", "-m", "second")
+    return project, first, git_in(project, "rev-parse", "HEAD")
+
+
+def write_drift_log(project, rows):
+    path = project / ".compass" / "archive" / "drift" / "log.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+
+
+def drift_row(head, age_days, counts=None):
+    at = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=age_days)
+    return {"at": at.strftime("%Y-%m-%dT%H:%M:%SZ"), "head": head,
+            "counts": counts if counts is not None else {"shifted": 9, "changed": 8},
+            "report": "DRIFT-20260101T000000000000Z.md"}
+
+
+def drift_scan_row():
+    code, out = run_doctor(["--json"])
+    rows = [r for r in json.loads(out)["checks"] if r["check"] == "drift scan"]
+    assert len(rows) == 1, out
+    return code, rows[0]
+
+
+class DriftScanRowTests(unittest.TestCase):
+    """The `drift scan` row: OK names the last run, WARN with `compass drift`
+    as the fix when no run is on record or the last one is old and HEAD moved."""
+
+    def test_ok_row_names_the_last_runs_date_head_and_open_findings(self):
+        """Adversarial where: the row reports the first or an older log row
+        instead of the newest, prints the current HEAD instead of the run's,
+        or counts classes instead of findings. The newest row ran at the
+        current HEAD two days ago with 17 findings; an older row says 3."""
+        project, first, head = git_project(self)
+        newest = drift_row(head, 2)
+        write_drift_log(project, [drift_row(first, 20, {"shifted": 3}), newest])
+        code, row = drift_scan_row()
+        self.assertEqual((code, row["status"]), (0, "OK"))
+        self.assertIn(newest["at"][:10], row["detail"])
+        self.assertIn(head[:7], row["detail"])
+        self.assertRegex(row["detail"], r"(?<![\w-])17(?![\w-])")
+        self.assertNotIn(first[:7], row["detail"])
+
+    def test_no_row_in_the_log_warns_with_the_drift_command(self):
+        """Adversarial where: an install that never ran the scan reads as OK
+        (no news is good news), or as a FAIL that fails the whole doctor
+        run."""
+        for name, content in (("absent", None), ("empty", "")):
+            with self.subTest(name):
+                project, _first, _head = git_project(self)
+                if content is not None:
+                    path = project / ".compass" / "archive" / "drift" / "log.jsonl"
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text(content, encoding="utf-8")
+                code, row = drift_scan_row()
+                self.assertEqual((code, row["status"]), (0, "WARN"))
+                self.assertIn("compass drift", row["fix"])
+                self.assertNotIn("\n", row["detail"])
+
+    def test_staleness_needs_both_age_over_seven_days_and_a_moved_head(self):
+        """Adversarial where: the row warns on age alone (a quiet repo nags
+        forever), on a moved HEAD alone (every commit nags), or puts the
+        age bound a day off. Rows: 7 days and an hour with HEAD moved warns;
+        6 days 23 hours with HEAD moved is OK; 30 days with HEAD unchanged is
+        OK."""
+        rows = (
+            ("old and moved", 7 + 1 / 24, "first", "WARN"),
+            ("just inside seven days and moved", 7 - 1 / 24, "first", "OK"),
+            ("old and unchanged", 30, "head", "OK"),
+        )
+        for name, age, which, expected in rows:
+            with self.subTest(name):
+                project, first, head = git_project(self)
+                write_drift_log(project, [drift_row(first if which == "first" else head, age)])
+                code, row = drift_scan_row()
+                self.assertEqual((code, row["status"]), (0, expected))
+                if expected == "WARN":
+                    self.assertIn("compass drift", row["fix"])
 
 
 class UnitPromotionCandidateTests(unittest.TestCase):
@@ -680,9 +786,10 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        # 16 rows: the baseline checks (session retention, the review-surface rows,
-        # the review-editor row and the host-roster row included) plus unit-promotion.
-        self.assertEqual(len(payload["checks"]), 16)
+        # 17 rows: the baseline checks (session retention, the review-surface rows,
+        # the review-editor row, the host-roster row and the drift scan row
+        # included) plus unit-promotion.
+        self.assertEqual(len(payload["checks"]), 17)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         row = new_rows[0]
@@ -711,9 +818,10 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        # 16 rows: the baseline checks (session retention, the review-surface rows,
-        # the review-editor row and the host-roster row included) plus unit-promotion.
-        self.assertEqual(len(payload["checks"]), 16)
+        # 17 rows: the baseline checks (session retention, the review-surface rows,
+        # the review-editor row, the host-roster row and the drift scan row
+        # included) plus unit-promotion.
+        self.assertEqual(len(payload["checks"]), 17)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         self.assertEqual(new_rows[0]["status"], "OK")
@@ -771,9 +879,10 @@ class UnitPromotionCandidateTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         self.assertEqual(code, 0)
-        # 16 rows: the baseline checks (session retention, the review-surface rows,
-        # the review-editor row and the host-roster row included) plus unit-promotion.
-        self.assertEqual(len(payload["checks"]), 16)
+        # 17 rows: the baseline checks (session retention, the review-surface rows,
+        # the review-editor row, the host-roster row and the drift scan row
+        # included) plus unit-promotion.
+        self.assertEqual(len(payload["checks"]), 17)
         new_rows = non_baseline_rows(payload)
         self.assertEqual(len(new_rows), 1)
         self.assertEqual(new_rows[0]["status"], "WARN")
@@ -905,7 +1014,10 @@ for _surface_row in ("obsidian review", "vscode review", "cursor review", "revie
 
 
 def ledger_rows(payload):
-    return [row for row in payload["checks"] if row["check"] not in PRE_TASK_093_CHECKS]
+    """The worker-ledger rows: every row outside the baseline set and the
+    `drift scan` row, which every run carries and `DriftScanRowTests` covers."""
+    return [row for row in payload["checks"]
+            if row["check"] not in PRE_TASK_093_CHECKS and row["check"] != "drift scan"]
 
 
 def capture_root(project_root):
@@ -1550,7 +1662,7 @@ class SessionRetentionRowTests(unittest.TestCase):
                 set_user_retention(content)
                 code, out = run_doctor(["--json"])
                 payload = json.loads(out)
-                self.assertEqual(len(payload["checks"]), 16)
+                self.assertEqual(len(payload["checks"]), 17)
                 row = retention_row(payload)
                 self.assertNotEqual(row["status"], "FAIL")
                 self.assertNotIn("\n", row["detail"])
@@ -1621,7 +1733,7 @@ class SessionRetentionPostBuildTests(unittest.TestCase):
                 local.write_text(content, encoding="utf-8")
                 code, out = run_doctor(["--json"])
                 payload = json.loads(out)
-                self.assertEqual(len(payload["checks"]), 16)
+                self.assertEqual(len(payload["checks"]), 17)
                 row = retention_row(payload)
                 self.assertNotEqual(row["status"], "FAIL")
                 self.assertNotIn("\n", row["detail"])
@@ -1642,7 +1754,7 @@ class NonObjectSettingsTests(unittest.TestCase):
         code, out = run_doctor(["--json"])
         payload = json.loads(out)
         checks = payload["checks"]
-        self.assertEqual(len(checks), 16)
+        self.assertEqual(len(checks), 17)
         self.assertFalse([c for c in checks if c["check"] == "doctor"])
         self.assertNotIn("internal error", out)
         hook_row = [c for c in checks if c["check"] == "automatic step registration"][0]

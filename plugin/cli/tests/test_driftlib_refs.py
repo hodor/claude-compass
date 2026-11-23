@@ -229,7 +229,7 @@ class ClassificationTests(unittest.TestCase):
             ("delete-line-below", rng, lambda s: delete_line(s, 8), "changed-elsewhere", None, old_rng),
             ("insert-directly-above", rng, lambda s: insert_after(s, 4, "NEW"), "shifted", 6, old_rng),
             ("delete-directly-above", rng, lambda s: delete_line(s, 4), "shifted", 4, old_rng),
-            ("edit-above-same-count", rng, lambda s: replace_line(s, 4, "NEW"), "shifted", 5, old_rng),
+            ("edit-above-same-count", rng, lambda s: replace_line(s, 4, "NEW"), "unchanged", None, old_rng),
             ("insert-at-top", rng, lambda s: ["NEW"] + s, "shifted", 6, old_rng),
             ("above-and-below", rng, lambda s: replace_line(insert_after(s, 2, "NEW"), 10, "TAIL"), "shifted", 6, old_rng),
             ("edit-first-line", rng, lambda s: replace_line(s, 5, "NEW"), "changed", None, "NEW\nline 6\nline 7"),
@@ -260,6 +260,39 @@ class ClassificationTests(unittest.TestCase):
                     self.assertEqual(rec["current_text"], want_current)
                 self.assertEqual(rec["old_text"], "line 5" if ref == single else old_rng)
 
+    def test_edits_above_that_net_to_zero_leave_the_range_unchanged(self):
+        """Adversarial where: any diff hunk above the range classifies it
+        `shifted`, so edits that net to zero propose the line the ref
+        already cites (71 of the 227 shifted rows of this vault) and
+        `--apply` churns them. A net of +1 and of -1 still shifts."""
+        rng = "src/a.py:5-7"
+        old_rng = "\n".join(["line 5", "line 6", "line 7"])
+        rows = [
+            ("insert-far-above-delete-just-above",
+             lambda s: delete_line(insert_after(s, 1, "NEW"), 5), "unchanged", None),
+            ("insert-just-above-delete-far-above",
+             lambda s: delete_line(insert_after(s, 4, "NEW"), 1), "unchanged", None),
+            ("replace-two-lines-at-top",
+             lambda s: replace_line(replace_line(s, 1, "N1"), 2, "N2"), "unchanged", None),
+            ("net-plus-one",
+             lambda s: delete_line(insert_after(s, 1, "N1", "N2"), 5), "shifted", 6),
+            ("net-minus-one",
+             lambda s: delete_line(delete_line(insert_after(s, 1, "N1"), 3), 3), "shifted", 4),
+        ]
+        for name, mutate, want_class, want_line in rows:
+            with self.subTest(name):
+                repo, base = seeded_repo(self, doc_with(rng))
+                write(repo, "src/a.py", mutate(A_LINES))
+                commit(repo, "edit a", "src/a.py")
+                rec = only(self, scan(repo))
+                self.assertEqual(rec["class"], want_class)
+                self.assertEqual(rec["base"], base)
+                self.assertEqual(rec["current_text"], old_rng)
+                if want_line is None:
+                    self.assertIsNone(rec["proposal"])
+                else:
+                    self.assertEqual(rec["proposal"], {"new_line": want_line})
+
     def test_shifted_new_line_follows_position_not_first_text_match(self):
         """Adversarial where: the new line is found by searching the file for
         the cited text, so a duplicate of that text earlier in the file
@@ -280,7 +313,8 @@ class ClassificationTests(unittest.TestCase):
         the citing line re-anchors it."""
         doc = ["# T", "One `src/a.py:5` here.", "", "Two `src/a.py:8` here."]
         repo, add_sha = seeded_repo(self, doc)
-        write(repo, "src/a.py", replace_line(A_LINES, 5, "NEW"))
+        edited = replace_line(["top"] + A_LINES, 6, "NEW")
+        write(repo, "src/a.py", edited)
         commit(repo, "edit a", "src/a.py")
         write(repo, DOC_PATH, replace_line(doc, 2, "One `src/a.py:5` re-anchored."))
         edit_sha = commit(repo, "edit citing line", DOC_PATH)
@@ -290,7 +324,7 @@ class ClassificationTests(unittest.TestCase):
         self.assertEqual(blame[2]["class"], "unchanged")
         self.assertEqual(blame[4]["base"], add_sha)
         self.assertEqual(blame[4]["class"], "shifted")
-        self.assertEqual(blame[4]["proposal"], {"new_line": 8})
+        self.assertEqual(blame[4]["proposal"], {"new_line": 9})
 
         added = {r["line"]: r for r in scan(repo, "add")}
         self.assertEqual(added[2]["base"], add_sha)

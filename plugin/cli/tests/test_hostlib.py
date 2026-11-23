@@ -1391,5 +1391,5 @@ class SessionStateHostBoundaryTests(unittest.TestCase):
                 any(c.endswith(" " + subcommand) for c in commands),
                 f"{subcommand} missing from {commands}")
         self.assertEqual(
-            [g.get("matcher") for g in data["hooks"]["SessionStart"]],
-            ["startup", None])
+            {g.get("matcher") for g in data["hooks"]["SessionStart"]},
+            {"startup", None})

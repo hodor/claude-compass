@@ -138,7 +138,11 @@ def dispatch(name, args):
     except ImportError:
         return cli_err(f"compass {name}: not implemented yet")
     from commands import usage
-    usage.record(name)
+    # A command module may decline the invocation record for a run that does
+    # nothing a person would count, by publishing `records_usage(args)`.
+    records_usage = getattr(module, "records_usage", None)
+    if records_usage is None or records_usage(args):
+        usage.record(name)
     # A command that publishes USAGE answers `-h` or `--help` in any position
     # with it; one without USAGE reads the flag itself.
     command_usage = getattr(module, "USAGE", None)

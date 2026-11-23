@@ -23,6 +23,14 @@ The text scans read documents from the working tree. Only an index line that
 differs from its target costs git calls: one `git blame` per index document
 and per target holding such a line, for the commit times that say which side
 changed last.
+
+`apply_fixes` rewrites the corrections the scans prove: inside the backtick
+code span of the citing line, a `shifted` reference whose cited text is
+byte-identical at its new line and a `moved` reference whose rename carries
+the cited text over at similarity 100; in an index line, the description of an
+`index-drift` record whose target changed last. A citing document with changes
+against HEAD is left alone. Documents are read and written as bytes, so line
+endings and every byte outside a rewritten span survive.
 """
 
 import os
@@ -32,7 +40,6 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import vaultlib
-from commands.sync import ENTRY_PATTERN
 
 CLASSES = (
     "unchanged", "changed-elsewhere", "shifted", "changed",
@@ -52,9 +59,14 @@ _REF = re.compile(
 _FENCE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")
 _FENCE_CLOSE = re.compile(r"^\s{0,3}(`{3,}|~{3,})\s*$")
 _SPAN = re.compile(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)")
+_TOKEN = re.compile(r"\S+")
 _HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 _BLAME_HEADER = re.compile(r"^([0-9a-f]{40}) \d+ (\d+)(?: \d+)?$")
 _SHA = re.compile(r"^[0-9a-f]{40}$")
+_INDEX_ENTRY = re.compile(
+    r"^\s*-\s+\[\[[^\]]+\]\]\s*(?:\((?:folder, )?\d+ children\))?"
+    r"\s*(?:[-\u2014\u2013]\s+(?P<desc>.*\S))?\s*$"
+)
 _WIKILINK = re.compile(r"\[\[([^\]]+)\]\]")
 _SUMMARY_KEY = re.compile(r"^summary:")
 _CATALOG_ROW = re.compile(r"^  - file:")
@@ -172,21 +184,31 @@ def _parse_token(token, tops):
     return path, norm, match.group("spec")
 
 
+def _element_bounds(element):
+    """`(start, end)` of one comma-list element, or None when a number has
+    more digits than `_MAX_DIGITS`."""
+    pieces = element.split("-")
+    if any(len(piece) > _MAX_DIGITS for piece in pieces):
+        return None
+    return int(pieces[0]), int(pieces[-1])
+
+
 def _ranges(spec):
     """Yield (start, end, malformed) for each element of a comma list."""
     for element in spec.split(","):
-        pieces = element.split("-")
-        if any(len(piece) > _MAX_DIGITS for piece in pieces):
+        bounds = _element_bounds(element)
+        if bounds is None:
             continue
-        start = int(pieces[0])
-        end = int(pieces[-1])
+        start, end = bounds
         yield start, end, start < 1 or end < start
 
 
-def _document_refs(rel, text, tops):
-    refs = []
+def _fence_walk(lines):
+    """Yield `(number, line, in_fence)` for every line that is not a fence
+    delimiter; `number` is 1-based and `in_fence` marks a line inside a
+    fenced code block."""
     opener = None
-    for number, line in enumerate(text.split("\n"), 1):
+    for number, line in enumerate(lines, 1):
         if opener is None:
             match = _FENCE.match(line)
             if match:
@@ -198,7 +220,13 @@ def _document_refs(rel, text, tops):
                     and len(close.group(1)) >= len(opener)):
                 opener = None
                 continue
-        for token in _reference_tokens(line, opener is not None):
+        yield number, line, opener is not None
+
+
+def _document_refs(rel, text, tops):
+    refs = []
+    for number, line, fenced in _fence_walk(text.split("\n")):
+        for token in _reference_tokens(line, fenced):
             parsed = _parse_token(token, tops)
             if parsed is None:
                 continue
@@ -429,7 +457,7 @@ def _classify_hunks(hunks, start, end):
             below = True
         else:
             return "changed", None
-    if above:
+    if above and shift:
         return "shifted", start + shift
     if below:
         return "changed-elsewhere", None
@@ -604,6 +632,8 @@ def _read_target(vault, rel, cache):
         summary, span = None, None
         try:
             text = vaultlib.read_vault_text(vault / rel)
+            with open(vault / rel, "rb") as handle:
+                raw = handle.read()
         except OSError:
             text = None
         if text is not None:
@@ -611,7 +641,7 @@ def _read_target(vault, rel, cache):
             value = data.get("summary")
             if isinstance(value, str) and value.strip():
                 summary = value
-                span = _summary_span(text.split("\n"))
+                span = _summary_span(_index_lines(raw))
         cache[rel] = (summary, span)
     return cache[rel]
 
@@ -666,12 +696,24 @@ def _text_record(file, line, cls, target=None, old=None, current=None):
     }
 
 
+def _index_lines(data):
+    """Lines of a vault document's bytes under the line model `apply_fixes`
+    edits: split on LF alone, so a lone CR stays inside its line and line
+    numbers agree with the rewrite. A BOM and one trailing CR per line are
+    dropped from the view."""
+    text = data.decode("utf-8", "surrogateescape")
+    if text.startswith("﻿"):
+        text = text[1:]
+    return [line[:-1] if line.endswith("\r") else line
+            for line in text.split("\n")]
+
+
 def scan_index_lines(repo_root, vault_dir):
     """Compare each index entry line's description with its target's summary.
 
-    Every `index.md` under `vault_dir` is read; a line shaped as sync's
-    entry pattern with a description is checked against the `summary` of the
-    document its leading wikilink resolves to. Returns records sorted by
+    Every `index.md` under `vault_dir` is read; a line shaped as a bullet,
+    one wikilink, an optional child count and a description is checked
+    against the `summary` of the document its leading wikilink resolves to. Returns records sorted by
     (file, line): `index-drift` (description differs, with `newer` naming the
     side whose last change is later), `no-summary`, `unresolved-link` and
     `ambiguous-link`. A line that agrees with its target yields no record.
@@ -684,16 +726,17 @@ def scan_index_lines(repo_root, vault_dir):
     drifted = []
     for path in _index_documents(vault):
         try:
-            text = vaultlib.read_vault_text(path)
+            with open(path, "rb") as handle:
+                data = handle.read()
         except OSError:
             continue
         rel = _repo_rel(repo, path)
-        lines = text.split("\n")
+        lines = _index_lines(data)
         fenced, _open = vaultlib.fence_mask(lines)
         for number, line in enumerate(lines, 1):
             if fenced[number - 1]:
                 continue
-            entry = ENTRY_PATTERN.match(line)
+            entry = _INDEX_ENTRY.match(line)
             if not entry or entry.group("desc") is None:
                 continue
             desc = entry.group("desc")
@@ -858,3 +901,200 @@ def scan_catalog(repo_root, vault_dir):
             records.append(record)
     records.sort(key=lambda rec: (rec["file"], rec["line"]))
     return records
+
+
+# Applying proven corrections ------------------------------------------------
+
+
+def _span_text(start, end):
+    return str(start) if start == end else f"{start}-{end}"
+
+
+def _fix_kind(record):
+    """`"ref"` or `"index"` when `record` is a correction the scans prove
+    mechanically, else None."""
+    cls = record["class"]
+    if "ref_path" in record:
+        if record["old_text"] is None or record["old_text"] != record["current_text"]:
+            return None
+        proposal = record["proposal"] or {}
+        if cls == "shifted" and "new_line" in proposal:
+            return "ref"
+        if cls == "moved" and proposal.get("similarity") == 100:
+            return "ref"
+        return None
+    if cls == "index-drift" and record.get("newer") == "target":
+        summary = record["current_text"]
+        if summary and "\n" not in summary and "\r" not in summary:
+            return "index"
+    return None
+
+
+def _ref_fix(record):
+    """`(new path or None, new element text)` for a fixable reference record."""
+    start, end = record["ref_start"], record["ref_end"]
+    if record["class"] == "moved":
+        return record["proposal"]["new_path"], _span_text(start, end)
+    new = record["proposal"]["new_line"]
+    return None, _span_text(new, new + end - start)
+
+
+def _token_core(token):
+    """`(lead, core)` of a token as `_parse_token` strips it: `lead`
+    characters precede the core inside the token."""
+    core = token.strip("(['\"").rstrip(".,;:)]'\"")
+    lead = len(token) - len(token.lstrip("(['\""))
+    if token[lead:lead + len(core)] != core:
+        return None
+    return lead, core
+
+
+def _rewrite_ref_line(line, fixes):
+    """Rewrite the fixable references of one citing line inside its backtick
+    code spans. `fixes` maps `(path, start, end)` to `(new path or None, new
+    element text)`. A token's path changes only when every element of its
+    comma list moves to one new path. Returns the new line and the
+    `(key, old, new)` hits, one per rewritten element."""
+    edits, hits = [], []
+    for span in _SPAN.finditer(line):
+        for found in _TOKEN.finditer(span.group(2)):
+            split = _token_core(found.group())
+            match = _REF.fullmatch(split[1]) if split else None
+            if not match:
+                continue
+            path = match.group("path")
+            elements = match.group("spec").split(",")
+            keys = []
+            for element in elements:
+                bounds = _element_bounds(element)
+                key = (path, *bounds) if bounds else None
+                keys.append(key if key in fixes else None)
+            new_paths = {fixes[k][0] for k in keys if k}
+            move = (len(new_paths) == 1 and None not in new_paths
+                    and all(keys))
+            target = path
+            if move:
+                target = new_paths.pop()
+                if path.startswith("./"):
+                    target = "./" + target
+            rewritten = []
+            for element, key in zip(elements, keys):
+                if key is None or (fixes[key][0] and not move):
+                    rewritten.append(element)
+                    continue
+                new_element = element if fixes[key][0] else fixes[key][1]
+                rewritten.append(new_element)
+                hits.append((key, f"{path}:{element}", f"{target}:{new_element}"))
+            replacement = f"{target}:{','.join(rewritten)}"
+            if replacement != split[1]:
+                start = span.start(2) + found.start() + split[0]
+                edits.append((start, start + len(split[1]), replacement))
+    for start, end, replacement in sorted(edits, reverse=True):
+        line = line[:start] + replacement + line[end:]
+    return line, hits
+
+
+def _dirty_documents(repo, rels):
+    """The documents among `rels` that differ from HEAD, staged or not, or
+    None when git cannot say."""
+    dirty = set()
+    for chunk in _chunks(rels):
+        code, out = _git(repo, "diff", "--name-only", "-z", "--no-renames",
+                         "--no-ext-diff", "--no-textconv", "HEAD", "--", *chunk)
+        if code != 0:
+            return None
+        dirty.update(name for name in out.split("\0") if name)
+    return dirty
+
+
+def _fix_document(lines, records):
+    """Apply the fixable `records` of one document to `lines` in place and
+    return the applied `(record, old, new)` triples."""
+    plain = {number for number, _line, fenced in _fence_walk(lines) if not fenced}
+    by_line = {}
+    for record in records:
+        by_line.setdefault(record["line"], []).append(record)
+    applied = []
+    for number, group in sorted(by_line.items()):
+        if number > len(lines):
+            continue
+        refs = [r for r in group if _fix_kind(r) == "ref"]
+        if refs and number in plain:
+            fixes, pending = {}, {}
+            for record in refs:
+                key = (record["ref_path"], record["ref_start"], record["ref_end"])
+                fixes[key] = _ref_fix(record)
+                pending.setdefault(key, []).append(record)
+            lines[number - 1], hits = _rewrite_ref_line(lines[number - 1], fixes)
+            for key, old, new in hits:
+                if pending[key]:
+                    applied.append((pending[key].pop(0), old, new))
+        for record in group:
+            if _fix_kind(record) != "index":
+                continue
+            line = lines[number - 1]
+            body = line[:-1] if line.endswith("\r") else line
+            match = _INDEX_ENTRY.match(body)
+            if not match or match.group("desc") != record["old_text"]:
+                continue
+            new_body = (body[:match.start("desc")] + record["current_text"]
+                        + body[match.end("desc"):])
+            lines[number - 1] = new_body + line[len(body):]
+            applied.append((record, record["old_text"], record["current_text"]))
+    return applied
+
+
+def apply_fixes(repo_root, records):
+    """Rewrite every correction among `records` that the scans prove.
+
+    A line that also carries a correction the scans do not prove is left
+    whole: rewriting one reference moves the line's blame base to the new
+    commit and the other reference would stop reading as stale.
+
+    Returns `(applied, skipped)`. `applied` has one dict per rewritten record:
+    `file`, `line`, `class`, `old`, `new` and the `record` itself. `skipped`
+    has one dict per citing document left alone (`file`, `count` of
+    corrections not applied, `reason`): a document with changes against HEAD,
+    or one that could not be read or written. Nothing is rewritten when HEAD
+    does not resolve.
+    """
+    repo = os.fspath(repo_root)
+    blocked = {(r["file"], r["line"]) for r in records if not _fix_kind(r)}
+    wanted = {}
+    for record in records:
+        if _fix_kind(record) and (record["file"], record["line"]) not in blocked:
+            wanted.setdefault(record["file"], []).append(record)
+    if not wanted or _rev_parse(repo, "HEAD") is None:
+        return [], []
+    dirty = _dirty_documents(repo, sorted(wanted))
+    applied, skipped = [], []
+    for rel in sorted(wanted):
+        group = wanted[rel]
+        if dirty is None or rel in dirty:
+            skipped.append({"file": rel, "count": len(group),
+                            "reason": "uncommitted changes"})
+            continue
+        path = os.path.join(repo, rel)
+        try:
+            with open(path, "rb") as handle:
+                data = handle.read()
+        except OSError:
+            skipped.append({"file": rel, "count": len(group),
+                            "reason": "unreadable"})
+            continue
+        lines = data.decode("utf-8", "surrogateescape").split("\n")
+        triples = _fix_document(lines, group)
+        if not triples:
+            continue
+        try:
+            with open(path, "wb") as handle:
+                handle.write("\n".join(lines).encode("utf-8", "surrogateescape"))
+        except OSError:
+            skipped.append({"file": rel, "count": len(group),
+                            "reason": "unwritable"})
+            continue
+        for record, old, new in triples:
+            applied.append({"file": rel, "line": record["line"],
+                            "class": record["class"], "old": old, "new": new,
+                            "record": record})
+    return applied, skipped
