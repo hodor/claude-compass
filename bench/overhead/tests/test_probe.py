@@ -67,6 +67,7 @@ import pytest
 
 import fake_claude
 import probe
+import topics
 from fake_reply_claude import fake_reply  # noqa: F401  (pytest fixture)
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "probe-session.jsonl"
@@ -526,7 +527,7 @@ def test_report_gives_per_arm_rows_and_leaks_no_session_content(point, repo, pri
     lines = [line for line in text.splitlines() if line.strip().startswith("|")]
     header = _cells(lines[0])
     assert header[:2] == ["arm", "probe"] and "carried" in lines[0].lower()
-    rows = {(_cells(line)[0], _cells(line)[1]): _cells(line) for line in lines[2:]}
+    rows = _main_rows(text)
     for kind in ("artifact", "recall", "continuation", "decision"):
         host, floor = rows[("host-summary", kind)], rows[("none", kind)]
         assert host[2] == floor[2] == "1"
@@ -927,8 +928,7 @@ def test_report_carried_tokens_are_the_input_over_the_floor_clamped_at_zero(priv
     grade_file("two", "host-summary", 300, scores)
     grade_file("three", "host-summary", 900, scores)
 
-    rows = {(_cells(line)[0], _cells(line)[1]): _cells(line)
-            for line in probe.report(private_root=private_root).splitlines()[2:]}
+    rows = _main_rows(probe.report(private_root=private_root))
 
     assert rows[("host-summary", "artifact")][2:] == ["3", "0.50", "0", "300"]
     assert rows[("host-summary", "recall")][3] == "0.50"
@@ -1242,3 +1242,1318 @@ def test_recall_count_is_not_credited_for_a_different_count_sharing_its_digits()
     literal `3 failed`, so a wrong count earns full marks on the likeliest recall
     literal."""
     assert probe._score_text("13 failed", "3 failed", False) == 0.0
+
+
+# latest-stretch artifact, shortened error quotes, pooled state, paired intervals ----
+
+TWO_BOUNDARIES = Path(__file__).resolve().parent / "fixtures" / "probe-two-boundaries.jsonl"
+FIRST_EDITS = ["src/alpha.py", "src/beta.py"]
+ALL_EDITS = ["src/alpha.py", "src/beta.py", "src/gamma.py", "docs/delta.md"]
+RECENT_EDITS = ["src/gamma.py", "docs/delta.md", "src/alpha.py"]
+FIXTURE_STRINGS = (
+    "alpha.py", "beta.py", "gamma.py", "delta.md", "epsilon", "zeta", "work/sample", "widgets",
+    "FIXSUMMARY", "claude-haiku",
+)
+
+
+@pytest.fixture
+def two_points(tmp_path):
+    """The two boundary points of the two-boundary fixture, earlier one first."""
+    folder = tmp_path / "two-boundaries"
+    folder.mkdir()
+    shutil.copy(TWO_BOUNDARIES, folder / "probe-two-boundaries.jsonl")
+    found = probe.find(folder)
+    assert [item["boundary"] for item in found] == [5, 15]
+    return [item["point"] for item in found]
+
+
+def _store_reply(point, private_root, arm, reply):
+    """Store the raw reply of `arm` the way `ask` stores it, without a session."""
+    text = reply if isinstance(reply, str) else json.dumps(reply)
+    stored = {"point": point, "arm": arm, "reply": text, "tokens": {}}
+    topics.write_json(probe._point_dir(point, private_root) / f"ask-{arm}.json", stored)
+
+
+def _score_value(score):
+    """The number of a score: an artifact-style score reads as its recall."""
+    return score["recall"] if isinstance(score, dict) else score
+
+
+def _write_grade(private_root, folder, arm, scores):
+    target = private_root / "probes" / folder
+    target.mkdir(parents=True, exist_ok=True)
+    topics.write_json(target / f"grade-{arm}.json", {
+        "point": folder, "arm": arm, "unparsed": False, "scores": scores, "input_tokens": 0})
+
+
+def _table_blocks(text):
+    """The markdown tables of `text`, each a list of its lines, first table first."""
+    blocks, current = [], []
+    for line in text.splitlines():
+        if line.strip().startswith("|"):
+            current.append(line)
+        elif current:
+            blocks.append(current)
+            current = []
+    if current:
+        blocks.append(current)
+    return blocks
+
+
+def _paired_row(text, kind):
+    """(cells, line) of the row for probe type `kind` in a table after the first one."""
+    for block in _table_blocks(text)[1:]:
+        for line in block:
+            if kind in _cells(line):
+                return _cells(line), line
+    raise AssertionError(f"no paired row for {kind}:\n{text}")
+
+
+def _decimals(line):
+    return [float(number) for number in re.findall(r"[-+]?\d+\.\d+", line)]
+
+
+def _main_rows(text):
+    return {(_cells(line)[0], _cells(line)[1]): _cells(line) for line in _table_blocks(text)[0][2:]}
+
+
+# build: expected_recent
+
+def test_build_stores_the_edits_made_since_the_previous_boundary(two_points, private_root):
+    """Adversarial where: expected_recent taken as the whole trail, as only the paths
+    new since the earlier boundary (dropping a path edited again), as including a
+    Read path or an edit after the boundary, or as cut by an earlier boundary only
+    when one exists (the first point must keep every edit)."""
+    first = probe_by_id(probe.build(two_points[0], private_root=private_root))["artifact"]
+    second_key = probe.build(two_points[1], private_root=private_root)
+    second = probe_by_id(second_key)["artifact"]
+
+    assert sorted(first["expected"]) == sorted(FIRST_EDITS)
+    assert sorted(first["expected_recent"]) == sorted(FIRST_EDITS)
+    assert sorted(second["expected"]) == sorted(ALL_EDITS)
+    assert sorted(second["expected_recent"]) == sorted(RECENT_EDITS)
+    stored = topics.read_json(probe._point_dir(two_points[1], private_root) / "key.json")
+    assert sorted(probe_by_id(stored)["artifact"]["expected_recent"]) == sorted(RECENT_EDITS)
+    assert "zeta" not in json.dumps(second_key) and "epsilon" not in json.dumps(second_key)
+
+
+def _three_boundaries():
+    return [
+        user(0, "go"), _plain_edit(1, "a.py"), tool_result(2, "ok"), boundary(3), summary(4),
+        _plain_edit(5, "b.py"), tool_result(6, "ok"), boundary(7), summary(8),
+        _plain_edit(9, "c.py", "Write"), tool_result(10, "ok"), boundary(11), summary(12),
+    ]
+
+
+def _sidechain_boundary_between_edits():
+    marker = boundary(2)
+    marker["isSidechain"] = True
+    return [user(0, "go"), _plain_edit(1, "a.py"), marker, _plain_edit(3, "b.py"), tool_result(4, "ok"),
+            boundary(5), summary(6)]
+
+
+def _quoted_marker_between_edits():
+    quote = 'log line {"type": "system", "subtype": "compact_boundary"} was printed'
+    return [user(0, "go"), _plain_edit(1, "a.py"), user(2, quote), _plain_edit(3, "b.py"),
+            tool_result(4, "ok"), boundary(5), summary(6)]
+
+
+@pytest.mark.parametrize("name, records, boundary_index, expected, recent", [
+    ("middle of three boundaries", _three_boundaries(), 7, ["a.py", "b.py"], ["b.py"]),
+    ("last of three boundaries", _three_boundaries(), 11, ["a.py", "b.py", "c.py"], ["c.py"]),
+    ("sidechain boundary is another side", _sidechain_boundary_between_edits(), 5, ["a.py", "b.py"],
+     ["a.py", "b.py"]),
+    ("quoted marker is no boundary", _quoted_marker_between_edits(), 5, ["a.py", "b.py"], ["a.py", "b.py"]),
+])
+def test_recent_window_starts_after_the_last_earlier_boundary_on_the_points_side(
+        tmp_path, private_root, name, records, boundary_index, expected, recent):
+    """Adversarial where: the window cut at the first boundary instead of the last
+    earlier one, cut by a subagent's boundary or by text that quotes the marker, or
+    one that keeps the edits made before the cut."""
+    folder = _new_folder(tmp_path)
+    write_transcript(folder, "t.jsonl", records)
+    (found,) = [item for item in probe.find(folder) if item["boundary"] == boundary_index]
+
+    artifact = probe_by_id(probe.build(found["point"], private_root=private_root))["artifact"]
+
+    assert sorted(artifact["expected"]) == sorted(expected), name
+    assert sorted(artifact["expected_recent"]) == sorted(recent), name
+
+
+def test_build_on_a_key_without_expected_recent_adds_it_and_changes_nothing_else(two_points, private_root):
+    """Adversarial where: a migrating build that re-derives the whole key (and so
+    replaces the frozen questions, model or expected paths the stored replies were
+    graded against), rewrites stored replies, or leaves the key open to a further
+    build once the field is back."""
+    probe.build(two_points[1], private_root=private_root)
+    folder = probe._point_dir(two_points[1], private_root)
+    legacy = topics.read_json(folder / "key.json")
+    artifact = probe_by_id(legacy)["artifact"]
+    del artifact["expected_recent"]
+    artifact["question"] = "FROZEN WORDING of the artifact question"
+    artifact["expected"] = ["src/alpha.py", "docs/delta.md"]
+    legacy["model"] = "claude-opus-4-1"
+    topics.write_json(folder / "key.json", legacy)
+    _store_reply(two_points[1], private_root, "host-summary", {"artifact": ["src/alpha.py"]})
+    reply_before = (folder / "ask-host-summary.json").read_bytes()
+
+    probe.build(two_points[1], private_root=private_root)
+
+    migrated = topics.read_json(folder / "key.json")
+    assert sorted(probe_by_id(migrated)["artifact"]["expected_recent"]) == sorted(RECENT_EDITS)
+    del probe_by_id(migrated)["artifact"]["expected_recent"]
+    assert migrated == legacy
+    assert (folder / "ask-host-summary.json").read_bytes() == reply_before
+    with pytest.raises(probe.AlreadyFrozen):
+        probe.build(two_points[1], private_root=private_root)
+
+
+# grade: artifact-recent
+
+def test_grade_scores_the_one_reply_against_the_whole_trail_and_against_the_recent_edits(
+        two_points, private_root):
+    """Adversarial where: artifact-recent scored against the whole trail (the same
+    number as artifact), against the paths new since the boundary, or a reply naming
+    only an old edit credited on the latest stretch."""
+    probe.build(two_points[1], private_root=private_root)
+    _store_reply(two_points[1], private_root, "host-summary", {"artifact": RECENT_EDITS})
+    _store_reply(two_points[1], private_root, "none", {"artifact": ["src/beta.py"]})
+
+    graded = probe.grade(two_points[1], private_root=private_root)
+
+    host, floor = graded["host-summary"]["scores"], graded["none"]["scores"]
+    assert _score_value(host["artifact-recent"]) == 1.0
+    assert host["artifact"]["recall"] == 0.75 and host["artifact"]["precision"] == 1.0
+    assert _score_value(floor["artifact-recent"]) == 0.0
+    assert floor["artifact"]["recall"] == 0.25
+
+
+def test_a_point_with_no_edit_since_the_earlier_boundary_has_no_artifact_recent_score(
+        tmp_path, private_root):
+    """Adversarial where: an empty recent set scored as a perfect or a zero score
+    (0/0 reported as 1.0 or 0.0), so the arm is rewarded or punished for a probe the
+    point never had; the artifact score must stay."""
+    folder = _new_folder(tmp_path)
+    write_transcript(folder, "t.jsonl", [
+        user(0, "go"), _plain_edit(1, "a.py"), tool_result(2, "ok"), boundary(3), summary(4),
+        user(5, "next"), assistant(6, "reading", ("Read", {"file_path": "a.py"})), tool_result(7, "ok"),
+        boundary(8), summary(9)])
+    (found,) = [item for item in probe.find(folder) if item["boundary"] == 8]
+    built = probe_by_id(probe.build(found["point"], private_root=private_root))["artifact"]
+    _store_reply(found["point"], private_root, "host-summary", {"artifact": ["a.py"]})
+
+    graded = probe.grade(found["point"], private_root=private_root)["host-summary"]
+
+    assert not built.get("expected_recent")
+    assert graded["scores"]["artifact"] == {"precision": 1.0, "recall": 1.0}
+    assert "artifact-recent" not in graded["scores"]
+    assert "artifact-recent" not in probe.report(private_root=private_root)
+
+
+def test_a_key_frozen_before_expected_recent_existed_still_grades_without_that_score(
+        two_points, private_root):
+    """Adversarial where: a stored key without the field makes grade raise or invent
+    a score, so the pilot's replies cannot be regraded."""
+    probe.build(two_points[1], private_root=private_root)
+    folder = probe._point_dir(two_points[1], private_root)
+    legacy = topics.read_json(folder / "key.json")
+    del probe_by_id(legacy)["artifact"]["expected_recent"]
+    topics.write_json(folder / "key.json", legacy)
+    _store_reply(two_points[1], private_root, "host-summary", {"artifact": ALL_EDITS})
+
+    graded = probe.grade(two_points[1], private_root=private_root)["host-summary"]
+
+    assert graded["scores"]["artifact"] == {"precision": 1.0, "recall": 1.0}
+    assert "artifact-recent" not in graded["scores"]
+
+
+# grade: shortened error quote
+
+NAMED = "ValueError: the point is not a compaction boundary, line 12"
+
+
+@pytest.mark.parametrize("literal, reply, score", [
+    (NAMED, "ValueError: the point is not a compaction boundary", 1.0),
+    (NAMED, NAMED, 1.0),
+    (NAMED, "A ValueError was raised because the point is not a compaction boundary", 1.0),
+    (NAMED, "ValueError", 0.0),
+    (NAMED, "the point is not a compaction boundary", 0.0),
+    (NAMED, "NotValueError: the point is not a compaction boundary", 0.0),
+    (NAMED, "KeyError: the point is not a compaction boundary", 0.0),
+    (NAMED, "ValueError: the point is not a compaction", 0.0),
+    ("KeyError: ghost", "KeyError: ghost", 1.0),
+    ("KeyError: ghost", "KeyError", 0.0),
+    ("AttributeError: no attribute", "AttributeError: no", 0.0),
+    ("ValueError: pre-built frame", "ValueError: pre-built frame", 1.0),
+    ("ValueError: pre-built frame", "ValueError: pre", 0.0),
+    ("ValueError: foo(bar)", "ValueError: foo(bar)", 1.0),
+    ("ValueError: foo(bar)", "ValueError: foo", 0.0),
+    ("TypeError: expected int (got str)", "TypeError: expected int", 1.0),
+    ("RuntimeError: stalled - giving up", "RuntimeError: stalled", 1.0),
+    ("OSError: cannot open: file x", "OSError: cannot open", 1.0),
+    (r"PermissionError: C:\data\x denied", "PermissionError: C", 0.0),
+    (r"PermissionError: C:\data\x denied", r"PermissionError: C:\data\x denied", 1.0),
+    ("KeyError: a:b, c", "KeyError: a:b", 1.0),
+    ("KeyError: bad key; retry later", "KeyError: bad key", 1.0),
+    ("ValueError: a, b; c", "ValueError: a", 1.0),
+    ("KeyError: a+b*c", "KeyError: a+b*c", 1.0),
+    ("KeyError: a+b*c", "KeyError: aabbc", 0.0),
+    ("3 failed", "3 failed, 2 passed", 1.0),
+    ("3 failed", "13 failed", 0.0),
+    ("3 failed", "3", 0.0),
+])
+def test_recall_scores_the_error_name_and_the_messages_first_clause(
+        tmp_path, private_root, literal, reply, score):
+    """Adversarial where: a quote that stops short of the last clause scored 0 (the
+    pilot's miss), the name or the message alone credited, a name that is only the
+    tail of a longer word credited, a separator that is not one (`-` without
+    spaces, `(` without a space) cutting the message early, a message without
+    separator accepted by a prefix, regex characters in the message mismatching,
+    or the `N failed` literal changed by the new rule."""
+    text = f"{literal}, 1 passed in 0.10s" if literal.endswith(" failed") else literal
+    folder = _new_folder(tmp_path)
+    write_transcript(folder, "t.jsonl", [
+        user(0, "run it"), assistant(1, "running", ("Bash", {"command": "pytest"})),
+        tool_result(2, text, is_error=True), boundary(3), summary(4)])
+    (found,) = probe.find(folder)
+    built = probe.build(found["point"], private_root=private_root)
+    assert [item["expected"] for item in built["probes"]] == [literal]
+    _store_reply(found["point"], private_root, "host-summary", {"recall-1": reply})
+
+    graded = probe.grade(found["point"], private_root=private_root)["host-summary"]
+
+    assert graded["scores"]["recall-1"] == score
+
+
+# report: rows, state, intervals
+
+def _state_point(tmp_path, private_root, name, middle, reply):
+    folder = _new_folder(tmp_path, name)
+    records = [user(0, "go"), _plain_edit(1, "a.py"), tool_result(2, "ok"), *middle]
+    records += [boundary(len(records)), summary(len(records) + 1)]
+    write_transcript(folder, "t.jsonl", records)
+    (found,) = probe.find(folder)
+    built = probe.build(found["point"], private_root=private_root)
+    _store_reply(found["point"], private_root, "host-summary", reply)
+    probe.grade(found["point"], private_root=private_root)
+    return built
+
+
+def test_state_score_pools_recall_continuation_and_decision_per_point(tmp_path, private_root):
+    """Adversarial where: the state of a point averaged over its probes (a recall
+    pair counted twice) instead of over the three types, a point with no recall,
+    continuation or decision probe given a state of 0 or 1, or the artifact score
+    mixed in."""
+    decided = [assistant(3, "Next is TASK-5."), *_pair(4, structured={"Which storage?": "Flat files"})]
+    _state_point(tmp_path, private_root, "a", decided, {"continuation": "TASK-5", "decision": "Other"})
+    recalled = [
+        assistant(3, "Now on TASK-8."), assistant(4, "", ("Bash", {"command": "pytest"})),
+        tool_result(5, "KeyError: alpha9\n3 failed, 1 passed", is_error=True),
+        *_pair(6, structured={"Which storage?": "Flat files"})]
+    _state_point(tmp_path, private_root, "c", recalled, {
+        "recall-1": "KeyError: alpha9", "recall-2": "9 failed", "continuation": "TASK-8",
+        "decision": "Flat files"})
+    _state_point(tmp_path, private_root, "b", [], {"artifact": ["a.py"]})
+
+    rows = _main_rows(probe.report(private_root=private_root))
+
+    assert rows[("host-summary", "state")][2:4] == ["2", "0.67"]
+    assert rows[("host-summary", "artifact")][2] == "3"
+    assert rows[("host-summary", "continuation")][2] == "2"
+
+
+def test_report_rows_keep_artifact_and_artifact_recent_apart(two_points, private_root):
+    """Adversarial where: artifact-recent folded into the artifact row (its probe id
+    shares the `artifact` prefix) so both rows read the same, or a point with no
+    state probe given a state row."""
+    probe.build(two_points[1], private_root=private_root)
+    _store_reply(two_points[1], private_root, "host-summary", {"artifact": RECENT_EDITS})
+    _store_reply(two_points[1], private_root, "none", {"artifact": ["src/beta.py"]})
+    probe.grade(two_points[1], private_root=private_root)
+
+    rows = _main_rows(probe.report(private_root=private_root))
+
+    assert rows[("host-summary", "artifact")][2:4] == ["1", "0.75"]
+    assert rows[("host-summary", "artifact-recent")][2:4] == ["1", "1.00"]
+    assert rows[("none", "artifact")][2:4] == ["1", "0.25"]
+    assert rows[("none", "artifact-recent")][2:4] == ["1", "0.00"]
+    assert ("host-summary", "state") not in rows
+
+
+def _recall_pair(host, arm):
+    return ({"recall-1": host[0], "recall-2": host[1]}, {"recall-1": arm[0], "recall-2": arm[1]})
+
+
+def test_paired_interval_lies_above_zero_when_the_arm_wins_every_point(private_root):
+    """Adversarial where: an interval that includes 0 for 12 points that all favour
+    the arm, a sign flipped (host minus arm), or a count and mean taken over
+    something other than the 12 points graded in both arms."""
+    pairs = [_recall_pair((0.0, 0.0), (1.0, 1.0 if number < 6 else 0.0)) for number in range(12)]
+    for number, (host, arm) in enumerate(pairs):
+        _write_grade(private_root, f"point-{number:02d}", "host-summary", host)
+        _write_grade(private_root, f"point-{number:02d}", "none", arm)
+
+    cells, line = _paired_row(probe.report(private_root=private_root), "recall")
+
+    assert "12" in cells and "too few points" not in line
+    numbers = _decimals(line)
+    assert len(numbers) >= 3 and all(number > 0 for number in numbers)
+    assert any(abs(number - 0.75) < 1e-9 for number in numbers)
+
+
+def test_paired_interval_spans_zero_on_a_balanced_split_and_repeats_exactly(private_root):
+    """Adversarial where: an interval that is the min and max of the differences, the
+    point estimate alone, or one that changes between two runs of the same input
+    (an unseeded generator)."""
+    for number in range(12):
+        host, arm = (1.0, 0.0) if number % 2 else (0.0, 1.0)
+        _write_grade(private_root, f"point-{number:02d}", "host-summary", {"continuation": host})
+        _write_grade(private_root, f"point-{number:02d}", "none", {"continuation": arm})
+
+    first = probe.report(private_root=private_root)
+    second = probe.report(private_root=private_root)
+
+    assert first == second
+    numbers = sorted(_decimals(_paired_row(first, "continuation")[1]))
+    assert len(numbers) >= 3
+    assert -0.9 < numbers[0] <= -0.4 and 0.4 <= numbers[-1] < 0.9
+    assert any(abs(number) < 1e-9 for number in numbers)
+
+
+@pytest.mark.parametrize("paired", [9, 10])
+def test_paired_interval_needs_ten_points_graded_in_both_arms(private_root, paired):
+    """Adversarial where: the too-few-points cut at 9 or 11 instead of 10, a point
+    graded in one arm only (or lacking the probe type in one arm) counted as a pair,
+    or a mean over the arm's own points instead of the paired differences (the arm
+    carries 4 extra points scoring 0, so a mean of means reads 0.71 rather than 1.00)."""
+    for number in range(paired):
+        _write_grade(private_root, f"paired-{number:02d}", "host-summary", {"continuation": 0.0})
+        _write_grade(private_root, f"paired-{number:02d}", "none", {"continuation": 1.0})
+    for number in range(4):
+        _write_grade(private_root, f"arm-only-{number}", "none", {"continuation": 0.0})
+    for number in range(3):
+        _write_grade(private_root, f"host-only-{number}", "host-summary", {"continuation": 1.0})
+    for number in range(2):
+        _write_grade(private_root, f"lacking-{number}", "host-summary", {"continuation": 1.0})
+        _write_grade(private_root, f"lacking-{number}", "none", {"recall-1": 1.0})
+
+    cells, line = _paired_row(probe.report(private_root=private_root), "continuation")
+
+    assert str(paired) in cells
+    if paired < 10:
+        assert "too few points" in line
+    else:
+        assert "too few points" not in line
+        numbers = _decimals(line)
+        assert len(numbers) >= 3 and all(abs(number - 1.0) < 1e-9 for number in numbers)
+
+
+def test_one_paired_table_per_arm_other_than_host_summary(private_root):
+    """Adversarial where: a paired table for the reference arm against itself, or none
+    for the other arm."""
+    _write_grade(private_root, "only", "host-summary", {"continuation": 1.0})
+    alone = probe.report(private_root=private_root)
+    _write_grade(private_root, "only", "none", {"continuation": 0.0})
+
+    both = probe.report(private_root=private_root)
+
+    assert len(_table_blocks(alone)) == 1
+    assert len(_table_blocks(both)) == 2
+    assert _cells(_table_blocks(both)[0][0])[:2] == ["arm", "probe"]
+
+
+def test_report_with_paired_tables_holds_no_fixture_path_prompt_or_answer(two_points, private_root, tmp_path):
+    """Adversarial where: the new tables print a path, a prompt, a summary line, a
+    model name, the point string or a quoted answer from the two-boundary fixture."""
+    for point in two_points:
+        probe.build(point, private_root=private_root)
+        _store_reply(point, private_root, "host-summary", {"artifact": ALL_EDITS})
+        _store_reply(point, private_root, "none", {"artifact": ["src/beta.py"], "decision": "ANSWERLEAK"})
+        probe.grade(point, private_root=private_root)
+
+    text = probe.report(private_root=private_root)
+
+    assert len(_table_blocks(text)) >= 2
+    for secret in (*FIXTURE_STRINGS, str(tmp_path), "ANSWERLEAK", *two_points):
+        assert secret not in text
+
+
+# implementation-revealed branches of the grading rules ----------------------------
+
+WINDOWS_ERROR = r"PermissionError: C:\data\x denied"
+
+
+@pytest.mark.parametrize("literal, reply, score", [
+    ("KeyError: , tail", "KeyError: , tail", 1.0),
+    ("KeyError: , tail", "KeyError", 0.0),
+    ("KeyError: ;; x", "KeyError: ;; x", 1.0),
+    (WINDOWS_ERROR, WINDOWS_ERROR, 1.0),
+    ("KeyError: [a-z]+ here", "KeyError: a here", 0.0),
+    ("KeyError: [a-z]+ here", "KeyError: [a-z]+ here", 1.0),
+    ("ValueError: x", "builtins.ValueError: x", 1.0),
+    ("ValueError: x", "ValueErrors: x", 0.0),
+    ("ValueError: x y", "VALUEERROR:   X\n  Y", 1.0),
+    ("ValueError: a, b; c - d (e)", "ValueError: a", 1.0),
+    ("ValueError: a-b", "ValueError: a", 0.0),
+    ("ValueError: a(b) c", "ValueError: a", 0.0),
+    ("ValueError: a (b) c", "ValueError: a", 1.0),
+    ("ValueError: first", "Something else failed first. Later a ValueError appeared.", 1.0),
+    ("ValueError: first", "ValueError only", 0.0),
+])
+def test_error_scoring_separator_edges_metacharacters_and_word_boundaries(
+        tmp_path, private_root, literal, reply, score):
+    """Adversarial where: a message that opens with a separator leaving an empty first
+    clause (crash, or credit for the name alone), a regex character in the message
+    or a backslash path read as a pattern, a name matched inside a longer word,
+    case or whitespace differences refused, a `(` or `-` without its space cutting
+    the message early, or the name and the clause credited when only one of them
+    is in the reply."""
+    folder = _new_folder(tmp_path)
+    write_transcript(folder, "t.jsonl", [
+        user(0, "run it"), assistant(1, "running", ("Bash", {"command": "pytest"})),
+        tool_result(2, literal, is_error=True), boundary(3), summary(4)])
+    (found,) = probe.find(folder)
+    built = probe.build(found["point"], private_root=private_root)
+    assert [item["expected"] for item in built["probes"]] == [literal]
+    _store_reply(found["point"], private_root, "host-summary", {"recall-1": reply})
+
+    graded = probe.grade(found["point"], private_root=private_root)["host-summary"]
+
+    assert graded["scores"]["recall-1"] == score
+
+
+def test_state_score_over_the_types_a_point_has(tmp_path):
+    """Adversarial where: the pooled score averaged over the three types when a point
+    holds only some of them (absent types counted as 0), a recall pair counted once
+    per probe, artifact-recent or artifact mixed in, or a point of only artifact
+    probes given a state row."""
+    artifact = {"precision": 1.0, "recall": 1.0}
+    rows = {
+        "only-recall": ({"recall-1": 1.0, "recall-2": 0.0}, "0.50"),
+        "only-decision": ({"decision": 1.0}, "1.00"),
+        "recall-pair-counts-once": (
+            {"recall-1": 1.0, "recall-2": 1.0, "continuation": 0.0, "decision": 0.0,
+             "artifact": artifact, "artifact-recent": 1.0}, "0.33"),
+        "none-of-the-three": ({"artifact": artifact, "artifact-recent": 1.0}, None),
+    }
+    for name, (scores, state) in rows.items():
+        root = tmp_path / name
+        _write_grade(root, "point", "host-summary", scores)
+
+        table = _main_rows(probe.report(private_root=root))
+
+        if state is None:
+            assert ("host-summary", "state") not in table, name
+        else:
+            assert table[("host-summary", "state")][2:4] == ["1", state], name
+
+
+def _paired_for(tmp_path, name, differences):
+    """Report text where `none` minus `host-summary` on `continuation` is each of
+    `differences`, one point apiece."""
+    root = tmp_path / name
+    for number, difference in enumerate(differences):
+        host = 1.0 if difference < 0 else 0.0
+        _write_grade(root, f"point-{number:02d}", "host-summary", {"continuation": host})
+        _write_grade(root, f"point-{number:02d}", "none", {"continuation": host + difference})
+    return probe.report(private_root=root)
+
+
+def test_interval_at_exactly_ten_pairs_keeps_its_order_and_its_sign(tmp_path):
+    """Adversarial where: the first interval printed at the 10-pair boundary has its
+    ends swapped, sits off the mean, or reads above 0 when the arm loses every
+    point, or a constant difference widens into a spread."""
+    lost = _paired_for(tmp_path, "lost", [-1.0] * 10)
+    mixed = _paired_for(tmp_path, "mixed", [1.0] * 6 + [0.0] * 4)
+
+    lost_cells, lost_line = _paired_row(lost, "continuation")
+    mixed_cells, mixed_line = _paired_row(mixed, "continuation")
+
+    assert "10" in lost_cells and "too few points" not in lost_line
+    assert all(abs(number + 1.0) < 1e-9 for number in _decimals(lost_line))
+    mean, low, high = _decimals(mixed_line)[-3:]
+    assert "10" in mixed_cells
+    assert abs(mean - 0.6) < 1e-9 and 0.0 <= low <= mean <= high <= 1.0
+
+
+def test_a_probe_type_only_one_arm_holds_gets_no_paired_row(tmp_path):
+    """Adversarial where: a probe type present in the arm and missing from
+    host-summary printed as a paired row from a default of 0, so a type with no
+    pairs reads as a difference (`state` pairs through continuation and stays)."""
+    root = tmp_path / "root"
+    for number in range(11):
+        _write_grade(root, f"point-{number:02d}", "host-summary", {"continuation": 1.0})
+        _write_grade(root, f"point-{number:02d}", "none", {"continuation": 0.0, "decision": 1.0})
+
+    text = probe.report(private_root=root)
+
+    paired = [line for block in _table_blocks(text)[1:] for line in block]
+    assert any("continuation" in _cells(line) for line in paired)
+    assert not any("decision" in _cells(line) for line in paired)
+
+
+# migrating build ------------------------------------------------------------------
+
+
+def test_migrating_build_of_a_point_whose_transcript_is_gone_fails_and_keeps_the_key(
+        two_points, private_root):
+    """Adversarial where: the migration, which re-reads the transcript, truncates or
+    rewrites the stored key when the transcript can no longer be read, or lets the
+    failure escape the command line as a traceback instead of exit 2."""
+    probe.build(two_points[1], private_root=private_root)
+    folder = probe._point_dir(two_points[1], private_root)
+    legacy = topics.read_json(folder / "key.json")
+    del probe_by_id(legacy)["artifact"]["expected_recent"]
+    topics.write_json(folder / "key.json", legacy)
+    before = (folder / "key.json").read_bytes()
+    Path(two_points[1].rpartition("#")[0]).unlink()
+
+    code = probe.main(["--private-root", str(private_root), "build", two_points[1]])
+
+    assert code == 2
+    assert (folder / "key.json").read_bytes() == before
+
+
+def test_build_with_no_artifact_probe_cannot_be_migrated_and_keeps_the_key(tmp_path, private_root):
+    """Adversarial where: the migration invents an artifact probe, or rewrites the
+    key, for a point that never had edits (its key holds no artifact probe, so there
+    is nothing to add)."""
+    folder = _new_folder(tmp_path)
+    write_transcript(folder, "t.jsonl", [
+        user(0, "work on TASK-3"), assistant(1, "On TASK-3 now."), boundary(2), summary(3)])
+    (found,) = probe.find(folder)
+    built = probe.build(found["point"], private_root=private_root)
+    path = probe._point_dir(found["point"], private_root) / "key.json"
+    before = path.read_bytes()
+
+    assert [item["type"] for item in built["probes"]] == ["continuation"]
+    with pytest.raises(probe.AlreadyFrozen):
+        probe.build(found["point"], private_root=private_root)
+    assert path.read_bytes() == before
+
+
+def test_recent_window_of_a_subagent_point_is_cut_by_its_own_earlier_boundary_only(
+        tmp_path, private_root):
+    """Adversarial where: the recent window of a subagent transcript ignores the
+    subagent's earlier boundary (every record is a sidechain record, so a side test
+    that drops sidechain boundaries keeps them all) or is cut by a main-side
+    boundary written into the same file."""
+    folder = tmp_path / "p"
+    (folder / "sess" / "subagents").mkdir(parents=True)
+
+    def side(record):
+        record["isSidechain"] = True
+        return record
+
+    records = [
+        side(user(0, "go")), side(_plain_edit(1, "old.py")), side(tool_result(2, "ok")),
+        side(boundary(3)), side(summary(4)),
+        side(_plain_edit(5, "mid.py")),
+        boundary(6),
+        side(_plain_edit(7, "new.py")), side(tool_result(8, "ok")),
+        side(boundary(9)), side(summary(10)),
+    ]
+    write_transcript(folder / "sess" / "subagents", "agent-x.jsonl", records)
+    write_transcript(folder, "sess.jsonl", [user(0, "hi"), assistant(1, "hello")])
+    (found,) = [item for item in probe.find(folder) if item["boundary"] == 9]
+
+    artifact = probe_by_id(probe.build(found["point"], private_root=private_root))["artifact"]
+
+    assert sorted(artifact["expected"]) == ["mid.py", "new.py", "old.py"]
+    assert sorted(artifact["expected_recent"]) == ["mid.py", "new.py"]
+
+
+# mechanical and compass arms --------------------------------------------------
+#
+# These tests run the real `plugin/cli/compass session-state` (through a copy of
+# plugin/cli committed in a temporary repository, which `ask` receives as its
+# repo_root) over a temporary git repository holding a committed
+# `.compass/active.md`. The fake `claude` is the only stand-in.
+
+import os  # noqa: E402
+import subprocess  # noqa: E402
+from datetime import datetime, timedelta, timezone  # noqa: E402
+
+PLUGIN_CLI = Path(__file__).resolve().parents[3] / "plugin" / "cli"
+BLOCK_TITLE = "Compass session state"
+STATE_SUMMARY = "ZQCARRIEDSUMMARY"
+OPEN_TASK = "ZQOPENTASK"
+SIDE_TASK = "ZQSIDETASK"
+LATER_TASK = "ZQLATERTASK"
+ORPHAN_TASK = "ZQORPHANTASK"
+EDITED_PATH = "src/zq_edited.py"
+LATER_EDIT = "src/zq_after.py"
+UNCOMMITTED_FILE = "zq-uncommitted.txt"
+
+
+def _utc(hour, minute=0, second=0, micro=0):
+    return datetime(2026, 2, 1, hour, minute, second, micro, tzinfo=timezone.utc)
+
+
+FIRST_COMMIT = _utc(0, 30)
+SIDE_COMMIT = _utc(1, 0)
+LATE_BRANCH_COMMIT = _utc(3, 0)
+SECOND_COMMIT = _utc(5, 0)
+BOUNDARY_STAMP = _utc(2, 0, 0, 789000)
+
+
+def _iso(moment):
+    return moment.strftime("%Y-%m-%dT%H:%M:%S.") + f"{moment.microsecond // 1000:03d}Z"
+
+
+def _git_at(cwd, *args, moment=None):
+    """Run git in `cwd`; with `moment`, author and committer dates are that instant."""
+    env = dict(os.environ)
+    if moment is not None:
+        env["GIT_COMMITTER_DATE"] = env["GIT_AUTHOR_DATE"] = f"{int(moment.timestamp())} +0000"
+    command = [
+        "git", "-c", "user.name=tester", "-c", "user.email=tester@example.invalid",
+        "-c", "commit.gpgsign=false", *args,
+    ]
+    subprocess.run(command, cwd=cwd, env=env, capture_output=True, text=True, check=True)
+
+
+def _commit_active(work, task, moment):
+    (work / ".compass").mkdir(exist_ok=True)
+    (work / ".compass" / "active.md").write_text(
+        f"# Active\n\n- [ ] TASK-1: {task} the committed open task\n- [x] TASK-2: finished\n", encoding="utf-8")
+    _git_at(work, "add", ".compass/active.md")
+    _git_at(work, "commit", "-q", "-m", task, moment=moment)
+
+
+@pytest.fixture(scope="module")
+def cli_repo(tmp_path_factory):
+    """A committed repository whose plugin/cli is a copy of this repository's, so
+    `plugin/cli/compass` is the real command and plugin/ is clean for `launch`."""
+    root = tmp_path_factory.mktemp("cli-repo")
+    shutil.copytree(PLUGIN_CLI, root / "plugin" / "cli", ignore=shutil.ignore_patterns(
+        "__pycache__", "tests", "*.pyc"))
+    (root / ".gitignore").write_text("__pycache__/\n*.pyc\n", encoding="utf-8")
+    _git_at(root, "init", "-q")
+    _git_at(root, "add", ".")
+    _git_at(root, "commit", "-q", "-m", "plugin cli", moment=FIRST_COMMIT)
+    return root
+
+
+@pytest.fixture
+def state_repo(tmp_path):
+    """The project folder of the compacted session: `main` holds a commit at
+    00:30 and a later one at 05:00, `side` a commit at 01:00, and `late` (an
+    orphan branch) one commit at 03:00. HEAD is `main`; one file is untracked."""
+    work = tmp_path / "work"
+    (work / ".compass").mkdir(parents=True)
+    _git_at(work, "init", "-q", "-b", "main")
+    _commit_active(work, OPEN_TASK, FIRST_COMMIT)
+    _git_at(work, "switch", "-q", "-c", "side")
+    _commit_active(work, SIDE_TASK, SIDE_COMMIT)
+    _git_at(work, "switch", "-q", "main")
+    _commit_active(work, LATER_TASK, SECOND_COMMIT)
+    _git_at(work, "switch", "-q", "--orphan", "late")
+    _commit_active(work, ORPHAN_TASK, LATE_BRANCH_COMMIT)
+    _git_at(work, "switch", "-q", "main")
+    (work / UNCOMMITTED_FILE).write_text("scratch\n", encoding="utf-8")
+    return work
+
+
+def _boundary_state_point(tmp_path, private_root, cwd, *, branch="main", stamp=BOUNDARY_STAMP,
+                 subagent=False, with_summary=True, name="state-point"):
+    """Freeze a point whose boundary record carries `branch`, `cwd` and `stamp`:
+    an edit before it, a summary after it (when `with_summary`) and a second edit
+    after the summary. With `subagent`, every record belongs to a subagent transcript."""
+    folder = tmp_path / name
+    folder.mkdir()
+
+    def mark(record):
+        record["cwd"] = str(cwd)
+        if branch is not None:
+            record["gitBranch"] = branch
+        if subagent:
+            record["isSidechain"] = True
+        return record
+
+    stamped = boundary(3)
+    stamped["timestamp"] = _iso(stamp)
+    records = [mark(user(0, "go")), mark(_plain_edit(1, EDITED_PATH)), mark(tool_result(2, "ok")), mark(stamped)]
+    if with_summary:
+        records.append(mark(summary(4, f"{STATE_SUMMARY} the session edited the decoder.")))
+    records.append(mark(_plain_edit(5, LATER_EDIT)))
+    if subagent:
+        (folder / "sess" / "subagents").mkdir(parents=True)
+        write_transcript(folder / "sess" / "subagents", "agent-x.jsonl", records)
+        write_transcript(folder, "sess.jsonl", [user(0, "hi"), assistant(1, "hello")])
+    else:
+        write_transcript(folder, "t.jsonl", records)
+    (found,) = probe.find(folder)
+    assert found["boundary"] == 3
+    probe.build(found["point"], private_root=private_root)
+    return found["point"]
+
+
+def _ask_state(point, arm, cli_repo, private_root, fake_reply, parent_env=None):
+    return probe.ask(
+        point, arm, repo_root=cli_repo, private_root=private_root,
+        claude_cmd=fake_reply.command, parent_env=parent_env)
+
+
+def _stored_ask(point, private_root, arm):
+    return topics.read_json(probe._point_dir(point, private_root) / f"ask-{arm}.json")
+
+
+def test_mechanical_prompt_holds_the_state_block_at_the_boundary_and_no_summary(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: the mechanical arm that carries the compact summary
+    instead of (or beside) the block, a block cut at the wrong line or taken from
+    HEAD or the working tree instead of the boundary's commit, or an arm the
+    command line does not accept."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+    fake_reply.reply("{}")
+
+    code = probe.main(
+        ["--private-root", str(private_root), "ask", point, "--arm", "mechanical"],
+        claude_cmd=fake_reply.command, repo_root=cli_repo)
+
+    assert code == 0
+    (call,) = fake_reply.calls()
+    prompt = call["stdin"]
+    assert BLOCK_TITLE in prompt
+    assert EDITED_PATH in prompt
+    assert OPEN_TASK in prompt
+    assert STATE_SUMMARY not in prompt
+    for stale in (LATER_EDIT, LATER_TASK, SIDE_TASK, UNCOMMITTED_FILE):
+        assert stale not in prompt
+
+
+def test_compass_prompt_holds_the_summary_before_the_state_block(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a compass arm that drops the block, drops the summary,
+    or puts the block first (the trial recorded the summary, then the hook's block)."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+    fake_reply.reply("{}")
+
+    _ask_state(point, "compass", cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    prompt = call["stdin"]
+    assert STATE_SUMMARY in prompt and BLOCK_TITLE in prompt
+    assert prompt.index(STATE_SUMMARY) < prompt.index(BLOCK_TITLE)
+    block = prompt[prompt.index(BLOCK_TITLE):]
+    assert EDITED_PATH in block and OPEN_TASK in block
+
+
+def test_compass_prompt_at_a_subagent_point_holds_the_summary_and_no_block(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a block carried at a subagent compaction, where the
+    hook prints nothing for an event carrying `agent_id`, so the arm would hold
+    text the real session never received; or a summary dropped with it."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo, subagent=True)
+    fake_reply.reply("{}")
+
+    _ask_state(point, "compass", cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    prompt = call["stdin"]
+    assert STATE_SUMMARY in prompt
+    assert BLOCK_TITLE not in prompt
+    assert OPEN_TASK not in prompt
+
+
+@pytest.mark.parametrize("branch, stamp, present, absent", [
+    pytest.param("side", BOUNDARY_STAMP, SIDE_TASK, (OPEN_TASK, LATER_TASK, ORPHAN_TASK),
+                 id="a-branch-other-than-head-is-the-one-searched"),
+    pytest.param("deleted-worktree-branch", BOUNDARY_STAMP, OPEN_TASK, (SIDE_TASK, LATER_TASK),
+                 id="an-absent-branch-falls-back-to-head"),
+    pytest.param("HEAD", BOUNDARY_STAMP, OPEN_TASK, (SIDE_TASK, LATER_TASK),
+                 id="a-detached-branch-name-reads-head"),
+    pytest.param(None, BOUNDARY_STAMP, OPEN_TASK, (SIDE_TASK, LATER_TASK),
+                 id="a-boundary-record-without-a-branch-reads-head"),
+    pytest.param("main", FIRST_COMMIT, OPEN_TASK, (LATER_TASK,),
+                 id="a-stamp-equal-to-a-commit-date-takes-that-commit"),
+    pytest.param("main", SECOND_COMMIT - timedelta(seconds=1), OPEN_TASK, (LATER_TASK,),
+                 id="a-stamp-one-second-before-a-commit-leaves-it-out"),
+    pytest.param("main", SECOND_COMMIT + timedelta(milliseconds=500), LATER_TASK, (OPEN_TASK,),
+                 id="a-stamp-half-a-second-after-a-commit-takes-it"),
+    pytest.param("main", SECOND_COMMIT + timedelta(hours=1), LATER_TASK, (OPEN_TASK, SIDE_TASK),
+                 id="a-stamp-after-every-commit-takes-the-last"),
+])
+def test_the_block_is_taken_at_the_last_commit_on_the_branch_by_the_boundary_stamp(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply, branch, stamp, present, absent):
+    """Adversarial where: the commit chosen by the wrong branch (HEAD when the
+    record names another), a missing branch that aborts instead of reading HEAD,
+    an exclusive comparison at the boundary instant, a stamp with milliseconds
+    that git misreads, or the first or newest commit taken whatever the stamp."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo, branch=branch, stamp=stamp)
+    fake_reply.reply("{}")
+
+    _ask_state(point, "mechanical", cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    assert present in call["stdin"]
+    for other in absent:
+        assert other not in call["stdin"]
+
+
+@pytest.mark.parametrize("arm", ["mechanical", "compass"])
+@pytest.mark.parametrize("where, branch, stamp", [
+    pytest.param("repo", "main", FIRST_COMMIT - timedelta(seconds=1), id="boundary-before-the-first-commit"),
+    pytest.param("repo", "late", BOUNDARY_STAMP, id="branch-with-no-commit-by-the-stamp"),
+    pytest.param("plain", "main", BOUNDARY_STAMP, id="folder-that-is-no-repository"),
+    pytest.param("gone", "main", BOUNDARY_STAMP, id="folder-that-no-longer-exists"),
+])
+def test_a_point_with_no_qualifying_commit_stores_a_no_state_record_and_starts_no_session(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply, arm, where, branch, stamp):
+    """Adversarial where: a point with no commit by its stamp that falls back to
+    HEAD (a commit that postdates nothing it knew), raises on a git failure
+    instead of recording it, or starts a session that answers from no state and
+    is graded as a failure of the arm."""
+    cwd = {"repo": state_repo, "plain": tmp_path / "plain", "gone": tmp_path / "gone"}[where]
+    if where == "plain":
+        cwd.mkdir()
+    point = _boundary_state_point(tmp_path, private_root, cwd, branch=branch, stamp=stamp)
+
+    _ask_state(point, arm, cli_repo, private_root, fake_reply)
+
+    assert fake_reply.calls() == []
+    stored = _stored_ask(point, private_root, arm)
+    assert stored["no_state"] is True
+    assert not stored.get("reply")
+
+
+@pytest.mark.parametrize("arm", ["mechanical", "compass"])
+@pytest.mark.parametrize("through_parent_env", [False, True], ids=["process-environment", "parent-env-argument"])
+def test_the_session_state_process_sees_no_claude_project_dir(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply, monkeypatch, arm, through_parent_env):
+    """Adversarial where: a CLAUDE_PROJECT_DIR left in the child's environment
+    redirects the command to another project's vault (the decoy), so the block is
+    built from the wrong project or fails; or the variable is deleted from the
+    caller's own environment instead of the child's."""
+    decoy = tmp_path / "decoy"
+    (decoy / ".compass").mkdir(parents=True)
+    (decoy / ".compass" / "active.md").write_text("- [ ] TASK-99: ZQDECOYTASK\n", encoding="utf-8")
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(decoy))
+    parent_env = dict(os.environ) if through_parent_env else None
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+    fake_reply.reply("{}")
+
+    _ask_state(point, arm, cli_repo, private_root, fake_reply, parent_env=parent_env)
+
+    (call,) = fake_reply.calls()
+    assert OPEN_TASK in call["stdin"] and EDITED_PATH in call["stdin"]
+    assert "ZQDECOYTASK" not in call["stdin"]
+    assert os.environ["CLAUDE_PROJECT_DIR"] == str(decoy)
+    if parent_env is not None:
+        assert parent_env["CLAUDE_PROJECT_DIR"] == str(decoy)
+
+
+@pytest.mark.parametrize("arm", ["mechanical", "compass"])
+def test_the_ask_file_stores_the_carried_block_beside_the_reply(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply, arm):
+    """Adversarial where: an ask file that keeps the reply but not the block the
+    session was given, so a run cannot be audited without rendering the state
+    again (and a re-rendering later would read a different repository), or a stored
+    block that differs from the one in the prompt."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+    fake_reply.reply('{"artifact": []}')
+
+    _ask_state(point, arm, cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    stored = _stored_ask(point, private_root, arm)
+    blocks = [
+        value for key, value in stored.items()
+        if key != "reply" and isinstance(value, str) and BLOCK_TITLE in value
+    ]
+    assert len(blocks) == 1
+    assert OPEN_TASK in blocks[0] and EDITED_PATH in blocks[0]
+    assert blocks[0].strip() in call["stdin"]
+    assert stored["reply"] == '{"artifact": []}'
+    assert "tokens" in stored
+
+
+def test_the_mechanical_arm_needs_no_compact_summary(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a mechanical arm that reads the host summary first and
+    fails with NoSummary on a transcript that holds none, though its carried text
+    is the block alone."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo, with_summary=False)
+    fake_reply.reply("{}")
+
+    _ask_state(point, "mechanical", cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    assert BLOCK_TITLE in call["stdin"] and OPEN_TASK in call["stdin"]
+
+
+def test_grade_skips_a_no_state_record_and_still_grades_the_arms_beside_it(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a no-state record (no reply) graded as an unparsed
+    answer and scored 0 in every probe, which charges the arm for a commit that
+    does not exist, or a grade that raises on the record and loses the other arms."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo, stamp=FIRST_COMMIT - timedelta(seconds=1))
+    _ask_state(point, "mechanical", cli_repo, private_root, fake_reply)
+    _store_reply(point, private_root, "host-summary", {"artifact": [EDITED_PATH]})
+
+    graded = probe.grade(point, private_root=private_root)
+
+    assert set(graded) == {"host-summary"}
+    folder = probe._point_dir(point, private_root)
+    assert (folder / "grade-host-summary.json").is_file()
+    assert not (folder / "grade-mechanical.json").exists()
+
+
+def test_report_counts_the_no_state_points_of_each_arm_and_scores_none_of_them(two_points, private_root):
+    """Adversarial where: no-state points missing from the report (a silent loss
+    of data points), counted over all arms together instead of per arm, or scored
+    as zero rows that drag the arm's means down."""
+    first, second = two_points
+    probe.build(first, private_root=private_root)
+    _store_reply(first, private_root, "host-summary", {"artifact": ["src/app/main.py"]})
+    probe.grade(first, private_root=private_root)
+    for point, arm in ((first, "mechanical"), (first, "compass"), (second, "compass")):
+        topics.write_json(
+            probe._point_dir(point, private_root) / f"ask-{arm}.json",
+            {"point": point, "arm": arm, "no_state": True})
+
+    text = probe.report(private_root=private_root)
+
+    rows = _main_rows(text)
+    assert ("host-summary", "artifact") in rows
+    assert not [key for key in rows if key[0] in ("mechanical", "compass")]
+    assert re.search(r"no[- ]state", text, re.IGNORECASE)
+    assert re.search(r"mechanical\D*\b1\b", text)
+    assert re.search(r"compass\D*\b2\b", text)
+
+
+# mechanical and compass arms: implementation-visible branches ------------------
+
+def _fake_compass_source():
+    return '''\
+import json, os, sys, time
+case = os.environ.get("ZQ_CASE", "ok")
+log = os.environ.get("ZQ_LOG")
+if log:
+    with open(log, "w", encoding="utf-8") as handle:
+        json.dump({"argv": sys.argv[1:], "cwd": os.getcwd(), "env": dict(os.environ)}, handle)
+if case == "blank":
+    sys.stdout.write("  \\n\\t\\n")
+elif case == "fail":
+    print("ZQFAILED partial block")
+    sys.exit(3)
+elif case == "padded":
+    sys.stdout.buffer.write(b"\\n\\n  ZQPADDED first line\\n  second line\\n\\n\\n")
+elif case == "bytes":
+    sys.stdout.buffer.write(b"ZQBYTES \\xff\\xfe tail\\n")
+elif case == "hang":
+    time.sleep(60)
+else:
+    print("ZQFAKEBLOCK")
+'''
+
+
+def _fake_cli_repo(tmp_path):
+    """A committed repository whose `plugin/cli/compass` is a script driven by ZQ_CASE."""
+    root = tmp_path / "fake-cli-repo"
+    (root / "plugin" / "cli").mkdir(parents=True)
+    (root / "plugin" / "cli" / "compass").write_text(_fake_compass_source(), encoding="utf-8")
+    _git_at(root, "init", "-q")
+    _git_at(root, "add", ".")
+    _git_at(root, "commit", "-q", "-m", "fake cli", moment=FIRST_COMMIT)
+    return root
+
+
+def _point_with_stamp(tmp_path, private_root, cwd, stamp, *, branch="main", name="stamp-point"):
+    """A point whose boundary record carries `stamp` verbatim (None leaves the field out)."""
+    folder = tmp_path / name
+    folder.mkdir()
+    stamped = boundary(3)
+    if stamp is None:
+        stamped.pop("timestamp", None)
+    else:
+        stamped["timestamp"] = stamp
+    records = [user(0, "go"), _plain_edit(1, EDITED_PATH), tool_result(2, "ok"), stamped,
+               summary(4, f"{STATE_SUMMARY} summary."), _plain_edit(5, LATER_EDIT)]
+    for record in records:
+        record["cwd"] = str(cwd)
+        record["gitBranch"] = branch
+    write_transcript(folder, "t.jsonl", records)
+    (found,) = probe.find(folder)
+    probe.build(found["point"], private_root=private_root)
+    return found["point"]
+
+
+@pytest.mark.parametrize("stamp, present, absent", [
+    pytest.param("2026-02-01T05:00:00Z", LATER_TASK, (OPEN_TASK,), id="z-suffix-on-the-commit-second"),
+    pytest.param("2026-02-01T07:00:00+02:00", LATER_TASK, (OPEN_TASK,), id="positive-offset-naming-the-commit-instant"),
+    pytest.param("2026-02-01T06:59:59+02:00", OPEN_TASK, (LATER_TASK,), id="positive-offset-one-second-short"),
+    pytest.param("2026-02-01T00:00:00-05:00", LATER_TASK, (OPEN_TASK,), id="negative-offset-naming-the-commit-instant"),
+    pytest.param("2026-02-01T05:00:00.999999Z", LATER_TASK, (OPEN_TASK,), id="microseconds-past-the-commit-second"),
+    pytest.param("2026-02-01T04:59:59.999999Z", OPEN_TASK, (LATER_TASK,), id="microseconds-just-short-of-the-commit"),
+    pytest.param("2026-02-01T05:00:00", LATER_TASK, (OPEN_TASK,), id="no-zone-is-read-as-utc"),
+])
+def test_the_boundary_stamp_is_compared_as_an_instant_whatever_its_zone_or_fraction(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply, stamp, present, absent):
+    """Adversarial where: a stamp compared as text or with its offset dropped
+    (02:00+02:00 read as 07:00 or as 05:00), a fraction rounded up past the next
+    second, or a zone-less stamp read in the machine's local zone, any of which
+    picks a different commit by hours or by one second at the line."""
+    point = _point_with_stamp(tmp_path, private_root, state_repo, stamp)
+    fake_reply.reply("{}")
+
+    _ask_state(point, "mechanical", cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    assert present in call["stdin"]
+    for other in absent:
+        assert other not in call["stdin"]
+
+
+@pytest.mark.parametrize("stamp", [
+    pytest.param(None, id="no-timestamp-field"),
+    pytest.param("", id="empty-stamp"),
+    pytest.param("yesterday at noon", id="not-a-time"),
+    pytest.param("2026-13-45T99:00:00Z", id="out-of-range-fields"),
+])
+def test_a_boundary_with_no_usable_stamp_is_a_no_state_point_and_starts_no_session(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply, stamp):
+    """Adversarial where: a missing or unparsable stamp that raises out of `ask`
+    (losing the run) or falls back to HEAD, which would grade the arm on a state
+    from after the compaction."""
+    point = _point_with_stamp(tmp_path, private_root, state_repo, stamp)
+
+    _ask_state(point, "mechanical", cli_repo, private_root, fake_reply)
+
+    assert fake_reply.calls() == []
+    assert _stored_ask(point, private_root, "mechanical")["no_state"] is True
+
+
+def test_branch_names_with_slashes_and_tag_namesakes_are_resolved_as_branches(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a slashed branch name (`feature/deep/name`) cut at its
+    first slash or not found, a branch name that is also a tag (git reads the tag
+    first for a bare name), and a branch name that is no valid ref at all (which
+    must read HEAD, not abort)."""
+    _git_at(state_repo, "switch", "-q", "-c", "feature/deep/name", "main~1")
+    _commit_active(state_repo, "ZQSLASHTASK", _utc(1, 30))
+    _git_at(state_repo, "switch", "-q", "main")
+    _git_at(state_repo, "tag", "side", "main~1")
+    rows = [
+        ("feature/deep/name", "ZQSLASHTASK", OPEN_TASK),
+        ("side", SIDE_TASK, "ZQSLASHTASK"),
+        ("bad..name", OPEN_TASK, "ZQSLASHTASK"),
+        ("with space", OPEN_TASK, "ZQSLASHTASK"),
+    ]
+    for number, (branch, present, absent) in enumerate(rows):
+        point = _point_with_stamp(tmp_path, private_root, state_repo, _iso(BOUNDARY_STAMP),
+                                  branch=branch, name=f"p{number}")
+        fake_reply.reply("{}")
+        before = len(fake_reply.calls())
+
+        _ask_state(point, "mechanical", cli_repo, private_root, fake_reply)
+
+        prompt = fake_reply.calls()[before]["stdin"]
+        assert present in prompt, branch
+        assert absent not in prompt, branch
+
+
+def test_the_session_state_command_gets_the_boundary_arguments_the_working_folder_and_an_intact_environment(
+        tmp_path, private_root, state_repo, fake_reply, monkeypatch):
+    """Adversarial where: an argument list with the wrong index, commit or format,
+    a command run in the caller's folder instead of the key's `cwd`, and an
+    environment rebuilt from nothing (PATH and every other variable gone) while
+    CLAUDE_PROJECT_DIR is removed."""
+    fake = _fake_cli_repo(tmp_path)
+    monkeypatch.setenv("ZQ_MARK", "kept")
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+    transcript = next((tmp_path / "state-point").glob("*.jsonl"))
+    log = tmp_path / "state-command.json"
+    parent_env = dict(os.environ, ZQ_LOG=str(log), CLAUDE_PROJECT_DIR=str(tmp_path / "decoy"))
+    fake_reply.reply("{}")
+
+    _ask_state(point, "mechanical", fake, private_root, fake_reply, parent_env=parent_env)
+
+    seen = json.loads(log.read_text(encoding="utf-8"))
+    argv = seen["argv"]
+    assert argv[0] == "session-state"
+    flags = dict(zip(argv[1::2], argv[2::2]))
+    assert set(flags) == {"--transcript", "--until", "--at", "--format"}
+    assert Path(flags["--transcript"]).samefile(transcript)
+    assert flags["--until"] == "3"
+    assert flags["--format"] == "block"
+    first = subprocess.run(["git", "-C", str(state_repo), "rev-parse", "main~1"],
+                           capture_output=True, text=True, check=True).stdout.strip()
+    assert flags["--at"] == first
+    assert Path(seen["cwd"]).samefile(state_repo)
+    assert "CLAUDE_PROJECT_DIR" not in seen["env"]
+    assert seen["env"].get("ZQ_MARK") == "kept"
+    assert seen["env"].get("PATH") == os.environ.get("PATH")
+
+
+@pytest.mark.parametrize("case, carried, stored_block", [
+    pytest.param("padded", "ZQPADDED first line\n  second line", "ZQPADDED first line\n  second line",
+                 id="outer-whitespace-trimmed-inner-kept"),
+    pytest.param("bytes", "ZQBYTES", None, id="invalid-utf8-bytes-are-replaced-not-fatal"),
+])
+def test_the_block_is_the_commands_output_trimmed_and_decoded_leniently(
+        tmp_path, private_root, state_repo, fake_reply, case, carried, stored_block):
+    """Adversarial where: a trailing newline left in the stored block, an inner
+    indent removed along with the outer whitespace, or a UnicodeDecodeError from
+    stray bytes that loses the point."""
+    fake = _fake_cli_repo(tmp_path)
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+    fake_reply.reply("{}")
+
+    _ask_state(point, "mechanical", fake, private_root, fake_reply,
+               parent_env=dict(os.environ, ZQ_CASE=case))
+
+    (call,) = fake_reply.calls()
+    assert carried in call["stdin"]
+    stored = _stored_ask(point, private_root, "mechanical")
+    if stored_block is not None:
+        assert stored["block"] == stored_block
+    assert stored["block"] == stored["block"].strip()
+
+
+@pytest.mark.parametrize("case", [
+    pytest.param("blank", id="whitespace-only-output"),
+    pytest.param("fail", id="non-zero-exit-with-partial-output"),
+])
+@pytest.mark.parametrize("arm", ["mechanical", "compass"])
+def test_a_command_that_prints_nothing_usable_or_fails_leaves_a_no_state_record(
+        tmp_path, private_root, state_repo, fake_reply, case, arm):
+    """Adversarial where: whitespace-only output carried as an empty block (the
+    session then answers from no state and is graded as the arm's failure), or the
+    partial output of a failed command carried as if it were the block."""
+    fake = _fake_cli_repo(tmp_path)
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+
+    _ask_state(point, arm, fake, private_root, fake_reply, parent_env=dict(os.environ, ZQ_CASE=case))
+
+    assert fake_reply.calls() == []
+    stored = _stored_ask(point, private_root, arm)
+    assert stored["no_state"] is True
+    assert "block" not in stored
+
+
+def test_a_command_that_outlives_the_state_timeout_leaves_a_no_state_record(
+        tmp_path, private_root, state_repo, fake_reply, monkeypatch):
+    """Adversarial where: a hung `session-state` that stalls the whole probe run
+    (no timeout) or escapes as a TimeoutExpired instead of a no-state record."""
+    monkeypatch.setattr(probe, "STATE_TIMEOUT", 8)
+    fake = _fake_cli_repo(tmp_path)
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+
+    _ask_state(point, "mechanical", fake, private_root, fake_reply,
+               parent_env=dict(os.environ, ZQ_CASE="hang"))
+
+    assert fake_reply.calls() == []
+    assert _stored_ask(point, private_root, "mechanical")["no_state"] is True
+
+
+def test_the_compass_arm_without_a_usable_summary_raises_before_any_session(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a compass arm whose summary is missing that runs on the
+    block alone (and so is graded as the arm that holds both texts), or reaches
+    the session with an empty first part."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo, with_summary=False)
+
+    with pytest.raises(probe.NoSummary):
+        _ask_state(point, "compass", cli_repo, private_root, fake_reply)
+
+    assert fake_reply.calls() == []
+
+
+def test_the_compass_arm_at_a_subagent_point_needs_no_repository_state(
+        tmp_path, private_root, cli_repo, fake_reply):
+    """Adversarial where: the repository lookup made before the subagent test, so
+    a subagent point whose working folder is gone becomes a no-state point though
+    its arm carries the summary alone and needs no state."""
+    point = _boundary_state_point(tmp_path, private_root, tmp_path / "gone", subagent=True)
+    fake_reply.reply("{}")
+
+    _ask_state(point, "compass", cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    assert STATE_SUMMARY in call["stdin"]
+    stored = _stored_ask(point, private_root, "compass")
+    assert "no_state" not in stored
+    assert "block" not in stored
+
+
+def test_the_mechanical_arm_at_a_subagent_point_renders_the_block_from_the_subagent_transcript(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: the subagent special case applied to the mechanical arm
+    too (the arm is the block alone, so a subagent point would lose its only text),
+    or `--until` indexing the wrong transcript for a subagent point."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo, subagent=True)
+    fake_reply.reply("{}")
+
+    _ask_state(point, "mechanical", cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    assert BLOCK_TITLE in call["stdin"] and OPEN_TASK in call["stdin"]
+    assert STATE_SUMMARY not in call["stdin"]
+
+
+def test_a_working_folder_inside_the_repository_resolves_the_same_commit(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a key `cwd` that is a subfolder of the repository (a
+    session that had changed into `src/`) failing the commit lookup or the vault
+    lookup, so most real points would be no-state points."""
+    sub = state_repo / "src"
+    sub.mkdir()
+    point = _point_with_stamp(tmp_path, private_root, sub, _iso(BOUNDARY_STAMP))
+    fake_reply.reply("{}")
+
+    _ask_state(point, "mechanical", cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    assert OPEN_TASK in call["stdin"]
+
+
+def _graded_point(tmp_path, private_root, cwd, cli_repo, fake_reply, name, arms):
+    point = _boundary_state_point(tmp_path, private_root, cwd, name=name)
+    fake_reply.reply(json.dumps({"artifact": [EDITED_PATH]}))
+    _store_reply(point, private_root, "host-summary", {"artifact": [EDITED_PATH]})
+    for arm in arms:
+        _ask_state(point, arm, cli_repo, private_root, fake_reply)
+    probe.grade(point, private_root=private_root)
+    return point
+
+
+def test_report_over_graded_and_no_state_points_counts_each_apart_and_leaks_no_block(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a no-state point folded into an arm's `points` column or
+    mean, one arm's no-state count charged to the other, the no-state line missing
+    for the arm that has them, or the stored block (state text, paths, tasks)
+    reaching the report."""
+    _graded_point(tmp_path, private_root, state_repo, cli_repo, fake_reply, "graded", ("mechanical", "compass"))
+    _graded_point(tmp_path, private_root, tmp_path / "gone", cli_repo, fake_reply, "stateless", ("mechanical", "compass"))
+
+    text = probe.report(private_root=private_root)
+
+    rows = _main_rows(text)
+    assert rows[("mechanical", "artifact")][2] == "1"
+    assert rows[("compass", "artifact")][2] == "1"
+    assert rows[("host-summary", "artifact")][2] == "2"
+    lines = text.splitlines()
+    assert "no-state points, compass: 1" in lines
+    assert "no-state points, mechanical: 1" in lines
+    assert not [line for line in lines if line.startswith("no-state points, host-summary")]
+    for secret in (BLOCK_TITLE, OPEN_TASK, EDITED_PATH, STATE_SUMMARY, UNCOMMITTED_FILE):
+        assert secret not in text
+
+
+def test_a_point_asked_again_into_no_state_drops_the_grade_of_its_earlier_reply(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a stale `grade-<arm>.json` left behind when a re-run of
+    `ask` stores a no-state record (the commit no longer resolves), so the report
+    scores the old reply and counts the same point as no-state too."""
+    point = _graded_point(tmp_path, private_root, state_repo, cli_repo, fake_reply, "regraded", ("mechanical",))
+    assert (probe._point_dir(point, private_root) / "grade-mechanical.json").is_file()
+    topics.write_json(probe._point_dir(point, private_root) / "ask-mechanical.json",
+                      {"point": point, "arm": "mechanical", "no_state": True})
+
+    probe.grade(point, private_root=private_root)
+    text = probe.report(private_root=private_root)
+
+    assert ("mechanical", "artifact") not in _main_rows(text)
+    assert "no-state points, mechanical: 1" in text.splitlines()
