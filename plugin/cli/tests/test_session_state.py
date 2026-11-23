@@ -1600,5 +1600,375 @@ class FlagRefusalAndCompatibilityTests(BoundaryFixture):
         self.assertEqual(self.state("--format", "handoff").replace(sha, "<SHA>"), GOLDEN_HANDOFF)
 
 
+
+def boundary_record(timestamp=None):
+    record = {"type": "system", "subtype": "compact_boundary", "content": "Conversation compacted"}
+    if timestamp is not None:
+        record["timestamp"] = timestamp
+    return record
+
+
+MISSING = object()
+
+
+def head_of(project):
+    return subprocess.run(["git", "rev-parse", "HEAD"], cwd=project, capture_output=True,
+                          text=True, check=True).stdout.strip()
+
+
+class SubagentStampTests(StateFixture):
+    """Subagent records are kept by comparing their `timestamp` with the boundary's."""
+
+    BOUNDARY_STAMP = "2026-01-01T09:00:00Z"
+    BOUNDARY_INDEX = 1
+
+    def setUp(self):
+        super().setUp()
+        self.side = self.outside / "session" / "subagents"
+        self.side.mkdir(parents=True)
+
+    def main_with_boundary(self, stamp=BOUNDARY_STAMP):
+        self.write_transcript(user_human("before"), boundary_record(stamp), user_human("after"))
+
+    def sub_edit(self, tag, timestamp=MISSING):
+        records = edit_of(f"c-{tag}", f"src/{tag}.py")
+        if timestamp is not MISSING:
+            for record in records:
+                record["timestamp"] = timestamp
+        (self.side / f"agent-{tag}.jsonl").write_bytes(b"".join(json.dumps(r).encode() + b"\n" for r in records))
+
+    def edited_at_boundary(self):
+        code, out = self.run_cmd("--transcript", str(self.transcript), "--until", str(self.BOUNDARY_INDEX))
+        self.assertEqual(code, 0)
+        return {line[2:] for line in items(sections(out).get("Files edited", []))}
+
+    def test_subagent_stamps_are_compared_as_instants_and_unreadable_stamps_are_dropped(self):
+        """Adversarial where: stamps are compared as strings or with their offset ignored, a
+        naive stamp or one with microseconds lands on the wrong side, or a record whose stamp
+        is missing, null, numeric or unparseable is kept (or crashes the cut)."""
+        self.main_with_boundary()
+        rows = {
+            "offset stamp earlier in UTC but later as text": ("plus2", "2026-01-01T10:30:00+02:00", True),
+            "offset stamp later in UTC but earlier as text": ("minus2", "2026-01-01T08:30:00-02:00", False),
+            "naive stamp one second before": ("naive_in", "2026-01-01T08:59:59", True),
+            "naive stamp one second after": ("naive_out", "2026-01-01T09:00:01", False),
+            "one microsecond before": ("us_in", "2026-01-01T08:59:59.999999Z", True),
+            "one microsecond after": ("us_out", "2026-01-01T09:00:00.000001Z", False),
+            "nanosecond fraction before": ("ns_in", "2026-01-01T08:59:59.999999999Z", True),
+            "missing stamp": ("none", MISSING, False),
+            "null stamp": ("null", None, False),
+            "epoch number as stamp": ("epoch", 1767258000, False),
+            "words as stamp": ("words", "yesterday", False),
+            "empty stamp": ("empty", "", False),
+        }
+        for tag, stamp, _ in rows.values():
+            self.sub_edit(tag, stamp)
+        kept = self.edited_at_boundary()
+        for name, (tag, _, expected) in rows.items():
+            with self.subTest(name):
+                self.assertEqual(f"src/{tag}.py" in kept, expected, sorted(kept))
+
+    def test_a_boundary_without_a_readable_stamp_keeps_no_subagent_record(self):
+        """Adversarial where: a boundary with no readable timestamp compares every subagent
+        record against nothing and keeps all of them, or crashes the cut."""
+        for name, stamp in {"absent": None, "words": "later", "empty": ""}.items():
+            with self.subTest(name):
+                self.main_with_boundary(stamp)
+                self.sub_edit("only", "2026-01-01T08:00:00Z")
+                self.assertEqual(self.edited_at_boundary(), set())
+
+    def test_a_subagent_file_with_some_bad_lines_keeps_exactly_its_good_early_lines(self):
+        """Adversarial where: one unparseable, non-object, binary or unstamped line in a
+        subagent file drops the whole file, or the last line without a newline fuses with
+        the line before it."""
+        self.main_with_boundary()
+
+        def encoded(records, stamp):
+            return [json.dumps(dict(r, timestamp=stamp) if stamp else r).encode() for r in records]
+
+        lines = [raw + b"\n" for raw in encoded(edit_of("g1", "src/good_early.py"), "2026-01-01T08:00:00Z")]
+        lines += [b"{not json\n", b"[1, 2, 3]\n", b"42\n", b"\n", b"\xff\xfe binary noise\n"]
+        lines += [raw + b"\n" for raw in encoded(edit_of("g3", "src/late.py"), "2026-01-01T09:30:00Z")]
+        lines += [raw + b"\n" for raw in encoded(edit_of("g4", "src/unstamped.py"), None)]
+        last = encoded(edit_of("g2", "src/good_last_no_newline.py"), "2026-01-01T08:30:00Z")
+        lines += [last[0] + b"\n", last[1]]
+        (self.side / "agent-mixed.jsonl").write_bytes(b"".join(lines))
+        self.assertEqual(self.edited_at_boundary(), {"src/good_early.py", "src/good_last_no_newline.py"})
+
+
+class UntilIndexSpellingTests(BoundaryFixture):
+    def test_until_accepts_only_a_plain_run_of_digits_and_a_flag_without_a_value_exits_one(self):
+        """Adversarial where: a negative, signed, spaced, fractional, hex or empty index is
+        coerced into a line number (a negative one counting from the end of the file) instead
+        of exiting 1, or a trailing `--until` / `--at` with no value is silently ignored."""
+        refused = ["-1", "+24", " 24", "24 ", "24.0", "0x18", "1e1", "24abc", "abc", "", "-0"]
+        for value in refused:
+            with self.subTest(f"--until {value!r}"):
+                code, out, err = self.run_split("--transcript", str(self.transcript), "--until", value)
+                self.assertEqual(code, 1)
+                self.assertIn("not a compaction boundary", err)
+                self.assertEqual(out, "")
+        with self.subTest("empty equals spelling"):
+            code, out, err = self.run_split("--transcript", str(self.transcript), "--until=")
+            self.assertEqual((code, out), (1, ""))
+        for flag in ("--until", "--at"):
+            with self.subTest(f"trailing {flag}"):
+                code, out, err = self.run_split("--transcript", str(self.transcript), flag)
+                self.assertEqual((code, out), (1, ""))
+                self.assertIn(f"{flag} needs a value", err)
+        with self.subTest("another flag as the value"):
+            code, out, err = self.run_split("--transcript", str(self.transcript), "--until", "--format", "handoff")
+            self.assertEqual((code, out), (1, ""))
+
+    def test_until_with_leading_zeros_names_the_same_line(self):
+        """Adversarial where: `--until 0024` is refused or read as octal, so it names a
+        different line than `--until 24`."""
+        plain = self.state("--until", str(SECOND_BOUNDARY))
+        self.assertEqual(self.state("--until", "00" + str(SECOND_BOUNDARY)), plain)
+
+    def test_until_on_files_with_no_line_zero_or_no_final_newline(self):
+        """Adversarial where: an empty transcript (no line 0) raises an IndexError that the
+        catch-all turns into exit 0, or a boundary on a last line with no newline is not
+        recognised."""
+        self.transcript.write_bytes(b"")
+        code, out, err = self.run_split("--transcript", str(self.transcript), "--until", "0")
+        self.assertEqual((code, out), (1, ""))
+        self.assertIn("not a compaction boundary", err)
+        self.transcript.write_bytes(json.dumps(boundary_record()).encode())
+        code, out, err = self.run_split("--transcript", str(self.transcript), "--until", "0")
+        self.assertEqual(code, 0, err)
+
+    def test_until_with_no_readable_transcript_exits_one(self):
+        """Adversarial where: `--until` with a transcript that cannot be found falls through
+        to an empty block and exit 0, as a missing transcript does without the flag."""
+        self.transcript.unlink()
+        code, out, err = self.run_split("--transcript", str(self.transcript), "--until", "3")
+        self.assertEqual((code, out), (1, ""))
+        self.assertIn("not a compaction boundary", err)
+
+
+class AtRefTests(StateFixture):
+    def setUp(self):
+        super().setUp()
+        self.git("init", "-q", "-b", "trunk")
+        self.write_active("- [ ] TASK-1: first")
+        self.git("add", ".compass")
+        self.git("commit", "-q", "-m", "first")
+        self.first = head_of(self.project)
+        self.git("tag", "-a", "-m", "annotated", "v1")
+        self.git("branch", "feature/topic")
+        self.write_active("- [ ] TASK-2: second")
+        self.git("add", ".compass")
+        self.git("commit", "-q", "-m", "second")
+        self.write_transcript(user_human("go"))
+
+    def at(self, ref):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            from commands import session_state
+            code = session_state.run(["--transcript", str(self.transcript), f"--at={ref}"])
+        return code, out.getvalue(), err.getvalue()
+
+    def test_at_resolves_branches_annotated_tags_abbreviations_and_ancestors_to_the_commit(self):
+        """Adversarial where: an annotated tag's own object id, a slash-bearing branch name, an
+        abbreviated hash or `HEAD~1` is not peeled to its commit, so the tasks or the branch
+        line come from the wrong object or the ref is called unknown."""
+        for ref in ("v1", "feature/topic", self.first[:8], "HEAD~1", "trunk~1", "v1^{commit}"):
+            with self.subTest(ref):
+                code, out, err = self.at(ref)
+                self.assertEqual(code, 0, err)
+                found = sections(out)
+                self.assertEqual(items(found["Open tasks"]), ["- [ ] TASK-1: first"])
+                match = re.fullmatch(r"at ([0-9a-f]{7,40})", "\n".join(found["Branch"]).strip())
+                self.assertIsNotNone(match)
+                self.assertTrue(self.first.startswith(match.group(1)))
+
+    def test_at_refuses_refs_that_are_not_commits_or_would_read_as_git_options(self):
+        """Adversarial where: a blob or tree rev, an empty ref, a range, or a ref starting with
+        a dash is passed to git (option injection) or accepted instead of exiting 1 naming
+        it."""
+        for ref in ("HEAD:.compass/active.md", "HEAD^{tree}", "", "-q", "--all", "--output=x", "HEAD..HEAD~1"):
+            with self.subTest(ref):
+                code, out, err = self.at(ref)
+                self.assertEqual((code, out), (1, ""))
+                self.assertIn(f"unknown commit: {ref}", err)
+
+    def test_at_outside_any_git_repository_exits_one_naming_the_commit(self):
+        """Adversarial where: a folder with no git history turns `--at` into an empty state
+        with exit 0, as git failing does without the flag."""
+        bare = self.root / "nogit"
+        (bare / ".compass").mkdir(parents=True)
+        os.environ["CLAUDE_PROJECT_DIR"] = str(bare)
+        os.chdir(bare)
+        code, out, err = self.at("HEAD")
+        self.assertEqual((code, out), (1, ""))
+        self.assertIn("unknown commit: HEAD", err)
+
+
+class AtVaultPathTests(StateFixture):
+    def test_decisions_come_from_the_commit_for_unicode_spaced_folder_and_relative_spellings(self):
+        """Adversarial where: the commit-relative path is built wrong for a spec whose name
+        holds spaces or non-ASCII characters, for a folder spec's `index.md`, or for a spec
+        the transcript reached by a project-relative path, so the commit's text is not read
+        and the working copy (reworded after the commit) shows instead."""
+        self.git("init", "-q", "-b", "trunk")
+        compass = self.project / ".compass"
+        names = {"SPEC 7 éü": "SPEC 7 éü", "SPEC-008-grp/index": "SPEC-008-grp",
+                 "SPEC-009-rel": "SPEC-009-rel"}
+        for name in names:
+            self.add_spec(name)
+        self.git("add", ".compass")
+        self.git("commit", "-q", "-m", "first")
+        commit = head_of(self.project)
+        for name in names:
+            (compass / "specs" / f"{name}.md").write_text(
+                SPEC_TEXT.replace("The first decision", "REWORDED decision"), encoding="utf-8")
+        self.write_transcript(
+            user_human("go"), read_of("r0", str(compass / "specs" / "SPEC 7 éü.md")),
+            read_of("r1", str(compass / "specs" / "SPEC-008-grp" / "index.md")),
+            read_of("r2", ".compass/specs/SPEC-009-rel.md"))
+        code, out = self.run_cmd("--transcript", str(self.transcript), "--at", commit)
+        self.assertEqual(code, 0)
+        body = "\n".join(sections(out)["Decisions"])
+        for stem in names.values():
+            with self.subTest(stem):
+                self.assertIn(f"{stem}/D-01: The first decision of foo.", body)
+        self.assertNotIn("REWORDED", body)
+
+    def test_spec_renamed_between_commits_contributes_only_under_the_name_it_had_at_the_commit(self):
+        """Adversarial where: a path touched under a name the commit does not hold falls back
+        to the working copy, or the old name's text leaks into the new name's section."""
+        self.git("init", "-q", "-b", "trunk")
+        self.add_spec("SPEC-001-old")
+        self.git("add", ".compass")
+        self.git("commit", "-q", "-m", "first")
+        first = head_of(self.project)
+        self.git("mv", ".compass/specs/SPEC-001-old.md", ".compass/specs/SPEC-001-new.md")
+        self.git("commit", "-q", "-m", "rename")
+        base = self.project / ".compass" / "specs"
+        self.write_transcript(user_human("go"), read_of("r0", str(base / "SPEC-001-old.md")),
+                              read_of("r1", str(base / "SPEC-001-new.md")))
+        body = "\n".join(sections(self.block("--at", first))["Decisions"])
+        self.assertIn("SPEC-001-old/D-01:", body)
+        self.assertNotIn("SPEC-001-new", body)
+        body_now = "\n".join(sections(self.block("--at", head_of(self.project)))["Decisions"])
+        self.assertIn("SPEC-001-new/D-01:", body_now)
+        self.assertNotIn("SPEC-001-old", body_now)
+
+    def test_a_vault_in_a_subfolder_of_the_repository_still_reads_the_commits_files(self):
+        """Adversarial where: `git show <commit>:<path>` resolves the path from the repository
+        root, so a project whose `.compass` sits one folder below the root finds no active.md
+        or spec at the commit and prints no tasks or decisions."""
+        repo = self.root / "mono"
+        project = repo / "app"
+        (project / ".compass" / "specs").mkdir(parents=True)
+        (project / ".compass" / "active.md").write_text("- [ ] TASK-1: nested task\n", encoding="utf-8")
+        spec = project / ".compass" / "specs" / "SPEC-001-foo.md"
+        spec.write_text(SPEC_TEXT, encoding="utf-8")
+        for args in (["init", "-q", "-b", "trunk"], ["add", "."], ["commit", "-q", "-m", "first"]):
+            subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.com", *args],
+                           cwd=repo, check=True, capture_output=True)
+        os.environ["CLAUDE_PROJECT_DIR"] = str(project)
+        os.chdir(project)
+        self.write_transcript(user_human("go"), read_of("r0", str(spec)))
+        code, out = self.run_cmd("--transcript", str(self.transcript), "--at", "HEAD")
+        self.assertEqual(code, 0)
+        found = sections(out)
+        self.assertEqual(items(found.get("Open tasks", [])), ["- [ ] TASK-1: nested task"])
+        self.assertIn("SPEC-001-foo/D-01:", "\n".join(found.get("Decisions", [])))
+
+
+class ProjectRootResolutionTests(BoundaryFixture):
+    def make_history(self):
+        self.git("init", "-q", "-b", "trunk")
+        self.write_active("- [ ] TASK-1: committed task")
+        self.git("add", ".compass")
+        self.git("commit", "-q", "-m", "first")
+        self.write_active("- [ ] TASK-9: later task")
+        return head_of(self.project)
+
+    def test_flags_work_from_a_cwd_outside_the_repository_when_the_project_dir_is_set(self):
+        """Adversarial where: git or the vault read runs in the cwd instead of the project
+        root, so `--at` from an unrelated folder reports an unknown commit or reads no tasks."""
+        commit = self.make_history()
+        os.chdir(self.outside)
+        found = sections(self.state("--at", commit, "--until", str(SECOND_BOUNDARY)))
+        self.assertEqual(items(found["Open tasks"]), ["- [ ] TASK-1: committed task"])
+        self.assertIn("Middle request about the gadget", "\n".join(found["Last human request"]))
+        self.assertNotIn("Uncommitted changes", found)
+
+    def test_flags_work_from_a_subfolder_of_the_project_without_the_project_dir_variable(self):
+        """Adversarial where: without `CLAUDE_PROJECT_DIR` the root is the cwd, so `--at` run
+        from a subfolder resolves the commit and `.compass/active.md` against the subfolder."""
+        commit = self.make_history()
+        sub = self.project / "deep" / "er"
+        sub.mkdir(parents=True)
+        os.environ.pop("CLAUDE_PROJECT_DIR")
+        os.chdir(sub)
+        found = sections(self.state("--at", commit))
+        self.assertEqual(items(found["Open tasks"]), ["- [ ] TASK-1: committed task"])
+
+
+class CapUnderFlagsTests(StateFixture):
+    def test_the_eight_thousand_character_cap_and_the_list_caps_hold_under_until_and_at(self):
+        """Adversarial where: the commit's active.md or specs, or a cut transcript, reach the
+        renderer through a path that skips the list caps and the budget, so a large past state
+        prints over 8,000 characters or with every task."""
+        self.git("init", "-q", "-b", "trunk")
+        tasks = [f"- [ ] TASK-{n:03d}: " + "t" * 200 for n in range(80)]
+        self.write_active("# Active", *tasks)
+        decisions = "\n".join(f"- **D-{n:02d}:** " + "d" * 300 for n in range(1, 41))
+        self.add_spec("SPEC-001-big", text=f"---\ntitle: Big\n---\n\n## Decisions\n\n{decisions}\n")
+        self.git("add", ".compass")
+        self.git("commit", "-q", "-m", "big")
+        commit = head_of(self.project)
+        self.write_active("- [ ] TASK-999: present")
+        spec = str(self.project / ".compass" / "specs" / "SPEC-001-big.md")
+        groups = [user_human("w" * 900), read_of("rs", spec)]
+        groups += [edit_of(f"e{n}", "src/" + "p" * 120 + f"_{n}.py", start=n + 1) for n in range(70)]
+        groups += [read_of(f"r{n}", "docs/" + "q" * 120 + f"_{n}.md") for n in range(40)]
+        groups += [answer_of(f"a{n}", f"Question {n}?", "x" * 200) for n in range(12)]
+        groups += [bash_test_run("t1", "python -m pytest -q", "\n".join("o" * 300 for _ in range(10)))]
+        groups += [boundary_record("2026-01-01T09:00:00Z"), user_human("after")]
+        self.write_transcript(*groups)
+        index = len(self.transcript.read_text(encoding="utf-8").splitlines()) - 2
+        for args in (["--at", commit], ["--until", str(index)], ["--at", commit, "--until", str(index)]):
+            with self.subTest(" ".join(args)):
+                out = self.block(*args)
+                self.assertLessEqual(len(out), 8000)
+                found = sections(out)
+                self.assertEqual(list(found), [h for h in ORDER if h in found])
+                self.assertIn("Last human request", found)
+                self.assertIn("Open tasks", found)
+                if "--at" in args:
+                    self.assertIn("... and 55 more", "\n".join(found["Open tasks"]))
+                    self.assertNotIn("TASK-999", out)
+        with self.subTest("handoff format"):
+            out = self.block("--at", commit, "--until", str(index), "--format", "handoff")
+            self.assertIn("... and 55 more", "\n".join(sections(out)["Tasks"]))
+
+
+class UntilAtInteractionTests(StateFixture):
+    def test_a_spec_touched_only_after_the_boundary_adds_no_decisions_at_the_commit(self):
+        """Adversarial where: `--at` collects touched documents from the whole transcript
+        instead of the cut one, so decisions of a spec first read after the boundary appear
+        in the state of that earlier moment."""
+        self.git("init", "-q", "-b", "trunk")
+        self.add_spec("SPEC-001-early")
+        self.add_spec("SPEC-002-late", text=SPEC_TEXT.replace("first decision of foo", "decision of the late spec"))
+        self.git("add", ".compass")
+        self.git("commit", "-q", "-m", "first")
+        base = self.project / ".compass" / "specs"
+        self.write_transcript(user_human("one"), read_of("r0", str(base / "SPEC-001-early.md")),
+                              boundary_record("2026-01-01T09:00:00Z"),
+                              read_of("r1", str(base / "SPEC-002-late.md")))
+        boundary_index = 3
+        body = "\n".join(sections(self.block("--at", "HEAD", "--until", str(boundary_index)))["Decisions"])
+        self.assertIn("SPEC-001-early/D-01:", body)
+        self.assertNotIn("SPEC-002-late", body)
+        whole = "\n".join(sections(self.block("--at", "HEAD"))["Decisions"])
+        self.assertIn("SPEC-002-late/D-01:", whole)
+
+
 if __name__ == "__main__":
     unittest.main()
