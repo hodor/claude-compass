@@ -5,7 +5,7 @@ status: complete
 confidence: medium
 area: tooling
 tags: [tokens, cost, prompt-caching, measurement, subagents, git-status]
-summary: "the first baseline from `compass cache`: a main session's first request reads 23% here and 17% across Compass projects, the next session never reuses 60% of its start, and the git snapshot is the first differing block in 90% of comparable session pairs and in a third to a half of same-type builder, tester and general-purpose siblings"
+summary: "the first baseline from `compass cache`: a main session's first request reads 23% here and 17% across Compass projects, the next session almost never reuses 60% of its start (0% here, 1.4% across projects), and the git snapshot is the first differing block in 90% of comparable session pairs and in a third to a half of same-type builder, tester and general-purpose siblings"
 created: 2026-11-22
 updated: 2026-11-22
 git_branch: "build/plan-035"
@@ -62,7 +62,7 @@ The review's "other Compass projects" column excluded this repo and the report's
 
 Across Compass projects, planner (3.4%, n=62), reviewer (4.2%, n=79), pattern-finder (1.2%, n=21) and Explore (12.6%, n=37) also pass n=20. Every subagent cache write is 5-minute (0 of 95.4M tokens at 1 hour), matching the review.
 
-Against the review: builder's binary share, 54.1%, equals axis 3's 54%, and its tokens-weighted value, 9.4%, is 3.3 points above axis 1's 6.1%. The difference is unexplained; the likeliest cause is the window, which now includes builder waves run after the review. The review's pooled 12.9% has no single counterpart, since the report gives per-type rows only.
+Against the review: builder's binary share, 54.1%, equals axis 3's 54%, and its tokens-weighted value, 9.4%, is 3.3 points above axis 1's 6.1%. The difference is unexplained; the likeliest cause is the window, which holds builder waves the review's window did not. The review's pooled 12.9% has no single counterpart, since the report gives per-type rows only.
 
 3. **The git snapshot is the block that breaks reuse first** (confidence: high for sessions, medium for siblings)
 
