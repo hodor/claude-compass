@@ -10,6 +10,11 @@ A measurement that did not happen is never a percentage: a missing, empty
 or unreadable report, or one that names none of the changed files, yields a
 SKIP verdict; a diff with no executable change yields N/A.
 
+`coverage_rc`, `PTH_NAME` and `PTH_BODY` describe the measurement setup that
+`compass reach --run` builds around a Python command: an rc file measuring
+the files of the repository that run, and a startup file that makes every Python
+process of one virtual environment measure itself.
+
 Coverage shape, per repo-relative POSIX path:
 
     {"lines": {line number: hit count}, "functions": [(name, line, hits)]}
@@ -26,6 +31,11 @@ SOURCE_EXTENSIONS = frozenset(
     "php c h cc cpp cxx hpp cs swift m mm lua sh bash ps1 pl r dart ex exs erl "
     "clj fs groovy".split()
 )
+
+PTH_NAME = "compass_reach_cov.pth"
+PTH_BODY = "import coverage; coverage.process_startup()\n"
+MIN_COVERAGE = (7, 10)
+_NON_SOURCE_DIRS = (".venv", "venv", "site-packages", "node_modules")
 
 _HUNK = re.compile(r"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 _DRIVE = re.compile(r"^[A-Za-z]:/")
@@ -308,3 +318,33 @@ def evaluate(coverage, changed):
     else:
         verdict = "N/A"
     return {"verdict": verdict, "reason": None, "files": files}
+
+
+def coverage_version(text):
+    """`(major, minor)` read from a coverage version string such as `7.10.2`,
+    or None when the text does not start with two numbers."""
+    match = re.match(r"\s*(\d+)\.(\d+)", text or "")
+    return (int(match.group(1)), int(match.group(2))) if match else None
+
+
+def coverage_rc(repo, data_file):
+    """Text of a coverage rc file measuring the files under `repo`, omitting
+    test files and installed packages beneath the repository (patterns are
+    anchored at `repo`, so a repository inside a folder named `tests` or `venv`
+    is still measured), writing one data file per process next to `data_file`
+    and following threads and multiprocessing workers."""
+    root = str(repo).replace("\\", "/").rstrip("/")
+    omit = [f"{root}/**/{part}/**" for part in TEST_DIRS]
+    omit += [f"{root}/**/{pat}" for pat in TEST_NAME_PATTERNS]
+    omit += [f"{root}/**/{part}/**" for part in _NON_SOURCE_DIRS]
+    posix = lambda path: str(path).replace("\\", "/")
+    lines = [
+        "[run]",
+        f"include = {posix(repo)}/**",
+        "parallel = true",
+        "concurrency = thread, multiprocessing",
+        f"data_file = {posix(data_file)}",
+        "omit =",
+    ]
+    lines += [f"    {pattern}" for pattern in omit]
+    return "\n".join(lines) + "\n"

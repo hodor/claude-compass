@@ -13,6 +13,16 @@ unindented follow-on line belongs to the bullet above it, and a paragraph of
 prose with no bullets is one row. Numbers follow the order of the rows in
 their section and restart per section.
 
+A bullet in the O, S or C sections may open with an authored id in the
+decision-bullet shape, `- **O-01:** text`, or `- [ ] **S-01:** text` for a
+checkbox bullet, the prefix matching its section. The row keeps that id as
+written and its text is the bullet text with the id removed, so an id and
+its hash survive a bullet inserted above it. Ids compare by prefix and
+number, `O-3` and `O-03` being one id; a derived id takes the next number its
+prefix does not hold as an authored id. An authored id inside a fenced
+block, or anywhere but the start of a bullet, is text. `duplicate_report`
+names the lines of rows holding the same id.
+
 Each row is a dict with `id`, `section`, `text` and `hash`; a decision row
 also carries `tags`. `text` has its whitespace collapsed to single spaces,
 and `hash` is the first 12 hex digits of the sha256 of that text, so an
@@ -45,6 +55,7 @@ DECISIONS_SECTION = "Decisions"
 _HEADING = re.compile(r"^(#{1,6})\s+(.*?)(?:\s+#+)?\s*$")
 _BULLET = re.compile(r"^(\s*)(?:[-*+]|\d+[.)])\s+(.*)$")
 _KPI = re.compile(r"^\**KPI\s*:\**\s*(.*)$", re.IGNORECASE)
+_AUTHORED_ID = re.compile(r"^(?:\[[ xX]\]\s+)?\*\*([OSC])-(\d+):\*\*\s*(.*)$")
 _RULE = re.compile(r"^\s*(?:-{3,}|\*{3,}|_{3,})\s*$")
 _DECISIONS_CITATION = re.compile(r"decisions:\s*\[([^\[\]]*)\]")
 
@@ -73,9 +84,13 @@ def _section_for(title):
 
 
 def _scan_sections(stripped_text):
-    """Rows for the O, S, C and K ids, each paired with its 1-based line."""
-    counters = {"O": 0, "S": 0, "C": 0, "K": 0}
-    found = []
+    """Rows for the O, S, C and K ids as `(line, row, authored_number)`.
+
+    `line` is the 1-based line the row starts on; `authored_number` is the
+    number of an authored id, else None. Derived rows are numbered after the
+    scan, skipping the numbers authored ids hold.
+    """
+    entries = []
     section = None
     item = None
     in_comment = False
@@ -84,21 +99,29 @@ def _scan_sections(stripped_text):
         nonlocal item
         if item is None:
             return
-        start, parts = item
+        start, parts, is_bullet = item
         item = None
         text = normalize_text(" ".join(parts))
         if not text:
             return
         kpi = _KPI.match(text)
         if kpi:
-            prefix = "K"
             text = kpi.group(1)
             if not text.strip():
                 return
-        else:
-            prefix = section[1]
-        counters[prefix] += 1
-        found.append((start, _make_row(f"{prefix}-{counters[prefix]}", section[0], text)))
+            entries.append((start, "K", None, None, section[0], text))
+            return
+        prefix = section[1]
+        authored = _AUTHORED_ID.match(text) if is_bullet else None
+        if authored and authored.group(1) == prefix:
+            if not authored.group(3).strip():
+                return
+            token = f"{prefix}-{authored.group(2)}"
+            entries.append(
+                (start, prefix, int(authored.group(2)), token, section[0], authored.group(3))
+            )
+            return
+        entries.append((start, prefix, None, None, section[0], text))
 
     for number, line in enumerate(stripped_text.split("\n"), 1):
         trimmed = line.strip()
@@ -130,21 +153,74 @@ def _scan_sections(stripped_text):
 
         if _KPI.match(trimmed):
             flush()
-            item = (number, [trimmed])
+            item = (number, [trimmed], False)
             continue
 
         bullet = _BULLET.match(line)
         if bullet and (item is None or (len(bullet.group(1)) < 2 and "\t" not in bullet.group(1))):
             flush()
-            item = (number, [bullet.group(2)])
+            item = (number, [bullet.group(2)], True)
             continue
         if item is None:
-            item = (number, [trimmed])
+            item = (number, [trimmed], False)
         else:
             item[1].append(bullet.group(2) if bullet else trimmed)
 
     flush()
+    return _number_rows(entries)
+
+
+def _number_rows(entries):
+    """`(line, row, authored_number)` triples with derived ids assigned.
+
+    A derived id counts up from 1 per prefix, passing over every number an
+    authored id of that prefix holds.
+    """
+    held = {}
+    for _, prefix, number, _, _, _ in entries:
+        if number is not None:
+            held.setdefault(prefix, set()).add(number)
+    counters = {}
+    found = []
+    for line, prefix, number, token, section_name, text in entries:
+        if number is None:
+            current = counters.get(prefix, 0) + 1
+            while current in held.get(prefix, ()):
+                current += 1
+            counters[prefix] = current
+            token = f"{prefix}-{current}"
+        found.append((line, _make_row(token, section_name, text), number))
     return found
+
+
+def _unfenced(text):
+    """`(text with line endings as LF, the same text with fenced blocks blanked)`."""
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    stripped, _ = vaultlib.strip_fenced_code(text)
+    return text, stripped
+
+
+def duplicate_report(text):
+    """A message naming the lines of every authored id two rows hold, else None.
+
+    `O-3` and `O-03` are one id. The message reads
+    `duplicate requirement id O-03 on lines 12 and 14`.
+    """
+    if not text or not isinstance(text, str):
+        return None
+    _, stripped = _unfenced(text)
+    holders = {}
+    for line, row, number in _scan_sections(stripped):
+        if number is not None:
+            holders.setdefault((row["id"][0], number), []).append((line, row["id"]))
+    messages = []
+    for group in holders.values():
+        if len(group) < 2:
+            continue
+        lines = [str(line) for line, _ in group]
+        named = f"{', '.join(lines[:-1])} and {lines[-1]}"
+        messages.append(f"duplicate requirement id {group[0][1]} on lines {named}")
+    return "; ".join(messages) or None
 
 
 def extract_requirements(text):
@@ -155,10 +231,9 @@ def extract_requirements(text):
     """
     if not text or not isinstance(text, str):
         return []
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-    stripped, _ = vaultlib.strip_fenced_code(text)
+    text, stripped = _unfenced(text)
 
-    located = _scan_sections(stripped)
+    located = [(line, row) for line, row, _ in _scan_sections(stripped)]
     decisions, _ = decisionslib.extract_decisions(text)
     for decision in decisions:
         row = _make_row(decision["id"], DECISIONS_SECTION, decision["text"])

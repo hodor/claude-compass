@@ -3,10 +3,12 @@
 
 Finds the task's merge commit, reverts its non-test changes in a scratch git
 worktree, and runs the test command before and after. Prints one line per
-test (`flipped:`, `unflipped:`, `baseline-red:`, `collection-error:`) and,
-as the last line, `ABLATE: PASS`, `ABLATE: FINDING` or
-`ABLATE: SKIP: <reason>`. A new test that stays green without the code is a
-FINDING; with `--refactor`, any test that goes red is. The verdict line holds
+test (`flipped:`, `unproven:`, `unflipped:`, `baseline-red:`,
+`collection-error:`) and, as the last line, `ABLATE: PASS`, `ABLATE: FINDING`
+or `ABLATE: SKIP: <reason>`. A new test that stays green without the code is a
+FINDING; with `--refactor`, any test that goes red is. A test whose recorded
+red was only a collection error (the checkpoint's `red_kinds`) that stays
+green or vanishes without the code is `unproven:` and never a FINDING. The verdict line holds
 no sha, path or timestamp, so a rerun of the same check prints it unchanged.
 
 `--repo` defaults to the current directory. Exit 0 for all three verdicts,

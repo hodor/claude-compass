@@ -162,6 +162,15 @@ _TAP_LINE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Collection errors. pytest prints a heading `_____ ERROR collecting
+# tests/test_x.py _____` and a short-summary line `ERROR tests/test_x.py`
+# (newer versions append ` - <message>`); unittest turns an unimportable
+# module into a stub test whose failure text reads `ImportError: Failed to
+# import test module: <module>`.
+_PYTEST_COLLECT_HEADING_RE = re.compile(r"ERROR collecting\s+(?P<path>\S+\.py)")
+_PYTEST_COLLECT_SUMMARY_RE = re.compile(r"^ERROR\s+(?P<path>[^\s:]+\.py)(?:\s+-\s.*)?$")
+_UNITTEST_IMPORT_FAILURE_RE = re.compile(r"Failed (?:to )?import test module:\s*(?P<module>[\w.]+)")
+
 
 # --------------------------------------------------------------------------
 # git access - the sole source of truth for checkpointed content and
@@ -665,6 +674,16 @@ def _run_record(args):
     exclude = {fr["path"] for fr in file_records}
     support_surface = _collect_support_surface(repo_root, commit, dirs, exclude)
 
+    red_kinds = None
+    if options["red_evidence"]:
+        try:
+            red_kinds = _red_kinds(_read_evidence(Path(options["red_evidence"])), file_records)
+        except (OSError, ValueError) as exc:
+            sys.stderr.write(
+                f"compass test-checkpoint record: red evidence {options['red_evidence']} "
+                f"is unreadable ({exc}); recording without red kinds\n"
+            )
+
     record = {
         "task": task, "version": version, "recorded_at": _iso_now(),
         "commit": commit, "repo": _repo_label(workspace, repo_root),
@@ -672,6 +691,8 @@ def _run_record(args):
         "landed": False, "landed_at": None,
         "files": file_records, "support_surface": support_surface, "supersedes": supersedes,
     }
+    if red_kinds is not None:
+        record["red_kinds"] = red_kinds
     _write_record(path, record)
     sys.stdout.write(
         f"compass test-checkpoint record: {task} checkpointed {len(file_records)} file(s) at {commit[:12]}\n"
@@ -801,6 +822,136 @@ def _parse_run_evidence(text):
             statuses, match.group("name"), match.group("path"), match.group("status")
         )
     return statuses
+
+
+def _same_test_path(seen, recorded):
+    """True when two paths name one file, either relative to a different
+    root than the other (`tests/test_x.py` against `cli/tests/test_x.py`)."""
+    seen = seen.replace("\\", "/").removeprefix("./")
+    recorded = recorded.replace("\\", "/").removeprefix("./")
+    return (seen == recorded or seen.endswith("/" + recorded)
+            or recorded.endswith("/" + seen))
+
+
+def _same_test_module(seen, recorded_path):
+    """True when the dotted module `seen` names the file `recorded_path`,
+    either side allowed to carry extra leading packages."""
+    module = recorded_path.replace("\\", "/").removesuffix(".py").replace("/", ".")
+    return seen == module or module.endswith("." + seen) or seen.endswith("." + module)
+
+
+def _unittest_observation(name, path, raw_status):
+    """`(module, class_name, test_name, kind)` for one unittest `-v` result,
+    or None when the printed path names no class. `kind` is `passed`, `fail`,
+    `error` or `absent` (a skipped test)."""
+    parts = path.split(".")
+    if parts[-1] == name:
+        parts = parts[:-1]
+    if len(parts) < 2:
+        return None
+    kind = {"ok": "passed", "FAIL": "fail", "ERROR": "error"}.get(raw_status, "absent")
+    return ".".join(parts[:-1]), parts[-1], name, kind
+
+
+def _red_kinds(text, file_records):
+    """`{id: kind}` for every test id of `file_records`, read from the saved
+    run output `text`. An id is `path::Class::name` (`path::name` for a
+    module-level test) and its kind is one of:
+
+    - `fail` or `error`: the run printed that status for the test (a TAP
+      `not ok` line is `fail`; TAP lines carry no path, so they match a
+      module-level id by name);
+    - `passed`: the run printed it green, so it was never red;
+    - `collection`: no status line, and the run reports a collection error
+      for the test's file (pytest `ERROR collecting <path>`, unittest
+      `Failed to import test module: <module>`);
+    - `absent`: nothing in the run mentions the test or its file.
+
+    A test printed more than once (one line per parametrized case) is `fail`
+    or `error` when any occurrence was, otherwise `passed`."""
+    pytest_seen = []  # (path, class_name, test_name, kind)
+    unittest_seen = []  # (module, class_name, test_name, kind)
+    tap_seen = []  # (test_name, kind)
+    broken_paths = []
+    broken_modules = []
+    pending = None  # (name, path) unittest header awaiting its trailer
+    for line in text.splitlines():
+        tap = _TAP_LINE_RE.match(line.rstrip())
+        if tap:
+            pending = None
+            kind = ("absent" if tap.group("directive")
+                    else "fail" if tap.group("not") else "passed")
+            tap_seen.append((re.sub(r"\\(.)", r"\1", tap.group("name")), kind))
+            continue
+        stripped = line.strip()
+        pytest_match = (_PYTEST_LINE_RE.match(stripped)
+                        or _PYTEST_SUMMARY_RE.match(stripped))
+        if pytest_match:
+            pending = None
+            segments = pytest_match.group("nodeid").split("[", 1)[0].split("::")
+            kind = {"PASSED": "passed", "FAILED": "fail", "ERROR": "error"}.get(
+                pytest_match.group("status"), "absent")
+            pytest_seen.append((
+                segments[0], segments[-2] if len(segments) >= 3 else None,
+                segments[-1], kind))
+            continue
+        collect = (_PYTEST_COLLECT_HEADING_RE.search(stripped)
+                   or _PYTEST_COLLECT_SUMMARY_RE.match(stripped))
+        if collect:
+            broken_paths.append(collect.group("path"))
+            continue
+        failure = _UNITTEST_IMPORT_FAILURE_RE.search(stripped)
+        if failure:
+            broken_modules.append(failure.group("module"))
+            continue
+        match = _RUN_LINE_RE.match(stripped)
+        if match:
+            pending = None
+            observation = _unittest_observation(
+                match.group("name"), match.group("path"), match.group("status"))
+            if observation:
+                unittest_seen.append(observation)
+            continue
+        header = _RUN_HEADER_RE.match(stripped)
+        if header:
+            pending = (header.group("name"), header.group("path"))
+            continue
+        if pending is not None:
+            trailer = _RUN_TRAILER_RE.search(stripped) or _RUN_BARE_STATUS_RE.match(stripped)
+            if trailer:
+                observation = _unittest_observation(*pending, trailer.group("status"))
+                pending = None
+                if observation:
+                    unittest_seen.append(observation)
+
+    kinds = {}
+    for file_record in file_records:
+        path = file_record["path"]
+        for class_name, test_name in file_record["ids"]:
+            seen = [
+                kind for seen_path, seen_class, seen_name, kind in pytest_seen
+                if seen_name == test_name and seen_class == class_name
+                and _same_test_path(seen_path, path)
+            ] + [
+                kind for module, seen_class, seen_name, kind in unittest_seen
+                if seen_name == test_name and seen_class == class_name
+                and _same_test_module(module, path)
+            ]
+            if class_name is None:
+                seen += [kind for tap_name, kind in tap_seen if tap_name == test_name]
+            failing = [kind for kind in seen if kind in _FAILING_STATUSES]
+            if failing:
+                kind = failing[0]
+            elif "passed" in seen:
+                kind = "passed"
+            elif (any(_same_test_path(broken, path) for broken in broken_paths)
+                  or any(_same_test_module(broken, path) for broken in broken_modules)):
+                kind = "collection"
+            else:
+                kind = "absent"
+            key = f"{path}::{class_name}::{test_name}" if class_name else f"{path}::{test_name}"
+            kinds[key] = kind
+    return kinds
 
 
 def _record_pytest_status(statuses, nodeid, raw_status):
