@@ -17,6 +17,8 @@ Two modes:
 
 ## Mode: Create
 
+`compass` below stands for `python3 .claude/cli/compass` (`python .claude/cli/compass` where `python3` is absent).
+
 A handoff is read first by the next session. Keep it lean. Use `file:line` references, not code snippets. Failed approaches and uncommitted changes are the most valuable parts.
 
 ### Protocol
@@ -55,6 +57,9 @@ A handoff is read first by the next session. Keep it lean. Use `file:line` refer
    git_branch: <branch>
    git_commit: <short hash>
    plan: [[PLAN-NNN-name]]
+   area: <area of the work, as in the plan or spec>
+   tags: [handoff, <topic tags>]
+   summary: "<one line: what shipped or stands, and the next step>"
    ---
 
    # Handoff: [Description]
