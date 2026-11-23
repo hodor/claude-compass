@@ -114,6 +114,8 @@ def _scan_sections(stripped_text):
         prefix = section[1]
         authored = _AUTHORED_ID.match(text) if is_bullet else None
         if authored and authored.group(1) == prefix:
+            if not authored.group(3).strip():
+                return
             token = f"{prefix}-{authored.group(2)}"
             entries.append(
                 (start, prefix, int(authored.group(2)), token, section[0], authored.group(3))
