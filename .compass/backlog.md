@@ -203,7 +203,6 @@ Plan: [[PLAN-035-prompt-cache-is-a-design-input]]; intent lines are in its Later
 - [ ] TASK-424
 - [ ] TASK-425
 - [ ] TASK-426
-- [ ] TASK-427
 - [ ] TASK-428
 - [ ] TASK-429
 - [ ] TASK-430

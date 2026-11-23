@@ -7,7 +7,7 @@ confidence: medium
 area: tooling
 tags: [tokens, cost, prompt-caching, measurement, subagents, session-start, git-status, ttl]
 created: 2026-11-21
-updated: 2026-11-21
+updated: 2026-11-22
 git_branch: "master"
 git_commit: "4585279"
 author: planner
@@ -117,12 +117,22 @@ TASK-420 runs first; TASK-421 follows it; TASK-422 and TASK-423 run in parallel 
 
 **Pause point:** when automated verification passes, wait for your confirmation of TASK-423's manual check and your Gate 2 answer before Wave 2 is detailed.
 
+### Wave 2 (detailed): the cached start stays stable
+
+One task, the only Later line that needs neither Gate 2 nor a subscription run. It adds tests only, so it ships with the next wave that changes shipped code (TASK-430). `plugin/cli/tests/test_hooks_config.py` is the one file it edits; no open task of another plan edits it.
+
+- [ ] TASK-427: SessionStart prints nothing when nothing happened. The host adds a SessionStart hook's stdout to the session's first request, so any text a hook prints there, and any change in that text, becomes part of the cached start. A new `SessionStartSilenceTests` class in `plugin/cli/tests/test_hooks_config.py` pins two things. (a) The manifest: the commands of every `SessionStart` group except `compact` (the `startup` group and the group with no matcher) are exactly `self-update --hook`, `drift --hook` and `capture-check --hook`; the check is a helper applied to the real `plugin/hooks/hooks.json` and to an in-test copy with a fourth command added to the `startup` group, and the copy must fail, so a new SessionStart command fails the test until it is listed here with a silence case. The `compact` group's `session-state --hook` is left out: it prints the state block by design, after a compaction has already rewritten the cache. (b) Each of the three commands, run as a real process (`sys.executable` on `plugin/cli/compass`, `CLAUDE_PROJECT_DIR` and the working directory set to a temporary project holding a `.compass/` vault, as `test_drift_hook_post.HookSilenceTests` does), exits 0 and prints nothing on stdout or stderr on a no-op run: `self-update --hook` in local mode against a plugin tree of the installed version, network unreachable (the setup of `test_self_update`'s `test_local_mode_same_version_is_silent`); `capture-check --hook` fed a SessionStart payload on stdin, below its turn interval and with no signal recorded; `drift --hook` in a git repo whose newest drift-log row holds the current HEAD - complexity: S, depends_on: none, files: [plugin/cli/tests/test_hooks_config.py], lessons: [LESSON-hook-payloads-observe-before-coding, LESSON-deterministic-fixtures-survive-scratch-wipes]
+  - Automated verification: `python -m pytest plugin/cli/tests/test_hooks_config.py -q` passes, including the doctored-manifest case failing the helper; `python -m pytest plugin/cli/tests -q` passes; `git diff --name-only` after the task lists only `plugin/cli/tests/test_hooks_config.py`; the dash check (`python -c "import pathlib,sys; p=pathlib.Path('plugin/cli/tests/test_hooks_config.py'); bad=[c for c in (0x2013,0x2014) if chr(c) in p.read_text(encoding='utf-8')]; print(bad); sys.exit(bool(bad))"`) exits 0.
+  - Manual verification: none; the task adds tests and changes no behavior.
+  - Entry point: none: the task adds tests only and changes no executable path.
+
+**Pause point:** when automated verification passes, Wave 2 is done; the next wave waits on your Gate 2 answer and on permission for TASK-428's subscription run.
+
 ## Later (intent only)
 
 - [ ] TASK-424: If Gate 2 says off: `merge_settings` sets `includeGitInstructions: false` in the project's `.claude/settings.json` only when the key is absent, so it reaches every install at its next self-update and a project's `true` keeps the snapshot; the setup and update skills say what the setting removes - files: [plugin/cli/commands/self_update.py, plugin/cli/tests/test_self_update.py, plugin/skills/setup/SKILL.md, plugin/skills/update/SKILL.md]
 - [ ] TASK-425: If Gate 2 says off: `looprunner.launch_session` sets `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1` for workers and judges unless the environment already sets it - files: [plugin/cli/looprunner.py, plugin/cli/tests/test_looprunner.py]
 - [ ] TASK-426: The gain in a real Compass project: after the switch lands in this repo, a week of sessions compared with the baseline through `compass cache --compare`, the change in first-request read and next-session reuse recorded in the baseline document; the subagent rows show whether subagents gain too
-- [ ] TASK-427: SessionStart text stays stable: a test pins that `self-update --hook` and `capture-check --hook` print nothing at SessionStart on a no-op run, so no future change puts churning text into the cached start - files: [plugin/cli/tests/test_hooks_config.py]
 - [ ] TASK-428: A/B of a 1-hour subagent cache lifetime on builder waves, repo-local in `bench/overhead/`, through [[PLAN-034-checking-cost-follows-task-and-model]]'s variant arms (TASK-343): one arm adds `subagentPromptCacheTtl: 1h` to the project settings, the other is unchanged Compass, same topics, within plan usage; `compass cache --json` per build gives subagent first-request and after-gap reads, cross-agent reuse 5-60 minutes apart, and list-price weighted cost at equal judged outcome, recorded in a research document - files: [bench/overhead/variants/, .compass/research/whole-overhead/prompt-cache/RESEARCH-subagent-ttl-ab.md], lessons: [LESSON-subscription-cost-is-an-estimate-not-a-budget, LESSON-blind-the-author-in-self-validation]
 - [ ] TASK-429: Per Gate 3, set the 1-hour lifetime in the form the A/B tested, for the types where it paid - files: [plugin/cli/commands/self_update.py, plugin/templates/agents/builder.md]
 - [ ] TASK-430: Ship each later wave: version bump and local install refresh - files: [plugin/.claude-plugin/plugin.json]
@@ -138,3 +148,17 @@ TASK-420 runs first; TASK-421 follows it; TASK-422 and TASK-423 run in parallel 
 ## Inherited Questions (from spec)
 
 The spec leaves none open. Its KPI is marked a guess; Gate 1 fixes the metric it uses for subagents.
+
+## Wave 2 elaborated
+
+What Wave 1 settled: the baseline in [[RESEARCH-cache-baseline-measured]] is approved; the snapshot is the first differing block in 90% of comparable next-session pairs here; weekly first-request hit swings about 8.5 points, so `--compare`'s 5-point band holds only for windows of 30 days or more. Gate 2 is not answered, so the git snapshot stays on, and TASK-428's subscription run is not yet allowed.
+
+Promoted:
+- TASK-427: changed. The intent named `self-update --hook` and `capture-check --hook`; `drift --hook`, which [[PLAN-032-consolidation-grounded-in-sources]] TASK-311 added to the `startup` group after this plan was written, is pinned too. The test also fixes the set of non-compaction SessionStart commands, so a new one cannot join unproven, and leaves out `session-state --hook`, whose output after a compaction is its purpose.
+
+Held in Later, with what each waits on:
+- TASK-424 and TASK-425: Gate 2.
+- TASK-426: TASK-424 or TASK-425 landing in this repo, then a week of sessions. Its comparison must use a window of 30 days or more, or a band of about 17 points for a weekly one (the baseline's Finding 5).
+- TASK-428: your permission for a subscription run.
+- TASK-429: Gate 3, which needs TASK-428's result.
+- TASK-430: a wave that changes shipped code; Wave 2 adds tests only, so it ships nothing.

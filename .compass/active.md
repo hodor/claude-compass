@@ -93,6 +93,12 @@ Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files a
 - [ ] TASK-415: The checkpoint keeps the kind of each red, and `compass ablate` names a test whose only red was a collection error as unproven - complexity: M, depends_on: TASK-402
 - [ ] TASK-416: `compass reach --run "<command>" --lang python|node` produces the coverage report itself, then intersects it as `--report` does - complexity: L, depends_on: TASK-401, TASK-406
 
+## PLAN-035 Wave 2: the cached start stays stable
+
+Plan: [[PLAN-035-prompt-cache-is-a-design-input]]; the task's full text, files and checks are there.
+
+- [ ] TASK-427: Tests pin that every non-compaction SessionStart command prints nothing on a no-op run, and that no new one joins unproven - complexity: S, depends_on: none
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].
