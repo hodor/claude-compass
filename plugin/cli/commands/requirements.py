@@ -12,7 +12,8 @@ non-decision row plus the decisions the task's plan line cites as
 `decisions: [<spec-stem>/D-NN, ...]`.
 
 Exit 0 for any readable spec, a spec with zero rows included; exit 1 for a
-missing or unreadable spec or plan, or a usage error.
+missing or unreadable spec or plan, a usage error, or a spec whose rows hold
+the same authored id twice (the message names both lines).
 """
 
 import json
@@ -86,6 +87,9 @@ def run(args):
         spec_text = vaultlib.read_vault_text(spec)
     except (OSError, UnicodeDecodeError) as exc:
         return _fail(f"cannot read spec {options['spec']}: {exc}")
+    duplicate = requirementslib.duplicate_report(spec_text)
+    if duplicate:
+        return _fail(duplicate)
     rows = requirementslib.extract_requirements(spec_text)
 
     if options["task"] is not None:
