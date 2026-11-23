@@ -804,6 +804,12 @@ def _paired_table(arm, points):
     return header + lines
 
 
+def _is_no_state(ask_path):
+    """Whether the ask file at `ask_path` is a no-state record; a grade beside one
+    belongs to an earlier reply and is not read."""
+    return ask_path.is_file() and topics.read_json(ask_path).get("no_state") is True
+
+
 def report(*, private_root=None):
     """A markdown table of the stored grades, per arm and probe type, followed by one
     table per arm other than the reference arm holding its paired differences."""
@@ -814,7 +820,7 @@ def report(*, private_root=None):
         grades = {}
         for arm in ARMS:
             path = folder / f"grade-{arm}.json"
-            if path.is_file():
+            if path.is_file() and not _is_no_state(folder / f"ask-{arm}.json"):
                 grades[arm] = topics.read_json(path)
         floor = grades.get("none", {}).get("input_tokens")
         point_scores = {}
@@ -850,8 +856,7 @@ def report(*, private_root=None):
     no_state = {arm: 0 for arm in ARMS}
     for folder in folders:
         for arm in ARMS:
-            path = folder / f"ask-{arm}.json"
-            if path.is_file() and topics.read_json(path).get("no_state") is True:
+            if _is_no_state(folder / f"ask-{arm}.json"):
                 no_state[arm] += 1
     lines += [""] if any(no_state.values()) else []
     lines += [f"no-state points, {arm}: {count}" for arm, count in sorted(no_state.items()) if count]
