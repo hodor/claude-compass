@@ -969,6 +969,22 @@ class HandoffStartLineTests(StateFixture):
         lines = items(sections(self.block("--format", "handoff"))["Recent Changes"])
         self.assertEqual(sorted(lines), ["- `f.py`", "- `s.py`", "- `z.py`"])
 
+    def test_edit_line_skips_the_hunks_leading_context_lines(self):
+        """Adversarial where: the hunk start printed, which the host sets up to three
+        context lines above the change (observed live: `scratch.md:1` for a change on line 3),
+        or context lines after the change counted too."""
+        def hunk(call_id, start, lines):
+            patch = [{"oldStart": start, "newStart": start, "lines": lines}]
+            return [tool_call(call_id, "Edit", {"file_path": f"{call_id}.md"}),
+                    tool_result(call_id, {"structuredPatch": patch})]
+        self.write_transcript(user_human("go"),
+                              hunk("ctx", 1, [" # title", " ", "-status: draft", "+status: edited", " codeword"]),
+                              hunk("add", 40, [" a", " b", " c", "+new", " d"]),
+                              hunk("none", 7, [" only context"]),
+                              hunk("odd", 5, [" a", 3, "-b"]))
+        lines = items(sections(self.block("--format", "handoff"))["Recent Changes"])
+        self.assertEqual(sorted(lines), ["- `add.md:43`", "- `ctx.md:3`", "- `none.md:7`", "- `odd.md:5`"])
+
     def test_subagent_edit_start_line_is_reported(self):
         """Adversarial where: start lines read from the main transcript only, so a subagent's
         Edit prints without its line."""
