@@ -124,6 +124,15 @@ Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files a
 - [ ] TASK-411: Release and local refresh: bump `plugin/.claude-plugin/plugin.json` to the next minor, run `python plugin/cli/compass self-update... - complexity: S, depends_on: TASK-406, TASK-408, TASK-409, TASK-410
 - [ ] TASK-412: The planted-defect probe, the spec's KPI. `bench/verification/planted.py` builds a throwaway Python project in a temp folder with its... - complexity: M, depends_on: TASK-411
 
+## PLAN-032 Wave 2: the scan runs itself and fixes what git proves
+
+Plan: [[PLAN-032-consolidation-grounded-in-sources]]; each task's full text, files and checks are there.
+
+- [ ] TASK-310: ADR: the drift recheck runs outside consolidation's no-cadence rule; host, run gate, report dedupe and auto-fix boundary - complexity: S, depends_on: none
+- [ ] TASK-312: `compass drift --apply` rewrites git-proven refs and target-newer index lines; net-zero shifts become `unchanged` - complexity: M, depends_on: none
+- [ ] TASK-311: The scan runs itself from the `SessionStart` hook, detached and gated on HEAD; report dedupe; doctor row - complexity: L, depends_on: TASK-310, TASK-312
+- [ ] TASK-321: Ship Wave 2 (release: push only on the human's word): version bump and `self-update --force` - complexity: S, depends_on: TASK-309, TASK-311, TASK-312
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].
