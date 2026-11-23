@@ -311,7 +311,7 @@ class BaseSelectionTests(unittest.TestCase):
         write(repo, "src/a.py", A_LINES)
         write(repo, DOC_PATH, ["# Doc", "", "See `src/a.py:2,5-7,9`."])
         commit(repo, "seed", "src", ".compass")
-        write(repo, "src/a.py", A_LINES[:5] + ["edited"] + A_LINES[6:])
+        write(repo, "src/a.py", A_LINES[:5] + ["edited", "extra"] + A_LINES[6:])
         commit(repo, "edit", "src")
         classes = {(r["ref_start"], r["ref_end"]): r["class"] for r in scan(repo)}
         self.assertEqual(classes, {

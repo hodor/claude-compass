@@ -313,7 +313,8 @@ class ClassificationTests(unittest.TestCase):
         the citing line re-anchors it."""
         doc = ["# T", "One `src/a.py:5` here.", "", "Two `src/a.py:8` here."]
         repo, add_sha = seeded_repo(self, doc)
-        write(repo, "src/a.py", replace_line(A_LINES, 5, "NEW"))
+        edited = replace_line(["top"] + A_LINES, 6, "NEW")
+        write(repo, "src/a.py", edited)
         commit(repo, "edit a", "src/a.py")
         write(repo, DOC_PATH, replace_line(doc, 2, "One `src/a.py:5` re-anchored."))
         edit_sha = commit(repo, "edit citing line", DOC_PATH)
@@ -323,7 +324,7 @@ class ClassificationTests(unittest.TestCase):
         self.assertEqual(blame[2]["class"], "unchanged")
         self.assertEqual(blame[4]["base"], add_sha)
         self.assertEqual(blame[4]["class"], "shifted")
-        self.assertEqual(blame[4]["proposal"], {"new_line": 8})
+        self.assertEqual(blame[4]["proposal"], {"new_line": 9})
 
         added = {r["line"]: r for r in scan(repo, "add")}
         self.assertEqual(added[2]["base"], add_sha)
