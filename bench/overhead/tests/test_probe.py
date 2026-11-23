@@ -1673,3 +1673,188 @@ def test_report_with_paired_tables_holds_no_fixture_path_prompt_or_answer(two_po
     assert len(_table_blocks(text)) >= 2
     for secret in (*FIXTURE_STRINGS, str(tmp_path), "ANSWERLEAK", *two_points):
         assert secret not in text
+
+
+# implementation-revealed branches of the grading rules ----------------------------
+
+WINDOWS_ERROR = r"PermissionError: C:\data\x denied"
+
+
+@pytest.mark.parametrize("literal, reply, score", [
+    ("KeyError: , tail", "KeyError: , tail", 1.0),
+    ("KeyError: , tail", "KeyError", 0.0),
+    ("KeyError: ;; x", "KeyError: ;; x", 1.0),
+    (WINDOWS_ERROR, WINDOWS_ERROR, 1.0),
+    ("KeyError: [a-z]+ here", "KeyError: a here", 0.0),
+    ("KeyError: [a-z]+ here", "KeyError: [a-z]+ here", 1.0),
+    ("ValueError: x", "builtins.ValueError: x", 1.0),
+    ("ValueError: x", "ValueErrors: x", 0.0),
+    ("ValueError: x y", "VALUEERROR:   X\n  Y", 1.0),
+    ("ValueError: a, b; c - d (e)", "ValueError: a", 1.0),
+    ("ValueError: a-b", "ValueError: a", 0.0),
+    ("ValueError: a(b) c", "ValueError: a", 0.0),
+    ("ValueError: a (b) c", "ValueError: a", 1.0),
+    ("ValueError: first", "Something else failed first. Later a ValueError appeared.", 1.0),
+    ("ValueError: first", "ValueError only", 0.0),
+])
+def test_error_scoring_separator_edges_metacharacters_and_word_boundaries(
+        tmp_path, private_root, literal, reply, score):
+    """Adversarial where: a message that opens with a separator leaving an empty first
+    clause (crash, or credit for the name alone), a regex character in the message
+    or a backslash path read as a pattern, a name matched inside a longer word,
+    case or whitespace differences refused, a `(` or `-` without its space cutting
+    the message early, or the name and the clause credited when only one of them
+    is in the reply."""
+    folder = _new_folder(tmp_path)
+    write_transcript(folder, "t.jsonl", [
+        user(0, "run it"), assistant(1, "running", ("Bash", {"command": "pytest"})),
+        tool_result(2, literal, is_error=True), boundary(3), summary(4)])
+    (found,) = probe.find(folder)
+    built = probe.build(found["point"], private_root=private_root)
+    assert [item["expected"] for item in built["probes"]] == [literal]
+    _store_reply(found["point"], private_root, "host-summary", {"recall-1": reply})
+
+    graded = probe.grade(found["point"], private_root=private_root)["host-summary"]
+
+    assert graded["scores"]["recall-1"] == score
+
+
+def test_state_score_over_the_types_a_point_has(tmp_path):
+    """Adversarial where: the pooled score averaged over the three types when a point
+    holds only some of them (absent types counted as 0), a recall pair counted once
+    per probe, artifact-recent or artifact mixed in, or a point of only artifact
+    probes given a state row."""
+    artifact = {"precision": 1.0, "recall": 1.0}
+    rows = {
+        "only-recall": ({"recall-1": 1.0, "recall-2": 0.0}, "0.50"),
+        "only-decision": ({"decision": 1.0}, "1.00"),
+        "recall-pair-counts-once": (
+            {"recall-1": 1.0, "recall-2": 1.0, "continuation": 0.0, "decision": 0.0,
+             "artifact": artifact, "artifact-recent": 1.0}, "0.33"),
+        "none-of-the-three": ({"artifact": artifact, "artifact-recent": 1.0}, None),
+    }
+    for name, (scores, state) in rows.items():
+        root = tmp_path / name
+        _write_grade(root, "point", "host-summary", scores)
+
+        table = _main_rows(probe.report(private_root=root))
+
+        if state is None:
+            assert ("host-summary", "state") not in table, name
+        else:
+            assert table[("host-summary", "state")][2:4] == ["1", state], name
+
+
+def _paired_for(tmp_path, name, differences):
+    """Report text where `none` minus `host-summary` on `continuation` is each of
+    `differences`, one point apiece."""
+    root = tmp_path / name
+    for number, difference in enumerate(differences):
+        host = 1.0 if difference < 0 else 0.0
+        _write_grade(root, f"point-{number:02d}", "host-summary", {"continuation": host})
+        _write_grade(root, f"point-{number:02d}", "none", {"continuation": host + difference})
+    return probe.report(private_root=root)
+
+
+def test_interval_at_exactly_ten_pairs_keeps_its_order_and_its_sign(tmp_path):
+    """Adversarial where: the first interval printed at the 10-pair boundary has its
+    ends swapped, sits off the mean, or reads above 0 when the arm loses every
+    point, or a constant difference widens into a spread."""
+    lost = _paired_for(tmp_path, "lost", [-1.0] * 10)
+    mixed = _paired_for(tmp_path, "mixed", [1.0] * 6 + [0.0] * 4)
+
+    lost_cells, lost_line = _paired_row(lost, "continuation")
+    mixed_cells, mixed_line = _paired_row(mixed, "continuation")
+
+    assert "10" in lost_cells and "too few points" not in lost_line
+    assert all(abs(number + 1.0) < 1e-9 for number in _decimals(lost_line))
+    mean, low, high = _decimals(mixed_line)[-3:]
+    assert "10" in mixed_cells
+    assert abs(mean - 0.6) < 1e-9 and 0.0 <= low <= mean <= high <= 1.0
+
+
+def test_a_probe_type_only_one_arm_holds_gets_no_paired_row(tmp_path):
+    """Adversarial where: a probe type present in the arm and missing from
+    host-summary printed as a paired row from a default of 0, so a type with no
+    pairs reads as a difference (`state` pairs through continuation and stays)."""
+    root = tmp_path / "root"
+    for number in range(11):
+        _write_grade(root, f"point-{number:02d}", "host-summary", {"continuation": 1.0})
+        _write_grade(root, f"point-{number:02d}", "none", {"continuation": 0.0, "decision": 1.0})
+
+    text = probe.report(private_root=root)
+
+    paired = [line for block in _table_blocks(text)[1:] for line in block]
+    assert any("continuation" in _cells(line) for line in paired)
+    assert not any("decision" in _cells(line) for line in paired)
+
+
+# migrating build ------------------------------------------------------------------
+
+
+def test_migrating_build_of_a_point_whose_transcript_is_gone_fails_and_keeps_the_key(
+        two_points, private_root):
+    """Adversarial where: the migration, which re-reads the transcript, truncates or
+    rewrites the stored key when the transcript can no longer be read, or lets the
+    failure escape the command line as a traceback instead of exit 2."""
+    probe.build(two_points[1], private_root=private_root)
+    folder = probe._point_dir(two_points[1], private_root)
+    legacy = topics.read_json(folder / "key.json")
+    del probe_by_id(legacy)["artifact"]["expected_recent"]
+    topics.write_json(folder / "key.json", legacy)
+    before = (folder / "key.json").read_bytes()
+    Path(two_points[1].rpartition("#")[0]).unlink()
+
+    code = probe.main(["--private-root", str(private_root), "build", two_points[1]])
+
+    assert code == 2
+    assert (folder / "key.json").read_bytes() == before
+
+
+def test_build_with_no_artifact_probe_cannot_be_migrated_and_keeps_the_key(tmp_path, private_root):
+    """Adversarial where: the migration invents an artifact probe, or rewrites the
+    key, for a point that never had edits (its key holds no artifact probe, so there
+    is nothing to add)."""
+    folder = _new_folder(tmp_path)
+    write_transcript(folder, "t.jsonl", [
+        user(0, "work on TASK-3"), assistant(1, "On TASK-3 now."), boundary(2), summary(3)])
+    (found,) = probe.find(folder)
+    built = probe.build(found["point"], private_root=private_root)
+    path = probe._point_dir(found["point"], private_root) / "key.json"
+    before = path.read_bytes()
+
+    assert [item["type"] for item in built["probes"]] == ["continuation"]
+    with pytest.raises(probe.AlreadyFrozen):
+        probe.build(found["point"], private_root=private_root)
+    assert path.read_bytes() == before
+
+
+def test_recent_window_of_a_subagent_point_is_cut_by_its_own_earlier_boundary_only(
+        tmp_path, private_root):
+    """Adversarial where: the recent window of a subagent transcript ignores the
+    subagent's earlier boundary (every record is a sidechain record, so a side test
+    that drops sidechain boundaries keeps them all) or is cut by a main-side
+    boundary written into the same file."""
+    folder = tmp_path / "p"
+    (folder / "sess" / "subagents").mkdir(parents=True)
+
+    def side(record):
+        record["isSidechain"] = True
+        return record
+
+    records = [
+        side(user(0, "go")), side(_plain_edit(1, "old.py")), side(tool_result(2, "ok")),
+        side(boundary(3)), side(summary(4)),
+        side(_plain_edit(5, "mid.py")),
+        boundary(6),
+        side(_plain_edit(7, "new.py")), side(tool_result(8, "ok")),
+        side(boundary(9)), side(summary(10)),
+    ]
+    write_transcript(folder / "sess" / "subagents", "agent-x.jsonl", records)
+    write_transcript(folder, "sess.jsonl", [user(0, "hi"), assistant(1, "hello")])
+    (found,) = [item for item in probe.find(folder) if item["boundary"] == 9]
+
+    artifact = probe_by_id(probe.build(found["point"], private_root=private_root))["artifact"]
+
+    assert sorted(artifact["expected"]) == ["mid.py", "new.py", "old.py"]
+    assert sorted(artifact["expected_recent"]) == ["mid.py", "new.py"]
