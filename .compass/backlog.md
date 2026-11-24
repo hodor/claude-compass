@@ -230,7 +230,4 @@ Plan: [[PLAN-035-prompt-cache-is-a-design-input]]; intent lines are in its Later
 
 Plan: [[PLAN-036-verification-beyond-test-pass]]; intent lines are in its Later section.
 
-- [ ] TASK-413
 - [ ] TASK-417
-- [ ] TASK-418
-- [ ] TASK-419
