@@ -175,3 +175,41 @@ def test_render_holds_aggregates_and_no_topic_id_or_path():
     assert "indicative" in text
     assert "capped" in text
     assert "| A |" in text
+
+
+def _all_capped_events():
+    events = []
+    for topic, (full_met, variant_met) in {"t-a": (8, 7), "t-b": (6, 6)}.items():
+        for run in (1, 2):
+            for arm, value in (("compass", full_met), (VARIANT, variant_met - (run - 1))):
+                events.append(_closed(topic, arm, run, end="wall-time", exit=1, weighted=1000.0 * run))
+                events.append(_judged(topic, arm, run, value))
+    return events
+
+
+def test_pairs_capped_on_both_sides_are_summarized_apart_as_equal_time_pairs():
+    """Adversarial where: pairs that both hit the wall-time cap (each arm had
+    the same time) are folded into the main spread, or thrown away so a pilot
+    of capped builds reports nothing; they get a summary of their own and the
+    main spread stays empty."""
+    result = spread.pairs(_all_capped_events(), VARIANT, stations=_stations, profile=_profile)
+    assert result["pairs"] == []
+    assert len(result["capped_pairs"]) == 4
+    summary = spread.summarize(result, margin=0.05, drop=0.1)
+    assert summary["pairs"] == 0
+    equal = summary["equal_time"]
+    assert equal["pairs"] == 4
+    assert equal["goal"]["mean"] == pytest.approx(((-0.1 - 0.2) + (0.0 - 0.1)) / 4)
+    assert equal["verdict"] == compare.noninferiority([p["goal_diff"] for p in result["capped_pairs"]], 0.05)
+    text = spread.render(summary, result)
+    assert "same wall time" in text
+
+
+def test_a_pair_capped_on_one_side_only_is_in_neither_summary():
+    events = _all_capped_events()
+    for event in events:
+        if event["event"] == "build-closed" and event["arm"] == "compass" and (event["topic"], event["run"]) == ("t-a", 1):
+            event.update(end="human-done", exit=0)
+    result = spread.pairs(events, VARIANT, stations=_stations, profile=_profile)
+    assert ("t-a", 1) not in {(p["topic"], p["run"]) for p in result["capped_pairs"]}
+    assert len(result["capped_pairs"]) == 3
