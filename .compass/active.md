@@ -91,8 +91,8 @@ Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, fi
 - [x] TASK-341: The state block always lists the edited files - complexity: M, depends_on: none
 - [x] TASK-435: Rerun the block arms on every point with the revised block - complexity: S, depends_on: TASK-341
 - [x] TASK-436: Prototype: does a session rebuilt at a compaction point load headless - complexity: S, depends_on: none
-- [ ] TASK-434: The probe gains a `before` arm, the KPI's reference - complexity: M, depends_on: TASK-436
-- [ ] TASK-338: The probe gains a `handoff` arm - complexity: M, depends_on: TASK-434
+- [x] TASK-434: The probe gains a `before` arm, the KPI's reference - complexity: M, depends_on: TASK-436
+- [x] TASK-338: The probe gains a `handoff` arm - complexity: M, depends_on: TASK-434
 
 ## Next Up
 
