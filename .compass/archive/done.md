@@ -684,3 +684,7 @@ Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, fi
 - [x] TASK-436: Prototype: does a session rebuilt at a compaction point load headless - complexity: S, depends_on: none
 - [x] TASK-434: The probe gains a `before` arm, the KPI's reference - complexity: M, depends_on: TASK-436
 - [x] TASK-338: The probe gains a `handoff` arm - complexity: M, depends_on: TASK-434
+
+### PLAN-033 Wave 4: the task in progress and the judge
+- [x] TASK-437: The state block names the task in progress - complexity: S, depends_on: TASK-341
+- [x] TASK-340: A judge for the free-text probes, with a hand-graded agreement sample - complexity: M, depends_on: TASK-437
