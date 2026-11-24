@@ -227,6 +227,21 @@ def test_a_patch_that_does_not_apply_is_refused_and_leaves_no_worktree(name, bod
 PATCH = OVERHEAD_DIR / "variants" / "post-tester.patch"
 BUILD_SKILL = "plugin/skills/build/SKILL.md"
 AUTOPILOT_SKILL = "plugin/skills/autopilot/SKILL.md"
+BUILDER_AGENT = "plugin/templates/agents/builder.md"
+TESTER_AGENT = "plugin/templates/agents/tester.md"
+METHODOLOGY_SKILL = "plugin/skills/methodology/SKILL.md"
+PATCHED = {BUILD_SKILL, AUTOPILOT_SKILL, BUILDER_AGENT, TESTER_AGENT, METHODOLOGY_SKILL}
+# Sentences that tell the orchestrator a post-build or post-merge tester runs;
+# a variant holding any of them still spawns one.
+POST_TESTER_CUES = (
+    "post-build mode against its diff",
+    "spawn the `tester` agent on the merged state",
+    "post-build mode against your diff",
+    "tester auto-runs on each",
+    "spawning the tester after each merge",
+    "and post-build, after the builder finishes",
+    "and **post-build**, after the builder finishes",
+)
 
 
 @pytest.fixture(scope="module")
@@ -240,7 +255,7 @@ def head_clone(tmp_path_factory):
     return target
 
 
-def test_the_post_tester_patch_applies_to_head_and_touches_only_the_two_skills(head_clone):
+def test_the_post_tester_patch_applies_to_head_and_touches_only_the_tester_text(head_clone):
     """Adversarial where: a patch that no longer applies to HEAD after the
     skills moved, or one that also edits other files, so the variant differs
     from the full arm in more than the tester spawns."""
@@ -249,7 +264,29 @@ def test_the_post_tester_patch_applies_to_head_and_touches_only_the_two_skills(h
 
     assert check.returncode == 0, check.stderr
     touched = {line.split("\t")[2] for line in stat.stdout.splitlines()}
-    assert touched == {BUILD_SKILL, AUTOPILOT_SKILL}
+    assert touched == PATCHED
+
+
+def test_the_post_tester_patch_leaves_no_cue_to_spawn_a_post_build_tester(tmp_path):
+    """Adversarial where: the builder agent, the tester agent or the
+    methodology skill still tells the orchestrator a post-build tester runs,
+    so a variant build spawns one anyway and the arm measures less than the
+    part's removal."""
+    target = tmp_path / "head"
+    done = subprocess.run(
+        ["git", "clone", "-q", "--no-hardlinks", str(REPO_ROOT), str(target)], capture_output=True, text=True,
+    )
+    assert done.returncode == 0, done.stderr
+    before = {name: (target / name).read_text(encoding="utf-8") for name in PATCHED}
+    assert any(cue in text for cue in POST_TESTER_CUES for text in before.values())
+    applied = subprocess.run(["git", "apply", str(PATCH)], cwd=target, capture_output=True, text=True)
+    assert applied.returncode == 0, applied.stderr
+    for name in sorted(PATCHED):
+        after = (target / name).read_text(encoding="utf-8")
+        for cue in POST_TESTER_CUES:
+            assert cue not in after, (name, cue)
+    assert "pre-build" in (target / TESTER_AGENT).read_text(encoding="utf-8")
+    assert "You never run a test command yourself." in (target / BUILDER_AGENT).read_text(encoding="utf-8")
 
 
 def test_the_post_tester_patch_removes_the_post_build_and_post_merge_spawns_and_keeps_pre_build(head_clone):
