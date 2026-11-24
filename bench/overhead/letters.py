@@ -16,8 +16,12 @@ the two models, and against the original letter, plus the rubric words the
 sessions cite where letters differ. It holds aggregates and task ids, never
 task text.
 
-    python letters.py run --out FILE [--n 30] [--sessions 3] [--seed 0] [--jobs 1]
+    python letters.py run --out FILE [--n 30] [--sessions 3] [--seed 0] [--jobs 1] [--rubric FILE]
     python letters.py --dry-run [--n 30] [--seed 0]
+
+`--rubric FILE` measures a candidate table (the `## Task Sizing` section of
+FILE) in place of the shipped planner's; its hash joins the progress file's
+configuration, so two rubrics never share progress.
 
 `run` appends each finished session to a progress file under the private root
 and resumes from it, so a usage-limit halt (exit code 3) continues where it
@@ -27,6 +31,7 @@ limit.
 """
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -547,8 +552,10 @@ def _words_section(results, models, terms):
     return out
 
 
-def _load_planner_table():
-    return rubric_table(PLANNER.read_text(encoding="utf-8"))
+def _load_planner_table(path=None):
+    """The sizing table of `path` (a markdown file with a `## Task Sizing`
+    section), the shipped planner's by default."""
+    return rubric_table(Path(path or PLANNER).read_text(encoding="utf-8"))
 
 
 def _progress_path(private_root):
@@ -672,6 +679,7 @@ def main(argv=None, *, runner=None):
     run.add_argument("--balanced", help="balanced-tier model (default: the model table's)")
     run.add_argument("--private-root", help="folder of the sandbox config (default ~/.compass/overhead)")
     run.add_argument("--progress", help="progress file (default <private root>/letters-progress.json)")
+    run.add_argument("--rubric", help="markdown file whose `## Task Sizing` table the sessions see (default: the planner's)")
     run.add_argument("--dry-run", action="store_true", default=argparse.SUPPRESS, help="same as the top-level --dry-run")
     args = parser.parse_args(argv)
     sessions = getattr(args, "sessions", DEFAULT_SESSIONS)
@@ -687,7 +695,7 @@ def main(argv=None, *, runner=None):
 
     try:
         tasks = _draw(args)
-        table = _load_planner_table()
+        table = _load_planner_table(getattr(args, "rubric", None))
         if dry:
             print("sampled %d tasks:" % len(tasks))
             for task in tasks:
@@ -706,6 +714,8 @@ def main(argv=None, *, runner=None):
         if _inside_work_tree(progress_path.parent):
             raise Refused("the progress file would sit inside a git work tree")
         config = {"ids": [t.id for t in tasks], "models": models, "sessions": args.sessions, "seed": args.seed}
+        if args.rubric:
+            config["rubric"] = hashlib.sha256(table.encode("utf-8")).hexdigest()
 
         def real_runner(argv, cwd):
             return default_runner(argv, cwd, private_root=private_root)
