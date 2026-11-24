@@ -2,6 +2,7 @@
 title: "Probe arm comparison: the host summary against the mechanical state block at 29 recorded compactions"
 type: research
 status: complete
+approved: 2026-11-24
 confidence: medium
 area: methodology
 tags: [compaction, probes, session-continuity, handoff, bench, kpi]
@@ -30,14 +31,7 @@ flowchart LR
     G --> D["each arm's score minus host-summary's, per question type"]
 ```
 
-> [!IMPORTANT]
-> You decide: which next step of the plan Compaction Keeps the Session State ([[plans/PLAN-033-compaction-keeps-the-session-state]]) runs first. Recommended order:
-> 1. **Revise the state block** so it always lists edited files.
-> 2. **Run the `before` arm (TASK-434)**, the best-case reference.
-> 3. **Run the `handoff` arm (TASK-338)** against the revised block.
-> 4. **Add a judge (TASK-340)** for free-text answers.
->
-> The reasons for this order are in [[#Options for the next step]].
+> [!success] Approved 2026-11-24: the next steps run in the recommended order: revise the state block so it always lists edited files, then the `before` arm (TASK-434), the `handoff` arm (TASK-338), and the judge (TASK-340). The reasons are in [[#Options for the next step]].
 
 > [!NOTE] Result
 > Adding the state block (the session state Compass writes out mechanically) to the host summary (the summary the host program writes at a compaction) names more of the edited files (0.52 against 0.45 over the session, 0.64 against 0.54 over the latest stretch, both intervals clear of zero) at about 2,000 more tokens. The block alone carries 2,095 tokens, 60% fewer than the host summary's 5,254, and scores lower than the host summary on every question type except decision; only the pooled state score (recall, continuation and decision averaged together) is clearly worse. Recall has too few points for any verdict. Every term is defined in [[#Terms]] and [[#Method]].
