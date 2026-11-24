@@ -34,6 +34,7 @@ import random
 import os
 import re
 import subprocess
+import uuid
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -561,6 +562,29 @@ def _reply_text(events):
     return ""
 
 
+def rebuild(point, project, *, private_root=None):
+    """Write the history before the boundary of `point` as a session of `project`
+    in the isolated Claude config under the private root, and return its new
+    session id: the boundary side's records, each `sessionId` set to that id and
+    each `cwd` to `project`. The point's transcript is only read. Raises Refused
+    for a private root inside a git work tree."""
+    _check_private_root(private_root)
+    history, _, _ = _history(point)
+    root = Path(private_root) if private_root is not None else default_private_root()
+    session = str(uuid.uuid4())
+    folder = root / "claude-config" / "projects" / launch.encode_cwd(Path(project))
+    folder.mkdir(parents=True, exist_ok=True)
+    lines = []
+    for record in history:
+        record = dict(record)
+        record["sessionId"] = session
+        if "cwd" in record:
+            record["cwd"] = str(project)
+        lines.append(json.dumps(record, ensure_ascii=False) + "\n")
+    (folder / f"{session}.jsonl").write_text("".join(lines), encoding="utf-8")
+    return session
+
+
 def _supersede(folder, arm):
     """Move the arm's current ask and grade files of the point `folder` into
     `superseded/<n>/`, n one past the highest folder holding a file of this arm."""
@@ -945,6 +969,8 @@ def _parser():
     ask_parser.add_argument("--arm", choices=ARMS, required=True)
     commands.add_parser("grade", help="score the stored replies of a point").add_argument("point")
     commands.add_parser("report", help="print the per arm and probe type table")
+    commands.add_parser("rebuild", help="write the history before a point as a resumable session").add_argument(
+        "point")
     return parser
 
 
@@ -966,6 +992,11 @@ def main(argv, *, claude_cmd=None, repo_root=None, parent_env=None):
         elif args.command == "grade":
             for arm, graded in grade(args.point, private_root=args.private_root).items():
                 print(f"{arm}\t{'unparsed' if graded['unparsed'] else 'parsed'}")
+        elif args.command == "rebuild":
+            _check_private_root(args.private_root)
+            base = Path(args.private_root) if args.private_root is not None else default_private_root()
+            project = sandbox.new_project(base / "probe-projects")
+            print(f"{rebuild(args.point, project, private_root=args.private_root)}	{project}")
         else:
             print(report(private_root=args.private_root), end="")
     except SessionError as error:

@@ -2686,3 +2686,15 @@ def test_rebuild_refuses_a_private_root_inside_a_git_work_tree(point, repo, tmp_
     with pytest.raises(probe.Refused):
         probe.rebuild(point, project, private_root=repo / "inside")
     assert not (repo / "inside").exists()
+
+
+def test_rebuild_cli_prints_the_session_id_of_a_new_sandbox_project(point, private_root, repo, capsys):
+    """Adversarial where: the command line rebuilds into an existing folder or prints
+    nothing a resume can use."""
+    code = probe.main(["--private-root", str(private_root), "rebuild", point], repo_root=repo)
+    assert code == 0
+    session, project = capsys.readouterr().out.strip().split("\t")
+    project = Path(project)
+    assert project.is_relative_to(Path(private_root) / "probe-projects")
+    folder = Path(private_root) / "claude-config" / "projects" / probe.launch.encode_cwd(project)
+    assert (folder / f"{session}.jsonl").is_file()
