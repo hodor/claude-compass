@@ -105,7 +105,7 @@ CORE_B = CORE_A.replace(
 CORE_C = CORE_B + (
     "\n\ndef top(text):\n"
     "    from collections import Counter\n"
-    "    counts = Counter(text.lower().split())\n"
+    '    counts = Counter(word for word in (raw.strip(".,!?;:") for raw in text.lower().split()) if word)\n'
     '    return max(counts, key=counts.get) if counts else ""\n'
 )
 
@@ -181,7 +181,7 @@ A person who holds a text has no command that counts its words or names its most
 
 ## Desired Outcome
 
-- `tally count <text>` prints how many words the text holds, a word being a run of letters with any punctuation around it ignored.
+- `tally count <text>` prints how many words the text holds, a word being a run of characters between spaces, with any of `.,!?;:` around it ignored.
 - A total can be written with thousands separators, as `1,234`.
 - `tally top <text>` prints the most frequent word of the text.
 - KPI: `tally top` answers on a 1,000-word text in one command.
@@ -296,13 +296,23 @@ def build(root, *, repo_root, uv="uv"):
     """Create the seeded project in `root` and return it.
 
     `root` must be missing or an empty folder outside every git work tree;
-    otherwise Refused is raised before anything is written.
+    otherwise Refused is raised before anything is written. A build that fails
+    after writing leaves `root` as it found it: missing, or empty.
     """
     root = Path(root)
     _check_target(root)
-    repo_root = Path(repo_root)
+    existed = root.exists()
     root.mkdir(parents=True, exist_ok=True)
+    try:
+        return _build_in(root, Path(repo_root), uv)
+    except BaseException:
+        _remove_tree(root)
+        if existed:
+            root.mkdir()
+        raise
 
+
+def _build_in(root, repo_root, uv):
     _run([uv, "venv", "--quiet", root / ".venv"], root, what="uv venv")
     _run([uv, "pip", "install", "--quiet", "--python", venv_python(root), "coverage", "pytest"],
          root, what="uv pip install")
@@ -558,6 +568,9 @@ def _parse_args(argv):
 def main(argv=None):
     args = _parse_args(sys.argv[1:] if argv is None else argv)
     started = time.monotonic()
+    if args.json and not Path(args.json).absolute().parent.is_dir():
+        print(f"the folder of --json {args.json} does not exist", file=sys.stderr)
+        return 2
     made_here = args.root is None
     root = Path(tempfile.mkdtemp(prefix="tally-probe-")) if made_here else Path(args.root)
     try:
@@ -565,6 +578,11 @@ def main(argv=None):
     except Refused as error:
         print(f"refused: {error}", file=sys.stderr)
         return 2
+    except ProbeError as error:
+        print(f"build failed: {error}", file=sys.stderr)
+        if made_here:
+            print(f"probe folder kept: {root}", file=sys.stderr)
+        return 1
     green, suite_line = run_suite(project)
     cli = project / ".claude" / "cli" / "compass"
     checks = run_checks(project, cli=cli)
