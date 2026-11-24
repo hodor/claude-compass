@@ -106,10 +106,14 @@ def test_a_missing_or_non_string_answer_is_judged_as_its_text_or_no_answer(priva
     folder = probe._point_dir(POINT, private_root)
     topics.write_json(folder / "ask-none.json", {"point": POINT, "arm": "none", "reply": "no json here"})
     items = probe_judge.items_of(POINT, private_root=private_root)
-    answers = {(item["probe"], tuple(item["arms"])): item["answer"] for item in items}
-    assert answers[("continuation", ("host-summary",))] == '["TASK-12", "TASK-3"]'
-    assert answers[("continuation", ("none",))] == probe_judge.NO_ANSWER
-    assert answers[("recall-1", ("host-summary",))] == probe_judge.NO_ANSWER
+    def answer(probe_id, arm):
+        (found,) = [i["answer"] for i in items if i["probe"] == probe_id and arm in i["arms"]]
+        return found
+    assert answer("continuation", "host-summary") == '["TASK-12", "TASK-3"]'
+    assert answer("continuation", "none") == probe_judge.NO_ANSWER
+    assert answer("recall-1", "host-summary") == probe_judge.NO_ANSWER
+    (missing,) = [i for i in items if i["probe"] == "recall-1"]
+    assert sorted(missing["arms"]) == ["host-summary", "none"]
 
 
 def test_judge_prompt_holds_questions_references_and_labels_but_no_arm_name(private_root, repo, fake_reply):
@@ -165,7 +169,7 @@ def test_a_reply_missing_a_label_or_with_an_unknown_verdict_stores_nothing(priva
 
 def test_verdict_words_are_read_case_and_space_insensitively(private_root, repo, fake_reply):
     """Adversarial where: `Right` or ` partly ` from the judge is refused."""
-    seed_point(private_root, {"host-summary": {"continuation": "TASK-12"}})
+    seed_point(private_root, {"host-summary": {"continuation": "TASK-12"}}, probes=[PROBES[2]])
     (item,) = probe_judge.items_of(POINT, private_root=private_root)
     fake_reply.reply(json.dumps({item["label"]: " Right "}))
     stored = probe_judge.judge(POINT, repo_root=repo, private_root=private_root, claude_cmd=fake_reply.command)
@@ -207,8 +211,10 @@ def test_report_gives_judged_means_and_script_agreement_without_answer_text(priv
     text = probe_judge.report(private_root=private_root)
     for secret in ("bad frame width", "Flat files", "TASK-12", "TASK-11", "flat files layout", "session.jsonl"):
         assert secret not in text
-    rows = {tuple(c.strip() for c in line.strip("|").split("|"))[:2]: line for line in text.splitlines()
-            if line.startswith("| ")}
+    rows = {}
+    for line in text.splitlines():
+        if line.startswith("| "):
+            rows.setdefault(tuple(c.strip() for c in line.strip("|").split("|"))[:2], line)
     assert "| 1.00 |" in rows[("host-summary", "decision")]
     assert "| 0.50 |" in rows[("mechanical", "recall")]
     assert ("host-summary", "artifact") not in rows
@@ -235,7 +241,9 @@ def test_sample_writes_a_sheet_without_arms_or_verdicts_and_keeps_the_map_apart(
     assert len(re.findall(r"^mark \d+:\s*$", text, re.MULTILINE)) == 4
     for arm in probe.ARMS:
         assert arm not in text
-    assert "right" not in text.replace("right, partly or wrong", "")
+    items_text = text[text.index("## Item 1"):]
+    for word in probe_judge.VERDICTS:
+        assert word not in items_text
     key = private_root / "probe-judge-sample-key.json"
     assert key.is_file() and not key.is_relative_to(sheet.parent)
     assert len(topics.read_json(key)["items"]) == 4
