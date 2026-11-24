@@ -84,6 +84,16 @@ Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, fi
 
 - [x] TASK-339: The arm comparison on every recorded compaction (needs the human's go) - complexity: S, depends_on: TASK-433
 
+## PLAN-033 Wave 3: the revised block and the reference arms
+
+Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, files and checks are there. The human approved the subscription runs of TASK-435, TASK-434 and TASK-338 with the arm comparison.
+
+- [ ] TASK-341: The state block always lists the edited files - complexity: M, depends_on: none
+- [ ] TASK-435: Rerun the block arms on every point with the revised block - complexity: S, depends_on: TASK-341
+- [ ] TASK-436: Prototype: does a session rebuilt at a compaction point load headless - complexity: S, depends_on: none
+- [ ] TASK-434: The probe gains a `before` arm, the KPI's reference - complexity: M, depends_on: TASK-436
+- [ ] TASK-338: The probe gains a `handoff` arm - complexity: M, depends_on: TASK-434
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].

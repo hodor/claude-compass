@@ -7,7 +7,7 @@ confidence: medium
 area: methodology
 tags: [handoff, compaction, context-window, hooks, precompact, sessionstart, session-continuity, probes]
 created: 2026-11-21
-updated: 2026-11-22
+updated: 2026-11-24
 git_branch: "master"
 git_commit: "6faced1"
 author: "planner"
@@ -36,7 +36,14 @@ flowchart LR
   end
   T334 --> T337
   T336 --> T432
-  T339 --> L[Later: handoff and before arms, judge, block revision]
+  subgraph W3[Wave 3: the revised block and the reference arms]
+    T341[TASK-341 block always lists edited files] --> T435[TASK-435 rerun block arms]
+    T436[TASK-436 prototype: rebuilt session loads] --> T434[TASK-434 before arm]
+    T434 --> T338[TASK-338 handoff arm]
+  end
+  T339 --> T341
+  T339 --> T436
+  T338 --> L[Later: judge]
 ```
 
 
@@ -50,7 +57,9 @@ This plan implements the compaction-survival need of [[specs/pipeline/SPEC-025-s
 
 **Wave 2** puts the mechanical block to the test the host summary took in the pilot. Compass learns to print the block as it stood at a past compaction: the transcript up to that point, and the vault and git as of the last commit before it. The probe then asks a fresh model its questions given only that block, or given the host summary followed by the block, which is what a Compass session holds after a compaction. Grading takes the pilot's three lessons: files are also scored over the stretch since the previous compaction alone, a correct but shortened error quote counts, and the scarce recall and decision probes join continuation in one pooled score, with an interval only where enough points exist. The wave ends at the comparison on every recorded compaction in this repo. That run spends subscription sessions, so it waits for the human's go, and its gate is the human reading the verdict.
 
-**Later** adds the two arms that need a session rebuilt at the compaction point: a handoff written there, and the full history before it as the KPI's "as well as before" reference. Then come a judge for free-text answers and a revision of what the block carries, each chosen from the comparison's numbers.
+**Wave 3** follows the comparison's verdict. The block is revised so its size budget never drops the edited files, and the block arms run again on every point. Then the two arms that need the history before the compaction: the `before` arm, where the model holds that history itself, as the KPI's "as well as before" reference, and the `handoff` arm, where a session holding it writes a handoff that the questions are asked against. A prototype first answers whether a session rebuilt at the compaction point loads headless.
+
+**Later** adds a judge for free-text answers.
 
 ## Current State
 
@@ -202,12 +211,57 @@ TASK-337 and TASK-432 touch disjoint files and run side by side; TASK-433 needs 
 
 **Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before the next wave. Skip if the human asked for `all-phases` mode.
 
+### Wave 3 (detailed)
+
+The tasks run in this order: TASK-341, TASK-435, TASK-436, TASK-434, TASK-338. TASK-435, TASK-434 and TASK-338 start headless model sessions on the human's subscription; he approved those runs with the comparison ([[research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison]], approved 2026-11-24). Probe runs go 4 asks at a time.
+
+- [ ] TASK-341: The state block always lists the edited files - complexity: M, depends_on: none, files: [plugin/cli/commands/session_state.py, plugin/cli/tests/test_session_state.py]
+  - The budget stays 7,900 characters. Each section holds a floor of characters it always gets when it has that much to say: last human request 500, open tasks 2,000, decisions 1,200, files edited 3,000, last test run 400, branch whole; files read and uncommitted changes have no floor [guess: from the 29 recorded blocks, open tasks ran 1,005 to 3,364 characters, decisions up to 4,135 and a full files-edited list of 40 paths 3,726, so the floors give files edited about 32 paths at the measured 93 characters a line, while the largest point expects 62 files and the median 17].
+  - Fitting runs in two passes. First every section is cut to its floor. Then the characters left go, in the order files edited, open tasks, decisions, files read, uncommitted changes, back to the cut sections until each is whole or the budget is spent. A cut section keeps its leading lines and ends `... and N more`, N counting the entries left out; no section ends the block, so every non-empty section with a floor appears.
+  - The files-edited cap rises from 40 to 80 paths, still most recent first; a list is bounded by its characters before its count.
+  - The sections print in the order they do now: request, open tasks, decisions, files edited, files read, uncommitted changes, last test run, branch. A state whose sections all fit renders byte-identical to the current command's on the existing fixtures, apart from the edited cap.
+  - Automated verification: `python -m pytest plugin/cli/tests/test_session_state.py -q` passes: a state with 25 open tasks of 240 characters, 20 D-NN lines of 140, 8 answers of 200 and 30 edited paths of 60 characters renders under 7,900 characters with all 30 paths under `## Files edited`; the worst-case state (500 edited, 200 read, 60 open tasks, 30 answers, 60 D-NN lines, a 5,000-character request, 300 dirty paths) renders under 7,900 with the request whole, every section heading present, at least 30 edited paths and the open tasks ending `... and N more` with N right; 70 short edited paths are all listed; characters a small section leaves unused go to files edited first; the existing fixture tests pass with only the cap change. `python -m pytest plugin/cli/tests -q` passes.
+  - Manual verification: none (TASK-435 measures it).
+  - Entry point: `python plugin/cli/compass session-state --transcript <transcript> --until <boundary index> --at <commit>`
+
+- [ ] TASK-435: Rerun the block arms on every point with the revised block - complexity: S, depends_on: TASK-341, files: [bench/overhead/probe.py, bench/overhead/tests/test_probe.py, bench/overhead/README.md, .compass/research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison.md]
+  - Before it writes, `ask` moves an existing `ask-<arm>.json` and `grade-<arm>.json` of the point into `superseded/<n>/` beside them, n one past the highest there, so the first run's replies stay on disk; `grade` and `report` read only the current files.
+  - `report` gains one line per block arm under its tables: the files its stored blocks list against the files the artifact probes expect, summed over the points (the comparison's first run: 94 of 583).
+  - Then `ask` with `mechanical` and `compass` on all 29 points, `grade` on every point and `report`.
+  - The comparison page gains a section `## Rerun with the revised block`: the new report rows for both arms beside the first run's, the paired intervals and verdicts against `host-summary`, the files-listed line, the carried tokens and the run's cost. No path, prompt, session id or answer text.
+  - Automated verification: `python -m pytest bench/overhead/tests -q -p no:cacheprovider` passes: a second `ask` on a point moves the first reply to `superseded/1/` and a third to `superseded/2/`, and `report` counts the point once; the files-listed line counts the expected paths a stored block names, with `./` and slash direction normalized. `grep -n "## Rerun with the revised block" .compass/research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison.md` finds the section; `grep -cE "[0-9a-f]{8}-[0-9a-f]{4}-" .compass/research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison.md` prints 0.
+  - Manual verification: the human reads the rerun section.
+  - Entry point: `python bench/overhead/probe.py report`
+
+- [ ] TASK-436: Prototype: does a session rebuilt at a compaction point load headless - kind: prototype, complexity: S, depends_on: none, files: [bench/overhead/probe.py, bench/overhead/tests/test_probe.py, .compass/research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md, .compass/research/pipeline/compaction-survival/index.md]
+  - The question: given the point's transcript cut before its boundary line, placed in the isolated session's Claude config as a session of a fresh sandbox project, does `claude -p --resume <id> --tools ""` load it, and does the model answer from that history.
+  - `rebuild(point, project, private_root)` writes the main transcript's lines before the boundary to `<private root>/claude-config/projects/<encoded project folder>/<new session id>.jsonl`, each record's `sessionId` set to the new id and its `cwd` to the project folder, and returns the id. The point's transcript is only read.
+  - One run on the smallest recorded point, on its own model, asking for the last human request in its first 80 characters, checked by script against the history. The answer, loads or not and why, goes into `RESEARCH-probe-reference-arms.md` (type research, summary in frontmatter, linked from the folder index and the vault index) as its first section; no path, session id or answer text.
+  - Automated verification: `python -m pytest bench/overhead/tests -q -p no:cacheprovider` passes: `rebuild` on the fixture writes the lines before the boundary and none after, every record carries the new session id and the project's folder as `cwd`, and the source transcript is byte-identical afterwards. `grep -n "Rebuilt session" .compass/research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md` finds the answer.
+  - Manual verification: none.
+  - Entry point: `python bench/overhead/probe.py rebuild <point>`
+
+- [ ] TASK-434: The probe gains a `before` arm, the KPI's reference - complexity: M, depends_on: TASK-436, files: [bench/overhead/probe.py, bench/overhead/tests/test_probe.py, bench/overhead/README.md, .compass/research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md]
+  - The answerer holds the history before the boundary from the last earlier boundary on. When TASK-436 found the rebuilt session loads, `ask --arm before` resumes it with `--tools ""` and the questions as the prompt; otherwise the carried text is that history rendered as text: human prompts, assistant text, and tool calls and results each cut to 2,000 characters [guess: the cut keeps the error lines and paths the probes ask about while bounding a rendered history].
+  - Carried tokens for `before` are its input-side tokens minus the `none` session's at the same point, as for the other arms. `report` lists it with the other arms and gives it a paired table against `host-summary`.
+  - Then `ask --arm before` on all 29 points, `grade` and `report`. The results go into `RESEARCH-probe-reference-arms.md` as a section `## The before arm`: each arm's mean as a share of `before`'s per probe type, the paired intervals, the carried tokens and the run's cost.
+  - Automated verification: `python -m pytest bench/overhead/tests -q -p no:cacheprovider` passes, through the fake `claude`: the `before` session runs `--resume` with the rebuilt id and `--tools ""` (or, under the rendered route, the prompt holds a fixture prompt from before the boundary and none from after it); a tool result over 2,000 characters is cut; `report` prints `before` rows and a `before` paired table. `grep -n "## The before arm" .compass/research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md` finds the section; the session-id grep prints 0.
+  - Manual verification: none.
+  - Entry point: `python bench/overhead/probe.py ask <point> --arm before`
+
+- [ ] TASK-338: The probe gains a `handoff` arm - complexity: M, depends_on: TASK-434, files: [bench/overhead/probe.py, bench/overhead/tests/test_probe.py, bench/overhead/README.md, .compass/research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md]
+  - Two sessions per point. The writer holds the history exactly as the `before` arm does and is asked, with no tools, to write a handoff following the handoff skill's step 6 template from `plugin/skills/handoff/SKILL.md`, pasting verbatim the four sections `session-state --format handoff --until <index> --at <commit>` prints for the point. The answerer is a fresh tool-less session given only that handoff, asked the frozen questions as every other arm is.
+  - `ask-handoff.json` stores the handoff text and both sessions' token counts; carried tokens are the answerer's, as for the other arms. A point with no commit or no handoff sections writes `"no_state": true` and starts no session, as the block arms do.
+  - Then `ask --arm handoff` on all 29 points, `grade` and `report`. The results go into `RESEARCH-probe-reference-arms.md` as a section `## The handoff arm`: the handoff arm against `host-summary`, against the revised `mechanical` and `compass` arms, and as a share of `before`, with the run's cost.
+  - Automated verification: `python -m pytest bench/overhead/tests -q -p no:cacheprovider` passes, through the fake `claude`: the writer's prompt holds the template's headings and the `session-state` sections; the answerer's prompt holds the writer's reply and no history; the stored record holds both token counts; a point with no commit writes the no-state record. `grep -n "## The handoff arm" .compass/research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md` finds the section; the session-id grep prints 0.
+  - Manual verification: the human reads the reference-arms page.
+  - Entry point: `python bench/overhead/probe.py ask <point> --arm handoff`
+
+**Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before the next wave. Skip if the human asked for `all-phases` mode.
+
 ## Later (intent only)
 
-- [ ] TASK-338: The probe gains a `handoff` arm: a headless session given the pre-boundary history writes a handoff through the handoff skill, and the probes run against it - files: [bench/overhead/probe.py, bench/overhead/tests/test_probe.py]
-- [ ] TASK-434: The probe gains a `before` arm, the KPI's reference: the answerer holds the history before the boundary from the last earlier boundary on, through the rebuilt session TASK-338 proves if it loads, else as rendered text - files: [bench/overhead/probe.py, bench/overhead/tests/test_probe.py]
 - [ ] TASK-340: A judge for decision and free-text continuation probes, reference answer in its prompt, with a one-time hand-graded agreement sample in the `grade.py` pattern - files: [bench/overhead/probe.py, bench/overhead/grade.py]
-- [ ] TASK-341: Revise the block's sections and caps from the comparison: sections that add no probe score lose their characters - files: [plugin/cli/commands/session_state.py, plugin/cli/tests/test_session_state.py]
 
 ## Risks
 
@@ -233,3 +287,14 @@ Elaborated 2026-11-22 from Wave 1's verified outcomes: the live trial ([[researc
 - **TASK-433, added:** the probe half of the intent TASK-337 carried, with the `compass` arm beside `mechanical`, because the trial showed a Compass session holds both texts after a compaction and TASK-341 needs to know what the block adds to the summary.
 - **TASK-434, added to Later:** the SPEC-025 KPI asks for answers "as well as before" the compaction, and axis 4 finding 19 names the full pre-compaction context as that reference arm; no line held it. It shares TASK-338's open question, whether a session rebuilt at the compaction point loads, so it stays intent.
 - TASK-338, TASK-340 and TASK-341 stay in Later, each depending on the comparison's numbers or on a rebuilt session no run has shown yet.
+
+## Wave 3 elaborated
+
+Elaborated 2026-11-24 from Wave 2's verified outcome, [[research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison]], which the human approved with its next steps in this order: the block revision, the `before` arm, the `handoff` arm, the judge.
+
+- **TASK-341, changed: from "sections that add no probe score lose their characters" to "the block always lists the edited files".** The comparison found 12 of 29 blocks end before their files section, and the blocks list 94 of the 583 files the artifact probes expect; the block's low artifact score follows from that cut. Each section now holds a floor of the budget, sized from the 29 blocks' measured section lengths, and no section ends the block.
+- **TASK-435, added:** the revised block needs the same measurement the first block took, on the same points, for `mechanical` and `compass` only; `host-summary` and `none` carry no block and keep their replies. The first run's replies move aside rather than being overwritten.
+- **TASK-436, added:** no run has yet shown that a session rebuilt at a compaction point loads headless, the open question TASK-338 and TASK-434 shared, so a prototype answers it before either is built.
+- **TASK-434, changed: detail added, order moved ahead of TASK-338.** The comparison recommends `before` second, as the ceiling the host summary's 0.45 is read against. It takes TASK-436's route when the rebuilt session loads, rendered text otherwise.
+- **TASK-338, changed: detail added.** It runs after the block revision, as the comparison recommends, so the handoff is compared with the revised block. The handoff is written by a tool-less session from the skill's template and the command's mechanical sections, since a session rebuilt in a sandbox has none of the original project's files for the skill's tools to read.
+- TASK-340 stays in Later, last in the approved order.
