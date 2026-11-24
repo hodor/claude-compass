@@ -18,14 +18,17 @@ Interface assumed (the builder implements exactly this):
         ## Decisions               question answers "Q: A" (8) then
                                    `<doc-stem>/D-NN: <text>` lines (20, each
                                    at most 140 characters after the "- ")
-        ## Files edited            40, most recent first
+        ## Files edited            80, most recent first
         ## Files read              files read and not edited, 25
         ## Uncommitted changes     `git status --short` outside .compass/, 30
         ## Last test run           the command and the last 8 stdout lines
         ## Branch                  branch name and short commit hash
-    A list over its cap ends with `... and N more`. Over the 8,000-character
-    budget the last sections are dropped first, so a present section always
-    has every earlier non-empty section present.
+    A list over its cap ends with `... and N more`. The block stays within
+    7,900 characters: each section holds a floor (request and branch whole,
+    open tasks 2,000, decisions 1,200, files edited 3,000, files read 300,
+    uncommitted changes 300, last test run 400), a longer section is cut to
+    its floor ending `... and N more`, and characters left over extend cut
+    sections, files edited first.
 
     `--format handoff` prints only `## Tasks`, `## Recent Changes`,
     `## Decisions` and `## Uncommitted Changes`; each edited file is
@@ -389,21 +392,21 @@ class DecisionAttributionTests(StateFixture):
 
 
 class CapTests(StateFixture):
-    def test_edited_files_over_forty_keep_the_most_recent_and_count_the_rest(self):
+    def test_edited_files_over_eighty_keep_the_most_recent_and_count_the_rest(self):
         """Adversarial where: the oldest edits kept instead of the newest, or the cap off by one."""
-        groups = [edit_of(f"e{n}", f"src/f{n:03d}.py") for n in range(45)]
+        groups = [edit_of(f"e{n}", f"src/f{n:03d}.py") for n in range(85)]
         self.write_transcript(user_human("go"), *groups)
         lines = items(sections(self.block())["Files edited"])
         listed = [ln for ln in lines if "src/f" in ln]
-        self.assertEqual(len(listed), 40)
+        self.assertEqual(len(listed), 80)
         text = "\n".join(lines)
-        self.assertIn("src/f044.py", text)
+        self.assertIn("src/f084.py", text)
         self.assertNotIn("src/f000.py", text)
         self.assertIn("... and 5 more", text)
 
-    def test_exactly_forty_edited_files_carry_no_more_marker(self):
+    def test_exactly_eighty_edited_files_carry_no_more_marker(self):
         """Adversarial where: boundary of the cap prints `... and 0 more`."""
-        self.write_transcript(user_human("go"), *[edit_of(f"e{n}", f"src/f{n:03d}.py") for n in range(40)])
+        self.write_transcript(user_human("go"), *[edit_of(f"e{n}", f"src/f{n:03d}.py") for n in range(80)])
         text = "\n".join(sections(self.block())["Files edited"])
         self.assertNotIn("more", text)
 
@@ -466,25 +469,28 @@ class BudgetTests(StateFixture):
         for n in range(300):
             (self.project / f"dirty_path_{n:04d}_with_a_long_name.txt").write_text("x", encoding="utf-8")
 
-    def test_worst_case_session_fits_the_budget_and_keeps_request_and_tasks_whole(self):
-        """Adversarial where: the block grows past 8,000 characters, or the budget cut eats the
-        request or the open tasks before the later sections."""
+    def test_worst_case_session_fits_the_budget_and_keeps_request_and_files(self):
+        """Adversarial where: the block grows past 7,900 characters, the budget cut eats the
+        request, or the open tasks and decisions crowd out the edited files."""
         self.build_worst_case()
         text = self.block()
-        self.assertLess(len(text), 8000)
+        self.assertLessEqual(len(text.rstrip("\n")), 7900)
         found = sections(text)
         request = "\n".join(found["Last human request"])
-        self.assertIn("R" * 400, request)
+        self.assertIn("R" * 497, request)
+        edited = [ln for ln in items(found["Files edited"]) if "module_" in ln]
+        self.assertGreaterEqual(len(edited), 30)
+        self.assertIn("module_0499_with_long_name.py", edited[0])
         tasks = items(found["Open tasks"])
-        self.assertEqual(len([ln for ln in tasks if "TASK-" in ln]), 25)
-        self.assertIn("... and 35 more", "\n".join(tasks))
+        listed = [ln for ln in tasks if "TASK-" in ln]
+        self.assertLessEqual(len(listed), 25)
+        self.assertEqual(tasks[-1], f"... and {60 - len(listed)} more")
 
-    def test_dropped_sections_are_always_the_last_ones(self):
-        """Adversarial where: the budget cut removes a middle section and keeps a later one."""
+    def test_every_section_of_the_worst_case_appears_in_order(self):
+        """Adversarial where: a section that overflows its floor ends the block, or a section
+        with a small floor is starved out entirely."""
         self.build_worst_case()
-        found = list(sections(self.block()))
-        self.assertEqual(found, ORDER[:len(found)])
-        self.assertLess(len(found), len(ORDER), "the worst case must actually exceed the budget")
+        self.assertEqual(list(sections(self.block())), ORDER)
 
     def test_a_session_under_the_budget_loses_no_section(self):
         """Adversarial where: the budget logic drops sections even when everything fits."""
@@ -836,8 +842,8 @@ class MultibyteBudgetTests(StateFixture):
         text = self.block()
         self.assertLess(len(text), 8000)
         found = list(sections(text))
-        self.assertEqual(found, ORDER[:len(found)])
-        self.assertEqual(found[:2], ORDER[:2])
+        self.assertEqual(found, [h for h in ORDER if h in found])
+        self.assertEqual(found[:4], ORDER[:4])
 
     def test_hook_payload_is_valid_single_line_json_for_quotes_backslashes_and_control_text(self):
         """Adversarial where: the request carries quotes, backslashes, emoji, tabs and U+2028
@@ -882,7 +888,9 @@ class RenderBlockSweepTests(unittest.TestCase):
                 self.assertLessEqual(len(text), 8000, (width, count))
                 found = list(sections(text))
                 nonempty = [name for name, _ in session_state.block_sections(state)]
-                self.assertEqual(found, nonempty[:len(found)], (width, count))
+                self.assertEqual(found, [n for n in nonempty if n in found], (width, count))
+                if count:
+                    self.assertIn("Files edited", found, (width, count))
 
     def test_many_short_request_lines_and_long_tasks_both_survive_whole(self):
         """Adversarial where: a 500-character request made of 250 one-letter lines expands with
@@ -895,6 +903,88 @@ class RenderBlockSweepTests(unittest.TestCase):
         self.assertEqual(len(tasks), 26)
         self.assertEqual(tasks[-1], "... and 35 more")
         self.assertTrue(all(len(t) <= 240 for t in tasks))
+
+
+class SectionFloorTests(unittest.TestCase):
+    """Each section holds a floor of the budget; files edited survive large task and
+    decision sections."""
+
+    def state(self, **over):
+        base = {"request": None, "tasks": [], "answers": [], "documents": [], "edited": [], "read": [],
+                "starts": {}, "dirty": [], "test_run": None, "branch": ["main @ abc1234"]}
+        base.update(over)
+        return base
+
+    def edited(self, count, width):
+        paths = [f"src/{n:03d}_" + "p" * (width - 11) + ".py" for n in range(count)]
+        return [(path, "edited", path) for path in paths]
+
+    def render(self, state):
+        from commands import session_state
+        return session_state.render_block(state)
+
+    def test_full_tasks_and_decisions_leave_every_edited_file_listed(self):
+        """Adversarial where: open tasks and decisions fill the budget before the files, the
+        cut that left 12 of 29 recorded blocks with no edited file."""
+        state = self.state(
+            request="please continue",
+            tasks=[("- [ ] TASK-1: " + "t" * 300)[:240]] * 25,
+            documents=[("SPEC-001/D-01: " + "d" * 200)[:140]] * 20,
+            answers=[("q" * 100, "a" * 100)] * 8,
+            edited=self.edited(30, 60))
+        text = self.render(state)
+        self.assertLessEqual(len(text.rstrip("\n")), 7900)
+        found = sections(text)
+        listed = [ln for ln in items(found["Files edited"]) if ln.startswith("- src/")]
+        self.assertEqual(len(listed), 30)
+        self.assertNotIn("more", "\n".join(found["Files edited"]))
+        self.assertEqual(list(found), [h for h in ORDER if h in found])
+
+    def test_seventy_short_edited_paths_are_all_listed(self):
+        """Adversarial where: the count cap stays at 40, or the files floor is spent before
+        the list ends."""
+        state = self.state(tasks=["- [ ] TASK-1: one"], edited=self.edited(70, 20))
+        listed = [ln for ln in items(sections(self.render(state))["Files edited"]) if ln.startswith("- src/")]
+        self.assertEqual(len(listed), 70)
+
+    def test_room_a_small_section_leaves_goes_to_files_edited_first(self):
+        """Adversarial where: the leftover characters go to open tasks or decisions ahead of the
+        files, or are not handed out at all."""
+        big_tasks = [("- [ ] TASK-1: " + "t" * 300)[:240]] * 60
+        big_documents = [("SPEC-001/D-01: " + "d" * 200)[:140]] * 60
+        edited = self.edited(80, 93)
+        full = sections(self.render(self.state(tasks=big_tasks, documents=big_documents, edited=edited)))
+        small = sections(self.render(self.state(tasks=big_tasks[:2], documents=big_documents, edited=edited)))
+        files_full = [ln for ln in full["Files edited"] if ln.startswith("- src/")]
+        files_small = [ln for ln in small["Files edited"] if ln.startswith("- src/")]
+        self.assertGreater(len(files_full), 3000 // 94 - 2)
+        self.assertGreater(len(files_small), len(files_full) + 10)
+        decisions_full = [ln for ln in full["Decisions"] if ln.startswith("- ")]
+        decisions_small = [ln for ln in small["Decisions"] if ln.startswith("- ")]
+        self.assertEqual(len(decisions_small), len(decisions_full))
+
+    def test_cut_marker_counts_entries_behind_an_earlier_marker(self):
+        """Adversarial where: cutting a list already capped counts its marker line as one
+        entry, hiding how many entries are gone."""
+        tasks = ["- [ ] TASK-1: " + "t" * 200] * 60
+        found = sections(self.render(self.state(tasks=tasks, edited=self.edited(80, 93),
+                                                documents=["SPEC-001/D-01: " + "d" * 120] * 60)))
+        lines = items(found["Open tasks"])
+        listed = [ln for ln in lines if ln.startswith("- [ ]")]
+        self.assertEqual(lines[-1], f"... and {60 - len(listed)} more")
+        decisions = items(found["Decisions"])
+        shown = [ln for ln in decisions if ln.startswith("- ")]
+        self.assertEqual(decisions[-1], f"... and {60 - len(shown)} more")
+
+    def test_a_state_that_fits_renders_every_line_once_with_no_marker(self):
+        """Adversarial where: the floor pass cuts a section that would have fit whole."""
+        state = self.state(request="r", tasks=["- [ ] TASK-1: one"], answers=[("Q", "A")],
+                           documents=["SPEC-001/D-01: x"], edited=self.edited(3, 30),
+                           read=[("a.py", "read", "a.py")], dirty=[" M x.txt"],
+                           test_run=("pytest", ["1 passed"]))
+        text = self.render(state)
+        self.assertNotIn("more", text)
+        self.assertEqual(list(sections(text)), ORDER)
 
 
 class PathRenderingTests(StateFixture):
@@ -995,6 +1085,33 @@ class HandoffStartLineTests(StateFixture):
             "".join(json.dumps(r) + "\n" for r in edit_of("s1", "sub.py", start=9)), encoding="utf-8")
         body = "\n".join(sections(self.block("--format", "handoff"))["Recent Changes"])
         self.assertIn("`sub.py:9`", body)
+
+    def test_main_session_edits_list_before_edits_only_subagents_made(self):
+        """Adversarial where: subagent-only edits, which sort after the main transcript's,
+        come first once the list is reversed and fill the files floor."""
+        self.write_transcript(user_human("go"), edit_of("m1", "main_old.py"), edit_of("m2", "main_new.py"),
+                              read_of("m3", "shared.py"))
+        side = self.transcript.with_suffix("") / "subagents"
+        side.mkdir(parents=True)
+        records = edit_of("s1", "sub_a.py") + edit_of("s2", "sub_b.py") + edit_of("s3", "shared.py")
+        (side / "agent-x1.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records), encoding="utf-8")
+        listed = [ln[2:] for ln in items(sections(self.block())["Files edited"])]
+        self.assertEqual(listed[:2], ["main_new.py", "main_old.py"])
+        self.assertEqual(sorted(listed[2:]), ["shared.py", "sub_a.py", "sub_b.py"])
+
+    def test_many_subagent_edits_leave_the_main_session_edits_in_the_block(self):
+        """Adversarial where: 150 subagent edits with long paths push every main-session edit
+        out of the files floor."""
+        self.write_transcript(user_human("go"), *[edit_of(f"m{n}", f"main_{n:02d}.py") for n in range(10)])
+        side = self.transcript.with_suffix("") / "subagents"
+        side.mkdir(parents=True)
+        records = []
+        for n in range(150):
+            records += edit_of(f"s{n}", ".claude/worktrees/agent-" + "a" * 17 + f"/plugin/deep/path/sub_{n:03d}.py")
+        (side / "agent-x1.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records), encoding="utf-8")
+        body = "\n".join(sections(self.block())["Files edited"])
+        for n in range(10):
+            self.assertIn(f"- main_{n:02d}.py", body)
 
 
 class DocumentDecisionTests(StateFixture):
@@ -1217,11 +1334,11 @@ Compass session state
 - Which checks run?: Unit, Lint
 
 ## Files edited
-- src/sub_only.py
 - src/side.py
 - src/delta.py
 - src/gamma.py
 - src/alpha.py
+- src/sub_only.py
 
 ## Files read
 - src/theta.py
@@ -1250,11 +1367,11 @@ GOLDEN_HANDOFF = """\
 - [ ] TASK-3: second open
 
 ## Recent Changes
-- `src/sub_only.py:4`
 - `src/side.py:3`
 - `src/delta.py`
 - `src/gamma.py`
 - `src/alpha.py:12`
+- `src/sub_only.py:4`
 
 ## Decisions
 - Which layout?: Flat (Recommended)
@@ -1941,7 +2058,9 @@ class CapUnderFlagsTests(StateFixture):
                 self.assertIn("Last human request", found)
                 self.assertIn("Open tasks", found)
                 if "--at" in args:
-                    self.assertIn("... and 55 more", "\n".join(found["Open tasks"]))
+                    tasks = items(found["Open tasks"])
+                    listed = [ln for ln in tasks if "TASK-" in ln]
+                    self.assertEqual(tasks[-1], f"... and {80 - len(listed)} more")
                     self.assertNotIn("TASK-999", out)
         with self.subTest("handoff format"):
             out = self.block("--at", commit, "--until", str(index), "--format", "handoff")

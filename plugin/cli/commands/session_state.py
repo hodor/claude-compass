@@ -21,8 +21,10 @@ the D-NN decisions from that commit, leaves out the uncommitted changes and
 names the commit in the branch line. Each works alone, and both are refused
 beside `--hook`.
 
-`block` prints the sections under a title, in the order they survive when the
-whole stays under the character budget: the last sections are dropped first.
+`block` prints the sections under a title within a character budget. Each
+section holds a floor of the budget; a section longer than its floor is cut to
+it, and the characters the others leave unused extend the cut sections, files
+edited first. A cut section ends `... and N more`.
 `handoff` prints the four sections the handoff template carries, each
 omitted when empty. `--hook` reads one event from stdin (and only under this
 flag): SessionStart with source `compact` prints the block as additional
@@ -60,7 +62,20 @@ TASK_LINE_CHARS = 240
 ANSWER_LINE_CHARS = 200
 DECISION_LINE_CHARS = 140
 TEST_LINE_CHARS = 200
-CAPS = {"tasks": 25, "answers": 8, "decisions": 20, "edited": 40, "read": 25, "dirty": 30}
+CAPS = {"tasks": 25, "answers": 8, "decisions": 20, "edited": 80, "read": 25, "dirty": 30}
+WHOLE = None
+FLOORS = {
+    "Last human request": WHOLE, "Open tasks": 2000, "Decisions": 1200, "Files edited": 3000,
+    "Files read": 300, "Uncommitted changes": 300, "Last test run": 400, "Branch": WHOLE,
+}
+FLOOR_ORDER = (
+    "Last human request", "Branch", "Files edited", "Open tasks", "Decisions", "Last test run",
+    "Files read", "Uncommitted changes",
+)
+EXTEND_ORDER = (
+    "Files edited", "Open tasks", "Decisions", "Files read", "Uncommitted changes", "Last test run",
+)
+_MORE = re.compile(r"^\.\.\. and (\d+) more$")
 GIT_TIMEOUT = 30
 BLOCK_TITLE = "Compass session state"
 _OPEN_TASK = re.compile(r"^- \[ \] ")
@@ -262,6 +277,24 @@ def _touched(transcript, root):
     return [(display, kind, raw) for display, (kind, raw) in merged.items()]
 
 
+def _main_edits(transcript):
+    """The raw paths the main transcript itself changed with an edit tool."""
+    paths = set()
+    for record in sessionslib.records(transcript):
+        for block in _blocks(record, "tool_use"):
+            target = block.get("input").get("file_path") if isinstance(block.get("input"), dict) else None
+            if block.get("name") in _EDIT_TOOLS and isinstance(target, str):
+                paths.add(target)
+    return paths
+
+
+def _edited_first_by_main(touched, main):
+    """The edited entries of `touched`, the main transcript's own edits first,
+    then those only subagents made, each group most recent first."""
+    edited = [t for t in reversed(touched) if t[1] == "edited"]
+    return [t for t in edited if t[2] in main] + [t for t in edited if t[2] not in main]
+
+
 def _open_tasks(root, at=None):
     if at:
         text = _git(root, "show", f"{at}:./.compass/active.md") or ""
@@ -357,7 +390,7 @@ def gather(root, transcript, at=None):
         "tasks": _open_tasks(root, at),
         "answers": answers,
         "documents": _safe([], _document_decisions, touched, root, at),
-        "edited": [t for t in reversed(touched) if t[1] == "edited"],
+        "edited": _edited_first_by_main(touched, _safe(set(), _main_edits, transcript) if has_transcript else set()),
         "read": [t for t in reversed(touched) if t[1] == "read"],
         "starts": _safe({}, _edit_start_lines, transcript, root) if has_transcript else {},
         "dirty": dirty,
@@ -401,16 +434,74 @@ def block_sections(state):
     return [(name, lines) for name, lines in sections if lines]
 
 
+def _section_text(name, lines):
+    return "\n## " + name + "\n" + "\n".join(lines) + "\n"
+
+
+def _hidden(line):
+    """How many entries a line stands for once it is cut away: N for an
+    `... and N more` line, else 1."""
+    match = _MORE.match(line)
+    return int(match.group(1)) if match else 1
+
+
+def _cut_lines(lines, count):
+    """The first `count` lines, then `... and N more` when lines are left out,
+    N counting the entries they stand for."""
+    if count >= len(lines):
+        return list(lines)
+    return lines[:count] + [f"... and {sum(_hidden(line) for line in lines[count:])} more"]
+
+
+def _fit(name, lines, room):
+    """`(count, length)`: the most leading lines of a section whose text,
+    marker included, fits `room` characters, and that text's length; (0, 0)
+    when not even one line fits."""
+    full = len(_section_text(name, lines))
+    if full <= room:
+        return len(lines), full
+    low, high = 0, len(lines) - 1
+    while low < high:
+        middle = (low + high + 1) // 2
+        if len(_section_text(name, _cut_lines(lines, middle))) <= room:
+            low = middle
+        else:
+            high = middle - 1
+    if low == 0:
+        return 0, 0
+    return low, len(_section_text(name, _cut_lines(lines, low)))
+
+
 def render_block(state):
-    """The title and as many leading sections as fit the budget; a section
-    that does not fit ends the block, so no later section appears without an
-    earlier one."""
+    """The title and every section that has room, in survival order. The
+    floors are filled first, in FLOOR_ORDER, each section taking up to its
+    floor (a WHOLE floor takes the section whole when it fits); the characters
+    left then extend the cut sections in EXTEND_ORDER. The block never exceeds
+    BUDGET characters."""
+    present = dict(block_sections(state))
+    remaining = BUDGET - len(BLOCK_TITLE) - 1
+    kept = {}
+    for name in FLOOR_ORDER:
+        if name not in present:
+            continue
+        floor = FLOORS[name]
+        room = remaining if floor is WHOLE else min(floor, remaining)
+        count, length = _fit(name, present[name], room)
+        if count:
+            kept[name] = (count, length)
+            remaining -= length
+    for name in EXTEND_ORDER:
+        if name not in present or kept.get(name, (0, 0))[0] == len(present[name]):
+            continue
+        before = kept.get(name, (0, 0))[1]
+        count, length = _fit(name, present[name], remaining + before)
+        if count:
+            kept[name] = (count, length)
+            remaining -= length - before
     text = BLOCK_TITLE + "\n"
-    for name, lines in block_sections(state):
-        section = "\n## " + name + "\n" + "\n".join(lines) + "\n"
-        if len(text) + len(section) > BUDGET:
-            break
-        text += section
+    for name, lines in present.items():
+        if name in kept:
+            text += _section_text(name, _cut_lines(lines, kept[name][0]))
     return text
 
 

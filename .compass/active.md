@@ -88,7 +88,7 @@ Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, fi
 
 Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, files and checks are there. The human approved the subscription runs of TASK-435, TASK-434 and TASK-338 with the arm comparison.
 
-- [ ] TASK-341: The state block always lists the edited files - complexity: M, depends_on: none
+- [x] TASK-341: The state block always lists the edited files - complexity: M, depends_on: none
 - [ ] TASK-435: Rerun the block arms on every point with the revised block - complexity: S, depends_on: TASK-341
 - [ ] TASK-436: Prototype: does a session rebuilt at a compaction point load headless - complexity: S, depends_on: none
 - [ ] TASK-434: The probe gains a `before` arm, the KPI's reference - complexity: M, depends_on: TASK-436
