@@ -7,7 +7,7 @@ area: tooling
 tags: [tokens, cost, harness, verification, models, measurement]
 summary: "research for SPEC-034: how Compass sizes tasks, what its checking stations cost per task, and how a part-by-part re-baseline on a model change would run"
 created: 2026-11-21
-updated: 2026-11-21
+updated: 2026-11-24
 spec: "[[SPEC-034-checking-cost-follows-task-and-model]]"
 ---
 
@@ -27,3 +27,7 @@ Research for [[SPEC-034-checking-cost-follows-task-and-model]]. Prior evidence: 
 ## Review
 
 [[REVIEW-checking-cost]] consolidates axes 1 to 4; the gap pass closes the two gaps it names.
+
+## Measurements
+
+- [[RESEARCH-letter-repeatability]] - blind raters give the same complexity letter to a task almost every time (kappa 0.88 on the strong model, 0.84 on the balanced one, 0.70 across the two), yet agree with the letter the planner wrote on fewer than half the sessions: they read the rubric's file counts, and the planners' S and L letters do not follow them
