@@ -224,7 +224,7 @@ The tasks run in this order: TASK-341, TASK-435, TASK-436, TASK-434, TASK-338. T
   - Manual verification: none (TASK-435 measures it).
   - Entry point: `python plugin/cli/compass session-state --transcript <transcript> --until <boundary index> --at <commit>`
 
-- [ ] TASK-435: Rerun the block arms on every point with the revised block - complexity: S, depends_on: TASK-341, files: [bench/overhead/probe.py, bench/overhead/tests/test_probe.py, bench/overhead/README.md, .compass/research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison.md]
+- [x] TASK-435: Rerun the block arms on every point with the revised block - complexity: S, depends_on: TASK-341, files: [bench/overhead/probe.py, bench/overhead/tests/test_probe.py, bench/overhead/README.md, .compass/research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison.md]
   - Before it writes, `ask` moves an existing `ask-<arm>.json` and `grade-<arm>.json` of the point into `superseded/<n>/` beside them, n one past the highest there, so the first run's replies stay on disk; `grade` and `report` read only the current files.
   - `report` gains one line per block arm under its tables: the files its stored blocks list against the files the artifact probes expect, summed over the points (the comparison's first run: 94 of 583).
   - Then `ask` with `mechanical` and `compass` on all 29 points, `grade` on every point and `report`.

@@ -6,9 +6,9 @@ approved: 2026-11-24
 confidence: medium
 area: methodology
 tags: [compaction, probes, session-continuity, handoff, bench, kpi]
-summary: "29 recorded compactions, four arms, 100 tool-less sessions: the host summary plus the state block beats the host summary alone on artifact recall (+0.07 over the whole session, +0.10 over the latest stretch) and carries 38% more tokens; the state block alone carries 60% fewer tokens and scores worse on the pooled state score; in 12 of 29 blocks the size budget ends the block before its files section, which the next change to the block can fix"
+summary: "29 recorded compactions, four arms: with the revised state block, which lists the edited files in every block, the host summary plus the block names more edited files than the summary alone (0.67 against 0.45, interval [0.12, 0.32]) at 50% more tokens; the block alone carries 48% fewer tokens, matches the summary on files and loses on continuation and the pooled state score"
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-24
 git_branch: "master"
 git_commit: "f2e2579"
 author: builder
@@ -185,3 +185,47 @@ The price table holds no weight for Haiku 5.5 or Sonnet 5, so the weighted total
 
 - The `handoff` arm (a headless session writes a handoff from the history before the compaction) and the `before` arm (the model holds the history itself, the reference the compaction-survival measure is read against) are not yet run, so the comparison holds no handoff or before-the-boundary figure.
 - Recall has 9 points and no verdict; it waits for more points or for a judge that grades free text.
+
+## Rerun with the revised block
+
+> [!NOTE] Result
+> With the revised block, which gives every section a share of its size budget and lists the main session's edited files ahead of its subagents', `compass` names clearly more edited files than the host summary alone (0.67 against 0.45 over the session, interval [0.12, 0.32]) and `mechanical` alone names more than before (0.52 against 0.28). The block alone lost ground on continuation (0.05 against 0.21 in the first run), so its pooled state score is now further below the host summary's.
+
+The same 29 points, the same frozen questions and the same models; only the `mechanical` and `compass` arms were asked again, 58 sessions. The `host-summary` and `none` replies are those of the first run. The first run's block replies are kept beside the new ones.
+
+What changed in the block: each section holds a floor of the 7,900-character budget (open tasks 2,000, decisions 1,200, files edited 3,000, files read 300, uncommitted changes 300, last test run 400, the request and the branch whole), the characters a section leaves unused go to files edited first, and no section ends the block. The files list puts the edits the main session made itself first, then the edits only its subagents made; before, subagent edits came first and filled the list.
+
+**Files the block lists.** Counting the expected paths a block's files-edited section names, compared as the grader compares paths: the first run's blocks listed 64 of 583, the revised blocks 350 of 583. (The 94 above counted paths anywhere in the block.) Every revised block holds a files section; 12 of the first run's did not.
+
+| arm | probe | points | first run | rerun | rerun minus host-summary | 95% paired interval |
+|---|---|---|---|---|---|---|
+| compass | artifact | 29 | 0.52 | 0.67 | 0.22 | [0.12, 0.32] |
+| compass | artifact-recent | 24 | 0.64 | 0.73 | 0.20 | [0.08, 0.33] |
+| compass | recall | 9 | 0.11 | 0.11 | 0.00 | too few points |
+| compass | continuation | 19 | 0.32 | 0.32 | -0.05 | [-0.21, 0.11] |
+| compass | decision | 13 | 0.85 | 0.85 | 0.31 | [0.00, 0.62] |
+| compass | state | 20 | 0.47 | 0.47 | 0.03 | [-0.12, 0.16] |
+| mechanical | artifact | 29 | 0.28 | 0.52 | 0.07 | [-0.17, 0.29] |
+| mechanical | artifact-recent | 24 | 0.31 | 0.70 | 0.17 | [-0.06, 0.37] |
+| mechanical | recall | 9 | 0.00 | 0.00 | -0.11 | too few points |
+| mechanical | continuation | 19 | 0.21 | 0.05 | -0.32 | [-0.53, -0.11] |
+| mechanical | decision | 13 | 0.38 | 0.31 | -0.23 | [-0.69, 0.23] |
+| mechanical | state | 20 | 0.26 | 0.12 | -0.32 | [-0.52, -0.13] |
+
+The host summary's own means are unchanged: artifact 0.45, artifact-recent 0.54, recall 0.11, continuation 0.37, decision 0.54, state 0.44.
+
+| arm | mean carried tokens, first run | rerun | against host-summary's 5,254 |
+|---|---|---|---|
+| mechanical | 2,095 | 2,717 | 48% fewer |
+| compass | 7,238 | 7,860 | 50% more |
+
+Verdicts against `host-summary`, by the rule in [[#Verdicts]]:
+
+- **compass**: better on artifact (low end 0.12) and artifact-recent (low end 0.08), both clear of zero where the first run's were within 0.01 of it; not distinguishable on continuation, decision (low end exactly 0) and state; recall gets no verdict.
+- **mechanical**: not distinguishable on artifact and artifact-recent; worse on continuation (high end -0.11) and on state (high end -0.13); not distinguishable on decision; recall gets no verdict.
+
+**The continuation loss.** The task id the continuation question expects appears in 9 of the 19 revised blocks against 11 of the first run's, yet the block-alone answers name it at 1 point against 4. With a longer files list the answerer picks an id from elsewhere in the block more often. The `compass` arm, which also holds the host summary, keeps its continuation score.
+
+No-state points: 0 in both arms.
+
+**Cost.** 58 sessions: 36 on Opus 5.5, 16 on Haiku 5.5 and 6 on Sonnet 5. The Opus sessions weigh 850,530 tokens (raw: 72 input, 62,223 output, 23,364 cache read, 430,540 cache write). Haiku 5.5 and Sonnet 5 have no weight in the price table; their raw tokens are 32 input, 5,823 output, 10,384 cache read and 136,323 cache write (Haiku), and 12 input, 560 output, 21,090 cache read and 91,965 cache write (Sonnet).
