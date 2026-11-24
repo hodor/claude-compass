@@ -5,7 +5,9 @@ the full `compass` arm on the same topic. Each pair carries the difference
 (variant minus full) in the share of frozen goal items met, in weighted
 tokens, and the station spawns of each side read from the project's station
 log. A pair in which either build was stopped by a cap or failed is left out
-and listed with its reason, as is a build with no verdict or no partner.
+and listed with its reason, as is a build with no verdict or no partner. A
+pair whose two builds were both stopped by the wall-time cap, each arm having
+had the same time, is also kept in `capped_pairs` and summarized apart.
 
 `summarize` gives, over the counted pairs, the mean and the pooled
 within-topic standard deviation of each difference, the ablation batch size
@@ -65,6 +67,23 @@ def _review_tokens(summary):
     return review, builder
 
 
+def _pair(topic, run, sides, shares, variant, stations, profile):
+    review = {}
+    for arm, side in sides.items():
+        try:
+            review[arm] = _review_tokens(profile(side["project"]))
+        except (OSError, ValueError, KeyError, TypeError):
+            review[arm] = None
+    return {
+        "topic": topic, "run": run,
+        "goal_diff": shares[variant] - shares[FULL],
+        "weighted_diff": sides[variant]["weighted"] - sides[FULL]["weighted"],
+        "weighted": {arm: side["weighted"] for arm, side in sides.items()},
+        "stations": {arm: _station_spawns(stations(side["project"])) for arm, side in sides.items()},
+        "review": review,
+    }
+
+
 def pairs(events, variant, *, stations, profile):
     """{"pairs": [...], "excluded": [...]} of the variant against the full arm."""
     if not records.is_variant(variant):
@@ -72,7 +91,7 @@ def pairs(events, variant, *, stations, profile):
     closed = {_key(e): e for e in events if e.get("event") == "build-closed"}
     judged = {_key(e): e.get("counts") for e in events if e.get("event") == "judged"}
     slots = sorted({(t, r) for t, a, r in closed if a in (FULL, variant)})
-    out, excluded = [], []
+    out, excluded, capped_pairs = [], [], []
     for topic, run in slots:
         sides = {arm: closed.get((topic, arm, run)) for arm in (FULL, variant)}
         if any(side is None for side in sides.values()):
@@ -81,30 +100,19 @@ def pairs(events, variant, *, stations, profile):
             continue
         capped = [arm for arm, side in sides.items() if pilot._capped(side)]
         failed = [arm for arm, side in sides.items() if not pilot._finished(side)]
+        shares = {arm: _goal_share(judged.get((topic, arm, run)) or {}) for arm in sides}
         if capped or failed:
             excluded.append({"topic": topic, "run": run, "reason": "capped" if capped else "failed",
                              "arms": capped or failed})
+            if len(capped) == len(sides) and all(value is not None for value in shares.values()):
+                capped_pairs.append(_pair(topic, run, sides, shares, variant, stations, profile))
             continue
-        shares = {arm: _goal_share(judged.get((topic, arm, run)) or {}) for arm in sides}
         if any(value is None for value in shares.values()):
             excluded.append({"topic": topic, "run": run, "reason": "unjudged",
                              "arms": [arm for arm, value in shares.items() if value is None]})
             continue
-        review = {}
-        for arm, side in sides.items():
-            try:
-                review[arm] = _review_tokens(profile(side["project"]))
-            except (OSError, ValueError, KeyError, TypeError):
-                review[arm] = None
-        out.append({
-            "topic": topic, "run": run,
-            "goal_diff": shares[variant] - shares[FULL],
-            "weighted_diff": sides[variant]["weighted"] - sides[FULL]["weighted"],
-            "weighted": {arm: side["weighted"] for arm, side in sides.items()},
-            "stations": {arm: _station_spawns(stations(side["project"])) for arm, side in sides.items()},
-            "review": review,
-        })
-    return {"variant": variant, "pairs": out, "excluded": excluded}
+        out.append(_pair(topic, run, sides, shares, variant, stations, profile))
+    return {"variant": variant, "pairs": out, "excluded": excluded, "capped_pairs": capped_pairs}
 
 
 def _within(values_by_topic):
@@ -123,9 +131,7 @@ def _within(values_by_topic):
     return mean, math.sqrt(squares / df), df
 
 
-def summarize(result, *, margin, drop):
-    counted = result["pairs"]
-    variant = result["variant"]
+def _stats(counted, variant, margin, drop):
     by_topic = {"goal": {}, "weighted": {}}
     for pair in counted:
         by_topic["goal"].setdefault(pair["topic"], []).append(pair["goal_diff"])
@@ -162,6 +168,15 @@ def summarize(result, *, margin, drop):
             for station, spawns in pair["stations"][arm].items():
                 totals[station] = totals.get(station, 0) + spawns
         out["stations"][arm] = {s: n / len(counted) for s, n in sorted(totals.items())} if counted else {}
+    return out
+
+
+def summarize(result, *, margin, drop):
+    """The statistics over the counted pairs, with `equal_time` holding the
+    same statistics over the pairs both of whose builds hit the wall-time cap."""
+    variant = result["variant"]
+    out = _stats(result["pairs"], variant, margin, drop)
+    out["equal_time"] = _stats(result.get("capped_pairs") or [], variant, margin, drop)
     reasons = {}
     for item in result["excluded"]:
         reasons[item["reason"]] = reasons.get(item["reason"], 0) + 1
@@ -177,19 +192,13 @@ def _letters(topics):
     return {topic: chr(ord("A") + i) for i, topic in enumerate(sorted(topics))}
 
 
-def render(summary, result):
-    """Markdown of the summary and the per-pair table: no topic id, path or
-    project name; topics are lettered in sorted order."""
+def _block(summary, counted, letter):
     variant = summary["variant"]
-    letter = _letters({p["topic"] for p in result["pairs"]} | {e["topic"] for e in result["excluded"]})
     lines = [
-        f"{summary['pairs']} counted pairs of `{variant}` against full Compass, run i against run i "
-        "of the same topic. Differences are the variant minus the full arm.",
-        "",
         "| Topic | Run | Goal share difference | Weighted tokens difference | Full arm stations | Variant stations |",
         "|---|---|---|---|---|---|",
     ]
-    for pair in sorted(result["pairs"], key=lambda p: (letter[p["topic"]], p["run"])):
+    for pair in sorted(counted, key=lambda p: (letter[p["topic"]], p["run"])):
         def spawns(arm):
             items = pair["stations"][arm]
             return ", ".join(f"{s} {n}" for s, n in sorted(items.items())) or "none"
@@ -214,7 +223,7 @@ def render(summary, result):
             f"at the spread's estimate, {batch['upper']} at its upper 80% bound."
         )
     else:
-        lines.append("- Ablation batch: n/a (no topic has two counted pairs).")
+        lines.append("- Ablation batch: n/a (no topic has two pairs).")
     verdict = summary["verdict"]
     if verdict:
         lines.append(
@@ -222,15 +231,41 @@ def render(summary, result):
             f"{verdict['bound']:+.3f} over {verdict['pairs']} pairs), indicative at this size."
         )
     else:
-        lines.append("- Noninferiority: n/a (fewer than two counted pairs), indicative at best.")
+        lines.append("- Noninferiority: n/a (fewer than two pairs), indicative at best.")
     lines.append(f"- The builders' review share of builder tokens: {_num(summary['builder_review_share'])}.")
     for arm in (FULL, variant):
         means = summary["stations"][arm]
         text = ", ".join(f"{s} {n:.1f}" for s, n in means.items()) or "none"
         lines.append(f"- Mean station spawns per build, `{arm}`: {text}.")
+    return lines
+
+
+def render(summary, result):
+    """Markdown of the summary and the per-pair tables: no topic id, path or
+    project name; topics are lettered in sorted order."""
+    variant = summary["variant"]
+    capped_pairs = result.get("capped_pairs") or []
+    letter = _letters(
+        {p["topic"] for p in result["pairs"]} | {p["topic"] for p in capped_pairs} | {e["topic"] for e in result["excluded"]}
+    )
+    lines = [
+        f"{summary['pairs']} counted pairs of `{variant}` against full Compass, run i against run i "
+        "of the same topic, both builds ended by the simulated human. Differences are the variant minus the full arm.",
+        "",
+        *_block(summary, result["pairs"], letter),
+    ]
+    equal = summary.get("equal_time")
+    if capped_pairs and equal:
+        lines += [
+            "",
+            f"{equal['pairs']} pairs whose two builds both hit the wall-time cap, so each arm had the same wall time; "
+            "their goal share is what each arm finished by the cap.",
+            "",
+            *_block(equal, capped_pairs, letter),
+        ]
     excluded = result["excluded"]
     if excluded:
-        lines += ["", "Left out of the spread:", ""]
+        lines += ["", "Left out of the counted pairs:", ""]
         for item in sorted(excluded, key=lambda e: (letter[e["topic"]], e["run"])):
             lines.append(f"- topic {letter[item['topic']]} run {item['run']}: {item['reason']} ({', '.join(item['arms'])})")
     return "\n".join(lines) + "\n"
