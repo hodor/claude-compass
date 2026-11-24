@@ -2276,6 +2276,12 @@ class PreCompactTaskTests(StateFixture):
         self.assertEqual(self.task_lines(self.pre_compact(path)),
                          [f"The task in progress is TASK-8: the task itself. {self.TAIL}"])
 
+    def test_a_task_open_only_as_another_tasks_dependency_is_named_alone(self):
+        """Adversarial where: the summarizer is handed TASK-9's line as the text of TASK-8."""
+        self.write_active("# Active", "- [ ] TASK-9: later work - depends_on: TASK-8")
+        path = self.write_transcript(assistant_text("On TASK-8 now."))
+        self.assertEqual(self.task_lines(self.pre_compact(path)), [f"The task in progress is TASK-8. {self.TAIL}"])
+
     def test_only_the_main_transcripts_assistant_text_counts(self):
         """Adversarial where: ids in the human's prompt, tool calls, tool results or
         sidechain records name the task."""

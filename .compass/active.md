@@ -88,7 +88,7 @@ Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, fi
 
 Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, files and checks are there. The human approved this wave and its subscription runs on 2026-11-24.
 
-- [ ] TASK-438: The PreCompact instructions name the task in progress - complexity: S, depends_on: TASK-437
+- [x] TASK-438: The PreCompact instructions name the task in progress - complexity: S, depends_on: TASK-437
 - [ ] TASK-439: The probe gains two re-compaction arms, `recompact-task` and its control `recompact` - complexity: M, depends_on: TASK-438
 - [ ] TASK-440: Run both arms on every point; results on the reference-arms page - complexity: S, depends_on: TASK-439
 
