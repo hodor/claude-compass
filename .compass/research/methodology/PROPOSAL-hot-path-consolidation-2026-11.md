@@ -1,7 +1,8 @@
 ---
 title: "Start-here files back under their limit: topic folders for plans and research"
 type: research
-status: draft
+status: accepted
+approved: 2026-11-24
 confidence: high
 area: methodology
 tags: [consolidation, hot-path, taxonomy, index, domains]
@@ -38,10 +39,7 @@ flowchart LR
   now --> a --> b
 ```
 
-> [!IMPORTANT]
-> You decide: which groupings below move. A ticked box moves that grouping's files into a topic folder (one folder line in the index instead of one line per document); an unticked box leaves them where they are.
-> Nothing is deleted: every file keeps its full text, every link keeps working and every index description is kept in the moved file.
-> Stage A (safe to do now) brings the start-here files, the three files every agent reads first, from 6,596 to 3,926 tokens, under the 5,000 limit. Stage B (the same kind of move, later) waits until four plans still being built, PLAN-033 to PLAN-036, are merged.
+> [!success] Approved 2026-11-24: Stage A and L1 applied (two lessons kept active); Stage B waits for the PLAN-033 to 036 merges.
 
 ## What was measured
 
@@ -70,7 +68,7 @@ Plans follow their specs: each plan goes into the topic folder named for the spe
 
 Saved tokens are the drop in `compass hot-path` measured at that step.
 
-### - [ ] A1. `plans/learning/`: 6 plans, saves 275 tokens
+### - [x] A1. `plans/learning/`: 6 plans, saves 275 tokens
 
 What belongs here: plans that implement the learning specs - lessons, the capture loop, fidelity to the human's words, ideas.
 
@@ -88,7 +86,7 @@ compass move PLAN-001-lessons-and-index-implementation PLAN-006-learning-loop PL
 +- [[plans/learning/index|learning]] (folder, 6 children) - plans that implement the learning specs - lessons, the capture loop, fidelity to the human's words, ideas
 ```
 
-### - [ ] A2. `plans/vault-structure/`: 6 plans, saves 204 tokens
+### - [x] A2. `plans/vault-structure/`: 6 plans, saves 204 tokens
 
 What belongs here: plans that implement the vault-structure specs - hierarchy, the active sweep, graph queries, sizing, topic folders.
 
@@ -106,7 +104,7 @@ compass move PLAN-003-hybrid-hierarchy PLAN-009-sizing-mechanism PLAN-011-active
 +- [[plans/vault-structure/index|vault-structure]] (folder, 6 children) - plans that implement the vault-structure specs - hierarchy, the active sweep, graph queries, sizing, topic folders
 ```
 
-### - [ ] A3. `plans/pipeline/`: 6 plans now, 8 after Stage B, saves 232 tokens
+### - [x] A3. `plans/pipeline/`: 6 plans now, 8 after Stage B, saves 232 tokens
 
 What belongs here: plans that implement the pipeline specs - decision coverage, test quality, staged plans, research scope, the context stop, control loops, compaction, verification.
 
@@ -124,7 +122,7 @@ compass move PLAN-004-decision-coverage PLAN-007-test-quality PLAN-008-rolling-w
 +- [[plans/pipeline/index|pipeline]] (folder, 6 children) - plans that implement the pipeline specs - decision coverage, test quality, staged plans, research scope, the context stop, control loops, compaction, verification
 ```
 
-### - [ ] A4. `plans/distribution/`: 4 plans, saves 197 tokens
+### - [x] A4. `plans/distribution/`: 4 plans, saves 197 tokens
 
 What belongs here: plans that implement the distribution specs - model resolution, self-update, dsh host support, local additions.
 
@@ -140,7 +138,7 @@ compass move PLAN-005-model-table PLAN-012-self-update PLAN-017-dsh-host-support
 +- [[plans/distribution/index|distribution]] (folder, 4 children) - plans that implement the distribution specs - model resolution, self-update, dsh host support, local additions
 ```
 
-### - [ ] A5. `plans/tooling/`: 4 plans now, 6 after Stage B, saves 191 tokens
+### - [x] A5. `plans/tooling/`: 4 plans now, 6 after Stage B, saves 191 tokens
 
 What belongs here: plans that implement the tooling specs - invisible capture, capability usage, whole token overhead, agent context, checking cost, prompt cache.
 
@@ -156,7 +154,7 @@ compass move PLAN-010-invisible-capture PLAN-014-capability-usage PLAN-028-whole
 +- [[plans/tooling/index|tooling]] (folder, 4 children) - plans that implement the tooling specs - invisible capture, capability usage, whole token overhead, agent context, checking cost, prompt cache
 ```
 
-### - [ ] A6. `plans/human-surface/`: 5 plans, saves 295 tokens
+### - [x] A6. `plans/human-surface/`: 5 plans, saves 295 tokens
 
 What belongs here: plans that implement the human-surface specs - review in Obsidian, visual documents, numbered choices, screenplays.
 
@@ -173,7 +171,7 @@ compass move PLAN-022-review-in-obsidian PLAN-024-working-in-compass-is-visual P
 +- [[plans/human-surface/index|human-surface]] (folder, 5 children) - plans that implement the human-surface specs - review in Obsidian, visual documents, numbered choices, screenplays
 ```
 
-### - [ ] A7. `research/llm-research/` becomes a topic folder: 8 lines, saves 544 tokens
+### - [x] A7. `research/llm-research/` becomes a topic folder: 8 lines, saves 544 tokens
 
 The folder already holds ten documents but has no `index.md`, so each of its documents is listed by itself, indented under the wrong folder line (whole-overhead). Giving it an `index.md` turns ten lines into one; the survey's own axes document moves in beside its findings.
 
@@ -197,7 +195,7 @@ compass move RESEARCH-llm-research-for-compass research/llm-research --apply
 
 The saving includes the 36-token warning line at the top of `index.md`, which `compass sync` removes once the total is under the limit; this step is where the total crosses it.
 
-### - [ ] A8. The two review documents join `research/human-surface/`: saves 66 tokens
+### - [x] A8. The two review documents join `research/human-surface/`: saves 66 tokens
 
 Both are about the review panel in Obsidian, the subject of the human-surface research folder.
 
@@ -210,7 +208,7 @@ compass move RESEARCH-review-in-obsidian RESEARCH-review-mockup research/human-s
 -- [[RESEARCH-review-mockup]] - the review lives in one side panel that follows the human through links
 ```
 
-### - [ ] A9. Four leftover nested lines fold into their folders: saves 248 tokens
+### - [x] A9. Four leftover nested lines fold into their folders: saves 248 tokens
 
 These lines point at documents a listed folder line already covers, so `compass sync` would remove them from the index, but it keeps them for two reasons. The two `(folder)` lines lack the child count that `compass sync` expects; their text is the folder's own `summary:`, word for word, so removing them by hand loses nothing. The two axis-2 lines carry an older description than the document's current summary; each old description is first appended to its own document as a line `> Root-index description preserved when this document was folded under its topic folder (2026-11-24): <the old text>`, the same note `compass move` writes, and `compass sync` then removes the line.
 
@@ -221,7 +219,7 @@ These lines point at documents a listed folder line already covers, so `compass 
 -  - [[research/llm-research/RESEARCH-axis-2b-host-features-gap]] - Gap pass on axis 2: Compass looprunner/proctree/self_update versus /goal, --bg, /loop and marketplace auto-update; prompt-cache ordering for always-loaded text; host trials of first-pass findings 7, 8, 21, 24, 25, 26
 ```
 
-### - [ ] A10. Two scratch handoff lines move to the older-handoffs list; the Lessons section becomes its pointer: saves 34 tokens
+### - [x] A10. Two scratch handoff lines move to the older-handoffs list; the Lessons section becomes its pointer: saves 34 tokens
 
 The two handoff lines point at files in `.compass/tmp/trial-334/`, which is scratch space, so both links are broken now. They move, unchanged, to the end of [[handoff-pointers|Older handoffs]], which `compass sync` already counts as indexing what it links. The Lessons section gets the pointer text the consolidate skill (the Compass routine that tidies an over-full vault) prescribes, since `lessons/index.md`, not the catalog, is what agents read.
 
@@ -235,7 +233,7 @@ The two handoff lines point at files in `.compass/tmp/trial-334/`, which is scra
 +See `lessons/index.md` - the grep-first surface sync keeps current; `compass lessons` ranks via `meta/lessons-catalog.yaml`; archived lessons live in `archive/lessons/`.
 ```
 
-### - [ ] A11. Old notes leave `active.md` for the backlog: saves 292 tokens
+### - [x] A11. Old notes leave `active.md` for the backlog: saves 292 tokens
 
 Four sections of `active.md` hold notes rather than work in progress: an initiative from before September, a status note about v0.15.0, two open questions that wait on the human, and a Next Up list. The first Next Up item says it is queued in the backlog, and the backlog records that item as closed by [[ADR-019-subagentstop-redelivery-and-teammate-typing]] on 2026-08-30. They move verbatim, each under its own heading, into a new backlog section "Parked from active.md (2026-11-24)", the same shape as the backlog's "Parked from active.md (2026-10-24)" section. Every task line of a plan stays in `active.md`.
 
@@ -264,7 +262,7 @@ Four sections of `active.md` hold notes rather than work in progress: an initiat
 
 In `backlog.md` the same lines arrive under `## Parked from active.md (2026-11-24)`, each `##` heading becoming `###`.
 
-### - [ ] A12. Lessons: a `verification` topic folder, and one lesson joins `subagents`: saves 92 tokens
+### - [x] A12. Lessons: a `verification` topic folder, and one lesson joins `subagents`: saves 92 tokens
 
 Two of the three lessons at the root of `lessons/` teach the same craft, checking a claim before acting on it; a pair is a topic folder. The third is about research agents fanned out onto one spec, the subject of `lessons/subagents/`.
 
@@ -351,9 +349,11 @@ The lesson catalog is the index file behind `compass lessons`, which ranks lesso
 - No lesson body runs past 5 lines.
 - No pair met the merge test (same category, same area, two shared tags, the same rule) on a read of every summary.
 
-### - [ ] L1. Move 20 lessons to `archive/lessons/`
+### - [x] L1. Move 20 lessons to `archive/lessons/`
 
 The consolidate skill moves a lesson to the archive when it was never reinforced (score 5), never came back (`seen: []`), and was last updated more than 90 days ago (before 2026-08-26). Twenty lessons meet all three. Moving them brings the catalog to 43 lessons, under both limits; each file keeps its full text in `archive/lessons/`.
+
+Applied to 18 of them: LESSON-hooks-load-only-from-settings and LESSON-blind-the-author-in-self-validation stay active, since both still hold (see the warning below).
 
 > [!NOTE]- The 20 lessons
 > - distribution: LESSON-installer-removes-only-what-it-installed
