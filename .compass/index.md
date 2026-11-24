@@ -74,12 +74,10 @@ See [[backlog]].
 
 - [[2026-10-29_09-30-00_issues-then-loops-then-workflow-spec]] - PLAN-026 shipped as 0.34.0 and pushed; next: fix the four open GitHub issues, finish PLAN-021 Wave 2 (control loops), then spec Claude Code workflow scripts to keep Compass runs off the context
 - [[handoff-pointers|Older handoffs]] - every earlier handoff, oldest first
-- [[2026-11-22_19-09-13_scripted-trial-334]] - Handoff: scripted trial 334 (scratch edit, pad reads)
-- [[2026-11-22_19-19-42_scratch-edit-trial-334]] - Handoff: scratch-edit trial 334
 
 ## Lessons
 
-Indexed in meta/lessons-catalog.yaml (loaded with the hot path); files in `lessons/`, archived ones in `archive/lessons/`.
+See `lessons/index.md` - the grep-first surface sync keeps current; `compass lessons` ranks via `meta/lessons-catalog.yaml`; archived lessons live in `archive/lessons/`.
 
 ## compass-cli
 - [[compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work]] - A Python `compass` CLI Owns All Mechanical Vault Work; the Hook Calls It as a Command
