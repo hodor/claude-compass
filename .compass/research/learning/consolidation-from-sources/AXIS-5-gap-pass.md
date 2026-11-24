@@ -72,12 +72,12 @@ Repository mining: every claim below was measured or read in this repository (lo
 6. **Comparable Compass gates today** (confidence: high)
    | Gate | Where | Kind |
    |---|---|---|
-   | `compass review` per document, checkbox per item | `plugin/skills/consolidate/SKILL.md:171` (domain proposal), `plan/SKILL.md:21`, `build/SKILL.md:78` | human, visual surface |
-   | Anti-list, dedup judge, 5-line cap (`body_too_long` returned by the model) | `plugin/skills/lesson-write/SKILL.md:67-69,144,156` | model plus prose rule |
+   | `compass review` per document, checkbox per item | `plugin/skills/consolidate/SKILL.md:177` (domain proposal), `plan/SKILL.md:21`, `build/SKILL.md:78` | human, visual surface |
+   | Anti-list, dedup judge, 5-line cap (`body_too_long` returned by the model) | `plugin/skills/lesson-write/SKILL.md:67-69,146,158` | model plus prose rule |
    | Consolidate merges and rewrites: "Report every merge/rewrite ... for the human's audit" | `plugin/skills/consolidate/SKILL.md:56-71` | after-the-fact report, no gate |
    | `compass guard`: denies delete or gutting of vault text for subagents; blocks edits to a file under review | `plugin/cli/commands/guard.py:291-343,347-366` | mechanical, PreToolUse |
-   | `sync._text_preserved`: an index line is dropped only if its text survives in the target | `plugin/cli/commands/sync.py:221-234,257-260` | mechanical |
-   | `compass validate`: links, frontmatter, caps; opens no `file:line` ref and no lesson body | `plugin/cli/commands/validate.py:42-51` (per review) | mechanical |
+   | `sync._text_preserved`: an index line is dropped only if its text survives in the target | `plugin/cli/commands/sync.py:222-235,258-261` | mechanical |
+   | `compass validate`: links, frontmatter, caps; opens no `file:line` ref and no lesson body | `plugin/cli/commands/validate.py:47-56` (per review) | mechanical |
    - `consolidate/SKILL.md:171` is the one existing human gate on lessons-adjacent structure: a draft proposal with one checkbox per item, ticked approves, unticked leaves it.
    - Marks: code read; convergence: gates agree with [[REVIEW-consolidation-from-sources]] claims 1, 3
    - Grade: code, directly read
@@ -124,7 +124,7 @@ Repository mining: every claim below was measured or read in this repository (lo
 
 11. **Where a cost field could be recorded** (confidence: high on the code, the placement is open)
     `capture_worker.py:344-353` already holds the whole JSON envelope in `stdout_text`, writes it to `.compass/tmp/worker-logs/<opp-id>.log` (`:63,108`; gitignored under `tmp/`), and logs `worker-finished` with only `extracted` (`:353`). `_extracted_line` (`:214-235`) parses the envelope but reads only `result`. So `total_cost_usd` and `usage` are available at the point the ledger row is written and are dropped. Candidate homes: extra fields on the `worker-finished` row in `.compass/tmp/capture-log.jsonl` (read by `compass capture-stats`); or a tracked per-pass record. `meta/usage.yaml` counts invocations only (`capture-worker` count 117; no cost or token key).
-    - `plugin/cli/commands/capture_worker.py:63,108,214-235,344-353`; `.compass/meta/usage.yaml` (grep for cost/usd/token: no hit)
+    - `plugin/cli/commands/capture_worker.py:63,108,214-235,348-357`; `.compass/meta/usage.yaml` (grep for cost/usd/token: no hit)
     - Marks: code read; convergence: log shape and code agree
     - Grade: code, directly read
 
@@ -136,7 +136,7 @@ Repository mining: every claim below was measured or read in this repository (lo
     | Lesson file and its `source:` string | yes (56 of 60 lesson files tracked; 4 untracked new ones) | `git ls-files .compass/lessons` |
     | `OPP-<UTC>` opportunity dir | no: `.compass/tmp/` is gitignored (21 of 21 OPP-pointing lessons resolve on this disk only) | `git check-ignore -v` prints `.gitignore:2:.compass/tmp/` for `capture-opportunities`, `phase-reports`, `retrieval-log.jsonl`, `capture-log.jsonl` |
     | Worker log `archive/logs/<OPP>.log` (holds `session_id`) | no: not ignored but never committed; 0 tracked, 93 untracked; 16 of 21 present | `git ls-files .compass/archive/logs` lists only 5 `extraction-log-*.md` files |
-    | Session transcript | no: lives outside the repository at `<config>/projects/<project-key>/<session-id>.jsonl` | `plugin/cli/sessionslib.py:4,125-126` |
+    | Session transcript | no: lives outside the repository at `<config>/projects/<project-key>/<session-id>.jsonl` | `plugin/cli/sessionslib.py:4,134-135` |
     | Tracked extraction logs `archive/logs/extraction-log-2026-08-0*.md` | yes, but only 5 files (Aug 6-12); each opens sections named by `OPP-<UTC>`; contents not read beyond headers | `git ls-files`; `grep OPP` on the 08-06 file |
     - Only 27 of 60 lessons carry a `source` at all, none with a sha, session id or quote ([[AXIS-2-recheck-against-sources]] f1).
     - Marks: `git check-ignore` and `git ls-files` run here; convergence: matches axis 2 f2

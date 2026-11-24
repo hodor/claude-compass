@@ -28,7 +28,7 @@ Repository mining, adapted to one codebase: a step-by-step trace of the consolid
 ### A. Consolidation today (code and skill text read)
 
 1. **Consolidation is a skill a model follows, with no CLI step behind it** (confidence: high)
-   - The only code touching consolidation is `sync.py`, which writes the trigger markers: `INDEX_WARNING`, `CATALOG_WARNING`, hot-path marker (`plugin/cli/commands/sync.py:67-69`, `:655-659`). `grep` over `plugin/cli` finds no function that merges, rewrites or archives lessons. Steps 1-10 of `plugin/skills/consolidate/SKILL.md` are all performed by the model through Read/Edit/Write.
+   - The only code touching consolidation is `sync.py`, which writes the trigger markers: `INDEX_WARNING`, `CATALOG_WARNING`, hot-path marker (`plugin/cli/commands/sync.py:68-70`, `:655-659`). `grep` over `plugin/cli` finds no function that merges, rewrites or archives lessons. Steps 1-10 of `plugin/skills/consolidate/SKILL.md` are all performed by the model through Read/Edit/Write.
    - Trigger: a standing warning marker, a `folder_over_ceiling` or `taxonomy_hints` warning, or the human's ask (`consolidate/SKILL.md:16-25`). Catalog cap is 360 lines / 25,000 bytes / 50 lessons (`sync.py:55-62`).
    - Marks: code read, first-party; no retraction applicable; not preprint; 0 citations; single source.
    - Grade: direct reading of shipped code and skill text; high.
@@ -54,7 +54,7 @@ Repository mining, adapted to one codebase: a step-by-step trace of the consolid
    - Grade: measured by command; high.
 
 5. **Counters today are recurrence only: `score` and `seen`** (confidence: high)
-   - `score` starts at 5, +1 per recurrence, cap 10; `seen` holds dates, 3 dates then `escalated` (`lesson-write/SKILL.md:89-91`, `:123-126`). Retrieval sorts escalated first, then tag overlap, area, text overlap, then score (`plugin/cli/lessonslib.py:208-217`). `lesson_coverage` reports cited / surfaced-but-uncited / unresolvable per plan with no pass/fail outcome (`lessons/SKILL.md:98`). No `helpful`/`harmful` field exists in lesson frontmatter, catalog rows or `_catalog_row` (`sync.py:512-528`).
+   - `score` starts at 5, +1 per recurrence, cap 10; `seen` holds dates, 3 dates then `escalated` (`lesson-write/SKILL.md:89-91`, `:123-126`). Retrieval sorts escalated first, then tag overlap, area, text overlap, then score (`plugin/cli/lessonslib.py:210-219`). `lesson_coverage` reports cited / surfaced-but-uncited / unresolvable per plan with no pass/fail outcome (`lessons/SKILL.md:98`). No `helpful`/`harmful` field exists in lesson frontmatter, catalog rows or `_catalog_row` (`sync.py:512-528`).
    - Marks: code read; first-party; single source.
    - Grade: direct reading; high.
 

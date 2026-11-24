@@ -89,7 +89,7 @@ Claims 13 to 19 rest on one axis each. They count as converged because no axis c
 ## Converged findings
 
 1. **No checking station varies by difficulty or model today** (confidence: high, 3/3)
-   - Pre-build tester gates on executable source only; post-build tester after every builder and merge; builder review on every diff; validator mandatory probes once run (`plugin/skills/build/SKILL.md:28-34,39,48`; `plugin/templates/agents/validator.md:114-116`).
+   - Pre-build tester gates on executable source only; post-build tester after every builder and merge; builder review on every diff; validator mandatory probes once run (`plugin/skills/build/SKILL.md:28-34,39,48`; `plugin/templates/agents/validator.md:124-126`).
    - Autopilot: "Skipping the tester because 'this is small.' It always runs" (`plugin/skills/autopilot/SKILL.md:120`). Spot-checked.
    - The only size gate is autopilot refusing L or larger, which narrows entry, not checking.
 
@@ -114,8 +114,8 @@ Claims 13 to 19 rest on one axis each. They count as converged because no axis c
    - Prior art recorded learned scores, never a rule table; only the timeout cascade is a fixed rule (Axis 4 finding 19).
 
 6. **The bench harness cannot run a part-removed arm today** (confidence: high, Axis 3 only)
-   - `ARMS = ("compass", "baseline")` is a constant checked at record and drive time (`bench/overhead/records.py:41`). Spot-checked.
-   - A variant needs a committed clone passed as `repo_root`, with an `origin` the plugin pin can read (`bench/overhead/launch.py:192-213`; `bench/overhead/drive.py:224-243`).
+   - `ARMS = ("compass", "baseline")` is a constant checked at record and drive time (`bench/overhead/records.py:55`). Spot-checked.
+   - A variant needs a committed clone passed as `repo_root`, with an `origin` the plugin pin can read (`bench/overhead/launch.py:192-213`; `bench/overhead/drive.py:229-248`).
    - `compare.py` prints "outcome differs, so no token verdict" on any goal-count difference (`bench/overhead/compare.py:165-190`); the spec's "defects caught do not fall" has no tolerance to test against.
    - No build model id is recorded and no trigger fires on a model or host change (`.compass/meta/plugin.yaml`; `bench/overhead/launch.py:54-66` strips model env, `drive.py` passes no `--model`). TASK-256 of [[PLAN-028-whole-overhead-on-real-projects]] is the unbuilt trigger.
 
@@ -152,7 +152,7 @@ Claims 13 to 19 rest on one axis each. They count as converged because no axis c
 
 1. **Where the builder's self-review spends its tokens** - split 1/1
    - Position A (Axis 1): step 8 spawns a separate code-review sub-agent on every diff (`plugin/templates/agents/builder.md:63-65`). Spot-checked: "Spawn a sub-agent with the diff".
-   - Position B (Axis 2): review runs inside the builder session; the profiler files it under `subagent:builder` and it cannot be separated (`bench/overhead/token_profile.py:28-31`).
+   - Position B (Axis 2): review runs inside the builder session; the profiler files it under `subagent:builder` and it cannot be separated (`bench/overhead/token_profile.py:30-33`).
    - The two can both hold if the builder's spawn does not occur or lands in the builder transcript; neither axis read a builder transcript for a nested spawn.
 
 ## Contradictions inside single axes

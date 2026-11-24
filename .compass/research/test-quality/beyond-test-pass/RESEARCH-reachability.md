@@ -42,7 +42,7 @@ Technology landscape / comparative evaluation (DESMET feature analysis in case-s
    - Grade: high (measured locally, direct)
 
 3. **Static call-graph and dead-code tools miss dispatch-by-string, which the compass CLI uses for every command** (confidence: high)
-   - `plugin/cli/maincli.py:126-129` builds `module_name = "commands." + name.replace("-", "_")` and calls `__import__(module_name, fromlist=["run"])`, then `module.run(args)` at `:137`.
+   - `plugin/cli/maincli.py:135-138` builds `module_name = "commands." + name.replace("-", "_")` and calls `__import__(module_name, fromlist=["run"])`, then `module.run(args)` at `:137`.
    - `pyan3` (call graph, 0.375 s on maincli + 3 modules, 60 edges) drew `maincli.dispatch -> commands.usage.record` (static import) but no edge to any `commands.<name>.run`. A static root-at-`main` reachability check would call every command body unreachable.
    - Coverage-from-entry-point found `commands/tree.py` run body reached (finding 2).
    - Marks: code run; not retracted; not a preprint; 0 citations; 1 trial, agrees with the general dynamic-dispatch limit in findings 6 and 7

@@ -75,7 +75,7 @@ Grade key: vendor-doc = Anthropic documentation (asserted behavior, not measured
 7. **SubagentStop carries `last_assistant_message`, `agent_transcript_path` and `agent_id`; since 2.1.271 a subagent can deliver its report through a `SubagentHandback` tool, leaving `last_assistant_message` as only its closing text.** (confidence: medium)
    Compass `capture-signal` reads `last_assistant_message` into a capture file (`capture_signal.py:153`). A subagent that reports through SubagentHandback would put the report in `tool_input.message` of a PreToolUse/PostToolUse hook on `SubagentHandback`, not in that field. Whether Compass's agents use the tool is not established.
    - https://code.claude.com/docs/en/hooks - SubagentStop input
-   - `plugin/cli/commands/capture_signal.py:153`
+   - `plugin/cli/commands/capture_signal.py:201`
    - Marks: vendor-doc + local-code; single source for the handback semantics
    - Grade: medium
 

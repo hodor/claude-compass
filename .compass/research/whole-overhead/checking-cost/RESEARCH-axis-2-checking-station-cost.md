@@ -67,7 +67,7 @@ Repository mining (empirical study of the artifact): bench run records, the usag
 
 6. **The builder's own review step cannot be separated from the builder's tokens.** (confidence: medium)
    Review runs inside the builder session. The profiler assigns a phase by the last skill loaded, and in a subagent session the phase is the session kind, so format and code review tokens sit in the one `subagent:builder` phase.
-   - `bench/overhead/token_profile.py:28-31` (Phases paragraph)
+   - `bench/overhead/token_profile.py:30-33` (Phases paragraph)
    - Marks: code, owner checked; not retracted; not preprint; 0 citations; 1 source
    - Grade: high (read in code)
 

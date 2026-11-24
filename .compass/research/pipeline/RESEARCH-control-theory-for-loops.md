@@ -200,7 +200,7 @@ Claims a gap pass addressed. "Prior" lists the original axes' cells for the clai
 ### Sensors: deterministic
 
 10. **The stream-json `result` event is a ready-made per-run sensor frame** (confidence: high; axes A2, A8; C17)
-    Keys in real events include `subtype`, `is_error`, `stop_reason`, `terminal_reason`, `duration_ms`, `duration_api_ms`, `num_turns`, `total_cost_usd`, `usage`, `modelUsage`, `permission_denials`, `subagent_stats`. Subtypes: `success`, `error_max_turns`, `error_max_budget_usd`, `error_during_execution`, `error_max_structured_output_retries`. Over 44 real capture-worker runs (haiku-4-5): cost 0.36 / 0.71 / 2.19 USD (min/median/max), turns 17 / 28 / 55, wall time 80 / 189 / 529 s, one workload only (confidence medium for the magnitudes). Compass's `clone` already parses this event (`plugin/cli/commands/clone.py:371-394`).
+    Keys in real events include `subtype`, `is_error`, `stop_reason`, `terminal_reason`, `duration_ms`, `duration_api_ms`, `num_turns`, `total_cost_usd`, `usage`, `modelUsage`, `permission_denials`, `subagent_stats`. Subtypes: `success`, `error_max_turns`, `error_max_budget_usd`, `error_during_execution`, `error_max_structured_output_retries`. Over 44 real capture-worker runs (haiku-4-5): cost 0.36 / 0.71 / 2.19 USD (min/median/max), turns 17 / 28 / 55, wall time 80 / 189 / 529 s, one workload only (confidence medium for the magnitudes). Compass's `clone` already parses this event (`plugin/cli/commands/clone.py:348-371`).
     - Evidence: 44 `"type":"result"` lines in `.compass/archive/logs/OPP-*.log`; claude-agent-sdk-python `types.py` `ResultMessage`; https://code.claude.com/docs/en/agent-sdk/agent-loop
     - Marks: code and emitted data, owner checked; docs; 3 sources agree
     - Grade: high
@@ -519,7 +519,7 @@ Claims a gap pass addressed. "Prior" lists the original axes' cells for the clai
 
 40. **A Compass subagent actuator meets `compass guard`; where its skill lives decides whether it survives update** (confidence: high; axes A9, A7, G3; C41)
     The guard denies, for every subagent, delete verbs, `git clean`, `git reset --hard`, `git checkout --`, force-push and a Write that empties a file; loops whose work is removing legacy code would meet it. G3 ran the guard and confirmed its scope is project-wide, not limited to `.compass/` (finding 119). HumanLayer places the actuator skill in `.claude/skills/<name>/`. A9 and A7 read that `_copy_tree_best_effort` empties the target before copying and left survival of non-shipped skills unverified; G3 ran `_apply` and found that only `.claude/cli/` is emptied, while user skill dirs survive (findings 113, 114). The disagreement is listed under Partial.
-    - Evidence: `plugin/cli/commands/guard.py:6, 27-29, 181-225`; `plugin/cli/commands/self_update.py:143-170`
+    - Evidence: `plugin/cli/commands/guard.py:6, 27-29, 181-225`; `plugin/cli/commands/self_update.py:159-186`
     - Marks: code read by A9 and A7; code read plus run experiment by G3
     - Grade: high
 
@@ -775,13 +775,13 @@ All findings in this section are G3's, from code read plus `self_update._apply` 
 
 114. **`.claude/cli/` is emptied and replaced on every update, so a sensor script placed there is deleted** (confidence: high; G3; C41)
     `_copy_tree_best_effort(src/cli, .claude/cli)` unlinks or removes every destination entry before copying; `.claude/cli/my_sensor.py` was missing after `_apply`. The manual skill runs `rm -rf .claude/cli`. This is the only emptied target.
-    - Evidence: `self_update.py:145-170, 257`; `plugin/skills/update/SKILL.md:56-58`
+    - Evidence: `self_update.py:145-170, 257`; `plugin/skills/update/SKILL.md:64-66`
     - Marks: code read plus run experiment; 3 sources agree
     - Grade: high
 
 115. **Hook registration replaces only groups that run a shipped command or Compass's CLI; a user's own hook survives even when it mentions "compass"** (confidence: high; G3 plus code read at consolidation)
     `merge_settings` treats a group as Compass-owned when any of its hooks runs a command the manifest ships or matches `.claude/cli/compass` or `$CLAUDE_PLUGIN_ROOT/cli/compass`; every other group and top-level key is kept. A test pins that `python3 tools/compass_report.py`, `echo compass` and paths containing `compass` survive while stale Compass CLI commands are replaced. A group mixing a Compass CLI command with a user command is replaced whole. The manual `/compass:update` skill still drops any group whose command contains the substring `compass` (see Contradictions).
-    - Evidence: `self_update.py:174-211, 237`; `test_self_update.py:363-395`; `plugin/skills/update/SKILL.md:125-129, 158`
+    - Evidence: `self_update.py:174-211, 237`; `test_self_update.py:363-395`; `plugin/skills/update/SKILL.md:146-150, 158`
     - Marks: code read and test read; G3's run showed the earlier substring rule, since replaced in `self_update.py`
     - Grade: high
 
@@ -805,7 +805,7 @@ All findings in this section are G3's, from code read plus `self_update._apply` 
 
 119. **`compass guard` judges only subagent calls, and its scope is the whole project** (confidence: high; G3)
     The hook exits unless the event carries `agent_id` or `agent_type`. For subagents against non-vault `src/old.ts`: denied `rm`, `git rm`, `git checkout --`, `git restore`, `git reset --hard`, `git push --force`, `git branch -D`, `git stash drop`, inline `os.remove`, an empty Write; allowed `sed -i`, `mv`, `ast-grep run -U`, `git commit` and plain push, `gh pr create`, `> file` truncation, a Write shrinking 60 lines to 1 character, an Edit blanking 30 lines. Shrink and blanking checks apply only inside the vault, and `meta/` and `archive/` are exempt from them, while delete verbs against `meta/` are denied.
-    - Evidence: `plugin/cli/commands/guard.py:27-30, 45-50, 64-90, 101-107, 184-209, 298-335, 376-377`; `plugin/hooks/hooks.json:12`
+    - Evidence: `plugin/cli/commands/guard.py:32-35, 45-50, 64-90, 101-107, 184-209, 298-335, 376-377`; `plugin/hooks/hooks.json:13`
     - Marks: code read plus run experiment; 3 sources agree
     - Grade: high
 
@@ -823,7 +823,7 @@ All findings in this section are G3's, from code read plus `self_update._apply` 
 
 122. **SPEC-009 is a deferred draft whose needs bind a loop definition, with format and location left open; its only code seam is a hardcoded function** (confidence: high; G3, agreeing with finding 72)
     [[specs/pipeline/SPEC-009-configurable-pipeline-workflows]] D-01: a workflow configures contracts between phases. Needs: zero-config default, the workflow is data the harness resolves, malformed configuration fails loud. Constraints: mechanical resolution, reuse existing config conventions, host-agnostic, cross-platform. Non-goals: ad-hoc phase invention. `workflow_binding()` in `coverage.py:66-82` returns the hardcoded spec and decision to plan binding; ADR-007 requires a config seam for SPEC-009; SPEC-014 D-01 says shipping SPEC-014 first gives SPEC-009 a substrate. The config conventions to reuse all sit under `.compass/meta/`: `capture.json`, `models.yaml`, `local/`, `plugin.yaml`. No document read decides whether a loop is a workflow, a phase or a new artifact type.
-    - Evidence: SPEC-009 lines 11, 32-39, 43, 56, 69-88; `.compass/backlog.md:27`; ADR-007 Consequences; SPEC-014 line 34; `capturelib.py:72-73`; `modelslib.py:169`
+    - Evidence: SPEC-009 lines 11, 32-39, 43, 56, 69-88; `.compass/backlog.md:42`; ADR-007 Consequences; SPEC-014 line 34; `capturelib.py:72-73`; `modelslib.py:169`
     - Marks: first-party code, specs and ADRs; 4 sources agree
     - Grade: high
 
@@ -1041,8 +1041,8 @@ Findings below were not read in the primary text. Where a later axis read the pr
 - **Maya.** Headless playblast works (practitioner article) vs is unavailable in standalone (maya-mcp skill); batch render needs a licence (consultancy, mayapy docs) vs does not (forum answers). GG_MayaMCP rejects `mayapy`; abrahamADSK/maya-mcp ships a mayapy path for heavy work, a design difference (A5).
 - **Feedback file location.** Step 6 wants a file tracked in version control; Claude Code routines are account-owned and not repo-tracked, while `.claude/loop.md` and HumanLayer's memory file are repo files (A9).
 - **Actuator skill location.** HumanLayer puts the actuator skill in `.claude/skills/`; A9 and A7 read Compass's self-update as emptying the skills directory, G3's run shows a user skill dir survives and only `.claude/cli/` is emptied (Partial 3, C41).
-- **Update docs vs collisions.** `plugin/skills/update/SKILL.md:49-51` and `self_update.py:43-45` say user-authored skills are never touched, yet a user skill with a shipped name has its `*.md` overwritten (G3, finding 113).
-- **Two update paths, two hook rules.** `self_update.py` replaces only groups running a shipped command or Compass's CLI; the manual `/compass:update` skill still drops every group whose command contains `compass` (`plugin/skills/update/SKILL.md:125-129, 158`; finding 115).
+- **Update docs vs collisions.** `plugin/skills/update/SKILL.md:57-59` and `self_update.py:43-45` say user-authored skills are never touched, yet a user skill with a shipped name has its `*.md` overwritten (G3, finding 113).
+- **Two update paths, two hook rules.** `self_update.py` replaces only groups running a shipped command or Compass's CLI; the manual `/compass:update` skill still drops every group whose command contains `compass` (`plugin/skills/update/SKILL.md:146-150, 158`; finding 115).
 - **Judge voting vs validity.** Voting cuts variance by about 1 to 10 points (finding 98) while a judge can be 97% self-consistent and 0.28 correlated with humans (finding 99); they measure different things (G2).
 - **Temperature 0.** Rating Roulette reports temperature 0 lowering human agreement for two models; other studies say it reduces but does not remove inconsistency (G2).
 - **Graders without error rates.** uReview and G-Research filter with a second LLM (findings 95, 96) while finding 20 records judges without external signals as weak; neither post gives the grader's own error rate (G2).

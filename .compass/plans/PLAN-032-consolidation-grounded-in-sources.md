@@ -66,8 +66,8 @@ This plan implements [[SPEC-002-consolidation-grounded-in-sources]] based on [[R
 
 ## Current State
 
-- `plugin/cli/commands/sync.py:512-528` `_catalog_row` builds a row once; `_sync_catalog` (`:531`) skips any filename already present, so later edits to `score` or `summary` never reach the catalog (7 of 60 rows differ today, [[REVIEW-consolidation-from-sources]] claim 9).
-- `plugin/cli/commands/sync.py:221-234` `_text_preserved`: an index line is dropped only when its text survives in the target.
+- `plugin/cli/commands/sync.py:513-529` `_catalog_row` builds a row once; `_sync_catalog` (`:531`) skips any filename already present, so later edits to `score` or `summary` never reach the catalog (7 of 60 rows differ today, [[REVIEW-consolidation-from-sources]] claim 9).
+- `plugin/cli/commands/sync.py:222-235` `_text_preserved`: an index line is dropped only when its text survives in the target.
 - `plugin/cli/commands/validate.py:42-51,266-330` checks links, frontmatter, caps and sizing; it opens no `file:line` reference and no lesson body. Warning classes render through `PLAIN_SENTENCES` (`:442`).
 - `plugin/cli/lessonslib.py:1-21` documents "sync appends rows but never rewrites existing ones"; `rank` uses `score` as the final tiebreak (`:157-220`).
 - `plugin/skills/lesson-write/SKILL.md` 4a hand-stamps `escalated` onto the catalog row; 4b edits a row in place and moves displaced text to `## Record (preserved)`, checked by nothing.

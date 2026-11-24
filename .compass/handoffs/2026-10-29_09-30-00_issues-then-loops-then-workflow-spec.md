@@ -17,7 +17,7 @@ summary: "PLAN-026 shipped as 0.34.0 and pushed; next: fix the four open GitHub 
 1. `gh issue list --state open` - four open `compass-bug` issues, the first job
 2. [[PLAN-021-control-loops]] - Wave 2 is the second job (TASK-161, 160, 162, 163)
 3. [[specs/pipeline/SPEC-026-control-theory-for-loops]] - the need the loops serve
-4. `plugin/cli/commands/test_checkpoint.py:885` - the BrokenPipeError in issue 48
+4. `plugin/cli/commands/test_checkpoint.py:1040` - the BrokenPipeError in issue 48
 
 ## Session Summary
 PLAN-024 (visual Compass) and PLAN-026 (local additions tell the truth) are done; 0.34.0 is released, installed here, and pushed (GitHub at `42a52b5`). An update now saves hand-edited agents, rules and skills under `.compass/meta/local/kept/`, and `compass overlay --extract` turns them into local additions. TASK-168 and TASK-169 of [[PLAN-022-review-in-obsidian]] were closed as already shipped.

@@ -41,7 +41,7 @@ Aggregates only. Compass agent types in `plugin/templates/agents`; 95 subagent s
 
 Repository mining: an empirical study of the artifact, here the agent definitions, skill files and the transcripts the pilot wrote. The profiler's own session-level code (`token_profile.profile_session`) was re-run per subagent session to get a session-kind by source table, which the saved profiles do not hold. No `grading:` disclosure reached this run, so the findings are marked and ungraded because nobody was asked.
 
-Sources measured: the saved profile folder for run 1 (12 profiles); the folder for the no-web variant is empty, so no comparison with it exists. Weights: output 5.0, cache write 1.25, cache read per model (`bench/overhead/records.py:51-53`).
+Sources measured: the saved profile folder for run 1 (12 profiles); the folder for the no-web variant is empty, so no comparison with it exists. Weights: output 5.0, cache write 1.25, cache read per model (`bench/overhead/records.py:67-69`).
 
 ## Findings
 
@@ -122,7 +122,7 @@ Sources measured: the saved profile folder for run 1 (12 profiles); the folder f
     | reviewer (7) | 3.8% | 2.7% | 12.8% | 0.3% | 2.7% | 0.6% | 24.9% | 7.8% | 43.6% |
     | general-purpose (6) | 0.9% | 12.2% | 0.0% | 0.7% | 14.1% | 0.0% | 18.6% | 7.9% | 45.5% |
     Rows do not sum to 100%: assistant text and meta messages (under 1%) are omitted. "Startup reads" is the tool result of reading the vault index, active list and lessons index.
-    - Re-profiled sessions with `token_profile.profile_session`; weights `bench/overhead/records.py:51-53`
+    - Re-profiled sessions with `token_profile.profile_session`; weights `bench/overhead/records.py:67-69`
     - Marks: transcript; not retracted; not preprint; 0 citations; 1 source; per-kind totals not cross-checked against the saved profiles
 
 12. **Excluding output, skill bodies are 22.6% (reviewer) to 34.5% (researcher) of a subagent's input-side weighted tokens** (confidence: medium)

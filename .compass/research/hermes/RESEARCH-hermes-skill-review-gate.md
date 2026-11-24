@@ -130,12 +130,12 @@ Earlier passes ([[RESEARCH-hermes-memory-mechanics]] finding 10, [[RESEARCH-herm
     - Request: `tmp/review/<id>.request.json` with `id, surface, file, title, return, commit`; several-file requests add `files[{file, why}]`, `session`, `project` (`plugin/cli/reviewlib.py:1-16`, `:217-244`).
     - Verdict: `<id>.verdict.json` with `verdict` `approved` or `changes`, `notes`, optional `comments`, `edited`, `files[{file, read, note, verdict}]` (`plugin/cli/reviewlib.py:17-26`, `:443-461`).
     - On a verdict the CLI prints the JSON, `comment` and `edited` lines, per-file lines, `git diff <commit>` for the reviewed and edited files, and the document text as left (`plugin/cli/commands/review.py:274-291`).
-    - A repeated review of the same document adds `<id>.changes.diff` so the surface can show what changed since the human last saw it (`plugin/cli/commands/review.py:51-58`, `plugin/cli/reviewlib.py:407-425`).
+    - A repeated review of the same document adds `<id>.changes.diff` so the surface can show what changed since the human last saw it (`plugin/cli/commands/review.py:74-81`, `plugin/cli/reviewlib.py:535-553`).
     - Marks: code, owner checked; 1 source
 
 16. **A reviewed file must be committed, inside a `.compass` vault, and inside the surface's root** (confidence: high)
     `_check_documents` refuses a file that is not a file, that has no `.compass` ancestor ("is outside a .compass vault"), that has uncommitted changes, or that is untracked. Both surfaces also require the vault: VS Code finds the folder holding the nearest `.compass` ancestor; Obsidian needs an ancestor with `.obsidian/`. Review files `tmp/review/` sit under the gitignored `.compass/tmp/`.
-    - `plugin/cli/commands/review.py:335-356`, `plugin/cli/reviewlib.py:281-297` (`committed_head`)
+    - `plugin/cli/commands/review.py:491-512`, `plugin/cli/reviewlib.py:409-425` (`committed_head`)
     - `plugin/cli/review_surfaces/vscode.py:38-44`, `plugin/cli/review_surfaces/obsidian.py:55-63`
     - Consequence by code reading: a draft under `.compass/tmp/` is untracked and refused; a SKILL.md under `.claude/skills/` has no `.compass` ancestor and is refused.
     - Marks: code, owner checked; 1 source
@@ -159,16 +159,16 @@ Earlier passes ([[RESEARCH-hermes-memory-mechanics]] finding 10, [[RESEARCH-herm
     - Compass `approved`: the rule defines it as the gate's recommended approve option, with notes and `comment` lines steering what follows (`plugin/templates/rules/compass-pipeline.md:18`). Applying a skill (placing it where skills load) is a step the caller performs; no code in `plugin/cli` does this today.
     - Compass `changes`: notes, comments and the human's edits come back (`edited` lines plus `git diff`); the rule says to apply them and send the document again with a "Since your last review" callout. Hermes has no equivalent verb: reject discards (finding 7).
     - Human edits made in the editor arrive as a diff, which Hermes's staged JSON does not support.
-    - Per-file verdicts in a several-file review apply to each document alone (`plugin/cli/commands/review.py:213-217`, `:240-245`).
+    - Per-file verdicts in a several-file review apply to each document alone (`plugin/cli/commands/review.py:277-281`, `:240-245`).
     - Marks: code read plus rule text; 1 source
 
 20. **When no one answers** (confidence: high for the flow, medium for its use by an unattended pass)
-    - Not claimed within `ACK_SECONDS` (60): the request is withdrawn and the CLI prints `not configured: <surface> did not pick up review <id> ...`; the rule then falls back to `AskUserQuestion` (`plugin/cli/commands/review.py:97-98`, `:294-318`).
+    - Not claimed within `ACK_SECONDS` (60): the request is withdrawn and the CLI prints `not configured: <surface> did not pick up review <id> ...`; the rule then falls back to `AskUserQuestion` (`plugin/cli/commands/review.py:141-142`, `:294-318`).
     - Claimed (`<id>.seen` exists): no limit; the human may answer hours later (`plugin/cli/commands/review.py:60-68`).
     - `--timeout S` bounds the wait and prints `timeout <id>`, exit 1; the code does not cancel the request, so it remains in `--status` as pending (`plugin/cli/commands/review.py:294-318`; `plugin/cli/reviewlib.py:464-480`).
-    - `--no-wait` returns after `requested <id> <file>` and leaves the request pending (`plugin/cli/commands/review.py:410-411`).
-    - A new request for the same document withdraws the older one (`plugin/cli/commands/review.py:394-399`).
-    - The stored pending requests have no expiry in `reviewlib.py`; only orphan `.seen` files age out after an hour (`plugin/cli/reviewlib.py:197-208`).
+    - `--no-wait` returns after `requested <id> <file>` and leaves the request pending (`plugin/cli/commands/review.py:570-571`).
+    - A new request for the same document withdraws the older one (`plugin/cli/commands/review.py:554-559`).
+    - The stored pending requests have no expiry in `reviewlib.py`; only orphan `.seen` files age out after an hour (`plugin/cli/reviewlib.py:325-336`).
     - Marks: code, owner checked; 1 source
 
 21. **The capture worker is a detached headless `claude` child with a bounded run** (confidence: high)
@@ -190,9 +190,9 @@ Earlier passes ([[RESEARCH-hermes-memory-mechanics]] finding 10, [[RESEARCH-herm
 23. **Where Hermes's gate pieces have a Compass counterpart and where none exists** (confidence: medium)
     | Hermes piece | Compass counterpart found |
     |---|---|
-    | `write_approval` on/off boolean | none; `review_editor` in `.compass/meta/plugin.yaml` names the editor, not a gate (`plugin/cli/reviewlib.py:66`) |
+    | `write_approval` on/off boolean | none; `review_editor` in `.compass/meta/plugin.yaml` names the editor, not a gate (`plugin/cli/reviewlib.py:80`) |
     | staged JSON record with replay payload | `tmp/review/<id>.request.json` holds a file path and commit, not a replay payload |
-    | `/skills pending` list | `compass review --status` prints `pending <id> <file>` (`plugin/cli/commands/review.py:179-189`) |
+    | `/skills pending` list | `compass review --status` prints `pending <id> <file>` (`plugin/cli/commands/review.py:243-253`) |
     | `/skills diff <id>` | the document opens in the editor; `<id>.changes.diff` for a repeat review |
     | `[auto]` origin tag | none in a request; `source` is persisted in lesson frontmatter by `lesson-write` |
     | approve replays, reject discards | verdict `approved` / `changes`; applying is the caller's step |

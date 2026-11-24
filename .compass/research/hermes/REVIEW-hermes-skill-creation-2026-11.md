@@ -51,7 +51,7 @@ Approved 2026-11-04: Compass builds automatic skill creation with a review of ev
 
 - Axis 3 finding 20 says `compass review` withdraws a request no surface claims within 60 s. That holds on master at e331edd (`plugin/cli/commands/review.py:98,310`). An approved fix, commit e2fa732 on branch `fix/review-and-numbering` (issue #53), removes it: a request stays open until a verdict, a cancel, a newer request for the same document, or `--timeout`. Axis 5 does not describe the 60 s rule.
 - Consequence for axis 3 finding 21 (open point, low): a background helper can send a draft and end; the request no longer lapses when nobody is at the editor.
-- Per-document verdicts in a review of several documents are being built (issue #54). Axis 3 finding 19 reads per-file verdict handling in the CLI (`plugin/cli/commands/review.py:213-217,240-245`); how far the editor surfaces return them was not checked by any axis.
+- Per-document verdicts in a review of several documents are being built (issue #54). Axis 3 finding 19 reads per-file verdict handling in the CLI (`plugin/cli/commands/review.py:277-281,311-316`); how far the editor surfaces return them was not checked by any axis.
 
 ## Where the sources agree
 
@@ -107,7 +107,7 @@ YES / NO with the axis's confidence; `open` = raised, left unsettled; `-` = not 
 ## Partial (needs attention)
 
 1. **Can `compass review` carry a skill file?** - axis 3 answered, axis 5 left it open
-   - Axis 3 (high, code reading): no. The check refuses a file with no `.compass` ancestor, uncommitted or untracked (`plugin/cli/commands/review.py:335-356`); `.claude/` is gitignored in this repo (`.gitignore:17`).
+   - Axis 3 (high, code reading): no. The check refuses a file with no `.compass` ancestor, uncommitted or untracked (`plugin/cli/commands/review.py:491-512`); `.claude/` is gitignored in this repo (`.gitignore:17`).
    - Axis 5 (medium): listed as unverified, needing a run on a skill path.
    - Why they differ: axis 3 read the validation; axis 5 read only the file header. No axis ran the command.
 2. **Skill trigger default: 10 or 15** - code default 10 (axes 1, 2, 4, high); axis 3 finding 13 cites `skills.creation_nudge_interval: 15` in `cli-config.yaml.example`. The example file sets 15; the code default is 10 (`agent/agent_init.py:1286-1288`).

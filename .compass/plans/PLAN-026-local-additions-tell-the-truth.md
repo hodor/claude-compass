@@ -50,7 +50,7 @@ Read against `684e1f7`; the research is from 2026-08, before the mechanism shipp
 - `plugin/cli/commands/overlay.py:75` skips any target already holding the addition's marker, so an edited addition never reaches the install until a new release replaces the file. Run in a scratch project: the local file changed from v1 to v2, `--apply` reported `skipped`, the install kept v1.
 - `plugin/cli/commands/doctor.py:340-360` runs the check in list mode, where `applied` means "would apply", and counts it as applied: a project whose addition never landed reads `OK 1 applied`. Same scratch run confirmed it.
 - `plugin/cli/commands/self_update.py:310-317` applies the additions and discards the result; the notice at `:425` and `:463` says only the version change.
-- `plugin/cli/commands/self_update.py:294-299` builds the dsh skills and the `AGENTS.md` rules section from the plain shipped source, so dsh never sees a local addition. The update skill's step 4a builds dsh skills from `.claude/skills`, which also turns a project's own skills into `compass-*` copies.
+- `plugin/cli/commands/self_update.py:463-468` builds the dsh skills and the `AGENTS.md` rules section from the plain shipped source, so dsh never sees a local addition. The update skill's step 4a builds dsh skills from `.claude/skills`, which also turns a project's own skills into `compass-*` copies.
 
 ## Desired End State
 

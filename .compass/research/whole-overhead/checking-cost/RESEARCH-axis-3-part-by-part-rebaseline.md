@@ -43,7 +43,7 @@ Repository mining (empirical study of an artifact): the question is how an exist
 
 3. **The only two arms are `compass` and `baseline`; the arm list is a constant, not a parameter.** (confidence: high)
    `records.ARMS = ("compass", "baseline")`; `drive_build` raises on any other arm; `record_session` validates `arm` against it; `stats.py` and `pilot.py` aggregate keyed `{"compass": [...], "baseline": [...]}`. A variant arm (plugin minus one part) has no name, no record value and no aggregate slot.
-   - `bench/overhead/records.py:41`, `:204`; `drive.py:~395-398` (arm check); `stats.py:3-4`; `pilot.py:518`, `:597`
+   - `bench/overhead/records.py:55`, `:204`; `drive.py:~395-398` (arm check); `stats.py:3-4`; `pilot.py:518`, `:597`
    - Marks: code read; n/a; n/a; n/a; 4 sources agree
    - Grade: high
 
@@ -57,7 +57,7 @@ Repository mining (empirical study of an artifact): the question is how an exist
 
 5. **Variant injection path: a committed copy of the repository with one edit under `plugin/`, passed as `repo_root`.** (confidence: medium)
    Because the harness refuses a dirty `plugin/` and records HEAD, an edited variant has to be a commit in a separate clone or worktree; `repo_root` is a parameter of `drive_build` and `run_session`. The driver also pins the project's `plugin.yaml` `commit:` to `git ls-remote origin HEAD` of `repo_root`, so the start-of-session self-update treats the install as current instead of overwriting it; a variant clone therefore needs an `origin` the pin can read. The overwrite-avoidance part is inferred from the pin's stated purpose, not tested.
-   - `bench/overhead/drive.py:224-243` (`remote_head`, `pin_commit`), `:415`, `:534`; `launch.py:192-213`; `plugin/cli/commands/self_update.py:9` (sha-gated update)
+   - `bench/overhead/drive.py:229-248` (`remote_head`, `pin_commit`), `:415`, `:534`; `launch.py:192-213`; `plugin/cli/commands/self_update.py:9` (sha-gated update)
    - Marks: code read plus inference; n/a; n/a; n/a; 2 sources agree
    - Grade: medium
 
@@ -121,7 +121,7 @@ Repository mining (empirical study of an artifact): the question is how an exist
 
 15. **Measured cost of one build today: about 10.1M weighted tokens (compass arm), 5256 s wall, 3 builds per 5-hour window.** (confidence: medium)
     From the second pilot: 12 builds on 3 topics; baseline arm 2.32M weighted; four Compass-arm builds hit the wall-time or turn cap, so the figures are lower bounds. Defaults are caps of 9000 s, 400 turns and 50 USD per build. One station shows the cost of checking: in the pilot the tester sessions took 29.5% and the validator 2.0% of a Compass build's weighted tokens, builder 27.9%.
-    - `RESEARCH-whole-overhead-pilot.md` "Cost and time of one build" and "Where the tokens go"; `bench/overhead/drive.py:79-81`
+    - `RESEARCH-whole-overhead-pilot.md` "Cost and time of one build" and "Where the tokens go"; `bench/overhead/drive.py:84-86`
     - Marks: harness measurement, 12 builds, one run, own pilot; n/a; n/a; n/a; 1 source
     - Grade: medium (measured, small n, capped builds)
 
@@ -137,7 +137,7 @@ Repository mining (empirical study of an artifact): the question is how an exist
     |---|---|---|---|---|
     | builds per arm | 16 | 141 | 393 | 1570 |
     At 3 builds per window and two arms, 16 builds per arm is about 11 windows (55 hours) per part, and 141 is about 94 windows. Six parts (thresholds, phase splits, validator cadence, tester stations, prompt rules, emphasis markers) with one removed arm each share one full-Compass arm, so the arm count is 1 + 6, not 12. Paired repeats of a topic (K) cut variance with a ceiling of 2/3 ([[RESEARCH-axis-7-optimization-loop]] finding 23). A single token-share of the effect is smaller than the whole overhead, so SD / delta is larger than for the whole share; its size is not measured.
-    - `bench/overhead/stats.py:136-160` (formula); `RESEARCH-whole-overhead-pilot.md` (3 builds per window); arithmetic done here
+    - `bench/overhead/stats.py:156-180` (formula); `RESEARCH-whole-overhead-pilot.md` (3 builds per window); arithmetic done here
     - Marks: computed from code formula and one measurement; n/a; n/a; n/a; 1 source
     - Grade: low (the ratio is an assumption)
 

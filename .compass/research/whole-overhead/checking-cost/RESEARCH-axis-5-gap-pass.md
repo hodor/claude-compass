@@ -36,7 +36,7 @@ Repository mining (an empirical study of existing artifacts: agent definitions, 
 2. **Transcripts show the spawn, in 40 of 104 builder sessions** (confidence: high)
    In this repo's project transcripts there are 553 subagent files, 104 of them `builder`. 39 builders made one `Agent` call, 1 made two, 64 made none. 29 of the 40 spawned a diff review (descriptions such as "Review TASK-NNN diff", or type `reviewer`: 27 `general-purpose`, 1 `reviewer`, 1 `pattern-finder`); the rest were "Fresh-eyes ..." document reviews. Builder reports with a "### Code Review" section: 19 of 133 captured builder reports.
    - Subagent `.meta.json` files, `agentType` and `parentAgentId` fields (counted, not quoted).
-   - `plugin/templates/agents/builder.md:103` - report format with the Code Review section.
+   - `plugin/templates/agents/builder.md:109` - report format with the Code Review section.
    - Marks: first-party log, no retraction, not a preprint, no citations, single source type (transcripts + captures agree on direction, differ on count).
    - Grade: high for the counts, medium for what the 64 non-spawn builders did (builder definition text changed over time; the first spawn appears 2026-10-17, the first builder 2026-09-21 by transcript timestamps).
 
@@ -56,7 +56,7 @@ Repository mining (an empirical study of existing artifacts: agent definitions, 
 
 5. **Size of the review share in the sampled builds** (confidence: medium)
    Over the 29 builders that spawned a diff review, summed message usage: builder sessions output 3.74M, cache write 28.5M, cache read 464M, input 9.5k tokens; review children output 0.55M, cache write 4.39M, cache read 16.8M, input 71.6k. With the repo's own sonnet-5-5 weights (output 5, cache write 1.25, cache read 0.05), the children are about 9.1M of about 86.7M weighted, near 10.5%. Caveats: the weights are applied to all rows although the model mix was not checked, and the builder sessions include fix-loop continuations that run after the review.
-   - Weights: `bench/overhead/records.py:51-62` (`OUTPUT_WEIGHT`, `CACHE_WRITE_WEIGHT`, `PRICED_MODELS`).
+   - Weights: `bench/overhead/records.py:67-78` (`OUTPUT_WEIGHT`, `CACHE_WRITE_WEIGHT`, `PRICED_MODELS`).
    - Marks: first-party log, no retraction, not a preprint, no citations, one source.
    - Grade: medium (measured, model mix unchecked, one repo).
 
@@ -93,8 +93,8 @@ Repository mining (an empirical study of existing artifacts: agent definitions, 
 
 10. **Validator output is structured but nearly absent from records** (confidence: high)
    The validator report has a per-task result column and PASS/FAIL, and "Unfixed Bugs" lists. This repo holds one validator subagent transcript and one validator capture; none of the 14 phase summaries lists a validator deviation (all `validator_deviations` empty).
-   - `plugin/templates/agents/validator.md:171,207,213` - results row, unfixed bugs, final Result line.
-   - `plugin/templates/agents/validator.md:112` - unfixed tester bugs become FAIL items.
+   - `plugin/templates/agents/validator.md:183,236,242` - results row, unfixed bugs, final Result line.
+   - `plugin/templates/agents/validator.md:122` - unfixed tester bugs become FAIL items.
    - Phase summaries under vault `tmp/phase-reports/*/phase-summary.yaml` (14 files).
    - Marks: first-party record, no retraction, not a preprint, no citations, one source.
    - Grade: high that validator defects cannot be counted from these records (n = 1).
@@ -109,7 +109,7 @@ Repository mining (an empirical study of existing artifacts: agent definitions, 
 
 12. **No existing record holds counterfactual or seeded ground truth** (confidence: high)
    `bench/overhead` has no step that injects a known defect (the "seeded" in `pilot.py` means seeded topic picks, not defects). Records show what stations reported on builds that ran with all stations on; none records what a station removed would have missed. The two sources that do carry ground truth are the frozen goal lists (an outcome per build) and any defect a human knows in advance (a seeded one).
-   - `bench/overhead/pilot.py:7-8,330-346` - "seeded" means topic picks.
+   - `bench/overhead/pilot.py:7-8,347-363` - "seeded" means topic picks.
    - `.compass/research/whole-overhead/checking-cost/REVIEW-checking-cost.md:108` - same finding earlier, no seeded-defect step.
    - Marks: first-party code, no retraction, not a preprint, no citations, grep for seed/defect/mutant/inject in `bench/overhead` returned only topic-seed lines.
    - Grade: high.

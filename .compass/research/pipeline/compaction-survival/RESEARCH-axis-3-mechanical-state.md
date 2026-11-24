@@ -35,7 +35,7 @@ Grading: allowed. Every finding here rests on code read or commands run locally 
 1. **Files read and edited are exact, with a Read/Edit/Write distinction** (confidence: high)
    Assistant records hold `tool_use` blocks; `Read`, `Edit` and `Write` carry `input.file_path` (Read also `offset`, `limit`; Edit also `old_string`, `new_string`, `replace_all`; Write also `content`). The matching user record carries a `toolUseResult` with `filePath`, `structuredPatch`, `userModified` for edits. Across the sampled sessions every Read/Edit/Write input had `file_path`.
    - Prototype run on a 24 MB session: 27 files read, 47 edited, in 0.29 s.
-   - `plugin/cli/sessionslib.py:154-160` - `_blocks(record, "tool_use")` already extracts these blocks.
+   - `plugin/cli/sessionslib.py:163-169` - `_blocks(record, "tool_use")` already extracts these blocks.
    - Marks: first-party measurement, n/a retraction, n/a preprint, 0 citations, convergent across 3 transcripts
    - Grade: high (measured, repeated)
 
@@ -81,8 +81,8 @@ Grading: allowed. Every finding here rests on code read or commands run locally 
 
 10. **Subagent transcripts are separate files with their own marks** (confidence: high)
     A session `S.jsonl` has a sibling folder `S/subagents/` holding `agent-<id>.jsonl` and `agent-<id>.meta.json` (546 transcripts across the project). Subagent records carry `isSidechain: true` and `agentId`; the meta file carries `agentType`, `description`, `toolUseId`, `spawnDepth`, `model`, `finished`. A main-session assembler that reads only `S.jsonl` sees the Agent call and its result, not the subagent's own Reads and Edits. `sessionslib.subagent_transcripts` already globs these files.
-    - `plugin/cli/sessionslib.py:137-142` - subagent file discovery
-    - `plugin/cli/commands/context_check.py:143,261-262` - `isSidechain` records and events with `agent_id` are skipped
+    - `plugin/cli/sessionslib.py:146-151` - subagent file discovery
+    - `plugin/cli/commands/context_check.py:143,273-274` - `isSidechain` records and events with `agent_id` are skipped
     - Marks: first-party measurement and code read, n/a, n/a, 0, convergent
     - Grade: high
 
@@ -90,7 +90,7 @@ Grading: allowed. Every finding here rests on code read or commands run locally 
 
 11. **Open tasks and the plan are plain-text reads** (confidence: high)
     `.compass/active.md` holds only open work (the sweep moves `[x]` lines out, per `CLAUDE.md`), so `- [ ]` lines are the open tasks: 22 lines, about 150 tokens in this repo. A plan's `- [ ] TASK-NNN` lines give the current phase. The hot path (index, active, lessons index) is already capped at 5,000 tokens ([[SPEC-003-hierarchical-vault-organization]]) and loads at session start, so `active.md` is already in front of a session that restarts; only a mid-session compaction loses it from view.
-    - `plugin/skills/handoff/SKILL.md:24` - handoff already reads the hot path
+    - `plugin/skills/handoff/SKILL.md:26` - handoff already reads the hot path
     - Marks: first-party measurement, n/a, n/a, 0, convergent
     - Grade: high
 

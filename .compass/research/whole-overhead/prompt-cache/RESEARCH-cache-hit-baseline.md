@@ -107,7 +107,7 @@ Repository mining (an empirical study of existing artifacts): the host's local s
 
 11. **What the CLI already reads (reusable for a detector)** (confidence: high)
     - `plugin/cli/commands/context_check.py:140-155` `_used_of` sums `input + cache_creation + cache_read` of a main-agent (`isSidechain` false) assistant message as context size; no hit rate.
-    - `plugin/cli/sessionslib.py:184` `used_tokens` wraps it; `:125` `transcripts_dir`, `:137` `subagent_transcripts`, `:145` `records`, `:176` `entrypoint` already locate a project's transcripts and each session's subagent folder.
+    - `plugin/cli/sessionslib.py:193` `used_tokens` wraps it; `:125` `transcripts_dir`, `:137` `subagent_transcripts`, `:145` `records`, `:176` `entrypoint` already locate a project's transcripts and each session's subagent folder.
     - `plugin/cli/sensorlib.py:65-69` `TOKEN_FIELDS` and `:155` `parse_result` read `cacheReadInputTokens` and `cacheCreationInputTokens` from the headless result's `modelUsage`; `looprunner.py:674` stores them per run in each loop's ledger.
     - `plugin/cli/commands/usage.py:25` records command invocation counts in `.compass/meta/usage.yaml`, nothing about tokens.
     - Nothing computes a hit rate, reads `usage.cache_creation` TTL fields, or reads a subagent's `agentType` meta file. [[RESEARCH-axis-2-attribution]] records the same for the bench harness (`analyze.py` prices cache tokens but `summarize` omits them).

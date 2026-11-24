@@ -68,13 +68,13 @@ This plan implements the compaction-survival need of [[specs/pipeline/SPEC-025-s
 ## Current State
 
 - `plugin/hooks/hooks.json:66-87` - SessionStart holds a `startup` group (`self-update`) and a matcherless group (`capture-check`, which therefore also fires on `compact`); no PreCompact or PostCompact key exists. A grep of `plugin/` for `PreCompact|PostCompact|isCompactSummary|compact_boundary` finds no code.
-- `plugin/cli/sessionslib.py:145-173` - `records`, `_blocks`, `_message_text`: a forward reader that never raises on a malformed record, the base every new reader builds on. `:226-238` counts commits from Bash `tool_use` blocks. Nothing reads Read/Edit/Write `file_path`, the last human prompt, `AskUserQuestion` answers or test output.
+- `plugin/cli/sessionslib.py:154-182` - `records`, `_blocks`, `_message_text`: a forward reader that never raises on a malformed record, the base every new reader builds on. `:226-238` counts commits from Bash `tool_use` blocks. Nothing reads Read/Edit/Write `file_path`, the last human prompt, `AskUserQuestion` answers or test output.
 - `plugin/cli/commands/context_check.py:163-194` - the chunked reverse reader `_records_backward` and `_parse`; `:258-262` passes events carrying `agent_id`/`agent_type`.
 - `plugin/cli/commands/self_update.py:196-255` - `merge_settings` registers every manifest event generically, so a new PreCompact key and a third SessionStart group install with no installer change.
 - `plugin/cli/hostlib.py:45-58` - `DSH_EVENTS` has no PreCompact; `DSH_SKIPPED_COMMANDS` leaves `context-check` out of dsh because dsh hooks get an empty transcript path.
 - `plugin/cli/decisionslib.py:250` - `extract_decisions(text)` parses a document's D-NN bullets.
 - `plugin/skills/handoff/SKILL.md:26-33` runs five git commands by model call; `:47-97` has the model compose every section, Recent Changes, Decisions and Uncommitted Changes included.
-- `bench/overhead/launch.py:364` `run_session` (isolated headless session, `extra_args`), `sandbox.py:58` `new_project`, `records.py:105` `count_tokens`, `token_profile.py:283-296` (reads `compact_boundary` and the `isCompactSummary` record), `attribute.py:198` (finds transcripts holding a compaction). No module builds probes from a transcript.
+- `bench/overhead/launch.py:365` `run_session` (isolated headless session, `extra_args`), `sandbox.py:58` `new_project`, `records.py:105` `count_tokens`, `token_profile.py:283-296` (reads `compact_boundary` and the `isCompactSummary` record), `attribute.py:198` (finds transcripts holding a compaction). No module builds probes from a transcript.
 - `claude --help` on this machine lists `--tools ""` (no built-in tools) and `--autocompact <tokens>`.
 - The Bash tool's environment carries `CLAUDE_CODE_SESSION_ID`, so a command run from a skill can find its own session's transcript.
 

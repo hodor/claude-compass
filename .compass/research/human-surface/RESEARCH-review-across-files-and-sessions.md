@@ -61,7 +61,7 @@ Method: four review tools compared on fixed features from their official docs an
 | 1.2 | The verdict is one answer (`approved` or `changes`, with notes) plus two optional lists: `comments` on other files and `edited` paths. Validation checks only id, verdict word and list types, so extra keys pass. | high | `reviewlib.py:13-18`, `:190-196` |
 | 1.3 | The commit check confirms only the reviewed file is committed and clean; the diff printed after the verdict covers the whole repository. | high | `reviewlib.py:116-132`, `:145-172` |
 | 1.4 | After the verdict the CLI prints the verdict, the comment and edited lines, the diff, then the one reviewed file as the human left it. | high | `review.py:135-164` |
-| 1.5 | The write guard and `--status` know a request by its one file. | high | `reviewlib.py:235-246`; `guard.py:343-361`; `review.py:108-116`; `plugin/cli/tests/test_review.py:274-281` |
+| 1.5 | The write guard and `--status` know a request by its one file. | high | `reviewlib.py:235-246`; `guard.py:343-361`; `review.py:108-116`; `plugin/cli/tests/test_review.py:291-298` |
 | 1.6 | The plugin keeps one card per request, newest first. | high | `main.js:144-155`, `:303-320` |
 | 1.7 | While one file is under review, the human can leave a note on any other markdown file he opens ("On this file"). The card has no order, no "file i of n", no per-file status. | high | `main.js:303-358`, `:372-382`, `:430-437` |
 
