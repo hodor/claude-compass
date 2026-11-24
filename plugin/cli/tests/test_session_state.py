@@ -2178,6 +2178,37 @@ class TaskInProgressTests(StateFixture):
         self.write_transcript(user_human("go"), assistant_text("TASK-3 now."))
         self.assertEqual(list(sections(self.block("--format", "handoff"))), ["Tasks"])
 
+    def test_the_task_own_line_wins_over_an_earlier_line_naming_it_as_a_dependency(self):
+        """Adversarial where: the first open line holding the id anywhere is taken, so the
+        line of a task that depends on the one in progress stands in for it."""
+        self.write_active("# Active", "- [ ] TASK-9: later work - depends_on: TASK-7",
+                          "- [ ] **TASK-7**: the task in hand")
+        self.write_transcript(user_human("go"), assistant_text("TASK-7 next."))
+        self.assertEqual(self.in_progress(self.block()), ["- [ ] **TASK-7**: the task in hand"])
+        self.write_active("# Active", "- [ ] TASK-9: later work - depends_on: TASK-7")
+        self.assertEqual(self.in_progress(self.block()), ["- [ ] TASK-9: later work - depends_on: TASK-7"])
+
+    def test_an_id_inside_a_longer_word_is_not_an_id(self):
+        """Adversarial where: SUBTASK-5 or TASK-5x is read as TASK-5."""
+        self.write_active("# Active", "- [ ] TASK-5: x")
+        self.write_transcript(user_human("go"), assistant_text("SUBTASK-5 and TASK-5x and MYPLAN-3."))
+        self.assertNotIn("Task in progress", sections(self.block()))
+
+    def test_worst_case_with_a_long_task_in_progress_stays_in_budget_with_every_section(self):
+        """Adversarial where: the whole-floor section is not counted against the budget and
+        the block overflows, or it starves a later section."""
+        from commands import session_state
+        state = {"request": "R" * 5000, "tasks": [("- [ ] TASK-60: " + "t" * 400)[:240]] * 60,
+                 "in_progress": "TASK-60", "answers": [("q" * 100, "a" * 100)] * 30,
+                 "documents": [("SPEC-001/D-01: " + "d" * 200)[:140]] * 60,
+                 "edited": [(f"src/{n:04d}_" + "p" * 80, "edited", "x") for n in range(500)],
+                 "read": [(f"r/{n:04d}_" + "p" * 80, "read", "x") for n in range(200)], "starts": {},
+                 "dirty": [f"?? d{n:04d}" + "x" * 60 for n in range(300)],
+                 "test_run": ("pytest", ["line " + "x" * 80] * 8), "branch": ["b @ c"]}
+        text = session_state.render_block(state)
+        self.assertLessEqual(len(text.rstrip("\n")), 7900)
+        self.assertEqual(list(sections(text)), ["Last human request", "Task in progress", *ORDER[1:]])
+
     def test_a_state_dict_without_the_key_renders_as_before(self):
         """Adversarial where: `render_block` requires the new key and a caller building the
         state by hand breaks."""

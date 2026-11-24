@@ -313,15 +313,13 @@ def _last_named_id(transcript):
 
 
 def _in_progress_lines(identifier, tasks):
-    """The open-task line naming `identifier`, else `- <identifier>`; nothing
-    without an id."""
+    """The open-task line whose first id is `identifier`, else the first open
+    line naming it anywhere, else `- <identifier>`; nothing without an id."""
     if not identifier:
         return []
-    named = re.compile(rf"(?<![\w-]){re.escape(identifier)}(?![\w-])")
-    for line in tasks:
-        if named.search(line):
-            return [line]
-    return [f"- {identifier}"]
+    own = [line for line in tasks if _WORK_ID.findall(line)[:1] == [identifier]]
+    named = [line for line in tasks if identifier in _WORK_ID.findall(line)]
+    return (own or named or [f"- {identifier}"])[:1]
 
 
 def _open_tasks(root, at=None):
