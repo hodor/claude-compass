@@ -666,3 +666,11 @@ Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files a
 - [x] TASK-337: `session-state` renders the state as it stood at a compaction boundary - complexity: M, depends_on: none
 - [x] TASK-432: Probe grading takes the pilot's three lessons, and the report gains paired intervals - complexity: M, depends_on: none
 - [x] TASK-433: The probe gains `mechanical` and `compass` arms - complexity: M, depends_on: TASK-337, TASK-432
+
+## 2026-11-23
+
+### PLAN-033 Wave 2: the mechanical block as a probe arm, and the arm comparison
+
+Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, files and checks are there. TASK-339 runs headless model sessions and waits for the human's go.
+
+- [x] TASK-339: The arm comparison on every recorded compaction (needs the human's go) - complexity: S, depends_on: TASK-433

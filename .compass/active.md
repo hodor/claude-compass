@@ -78,12 +78,6 @@ Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files a
 
 - [ ] TASK-412: The planted-defect probe, the spec's KPI. `bench/verification/planted.py` builds a throwaway Python project in a temp folder with its... - complexity: M, depends_on: TASK-411
 
-## PLAN-033 Wave 2: the mechanical block as a probe arm, and the arm comparison
-
-Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, files and checks are there. TASK-339 runs headless model sessions and waits for the human's go.
-
-- [x] TASK-339: The arm comparison on every recorded compaction (needs the human's go) - complexity: S, depends_on: TASK-433
-
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].
