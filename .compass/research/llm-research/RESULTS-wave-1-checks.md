@@ -6,7 +6,7 @@ approved: 2026-11-22
 area: methodology
 tags: [build, manual-verification, release, subscription]
 created: 2026-11-22
-updated: 2026-11-22
+updated: 2026-11-24
 summary: "release 0.37.0 ships the first build stages of PLAN-032 to PLAN-036; this page holds their manual checks, the git snapshot choice from the prompt-cache plan, and the four runs that need your go before they spend subscription usage"
 ---
 
@@ -19,7 +19,7 @@ flowchart LR
   R --> S["Four runs on your subscription"]
 ```
 
-> [!success] Approved 2026-11-22: the four results read right and the compaction comparison is worth running. No git snapshot option and no run was ticked, so the snapshot stays on and none of the four runs is allowed yet.
+> [!success] Approved 2026-11-22: the four results read right and the compaction comparison is worth running. On 2026-11-24 the human chose option 1, the snapshot off by default, and allowed all four runs.
 
 ## What shipped
 
@@ -44,7 +44,7 @@ Each plan builds in stages, a stage being a set of tasks built, tested and merge
 
 Claude Code puts the branch, `git status` and recent commits at the start of every session and subagent, and its settings key `includeGitInstructions: false` turns that off. That snapshot is what breaks the prompt cache first in 90% of session pairs. No Compass agent, skill, rule or hook reads it; handoff, pr-describe, validator and debug run git themselves. Turning it off loses that startup view and Claude Code's built-in commit instructions, and costs one full cache rewrite on the first launch after the switch.
 
-- [ ] 1. Off by default in projects Compass installs into; a project that sets `includeGitInstructions: true` keeps it (recommended)
+- [x] 1. Off by default in projects Compass installs into; a project that sets `includeGitInstructions: true` keeps it (recommended)
 - [ ] 2. Off in this repo only first; `compass cache --compare` then measures the first-request cache rate before and after, and shipping is decided on that gain
 - [ ] 3. Keep the snapshot
 
@@ -52,7 +52,7 @@ Claude Code puts the branch, `git status` and recent commits at the start of eve
 
 Each runs real headless Claude Code sessions. Tick the ones you allow.
 
-- [ ] **TASK-350:** 30 planned tasks, each sized S, M or L by 6 sessions that see the task text with its size removed. It measures whether that size letter is steady enough to decide how much checking a task gets ([[PLAN-034-checking-cost-follows-task-and-model]]).
-- [ ] **TASK-351 and TASK-352:** two benchmark builds that check the test setup (one without the post-build tester, one with the 80% stop set low), then a pilot of 12 builds, 3 topics each built twice with full Compass and twice without the post-build tester, measuring whether dropping that tester loses any of the goals a build must meet and what it saves ([[PLAN-034-checking-cost-follows-task-and-model]]).
-- [ ] **TASK-412:** three throwaway tasks with known defects planted in them, checked by a live validator, to see whether it catches them ([[PLAN-036-verification-beyond-test-pass]]).
-- [ ] **TASK-428:** the same set of builds run twice, with the default 5-minute and with a 1-hour cache lifetime for subagents, to decide whether Compass should set the 1-hour lifetime ([[PLAN-035-prompt-cache-is-a-design-input]]).
+- [x] **TASK-350:** 30 planned tasks, each sized S, M or L by 6 sessions that see the task text with its size removed. It measures whether that size letter is steady enough to decide how much checking a task gets ([[PLAN-034-checking-cost-follows-task-and-model]]).
+- [x] **TASK-351 and TASK-352:** two benchmark builds that check the test setup (one without the post-build tester, one with the 80% stop set low), then a pilot of 12 builds, 3 topics each built twice with full Compass and twice without the post-build tester, measuring whether dropping that tester loses any of the goals a build must meet and what it saves ([[PLAN-034-checking-cost-follows-task-and-model]]).
+- [x] **TASK-412:** three throwaway tasks with known defects planted in them, checked by a live validator, to see whether it catches them ([[PLAN-036-verification-beyond-test-pass]]).
+- [x] **TASK-428:** the same set of builds run twice, with the default 5-minute and with a 1-hour cache lifetime for subagents, to decide whether Compass should set the 1-hour lifetime ([[PLAN-035-prompt-cache-is-a-design-input]]).
