@@ -19,28 +19,38 @@ depends_on: ["[[plans/PLAN-033-compaction-keeps-the-session-state]]", "[[researc
 ```mermaid
 flowchart LR
     P["29 recorded compactions"] --> Q["questions frozen from the history before each one"]
-    Q --> A1["host-summary"]
-    Q --> A2["mechanical"]
-    Q --> A3["compass"]
-    Q --> A4["none"]
+    Q --> A1["host-summary: the host's own summary"]
+    Q --> A2["mechanical: the state block alone"]
+    Q --> A3["compass: summary, then state block"]
+    Q --> A4["none: nothing carried"]
     A1 --> G["scored by script"]
     A2 --> G
     A3 --> G
     A4 --> G
-    G --> D["paired difference from host-summary, per probe type"]
+    G --> D["each arm's score minus host-summary's, per question type"]
 ```
 
-> [!question] You decide
-> Which of the Later tasks of [[plans/PLAN-033-compaction-keeps-the-session-state]] to run next. The numbers point four ways:
-> 1. **Revise the state block (recommended first; not yet a task).** The block names edited files only when its size budget leaves room after the open tasks and decisions: 12 of 29 blocks end before the files section, and across all 29 the block lists 94 of the 583 files the questions expect. The block alone scores worse than the host summary on the pooled state score, and fixing the order or caps costs a rerun of two arms, no new arm.
-> 2. **The `before` arm, TASK-434 (recommended second).** It gives the ceiling every other arm is read against; without it, 0.45 for the host summary has no frame.
-> 3. **The `handoff` arm, TASK-338.** Worth running once the block is revised, so the handoff is compared with the best block.
-> 4. **The judge, TASK-340 (recommended last).** The misses that remain are a wrong task id and a missing file, which exact match already grades; a judge helps free-text recall and decision, which have 9 and 13 points.
+> [!IMPORTANT]
+> You decide: which next step of the plan Compaction Keeps the Session State ([[plans/PLAN-033-compaction-keeps-the-session-state]]) runs first. Recommended order:
+> 1. **Revise the state block** so it always lists edited files.
+> 2. **Run the `before` arm (TASK-434)**, the best-case reference.
+> 3. **Run the `handoff` arm (TASK-338)** against the revised block.
+> 4. **Add a judge (TASK-340)** for free-text answers.
 >
-> The order is my recommendation; say if the handoff arm should come before the revision.
+> The reasons for this order are in [[#Options for the next step]].
 
-> [!summary] Result
-> Adding the state block to the host summary names more of the edited files (0.52 against 0.45 over the session, 0.64 against 0.54 over the latest stretch, both intervals clear of zero) at about 2,000 more tokens. The block alone carries 2,095 tokens, 60% fewer than the host summary's 5,254, and scores lower than the host summary on every type except decision; only the pooled state score is clearly worse. Recall has too few points for any verdict.
+> [!NOTE] Result
+> Adding the state block (the session state Compass writes out mechanically) to the host summary (the summary the host program writes at a compaction) names more of the edited files (0.52 against 0.45 over the session, 0.64 against 0.54 over the latest stretch, both intervals clear of zero) at about 2,000 more tokens. The block alone carries 2,095 tokens, 60% fewer than the host summary's 5,254, and scores lower than the host summary on every question type except decision; only the pooled state score (recall, continuation and decision averaged together) is clearly worse. Recall has too few points for any verdict. Every term is defined in [[#Terms]] and [[#Method]].
+
+## Terms
+
+- **Compaction**: the moment the host (the program running the model session) shrinks a long session's history to fit the model's context. A **recorded compaction**, or **point**, is one such moment saved from a real session, with the history as it stood just before.
+- **Host summary**: the summary the host itself writes at a compaction; after it, the model sees this summary in place of the history.
+- **State block**: a text Compass builds from the session transcript and git history with no model call: the last request, open tasks, decisions, files edited and read, uncommitted changes, last test run and branch.
+- **Probe**: one question about the session before the compaction, asked to a fresh model holding only a carried text. Its answer is scored by script against what the history shows.
+- **Arm**: one choice of carried text. Every arm is asked the same probes, so arms compare directly.
+- **Carried tokens**: how much text an arm hands the model, in tokens.
+- **Pilot**: the earlier, smaller run of these probes ([[research/pipeline/compaction-survival/RESEARCH-probe-pilot]]).
 
 ## Method
 
@@ -51,11 +61,22 @@ Each arm gives a fresh model with no tools the same questions about a recorded c
 - **mechanical**: the state block Compass renders from the transcript and git history as they stood at that compaction, with no model call.
 - **compass**: the host summary followed by the state block, the order a Compass session holds them after a compaction. At a subagent compaction it carries the summary alone, since the session-start hook prints nothing there.
 
-Probe types: `artifact` is the share of the edited files named, over the whole session; `artifact-recent` the same over the edits since the previous compaction; `recall` an error line or failed-test count from a failing tool result; `continuation` the task or plan id in hand; `decision` the option the human last chose; `state` the mean of a point's recall, continuation and decision scores. A paired interval is the 95% bootstrap interval of the mean difference from host-summary over the points both arms were asked, resampling points with replacement.
+Probe types (each scored from 0 to 1):
 
-The pool is 29 of the 30 recorded points. The 8 pilot points keep the pilot's host-summary and none replies, regraded under the current recall rule; the other 21 were asked in all four arms. The 30th point has no state block, since its working folder is gone, so it is left out of every arm. Every point asked rendered a block: no point is no-state in any arm.
+- `artifact`: the share of the files edited over the whole session that the answer names.
+- `artifact-recent`: the same share, counting only the files edited since the previous compaction (the latest stretch of the session).
+- `recall`: an error line or failed-test count from a failing tool result.
+- `continuation`: the task or plan id in hand.
+- `decision`: the option the human last chose.
+- `state`, also called the **pooled state score**: the mean of a point's recall, continuation and decision scores, which pools those three small types into one larger sample.
+
+A **paired interval** is the 95% bootstrap interval of the mean difference from host-summary over the points both arms were asked, resampling points with replacement. In plain words: each point is scored under both arms, the differences are averaged, and the interval is the range that average would likely fall in on another sample of points. An interval entirely above zero means the arm reliably beats the host summary.
+
+The pool is 29 of the 30 recorded points. The 8 pilot points keep the pilot's host-summary and none replies, graded under the same recall rule as the rest; the other 21 were asked in all four arms. The 30th point has no state block, since its working folder is gone, so it is left out of every arm. Every point asked rendered a block, so no point in any arm lacks a state block (a **no-state** point).
 
 ## Report
+
+`points` counts the points that asked that probe type; `unparsed` counts answers the scoring script could not read.
 
 | arm | probe | points | mean score | unparsed | mean carried tokens |
 |---|---|---|---|---|---|
@@ -146,9 +167,18 @@ Better means the interval's low end is above 0, worse its high end is below 0, o
 
 The state block ends at the first section that does not fit its 7,900-character budget, in this order: last request, open tasks, decisions, files edited, files read, uncommitted changes, last test run, branch. Of the 29 blocks, 12 end after the decisions, so they name no edited file; 17 hold a files section. Across all 29, the block lists 94 of the 583 edited files the artifact questions expect. The block's low artifact score therefore follows from what it leaves out, and a score for a block that always lists its files is not yet measured.
 
+## Options for the next step
+
+The open steps of [[plans/PLAN-033-compaction-keeps-the-session-state]], in the recommended order:
+
+1. **Revise the state block (recommended first; not yet a task in the plan).** The block names edited files only when its size budget leaves room after the open tasks and decisions: 12 of 29 blocks end before the files section, and across all 29 the block lists 94 of the 583 files the questions expect. The block alone scores worse than the host summary on the pooled state score, and fixing the order or caps costs a rerun of two arms, no new arm.
+2. **The `before` arm, TASK-434 (recommended second).** The model holds the history itself, with no compaction, which gives the ceiling every other arm is read against; without it, 0.45 for the host summary has no frame.
+3. **The `handoff` arm, TASK-338.** A headless session writes a handoff (notes to resume a session) from the history before the compaction, and that handoff is the carried text. Worth running once the block is revised, so the handoff is compared with the best block. Running it before the revision is the alternative order.
+4. **The judge, TASK-340 (recommended last).** A judge is a model that grades free-text answers. The misses that remain are a wrong task id and a missing file, which exact match (the script comparing the answer to the expected text) already grades; a judge helps free-text recall and decision, which have 9 and 13 points.
+
 ## Cost
 
-100 sessions: 62 on Opus 5.5, 32 on Haiku 5.5 and 6 on Sonnet 5. The Opus 5.5 sessions weigh 965,175 tokens (raw: 124 input, 39,718 output, 40,238 cache read, 611,559 cache write); the pilot's 10 Opus sessions, whose replies are reused here, weighed 125,341.
+100 sessions: 62 on Opus 5.5, 32 on Haiku 5.5 and 6 on Sonnet 5. Each session is one fresh model answering one arm's probes at one point; sessions are tool-less, so the model only reads and answers. Weighted tokens count each kind of token at its price relative to the others, from a price table. The Opus 5.5 sessions weigh 965,175 tokens (raw: 124 input, 39,718 output, 40,238 cache read, 611,559 cache write); the pilot's 10 Opus sessions, whose replies are reused here, weighed 125,341.
 
 The price table holds no weight for Haiku 5.5 or Sonnet 5, so the weighted total undercounts the run: it counts none of the 38 sessions on those models. Their raw tokens:
 
@@ -159,5 +189,5 @@ The price table holds no weight for Haiku 5.5 or Sonnet 5, so the weighted total
 
 ## Not yet run
 
-- The `handoff` arm (a headless session writes a handoff from the history before the compaction) and the `before` arm (the model holds the history itself, the KPI's reference) are not yet run, so the comparison holds no handoff or before-the-boundary figure.
+- The `handoff` arm (a headless session writes a handoff from the history before the compaction) and the `before` arm (the model holds the history itself, the reference the compaction-survival measure is read against) are not yet run, so the comparison holds no handoff or before-the-boundary figure.
 - Recall has 9 points and no verdict; it waits for more points or for a judge that grades free text.
