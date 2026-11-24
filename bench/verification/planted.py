@@ -59,6 +59,7 @@ UNMET = {"partial", "missing", "contradicts"}
 JUDGE_STATUSES = ("met", "partial", "missing", "contradicts", "unrequested")
 JUDGED_TASK = "TASK-003"
 JUDGE_TIMEOUT_SECONDS = 1800
+COMMAND_TIMEOUT_SECONDS = 900
 
 SPEC_PATH = ".compass/specs/SPEC-001-word-tally.md"
 PLAN_PATH = ".compass/plans/PLAN-001-word-tally.md"
@@ -270,10 +271,10 @@ const routes = { "/top": (text) => core.top(text) };
 
 exports.createServer = () =>
   http.createServer((req, res) => {
-    const url = new URL(req.url, "http://localhost");
-    const route = routes[url.pathname];
+    const [path, query = ""] = req.url.split("?");
+    const route = Object.hasOwn(routes, path) ? routes[path] : undefined;
     res.statusCode = route ? 200 : 404;
-    res.end(route ? route(url.searchParams.get("text") || "") : "");
+    res.end(route ? route(new URLSearchParams(query).get("text") || "") : "");
   });
 """
 
@@ -355,13 +356,17 @@ def _run(argv, cwd, *, what, check=True, env=None):
     """Run `argv` with no console window; returns the CompletedProcess (text output).
 
     `env` is the whole environment of the process; without it the caller's own
-    environment minus the git location variables.
+    environment minus the git location variables. A command that runs longer than
+    `COMMAND_TIMEOUT_SECONDS` raises ProbeError.
     """
     try:
         done = subprocess.run(
             [str(a) for a in argv], cwd=str(cwd), capture_output=True, text=True,
             encoding="utf-8", errors="replace", env=env or _clean_env(), creationflags=NO_WINDOW,
+            timeout=COMMAND_TIMEOUT_SECONDS,
         )
+    except subprocess.TimeoutExpired as error:
+        raise ProbeError(f"{what}: no exit within {COMMAND_TIMEOUT_SECONDS}s") from error
     except OSError as error:
         raise ProbeError(f"{what}: cannot run {argv[0]}: {error}") from error
     if check and done.returncode != 0:
