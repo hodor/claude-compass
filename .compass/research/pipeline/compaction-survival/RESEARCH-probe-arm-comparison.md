@@ -6,7 +6,7 @@ approved: 2026-11-24
 confidence: medium
 area: methodology
 tags: [compaction, probes, session-continuity, handoff, bench, kpi]
-summary: "29 recorded compactions, four arms: with the revised state block, which lists the edited files in every block, the host summary plus the block names more edited files than the summary alone (0.67 against 0.45, interval [0.12, 0.32]) at 50% more tokens; the block alone carries 48% fewer tokens, matches the summary on files and loses on continuation and the pooled state score"
+summary: "29 recorded compactions, four arms: with the state block in its third form, which lists the edited files and names the task in progress, the block alone answers which task was in progress at 0.89 against the host summary's 0.37 at 48% fewer tokens, and the host summary plus the block names more edited files (0.68 against 0.45) and more chosen options (0.92 against 0.54); the pooled state score is not distinguishable for either"
 created: 2026-11-23
 updated: 2026-11-24
 git_branch: "master"
@@ -34,7 +34,9 @@ flowchart LR
 > [!success] Approved 2026-11-24: the next steps run in the recommended order: revise the state block so it always lists edited files, then the `before` arm (TASK-434), the `handoff` arm (TASK-338), and the judge (TASK-340). The reasons are in [[#Options for the next step]].
 
 > [!NOTE] Result
-> Adding the state block (the session state Compass writes out mechanically) to the host summary (the summary the host program writes at a compaction) names more of the edited files (0.52 against 0.45 over the session, 0.64 against 0.54 over the latest stretch, both intervals clear of zero) at about 2,000 more tokens. The block alone carries 2,095 tokens, 60% fewer than the host summary's 5,254, and scores lower than the host summary on every question type except decision; only the pooled state score (recall, continuation and decision averaged together) is clearly worse. Recall has too few points for any verdict. Every term is defined in [[#Terms]] and [[#Method]].
+> The state block (the session state Compass writes out mechanically) was measured in three forms. In its latest form ([[#Rerun with the task in progress]]), which lists the edited files and names the task in progress, the block alone names the task the session was on far more often than the host summary (the summary the host program writes at a compaction): 0.89 against 0.37, at 2,722 tokens against 5,254. The host summary plus the block names more edited files (0.68 against 0.45) and more chosen options (0.92 against 0.54). On the pooled state score (recall, continuation and decision averaged together) neither is distinguishable from the host summary. Recall has too few points for any verdict.
+>
+> In the first run, which the sections from [[#Report]] to [[#Options for the next step]] describe, adding the block to the host summary named more of the edited files (0.52 against 0.45 over the session, 0.64 against 0.54 over the latest stretch, both intervals clear of zero) at about 2,000 more tokens. The block alone carried 2,095 tokens, 60% fewer than the host summary's 5,254, and scored lower than the host summary on every question type except decision; only the pooled state score was clearly worse. Every term is defined in [[#Terms]] and [[#Method]].
 
 ## Terms
 
@@ -45,6 +47,12 @@ flowchart LR
 - **Arm**: one choice of carried text. Every arm is asked the same probes, so arms compare directly.
 - **Carried tokens**: how much text an arm hands the model, in tokens.
 - **Pilot**: the earlier, smaller run of these probes ([[research/pipeline/compaction-survival/RESEARCH-probe-pilot]]).
+- **Headless**: run by a script with no person at the keyboard.
+- **Main session and subagents**: the session the human talks to is the main session; a subagent is a helper session it starts for one job, with a transcript of its own.
+- **Budget and floor**: the state block is held to 7,900 characters, its budget. A section's floor is the share of that budget it always gets when it has that much to say.
+- **Open tasks**: the unchecked task lines of the project's task list, in the order that list holds them, which is oldest first.
+- **Task id**: an id of the form TASK-N (one task) or PLAN-N (one plan).
+- **First run and reruns**: the block arms were asked three times, with three forms of the block: the first run, the rerun with the revised block, and the rerun with the task in progress. The `host-summary` and `none` replies were asked once.
 
 ## Method
 
@@ -181,10 +189,9 @@ The price table holds no weight for Haiku 5.5 or Sonnet 5, so the weighted total
 | Haiku 5.5 | 32 | 64 | 9,360 | 20,768 | 250,606 |
 | Sonnet 5 | 6 | 12 | 562 | 21,090 | 91,955 |
 
-## Not yet run
+## Arms on the reference page
 
-- The `handoff` arm (a headless session writes a handoff from the history before the compaction) and the `before` arm (the model holds the history itself, the reference the compaction-survival measure is read against) are not yet run, so the comparison holds no handoff or before-the-boundary figure.
-- Recall has 9 points and no verdict; it waits for more points or for a judge that grades free text.
+The `before` arm (the model holds the history before the compaction itself, the reference the compaction-survival measure is read against), the `handoff` arm (a session holding that history writes a handoff, and the questions are asked against it) and the judge (a model that grades the free-text answers) are reported in [[research/pipeline/compaction-survival/RESEARCH-probe-reference-arms]]. Recall has 9 points and no verdict in any arm.
 
 ## Rerun with the revised block
 
@@ -229,3 +236,52 @@ Verdicts against `host-summary`, by the rule in [[#Verdicts]]:
 No-state points: 0 in both arms.
 
 **Cost.** 58 sessions: 36 on Opus 5.5, 16 on Haiku 5.5 and 6 on Sonnet 5. The Opus sessions weigh 850,530 tokens (raw: 72 input, 62,223 output, 23,364 cache read, 430,540 cache write). Haiku 5.5 and Sonnet 5 have no weight in the price table; their raw tokens are 32 input, 5,823 output, 10,384 cache read and 136,323 cache write (Haiku), and 12 input, 560 output, 21,090 cache read and 91,965 cache write (Sonnet).
+
+## Rerun with the task in progress
+
+> [!NOTE] Result
+> With a line naming the task in progress, the block alone names the task the session was on at 17 of 19 points (0.89, against 0.05 with the revised block and 0.37 for the host summary; interval [0.26, 0.79]). The host summary plus the block, `compass`, gains less (0.42), because with both texts the answerer mostly follows the summary. The pooled state score is not distinguishable from the host summary's for either arm. The line is built by the same rule that sets the expected answer, so this run shows that the answerer reads the line; whether that rule picks the task the human meant is not measured.
+
+**Why the revised block lost continuation.** The continuation question asks for the task id the assistant last named as the work in hand. With the revised block, the block-alone answers named it at 1 of 19 points against 4 in the first run. Three points went from right to wrong; the stored blocks and replies at those points show why:
+
+- At one point the task's line was gone. The open tasks list oldest first, and the revised block gives the characters left over to files edited before open tasks, so that section was cut to its 2,000-character floor (2,226 characters whole in the first run) and the task in hand, near the end of the list, fell off.
+- At the other two the task's line stood unchanged. One block was byte-identical in both runs and the answer still changed; at the other the open tasks matched and the answer named a plan id taken from a file name in the longer files list.
+
+Underneath all three: no line said which open task was in hand. The expected id sat somewhere in 11 of the 19 first-run blocks and 9 of the revised ones, yet the answers named it at 4 and 1.
+
+**What changed in the block.** A section `## Task in progress` prints right after the last human request. It holds the last task id in the assistant's own messages of the main session (not the human's messages, tool calls, tool results or subagents), shown as its open-task line when the open tasks hold one, else the id alone. It is never cut. Rendered at the 29 points, it names the expected id at 18 of the 19 points with a continuation question. Nothing else changed: the revised block's floors, its files order and its 7,900-character budget stay.
+
+The same 29 points, frozen questions and models; only `mechanical` and `compass` were asked again, 58 sessions. Files listed by the blocks: 350 of 583 expected (`compass` 342 of 575, since it carries no block at the subagent points), as in the rerun with the revised block.
+
+| arm | probe | points | first run | revised block | task in progress | minus host-summary | 95% paired interval |
+|---|---|---|---|---|---|---|---|
+| compass | artifact | 29 | 0.52 | 0.67 | 0.68 | 0.23 | [0.14, 0.34] |
+| compass | artifact-recent | 24 | 0.64 | 0.73 | 0.74 | 0.20 | [0.07, 0.34] |
+| compass | recall | 9 | 0.11 | 0.11 | 0.11 | 0.00 | too few points |
+| compass | continuation | 19 | 0.32 | 0.32 | 0.42 | 0.05 | [-0.11, 0.21] |
+| compass | decision | 13 | 0.85 | 0.85 | 0.92 | 0.38 | [0.15, 0.62] |
+| compass | state | 20 | 0.47 | 0.47 | 0.53 | 0.09 | [-0.07, 0.22] |
+| mechanical | artifact | 29 | 0.28 | 0.52 | 0.47 | 0.02 | [-0.22, 0.25] |
+| mechanical | artifact-recent | 24 | 0.31 | 0.70 | 0.66 | 0.12 | [-0.10, 0.33] |
+| mechanical | recall | 9 | 0.00 | 0.00 | 0.00 | -0.11 | too few points |
+| mechanical | continuation | 19 | 0.21 | 0.05 | 0.89 | 0.53 | [0.26, 0.79] |
+| mechanical | decision | 13 | 0.38 | 0.31 | 0.31 | -0.23 | [-0.69, 0.23] |
+| mechanical | state | 20 | 0.26 | 0.12 | 0.53 | 0.09 | [-0.13, 0.31] |
+
+The last two columns compare the task-in-progress run with `host-summary`. The host summary's means are those of the first run: artifact 0.45, artifact-recent 0.54, recall 0.11, continuation 0.37, decision 0.54, state 0.44. `mechanical`'s files score moved from 0.52 to 0.47 with the same files listed, the spread of asking the same text twice.
+
+Verdicts against `host-summary`, by the rule in [[#Verdicts]]:
+
+- **mechanical**: better on continuation (low end 0.26); not distinguishable on artifact, artifact-recent, decision and state; recall gets no verdict.
+- **compass**: better on artifact (low end 0.14), artifact-recent (low end 0.07) and decision (low end 0.15, where it sat exactly at zero in both earlier runs); not distinguishable on continuation and state; recall gets no verdict.
+
+**The summary leads when both texts are present.** At 9 points `mechanical` named the right task and `compass` did not; at 8 of them `compass` gave the same answer as `host-summary`.
+
+| arm | mean carried tokens | against host-summary's 5,254 |
+|---|---|---|
+| mechanical | 2,722 | 48% fewer |
+| compass | 7,865 | 50% more |
+
+No-state points: 0 in both arms.
+
+**Cost.** 58 sessions: 36 on Opus 5.5, 16 on Haiku 5.5 and 6 on Sonnet 5. The Opus sessions weigh 862,788 tokens (raw: 72 input, 64,598 output, 23,364 cache read, 430,846 cache write). Haiku 5.5 and Sonnet 5 have no weight in the price table; their raw tokens are 32 input, 6,178 output, 10,384 cache read and 136,329 cache write (Haiku), and 12 input, 568 output, 21,090 cache read and 91,961 cache write (Sonnet).

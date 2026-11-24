@@ -308,3 +308,15 @@ def test_transcript_tail_is_read_from_the_newest_transcript_of_the_project(
     result = run(project, repo, private_root, fake_cmd)
 
     assert result.status == expected
+
+
+def test_a_windows_session_opens_no_console_window_and_runs_in_its_own_group(monkeypatch):
+    """Adversarial where: a headless session on Windows starts with only a new process
+    group, so each one opens a terminal window on the human's desktop."""
+    import subprocess
+    monkeypatch.setattr(launch.sys, "platform", "win32")
+    monkeypatch.setattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x200, raising=False)
+    monkeypatch.setattr(subprocess, "CREATE_NO_WINDOW", 0x8000000, raising=False)
+    flags = launch._group_options()["creationflags"]
+    assert flags & 0x8000000
+    assert flags & 0x200

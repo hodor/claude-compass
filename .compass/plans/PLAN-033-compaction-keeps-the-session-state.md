@@ -43,7 +43,11 @@ flowchart LR
   end
   T339 --> T341
   T339 --> T436
-  T338 --> L[Later: judge]
+  subgraph W4[Wave 4: the task in progress and the judge]
+    T437[TASK-437 block names the task in progress] --> T340[TASK-340 judge for free-text answers]
+  end
+  T435 --> T437
+  T338 --> T340
 ```
 
 
@@ -59,7 +63,7 @@ This plan implements the compaction-survival need of [[specs/pipeline/SPEC-025-s
 
 **Wave 3** follows the comparison's verdict. The block is revised so its size budget never drops the edited files, and the block arms run again on every point. Then the two arms that need the history before the compaction: the `before` arm, where the model holds that history itself, as the KPI's "as well as before" reference, and the `handoff` arm, where a session holding it writes a handoff that the questions are asked against. A prototype first answers whether a session rebuilt at the compaction point loads headless.
 
-**Later** adds a judge for free-text answers.
+**Wave 4** follows the block rerun's one loss, on the question of which task was in progress: the block gains a line naming it, and the block arms run again. Then a judge, a model session that grades the free-text answers (an error line, a task id, a chosen option) against their reference where exact matching misses a paraphrase, grades every stored reply, with a sample of its verdicts set aside for the human to grade by hand.
 
 ## Current State
 
@@ -259,9 +263,32 @@ The tasks run in this order: TASK-341, TASK-435, TASK-436, TASK-434, TASK-338. T
 
 **Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before the next wave. Skip if the human asked for `all-phases` mode.
 
+### Wave 4 (detailed)
+
+The tasks run in this order: TASK-437, TASK-340. Both start headless model sessions on the human's subscription; he approved those runs with the comparison, whose approved order ends with the judge. Probe runs go 4 asks at a time.
+
+- [x] TASK-437: The state block names the task in progress - complexity: S, depends_on: TASK-341, files: [plugin/cli/commands/session_state.py, plugin/cli/tests/test_session_state.py, .compass/research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison.md]
+  - A section `## Task in progress` prints right after the last human request: the last TASK-N or PLAN-N id in the text blocks of the main transcript's own assistant records (sidechain records, tool calls, tool results and the human's messages never count), as the open-task line whose first id it is, else the first open line naming it, else `- <id>`. With no id the section is left out. It takes its whole length before any other section's floor. The handoff format is unchanged.
+  - Then `ask` with `mechanical` and `compass` on all 29 points, `grade` and `report`. The comparison page gains a section `## Rerun with the task in progress`.
+  - Automated verification: `python -m pytest plugin/cli/tests/test_session_state.py -q` passes: the last id named wins over an earlier one and prints between the request and the open tasks; a plan id or a finished task prints alone, and TASK-1 never matches TASK-12; ids in the human's prompt, tool calls, tool results, sidechain records and subagent transcripts are ignored; a task at the end of 60 open tasks, which the open-tasks floor cuts, still appears; `--until` takes the id from before the boundary; the task's own line wins over an earlier line naming it as a dependency; SUBTASK-5 is no id; a worst-case state with the section stays under 7,900 characters with every section present; the handoff format holds no such section. `python -m pytest plugin/cli/tests -q` passes.
+  - Manual verification: the human reads the rerun section.
+  - Entry point: `python plugin/cli/compass session-state --transcript <transcript> --until <boundary index> --at <commit>`
+
+- [x] TASK-340: A judge for the free-text probes, with a hand-graded agreement sample - complexity: M, depends_on: TASK-437, files: [bench/overhead/probe_judge.py, bench/overhead/tests/test_probe_judge.py, bench/overhead/launch.py, bench/overhead/tests/test_launch.py, bench/overhead/README.md, .compass/research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md]
+  - `probe_judge.py judge <point>` runs one tool-less session on Opus 5.5 per point. Its prompt holds each recall, continuation and decision question, the reference answer (the frozen expected value) and every distinct answer the point's current replies give, numbered in an order shuffled per point, with no arm named. Each answer is graded `right` (1.0), `partly` (0.5) or `wrong` (0.0); a reply missing a number or holding another word stores nothing. `judge.json` beside the point's grades holds the items and one verdict per arm and probe; an earlier one moves to `superseded/<n>/`.
+  - `report` prints per arm and probe type the judged mean beside the script's over the same answers, the paired intervals against `host-summary`, and how often judge and script agree; no answer, reference or path. Verdicts whose reply changed since judging are left out and counted.
+  - `sample --size 40` writes, under the private root, a sheet of judged answers drawn round robin over the probe types, each with its question, reference and a blank `mark N:` line, no arm and no verdict, and the map to its point and arms beside it outside the sheet's folder; an existing sheet is replaced only with `--replace`. `agreement` compares the marks with the judge's verdicts and reports pending while none is marked [the `grade.py` pattern: a neutral sheet, a key kept apart, counts only].
+  - Every headless session starts with no console window on Windows: `launch` adds `CREATE_NO_WINDOW` to the new process group.
+  - Then `judge` on all 29 points and `sample --size 40`. The reference-arms page gains a section `## The judge`.
+  - Automated verification: `python -m pytest bench/overhead/tests bench/fountain/tests -q -p no:cacheprovider` passes: equal answers from two arms are one item; labels do not follow the arm order and are stable; a missing or list answer is judged as its text or as no answer; the prompt holds the questions and references, no arm name, `--tools ""`, the judge's model and `--strict-mcp-config`; a missing label or an unknown verdict stores nothing; a second and third judge move the first aside; the report leaks no answer and counts agreement with the script; the sheet shows no arm or verdict and its map sits outside its folder; a marked sheet is not overwritten; agreement is pending on an unmarked sheet and skips an unreadable mark. `grep -n "## The judge" .compass/research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md` finds the section.
+  - Manual verification: the human marks the 40 answers on the sheet; `python bench/overhead/probe_judge.py agreement` then prints the agreement.
+  - Entry point: `python bench/overhead/probe_judge.py judge <point>`
+
+**Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before the next wave. Skip if the human asked for `all-phases` mode.
+
 ## Later (intent only)
 
-- [ ] TASK-340: A judge for decision and free-text continuation probes, reference answer in its prompt, with a one-time hand-graded agreement sample in the `grade.py` pattern - files: [bench/overhead/probe.py, bench/overhead/grade.py]
+Nothing is held for later.
 
 ## Risks
 
@@ -298,3 +325,11 @@ Elaborated 2026-11-24 from Wave 2's verified outcome, [[research/pipeline/compac
 - **TASK-434, changed: detail added, order moved ahead of TASK-338.** The comparison recommends `before` second, as the ceiling the host summary's 0.45 is read against. It takes TASK-436's route when the rebuilt session loads, rendered text otherwise.
 - **TASK-338, changed: detail added.** It runs after the block revision, as the comparison recommends, so the handoff is compared with the revised block. The handoff is written by a tool-less session from the skill's template and the command's mechanical sections, since a session rebuilt in a sandbox has none of the original project's files for the skill's tools to read.
 - TASK-340 stays in Later, last in the approved order.
+
+## Wave 4 elaborated
+
+Elaborated 2026-11-24 from Wave 3's verified outcomes: [[research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison#Rerun with the revised block]] and [[research/pipeline/compaction-survival/RESEARCH-probe-reference-arms]].
+
+- **TASK-437, added** from the rerun's one loss: the block alone fell on continuation from 0.21 to 0.05. Comparing the stored blocks and replies at the points that flipped found the cause. Three points went from right to wrong. At one, the open-tasks section, cut to its floor because the characters left now go to files edited first, dropped the line of the task in hand, since `active.md` lists open tasks oldest first. At the other two the task's line stood unchanged (one block was byte-identical between runs) and the answerer named another id from the block. Underneath both: no line says which open task is in hand, so across both runs the expected id sat in 11 and 9 of the 19 blocks yet was answered at 4 and 1. The section names the id the session itself named last.
+- **TASK-340, changed: from intent to detail.** The judge lives in its own file, `probe_judge.py`, beside `probe.py`, and reads the probe's stored files; the hand-graded sample follows `grade.py`'s pattern without changing it. The sample is written and its grading waits on the human, so the agreement is reported as pending.
+

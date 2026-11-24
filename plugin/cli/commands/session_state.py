@@ -1,9 +1,10 @@
 """`compass session-state` - the session's state block, built with no model call.
 
 The block lists what a model needs after a compaction and what a handoff
-records mechanically: the human's last request, the open tasks of
-`.compass/active.md`, the decisions taken (answers to questions put to the
-human, and the D-NN decisions of every vault document the session read or
+records mechanically: the human's last request, the task in progress (the
+last task or plan id the session's assistant text named, with its open-task
+line), the open tasks of `.compass/active.md`, the decisions taken (answers
+to questions put to the human, and the D-NN decisions of every vault document the session read or
 edited), the files edited and read, the uncommitted changes outside
 `.compass/`, the last test run, and the branch with its short commit. Each
 comes from the session transcript (and its subagent transcripts), the vault
@@ -65,12 +66,12 @@ TEST_LINE_CHARS = 200
 CAPS = {"tasks": 25, "answers": 8, "decisions": 20, "edited": 80, "read": 25, "dirty": 30}
 WHOLE = None
 FLOORS = {
-    "Last human request": WHOLE, "Open tasks": 2000, "Decisions": 1200, "Files edited": 3000,
-    "Files read": 300, "Uncommitted changes": 300, "Last test run": 400, "Branch": WHOLE,
+    "Last human request": WHOLE, "Task in progress": WHOLE, "Open tasks": 2000, "Decisions": 1200,
+    "Files edited": 3000, "Files read": 300, "Uncommitted changes": 300, "Last test run": 400, "Branch": WHOLE,
 }
 FLOOR_ORDER = (
-    "Last human request", "Branch", "Files edited", "Open tasks", "Decisions", "Last test run",
-    "Files read", "Uncommitted changes",
+    "Last human request", "Task in progress", "Branch", "Files edited", "Open tasks", "Decisions",
+    "Last test run", "Files read", "Uncommitted changes",
 )
 EXTEND_ORDER = (
     "Files edited", "Open tasks", "Decisions", "Files read", "Uncommitted changes", "Last test run",
@@ -79,6 +80,7 @@ _MORE = re.compile(r"^\.\.\. and (\d+) more$")
 GIT_TIMEOUT = 30
 BLOCK_TITLE = "Compass session state"
 _OPEN_TASK = re.compile(r"^- \[ \] ")
+_WORK_ID = re.compile(r"\b(?:TASK|PLAN)-\d+\b")
 _EDIT_TOOLS = ("Edit", "Write", "MultiEdit")
 
 PRE_COMPACT_INSTRUCTIONS = """\
@@ -295,6 +297,31 @@ def _edited_first_by_main(touched, main):
     return [t for t in edited if t[2] in main] + [t for t in edited if t[2] not in main]
 
 
+def _last_named_id(transcript):
+    """The last TASK-N or PLAN-N id in the text blocks of the main transcript's
+    own assistant records, or None. Sidechain records, tool calls, tool results
+    and the human's messages never count."""
+    found = None
+    for record in sessionslib.records(transcript):
+        if record.get("type") != "assistant" or record.get("isSidechain") is True:
+            continue
+        for block in _blocks(record, "text"):
+            ids = _WORK_ID.findall(block.get("text") or "") if isinstance(block.get("text"), str) else []
+            if ids:
+                found = ids[-1]
+    return found
+
+
+def _in_progress_lines(identifier, tasks):
+    """The open-task line whose first id is `identifier`, else the first open
+    line naming it anywhere, else `- <identifier>`; nothing without an id."""
+    if not identifier:
+        return []
+    own = [line for line in tasks if _WORK_ID.findall(line)[:1] == [identifier]]
+    named = [line for line in tasks if identifier in _WORK_ID.findall(line)]
+    return (own or named or [f"- {identifier}"])[:1]
+
+
 def _open_tasks(root, at=None):
     if at:
         text = _git(root, "show", f"{at}:./.compass/active.md") or ""
@@ -388,6 +415,7 @@ def gather(root, transcript, at=None):
     return {
         "request": _safe(None, sessionslib.last_human_request, transcript) if has_transcript else None,
         "tasks": _open_tasks(root, at),
+        "in_progress": _safe(None, _last_named_id, transcript) if has_transcript else None,
         "answers": answers,
         "documents": _safe([], _document_decisions, touched, root, at),
         "edited": _edited_first_by_main(touched, _safe(set(), _main_edits, transcript) if has_transcript else set()),
@@ -423,6 +451,7 @@ def block_sections(state):
     """`[(name, lines)]` in survival order, empty sections left out."""
     sections = [
         ("Last human request", _request_lines(state["request"])),
+        ("Task in progress", _in_progress_lines(state.get("in_progress"), state["tasks"])),
         ("Open tasks", _capped(state["tasks"], CAPS["tasks"])),
         ("Decisions", _decision_lines(state["answers"], state["documents"])),
         ("Files edited", _capped([f"- {d}" for d, _, _ in state["edited"]], CAPS["edited"])),
