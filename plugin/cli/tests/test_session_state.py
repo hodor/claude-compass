@@ -75,7 +75,7 @@ STATE_FIXTURE = FIXTURES / "state-session.jsonl"
 SESSION_ID = "11111111-2222-3333-4444-555555555555"
 
 ORDER = [
-    "Last human request", "Task in progress", "Open tasks", "Decisions", "Files edited", "Files read",
+    "Last human request", "Open tasks", "Decisions", "Files edited", "Files read",
     "Uncommitted changes", "Last test run", "Branch",
 ]
 HANDOFF_HEADINGS = ["Tasks", "Recent Changes", "Decisions", "Uncommitted Changes"]
