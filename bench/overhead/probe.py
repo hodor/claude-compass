@@ -6,7 +6,9 @@ the history before a boundary, a set of questions with their expected answers;
 `ask` puts the questions to a fresh tool-less session that carries one arm's
 text: the host's own summary (the `isCompactSummary` record after the boundary),
 the state block `compass session-state` renders at the boundary, both (summary
-first), or nothing; `grade` scores the reply against the frozen answers;
+first), or nothing; the re-compaction arms compact the history rebuilt as a
+session again under a PreCompact hook and carry the summary that writes,
+followed by the block; `grade` scores the reply against the frozen answers;
 `report` aggregates the grades per arm and probe type.
 
 Transcripts are read and never written. Everything else is stored under
@@ -48,9 +50,13 @@ import topics
 from launch import default_private_root
 from topics import SessionError
 
-ARMS = ("host-summary", "none", "mechanical", "compass", "before", "handoff")
+ARMS = ("host-summary", "none", "mechanical", "compass", "before", "handoff", "recompact", "recompact-task")
 # The arms whose carried text includes the state block.
 BLOCK_ARMS = ("mechanical", "compass")
+# The arms that compact the rebuilt session again under a PreCompact hook: the
+# hook prints `compass session-state --hook`'s PreCompact text for the rebuilt
+# transcript (`recompact-task`) or for a transcript naming no id (`recompact`).
+RECOMPACT_ARMS = ("recompact", "recompact-task")
 EDIT_TOOLS = ("Edit", "Write", "MultiEdit")
 RECALL_CAP = 2
 PROBE_TYPES = ("artifact", "artifact-recent", "recall", "continuation", "decision", "state")
@@ -461,11 +467,12 @@ def _carried_text(point):
     raise NoSummary("the transcript holds no compact summary after the boundary")
 
 
-def _run_quiet(command, *, cwd=None, env=None):
-    """(exit code, stdout) of `command`, or None when it cannot start or times out."""
+def _run_quiet(command, *, cwd=None, env=None, stdin=b""):
+    """(exit code, stdout) of `command` fed `stdin`, or None when it cannot start
+    or times out."""
     try:
         done = subprocess.run(
-            command, cwd=cwd, env=env, capture_output=True, timeout=STATE_TIMEOUT,
+            command, cwd=cwd, env=env, input=stdin, capture_output=True, timeout=STATE_TIMEOUT,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
     except (OSError, subprocess.SubprocessError):
@@ -635,6 +642,131 @@ def _ask_handoff(point, key, model, repo_root, root, claude_cmd, parent_env):
     }
 
 
+COMPACT_MESSAGE = {"type": "user", "message": {"role": "user", "content": "/compact"}}
+# The environment variables the probe's own `session-state` call drops, so the
+# command reads the sandbox project and the rebuilt transcript it is handed.
+HOOK_DROPPED = ("CLAUDE_PROJECT_DIR", "CLAUDE_CODE_SESSION_ID", "COMPASS_WORKER_SESSION")
+
+
+def _sandbox_active(project, point, key):
+    """Write into `project/.compass/active.md` the file as it stood at the point's
+    boundary commit; the `.compass` folder is made either way, so the command run
+    in `project` takes it as the vault."""
+    history, boundary, _ = _history(point)
+    cwd = key["cwd"] if isinstance(key.get("cwd"), str) else _last_cwd(history)
+    (Path(project) / ".compass").mkdir(parents=True, exist_ok=True)
+    commit = _commit_at_boundary(cwd, boundary)
+    if commit is None:
+        return
+    found = _run_quiet(["git", "-C", cwd, "show", f"{commit}:.compass/active.md"])
+    if found is not None and found[0] == 0:
+        (Path(project) / ".compass" / "active.md").write_text(found[1], encoding="utf-8")
+
+
+def _pre_compact_text(repo_root, project, transcript, session, parent_env):
+    """What `compass session-state --hook` prints for a PreCompact event on
+    `transcript`, run in `project`. Raises SessionError when it prints nothing."""
+    env = dict(os.environ if parent_env is None else parent_env)
+    for name in HOOK_DROPPED:
+        env.pop(name, None)
+    event = {
+        "hook_event_name": "PreCompact", "trigger": "manual", "session_id": session,
+        "transcript_path": str(transcript), "cwd": str(project), "custom_instructions": "",
+    }
+    command = [sys.executable, str(Path(repo_root) / "plugin" / "cli" / "compass"), "session-state", "--hook"]
+    done = _run_quiet(command, cwd=str(project), env=env, stdin=json.dumps(event).encode("utf-8"))
+    if done is None or done[0] != 0 or not done[1].strip():
+        raise SessionError("no PreCompact text")
+    return done[1].replace("\r\n", "\n")
+
+
+def _hook_settings(project, text):
+    """Write `text` and a settings file whose PreCompact hook prints it into
+    `project`; return the settings file's path."""
+    folder = Path(project)
+    printed = folder / "precompact.txt"
+    printed.write_text(text, encoding="utf-8")
+    code = "import sys;sys.stdout.buffer.write(open(sys.argv[1],'rb').read())"
+    command = f'"{_slash(sys.executable)}" -c "{code}" "{_slash(printed)}"'
+    settings = folder / "precompact-settings.json"
+    topics.write_json(settings, {"hooks": {"PreCompact": [{"hooks": [{"type": "command", "command": command}]}]}})
+    return settings
+
+
+def _new_summary(path, start):
+    """The text of the first compact summary after the first compact boundary at or
+    past line `start` of the session file `path`, or None."""
+    lines = Path(path).read_bytes().decode("utf-8", errors="replace").split("\n")
+    seen = False
+    for line in lines[start:]:
+        record = _record(line)
+        if record is None:
+            continue
+        if _is_boundary(record):
+            seen = True
+        elif seen and record.get("isCompactSummary") is True:
+            text = _text_of((record.get("message") or {}).get("content"))
+            if text.strip():
+                return text
+    return None
+
+
+def _ask_recompact(point, arm, key, model, repo_root, root, claude_cmd, parent_env):
+    """The stored record of a re-compaction arm: the point's rebuilt session is
+    resumed with `/compact` under a PreCompact hook printing the arm's text, and a
+    fresh session answers from the summary that compaction wrote followed by the
+    state block, as the `compass` arm holds them. A subagent point compacts with no
+    hook and carries no block, as a Compass subagent does; any other point with no
+    block stores `"no_state": true` and starts no session."""
+    subagent = _is_subagent_point(point)
+    block = None
+    if not subagent:
+        block = _state_block(point, key, repo_root, parent_env)
+        if block is None:
+            return {"point": point, "arm": arm, "no_state": True}
+    project = sandbox.new_project(root / "probe-projects")
+    session = rebuild(point, project, private_root=root)
+    transcript = root / "claude-config" / "projects" / launch.encode_cwd(Path(project)) / f"{session}.jsonl"
+    written = len(transcript.read_bytes().split(b"\n")) - 1
+    text = ""
+    extra = ["--resume", session, "--input-format", "stream-json", "--tools", "", "--model", model]
+    if not subagent:
+        _sandbox_active(project, point, key)
+        if arm == "recompact-task":
+            source = transcript
+        else:
+            source = Path(project) / ".compass" / "no-ids.jsonl"
+            source.write_text("", encoding="utf-8")
+        text = _pre_compact_text(repo_root, project, source, session, parent_env)
+        extra += ["--settings", str(_hook_settings(project, text))]
+    compaction = launch.run_session(
+        project, json.dumps(COMPACT_MESSAGE) + "\n", repo_root=repo_root, private_root=root,
+        claude_cmd=claude_cmd, parent_env=parent_env, extra_args=extra, timeout=SESSION_TIMEOUT,
+    )
+    if compaction.status != launch.DONE:
+        raise SessionError(compaction.status)
+    summary = _new_summary(transcript, written)
+    if summary is None:
+        raise SessionError("no summary")
+    carried = "\n\n".join(part.rstrip() for part in (summary, block) if part is not None)
+    answer_project = sandbox.new_project(root / "probe-projects")
+    result = launch.run_session(
+        answer_project, _prompt(carried, key["probes"]), repo_root=repo_root, private_root=root,
+        claude_cmd=claude_cmd, parent_env=parent_env,
+        extra_args=["--tools", "", "--model", model], timeout=SESSION_TIMEOUT,
+    )
+    if result.status != launch.DONE:
+        raise SessionError(result.status)
+    stored = {
+        "point": point, "arm": arm, "reply": _reply_text(result.events),
+        "tokens": records.count_tokens(result.events), "precompact": text, "summary": summary,
+        "compaction_tokens": _resumed_tokens(compaction.events, model),
+    }
+    if block is not None:
+        stored["block"] = block
+    return stored
+
+
 def _resumed_tokens(events, model):
     """{model: {kind: tokens}} of a resumed session, from its last result event's
     `usage`: that event's `modelUsage` also counts the usage the resumed history
@@ -728,6 +860,11 @@ def ask(point, arm, *, repo_root, private_root=None, claude_cmd=None, parent_env
     if arm == "handoff":
         root = Path(private_root) if private_root is not None else default_private_root()
         stored = _ask_handoff(point, key, model, repo_root, root, claude_cmd, parent_env)
+        _store_ask(point, arm, stored, private_root)
+        return stored
+    if arm in RECOMPACT_ARMS:
+        root = Path(private_root) if private_root is not None else default_private_root()
+        stored = _ask_recompact(point, arm, key, model, repo_root, root, claude_cmd, parent_env)
         _store_ask(point, arm, stored, private_root)
         return stored
     summary = _carried_text(point) if arm in ("host-summary", "compass") else None
@@ -1009,6 +1146,30 @@ def _files_listed_lines(folders):
     return lines
 
 
+def _summary_naming_lines(folders):
+    """One line per re-compaction arm with a stored summary: the points whose new
+    summary names the continuation probe's expected id, against the points with a
+    continuation probe and a stored summary."""
+    lines = []
+    for arm in RECOMPACT_ARMS:
+        named = total = 0
+        for folder in folders:
+            ask_path, key_path = folder / f"ask-{arm}.json", folder / "key.json"
+            if not ask_path.is_file() or not key_path.is_file():
+                continue
+            summary = topics.read_json(ask_path).get("summary")
+            key = topics.read_json(key_path)
+            item = next((p for p in key.get("probes", []) if p.get("type") == "continuation"), None)
+            if not isinstance(summary, str) or item is None:
+                continue
+            total += 1
+            ids = {found.upper() for found in _ID_ANY_CASE.findall(summary)}
+            named += 1 if str(item["expected"]).upper() in ids else 0
+        if total:
+            lines.append(f"summaries naming the expected task id, {arm}: {named} of {total}")
+    return lines
+
+
 def report(*, private_root=None):
     """A markdown table of the stored grades, per arm and probe type, followed by one
     table per arm other than the reference arm holding its paired differences."""
@@ -1061,6 +1222,8 @@ def report(*, private_root=None):
     lines += [f"no-state points, {arm}: {count}" for arm, count in sorted(no_state.items()) if count]
     listed = _files_listed_lines(folders)
     lines += [""] + listed if listed else []
+    naming = _summary_naming_lines(folders)
+    lines += [""] + naming if naming else []
     return "\n".join(lines) + "\n"
 
 

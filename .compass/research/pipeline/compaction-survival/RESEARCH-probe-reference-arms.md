@@ -5,7 +5,7 @@ status: complete
 confidence: medium
 area: methodology
 tags: [compaction, probes, session-continuity, handoff, bench, kpi]
-summary: "29 recorded compactions: the model holding the history scores 0.62 on edited files and 0.68 on continuation, the host summary keeps 73% and 54% of those; a handoff written from the history scores like the host summary plus the state block; a model judge of the free-text answers agrees with exact matching on 233 of 246 and changes no verdict, its agreement with hand grading pending"
+summary: "29 recorded compactions: the model holding the history scores 0.62 on edited files and 0.68 on continuation, the host summary keeps 73% and 54% of those; a handoff written from the history scores like the host summary plus the state block; a model judge of the free-text answers agrees with exact matching on 233 of 246 and changes no verdict, its agreement with hand grading pending; compacting again with the task in progress named in the instructions lifts the summary plus the block on continuation from 0.42 to 0.74, but a control compacted without that line scores 0.63 and the two are not distinguishable"
 created: 2026-11-24
 updated: 2026-11-24
 git_branch: "build/plan-033-w3"
@@ -189,3 +189,69 @@ So exact matching understates the decision answers most: the judge raises every 
 **The agreement sample.** 40 judged answers (14 continuation, 13 recall, 13 decision) are on a grading sheet in the probe's private store, each with its question, reference answer and a blank mark, showing neither the arm nor the judge's verdict. The judge's agreement with the human's marks is pending his grading.
 
 **Cost.** 20 sessions on Opus 5.5, weighing 154,312 tokens (raw: 40 input, 1,399 output, 12,980 cache read, 117,302 cache write).
+
+## The task named in the compaction instructions
+
+```mermaid
+flowchart LR
+    R["rebuilt session"] --> C1["compacted again: instructions name the task"]
+    R --> C0["compacted again: same instructions, no task line"]
+    C1 --> A1["recompact-task: new summary, then the block"]
+    C0 --> A0["recompact: new summary, then the block"]
+```
+
+> [!NOTE] Result
+> A fresh compaction whose instructions name the task in progress lifts the summary plus the block on continuation from 0.42 (`compass`) to 0.74, and the summaries name the task at 19 of 19 points. Most of that gain comes from compacting again, not from the task line: the control, compacted under the same instructions without it, scores 0.63, and the difference between the two (0.11, interval [-0.11, 0.32]) is not distinguishable from zero. The block alone still answers continuation best (0.89).
+
+**What changed in the plugin.** Before a compaction, Compass's PreCompact hook prints instructions telling the host's summarizer what to keep. It now ends them, when the session named a task, with one more line: "The task in progress is TASK-N: its open-task line. Name it, with its id, in the summary as the work in hand." The id is the one the state block's task-in-progress line names.
+
+**How it was measured.** The recorded summaries were written before this line existed, so each point's history, rebuilt as a session, was compacted again headless (`/compact` on the resumed session) with the hook registered for that session. A fresh tool-less session then answered the frozen questions holding the new summary followed by the state block, the two texts a Compass session holds after a compaction. A compaction today differs from the recorded one in more than the instructions (host version, the history it reads), so a control arm compacted each point the same way with the task line left out. The arms:
+
+- `recompact-task`: compacted with the task line, then summary plus block.
+- `recompact`: the control, compacted under the same instructions without the task line, then summary plus block.
+
+At subagent points both compacted with no instructions and carried no block, since Compass's hooks print nothing for a subagent. One point (Haiku 5.5, edited files only) failed to compact under the control in five tries, the host reporting an empty summary; its `recompact` score is missing, so that arm has 28 points on artifact. A 30th frozen point with no commit at its boundary was a no-state point in both arms, as in every block arm.
+
+| probe | points | host-summary | compass | mechanical | before | recompact | recompact-task |
+|---|---|---|---|---|---|---|---|
+| artifact | 29 | 0.45 | 0.68 | 0.47 | 0.62 | 0.67 (108%) | 0.70 (113%) |
+| artifact-recent | 24 | 0.54 | 0.74 | 0.66 | 0.82 | 0.82 (100%) | 0.80 (98%) |
+| recall | 9 | 0.11 | 0.11 | 0.00 | 0.11 | 0.00 | 0.00 |
+| continuation | 19 | 0.37 | 0.42 | 0.89 | 0.68 | 0.63 (93%) | 0.74 (109%) |
+| decision | 13 | 0.54 | 0.92 | 0.31 | 0.77 | 0.69 (90%) | 0.54 (70%) |
+| state | 20 | 0.44 | 0.53 | 0.53 | 0.63 | 0.52 (83%) | 0.53 (84%) |
+
+The percentages are shares of `before`. `mechanical` and `compass` hold the block in its third form.
+
+Paired differences, mean and 95% paired interval:
+
+| probe | pairs | recompact-task minus recompact | recompact-task minus compass | recompact minus compass | recompact-task minus host-summary | recompact-task minus mechanical | recompact-task minus before |
+|---|---|---|---|---|---|---|---|
+| artifact | 29 | 0.02 [-0.02, 0.07] | 0.02 [-0.08, 0.14] | -0.00 [-0.12, 0.12] | 0.26 [0.14, 0.38] | 0.23 [0.06, 0.42] | 0.09 [0.03, 0.16] |
+| artifact-recent | 24 | -0.01 [-0.08, 0.03] | 0.07 [-0.06, 0.21] | 0.08 [-0.03, 0.21] | 0.27 [0.13, 0.41] | 0.14 [-0.01, 0.31] | -0.02 [-0.05, 0.01] |
+| recall | 9 | 0.00, too few points | -0.11, too few points | -0.11, too few points | -0.11, too few points | 0.00, too few points | -0.11, too few points |
+| continuation | 19 | 0.11 [-0.11, 0.32] | 0.32 [0.11, 0.53] | 0.21 [0.05, 0.42] | 0.37 [0.11, 0.63] | -0.16 [-0.32, 0.00] | 0.05 [-0.16, 0.26] |
+| decision | 13 | -0.15 [-0.38, 0.00] | -0.38 [-0.62, -0.15] | -0.23 [-0.46, 0.00] | 0.00 [-0.46, 0.46] | 0.23 [0.00, 0.46] | -0.23 [-0.62, 0.23] |
+| state | 20 | 0.02 [-0.11, 0.17] | 0.00 [-0.17, 0.16] | -0.02 [-0.16, 0.10] | 0.09 [-0.12, 0.31] | 0.00 [-0.08, 0.08] | -0.10 [-0.29, 0.08] |
+
+The artifact pairs against `recompact` are 28. Verdicts by the rule in [[#Terms]]:
+
+- **The task line itself** (`recompact-task` against `recompact`): not distinguishable on any type. Decision's high end sits exactly at zero.
+- **Compacting again** (`recompact` against `compass`): better on continuation (low end 0.05), not distinguishable elsewhere; decision's high end sits at zero.
+- **`recompact-task` against `compass`**: better on continuation, worse on decision, not distinguishable elsewhere.
+- **`recompact-task` against `host-summary`**: better on artifact, artifact-recent and continuation.
+- **`recompact-task` against the block alone**: better on artifact; continuation's high end sits at zero; decision's low end sits at zero.
+- **`recompact-task` against `before`**: better on artifact, not distinguishable elsewhere.
+
+**The summaries already named the task.** The recorded host summaries name the expected id at 18 of the 19 points with a continuation question; the control's new summaries at 17 of 19, the task-line arm's at 19 of 19. So a summary that leaves the task out was never the main cause. The summaries name many ids, and the answerer picked another one: at 4 of the 5 points `recompact-task` answered wrong, its instructions had named the right task.
+
+**The summary leads less often.** At the 17 points where the block alone named the right task, `compass` named another at 9, `recompact` at 5 and `recompact-task` at 3.
+
+| arm | mean carried tokens | summary length, characters |
+|---|---|---|
+| recompact | 6,756 | 4,789 to 27,091, mean 10,528 |
+| recompact-task | 6,626 | 4,185 to 28,375, mean 10,382 |
+
+The instructions with the task line ran up to 669 characters, under the 1,500-character limit the hook keeps to.
+
+**Cost.** 114 sessions: 56 for `recompact` and 58 for `recompact-task`, half compactions and half answerers; the control's failed tries are not counted. The host reports no usage for a `/compact` call, so the compactions' cost is not measured; each reads the point's history once, as the `before` arm does (210,378 carried tokens per point on average). The answerers on Opus 5.5 weigh 903,908 tokens (raw: 72 input, 63,215 output, 23,364 cache read, 469,274 cache write); Haiku 5.5 (30 input, 3,717 output, 9,735 cache read, 146,635 cache write) and Sonnet 5 (12 input, 723 output, 21,090 cache read, 111,353 cache write) have no weight in the price table.

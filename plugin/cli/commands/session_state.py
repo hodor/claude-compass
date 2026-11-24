@@ -29,7 +29,8 @@ edited first. A cut section ends `... and N more`.
 `handoff` prints the four sections the handoff template carries, each
 omitted when empty. `--hook` reads one event from stdin (and only under this
 flag): SessionStart with source `compact` prints the block as additional
-context; PreCompact prints the instructions the summary follows. Subagent
+context; PreCompact prints the instructions the summary follows, ending with
+a line naming the task in progress when the transcript names one. Subagent
 events and capture-worker sessions print nothing. Every path exits 0.
 """
 
@@ -92,6 +93,8 @@ When summarizing this conversation, keep these, in this order:
 5. The next step.
 Compass re-injects the open tasks, the file lists and the git state after the compaction, so spend the summary on these five.
 """
+PRE_COMPACT_TASK = "Name it, with its id, in the summary as the work in hand."
+PRE_COMPACT_CAP = 1500
 
 
 def _cut(text, limit):
@@ -607,6 +610,36 @@ def _cut_transcript(transcript, until, folder):
     return cut
 
 
+def _event_transcript(options, event, root):
+    """The `--transcript` path, else the event's `transcript_path`, resolved as
+    the command resolves a transcript."""
+    transcript = options["transcript"]
+    if not transcript and isinstance(event.get("transcript_path"), str):
+        transcript = event["transcript_path"]
+    return _resolve_transcript(transcript, root)
+
+
+def _pre_compact_text(transcript, root):
+    """The PreCompact instructions: the five kept items, then, when the transcript
+    names a task or plan id in the assistant's own text, a line naming it, the id
+    `## Task in progress` prints, followed by the rest of the open-task line that
+    starts with that id when `active.md` holds one. The text stays
+    under PRE_COMPACT_CAP characters; any failure reading the id leaves the five."""
+    try:
+        identifier = _last_named_id(transcript) if transcript is not None else None
+    except Exception:
+        identifier = None
+    if not identifier:
+        return PRE_COMPACT_INSTRUCTIONS
+    lines = _in_progress_lines(identifier, _safe([], _open_tasks, root))
+    own = re.match(rf"- \[ \] {re.escape(identifier)}\b:?\s*(.*)$", lines[0]) if lines else None
+    task = own.group(1).strip() if own else ""
+    head = PRE_COMPACT_INSTRUCTIONS + f"The task in progress is {identifier}"
+    room = PRE_COMPACT_CAP - len(head) - len(PRE_COMPACT_TASK) - 8
+    named = f"{head}: {_cut(task, room)}" if task else head
+    return f"{named.rstrip('.')}. {PRE_COMPACT_TASK}\n"
+
+
 def _hook(options, root):
     """The hook's stdout text for the event on stdin, empty when the event is
     not one this command answers."""
@@ -618,14 +651,10 @@ def _hook(options, root):
         return ""
     name = event.get("hook_event_name")
     if name == "PreCompact":
-        return PRE_COMPACT_INSTRUCTIONS
+        return _pre_compact_text(_event_transcript(options, event, root), root)
     if name != "SessionStart" or event.get("source") != "compact":
         return ""
-    transcript = options["transcript"]
-    if not transcript and isinstance(event.get("transcript_path"), str):
-        transcript = event["transcript_path"]
-    transcript = _resolve_transcript(transcript, root)
-    context = render_block(gather(root, transcript))
+    context = render_block(gather(root, _event_transcript(options, event, root)))
     return json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": context}})
 
 
