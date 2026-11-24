@@ -31,3 +31,5 @@ Implements every D of [[ADR-018-graph-queries-jit-over-markdown]]. Approved 2026
 - [x] TASK-106: unit-check hub-dominance guard (inbound depends_on >= 10 stops seeding), with a test proving SPEC-001-shaped dominance is guarded and threshold-3 fixtures unaffected (S, after 105)
 - [x] TASK-107: consumers - vault-health + checkup orphan steps call `compass graph orphans`; planner template ripple step (S, after 105)
 - [x] TASK-108: live validation - hub order vs independent grep tally, SPEC-003 closure recomputed and spot-audited, orphan run on this vault; suite green; v0.13.0; push; fleet pull verified (M, after 106/107)
+
+> Root-index description preserved when this document moved (2026-11-24): implement ADR-018: graphlib, compass graph, consumer wiring, ripple step; live validation; v0.13.0

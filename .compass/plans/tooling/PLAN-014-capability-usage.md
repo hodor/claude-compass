@@ -26,3 +26,5 @@ Implements every D of [[ADR-017-capability-index-and-usage-record]]. Approved 20
 - [x] TASK-102: doctor advisory row for never-used commands (S, after 101)
 - [x] TASK-103: retire `clean-tmp` and `tree`; reachability line in compass-agent-patterns rule; methodology capability note naming resolve-model/touched/admit-check and `compass usage` (S, after 101)
 - [x] TASK-104: suite green, v0.12.0, push, fleet vault pull verified (S, after 102/103)
+
+> Root-index description preserved when this document moved (2026-11-24): implement ADR-017: usage recording in dispatch, usage report, doctor advisory, retirements, reachability line; ship v0.12.0
