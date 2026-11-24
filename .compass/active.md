@@ -82,7 +82,7 @@ Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files a
 
 Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, files and checks are there. TASK-339 runs headless model sessions and waits for the human's go.
 
-- [ ] TASK-339: The arm comparison on every recorded compaction (needs the human's go) - complexity: S, depends_on: TASK-433
+- [x] TASK-339: The arm comparison on every recorded compaction (needs the human's go) - complexity: S, depends_on: TASK-433
 
 ## Next Up
 
