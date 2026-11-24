@@ -252,7 +252,8 @@ class HookSpawnTests(unittest.TestCase):
         self.assertNotIn("--hook", argv)
         self.assertNotIn("--print", argv)
         if sys.platform == "win32":
-            self.assertTrue(kwargs.get("creationflags", 0) & subprocess.DETACHED_PROCESS)
+            self.assertTrue(kwargs.get("creationflags", 0) & subprocess.CREATE_NO_WINDOW)
+            self.assertFalse(kwargs.get("creationflags", 0) & subprocess.DETACHED_PROCESS)
         else:
             self.assertTrue(kwargs.get("start_new_session"))
         self.assertEqual(log_rows(repo), rows_before)

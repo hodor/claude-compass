@@ -603,6 +603,16 @@ class ChildInvocationTests(WorkerHarness):
         self.assertNotIn("--dangerously-skip-permissions", argv)
         self.assertNotIn("--allow-dangerously-skip-permissions", argv)
 
+    def test_child_starts_no_mcp_server(self):
+        """Adversarial where: the child loads the user's and project's MCP
+        servers, each started through a console program (npx, uvx) that
+        opens its own terminal window on Windows, on every turn's end."""
+        self.close_via_stub()
+        self.run_worker()
+        argv = json.loads(self.marker_path.read_text(encoding="utf-8"))["argv"]
+        self.assertIn("--strict-mcp-config", argv)
+        self.assertNotIn("--mcp-config", argv)
+
     def test_child_starts_without_a_console_window(self):
         """Adversarial where: the worker runs detached, so on Windows a
         console child it starts opens a visible terminal window on the

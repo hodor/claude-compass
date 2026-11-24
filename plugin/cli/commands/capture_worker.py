@@ -300,6 +300,10 @@ def _run_child(vault_root, opp_id, opp_dir, opp_path, config):
         argv = [
             binary, "-p", prompt, "--model", model, "--output-format", "json",
             "--allowedTools", WORKER_ALLOWED_TOOLS,
+            # Extraction reads and writes vault files only. With no MCP
+            # servers the child starts none, so no server's console (npx,
+            # uvx and the like) opens a window on Windows.
+            "--strict-mcp-config",
         ]
 
     env = dict(os.environ)
@@ -321,8 +325,8 @@ def _run_child(vault_root, opp_id, opp_dir, opp_path, config):
             stderr=subprocess.PIPE,
             text=True,
             timeout=grace_seconds,
-            # The worker runs detached, without a console; on Windows a
-            # console child of such a parent opens a visible window of its own.
+            # A hidden console that the child and every process it starts
+            # share, so none of them opens a visible window on Windows.
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
     except OSError:
