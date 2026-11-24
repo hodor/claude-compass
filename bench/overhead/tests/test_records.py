@@ -339,15 +339,25 @@ BUILD_MODEL = [
 ]
 
 
+def _without_init_model(events):
+    out = []
+    for event in events:
+        if isinstance(event, dict) and event.get("type") == "system" and event.get("subtype") == "init":
+            event = {key: value for key, value in event.items() if key != "model"}
+        out.append(event)
+    return out
+
+
 @pytest.mark.parametrize("label,segments,expected", BUILD_MODEL, ids=[row[0] for row in BUILD_MODEL])
-def test_build_model_is_the_model_with_the_most_output_tokens(label, segments, expected, project, private_root):
+def test_without_an_init_model_build_model_is_the_model_with_the_most_output_tokens(
+    label, segments, expected, project, private_root,
+):
     """Adversarial where: taking the first key of modelUsage, the model with the
     most input or cache tokens, or only the last segment after a clear, names the
-    wrong model for the build, and every model-versus-model comparison then
-    pairs builds that ran different models."""
+    wrong model for a session whose init event names none."""
     if not isinstance(segments[0], list):
         segments = [segments]
-    events = fake_claude.stream_from_segments(segments, project)
+    events = _without_init_model(fake_claude.stream_from_segments(segments, project))
 
     row = record(events, private_root)
 
@@ -355,10 +365,30 @@ def test_build_model_is_the_model_with_the_most_output_tokens(label, segments, e
     assert read_rows(private_root)[0]["build_model"] == expected
 
 
-def test_a_session_with_no_result_event_has_no_build_model(project, private_root):
+def test_build_model_is_the_main_session_model_even_when_subagents_write_more(project, private_root):
+    """Adversarial where: a Compass build's builders and testers run on a
+    cheaper model and write most of the output; modelUsage then puts that
+    model first, and the build is filed under the subagents' model instead of
+    the main session's, so builds on different main models pair."""
+    events = fake_claude.stream_from_segments([[{MAIN: (5000, 10, 9000, 400), SUB: (1, 500, 0, 0)}]], project)
+
+    assert record(events, private_root)["build_model"] == MAIN
+
+
+def test_an_init_model_that_is_not_a_model_id_falls_back_to_output(project, private_root):
+    """Adversarial where: free text in the init event's model field reaches the
+    private record."""
+    events = fake_claude.stream_from_segments([[{MAIN: (1, 10, 0, 0), SUB: (1, 500, 0, 0)}]], project)
+    for event in events:
+        if isinstance(event, dict) and event.get("subtype") == "init":
+            event["model"] = "a sentence with spaces / and a path"
+    assert record(events, private_root)["build_model"] == SUB
+
+
+def test_a_session_with_no_result_event_and_no_init_model_has_no_build_model(project, private_root):
     """Adversarial where: a crashed session has no modelUsage; inventing a
     model (a default id) or raising would lose the row."""
-    row = record(fake_claude.events_for("crash", project), private_root)
+    row = record(_without_init_model(fake_claude.events_for("crash", project)), private_root)
 
     assert "build_model" in row
     assert row["build_model"] is None
