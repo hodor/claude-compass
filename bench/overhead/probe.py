@@ -47,7 +47,7 @@ import topics
 from launch import default_private_root
 from topics import SessionError
 
-ARMS = ("host-summary", "none", "mechanical", "compass")
+ARMS = ("host-summary", "none", "mechanical", "compass", "before")
 # The arms whose carried text includes the state block.
 BLOCK_ARMS = ("mechanical", "compass")
 EDIT_TOOLS = ("Edit", "Write", "MultiEdit")
@@ -566,7 +566,8 @@ def rebuild(point, project, *, private_root=None):
     """Write the history before the boundary of `point` as a session of `project`
     in the isolated Claude config under the private root, and return its new
     session id: the boundary side's records, each `sessionId` set to that id and
-    each `cwd` to `project`. The point's transcript is only read. Raises Refused
+    each `cwd` to `project`, all written as the main chain (`isSidechain` false)
+    so a subagent point resumes as a session of its own. The point's transcript is only read. Raises Refused
     for a private root inside a git work tree."""
     _check_private_root(private_root)
     history, _, _ = _history(point)
@@ -578,6 +579,7 @@ def rebuild(point, project, *, private_root=None):
     for record in history:
         record = dict(record)
         record["sessionId"] = session
+        record["isSidechain"] = False
         if "cwd" in record:
             record["cwd"] = str(project)
         lines.append(json.dumps(record, ensure_ascii=False) + "\n")
@@ -611,7 +613,8 @@ def _store_ask(point, arm, stored, private_root):
 def ask(point, arm, *, repo_root, private_root=None, claude_cmd=None, parent_env=None):
     """Run one tool-less session over the frozen questions of `point` and store its
     reply. A block arm (`mechanical`, `compass`) carries the state block of the
-    boundary; a point with no block to carry stores `"no_state": true` and starts no
+    boundary; `before` carries no text and resumes the point's history rebuilt as a
+    session of the sandbox project; a point with no block to carry stores `"no_state": true` and starts no
     session. Raises ValueError for an arm outside ARMS, Refused, NotBuilt, NoSummary
     (arms carrying the host summary) and SessionError when the session does not end
     `done`."""
@@ -634,10 +637,12 @@ def ask(point, arm, *, repo_root, private_root=None, claude_cmd=None, parent_env
     carried = "\n\n".join(parts) if parts else None
     root = Path(private_root) if private_root is not None else default_private_root()
     project = sandbox.new_project(root / "probe-projects")
+    extra = ["--tools", "", "--model", model]
+    if arm == "before":
+        extra = ["--resume", rebuild(point, project, private_root=root), *extra]
     result = launch.run_session(
         project, _prompt(carried, key["probes"]), repo_root=repo_root, private_root=root,
-        claude_cmd=claude_cmd, parent_env=parent_env,
-        extra_args=["--tools", "", "--model", model], timeout=SESSION_TIMEOUT,
+        claude_cmd=claude_cmd, parent_env=parent_env, extra_args=extra, timeout=SESSION_TIMEOUT,
     )
     if result.status != launch.DONE:
         raise SessionError(result.status)

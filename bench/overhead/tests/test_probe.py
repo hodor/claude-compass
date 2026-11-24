@@ -2698,3 +2698,66 @@ def test_rebuild_cli_prints_the_session_id_of_a_new_sandbox_project(point, priva
     assert project.is_relative_to(Path(private_root) / "probe-projects")
     folder = Path(private_root) / "claude-config" / "projects" / probe.launch.encode_cwd(project)
     assert (folder / f"{session}.jsonl").is_file()
+
+
+# before arm -----------------------------------------------------------------------
+
+
+def test_before_arm_resumes_the_rebuilt_history_with_no_tools_and_no_carried_text(
+        point, repo, private_root, fake_reply):
+    """Adversarial where: the before arm carries the summary or a rendered history in
+    its prompt instead of resuming the history, keeps its tools, resumes a session the
+    project does not hold, or runs in the repository."""
+    built = probe.build(point, private_root=private_root)
+    fake_reply.reply(json.dumps(key_answers(built)))
+
+    stored = _ask(point, "before", repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    argv = call["argv"]
+    assert argv[argv.index("--tools") + 1] == ""
+    assert argv[argv.index("--model") + 1] == FIXTURE_MODEL
+    session = argv[argv.index("--resume") + 1]
+    project = Path(call["cwd"])
+    assert project.resolve().is_relative_to(Path(private_root).resolve())
+    rebuilt = Path(private_root) / "claude-config" / "projects" / probe.launch.encode_cwd(project) / f"{session}.jsonl"
+    assert rebuilt.is_file()
+    assert SUMMARY_MARK not in call["stdin"]
+    assert "frame decoder" not in call["stdin"]
+    for item in built["probes"]:
+        assert item["question"] in call["stdin"]
+    assert stored["arm"] == "before"
+    assert "block" not in stored
+
+
+def test_rebuild_of_a_subagent_point_writes_its_records_as_the_main_chain(tmp_path, private_root):
+    """Adversarial where: a subagent point's records keep `isSidechain: true`, which a
+    resumed main session skips, so the before arm would answer from nothing."""
+    folder = tmp_path / "sub"
+    (folder / "sess" / "subagents").mkdir(parents=True)
+    records = [user(0, "go"), _plain_edit(1, "src/a.py"), tool_result(2, "ok"), boundary(3), summary(4)]
+    for record in records:
+        record["isSidechain"] = True
+    write_transcript(folder / "sess" / "subagents", "agent-x.jsonl", records)
+    write_transcript(folder, "sess.jsonl", [user(0, "hi")])
+    (found,) = probe.find(folder)
+    project = tmp_path / "proj"
+    project.mkdir()
+    session = probe.rebuild(found["point"], project, private_root=private_root)
+    path = Path(private_root) / "claude-config" / "projects" / probe.launch.encode_cwd(project) / f"{session}.jsonl"
+    written = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    assert len(written) == 3
+    assert all(record["isSidechain"] is False for record in written)
+
+
+def test_report_lists_the_before_arm_and_its_paired_table(point, private_root):
+    """Adversarial where: the report drops an arm it does not know, or never compares
+    the reference arm with the host summary."""
+    probe.build(point, private_root=private_root)
+    _store_reply(point, private_root, "host-summary", {"artifact": ["src/app/main.py"]})
+    _store_reply(point, private_root, "before", {"artifact": EDITED})
+    probe.grade(point, private_root=private_root)
+    text = probe.report(private_root=private_root)
+    rows = _main_rows(text)
+    assert rows[("before", "artifact")][3] == "1.00"
+    assert re.search(r"^\| before \| artifact \| 1 \| 0\.67 \|", text, re.MULTILINE)
