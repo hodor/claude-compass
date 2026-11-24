@@ -16,7 +16,7 @@ the two models, and against the original letter, plus the rubric words the
 sessions cite where letters differ. It holds aggregates and task ids, never
 task text.
 
-    python letters.py run --out FILE [--n 30] [--sessions 3] [--seed 0]
+    python letters.py run --out FILE [--n 30] [--sessions 3] [--seed 0] [--jobs 1]
     python letters.py --dry-run [--n 30] [--seed 0]
 
 `run` appends each finished session to a progress file under the private root
@@ -32,7 +32,6 @@ import math
 import os
 import random
 import re
-import subprocess
 import sys
 import tempfile
 from collections import Counter, namedtuple
@@ -216,32 +215,59 @@ def run_session(model, prompt, *, runner, cwd_factory=None):
         return runner(argv, cwd=folder)
 
 
-def default_runner(argv, cwd, *, private_root=None, parent_env=None):
-    """Run `argv` in `cwd` as an isolated Claude Code session and return the
-    reply text of its final `result` event.
+# Flags `launch.run_session` adds to every session; `default_runner` leaves
+# them out of the extra arguments it passes on, with the value of each flag
+# that takes one.
+_LAUNCH_FLAGS = {"-p": 0, "--print": 0, "--verbose": 0, "--strict-mcp-config": 0,
+                 "--output-format": 1, "--setting-sources": 1}
 
-    The session's end is classified from its `stream-json` events as
-    `launch.classify` does, never by searching text for limit words: a usage
-    limit raises UsageLimit, any other failure SessionFailed.
+
+def _split_command(argv):
+    """(extra arguments, prompt) of a `session_command` argv: the flags that
+    `launch.run_session` does not add itself, and the text after `--`."""
+    if "--" not in argv:
+        raise ValueError("the session command has no `--` before its prompt")
+    cut = argv.index("--")
+    head, prompt = list(argv[1:cut]), " ".join(argv[cut + 1:])
+    extra, i = [], 0
+    while i < len(head):
+        token = head[i]
+        if token in _LAUNCH_FLAGS:
+            i += 1 + _LAUNCH_FLAGS[token]
+            continue
+        extra.append(token)
+        i += 1
+    return extra, prompt
+
+
+def default_runner(argv, cwd, *, private_root=None, parent_env=None):
+    """Run `argv` in `cwd` as an isolated Claude Code session through
+    `launch.run_session` and return the reply text of its final `result`
+    event.
+
+    The launcher sends the prompt on stdin, starts the process with no
+    console window on Windows, kills its whole tree at `SESSION_TIMEOUT`, and
+    classifies the end from the `stream-json` events, never by searching text
+    for limit words: a usage limit raises UsageLimit, any other failure
+    SessionFailed.
     """
     import launch
 
     private_root = Path(private_root) if private_root is not None else launch.default_private_root()
-    parent = os.environ if parent_env is None else parent_env
-    env = launch.session_environment(parent, private_root)
-    command = launch.resolve_command(argv, parent)
-    done = subprocess.run(
-        command, cwd=str(cwd), env=env, stdin=subprocess.DEVNULL,
-        capture_output=True, text=True, encoding="utf-8", errors="replace",
-        timeout=SESSION_TIMEOUT,
-    )
-    events = launch._parse_events(done.stdout)
-    status, resets_at = launch.classify(events, done.returncode, not done.stdout.strip(), lambda: False)
-    if status == launch.USAGE_LIMIT:
-        raise UsageLimit("usage limit reached%s" % (" (resets at %s)" % resets_at if resets_at else ""))
-    if status != launch.DONE:
-        raise SessionFailed("claude exited %d: %s" % (done.returncode, (done.stderr or done.stdout).strip()[-300:]))
-    results = [event for event in events if event.get("type") == "result"]
+    extra, prompt = _split_command(argv)
+    try:
+        result = launch.run_session(
+            cwd, prompt, repo_root=REPO_ROOT, private_root=private_root,
+            claude_cmd=[argv[0]], parent_env=parent_env, extra_args=extra, timeout=SESSION_TIMEOUT,
+        )
+    except launch.Refused as error:
+        raise Refused(str(error)) from error
+    if result.status == launch.USAGE_LIMIT:
+        resets = result.resets_at
+        raise UsageLimit("usage limit reached%s" % (" (resets at %s)" % resets if resets else ""))
+    if result.status != launch.DONE:
+        raise SessionFailed("claude exited %d: %s" % (result.returncode, (result.stderr or "").strip()[-300:]))
+    results = [event for event in result.events if event.get("type") == "result"]
     reply = results[-1].get("result")
     return reply if isinstance(reply, str) else ""
 
@@ -545,31 +571,65 @@ def _save_progress(path, data):
     scratch.replace(path)
 
 
-def run_batch(tasks, models, sessions, table, *, runner, progress_path, config, report_progress=None):
+def run_batch(tasks, models, sessions, table, *, runner, progress_path, config, report_progress=None, jobs=1):
     """Run `sessions` sessions per model on every task and return the results
     list for `render_report`. Finished sessions are read from and written to
-    `progress_path`, so a halted batch resumes."""
+    `progress_path`, so a halted batch resumes.
+
+    Up to `jobs` sessions run at once. When one stops the batch (a usage
+    limit, a refusal, a reply without a letter), no further session starts,
+    the ones already running finish and are saved, and the first error is
+    raised."""
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
     progress = _load_progress(progress_path, config)
     done = progress["done"]
+    lock = threading.Lock()
+    stop = threading.Event()
+    pending = []
     for task in tasks:
         prompt = build_prompt(task, table)
         for model in models:
             for k in range(sessions):
                 key = "%s|%s|%d" % (task.id, model, k)
-                if key in done:
-                    continue
-                letter, words = None, ""
-                for _ in range(ATTEMPTS):
-                    reply = run_session(model, prompt, runner=runner)
-                    letter, words = parse_reply(reply)
-                    if letter:
-                        break
-                if letter is None:
-                    raise SessionFailed("%s gave no `letter:` line in %d tries for %s" % (model, ATTEMPTS, task.id))
-                done[key] = {"letter": letter, "words": words}
-                _save_progress(progress_path, progress)
-                if report_progress:
-                    report_progress(key, letter)
+                if key not in done:
+                    pending.append((key, task, model, prompt))
+
+    def one(item):
+        key, task, model, prompt = item
+        if stop.is_set():
+            return None
+        try:
+            letter, words = None, ""
+            for _ in range(ATTEMPTS):
+                reply = run_session(model, prompt, runner=runner)
+                letter, words = parse_reply(reply)
+                if letter:
+                    break
+            if letter is None:
+                raise SessionFailed("%s gave no `letter:` line in %d tries for %s" % (model, ATTEMPTS, task.id))
+        except BaseException:
+            stop.set()
+            raise
+        with lock:
+            done[key] = {"letter": letter, "words": words}
+            _save_progress(progress_path, progress)
+        if report_progress:
+            report_progress(key, letter)
+        return None
+
+    errors = []
+    with ThreadPoolExecutor(max_workers=max(1, jobs)) as pool:
+        for future in [pool.submit(one, item) for item in pending]:
+            try:
+                future.result()
+            except BaseException as error:
+                errors.append(error)
+    if errors:
+        limits = [error for error in errors if isinstance(error, UsageLimit)]
+        raise (limits or errors)[0]
+
     results = []
     for task in tasks:
         ratings, words = {}, {}
@@ -607,6 +667,7 @@ def main(argv=None, *, runner=None):
     _add_common(run, inherited=True)
     run.add_argument("--out", required=True, help="where the report is written")
     run.add_argument("--sessions", type=int, default=DEFAULT_SESSIONS, help="sessions per model per task")
+    run.add_argument("--jobs", type=int, default=1, help="sessions run at once (default 1)")
     run.add_argument("--strong", help="strong-tier model (default: the model table's)")
     run.add_argument("--balanced", help="balanced-tier model (default: the model table's)")
     run.add_argument("--private-root", help="folder of the sandbox config (default ~/.compass/overhead)")
@@ -616,6 +677,9 @@ def main(argv=None, *, runner=None):
     sessions = getattr(args, "sessions", DEFAULT_SESSIONS)
     if args.n < 1 or sessions < 2:
         print("letters: --n must be at least 1 and --sessions at least 2 (kappa needs two raters)", file=sys.stderr)
+        return 1
+    if getattr(args, "jobs", 1) < 1:
+        print("letters: --jobs must be at least 1", file=sys.stderr)
         return 1
     if args.command is None and not args.dry_run:
         parser.error("give the `run` command or --dry-run")
@@ -650,6 +714,7 @@ def main(argv=None, *, runner=None):
             tasks, models, args.sessions, table,
             runner=runner or real_runner, progress_path=progress_path, config=config,
             report_progress=lambda key, letter: print("%s -> %s" % (key, letter), file=sys.stderr),
+            jobs=args.jobs,
         )
     except UsageLimit as error:
         print("usage limit: %s; run the same command again to resume" % error, file=sys.stderr)
