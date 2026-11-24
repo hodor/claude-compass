@@ -17,6 +17,9 @@ Transcripts are read and never written. Everything else is stored under
                         carrying a state block, that block; a point with no commit
                         to read the state at holds `"no_state": true` and no reply
     grade-<arm>.json    the scores of that reply
+    superseded/<n>/     the ask and grade files of an arm's earlier runs, the
+                        oldest in 1; a new ask moves the arm's current pair into
+                        the first folder past every one holding that arm's files
 
 The transcript readers in this file are separate from the ones that build the
 carried session state, so the code that builds that state never grades it.
@@ -24,6 +27,7 @@ carried session state, so the code that builds that state never grades it.
 
 import argparse
 import hashlib
+import shutil
 import json
 import posixpath
 import random
@@ -557,6 +561,29 @@ def _reply_text(events):
     return ""
 
 
+def _supersede(folder, arm):
+    """Move the arm's current ask and grade files of the point `folder` into
+    `superseded/<n>/`, n one past the highest folder holding a file of this arm."""
+    names = [f"ask-{arm}.json", f"grade-{arm}.json"]
+    current = [folder / name for name in names if (folder / name).is_file()]
+    if not current:
+        return
+    used = [
+        int(child.name) for child in (folder / "superseded").glob("*")
+        if child.is_dir() and child.name.isdigit() and any((child / name).exists() for name in names)
+    ]
+    target = folder / "superseded" / str(max(used, default=0) + 1)
+    target.mkdir(parents=True, exist_ok=True)
+    for path in current:
+        shutil.move(str(path), str(target / path.name))
+
+
+def _store_ask(point, arm, stored, private_root):
+    folder = _point_dir(point, private_root)
+    _supersede(folder, arm)
+    topics.write_json(folder / f"ask-{arm}.json", stored)
+
+
 def ask(point, arm, *, repo_root, private_root=None, claude_cmd=None, parent_env=None):
     """Run one tool-less session over the frozen questions of `point` and store its
     reply. A block arm (`mechanical`, `compass`) carries the state block of the
@@ -577,7 +604,7 @@ def ask(point, arm, *, repo_root, private_root=None, claude_cmd=None, parent_env
         block = _state_block(point, key, repo_root, parent_env)
         if block is None:
             stored = {"point": point, "arm": arm, "no_state": True}
-            topics.write_json(_point_dir(point, private_root) / f"ask-{arm}.json", stored)
+            _store_ask(point, arm, stored, private_root)
             return stored
     parts = [part.rstrip() for part in (summary, block) if part is not None]
     carried = "\n\n".join(parts) if parts else None
@@ -596,7 +623,7 @@ def ask(point, arm, *, repo_root, private_root=None, claude_cmd=None, parent_env
     }
     if block is not None:
         stored["block"] = block
-    topics.write_json(_point_dir(point, private_root) / f"ask-{arm}.json", stored)
+    _store_ask(point, arm, stored, private_root)
     return stored
 
 
@@ -811,6 +838,43 @@ def _is_no_state(ask_path):
     return ask_path.is_file() and topics.read_json(ask_path).get("no_state") is True
 
 
+def _listed_files(block, expected, cwd):
+    """How many of the `expected` paths the `## Files edited` section of `block`
+    lists, paths compared as the artifact grader compares them."""
+    listed = set()
+    inside = False
+    for line in block.splitlines():
+        if line.startswith("## "):
+            inside = line.strip() == "## Files edited"
+        elif inside and line.startswith("- "):
+            listed.add(_norm_path(_relative_to(line[2:].strip(), cwd)))
+    return len({_norm_path(path) for path in expected} & listed)
+
+
+def _files_listed_lines(folders):
+    """One line per block arm with a stored block: the expected files its blocks
+    list, summed over the points, against the files the artifact probes expect."""
+    lines = []
+    for arm in BLOCK_ARMS:
+        listed = wanted = 0
+        found = False
+        for folder in folders:
+            ask_path, key_path = folder / f"ask-{arm}.json", folder / "key.json"
+            if not ask_path.is_file() or not key_path.is_file():
+                continue
+            block = topics.read_json(ask_path).get("block")
+            key = topics.read_json(key_path)
+            artifact = next((p for p in key.get("probes", []) if p.get("type") == "artifact"), None)
+            if not isinstance(block, str) or artifact is None:
+                continue
+            found = True
+            listed += _listed_files(block, artifact["expected"], key.get("cwd"))
+            wanted += len({_norm_path(path) for path in artifact["expected"]})
+        if found:
+            lines.append(f"files listed by the stored blocks, {arm}: {listed} of {wanted}")
+    return lines
+
+
 def report(*, private_root=None):
     """A markdown table of the stored grades, per arm and probe type, followed by one
     table per arm other than the reference arm holding its paired differences."""
@@ -861,6 +925,8 @@ def report(*, private_root=None):
                 no_state[arm] += 1
     lines += [""] if any(no_state.values()) else []
     lines += [f"no-state points, {arm}: {count}" for arm, count in sorted(no_state.items()) if count]
+    listed = _files_listed_lines(folders)
+    lines += [""] + listed if listed else []
     return "\n".join(lines) + "\n"
 
 

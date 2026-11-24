@@ -2576,3 +2576,62 @@ def test_a_point_asked_again_into_no_state_drops_the_grade_of_its_earlier_reply(
 
     assert ("mechanical", "artifact") not in _main_rows(text)
     assert "no-state points, mechanical: 1" in text.splitlines()
+
+
+# superseded replies and the files-listed line ------------------------------------
+
+
+def test_a_repeated_ask_moves_the_earlier_reply_and_grade_aside(point, repo, private_root, fake_reply):
+    """Adversarial where: a rerun overwrites the first run's reply and grade, losing
+    the data the comparison was drawn from, or numbers its folders past an existing one."""
+    probe.build(point, private_root=private_root)
+    folder = probe._point_dir(point, private_root)
+    for round_number in (1, 2, 3):
+        fake_reply.reply(json.dumps({"artifact": [f"round{round_number}.py"]}))
+        _ask(point, "host-summary", repo, private_root, fake_reply)
+        probe.grade(point, private_root=private_root)
+    assert "round3.py" in topics.read_json(folder / "ask-host-summary.json")["reply"]
+    assert "round1.py" in topics.read_json(folder / "superseded" / "1" / "ask-host-summary.json")["reply"]
+    assert "round2.py" in topics.read_json(folder / "superseded" / "2" / "ask-host-summary.json")["reply"]
+    assert (folder / "superseded" / "1" / "grade-host-summary.json").is_file()
+    assert not (folder / "superseded" / "3").exists()
+    rows = _main_rows(probe.report(private_root=private_root))
+    assert rows[("host-summary", "artifact")][2] == "1"
+
+
+def test_arms_rerun_one_after_another_share_the_first_superseded_folder(point, repo, private_root, fake_reply):
+    """Adversarial where: the second arm's rerun counts the first arm's move and lands
+    its earlier reply one folder further, so a round's replies scatter over folders."""
+    probe.build(point, private_root=private_root)
+    folder = probe._point_dir(point, private_root)
+    for arm in ("host-summary", "none", "host-summary", "none"):
+        fake_reply.reply("{}")
+        _ask(point, arm, repo, private_root, fake_reply)
+    assert (folder / "superseded" / "1" / "ask-host-summary.json").is_file()
+    assert (folder / "superseded" / "1" / "ask-none.json").is_file()
+    assert not (folder / "superseded" / "2").exists()
+
+
+def test_report_counts_the_expected_files_the_stored_blocks_list(two_points, private_root):
+    """Adversarial where: the files-listed line counts paths outside the files-edited
+    section, misses a path spelled with `./` or backslashes, or counts an arm with no
+    stored block."""
+    first, second = two_points
+    for point in (first, second):
+        probe.build(point, private_root=private_root)
+    key = topics.read_json(probe._point_dir(first, private_root) / "key.json")
+    expected = next(p for p in key["probes"] if p["type"] == "artifact")["expected"]
+    assert len(expected) >= 2
+    block = "\n".join([
+        "Compass session state", "", "## Files edited", "- ./" + expected[0],
+        "- " + expected[1].replace("/", "\\"), "- not/expected.py", "", "## Files read",
+        *[f"- {path}" for path in expected[2:]],
+    ])
+    stored = {"point": first, "arm": "mechanical", "reply": "{}", "tokens": {}, "block": block}
+    topics.write_json(probe._point_dir(first, private_root) / "ask-mechanical.json", stored)
+    probe.grade(first, private_root=private_root)
+    text = probe.report(private_root=private_root)
+    match = re.search(r"files listed by the stored blocks, mechanical: (\d+) of (\d+)", text)
+    assert match, text
+    assert match.groups() == ("2", str(len(expected)))
+    assert "files listed by the stored blocks, compass" not in text
