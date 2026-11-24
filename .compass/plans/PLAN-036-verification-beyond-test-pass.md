@@ -7,7 +7,7 @@ confidence: medium
 area: testing
 tags: [testing, verification, validator, reachability, ablation, spec-coverage, evidence, model-family]
 created: 2026-11-21
-updated: 2026-11-22
+updated: 2026-11-24
 git_branch: "master"
 git_commit: "9a33f39"
 author: "planner"
@@ -39,22 +39,29 @@ flowchart LR
     T415["415 Red kind kept,<br/>unproven tests named"]
     T416["416 Reach runs the<br/>entry point itself"]
   end
-  subgraph LT["Later: after the probe reports"]
-    L["413, 417, 418, 419"]:::later
+  subgraph W3["Wave 3: the probe on Node, evidence on Windows"]
+    T413["413 4j kept:<br/>no miss, no false alarm"]
+    T441["441 Evidence runs a<br/>relative path on Windows"]
+    T418["418 Node probe"]
+    T419["419 Release"]
+  end
+  subgraph LT["Later"]
+    L["417"]:::later
   end
   T400 & T401 & T402 & T403 --> T404
   T405 --> T404
   T404 --> T406 & T408 & T409 & T410
   T407 --> T406
-  T406 & T408 & T409 & T410 --> T411 --> T412 --> L
+  T406 & T408 & T409 & T410 --> T411 --> T412 --> T413 & T418
+  T441 & T418 --> T419
   T400 --> T414
   T402 --> T415
   T401 & T406 --> T416
-  T414 & T415 & T416 --> L
+  T414 & T415 & T416 --> T419
   classDef later fill:#eee,color:#000
 ```
 
-Numbers are task ids. A wave is a group of tasks planned in detail together; the grey box stays one-line sketches until the probe in TASK-412 reports.
+Numbers are task ids. A wave is a group of tasks planned in detail together; the grey box stays a one-line sketch until the station log names the research report each row came from.
 
 
 ## Goal
@@ -160,7 +167,7 @@ TASK-400, TASK-401, TASK-402, TASK-403, TASK-405 and TASK-407 start in parallel;
   - Automated verification: `python .claude/cli/compass reach --help` and `python .claude/cli/compass evidence --help` exit 0; `grep -n "4j" .claude/agents/validator.md` matches; `grep -n "compass requirements" .claude/agents/builder.md` matches; `python -m pytest plugin/cli/tests -q` is green.
   - Manual verification: none.
 
-- [ ] TASK-412: The planted-defect probe, the spec's KPI. `bench/verification/planted.py` builds a throwaway Python project in a temp folder with its own uv venv holding `coverage`, a CLI entry point, a one-spec vault and a three-task plan, and lands each task as a `Merge TASK-NNN:` commit with a suite that stays green: task A adds a helper the CLI never calls; task B adds a behavior whose test passes without it; task C meets two of its spec's three Constraints. The script runs the suite, then `compass reach` and `compass ablate` per task, each through `compass evidence run`, and prints per task whether the green suite flagged anything and whether each check flagged the planted instance. The orchestrator then spawns the validator on the probe plan to run 4j for task C. Results, per planted failure flagged or missed, the verdicts on the unplanted tasks as false positives, each record's `compass evidence rerun` result, wall time and validator tokens, go to `research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md` - complexity: M, depends_on: TASK-411, files: [bench/verification/planted.py, bench/verification/README.md, bench/verification/tests/test_planted.py, .compass/research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md, .compass/research/test-quality/beyond-test-pass/index.md], lessons: [LESSON-revert-to-prove-a-regression-test]
+- [x] TASK-412: The planted-defect probe, the spec's KPI. `bench/verification/planted.py` builds a throwaway Python project in a temp folder with its own uv venv holding `coverage`, a CLI entry point, a one-spec vault and a three-task plan, and lands each task as a `Merge TASK-NNN:` commit with a suite that stays green: task A adds a helper the CLI never calls; task B adds a behavior whose test passes without it; task C meets two of its spec's three Constraints. The script runs the suite, then `compass reach` and `compass ablate` per task, each through `compass evidence run`, and prints per task whether the green suite flagged anything and whether each check flagged the planted instance. The orchestrator then spawns the validator on the probe plan to run 4j for task C. Results, per planted failure flagged or missed, the verdicts on the unplanted tasks as false positives, each record's `compass evidence rerun` result, wall time and validator tokens, go to `research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md` - complexity: M, depends_on: TASK-411, files: [bench/verification/planted.py, bench/verification/README.md, bench/verification/tests/test_planted.py, .compass/research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md, .compass/research/test-quality/beyond-test-pass/index.md], lessons: [LESSON-revert-to-prove-a-regression-test]
   - Automated verification: `python -m pytest bench/verification/tests/test_planted.py -q` (the project builds, its suite is green, its three merge commits exist); `python bench/verification/planted.py` prints `reach A: FINDING` and `ablate B: FINDING`, and `PASS` for both checks on the tasks without a planted instance of that failure; every record it names reruns to `match`.
   - Manual verification: read the probe report and judge whether the validator's verdict on task C's unmet constraint, and any false positives, are good enough to keep 4j's split between commands and judgment as it is.
 
@@ -187,12 +194,35 @@ TASK-414, TASK-415 and TASK-416 start in parallel; their files are disjoint. Eac
 
 **Pause point:** when Wave 2's automated checks pass, it is done; the next wave is detailed after TASK-412's probe report and the human's reading of it.
 
+### Wave 3 (detailed): the probe on Node, evidence on Windows, release
+
+The probe of TASK-412 flagged each planted failure in six of six builds with no false alarm on the corrected seed ([[research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe]]). TASK-441 and TASK-418 start in parallel; their files are disjoint. TASK-419 follows both.
+
+- [x] TASK-413: Tune 4j's split between commands and judgment where TASK-412 showed a miss or a false positive. The probe showed neither: the planted constraint was flagged in six of six runs, and the corrected seed's 18 control rows held no false alarm, so step 4j stays as it is and no file changes - complexity: S, depends_on: TASK-412, files: []
+  - Automated verification: `grep -n "0 of 18 control rows" .compass/research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md` matches; `git diff <wave base> -- plugin/templates/agents/validator.md` is empty.
+  - Manual verification: none.
+  - Entry point: none: no code changes.
+
+- [ ] TASK-441: `compass evidence run` and `rerun` start a command whose first word is a relative path written with forward slashes, as `.venv/Scripts/python.exe`, on Windows. `_execute` in `evidencelib.py` runs such a first word with its separators turned to backslashes, resolved against the command's working directory; the record keeps the argv exactly as given, so a rerun on any platform starts the same command. A first word with no separator, an absolute path, or any later argument is passed unchanged; on POSIX nothing changes. A first word that names no file still records exit 127 with the system's message, as today - complexity: S, depends_on: none, files: [plugin/cli/evidencelib.py, plugin/cli/tests/test_evidence_relative_argv.py], lessons: [LESSON-verify-wiring-by-call-site-grep]
+  - Automated verification: `python -m pytest plugin/cli/tests/test_evidence_relative_argv.py plugin/cli/tests/test_evidencelib.py plugin/cli/tests/test_evidence_command.py -q`; tests cover, on Windows (skipped elsewhere), a relative forward-slash path to a Python interpreter copied into the throwaway repo that exits 0 and prints its output, the record's argv holding the forward-slash text unchanged, a rerun of that record printing `match`, a missing relative file recording exit 127, and a bare command name (`git --version`) and an absolute path running as before; on every platform a later argument holding `/` is passed unchanged; `python -m pytest plugin/cli/tests -q` is green.
+  - Manual verification: none.
+  - Entry point: `python plugin/cli/compass evidence run --task TASK-001 --check t -- .venv/Scripts/python.exe -c "print(1)"`
+
+- [ ] TASK-418: A second planted-defect probe on a Node project. `python bench/verification/planted.py --lang node` builds the same three-task plan and spec as the Python probe on a Node package: `src/core.js` defines each function as its own `exports.<name> = ...` statement so a later task appends without moving an earlier task's lines; `bin/tally.js` is the command line; tests use `node:test`. Task A appends the one-line arrow `exports.formatTotal = (n) => n.toLocaleString("en-US");`, whose line runs when the module loads while the function never runs (the one-line-function case, LCOV `DA` hit with `FNDA:0`); task B replaces the one counting line and its tests pass without it; task C appends `exports.top` and adds `src/server.js`, an HTTP server whose `/top?text=` route answers with the most frequent word (C-3 unmet as in the Python seed), with `scripts/drive.js` as its entry point: it starts the server on port 0, sends one request, prints the answer and closes the server through `server.close()`. Every changed line of task C runs from that entry point. c8 is installed from npm into `<root>/.tools` with `npm install -g --prefix`, and every check and rerun runs with `npm_config_prefix` set to that folder, so `compass reach --run --lang node` finds c8 also in the scratch worktree of `compass evidence rerun`; the test command is `node --test --test-reporter=tap {tests}`. `EXPECTED` for Node is the Python one; if reach answers PASS on task A, the run reports it as a miss and the research page records it, never adjusted to pass. `--lang python` stays the default and its output is unchanged. The results go to a "Node project" section of the research page - complexity: L, depends_on: TASK-412, files: [bench/verification/planted.py, bench/verification/README.md, bench/verification/tests/test_planted_node.py, .compass/research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md], lessons: [LESSON-suite-size-is-not-coverage, LESSON-revert-to-prove-a-regression-test]
+  - Automated verification: `python -m pytest bench/verification/tests -q -p no:cacheprovider`; the Node tests skip when `node` or `npm` is missing or the c8 install fails, and cover: the build's suite green under `node --test`, three `Merge TASK-00N:` commits, `compass requirements` on the seed listing the same seven rows, the reach report of task A naming `formatTotal` as an unreached function, the driver's request answered and the server closed (the run exits 0 with no process left), every record rerunning to `match`, and `--lang python` output unchanged; `python bench/verification/planted.py --lang node` prints `reach A: FINDING` and `ablate B: FINDING`, `PASS` for the other four checks and `match` for every rerun.
+  - Manual verification: none.
+  - Entry point: `python bench/verification/planted.py --lang node`
+
+- [ ] TASK-419: Release of the later wave and local refresh: bump `plugin/.claude-plugin/plugin.json` to the next minor, run `python plugin/cli/compass self-update --force` so `.claude/` carries TASK-414 to TASK-441 - complexity: S, depends_on: TASK-441, TASK-418, files: [plugin/.claude-plugin/plugin.json]
+  - Automated verification: `python .claude/cli/compass reach --help` exits 0 and prints the `--run` form; `grep -n "compass reach --run" .claude/agents/validator.md` matches; `python -m pytest plugin/cli/tests -q` is green.
+  - Manual verification: none.
+  - Entry point: none: a release has no new code path.
+
+**Pause point:** when Wave 3's automated checks pass, it is done; TASK-417 stays under Later until the station log holds rows that name the research report they came from.
+
 ## Later (intent only)
 
-- [ ] TASK-413: Tune 4j's split between commands and judgment where TASK-412 showed a miss or a false positive, then rerun the probe and keep the change only if it flags more with no new false positive - files: [plugin/templates/agents/validator.md, .compass/research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md]
 - [ ] TASK-417: The reviewer reads each agent's verified model from the station log of [[PLAN-034-checking-cost-follows-task-and-model]] TASK-346 instead of the report's self-stated `model:`, and flags a mismatch between the two - files: [plugin/templates/agents/reviewer.md]
-- [ ] TASK-418: A second planted-defect probe on a Node project with a server route and a one-line function, through c8 LCOV - files: [bench/verification/planted.py, .compass/research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md]
-- [ ] TASK-419: Release of the later wave and local refresh - files: [plugin/.claude-plugin/plugin.json]
 
 ## Risks
 
@@ -218,3 +248,13 @@ Inputs read: the Wave 1 merge (01bff99, TASK-400 to TASK-410 checked, suites gre
 - **TASK-417 stays:** the station log of TASK-346 records tester, validator, builder and debug stations (`plugin/cli/stationlib.py`), and a row carries no field naming the research report it came from, so the reviewer cannot yet match a row to a report's `model:`; PLAN-034 TASK-348, which checks the rows live in this repo, has not run.
 - **TASK-418 stays:** it reuses `bench/verification/planted.py`, which TASK-412 writes.
 - **TASK-419 stays:** it releases the later wave, TASK-413 included, so it waits on TASK-413; Wave 2's changes reach `.claude/` through it.
+
+## Wave 3 elaborated
+
+Inputs read: TASK-412's probe ([[research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe]]): reach, ablate and 4j each flagged their planted failure in six of six builds, the green suite flagged none, 0 of 18 control rows were judged unmet on the corrected seed, and 56 records reran to `match`. The station log of [[PLAN-034-checking-cost-follows-task-and-model]] holds 55 rows from builder, tester, tester-pre, tester-post and planner stations, none naming a research report.
+
+- **TASK-413:** the intent made the tuning conditional on a miss or a false positive, and the probe found neither, so the task closes with no file changed. The first seed's `partial` rows were real gaps in that seed, not false alarms, and the seed was corrected rather than the check.
+- **TASK-441:** new, from the probe: one 4j session passed `.venv/Scripts/python.exe` to `compass evidence run`, which on Windows could not start it and recorded exit 127. Python's `subprocess` hands a forward-slash relative path to `CreateProcess`, which does not find it; the same path with backslashes runs (checked on the probe project).
+- **TASK-418:** the intent named a server route and a one-line function through c8 LCOV; the detail keeps both and adds the c8 install into a prefix folder, since a scratch worktree of `compass evidence rerun` holds no `node_modules` and `npx --no-install` there would answer that c8 is missing (checked: c8 12.0.0 runs from such a prefix through `npm_config_prefix`). It replays the mechanical checks on Node and adds no judge run; 4j reads the code the same way in either language.
+- **TASK-419:** unchanged - intent held; its depends_on now names TASK-441 and TASK-418.
+- **TASK-417 stays:** the station log holds no row that names the research report it came from.
