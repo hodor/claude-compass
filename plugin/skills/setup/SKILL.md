@@ -170,6 +170,8 @@ self_update.merge_settings('.', '.claude/hooks/hooks.json')
 print('Hooks registered in .claude/settings.json')"
 ```
 
+The same merge sets `includeGitInstructions: false` when `settings.json` lacks the key. Claude Code then leaves its git snapshot (the branch, `git status` and recent commits) and its built-in commit and pull-request instructions out of each session and subagent start; the snapshot changes between sessions, so leaving it out lets the next session reuse the cached start. Compass's own commit rules live in the `methodology` skill and the builder agent, and the agents that need git state run git themselves. A project that wants the snapshot sets the key to `true`; the merge never changes a value already there. The first session after the key appears rewrites the cache once.
+
 Then write the permission allowlist into the same `.claude/settings.json`. The JSON, why `Bash(python3:*)` is in it, and how an existing `permissions` key is merged: `permissions.md` in this skill's folder; read it before writing the permissions.
 
 ### 3A. New project - scaffold the vault

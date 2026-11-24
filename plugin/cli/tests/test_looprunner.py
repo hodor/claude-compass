@@ -51,7 +51,8 @@ event), and `reading_before` / `reading_after`, each
 
 The actuator is the binary `COMPASS_CLAUDE_BIN` names. Its stdin is the
 prompt as UTF-8 bytes; its environment is the inherited one plus
-`COMPASS_WORKER_SESSION=1`.
+`COMPASS_WORKER_SESSION=1` and, unless already set,
+`CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1`.
 
 Adversarial themes: budget arithmetic exactly on the boundary and on the UTC
 day line, a lock that outlives its run, a timeout that kills only the
