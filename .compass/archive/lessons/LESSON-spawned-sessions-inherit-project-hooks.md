@@ -1,7 +1,7 @@
 ---
 title: A spawned session inherits the project's hooks and re-enters its own machinery
 type: lesson
-status: active
+status: archived
 category: process
 area: architecture
 tags: [hooks, headless, spawned-sessions, recursion, background-worker]

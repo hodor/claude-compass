@@ -20,13 +20,13 @@ Archived lessons live in `archive/lessons/`.
 
 ## Lessons
 
-- [[lessons/distribution/index|distribution]] (5 lessons) - installing, updating, and shipping Compass surfaces - what update owns, version lag, config copies in shipped prose
-- [[lessons/experiments/index|experiments]] (6 lessons) - designing measurements and experiments that can actually falsify
-- [[lessons/hooks/index|hooks]] (6 lessons) - hook registration, payloads, and firing semantics
-- [[lessons/instructions/index|instructions]] (2 lessons) - writing instructions agents follow - prose economy, thresholds that become Goodhart targets
-- [[lessons/pipeline/index|pipeline]] (7 lessons) - how work passes the human's gates - adversarial review before approval, walkthroughs in his words, verifying reversibility before acting unasked
-- [[lessons/platform/index|platform]] (4 lessons) - host and OS quirks - line endings, shells, Windows
-- [[lessons/subagents/index|subagents]] (13 lessons) - spawning, briefing, and supervising agents
-- [[lessons/test-quality/index|test-quality]] (6 lessons) - what makes tests and their evaluation mean something
-- [[lessons/vault-structure/index|vault-structure]] (11 lessons) - vault mechanics - indexes, links, discovery, placement
+- [[lessons/distribution/index|distribution]] (4 lessons) - installing, updating, and shipping Compass surfaces - what update owns, version lag, config copies in shipped prose
+- [[lessons/experiments/index|experiments]] (3 lessons) - designing measurements and experiments that can actually falsify
+- [[lessons/hooks/index|hooks]] (4 lessons) - hook registration, payloads, and firing semantics
+- [[lessons/instructions/index|instructions]] (1 lessons) - writing instructions agents follow - prose economy, thresholds that become Goodhart targets
+- [[lessons/pipeline/index|pipeline]] (6 lessons) - how work passes the human's gates - adversarial review before approval, walkthroughs in his words, verifying reversibility before acting unasked
+- [[lessons/platform/index|platform]] (2 lessons) - host and OS quirks - line endings, shells, Windows
+- [[lessons/subagents/index|subagents]] (9 lessons) - spawning, briefing, and supervising agents
+- [[lessons/test-quality/index|test-quality]] (4 lessons) - what makes tests and their evaluation mean something
+- [[lessons/vault-structure/index|vault-structure]] (9 lessons) - vault mechanics - indexes, links, discovery, placement
 - [[lessons/verification/index|verification]] (2 lessons) - checking a claim before acting on it - exact text past a compressing layer, wiring proven by its call sites

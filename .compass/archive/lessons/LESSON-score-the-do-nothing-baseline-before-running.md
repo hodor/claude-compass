@@ -1,7 +1,7 @@
 ---
 title: A validation must be able to fail before it is worth running
 type: lesson
-status: active
+status: archived
 category: process
 area: methodology
 tags: [falsification, pre-registration, baseline, control-arm, prototypes, paired-judge]

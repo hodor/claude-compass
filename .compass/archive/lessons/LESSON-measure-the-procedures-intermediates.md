@@ -1,7 +1,7 @@
 ---
 title: Agreement can hide a shared prior; disagreement needs the contract fixed, not a winner
 type: lesson
-status: active
+status: archived
 category: process
 area: methodology
 tags: [experiments, measurement, procedure-evaluation, agreement, empirical]

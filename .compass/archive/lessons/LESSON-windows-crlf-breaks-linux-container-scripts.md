@@ -1,7 +1,7 @@
 ---
 title: Python text-mode open() on Windows writes CRLF which breaks bash scripts mounted into Linux containers
 type: lesson
-status: active
+status: archived
 category: process
 area: workflow
 tags: [windows, crlf, docker, line-endings, cross-platform]

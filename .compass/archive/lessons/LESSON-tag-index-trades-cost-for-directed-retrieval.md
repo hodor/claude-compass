@@ -1,7 +1,7 @@
 ---
 title: Tag index gives directed retrieval, not automatic token reduction
 type: lesson
-status: active
+status: archived
 category: process
 area: methodology
 tags: [tag-index, retrieval, cost, hypothesis-falsified, empirical]

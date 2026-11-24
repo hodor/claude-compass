@@ -1,7 +1,7 @@
 ---
 title: Behavior bugs are fixed by removing context or adding harness, not by adding prose
 type: lesson
-status: active
+status: archived
 category: process
 area: methodology
 tags: [context-size, rules, prose, harness, token-efficiency]

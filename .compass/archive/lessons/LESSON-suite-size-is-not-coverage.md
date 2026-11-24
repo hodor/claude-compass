@@ -1,7 +1,7 @@
 ---
 title: Bloat and holes coexist; suite size is not coverage evidence
 type: lesson
-status: active
+status: archived
 category: process
 area: testing
 tags: [testing, test-review, coverage, suite-size, empirical]

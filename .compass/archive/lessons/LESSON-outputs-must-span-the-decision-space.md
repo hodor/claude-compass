@@ -1,7 +1,7 @@
 ---
 title: A procedure answering in fewer categories than the decision space makes users invent the mapping
 type: lesson
-status: active
+status: archived
 category: process
 area: methodology
 tags: [decision-procedures, spec-defect, category-mapping, rater-bias, empirical]

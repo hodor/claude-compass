@@ -1,7 +1,7 @@
 ---
 title: Spawned agents must deliver reports via SendMessage, not final text
 type: lesson
-status: active
+status: archived
 category: process
 area: workflow
 tags: [subagents, orchestration, sendmessage, reports, briefs]

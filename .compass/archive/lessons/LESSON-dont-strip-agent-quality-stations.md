@@ -1,7 +1,7 @@
 ---
 title: Spawn briefs must not strip an agent definition's own quality stations
 type: lesson
-status: active
+status: archived
 category: process
 area: workflow
 tags: [subagents, briefs, code-review, agent-protocol, orchestration]

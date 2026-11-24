@@ -1,7 +1,7 @@
 ---
 title: Test-driven single-function tasks cannot discriminate methodology layers
 type: lesson
-status: active
+status: archived
 category: process
 area: workflow
 tags: [benchmarks, evaluation, bench-design, frontier-models, methodology-eval]

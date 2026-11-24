@@ -1,7 +1,7 @@
 ---
 title: A CLI invoked both interactively and by a hook must gate stdin reads on an explicit flag
 type: lesson
-status: active
+status: archived
 category: process
 area: workflow
 tags: [cli, hooks, stdin, argparse, non-interactive, hang]

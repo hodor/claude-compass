@@ -1,7 +1,7 @@
 ---
 title: Vault type-dir discovery must be content-aware, not "any subdirectory"
 type: lesson
-status: active
+status: archived
 category: process
 area: methodology
 tags: [cli, vault, discovery, overfit, false-positives, validation]

@@ -1,7 +1,7 @@
 ---
 title: Verify worktree isolation is real before parallel writes
 type: lesson
-status: active
+status: archived
 category: process
 area: workflow
 tags: [worktree, isolation, subagents, orchestration, silent-failure]

@@ -1,7 +1,7 @@
 ---
 title: A reversibility premise is verified only by locating the inverse
 type: lesson
-status: active
+status: archived
 category: process
 area: methodology
 tags: [reversibility, premises, decision-rationale, verification, two-way-door]

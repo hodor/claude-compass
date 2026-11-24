@@ -17,9 +17,7 @@ Class here: hook registration, payloads, and firing semantics
 
 ## Lessons
 
-- [[lessons/hooks/LESSON-hook-cli-gate-stdin-on-flag|LESSON-hook-cli-gate-stdin-on-flag]] - Gate hook-stdin reads behind an explicit flag (--hook), not isatty probing; probing blocks forever in a non-interactive shell with no piped input
 - [[lessons/hooks/LESSON-hook-if-clause-no-or|LESSON-hook-if-clause-no-or]] - Settings-file hooks support an `if` clause (verified on 2.1.330); `||` inside it is untested, use a pipe matcher
 - [[lessons/hooks/LESSON-hook-payloads-observe-before-coding|LESSON-hook-payloads-observe-before-coding]] - Observe the real emission or code path first; assumed shapes and reported causes ship dead work under a green suite
 - [[lessons/hooks/LESSON-hooks-load-only-from-settings|LESSON-hooks-load-only-from-settings]] - Hooks load only from settings-file hooks keys or registered plugins; a bare .claude/hooks/hooks.json never fires
 - [[lessons/hooks/LESSON-plugin-dir-plus-setup-double-registers-hooks|LESSON-plugin-dir-plus-setup-double-registers-hooks]] - --plugin-dir plus /compass:setup in one session registers each hook twice and lists skills twice; capture-check and sync run twice per event
-- [[lessons/hooks/LESSON-spawned-sessions-inherit-project-hooks|LESSON-spawned-sessions-inherit-project-hooks]] - A spawned claude session inherits the project's hooks; a hook-spawned worker fires its own machinery unless gated

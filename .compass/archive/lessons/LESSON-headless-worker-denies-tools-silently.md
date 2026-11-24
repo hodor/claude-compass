@@ -1,7 +1,7 @@
 ---
 title: Headless `claude -p` denies Write/Bash silently; scope the worker's tools exactly
 type: lesson
-status: active
+status: archived
 category: process
 area: workflow
 tags: [headless, permissions, tool-scoping, background-worker, silent-failure]

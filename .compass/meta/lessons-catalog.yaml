@@ -1,4 +1,3 @@
-# WARNING: catalog exceeded cap. Run /compass:consolidate before next session.
 lessons:
   - file: "LESSON-adversarial-plan-review-before-build.md"
     status: active
@@ -49,13 +48,6 @@ lessons:
     tags: [validation, content-aware, parsing, self-reference, edit-anchors]
     score: 6
     summary: "Match use, not mention - matchers and edit anchors alike: bind to grammar position, never a substring prose repeats"
-  - file: "LESSON-autocrlf-churns-lf-writers.md"
-    status: active
-    category: process
-    area: workflow
-    tags: [git, autocrlf, line-endings, gitattributes, churn, hooks]
-    score: 5
-    summary: "With core.autocrlf=true and no .gitattributes, git checks files out as CRLF; a tool that writes LF rewrites them every run, causing perpetual diffs"
   - file: "LESSON-blind-the-author-in-self-validation.md"
     status: active
     category: process
@@ -63,27 +55,6 @@ lessons:
     tags: [experiments, blinding, validation, measurement, empirical]
     score: 5
     summary: "Blinding fails through the answer key and the vault's own hot path, not only shared roles; verify the rater is blind"
-  - file: "LESSON-dont-strip-agent-quality-stations.md"
-    status: active
-    category: process
-    area: workflow
-    tags: [subagents, briefs, code-review, agent-protocol, orchestration]
-    score: 5
-    summary: "A blanket no-sub-agents ban in a spawn brief strips the builder's review station; twice violated, both violations caught real bugs"
-  - file: "LESSON-headless-worker-denies-tools-silently.md"
-    status: active
-    category: process
-    area: workflow
-    tags: [headless, permissions, tool-scoping, background-worker, silent-failure]
-    score: 5
-    summary: "Headless claude -p runs deny Write/Bash by default; scope the worker's tools exactly, don't bypass"
-  - file: "LESSON-hook-cli-gate-stdin-on-flag.md"
-    status: active
-    category: process
-    area: workflow
-    tags: [cli, hooks, stdin, argparse, non-interactive, hang]
-    score: 5
-    summary: "Gate hook-stdin reads behind an explicit flag (--hook), not isatty probing; probing blocks forever in a non-interactive shell with no piped input"
   - file: "LESSON-hook-if-clause-no-or.md"
     status: active
     category: process
@@ -112,41 +83,6 @@ lessons:
     tags: [research-synthesis, human-practice, agent-methodology, rationing, literature-import]
     score: 7
     summary: "Name the precondition a borrowed mechanism needs before importing it; mark every finding maps or metaphor"
-  - file: "LESSON-installer-removes-only-what-it-installed.md"
-    status: active
-    category: process
-    area: methodology
-    tags: [install, update, cleanup, data-loss, user-files]
-    score: 5
-    summary: "Delete only what you installed or planned, by name; 'everything else here' always holds files that are not yours"
-  - file: "LESSON-measure-the-procedures-intermediates.md"
-    status: active
-    category: process
-    area: methodology
-    tags: [experiments, measurement, procedure-evaluation, agreement, empirical]
-    score: 5
-    summary: "Agreement can hide a shared prior; disagreement should fix the contract, not pick a winner between raters"
-  - file: "LESSON-outputs-must-span-the-decision-space.md"
-    status: active
-    category: process
-    area: methodology
-    tags: [decision-procedures, spec-defect, category-mapping, rater-bias, empirical]
-    score: 5
-    summary: "A procedure answering in fewer categories than the decision space makes users invent the mapping, wrongly"
-  - file: "LESSON-remove-context-before-adding.md"
-    status: active
-    category: process
-    area: methodology
-    tags: [context-size, rules, prose, harness, token-efficiency]
-    score: 5
-    summary: "Fix a behavior bug by removing the prose that trains it or adding a harness gate; added prose is the last resort and must be net-negative"
-  - file: "LESSON-score-the-do-nothing-baseline-before-running.md"
-    status: active
-    category: process
-    area: methodology
-    tags: [falsification, pre-registration, baseline, control-arm, prototypes, paired-judge]
-    score: 5
-    summary: "Score the constant-answer baseline, fix the threshold, and check the stop verdict can fire and end the plan"
   - file: "LESSON-scratch-vaults-need-compass-dir.md"
     status: active
     category: process
@@ -161,20 +97,6 @@ lessons:
     tags: [sizing, validate, reconciliation, born-folder]
     score: 5
     summary: "SPEC-016 D-06's folder shape breaks file-stem==spec-name assumptions: sizing check, doctor suggested-name"
-  - file: "LESSON-spawned-sessions-inherit-project-hooks.md"
-    status: active
-    category: process
-    area: architecture
-    tags: [hooks, headless, spawned-sessions, recursion, background-worker]
-    score: 5
-    summary: "A spawned claude session inherits the project's hooks; a hook-spawned worker fires its own machinery unless gated"
-  - file: "LESSON-subagent-reports-need-sendmessage.md"
-    status: active
-    category: process
-    area: workflow
-    tags: [subagents, orchestration, sendmessage, reports, briefs]
-    score: 5
-    summary: "A spawned agent's final plain text is invisible to its orchestrator; briefs must mandate an explicit SendMessage delivery"
   - file: "LESSON-subagent-worktrees-fork-stale.md"
     status: active
     category: process
@@ -182,48 +104,6 @@ lessons:
     tags: [worktree, subagents, parallel-builders, stale-base, orchestration, git]
     score: 5
     summary: "Worktree subagents fork from the remote default branch unless worktree.baseRef is \"head\"; uncommitted files are always invisible"
-  - file: "LESSON-suite-size-is-not-coverage.md"
-    status: active
-    category: process
-    area: testing
-    tags: [testing, test-review, coverage, suite-size, empirical]
-    score: 5
-    summary: "44 tests for two behaviors carried mass redundancy and two critical holes at once; a delete list is half a review"
-  - file: "LESSON-tag-index-trades-cost-for-directed-retrieval.md"
-    status: active
-    category: process
-    area: methodology
-    tags: [tag-index, retrieval, cost, hypothesis-falsified, empirical]
-    score: 5
-    summary: "Tag index makes agents more thorough and faster wall-time, but does not automatically reduce tokens; the cost win depends on the query shape"
-  - file: "LESSON-test-driven-tasks-dont-discriminate.md"
-    status: active
-    category: process
-    area: workflow
-    tags: [benchmarks, evaluation, bench-design, frontier-models, methodology-eval]
-    score: 5
-    summary: "When tests fully encode the spec, frontier models already read-tests-first; methodology can't be measured on such tasks"
-  - file: "LESSON-type-dir-discovery-needs-content-signal.md"
-    status: active
-    category: process
-    area: methodology
-    tags: [cli, vault, discovery, overfit, false-positives, validation]
-    score: 5
-    summary: "Treating every .compass subdir as an artifact type dir breaks on vaults that store non-artifact dirs there; require the known core dirs OR a typed-artifact signal"
-  - file: "LESSON-verify-the-inverse-not-the-forward-path.md"
-    status: active
-    category: process
-    area: methodology
-    tags: [reversibility, premises, decision-rationale, verification, two-way-door]
-    score: 5
-    summary: "Cheap reversal licenses acting without asking; verify it on the inverse command, never by reading the forward one"
-  - file: "LESSON-verify-worktree-isolation-is-real.md"
-    status: active
-    category: process
-    area: workflow
-    tags: [worktree, isolation, subagents, orchestration, silent-failure]
-    score: 5
-    summary: "Worktree isolation can silently not exist; confirm the path is in `git worktree list` before parallel writers run"
   - file: "LESSON-walkthroughs-in-the-humans-words.md"
     status: active
     category: process
@@ -231,13 +111,6 @@ lessons:
     tags: [walkthroughs, human-decision, plain-language, jargon, approval, specs, vision, human-voice, synthesis, paraphrase]
     score: 5
     summary: "Jargon in walkthroughs and paraphrase in specs both erase the human's own words where they must recognize themselves"
-  - file: "LESSON-windows-crlf-breaks-linux-container-scripts.md"
-    status: active
-    category: process
-    area: workflow
-    tags: [windows, crlf, docker, line-endings, cross-platform]
-    score: 5
-    summary: "Python `open(p, 'w')` on Windows writes CRLF; mount that into a Linux container and bash chokes on $'\\\\r'"
   - file: "LESSON-hierarchical-placement-tolerate-disagreement.md"
     status: active
     category: domain

@@ -1,7 +1,7 @@
 ---
 title: git core.autocrlf=true churns against tools that deliberately write LF
 type: lesson
-status: active
+status: archived
 category: process
 area: workflow
 tags: [git, autocrlf, line-endings, gitattributes, churn, hooks]

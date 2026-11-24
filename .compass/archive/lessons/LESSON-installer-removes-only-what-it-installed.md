@@ -1,7 +1,7 @@
 ---
 title: A destructive step removes only what it manages, never "anything not in my source"
 type: lesson
-status: active
+status: archived
 category: process
 area: methodology
 tags: [install, update, cleanup, data-loss, user-files]
