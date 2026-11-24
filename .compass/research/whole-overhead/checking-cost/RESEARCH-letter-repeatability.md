@@ -84,6 +84,7 @@ The rubric sizes by file count first ("Single file", "2-5 files", "5+ files"), a
 - **Planner L, raters M (5 of 10 L tasks drew M from every session, 3 more drew M from `opus` and mostly L from `sonnet`).** These list 1 to 4 files. The planner judged the work significant; the rubric's "5+ files" was not met, and "significant complexity" alone did not move the raters.
 - **Both agree on L only when the line lists 10 files** (2 of 10 L tasks).
 - **Planner M, raters S (2 of 10 M tasks).** Both list a single file.
+- **Five files sit in two rows.** "2-5 files" and "5+ files" both hold a task of five files. The three sampled five-file tasks drew all M, four L of six, and M from `opus` with mostly L from `sonnet`.
 
 The rubric words cited where sessions disagreed:
 
@@ -100,7 +101,7 @@ The rubric words cited where sessions disagreed:
 
 - A letter assigned under the written rubric is repeatable: the same model gives the same letter to the same task nine times in ten, and two models agree four times in five.
 - The letters already in the plans are not that letter. A checking level keyed on them would follow each planner's private sense of size, which a blind rater reproduces less than half the time.
-- The two boundaries to settle are whether a task's own test file counts toward its file count (S against M) and what "significant complexity" means when fewer than five files change (M against L). TASK-354 tightens those two rows and runs this measurement again.
+- Three places to settle: whether a task's own test file counts toward its file count (S against M), what "significant complexity" means when fewer than five files change (M against L), and which row a five-file task belongs to. TASK-354 tightens those rows and runs this measurement again.
 
 ## Per task
 
