@@ -14,6 +14,8 @@ Interface assumed (the builder implements exactly this):
     Every section is a `## <name>` heading followed by its lines, in this
     order, a section with nothing in it left out:
         ## Last human request      the text, cut at 500 characters
+        ## Task in progress        the last TASK-N or PLAN-N the main transcript's
+                                   assistant text named, as its open-task line
         ## Open tasks              `- [ ]` lines of .compass/active.md, 25
         ## Decisions               question answers "Q: A" (8) then
                                    `<doc-stem>/D-NN: <text>` lines (20, each
@@ -73,7 +75,7 @@ STATE_FIXTURE = FIXTURES / "state-session.jsonl"
 SESSION_ID = "11111111-2222-3333-4444-555555555555"
 
 ORDER = [
-    "Last human request", "Open tasks", "Decisions", "Files edited", "Files read",
+    "Last human request", "Task in progress", "Open tasks", "Decisions", "Files edited", "Files read",
     "Uncommitted changes", "Last test run", "Branch",
 ]
 HANDOFF_HEADINGS = ["Tasks", "Recent Changes", "Decisions", "Uncommitted Changes"]
@@ -2087,6 +2089,102 @@ class UntilAtInteractionTests(StateFixture):
         self.assertNotIn("SPEC-002-late", body)
         whole = "\n".join(sections(self.block("--at", "HEAD"))["Decisions"])
         self.assertIn("SPEC-002-late/D-01:", whole)
+
+
+def assistant_text(text, sidechain=False):
+    record = {"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": text}]}}
+    if sidechain:
+        record["isSidechain"] = True
+    return record
+
+
+class TaskInProgressTests(StateFixture):
+    """`## Task in progress` names the task or plan id the main transcript's assistant
+    text named last, with the open-task line of `.compass/active.md` that holds it."""
+
+    def in_progress(self, out):
+        return items(sections(out).get("Task in progress", []))
+
+    def test_the_last_id_the_assistant_named_follows_the_request_with_its_open_task_line(self):
+        """Adversarial where: the first id named wins over the last, the section prints
+        after the open tasks it is meant to point into, or the id prints without its line."""
+        self.write_active("# Active", "- [ ] TASK-5: older work", "- [ ] TASK-7: the work in hand now")
+        self.write_transcript(user_human("go on"), assistant_text("Starting TASK-5."),
+                              assistant_text("TASK-5 is done; next TASK-7 runs."))
+        out = self.block()
+        self.assertEqual(self.in_progress(out), ["- [ ] TASK-7: the work in hand now"])
+        headings = list(sections(out))
+        self.assertEqual(headings[:3], ["Last human request", "Task in progress", "Open tasks"])
+
+    def test_an_id_with_no_open_task_line_prints_alone(self):
+        """Adversarial where: a plan id or a finished task with no open line is dropped, or
+        TASK-1 matches the open line of TASK-12 as a prefix."""
+        self.write_active("# Active", "- [ ] TASK-12: a different task", "- [x] TASK-1: finished")
+        self.write_transcript(user_human("go"), assistant_text("Back to TASK-1."))
+        self.assertEqual(self.in_progress(self.block()), ["- TASK-1"])
+        self.write_transcript(user_human("go"), assistant_text("PLAN-033 is next."))
+        self.assertEqual(self.in_progress(self.block()), ["- PLAN-033"])
+
+    def test_only_assistant_text_of_the_main_transcript_counts(self):
+        """Adversarial where: ids in the human's prompt, tool inputs, tool results, sidechain
+        records or subagent transcripts override the id the assistant itself named."""
+        self.write_active("# Active", "- [ ] TASK-2: the main task")
+        side = self.outside / "session" / "subagents"
+        side.mkdir(parents=True)
+        (side / "agent-x.jsonl").write_text(json.dumps(assistant_text("Subagent on TASK-90.")) + "\n",
+                                            encoding="utf-8")
+        self.write_transcript(
+            assistant_text("Working on TASK-2."),
+            assistant_text("Sidechain says TASK-91.", sidechain=True),
+            tool_call("c1", "Bash", {"command": "echo TASK-92"}),
+            tool_result("c1", content="TASK-93 printed"),
+            user_human("what about TASK-94?"))
+        self.assertEqual(self.in_progress(self.block()), ["- [ ] TASK-2: the main task"])
+
+    def test_no_id_named_leaves_the_section_out(self):
+        """Adversarial where: an empty section heading prints, or an id from active.md alone
+        is taken as the task in progress."""
+        self.write_active("# Active", "- [ ] TASK-4: open but never named")
+        self.write_transcript(user_human("hi"), assistant_text("Nothing numbered here, task-4 in lower case."))
+        self.assertNotIn("Task in progress", sections(self.block()))
+
+    def test_the_task_in_progress_survives_an_open_task_list_cut_before_it(self):
+        """Adversarial where: the task in hand sits at the end of a long active.md and the open
+        tasks section, cut to its floor, drops it, so the block never names it."""
+        tasks = [f"- [ ] TASK-{n}: " + "t" * 200 for n in range(1, 61)]
+        self.write_active("# Active", *tasks)
+        edits = [edit_of(f"e{n}", f"src/{n:03d}_" + "p" * 80 + ".py") for n in range(120)]
+        self.write_transcript(user_human("continue"), *edits, assistant_text("Now TASK-60."))
+        out = self.block()
+        self.assertLessEqual(len(out.rstrip("\n")), 7900)
+        found = sections(out)
+        self.assertNotIn("TASK-60:", "\n".join(found["Open tasks"]))
+        self.assertEqual(len(self.in_progress(out)), 1)
+        self.assertTrue(self.in_progress(out)[0].startswith("- [ ] TASK-60: "))
+
+    def test_until_takes_the_id_from_before_the_boundary(self):
+        """Adversarial where: `--until` reads the whole transcript and names an id the
+        assistant named only after the compaction."""
+        self.write_active("# Active", "- [ ] TASK-8: before", "- [ ] TASK-9: after")
+        self.write_transcript(user_human("one"), assistant_text("On TASK-8."),
+                              boundary_record("2026-01-01T09:00:00Z"), assistant_text("On TASK-9."))
+        self.assertEqual(self.in_progress(self.block("--until", "2")), ["- [ ] TASK-8: before"])
+        self.assertEqual(self.in_progress(self.block()), ["- [ ] TASK-9: after"])
+
+    def test_the_handoff_format_carries_no_task_in_progress_section(self):
+        """Adversarial where: the new section leaks into the four handoff sections the
+        handoff template pastes."""
+        self.write_active("# Active", "- [ ] TASK-3: x")
+        self.write_transcript(user_human("go"), assistant_text("TASK-3 now."))
+        self.assertEqual(list(sections(self.block("--format", "handoff"))), ["Tasks"])
+
+    def test_a_state_dict_without_the_key_renders_as_before(self):
+        """Adversarial where: `render_block` requires the new key and a caller building the
+        state by hand breaks."""
+        from commands import session_state
+        state = {"request": "r", "tasks": ["- [ ] TASK-1: a"], "answers": [], "documents": [],
+                 "edited": [], "read": [], "starts": {}, "dirty": [], "test_run": None, "branch": ["b @ c"]}
+        self.assertNotIn("Task in progress", session_state.render_block(state))
 
 
 if __name__ == "__main__":
