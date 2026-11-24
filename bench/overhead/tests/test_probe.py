@@ -2635,3 +2635,54 @@ def test_report_counts_the_expected_files_the_stored_blocks_list(two_points, pri
     assert match, text
     assert match.groups() == ("2", str(len(expected)))
     assert "files listed by the stored blocks, compass" not in text
+
+
+# rebuilt session ------------------------------------------------------------------
+
+
+def test_rebuild_writes_the_history_before_the_boundary_as_a_session_of_the_project(
+        point, private_root, tmp_path, project_dir):
+    """Adversarial where: the rebuilt session carries records from after the
+    boundary (the summary the answer must not see), keeps the recorded session id
+    or working folder so the host files it under the original project, or writes
+    into the transcript it reads."""
+    source = Path(point.rpartition("#")[0])
+    before_bytes = source.read_bytes()
+    index = int(point.rpartition("#")[2])
+    project = tmp_path / "sandbox-project"
+    project.mkdir()
+
+    session = probe.rebuild(point, project, private_root=private_root)
+
+    assert re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}", session)
+    folder = Path(private_root) / "claude-config" / "projects" / probe.launch.encode_cwd(project)
+    written = [json.loads(line) for line in (folder / f"{session}.jsonl").read_text(encoding="utf-8").splitlines()]
+    originals = [json.loads(line) for line in source.read_text(encoding="utf-8").splitlines()]
+    assert [r["uuid"] for r in written] == [r["uuid"] for r in originals[:index]]
+    assert not [r for r in written if r.get("isCompactSummary")]
+    assert SUMMARY_MARK not in json.dumps(written)
+    for record in written:
+        assert record["sessionId"] == session
+        if "cwd" in record:
+            assert record["cwd"] == str(project)
+    assert source.read_bytes() == before_bytes
+
+
+def test_two_rebuilds_of_one_point_are_two_sessions(point, private_root, tmp_path):
+    """Adversarial where: a fixed session id lets the second rebuild overwrite a session
+    another ask is resuming."""
+    project = tmp_path / "p2"
+    project.mkdir()
+    first = probe.rebuild(point, project, private_root=private_root)
+    second = probe.rebuild(point, project, private_root=private_root)
+    assert first != second
+
+
+def test_rebuild_refuses_a_private_root_inside_a_git_work_tree(point, repo, tmp_path):
+    """Adversarial where: the rebuilt history, which holds project content, lands in a
+    repository."""
+    project = tmp_path / "p3"
+    project.mkdir()
+    with pytest.raises(probe.Refused):
+        probe.rebuild(point, project, private_root=repo / "inside")
+    assert not (repo / "inside").exists()
