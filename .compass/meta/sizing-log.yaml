@@ -327,3 +327,11 @@ log:
     by: agent
     at: 2026-11-24
     volatile: []
+  - id: sz-2026-11-24-7
+    action: decision
+    shape: domain
+    subject: "lessons/verification"
+    reason: "pair of root lessons sharing one craft"
+    by: agent
+    at: 2026-11-24
+    volatile: []

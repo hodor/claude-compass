@@ -132,7 +132,7 @@ tags:
   baseline:
   - lessons/experiments/LESSON-score-the-do-nothing-baseline-before-running.md
   bash-output:
-  - lessons/LESSON-verify-exactness-past-a-compressing-layer.md
+  - lessons/verification/LESSON-verify-exactness-past-a-compressing-layer.md
   batch:
   - research/hermes/RESEARCH-hermes-launched-agent-context.md
   batch-size:
@@ -213,7 +213,7 @@ tags:
   call-graph:
   - research/test-quality/beyond-test-pass/RESEARCH-reachability.md
   call-sites:
-  - lessons/LESSON-verify-wiring-by-call-site-grep.md
+  - lessons/verification/LESSON-verify-wiring-by-call-site-grep.md
   callouts:
   - research/human-surface/RESEARCH-visual-documents-mockup.md
   capture:
@@ -321,7 +321,7 @@ tags:
   code-hosts:
   - research/pipeline/RESEARCH-source-inventory.md
   code-reading:
-  - lessons/LESSON-verify-wiring-by-call-site-grep.md
+  - lessons/verification/LESSON-verify-wiring-by-call-site-grep.md
   - research/pipeline/RESEARCH-code-as-primary-source.md
   code-review:
   - lessons/subagents/LESSON-dont-strip-agent-quality-stations.md
@@ -359,12 +359,12 @@ tags:
   completeness-scoring:
   - research/pipeline/REVIEW-spec-023-research-consolidation.md
   compression:
-  - lessons/LESSON-verify-exactness-past-a-compressing-layer.md
+  - lessons/verification/LESSON-verify-exactness-past-a-compressing-layer.md
   - research/hermes/RESEARCH-hermes-changes-since-july.md
   concatenation:
   - decisions/distribution/ADR-020-local-overlays-appended-after-refresh.md
   confidence:
-  - lessons/LESSON-verify-wiring-by-call-site-grep.md
+  - lessons/verification/LESSON-verify-wiring-by-call-site-grep.md
   confidence-threshold:
   - lessons/vault-structure/LESSON-hierarchical-placement-tolerate-disagreement.md
   config:
@@ -551,7 +551,7 @@ tags:
   - specs/learning/SPEC-002-lessons-and-index-subsystem.md
   deduplication:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
-  - lessons/LESSON-parallel-research-check-siblings-first.md
+  - lessons/subagents/LESSON-parallel-research-check-siblings-first.md
   deep-research:
   - research/pipeline/RESEARCH-research-spawning-research.md
   deep-research-agents:
@@ -716,7 +716,7 @@ tags:
   - research/test-quality/beyond-test-pass/RESEARCH-integration-and-evidence.md
   - research/test-quality/beyond-test-pass/REVIEW-beyond-test-pass.md
   exactness:
-  - lessons/LESSON-verify-exactness-past-a-compressing-layer.md
+  - lessons/verification/LESSON-verify-exactness-past-a-compressing-layer.md
   experiment:
   - research/pipeline/RESEARCH-loop-ast-grep-rule-experiment.md
   - research/pipeline/RESEARCH-loop-caps-experiment.md
@@ -923,7 +923,7 @@ tags:
   - research/learning/RESEARCH-clone-old-sessions.md
   - research/learning/RESEARCH-invisible-scaffolding.md
   headroom:
-  - lessons/LESSON-verify-exactness-past-a-compressing-layer.md
+  - lessons/verification/LESSON-verify-exactness-past-a-compressing-layer.md
   heredoc:
   - lessons/platform/LESSON-windows-heredoc-backslash-escapes.md
   hermes:
@@ -1435,7 +1435,7 @@ tags:
   methodology:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   - decisions/pipeline/index.md
-  - lessons/LESSON-parallel-research-check-siblings-first.md
+  - lessons/subagents/LESSON-parallel-research-check-siblings-first.md
   - plans/pipeline/PLAN-018-research-covers-the-whole-spec.md
   - research/pipeline/RESEARCH-code-as-primary-source.md
   - research/pipeline/RESEARCH-research-methodologies-catalog.md
@@ -1608,7 +1608,7 @@ tags:
   paired-judge:
   - lessons/experiments/LESSON-score-the-do-nothing-baseline-before-running.md
   parallel-agents:
-  - lessons/LESSON-parallel-research-check-siblings-first.md
+  - lessons/subagents/LESSON-parallel-research-check-siblings-first.md
   parallel-builders:
   - lessons/subagents/LESSON-parallel-builders-share-one-git-index.md
   - lessons/subagents/LESSON-subagent-worktrees-fork-stale.md
@@ -1890,9 +1890,9 @@ tags:
   requirements-engineering:
   - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
   research:
-  - lessons/LESSON-parallel-research-check-siblings-first.md
-  - lessons/LESSON-verify-wiring-by-call-site-grep.md
   - lessons/pipeline/LESSON-stated-definitions-are-not-research-axes.md
+  - lessons/subagents/LESSON-parallel-research-check-siblings-first.md
+  - lessons/verification/LESSON-verify-wiring-by-call-site-grep.md
   - plans/pipeline/PLAN-018-research-covers-the-whole-spec.md
   - research/llm-research/RESEARCH-axis-2-host-features.md
   - research/llm-research/RESEARCH-axis-2b-host-features-gap.md
@@ -2564,7 +2564,7 @@ tags:
   - research/vault-structure/RESEARCH-hybrid-hierarchy-impl.md
   - specs/vault-structure/SPEC-010-universal-hybrid-hierarchy.md
   vault-writes:
-  - lessons/LESSON-parallel-research-check-siblings-first.md
+  - lessons/subagents/LESSON-parallel-research-check-siblings-first.md
   vector-search:
   - research/vault-structure/RESEARCH-rag-fit-for-large-vaults.md
   vendored-install:
@@ -2580,10 +2580,11 @@ tags:
   - research/learning/RESEARCH-humans-words-fidelity.md
   - specs/learning/SPEC-021-capture-in-the-humans-words.md
   verification:
-  - lessons/LESSON-verify-exactness-past-a-compressing-layer.md
-  - lessons/LESSON-verify-wiring-by-call-site-grep.md
   - lessons/pipeline/LESSON-manual-verification-is-judgment-only.md
   - lessons/pipeline/LESSON-verify-the-inverse-not-the-forward-path.md
+  - lessons/verification/LESSON-verify-exactness-past-a-compressing-layer.md
+  - lessons/verification/LESSON-verify-wiring-by-call-site-grep.md
+  - lessons/verification/index.md
   - plans/PLAN-034-checking-cost-follows-task-and-model.md
   - plans/PLAN-036-verification-beyond-test-pass.md
   - research/llm-research/RESEARCH-axis-4-multi-agent-verification.md
