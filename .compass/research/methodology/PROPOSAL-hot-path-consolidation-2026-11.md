@@ -39,11 +39,13 @@ flowchart LR
 ```
 
 > [!IMPORTANT]
-> You decide: which of the groupings below move. A ticked box moves that grouping's files with `compass move`, which keeps every link working and keeps every index description in the moved file; an unticked box leaves its files where they are. Stage A brings the start-here files from 6,596 to 3,926 tokens of the 5,000 limit without touching PLAN-033 to PLAN-036 or anything their four open worktrees edit. Stage B waits until those worktrees merge.
+> You decide: which groupings below move. A ticked box moves that grouping's files into a topic folder (one folder line in the index instead of one line per document); an unticked box leaves them where they are.
+> Nothing is deleted: every file keeps its full text, every link keeps working and every index description is kept in the moved file.
+> Stage A (safe to do now) brings the start-here files, the three files every agent reads first, from 6,596 to 3,926 tokens, under the 5,000 limit. Stage B (the same kind of move, later) waits until four plans still being built, PLAN-033 to PLAN-036, are merged.
 
 ## What was measured
 
-The start-here files (the hot path) are the three files every launched agent reads first: `index.md`, `active.md` and `lessons/index.md`. `compass hot-path` counts them at about four characters per token.
+The start-here files are the three files every launched agent reads first: `index.md` (the root index, the map of all documents), `active.md` (open work) and `lessons/index.md` (the lessons list). A token is the unit an AI reads in, about four characters; `compass hot-path` counts the three files in tokens. In the index, a folder line shows how many documents sit inside it ("6 children"). Plans are named PLAN-nnn, specs (what we need) SPEC-nnn, decision records ADR-nnn.
 
 | File | Now | After Stage A | After Stage B |
 |---|---|---|---|
@@ -52,15 +54,19 @@ The start-here files (the hot path) are the three files every launched agent rea
 | `lessons/index.md` | 690 | 598 | 643 |
 | **Total (limit 5,000)** | **6,596** | **3,926** | **3,472** |
 
-The warning written into `index.md` reads 6,557; the files grew to 6,596 after it was written. Every number in this document comes from applying the groupings, in the order below, to a scratch copy of the vault with the real `compass make-domain`, `compass move` and `compass sync`, and reading `compass hot-path` after each one. `compass validate` on the scratch copy after Stage B: 0 errors, and no broken link the vault does not already have.
+The size warning at the top of `index.md` reads 6,557, because the files grew to 6,596 after it was written. Every number in this document comes from applying the groupings, in the order below, to a scratch copy of the vault (a throwaway copy, so the real vault is untouched) with the real commands, and reading `compass hot-path` after each one:
+- `compass make-domain` creates a topic folder with its `index.md` and a shape record (a small file noting why the folder was made).
+- `compass move` moves files into a folder and rewrites every link to them.
+- `compass sync` runs after every vault write and keeps the index and lists in step with the files.
+- `compass validate` checks the vault for errors. On the scratch copy after Stage B it reports 0 errors, and no broken link the vault does not already have.
 
 This document adds one line of its own to the Research section of `index.md` (66 tokens) until it moves to the archive; the totals above leave that line out. With it, Stage A ends at 3,992 and Stage B at 3,538.
 
-Weight of the root index now, by section: Plans 2,114 tokens, Research 1,321, Specs 305, Decisions 261, compass-cli 158, Loops 135, Handoffs 133. Plans and Research are 73% of it, and every one of their lines is a document listed by itself next to topic folders that already exist for specs, research and decisions.
+Weight of the root index now, by section: Plans 2,114 tokens, Research 1,321, Specs 305, Decisions 261, compass-cli 158 (the CLI's own documents), Loops 135, Handoffs 133 (notes to resume a session). Plans and Research are 73% of it, and every one of their lines is a document listed by itself next to topic folders that already exist for specs, research and decisions.
 
 ## Stage A: groupings that can move now
 
-Plans follow their specs: each plan goes into the topic folder named for the spec topic folder its spec sits in (`specs/learning/`, `specs/pipeline/`, and so on). Each topic folder is created by `compass make-domain plans/<name> --class-here "<line>" --reason "fold flat plan lines under the spec topic folders" --apply`, which writes its `index.md` and its shape record. Each move is one `compass move <files> <folder> --apply`.
+Plans follow their specs: each plan goes into the topic folder named for the spec topic folder its spec sits in (`specs/learning/`, `specs/pipeline/`, and so on). Each topic folder is created by `compass make-domain plans/<name> --class-here "<line>" --reason "fold flat plan lines under the spec topic folders" --apply`, where the `--class-here` line becomes the folder's "What belongs here" text. Each move is one `compass move <files> <folder> --apply`. Stage A leaves PLAN-033 to PLAN-036 and anything their four open worktrees edit alone; a worktree is a separate checkout of the repository where an agent builds one plan.
 
 Saved tokens are the drop in `compass hot-path` measured at that step.
 
@@ -171,7 +177,7 @@ compass move PLAN-022-review-in-obsidian PLAN-024-working-in-compass-is-visual P
 
 The folder already holds ten documents but has no `index.md`, so each of its documents is listed by itself, indented under the wrong folder line (whole-overhead). Giving it an `index.md` turns ten lines into one; the survey's own axes document moves in beside its findings.
 
-`compass make-domain` refuses a folder that already exists, so the `index.md` is written by hand in the exact shape `make-domain` writes, with this summary and What-belongs-here line: "the survey of Anthropic's engineering posts and 2025-2026 LLM agent research for changes Compass should make - its axes, gap passes, merged review and the checks of the stages it led to". Without a shape record it joins the seven folders `compass validate` already reports as made before the shape record existed.
+`compass make-domain` refuses a folder that already exists, so the `index.md` is written by hand in the exact shape `make-domain` writes, with this summary and "What belongs here" line: "the survey of Anthropic's engineering posts and 2025-2026 LLM agent research for changes Compass should make - its axes, gap passes, merged review and the checks of the stages it led to". Without a shape record it joins the seven folders `compass validate` already reports as made before shape records existed.
 
 ```text
 compass move RESEARCH-llm-research-for-compass research/llm-research --apply
@@ -189,7 +195,7 @@ compass move RESEARCH-llm-research-for-compass research/llm-research --apply
 +- [[research/llm-research/index|llm-research]] (folder, 11 children) - the survey of Anthropic's engineering posts and 2025-2026 LLM agent research for changes Compass should make - its axes, gap passes, merged review and the checks of the stages it led to
 ```
 
-The saving includes the 36-token warning line at the top of `index.md`, which sync removes once the total is under the limit; this step is where the total crosses it.
+The saving includes the 36-token warning line at the top of `index.md`, which `compass sync` removes once the total is under the limit; this step is where the total crosses it.
 
 ### - [ ] A8. The two review documents join `research/human-surface/`: saves 66 tokens
 
@@ -206,7 +212,7 @@ compass move RESEARCH-review-in-obsidian RESEARCH-review-mockup research/human-s
 
 ### - [ ] A9. Four leftover nested lines fold into their folders: saves 248 tokens
 
-These lines point at documents a listed folder line already covers, so sync would prune them, but it keeps them for two reasons. The two `(folder)` lines lack the child count sync's line pattern expects; their text is the folder's own `summary:`, word for word, so removing them by hand loses nothing. The two axis-2 lines carry an older description than the document's current summary; each old description is first appended to its own document as a line `> Root-index description preserved when this document was folded under its topic folder (2026-11-24): <the old text>`, the same note `compass move` writes, and sync then prunes the line.
+These lines point at documents a listed folder line already covers, so `compass sync` would remove them from the index, but it keeps them for two reasons. The two `(folder)` lines lack the child count that `compass sync` expects; their text is the folder's own `summary:`, word for word, so removing them by hand loses nothing. The two axis-2 lines carry an older description than the document's current summary; each old description is first appended to its own document as a line `> Root-index description preserved when this document was folded under its topic folder (2026-11-24): <the old text>`, the same note `compass move` writes, and `compass sync` then removes the line.
 
 ```diff
 -  - [[research/whole-overhead/prompt-cache/index|prompt-cache]] (folder) - three research axes on how Compass's text hits the provider prompt cache: measured hit rate, what changes the session-start prefix, and cache lifetime for subagents and loops
@@ -217,7 +223,7 @@ These lines point at documents a listed folder line already covers, so sync woul
 
 ### - [ ] A10. Two scratch handoff lines move to the older-handoffs list; the Lessons section becomes its pointer: saves 34 tokens
 
-The two handoff lines point at files in `.compass/tmp/trial-334/`, which is scratch space, so both links are broken now. They move, unchanged, to the end of [[handoff-pointers|Older handoffs]], which sync already counts as indexing what it links. The Lessons section gets the pointer text the consolidate skill prescribes, since `lessons/index.md`, not the catalog, is what agents read.
+The two handoff lines point at files in `.compass/tmp/trial-334/`, which is scratch space, so both links are broken now. They move, unchanged, to the end of [[handoff-pointers|Older handoffs]], which `compass sync` already counts as indexing what it links. The Lessons section gets the pointer text the consolidate skill (the Compass routine that tidies an over-full vault) prescribes, since `lessons/index.md`, not the catalog, is what agents read.
 
 ```diff
  ## Handoffs
@@ -281,7 +287,7 @@ compass move LESSON-parallel-research-check-siblings-first lessons/subagents --a
 
 ## Stage B: after the PLAN-033 to PLAN-036 worktrees merge
 
-These moves rewrite links inside files the four open worktrees edit (the four plan files, `RESULTS-wave-1-checks`, and the compaction-survival research the PLAN-033 worktree writes), so they wait for those merges.
+These moves rewrite links inside files the four open worktrees (separate checkouts, see Stage A) edit (the four plan files, `RESULTS-wave-1-checks`, and the compaction-survival research the PLAN-033 worktree writes), so they wait for those merges.
 
 ### - [ ] B1. PLAN-033 and PLAN-036 join `plans/pipeline/`: saves 215 tokens
 
@@ -311,7 +317,7 @@ compass move PLAN-034-checking-cost-follows-task-and-model PLAN-035-prompt-cache
 
 ### - [ ] B3. The wave-checks line folds into `llm-research/`: saves 65 tokens
 
-Same treatment as the axis-2 lines in A9: the old description is appended to the document, then sync prunes the line.
+Same treatment as the axis-2 lines in A9: the old description is appended to the document, then `compass sync` removes the line.
 
 ```diff
 -  - [[research/llm-research/RESULTS-wave-1-checks]] - release 0.37.0 ships the first waves of PLAN-032 to PLAN-036; this page holds their manual checks, Gate 2 of the prompt-cache plan, and the four runs that need your go before they spend subscription usage
@@ -339,7 +345,7 @@ After A12, `lessons/subagents/` holds 13 lessons. Four of them teach one craft, 
 
 ## Lesson catalog
 
-The catalog behind `compass lessons` carries its own warning: 63 lessons in 443 lines, against limits of 50 lessons and 360 lines. The catalog is not one of the start-here files, so nothing here changes the totals above.
+The lesson catalog is the index file behind `compass lessons`, which ranks lessons for agents. It carries its own size warning: 63 lessons in 443 lines, against limits of 50 lessons and 360 lines. It is not one of the start-here files, so nothing here changes the totals above.
 
 - No lesson is flagged for your review (none carries `escalated:`).
 - No lesson body runs past 5 lines.
