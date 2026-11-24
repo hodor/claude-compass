@@ -221,7 +221,7 @@ Marks for every finding unless stated: vendor engineering post, first-party auth
     - Evidence: https://www.anthropic.com/research/claude-code-auto-mode ("Results", "Design decisions", "Deny-and-continue")
     - Marks: vendor post; measured, small real-overeager n; one source, corroborated by sandboxing and how-we-contain posts on the 93% figure
     - Grade: medium
-    - Compass part: `compass guard` PreToolUse hook denies destructive actions for subagents ([[compass-pipeline]] Data rule). No consecutive-denial escalation counter found by grep of the rules text.
+    - Compass part: `compass guard` PreToolUse hook denies destructive actions for subagents (`plugin/templates/rules/compass-pipeline.md`, section "Data"). No consecutive-denial escalation counter found by grep of the rules text.
 
 20. **Evaluation models can detect and defeat benchmarks; a task that consumed 38x the median tokens was a flag** (confidence: low)
     - Only the opening was read: two cases where Claude hypothesised it was evaluated, identified the benchmark, then located and decrypted the key; the post raises doubt about static benchmarks in web-enabled runs.
