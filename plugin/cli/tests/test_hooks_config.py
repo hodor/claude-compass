@@ -239,6 +239,7 @@ def _shell():
 DRIFT_STATUS = "Checking the vault's references against the code"
 DRIFT_COMMAND = (
     '[ -f "$CLAUDE_PROJECT_DIR/.claude/cli/compass" ] || exit 0; '
+    '[ -f "$CLAUDE_PROJECT_DIR/.claude/cli/commands/drift.py" ] || exit 0; '
     'if command -v python3 >/dev/null 2>&1; then '
     'python3 "$CLAUDE_PROJECT_DIR/.claude/cli/compass" drift --hook; '
     'else python "$CLAUDE_PROJECT_DIR/.claude/cli/compass" drift --hook; fi'
@@ -362,7 +363,8 @@ class CompactionHooksTests(unittest.TestCase):
         marker = project / "ran.txt"
         if install_cli:
             cli = project / ".claude" / "cli"
-            cli.mkdir(parents=True)
+            (cli / "commands").mkdir(parents=True)
+            (cli / "commands" / "session_state.py").write_text("", encoding="utf-8")
             (cli / "compass").write_text(
                 "import pathlib, sys\n"
                 f"pathlib.Path({marker.as_posix()!r}).write_text(' '.join(sys.argv[1:]))\n",
@@ -515,6 +517,8 @@ class CompactionHookExecutionTests(unittest.TestCase):
         cli = project / ".claude" / "cli"
         cli.mkdir(parents=True)
         (cli / "compass").write_text(body, encoding="utf-8")
+        (cli / "commands").mkdir()
+        (cli / "commands" / "session_state.py").write_text("", encoding="utf-8")
 
     def _run(self, project, command, event, env_extra=None):
         env = {**os.environ, "CLAUDE_PROJECT_DIR": project.as_posix()}
@@ -792,3 +796,70 @@ class SessionStartSilenceTests(unittest.TestCase):
         self._assert_silent(self._run(project, ["drift", "--hook"]))
         self.assertFalse((Path(project) / LOCK).exists())
         self.assertEqual([row["head"] for row in log_rows(project)], [head])
+
+
+OLDER_CLI = (
+    "import sys\n"
+    "known = {'self-update', 'capture-check', 'context-check', 'sync', 'guard'}\n"
+    "if len(sys.argv) < 2 or sys.argv[1] not in known:\n"
+    "    sys.stderr.write(\"compass: unknown command '%s'\\n\" % sys.argv[1:2])\n"
+    "    sys.exit(1)\n"
+)
+
+
+class OlderInstallTests(unittest.TestCase):
+    """A project whose local CLI predates a hooked command: the plugin's
+    hooks.json is served by the plugin install while `.claude/cli` is
+    refreshed per project, so a hook naming a command the local CLI lacks
+    exits 0 without running it."""
+
+    def setUp(self):
+        self.shell = _shell()
+        if self.shell is None:
+            self.skipTest("no POSIX shell available")
+        hooks = json.loads(HOOKS_JSON.read_text(encoding="utf-8"))["hooks"]
+        self.commands = [
+            (event, g.get("matcher"), h["command"])
+            for event in ("SessionStart", "PreCompact")
+            for g in hooks.get(event, []) for h in g["hooks"]
+            if any(c in h["command"] for c in ("drift --hook", "session-state --hook"))]
+
+    def _older_project(self):
+        base = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, base, True)
+        cli = base / "proj" / ".claude" / "cli"
+        (cli / "commands").mkdir(parents=True)
+        (cli / "compass").write_text(OLDER_CLI, encoding="utf-8")
+        (cli / "commands" / "self_update.py").write_text("", encoding="utf-8")
+        return base / "proj"
+
+    def test_every_newer_command_hook_is_found(self):
+        # Adversarial where: a hook is renamed and drops out of the scan
+        # below, so the older-install check passes on an empty list.
+        names = sorted({(e, m) for e, m, _ in self.commands}, key=str)
+        self.assertEqual(names, sorted({("SessionStart", "startup"),
+                                        ("SessionStart", "compact"),
+                                        ("PreCompact", None)}, key=str))
+
+    def test_older_install_exits_zero_and_prints_nothing(self):
+        # Adversarial where: the hook runs a command the older CLI rejects,
+        # it exits 1 and the session shows "SessionStart:startup hook failed".
+        project = self._older_project()
+        env = {**os.environ, "CLAUDE_PROJECT_DIR": project.as_posix()}
+        for event, matcher, command in self.commands:
+            stdin = json.dumps({"hook_event_name": event, "source": matcher or "auto"})
+            result = subprocess.run(
+                [self.shell, "-c", command], input=stdin, text=True,
+                capture_output=True, env=env, cwd=project, timeout=60)
+            self.assertEqual((result.returncode, result.stdout, result.stderr),
+                             (0, "", ""), (event, matcher))
+
+    def test_the_older_cli_stub_rejects_drift_as_the_real_one_did(self):
+        # Adversarial where: the stub accepts every command, so the test
+        # above passes without the guard doing anything.
+        project = self._older_project()
+        result = subprocess.run(
+            [sys.executable, str(project / ".claude" / "cli" / "compass"), "drift", "--hook"],
+            capture_output=True, text=True, timeout=60)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("unknown command", result.stderr)
