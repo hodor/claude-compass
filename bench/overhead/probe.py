@@ -17,6 +17,9 @@ Transcripts are read and never written. Everything else is stored under
                         carrying a state block, that block; a point with no commit
                         to read the state at holds `"no_state": true` and no reply
     grade-<arm>.json    the scores of that reply
+    superseded/<n>/     the ask and grade files of an arm's earlier runs, the
+                        oldest in 1; a new ask moves the arm's current pair into
+                        the first folder past every one holding that arm's files
 
 The transcript readers in this file are separate from the ones that build the
 carried session state, so the code that builds that state never grades it.
@@ -24,12 +27,15 @@ carried session state, so the code that builds that state never grades it.
 
 import argparse
 import hashlib
+import shutil
 import json
 import posixpath
 import random
 import os
 import re
 import subprocess
+import textwrap
+import uuid
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -42,7 +48,7 @@ import topics
 from launch import default_private_root
 from topics import SessionError
 
-ARMS = ("host-summary", "none", "mechanical", "compass")
+ARMS = ("host-summary", "none", "mechanical", "compass", "before", "handoff")
 # The arms whose carried text includes the state block.
 BLOCK_ARMS = ("mechanical", "compass")
 EDIT_TOOLS = ("Edit", "Write", "MultiEdit")
@@ -500,7 +506,7 @@ def _commit_at_boundary(cwd, boundary):
     return found[1].strip() or None
 
 
-def _state_block(point, key, repo_root, parent_env):
+def _state_block(point, key, repo_root, parent_env, form="block"):
     """The block `compass session-state` renders for `point` at the boundary and at
     the last commit before it, run in the key's frozen `cwd` or, for a key frozen
     without one, the last folder the transcript names before the boundary; None when the point has no commit or the command
@@ -515,12 +521,12 @@ def _state_block(point, key, repo_root, parent_env):
     env.pop("CLAUDE_PROJECT_DIR", None)
     command = [
         sys.executable, str(Path(repo_root) / "plugin" / "cli" / "compass"), "session-state",
-        "--transcript", transcript, "--until", str(index), "--at", commit, "--format", "block",
+        "--transcript", transcript, "--until", str(index), "--at", commit, "--format", form,
     ]
     done = _run_quiet(command, cwd=cwd, env=env)
     if done is None or done[0] != 0 or not done[1].strip():
         return None
-    return done[1].strip()
+    return done[1].replace("\r\n", "\n").strip()
 
 
 def _is_subagent_point(point):
@@ -549,6 +555,104 @@ def _prompt(carried, probes):
     return "\n".join(lines) + "\n"
 
 
+HANDOFF_STEP = "6. **Write the handoff.**"
+
+
+def _handoff_skill(repo_root):
+    path = Path(repo_root) / "plugin" / "skills" / "handoff" / "SKILL.md"
+    try:
+        text = path.read_text(encoding="utf-8").replace("\r\n", "\n")
+    except OSError:
+        raise NotBuilt("the repository holds no handoff skill") from None
+    start = text.find(HANDOFF_STEP)
+    fence = text.find("```markdown", start) if start >= 0 else -1
+    end = text.find("```", fence + len("```markdown")) if fence >= 0 else -1
+    if end < 0:
+        raise NotBuilt("the handoff skill holds no step 6 template")
+    return text, start, fence, end
+
+
+def _handoff_template(repo_root):
+    """The handoff document template: the markdown fence of step 6 of the handoff
+    skill under `repo_root`, its indentation removed."""
+    text, _, fence, end = _handoff_skill(repo_root)
+    return textwrap.dedent(text[fence + len("```markdown"):end]).strip("\n") + "\n"
+
+
+def _handoff_prompt(repo_root, sections):
+    """The writer's prompt: the skill's step 6 instruction, its template and the
+    four sections `session-state --format handoff` printed for the point."""
+    text, start, fence, _ = _handoff_skill(repo_root)
+    step = " ".join(text[start + len(HANDOFF_STEP):fence].split())
+    return "\n".join([
+        "This session ends here and the next one starts from a handoff document. Write it now "
+        "from what this conversation holds. You have no tools.",
+        "",
+        step,
+        "",
+        _handoff_template(repo_root).rstrip(),
+        "",
+        "The command's four sections, to paste verbatim:",
+        "",
+        sections.rstrip(),
+        "",
+        "Reply with the handoff document only.",
+    ]) + "\n"
+
+
+def _ask_handoff(point, key, model, repo_root, root, claude_cmd, parent_env):
+    """The stored record of the `handoff` arm: a writer resumed on the rebuilt
+    history writes a handoff from the skill's template and the point's mechanical
+    sections; a fresh session answers the questions from that handoff alone."""
+    sections = _state_block(point, key, repo_root, parent_env, form="handoff")
+    if sections is None:
+        return {"point": point, "arm": "handoff", "no_state": True}
+    prompt = _handoff_prompt(repo_root, sections)
+    writer_project = sandbox.new_project(root / "probe-projects")
+    session = rebuild(point, writer_project, private_root=root)
+    writer = launch.run_session(
+        writer_project, prompt, repo_root=repo_root, private_root=root, claude_cmd=claude_cmd,
+        parent_env=parent_env, extra_args=["--resume", session, "--tools", "", "--model", model],
+        timeout=SESSION_TIMEOUT,
+    )
+    if writer.status != launch.DONE:
+        raise SessionError(writer.status)
+    handoff = _reply_text(writer.events).strip()
+    if not handoff:
+        raise SessionError("empty handoff")
+    project = sandbox.new_project(root / "probe-projects")
+    result = launch.run_session(
+        project, _prompt(handoff, key["probes"]), repo_root=repo_root, private_root=root,
+        claude_cmd=claude_cmd, parent_env=parent_env,
+        extra_args=["--tools", "", "--model", model], timeout=SESSION_TIMEOUT,
+    )
+    if result.status != launch.DONE:
+        raise SessionError(result.status)
+    return {
+        "point": point, "arm": "handoff", "reply": _reply_text(result.events),
+        "tokens": records.count_tokens(result.events), "handoff": handoff,
+        "writer_tokens": _resumed_tokens(writer.events, model), "sections": sections,
+    }
+
+
+def _resumed_tokens(events, model):
+    """{model: {kind: tokens}} of a resumed session, from its last result event's
+    `usage`: that event's `modelUsage` also counts the usage the resumed history
+    recorded, which this session never spent."""
+    usage = {}
+    for event in reversed(events):
+        if event.get("type") == "result":
+            usage = event.get("usage") if isinstance(event.get("usage"), dict) else {}
+            break
+    fields = {"input": "input_tokens", "output": "output_tokens",
+              "cache_read": "cache_read_input_tokens", "cache_write": "cache_creation_input_tokens"}
+    counts = {}
+    for kind, name in fields.items():
+        value = usage.get(name)
+        counts[kind] = value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else 0
+    return {model: counts}
+
+
 def _reply_text(events):
     for event in reversed(events):
         if event.get("type") == "result":
@@ -557,10 +661,60 @@ def _reply_text(events):
     return ""
 
 
+def rebuild(point, project, *, private_root=None):
+    """Write the history before the boundary of `point` as a session of `project`
+    in the isolated Claude config under the private root, and return its new
+    session id: the boundary side's records, each `sessionId` set to that id and
+    each `cwd` to `project`, all written as the main chain (`isSidechain` false)
+    so a subagent point resumes as a session of its own. The point's transcript is only read. Raises Refused
+    for a private root inside a git work tree."""
+    _check_private_root(private_root)
+    history, _, _ = _history(point)
+    root = Path(private_root) if private_root is not None else default_private_root()
+    session = str(uuid.uuid4())
+    folder = root / "claude-config" / "projects" / launch.encode_cwd(Path(project))
+    folder.mkdir(parents=True, exist_ok=True)
+    lines = []
+    for record in history:
+        record = dict(record)
+        record["sessionId"] = session
+        record["isSidechain"] = False
+        if "cwd" in record:
+            record["cwd"] = str(project)
+        lines.append(json.dumps(record, ensure_ascii=False) + "\n")
+    (folder / f"{session}.jsonl").write_text("".join(lines), encoding="utf-8")
+    return session
+
+
+def _supersede(folder, arm):
+    """Move the arm's current ask and grade files of the point `folder` into
+    `superseded/<n>/`, n one past the highest folder holding a file of this arm."""
+    names = [f"ask-{arm}.json", f"grade-{arm}.json"]
+    current = [folder / name for name in names if (folder / name).is_file()]
+    if not current:
+        return
+    used = [
+        int(child.name) for child in (folder / "superseded").glob("*")
+        if child.is_dir() and child.name.isdigit() and any((child / name).exists() for name in names)
+    ]
+    target = folder / "superseded" / str(max(used, default=0) + 1)
+    target.mkdir(parents=True, exist_ok=True)
+    for path in current:
+        shutil.move(str(path), str(target / path.name))
+
+
+def _store_ask(point, arm, stored, private_root):
+    folder = _point_dir(point, private_root)
+    _supersede(folder, arm)
+    topics.write_json(folder / f"ask-{arm}.json", stored)
+
+
 def ask(point, arm, *, repo_root, private_root=None, claude_cmd=None, parent_env=None):
     """Run one tool-less session over the frozen questions of `point` and store its
     reply. A block arm (`mechanical`, `compass`) carries the state block of the
-    boundary; a point with no block to carry stores `"no_state": true` and starts no
+    boundary; `handoff` runs two sessions, a writer resumed on the history writing a
+    handoff and an answerer holding that handoff alone; `before` carries no text and resumes the point's history rebuilt as a
+    session of the sandbox project; a point with no block to carry stores `"no_state": true` and starts no
     session. Raises ValueError for an arm outside ARMS, Refused, NotBuilt, NoSummary
     (arms carrying the host summary) and SessionError when the session does not end
     `done`."""
@@ -571,32 +725,39 @@ def ask(point, arm, *, repo_root, private_root=None, claude_cmd=None, parent_env
     model = key.get("model")
     if not isinstance(model, str) or not _MODEL_ID.fullmatch(model):
         raise NotBuilt("the point's probe set names no usable model")
+    if arm == "handoff":
+        root = Path(private_root) if private_root is not None else default_private_root()
+        stored = _ask_handoff(point, key, model, repo_root, root, claude_cmd, parent_env)
+        _store_ask(point, arm, stored, private_root)
+        return stored
     summary = _carried_text(point) if arm in ("host-summary", "compass") else None
     block = None
     if arm in BLOCK_ARMS and not (arm == "compass" and _is_subagent_point(point)):
         block = _state_block(point, key, repo_root, parent_env)
         if block is None:
             stored = {"point": point, "arm": arm, "no_state": True}
-            topics.write_json(_point_dir(point, private_root) / f"ask-{arm}.json", stored)
+            _store_ask(point, arm, stored, private_root)
             return stored
     parts = [part.rstrip() for part in (summary, block) if part is not None]
     carried = "\n\n".join(parts) if parts else None
     root = Path(private_root) if private_root is not None else default_private_root()
     project = sandbox.new_project(root / "probe-projects")
+    extra = ["--tools", "", "--model", model]
+    if arm == "before":
+        extra = ["--resume", rebuild(point, project, private_root=root), *extra]
     result = launch.run_session(
         project, _prompt(carried, key["probes"]), repo_root=repo_root, private_root=root,
-        claude_cmd=claude_cmd, parent_env=parent_env,
-        extra_args=["--tools", "", "--model", model], timeout=SESSION_TIMEOUT,
+        claude_cmd=claude_cmd, parent_env=parent_env, extra_args=extra, timeout=SESSION_TIMEOUT,
     )
     if result.status != launch.DONE:
         raise SessionError(result.status)
     stored = {
         "point": point, "arm": arm, "reply": _reply_text(result.events),
-        "tokens": records.count_tokens(result.events),
+        "tokens": _resumed_tokens(result.events, model) if arm == "before" else records.count_tokens(result.events),
     }
     if block is not None:
         stored["block"] = block
-    topics.write_json(_point_dir(point, private_root) / f"ask-{arm}.json", stored)
+    _store_ask(point, arm, stored, private_root)
     return stored
 
 
@@ -811,6 +972,43 @@ def _is_no_state(ask_path):
     return ask_path.is_file() and topics.read_json(ask_path).get("no_state") is True
 
 
+def _listed_files(block, expected, cwd):
+    """How many of the `expected` paths the `## Files edited` section of `block`
+    lists, paths compared as the artifact grader compares them."""
+    listed = set()
+    inside = False
+    for line in block.splitlines():
+        if line.startswith("## "):
+            inside = line.strip() == "## Files edited"
+        elif inside and line.startswith("- "):
+            listed.add(_norm_path(_relative_to(line[2:].strip(), cwd)))
+    return len({_norm_path(path) for path in expected} & listed)
+
+
+def _files_listed_lines(folders):
+    """One line per block arm with a stored block: the expected files its blocks
+    list, summed over the points, against the files the artifact probes expect."""
+    lines = []
+    for arm in BLOCK_ARMS:
+        listed = wanted = 0
+        found = False
+        for folder in folders:
+            ask_path, key_path = folder / f"ask-{arm}.json", folder / "key.json"
+            if not ask_path.is_file() or not key_path.is_file():
+                continue
+            block = topics.read_json(ask_path).get("block")
+            key = topics.read_json(key_path)
+            artifact = next((p for p in key.get("probes", []) if p.get("type") == "artifact"), None)
+            if not isinstance(block, str) or artifact is None:
+                continue
+            found = True
+            listed += _listed_files(block, artifact["expected"], key.get("cwd"))
+            wanted += len({_norm_path(path) for path in artifact["expected"]})
+        if found:
+            lines.append(f"files listed by the stored blocks, {arm}: {listed} of {wanted}")
+    return lines
+
+
 def report(*, private_root=None):
     """A markdown table of the stored grades, per arm and probe type, followed by one
     table per arm other than the reference arm holding its paired differences."""
@@ -861,6 +1059,8 @@ def report(*, private_root=None):
                 no_state[arm] += 1
     lines += [""] if any(no_state.values()) else []
     lines += [f"no-state points, {arm}: {count}" for arm, count in sorted(no_state.items()) if count]
+    listed = _files_listed_lines(folders)
+    lines += [""] + listed if listed else []
     return "\n".join(lines) + "\n"
 
 
@@ -879,6 +1079,8 @@ def _parser():
     ask_parser.add_argument("--arm", choices=ARMS, required=True)
     commands.add_parser("grade", help="score the stored replies of a point").add_argument("point")
     commands.add_parser("report", help="print the per arm and probe type table")
+    commands.add_parser("rebuild", help="write the history before a point as a resumable session").add_argument(
+        "point")
     return parser
 
 
@@ -900,6 +1102,11 @@ def main(argv, *, claude_cmd=None, repo_root=None, parent_env=None):
         elif args.command == "grade":
             for arm, graded in grade(args.point, private_root=args.private_root).items():
                 print(f"{arm}\t{'unparsed' if graded['unparsed'] else 'parsed'}")
+        elif args.command == "rebuild":
+            _check_private_root(args.private_root)
+            base = Path(args.private_root) if args.private_root is not None else default_private_root()
+            project = sandbox.new_project(base / "probe-projects")
+            print(f"{rebuild(args.point, project, private_root=args.private_root)}	{project}")
         else:
             print(report(private_root=args.private_root), end="")
     except SessionError as error:

@@ -2576,3 +2576,285 @@ def test_a_point_asked_again_into_no_state_drops_the_grade_of_its_earlier_reply(
 
     assert ("mechanical", "artifact") not in _main_rows(text)
     assert "no-state points, mechanical: 1" in text.splitlines()
+
+
+# superseded replies and the files-listed line ------------------------------------
+
+
+def test_a_repeated_ask_moves_the_earlier_reply_and_grade_aside(point, repo, private_root, fake_reply):
+    """Adversarial where: a rerun overwrites the first run's reply and grade, losing
+    the data the comparison was drawn from, or numbers its folders past an existing one."""
+    probe.build(point, private_root=private_root)
+    folder = probe._point_dir(point, private_root)
+    for round_number in (1, 2, 3):
+        fake_reply.reply(json.dumps({"artifact": [f"round{round_number}.py"]}))
+        _ask(point, "host-summary", repo, private_root, fake_reply)
+        probe.grade(point, private_root=private_root)
+    assert "round3.py" in topics.read_json(folder / "ask-host-summary.json")["reply"]
+    assert "round1.py" in topics.read_json(folder / "superseded" / "1" / "ask-host-summary.json")["reply"]
+    assert "round2.py" in topics.read_json(folder / "superseded" / "2" / "ask-host-summary.json")["reply"]
+    assert (folder / "superseded" / "1" / "grade-host-summary.json").is_file()
+    assert not (folder / "superseded" / "3").exists()
+    rows = _main_rows(probe.report(private_root=private_root))
+    assert rows[("host-summary", "artifact")][2] == "1"
+
+
+def test_arms_rerun_one_after_another_share_the_first_superseded_folder(point, repo, private_root, fake_reply):
+    """Adversarial where: the second arm's rerun counts the first arm's move and lands
+    its earlier reply one folder further, so a round's replies scatter over folders."""
+    probe.build(point, private_root=private_root)
+    folder = probe._point_dir(point, private_root)
+    for arm in ("host-summary", "none", "host-summary", "none"):
+        fake_reply.reply("{}")
+        _ask(point, arm, repo, private_root, fake_reply)
+    assert (folder / "superseded" / "1" / "ask-host-summary.json").is_file()
+    assert (folder / "superseded" / "1" / "ask-none.json").is_file()
+    assert not (folder / "superseded" / "2").exists()
+
+
+def test_report_counts_the_expected_files_the_stored_blocks_list(two_points, private_root):
+    """Adversarial where: the files-listed line counts paths outside the files-edited
+    section, misses a path spelled with `./` or backslashes, or counts an arm with no
+    stored block."""
+    first, second = two_points
+    for point in (first, second):
+        probe.build(point, private_root=private_root)
+    key = topics.read_json(probe._point_dir(first, private_root) / "key.json")
+    expected = next(p for p in key["probes"] if p["type"] == "artifact")["expected"]
+    assert len(expected) >= 2
+    block = "\n".join([
+        "Compass session state", "", "## Files edited", "- ./" + expected[0],
+        "- " + expected[1].replace("/", "\\"), "- not/expected.py", "", "## Files read",
+        *[f"- {path}" for path in expected[2:]],
+    ])
+    stored = {"point": first, "arm": "mechanical", "reply": "{}", "tokens": {}, "block": block}
+    topics.write_json(probe._point_dir(first, private_root) / "ask-mechanical.json", stored)
+    probe.grade(first, private_root=private_root)
+    text = probe.report(private_root=private_root)
+    match = re.search(r"files listed by the stored blocks, mechanical: (\d+) of (\d+)", text)
+    assert match, text
+    assert match.groups() == ("2", str(len(expected)))
+    assert "files listed by the stored blocks, compass" not in text
+
+
+# rebuilt session ------------------------------------------------------------------
+
+
+def test_rebuild_writes_the_history_before_the_boundary_as_a_session_of_the_project(
+        point, private_root, tmp_path, project_dir):
+    """Adversarial where: the rebuilt session carries records from after the
+    boundary (the summary the answer must not see), keeps the recorded session id
+    or working folder so the host files it under the original project, or writes
+    into the transcript it reads."""
+    source = Path(point.rpartition("#")[0])
+    before_bytes = source.read_bytes()
+    index = int(point.rpartition("#")[2])
+    project = tmp_path / "sandbox-project"
+    project.mkdir()
+
+    session = probe.rebuild(point, project, private_root=private_root)
+
+    assert re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}", session)
+    folder = Path(private_root) / "claude-config" / "projects" / probe.launch.encode_cwd(project)
+    written = [json.loads(line) for line in (folder / f"{session}.jsonl").read_text(encoding="utf-8").splitlines()]
+    originals = [json.loads(line) for line in source.read_text(encoding="utf-8").splitlines()]
+    assert [r["uuid"] for r in written] == [r["uuid"] for r in originals[:index]]
+    assert not [r for r in written if r.get("isCompactSummary")]
+    assert SUMMARY_MARK not in json.dumps(written)
+    for record in written:
+        assert record["sessionId"] == session
+        if "cwd" in record:
+            assert record["cwd"] == str(project)
+    assert source.read_bytes() == before_bytes
+
+
+def test_two_rebuilds_of_one_point_are_two_sessions(point, private_root, tmp_path):
+    """Adversarial where: a fixed session id lets the second rebuild overwrite a session
+    another ask is resuming."""
+    project = tmp_path / "p2"
+    project.mkdir()
+    first = probe.rebuild(point, project, private_root=private_root)
+    second = probe.rebuild(point, project, private_root=private_root)
+    assert first != second
+
+
+def test_rebuild_refuses_a_private_root_inside_a_git_work_tree(point, repo, tmp_path):
+    """Adversarial where: the rebuilt history, which holds project content, lands in a
+    repository."""
+    project = tmp_path / "p3"
+    project.mkdir()
+    with pytest.raises(probe.Refused):
+        probe.rebuild(point, project, private_root=repo / "inside")
+    assert not (repo / "inside").exists()
+
+
+def test_rebuild_cli_prints_the_session_id_of_a_new_sandbox_project(point, private_root, repo, capsys):
+    """Adversarial where: the command line rebuilds into an existing folder or prints
+    nothing a resume can use."""
+    code = probe.main(["--private-root", str(private_root), "rebuild", point], repo_root=repo)
+    assert code == 0
+    session, project = capsys.readouterr().out.strip().split("\t")
+    project = Path(project)
+    assert project.is_relative_to(Path(private_root) / "probe-projects")
+    folder = Path(private_root) / "claude-config" / "projects" / probe.launch.encode_cwd(project)
+    assert (folder / f"{session}.jsonl").is_file()
+
+
+# before arm -----------------------------------------------------------------------
+
+
+def test_before_arm_resumes_the_rebuilt_history_with_no_tools_and_no_carried_text(
+        point, repo, private_root, fake_reply):
+    """Adversarial where: the before arm carries the summary or a rendered history in
+    its prompt instead of resuming the history, keeps its tools, resumes a session the
+    project does not hold, or runs in the repository."""
+    built = probe.build(point, private_root=private_root)
+    fake_reply.reply(json.dumps(key_answers(built)))
+
+    stored = _ask(point, "before", repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    argv = call["argv"]
+    assert argv[argv.index("--tools") + 1] == ""
+    assert argv[argv.index("--model") + 1] == FIXTURE_MODEL
+    session = argv[argv.index("--resume") + 1]
+    project = Path(call["cwd"])
+    assert project.resolve().is_relative_to(Path(private_root).resolve())
+    rebuilt = Path(private_root) / "claude-config" / "projects" / probe.launch.encode_cwd(project) / f"{session}.jsonl"
+    assert rebuilt.is_file()
+    assert SUMMARY_MARK not in call["stdin"]
+    assert "frame decoder" not in call["stdin"]
+    for item in built["probes"]:
+        assert item["question"] in call["stdin"]
+    assert stored["arm"] == "before"
+    assert "block" not in stored
+
+
+def test_rebuild_of_a_subagent_point_writes_its_records_as_the_main_chain(tmp_path, private_root):
+    """Adversarial where: a subagent point's records keep `isSidechain: true`, which a
+    resumed main session skips, so the before arm would answer from nothing."""
+    folder = tmp_path / "sub"
+    (folder / "sess" / "subagents").mkdir(parents=True)
+    records = [user(0, "go"), _plain_edit(1, "src/a.py"), tool_result(2, "ok"), boundary(3), summary(4)]
+    for record in records:
+        record["isSidechain"] = True
+    write_transcript(folder / "sess" / "subagents", "agent-x.jsonl", records)
+    write_transcript(folder, "sess.jsonl", [user(0, "hi")])
+    (found,) = probe.find(folder)
+    project = tmp_path / "proj"
+    project.mkdir()
+    session = probe.rebuild(found["point"], project, private_root=private_root)
+    path = Path(private_root) / "claude-config" / "projects" / probe.launch.encode_cwd(project) / f"{session}.jsonl"
+    written = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    assert len(written) == 3
+    assert all(record["isSidechain"] is False for record in written)
+
+
+def test_report_lists_the_before_arm_and_its_paired_table(point, private_root):
+    """Adversarial where: the report drops an arm it does not know, or never compares
+    the reference arm with the host summary."""
+    probe.build(point, private_root=private_root)
+    _store_reply(point, private_root, "host-summary", {"artifact": ["src/app/main.py"]})
+    _store_reply(point, private_root, "before", {"artifact": EDITED})
+    probe.grade(point, private_root=private_root)
+    text = probe.report(private_root=private_root)
+    rows = _main_rows(text)
+    assert rows[("before", "artifact")][3] == "1.00"
+    assert re.search(r"^\| before \| artifact \| 1 \| 0\.67 \|", text, re.MULTILINE)
+
+
+# handoff arm ----------------------------------------------------------------------
+
+HANDOFF_SKILL = Path(__file__).resolve().parents[3] / "plugin" / "skills" / "handoff" / "SKILL.md"
+HANDOFF_TEXT = "ZQHANDOFFTEXT the handoff the writer wrote"
+
+
+@pytest.fixture(scope="module")
+def handoff_repo(tmp_path_factory):
+    """A committed repository holding a copy of this repository's plugin/cli and the
+    handoff skill, so `ask` renders real handoff sections and reads the real template."""
+    root = tmp_path_factory.mktemp("handoff-repo")
+    shutil.copytree(PLUGIN_CLI, root / "plugin" / "cli", ignore=shutil.ignore_patterns(
+        "__pycache__", "tests", "*.pyc"))
+    (root / "plugin" / "skills" / "handoff").mkdir(parents=True)
+    shutil.copy(HANDOFF_SKILL, root / "plugin" / "skills" / "handoff" / "SKILL.md")
+    (root / ".gitignore").write_text("__pycache__/\n*.pyc\n", encoding="utf-8")
+    _git_at(root, "init", "-q")
+    _git_at(root, "add", ".")
+    _git_at(root, "commit", "-q", "-m", "plugin", moment=FIRST_COMMIT)
+    return root
+
+
+def test_handoff_arm_writes_a_handoff_from_the_history_then_asks_from_it_alone(
+        tmp_path, private_root, state_repo, handoff_repo, fake_reply):
+    """Adversarial where: the writer gets no template or no mechanical sections, the
+    writer is not resumed on the history, the answerer sees the history or the summary
+    instead of the handoff alone, or one session's tokens are lost."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+    fake_reply.reply(HANDOFF_TEXT)
+
+    stored = _ask_state(point, "handoff", handoff_repo, private_root, fake_reply)
+
+    writer, answerer = fake_reply.calls()
+    assert "--resume" in writer["argv"]
+    assert writer["argv"][writer["argv"].index("--tools") + 1] == ""
+    for heading in ("## Start Here", "## Session Summary", "## Context for Resuming"):
+        assert heading in writer["stdin"]
+    assert "## Recent Changes" in writer["stdin"]
+    assert EDITED_PATH in writer["stdin"]
+    assert OPEN_TASK in writer["stdin"]
+    assert LATER_EDIT not in writer["stdin"]
+    assert "--resume" not in answerer["argv"]
+    assert answerer["argv"][answerer["argv"].index("--tools") + 1] == ""
+    assert HANDOFF_TEXT in answerer["stdin"]
+    assert STATE_SUMMARY not in answerer["stdin"]
+    assert answerer["cwd"] != writer["cwd"]
+    assert stored["handoff"] == HANDOFF_TEXT
+    assert stored["tokens"] and stored["writer_tokens"]
+    assert _stored_ask(point, private_root, "handoff")["handoff"] == HANDOFF_TEXT
+
+
+def test_handoff_arm_with_no_commit_at_the_boundary_starts_no_session(
+        tmp_path, private_root, state_repo, handoff_repo, fake_reply):
+    """Adversarial where: a point with no state to hand over still runs a writer on
+    the bare history and charges the arm a score."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo, stamp=FIRST_COMMIT - timedelta(seconds=1))
+    stored = _ask_state(point, "handoff", handoff_repo, private_root, fake_reply)
+    assert stored.get("no_state") is True
+    assert fake_reply.calls() == []
+
+
+def test_handoff_template_is_the_skills_step_six_fence():
+    """Adversarial where: the template is read from the wrong fence (the step 2 bash
+    commands or the resume report) or loses its frontmatter."""
+    template = probe._handoff_template(Path(__file__).resolve().parents[3])
+    assert template.lstrip().startswith("---")
+    assert "## Context for Resuming" in template
+    assert "compass session-state" not in template
+    assert "situational" not in template.lower()
+
+
+def test_a_resumed_session_counts_its_own_turn_not_the_history_it_resumed(point, repo, private_root, fake_reply):
+    """Adversarial where: the before arm stores `modelUsage`, which for a resumed
+    session also counts the usage the recorded history spent, so its carried tokens
+    read as millions."""
+    built = probe.build(point, private_root=private_root)
+    fake_reply.reply(json.dumps(key_answers(built)))
+    stored = _ask(point, "before", repo, private_root, fake_reply)
+    (call,) = fake_reply.calls()
+    assert set(stored["tokens"]) == {FIXTURE_MODEL}
+    counts = stored["tokens"][FIXTURE_MODEL]
+    assert set(counts) == {"input", "output", "cache_read", "cache_write"}
+    assert counts["output"] == 5
+
+
+def test_resumed_tokens_read_the_last_result_usage_only():
+    events = [
+        {"type": "result", "usage": {"input_tokens": 99}},
+        {"type": "assistant"},
+        {"type": "result", "usage": {"input_tokens": 2, "output_tokens": 7, "cache_read_input_tokens": 3,
+                                     "cache_creation_input_tokens": 61568},
+         "modelUsage": {"m": {"inputTokens": 10 ** 6}}},
+    ]
+    assert probe._resumed_tokens(events, "m") == {"m": {"input": 2, "output": 7, "cache_read": 3, "cache_write": 61568}}
+    assert probe._resumed_tokens([], "m") == {"m": {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0}}
