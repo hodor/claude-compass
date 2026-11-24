@@ -986,7 +986,10 @@ class WorkerSpawnTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
 
     @unittest.skipUnless(sys.platform == "win32", "Windows-only detach flags")
-    def test_windows_spawn_uses_detached_process_and_new_process_group(self):
+    def test_windows_spawn_uses_a_hidden_console_and_new_process_group(self):
+        # Adversarial where: a DETACHED_PROCESS worker has no console, so each
+        # console program it starts (git, claude, an MCP server through npx)
+        # gets a new one and Windows shows it as a terminal window.
         import subprocess as subprocess_mod
         root = make_vault(self)
         with_vault_env(self, root.parent)
@@ -998,7 +1001,8 @@ class WorkerSpawnTests(unittest.TestCase):
             self._run()
         kwargs = mock_popen.call_args.kwargs
         flags = kwargs.get("creationflags", 0)
-        self.assertTrue(flags & subprocess_mod.DETACHED_PROCESS, "DETACHED_PROCESS not set")
+        self.assertTrue(flags & subprocess_mod.CREATE_NO_WINDOW, "CREATE_NO_WINDOW not set")
+        self.assertFalse(flags & subprocess_mod.DETACHED_PROCESS, "DETACHED_PROCESS set")
         self.assertTrue(
             flags & subprocess_mod.CREATE_NEW_PROCESS_GROUP, "CREATE_NEW_PROCESS_GROUP not set"
         )

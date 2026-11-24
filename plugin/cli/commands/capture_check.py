@@ -209,7 +209,7 @@ def _spawn_worker(vault_root, opp_id):
     kwargs = {}
     if sys.platform == "win32":
         kwargs["creationflags"] = (
-            subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+            subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP
         )
     else:
         kwargs["start_new_session"] = True
