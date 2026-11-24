@@ -84,6 +84,14 @@ Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, fi
 
 - [ ] The human marks the 40 answers of the judge's grading sheet under the probe's private root; `python bench/overhead/probe_judge.py agreement` then prints the agreement.
 
+## PLAN-033 Wave 5: the summary names the task in progress
+
+Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, files and checks are there. The human approved this wave and its subscription runs on 2026-11-24.
+
+- [ ] TASK-438: The PreCompact instructions name the task in progress - complexity: S, depends_on: TASK-437
+- [ ] TASK-439: The probe gains two re-compaction arms, `recompact-task` and its control `recompact` - complexity: M, depends_on: TASK-438
+- [ ] TASK-440: Run both arms on every point; results on the reference-arms page - complexity: S, depends_on: TASK-439
+
 ## Next Up
 
 - [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].
