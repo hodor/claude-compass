@@ -301,7 +301,7 @@ The tasks run in this order: TASK-438, TASK-439, TASK-440. TASK-440 starts headl
   - Manual verification: none (TASK-440 measures it).
   - Entry point: `printf '{"hook_event_name":"PreCompact","transcript_path":"<transcript>"}' | python plugin/cli/compass session-state --hook`
 
-- [ ] TASK-439: The probe gains two re-compaction arms - complexity: M, depends_on: TASK-438, files: [bench/overhead/probe.py, bench/overhead/tests/test_probe.py, bench/overhead/README.md]
+- [x] TASK-439: The probe gains two re-compaction arms - complexity: M, depends_on: TASK-438, files: [bench/overhead/probe.py, bench/overhead/tests/test_probe.py, bench/overhead/README.md]
   - `recompact-task`: the point's rebuilt session is resumed headless with `--input-format stream-json --tools ""` and `/compact` as its one message, a PreCompact hook registered through `--settings`. The hook prints the text `compass session-state --hook` prints for a PreCompact event on the rebuilt transcript, run in the sandbox project with `.compass/active.md` as it stood at the boundary's commit. The summary the host writes is read from the session's transcript after its new boundary; a fresh tool-less session then answers the frozen questions holding that summary followed by the state block, as the `compass` arm does.
   - `recompact`, the control: the same, with the hook text `session-state` prints for a transcript that names no id (the five items alone), so the two arms differ only by the task line.
   - `ask-<arm>.json` stores the hook text, the summary, the reply, the block and both sessions' tokens (the compaction's from its result event's `usage`); carried tokens are the answerer's. A point with no commit stores `"no_state": true` and starts no session; a compaction that writes no summary raises a session error. `report` lists both arms and gains one line per arm: the summaries naming the continuation probe's expected id, against the points with a continuation probe.
@@ -309,7 +309,7 @@ The tasks run in this order: TASK-438, TASK-439, TASK-440. TASK-440 starts headl
   - Manual verification: none.
   - Entry point: `python bench/overhead/probe.py ask <point> --arm recompact-task`
 
-- [ ] TASK-440: Run both arms on every point - complexity: S, depends_on: TASK-439, files: [.compass/research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md]
+- [x] TASK-440: Run both arms on every point - complexity: S, depends_on: TASK-439, files: [.compass/research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md]
   - `ask` with `recompact` and `recompact-task` on all 29 points, `grade` on every point and `report`.
   - `RESEARCH-probe-reference-arms.md` gains a section `## The task named in the compaction instructions`: both arms against `host-summary`, `compass` and `mechanical`, `recompact-task` against `recompact`, as shares of `before`, the summaries-naming line, carried tokens and the run's cost. No path, prompt, session id or answer text.
   - Automated verification: `grep -n "## The task named in the compaction instructions" .compass/research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md` finds the section; `grep -cE "[0-9a-f]{8}-[0-9a-f]{4}-" .compass/research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md` prints 0; `python -m pytest bench/overhead/tests -q -p no:cacheprovider` and `python -m pytest plugin/cli/tests -q` pass.
