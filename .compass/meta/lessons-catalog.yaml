@@ -434,3 +434,10 @@ lessons:
     tags: [subagents, orchestration, background, foreground, stall]
     score: 5
     summary: "A lead agent that spawns background children ends its turn 'waiting' with no live children and stalls; briefs must require foreground spawns"
+  - file: "LESSON-hook-guards-on-cli-command-it-calls.md"
+    status: active
+    category: process
+    area: devops
+    tags: [hooks, cli, install-drift, versioning, plugin-update]
+    score: 5
+    summary: "Hooks ship with the plugin install but each project's .claude/cli updates separately; a hook calling a new CLI command must skip when the local CLI lacks it"

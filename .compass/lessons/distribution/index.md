@@ -17,6 +17,7 @@ Class here: installing, updating, and shipping Compass surfaces - what update ow
 
 ## Lessons
 
+- [[lessons/distribution/LESSON-hook-guards-on-cli-command-it-calls|LESSON-hook-guards-on-cli-command-it-calls]] - Hooks ship with the plugin install but each project's .claude/cli updates separately; a hook calling a new CLI command must skip when the local CLI lacks it
 - [[lessons/distribution/LESSON-installer-removes-only-what-it-installed|LESSON-installer-removes-only-what-it-installed]] - Delete only what you installed or planned, by name; 'everything else here' always holds files that are not yours
 - [[lessons/distribution/LESSON-self-update-corrections-lag-one-version|LESSON-self-update-corrections-lag-one-version]] - Self-update correction logic shipped in version N runs under the N-1 updater; it first fires on the following update
 - [[lessons/distribution/LESSON-self-update-silent-on-bad-repository-url|LESSON-self-update-silent-on-bad-repository-url]] - A bad repository URL in plugin.yaml makes self-update look permanently offline; doctor should verify it resolves
