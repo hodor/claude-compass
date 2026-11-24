@@ -75,6 +75,7 @@ def new_project(projects_root):
     try:
         done = subprocess.run(
             ["git", "init", "-q"], cwd=project, capture_output=True, text=True, env=launch.git_environment(),
+            **launch.NO_WINDOW,
         )
     except OSError as error:
         project.rmdir()
@@ -159,7 +160,9 @@ def discard_project(project, *, config_dir, claude_cmd=None, projects_root=None)
     env["CLAUDE_CONFIG_DIR"] = str(config_dir)
     if path.exists():
         _remove_tree(path)
-    done = subprocess.run(command, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    done = subprocess.run(
+        command, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", **launch.NO_WINDOW,
+    )
     if done.returncode != 0:
         raise RuntimeError(f"claude purge exited {done.returncode}: {done.stderr.strip()}")
 

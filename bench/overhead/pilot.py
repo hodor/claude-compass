@@ -778,7 +778,9 @@ def _number(value, digits=1, reason="no finished build"):
 
 def _git_line(repo_root, *args):
     try:
-        done = subprocess.run(["git", *args], cwd=repo_root, capture_output=True, text=True, timeout=30)
+        done = subprocess.run(
+            ["git", *args], cwd=repo_root, capture_output=True, text=True, timeout=30, **launch.NO_WINDOW,
+        )
     except (OSError, subprocess.SubprocessError):
         return None
     return done.stdout.strip() if done.returncode == 0 and done.stdout.strip() else None

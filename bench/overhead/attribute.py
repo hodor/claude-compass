@@ -934,7 +934,7 @@ def mark_discarded(report_text, discarded, kept):
 def _git(directory, *args):
     return subprocess.run(
         ["git", "-C", str(directory), *args], capture_output=True, text=True, encoding="utf-8",
-        env=launch.git_environment(),
+        env=launch.git_environment(), **launch.NO_WINDOW,
     )
 
 

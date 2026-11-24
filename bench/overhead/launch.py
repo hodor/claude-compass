@@ -84,6 +84,10 @@ _EDITOR_FOLDERS = frozenset({"cursor", "vs code", "vscode", "visual studio code"
 # Seconds a killed session's pipes are drained before reading is given up.
 DRAIN_SECONDS = 5.0
 
+# Keyword arguments that start a console program with no window on Windows;
+# every short-lived process the bench starts passes them.
+NO_WINDOW = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
+
 
 class Refused(Exception):
     """The session was not started."""
@@ -183,7 +187,7 @@ def _git(repo_root, *args):
     try:
         return subprocess.run(
             ["git", "-C", str(repo_root), *args], capture_output=True, text=True, encoding="utf-8",
-            env=git_environment(),
+            env=git_environment(), **NO_WINDOW,
         )
     except OSError as error:
         raise Refused(f"git cannot be run: {error}") from error
@@ -314,7 +318,7 @@ def _kill_tree(process):
     """Kill `process` and every process it started."""
     if sys.platform == "win32":
         subprocess.run(
-            ["taskkill", "/T", "/F", "/PID", str(process.pid)], capture_output=True, check=False,
+            ["taskkill", "/T", "/F", "/PID", str(process.pid)], capture_output=True, check=False, **NO_WINDOW,
         )
     else:
         try:
