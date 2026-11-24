@@ -66,6 +66,8 @@ Each gate is a question to you, its recommended option first. A choice that remo
 2. Turn it off in this repo only, measured, and decide on shipping after TASK-426.
 3. Keep the snapshot.
 
+Answered 2026-11-24: option 1. `includeGitInstructions: false` is written only when the project's settings lack the key, so a project's `true` keeps the snapshot. TASK-424 and TASK-425 build it; TASK-428's subscription run is allowed.
+
 **Gate 3, after TASK-428: adopt a 1-hour cache lifetime for subagents (review candidate 4, Divergent 2).** Nothing functional is lost; the risk is about 15% higher subagent cost if reuse does not rise (A3 F13), and the setting has no effect while a subscription draws usage credits (A3 F2).
 1. Adopt it only where the A/B shows a lower weighted cost at equal judged outcome, in the form the A/B tested (Recommended).
 2. Adopt it for every subagent type regardless.
