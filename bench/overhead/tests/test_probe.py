@@ -2761,3 +2761,100 @@ def test_report_lists_the_before_arm_and_its_paired_table(point, private_root):
     rows = _main_rows(text)
     assert rows[("before", "artifact")][3] == "1.00"
     assert re.search(r"^\| before \| artifact \| 1 \| 0\.67 \|", text, re.MULTILINE)
+
+
+# handoff arm ----------------------------------------------------------------------
+
+HANDOFF_SKILL = Path(__file__).resolve().parents[3] / "plugin" / "skills" / "handoff" / "SKILL.md"
+HANDOFF_TEXT = "ZQHANDOFFTEXT the handoff the writer wrote"
+
+
+@pytest.fixture(scope="module")
+def handoff_repo(tmp_path_factory):
+    """A committed repository holding a copy of this repository's plugin/cli and the
+    handoff skill, so `ask` renders real handoff sections and reads the real template."""
+    root = tmp_path_factory.mktemp("handoff-repo")
+    shutil.copytree(PLUGIN_CLI, root / "plugin" / "cli", ignore=shutil.ignore_patterns(
+        "__pycache__", "tests", "*.pyc"))
+    (root / "plugin" / "skills" / "handoff").mkdir(parents=True)
+    shutil.copy(HANDOFF_SKILL, root / "plugin" / "skills" / "handoff" / "SKILL.md")
+    (root / ".gitignore").write_text("__pycache__/\n*.pyc\n", encoding="utf-8")
+    _git_at(root, "init", "-q")
+    _git_at(root, "add", ".")
+    _git_at(root, "commit", "-q", "-m", "plugin", moment=FIRST_COMMIT)
+    return root
+
+
+def test_handoff_arm_writes_a_handoff_from_the_history_then_asks_from_it_alone(
+        tmp_path, private_root, state_repo, handoff_repo, fake_reply):
+    """Adversarial where: the writer gets no template or no mechanical sections, the
+    writer is not resumed on the history, the answerer sees the history or the summary
+    instead of the handoff alone, or one session's tokens are lost."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+    fake_reply.reply(HANDOFF_TEXT)
+
+    stored = _ask_state(point, "handoff", handoff_repo, private_root, fake_reply)
+
+    writer, answerer = fake_reply.calls()
+    assert "--resume" in writer["argv"]
+    assert writer["argv"][writer["argv"].index("--tools") + 1] == ""
+    for heading in ("## Start Here", "## Session Summary", "## Context for Resuming"):
+        assert heading in writer["stdin"]
+    assert "## Recent Changes" in writer["stdin"]
+    assert EDITED_PATH in writer["stdin"]
+    assert OPEN_TASK in writer["stdin"]
+    assert LATER_EDIT not in writer["stdin"]
+    assert "--resume" not in answerer["argv"]
+    assert answerer["argv"][answerer["argv"].index("--tools") + 1] == ""
+    assert HANDOFF_TEXT in answerer["stdin"]
+    assert STATE_SUMMARY not in answerer["stdin"]
+    assert answerer["cwd"] != writer["cwd"]
+    assert stored["handoff"] == HANDOFF_TEXT
+    assert stored["tokens"] and stored["writer_tokens"]
+    assert _stored_ask(point, private_root, "handoff")["handoff"] == HANDOFF_TEXT
+
+
+def test_handoff_arm_with_no_commit_at_the_boundary_starts_no_session(
+        tmp_path, private_root, state_repo, handoff_repo, fake_reply):
+    """Adversarial where: a point with no state to hand over still runs a writer on
+    the bare history and charges the arm a score."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo, stamp=FIRST_COMMIT - timedelta(seconds=1))
+    stored = _ask_state(point, "handoff", handoff_repo, private_root, fake_reply)
+    assert stored.get("no_state") is True
+    assert fake_reply.calls() == []
+
+
+def test_handoff_template_is_the_skills_step_six_fence():
+    """Adversarial where: the template is read from the wrong fence (the step 2 bash
+    commands or the resume report) or loses its frontmatter."""
+    template = probe._handoff_template(Path(__file__).resolve().parents[3])
+    assert template.lstrip().startswith("---")
+    assert "## Context for Resuming" in template
+    assert "compass session-state" not in template
+    assert "situational" not in template.lower()
+
+
+def test_a_resumed_session_counts_its_own_turn_not_the_history_it_resumed(point, repo, private_root, fake_reply):
+    """Adversarial where: the before arm stores `modelUsage`, which for a resumed
+    session also counts the usage the recorded history spent, so its carried tokens
+    read as millions."""
+    built = probe.build(point, private_root=private_root)
+    fake_reply.reply(json.dumps(key_answers(built)))
+    stored = _ask(point, "before", repo, private_root, fake_reply)
+    (call,) = fake_reply.calls()
+    assert set(stored["tokens"]) == {FIXTURE_MODEL}
+    counts = stored["tokens"][FIXTURE_MODEL]
+    assert set(counts) == {"input", "output", "cache_read", "cache_write"}
+    assert counts["output"] == 5
+
+
+def test_resumed_tokens_read_the_last_result_usage_only():
+    events = [
+        {"type": "result", "usage": {"input_tokens": 99}},
+        {"type": "assistant"},
+        {"type": "result", "usage": {"input_tokens": 2, "output_tokens": 7, "cache_read_input_tokens": 3,
+                                     "cache_creation_input_tokens": 61568},
+         "modelUsage": {"m": {"inputTokens": 10 ** 6}}},
+    ]
+    assert probe._resumed_tokens(events, "m") == {"m": {"input": 2, "output": 7, "cache_read": 3, "cache_write": 61568}}
+    assert probe._resumed_tokens([], "m") == {"m": {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0}}
