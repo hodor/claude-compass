@@ -158,6 +158,14 @@ TASK-342, TASK-343, TASK-345, TASK-346 and TASK-350 start in parallel; their fil
 
 The dash check, as in PLAN-028: `python -c "import pathlib,sys; bad=[str(p) for p in [*pathlib.Path('bench/overhead').rglob('*.py'), *pathlib.Path('bench/overhead').rglob('*.md'), *pathlib.Path('plugin/cli').rglob('*.py'), *pathlib.Path('.compass/research/whole-overhead/checking-cost').glob('*.md'), *pathlib.Path('.compass/decisions/pipeline').glob('*.md')] if any(chr(c) in p.read_text(encoding='utf-8') for c in (0x2013, 0x2014))]; print(bad); sys.exit(bool(bad))"` exits 0.
 
+Harness fixes made while running TASK-350 to TASK-352, each test-first:
+
+- `letters.py` sessions start through `launch.run_session` (no console window on Windows, the prompt on stdin, the process tree killed at the timeout) and run up to `--jobs` at once; TASK-350 ran at three.
+- Every `git`, `claude purge`, `taskkill` and answer-command process the bench starts passes `launch.NO_WINDOW`; `tests/test_no_window.py` reads the bench's source and fails on a bare process start.
+- `pilot.py --runs N --run-log FILE` builds N runs per arm on a run log of its own, so each TASK-351 smoke build is a one-build replay that never closes a slot of the pilot's log.
+- `spread.py` computes TASK-352's per-pair differences, their within-topic spread, the batch sizes, the noninferiority verdict and the builders' review share, with capped, failed, unjudged and unpaired builds listed apart (`tests/test_pilot_variant.py`).
+- The second pilot's run log, whose Compass builds ran an older Compass, moved whole to `run-log.second-pilot.jsonl` beside it, so TASK-352's full-arm builds are built fresh at this commit rather than paired from that log.
+
 **Pause point:** when the automated checks pass, wait for you to confirm the manual checks of TASK-342, TASK-350 and TASK-352 before Stage 2 is detailed.
 
 ## Later (intent only)
