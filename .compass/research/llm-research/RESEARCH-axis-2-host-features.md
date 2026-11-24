@@ -324,3 +324,5 @@ Ranked by architectural impact. "Covered" means the vault or `plugin/` already d
 9. **For SDK use, set `onFailure: "block"` on guard hooks and keep `settingSources` including `project`.** North star: accuracy (the guard is the "nothing destroys information" enforcement).
    - Change: documentation or a CLI check; shell hooks in `hooks.json` can set `onFailure: "block"` since 2.1.295.
    - Covered: no. Evidence: findings 10, 32.
+
+> Root-index description preserved when this document was folded under its topic folder (2026-11-24): Claude Code 2.1.330 hook, skill, subagent, plugin, memory and compaction features mapped against Compass hooks, CLI and skills; first pass, API-side features pending

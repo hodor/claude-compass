@@ -48,7 +48,7 @@ tags:
   agentic-testing:
   - research/test-quality/RESEARCH-test-quality-craft-and-practice.md
   agents:
-  - research/RESEARCH-llm-research-for-compass.md
+  - research/llm-research/RESEARCH-llm-research-for-compass.md
   - research/rolling-wave/RESEARCH-rolling-wave-agent-planning.md
   - research/whole-overhead/RESEARCH-axis-3-simulated-human.md
   agents-md:
@@ -62,9 +62,9 @@ tags:
   anonymization:
   - specs/learning/SPEC-029-human-verdicts-reach-compass.md
   anthropic:
-  - research/RESEARCH-llm-research-for-compass.md
   - research/llm-research/RESEARCH-axis-1-anthropic-engineering.md
   - research/llm-research/RESEARCH-axis-1b-anthropic-engineering-gap.md
+  - research/llm-research/RESEARCH-llm-research-for-compass.md
   anti-list:
   - decisions/learning/ADR-002-retrospective-lessons-subsystem.md
   append-only:
@@ -701,9 +701,9 @@ tags:
   escaping:
   - lessons/platform/LESSON-windows-heredoc-backslash-escapes.md
   evals:
-  - research/RESEARCH-llm-research-for-compass.md
   - research/llm-research/RESEARCH-axis-1-anthropic-engineering.md
   - research/llm-research/RESEARCH-axis-1b-anthropic-engineering-gap.md
+  - research/llm-research/RESEARCH-llm-research-for-compass.md
   evaluation:
   - lessons/test-quality/LESSON-test-driven-tasks-dont-discriminate.md
   - research/llm-research/RESEARCH-axis-6-harness-engineering.md
@@ -781,7 +781,7 @@ tags:
   - plans/pipeline/PLAN-021-control-loops.md
   - research/pipeline/RESEARCH-control-theory-for-loops.md
   focus:
-  - research/RESEARCH-review-in-obsidian.md
+  - research/human-surface/RESEARCH-review-in-obsidian.md
   folder-spec:
   - lessons/vault-structure/LESSON-obsidian-bare-link-creates-stray-note.md
   - lessons/vault-structure/LESSON-template-shape-vs-template-precondition.md
@@ -1058,8 +1058,8 @@ tags:
   - loops/LOOP-001-visual-questions/index.md
   - plans/human-surface/PLAN-022-review-in-obsidian.md
   - plans/human-surface/PLAN-027-numbered-choices.md
-  - research/RESEARCH-review-in-obsidian.md
-  - research/RESEARCH-review-mockup.md
+  - research/human-surface/RESEARCH-review-in-obsidian.md
+  - research/human-surface/RESEARCH-review-mockup.md
   - specs/human-surface/SPEC-029-questions-to-the-human-are-clear-and-visual.md
   - specs/human-surface/SPEC-030-review-documents-open-in-obsidian.md
   human-practice:
@@ -1296,6 +1296,7 @@ tags:
   llm-research:
   - research/llm-research/RESEARCH-axis-3-agent-memory.md
   - research/llm-research/REVIEW-llm-research-for-compass.md
+  - research/llm-research/index.md
   llm-test-generation:
   - research/test-quality/RESEARCH-test-quality-literature.md
   local:
@@ -1411,7 +1412,6 @@ tags:
   - specs/vault-structure/SPEC-003-hierarchical-vault-organization.md
   memory:
   - decisions/vault-structure/index.md
-  - research/RESEARCH-llm-research-for-compass.md
   - research/hermes/RESEARCH-hermes-memory-mechanics.md
   - research/hermes/RESEARCH-hermes-memory-today.md
   - research/hermes/index.md
@@ -1421,6 +1421,7 @@ tags:
   - research/llm-research/RESEARCH-axis-1-anthropic-engineering.md
   - research/llm-research/RESEARCH-axis-2-host-features.md
   - research/llm-research/RESEARCH-axis-3-agent-memory.md
+  - research/llm-research/RESEARCH-llm-research-for-compass.md
   - research/llm-research/REVIEW-llm-research-for-compass.md
   - research/vault-structure/index.md
   - research/whole-overhead/REVIEW-agent-context-2026-11.md
@@ -1462,9 +1463,9 @@ tags:
   mockup:
   - lessons/pipeline/LESSON-ui-change-needs-agreed-mockup-before-build.md
   - plans/human-surface/PLAN-024-working-in-compass-is-visual.md
-  - research/RESEARCH-review-mockup.md
   - research/human-surface/RESEARCH-plain-words-mockup.md
   - research/human-surface/RESEARCH-plugin-ui-mockup.md
+  - research/human-surface/RESEARCH-review-mockup.md
   - research/human-surface/RESEARCH-review-panel-mockup.md
   - research/human-surface/RESEARCH-terminal-output-mockup.md
   - research/human-surface/RESEARCH-visual-documents-mockup.md
@@ -1488,9 +1489,9 @@ tags:
   monitoring:
   - lessons/subagents/LESSON-long-agents-stall-resume-them.md
   multi-agent:
-  - research/RESEARCH-llm-research-for-compass.md
   - research/llm-research/RESEARCH-axis-1-anthropic-engineering.md
   - research/llm-research/RESEARCH-axis-4-multi-agent-verification.md
+  - research/llm-research/RESEARCH-llm-research-for-compass.md
   - research/pipeline/RESEARCH-research-spawning-research.md
   multi-file:
   - plans/human-surface/PLAN-025-review-across-files-and-sessions.md
@@ -1545,11 +1546,11 @@ tags:
   - plans/human-surface/PLAN-025-review-across-files-and-sessions.md
   - plans/human-surface/PLAN-031-screenplays-in-the-vault.md
   - plans/learning/PLAN-030-ideas-keep-their-status.md
-  - research/RESEARCH-review-in-obsidian.md
-  - research/RESEARCH-review-mockup.md
   - research/human-surface/RESEARCH-plugin-ui-mockup.md
   - research/human-surface/RESEARCH-review-across-files-and-sessions.md
+  - research/human-surface/RESEARCH-review-in-obsidian.md
   - research/human-surface/RESEARCH-review-live-checks.md
+  - research/human-surface/RESEARCH-review-mockup.md
   - research/human-surface/RESEARCH-review-panel-mockup.md
   - research/human-surface/RESEARCH-screenplays-in-the-vault.md
   - research/human-surface/RESEARCH-visual-trials-in-obsidian.md
@@ -1696,8 +1697,8 @@ tags:
   - lessons/platform/index.md
   plugin:
   - plans/human-surface/PLAN-022-review-in-obsidian.md
-  - research/RESEARCH-review-in-obsidian.md
   - research/human-surface/RESEARCH-plugin-ui-mockup.md
+  - research/human-surface/RESEARCH-review-in-obsidian.md
   - research/human-surface/RESEARCH-review-panel-mockup.md
   plugin-config:
   - lessons/hooks/LESSON-hook-if-clause-no-or.md
@@ -1736,9 +1737,9 @@ tags:
   premises:
   - lessons/pipeline/LESSON-verify-the-inverse-not-the-forward-path.md
   prior-art:
-  - research/RESEARCH-llm-research-for-compass.md
   - research/distribution/RESEARCH-gsd-core-improvements-for-compass.md
   - research/llm-research/RESEARCH-axis-5-spec-driven-frameworks.md
+  - research/llm-research/RESEARCH-llm-research-for-compass.md
   - research/pipeline/RESEARCH-decision-coverage-impl.md
   - research/vault-structure/RESEARCH-active-set-prior-art.md
   - research/vault-structure/RESEARCH-graph-engineering-for-compass.md
@@ -1893,10 +1894,10 @@ tags:
   - lessons/LESSON-verify-wiring-by-call-site-grep.md
   - lessons/pipeline/LESSON-stated-definitions-are-not-research-axes.md
   - plans/pipeline/PLAN-018-research-covers-the-whole-spec.md
-  - research/RESEARCH-llm-research-for-compass.md
   - research/llm-research/RESEARCH-axis-2-host-features.md
   - research/llm-research/RESEARCH-axis-2b-host-features-gap.md
   - research/llm-research/RESEARCH-axis-4-multi-agent-verification.md
+  - research/llm-research/RESEARCH-llm-research-for-compass.md
   - research/pipeline/RESEARCH-code-as-primary-source.md
   - research/pipeline/RESEARCH-research-methodologies-catalog.md
   - research/pipeline/RESEARCH-research-spawning-research.md
@@ -1953,13 +1954,13 @@ tags:
   - lessons/pipeline/LESSON-adversarial-plan-review-before-build.md
   - plans/human-surface/PLAN-022-review-in-obsidian.md
   - plans/human-surface/PLAN-025-review-across-files-and-sessions.md
-  - research/RESEARCH-review-in-obsidian.md
-  - research/RESEARCH-review-mockup.md
   - research/hermes/RESEARCH-hermes-skill-review-gate.md
   - research/hermes/REVIEW-hermes-skill-creation-2026-11.md
   - research/human-surface/RESEARCH-plugin-ui-mockup.md
   - research/human-surface/RESEARCH-review-across-files-and-sessions.md
+  - research/human-surface/RESEARCH-review-in-obsidian.md
   - research/human-surface/RESEARCH-review-live-checks.md
+  - research/human-surface/RESEARCH-review-mockup.md
   - research/human-surface/RESEARCH-review-panel-mockup.md
   - research/human-surface/RESEARCH-terminal-output-mockup.md
   - research/human-surface/RESEARCH-vscode-review-mockup.md

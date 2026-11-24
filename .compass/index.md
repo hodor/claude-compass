@@ -1,4 +1,3 @@
-<!-- WARNING: hot path 5231 / 5000 tokens (index.md 3320, active.md 1221, lessons/index.md 690). Run /compass:consolidate before next session. -->
 ---
 title: Compass Plugin — Project Index
 project: compass
@@ -35,24 +34,11 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[research/test-quality/index|test-quality]] (folder, 8 children) - what makes a test suite good and how to measure it
 - [[research/vault-structure/index|vault-structure]] (folder, 10 children) - evidence on organizing and retrieving vault memory - hierarchy, tiers, RAG, graphs, taxonomy
 - [[research/pipeline/index|pipeline]] (folder, 17 children) - evidence on the pipeline as a method - benchmarks, scientific rigor, decision-coverage mechanics
-- [[research/human-surface/index|human-surface]] (folder, 12 children) - how Compass puts things in front of the human: the questions it asks, the documents it hands over for review, and how all of it reads
-- [[RESEARCH-review-in-obsidian]] - a small Obsidian plugin takes the verdict and returns the human; proven on Windows; ranks Compass features for an Obsidian UI
-- [[RESEARCH-review-mockup]] - the review lives in one side panel that follows the human through links
-- [[RESEARCH-llm-research-for-compass]] - approved axes for surveying Anthropic's engineering posts and 2025-2026 LLM agent research for changes Compass should make; axis findings in research/llm-research/
+- [[research/human-surface/index|human-surface]] (folder, 14 children) - how Compass puts things in front of the human: the questions it asks, the documents it hands over for review, and how all of it reads
 - [[research/whole-overhead/index|whole-overhead]] (folder, 19 children) - evidence on measuring Compass's whole token overhead on projects agents build, and cutting it biggest area first
-  - [[research/whole-overhead/prompt-cache/index|prompt-cache]] (folder) - three research axes on how Compass's text hits the provider prompt cache: measured hit rate, what changes the session-start prefix, and cache lifetime for subagents and loops
-  - [[research/whole-overhead/checking-cost/index|checking-cost]] (folder) - research for SPEC-034: how Compass sizes tasks, what its checking stations cost per task, and how a part-by-part re-baseline on a model change would run
-  - [[research/llm-research/RESEARCH-axis-6-harness-engineering]] - What OpenAI, Manus, Cursor, Cognition, Amp, Factory, OpenHands, Cline, Gemini CLI and a 2026 source-code survey say about harness design, checked against what Compass already does; reports only what the earlier context prior-art review did not cover
-  - [[research/llm-research/RESEARCH-axis-2-host-features]] - Claude Code 2.1.330 hook, skill, subagent, plugin, memory and compaction features mapped against Compass hooks, CLI and skills; first pass, API-side features pending
-  - [[research/llm-research/RESEARCH-axis-3-agent-memory]] - 2025-2026 agent-memory papers against Compass's hot path, 5-line lessons and consolidation: helpful/harmful counters, delta-only curation, masking over summarizing, length-alone degradation, sleep-time precompute
-  - [[research/llm-research/RESEARCH-axis-1-anthropic-engineering]] - 28 Anthropic engineering posts surveyed; the changes that touch Compass architecture are model-change harness ablation, offline memory consolidation, evaluator-on-demand, and bounded test output
-  - [[research/llm-research/RESEARCH-axis-5-spec-driven-frameworks]] - Nine spec-driven frameworks read from source, comparison table, and the empirical evidence on specs, plans, TDD and ambiguity; candidate Compass changes
-  - [[research/llm-research/RESEARCH-axis-4-multi-agent-verification]] - Evidence that fan-out hurts sequential coding, that test-pass is a weak oracle (34% of passing patches break review constraints), that clean-context and cross-model review help only partly, and that deterministic checks beat LLM checkers; maps each to builder, tester, validator, reviewer and the 3-cycle fix loop
-  - [[research/llm-research/RESEARCH-axis-1b-anthropic-engineering-gap]] - Gap pass over six partly-read Anthropic engineering posts plus the missing 29th post; adds containment-first design, pass^k, absolute-path tool poka-yoke, think-tool deprecation, and trust-boundary lessons
-  - [[research/llm-research/RESEARCH-axis-2b-host-features-gap]] - Gap pass on axis 2: Compass looprunner/proctree/self_update versus /goal, --bg, /loop and marketplace auto-update; prompt-cache ordering for always-loaded text; host trials of first-pass findings 7, 8, 21, 24, 25, 26
-  - [[research/llm-research/REVIEW-llm-research-for-compass]] - Eight axis files merged and gap-mapped against the vault: seven architecture candidates, nine host-trial or doc fixes, nine measurements; strongest are cache-aware context, source-grounded consolidation, verification beyond test-pass and difficulty-scaled checking
   - [[research/llm-research/RESULTS-wave-1-checks]] - release 0.37.0 ships the first waves of PLAN-032 to PLAN-036; this page holds their manual checks, Gate 2 of the prompt-cache plan, and the four runs that need your go before they spend subscription usage
   - [[research/methodology/PROPOSAL-hot-path-consolidation-2026-11]] - topic folders for the 35 flat plan lines and the stray research lines, old notes parked out of active.md: start-here files from 6,596 to 3,926 tokens now, 3,472 after the four open plans merge
+- [[research/llm-research/index|llm-research]] (folder, 11 children) - the survey of Anthropic's engineering posts and 2025-2026 LLM agent research for changes Compass should make - its axes, gap passes, merged review and the checks of the stages it led to
 
 ## Plans
 
