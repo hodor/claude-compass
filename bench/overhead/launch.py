@@ -325,9 +325,10 @@ def _kill_tree(process):
 
 
 def _group_options():
-    """Popen options that put the child in a process group of its own."""
+    """Popen options that put the child in a process group of its own, with no
+    console window on Windows."""
     if sys.platform == "win32":
-        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW}
     return {"start_new_session": True}
 
 
