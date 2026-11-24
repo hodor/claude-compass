@@ -17,10 +17,16 @@ expected verdicts are in `EXPECTED`: reach flags A, ablate flags B, and every
 other check passes. `judge` starts one headless validator session limited to
 step 4j for task C and scores its requirement rows against `JUDGE_OWNED`.
 
-    python bench/verification/planted.py [--root DIR] [--judge] [--json FILE]
+    python bench/verification/planted.py [--lang python|node] [--root DIR] [--judge] [--json FILE]
 
 The exit code is 0 when the suite is green, every check equals `EXPECTED` and
 every record reruns to `match`.
+
+`--lang node` builds the same spec, plan and three tasks on a Node package
+(`src/core.js`, `bin/tally.js`, tests under `node:test`) and measures with c8,
+installed from npm into `<root>/.tools`. Task C adds an HTTP route and the
+driver `scripts/drive.js` that exercises it; task A's helper is one arrow line.
+The Node project has no judge run.
 """
 
 import argparse
@@ -62,16 +68,34 @@ TASK_TITLES = {
     "TASK-002": "Punctuation around a word is ignored, per O-1",
     "TASK-003": "`tally top` prints the most frequent word, per O-3 and the Constraints",
 }
+LANGUAGES = ("python", "node")
 TASK_FILES = {
-    "TASK-001": ["tally/core.py", "tests/test_fmt.py"],
-    "TASK-002": ["tally/core.py", "tests/test_punct.py"],
-    "TASK-003": ["tally/core.py", "tally/__main__.py", "tests/test_top.py"],
+    "python": {
+        "TASK-001": ["tally/core.py", "tests/test_fmt.py"],
+        "TASK-002": ["tally/core.py", "tests/test_punct.py"],
+        "TASK-003": ["tally/core.py", "tally/__main__.py", "tests/test_top.py"],
+    },
+    "node": {
+        "TASK-001": ["src/core.js", "tests/fmt.test.js"],
+        "TASK-002": ["src/core.js", "tests/punct.test.js"],
+        "TASK-003": ["src/core.js", "src/server.js", "scripts/drive.js", "tests/top.test.js"],
+    },
 }
 ENTRY_POINTS = {
-    "TASK-001": 'python -m tally count "one two three"',
-    "TASK-002": 'python -m tally count "Hello, world!"',
-    "TASK-003": 'python -m tally top "The cat saw the dog"',
+    "python": {
+        "TASK-001": 'python -m tally count "one two three"',
+        "TASK-002": 'python -m tally count "Hello, world!"',
+        "TASK-003": 'python -m tally top "The cat saw the dog"',
+    },
+    "node": {
+        "TASK-001": 'node bin/tally.js count "one two three"',
+        "TASK-002": 'node bin/tally.js count "Hello, world!"',
+        "TASK-003": "node scripts/drive.js",
+    },
 }
+SUITE_COMMANDS = {"python": "python -m pytest -q", "node": "node --test"}
+NODE_TEST_COMMAND = "node --test --test-reporter=tap {tests}"
+NODE_TOOLS = ".tools"
 
 PROBE_NAME = "probe"
 PROBE_EMAIL = "probe@example.invalid"
@@ -193,15 +217,120 @@ A person who holds a text has no command that counts its words or names its most
 - On a tie, `tally top` prints the tied word that sorts first alphabetically.
 """
 
+NODE_GITIGNORE = ".tools/\nnode_modules/\ncoverage/\n.claude/\n.compass/tmp/\n.compass/meta/\n"
 
-def _plan_text():
+NODE_PACKAGE = '{\n  "name": "tally",\n  "version": "1.0.0",\n  "private": true\n}\n'
+
+NODE_COUNT_SEED = "exports.count = (text) => text.split(/\\s+/).filter(Boolean).length;\n"
+
+NODE_CORE_SEED = NODE_COUNT_SEED
+
+NODE_CORE_A = NODE_CORE_SEED + '\nexports.formatTotal = (n) => n.toLocaleString("en-US");\n'
+
+NODE_COUNT_B = (
+    "exports.count = (text) => text.split(/\\s+/)"
+    '.map((raw) => raw.replace(/^[.,!?;:]+|[.,!?;:]+$/g, "")).filter(Boolean).length;\n'
+)
+
+NODE_CORE_B = NODE_CORE_A.replace(NODE_COUNT_SEED, NODE_COUNT_B)
+
+NODE_CORE_C = NODE_CORE_B + """
+exports.top = (text) => {
+  const words = text.toLowerCase().split(/\\s+/).map((raw) => raw.replace(/^[.,!?;:]+|[.,!?;:]+$/g, "")).filter(Boolean);
+  const counts = new Map();
+  for (const word of words) counts.set(word, (counts.get(word) || 0) + 1);
+  return words.length ? [...counts].reduce((best, entry) => (entry[1] > best[1] ? entry : best))[0] : "";
+};
+"""
+
+NODE_TALLY_BIN = """const core = require("../src/core.js");
+
+const COMMANDS = new Set(["count", "top"]);
+const USAGE = "usage: node bin/tally.js count|top <text>";
+
+function main(argv) {
+  const command = argv[0] || "";
+  const run = COMMANDS.has(command) ? core[command] : undefined;
+  if (typeof run !== "function") {
+    console.error(USAGE);
+    return 2;
+  }
+  const answer = String(run(argv.slice(1).join(" ")));
+  if (answer !== "") console.log(answer);
+  return 0;
+}
+
+process.exitCode = main(process.argv.slice(2));
+"""
+
+NODE_SERVER = """const http = require("node:http");
+const core = require("./core.js");
+
+const routes = { "/top": (text) => core.top(text) };
+
+exports.createServer = () =>
+  http.createServer((req, res) => {
+    const url = new URL(req.url, "http://localhost");
+    const route = routes[url.pathname];
+    res.statusCode = route ? 200 : 404;
+    res.end(route ? route(url.searchParams.get("text") || "") : "");
+  });
+"""
+
+NODE_DRIVE = """const http = require("node:http");
+const { createServer } = require("../src/server.js");
+
+const server = createServer();
+server.listen(0, "127.0.0.1", () => {
+  const { port } = server.address();
+  const text = encodeURIComponent("The cat saw the dog");
+  http.get(`http://127.0.0.1:${port}/top?text=${text}`, { agent: false }, (res) => {
+    let body = "";
+    res.setEncoding("utf8");
+    res.on("data", (chunk) => {
+      body += chunk;
+    });
+    res.on("end", () => {
+      console.log(body);
+      server.close();
+    });
+  });
+});
+"""
+
+NODE_TEST_HEAD = 'const test = require("node:test");\nconst assert = require("node:assert");\n'
+
+NODE_TEST_CORE = (
+    NODE_TEST_HEAD + 'const { count } = require("../src/core.js");\n\n'
+    'test("count words", () => {\n  assert.strictEqual(count("one two three"), 3);\n});\n'
+)
+
+NODE_TEST_FMT = (
+    NODE_TEST_HEAD + 'const { formatTotal } = require("../src/core.js");\n\n'
+    'test("formatTotal groups thousands", () => {\n  assert.strictEqual(formatTotal(1234), "1,234");\n});\n'
+)
+
+NODE_TEST_PUNCT = (
+    NODE_TEST_HEAD + 'const { count } = require("../src/core.js");\n\n'
+    'test("two words", () => {\n  assert.strictEqual(count("one two"), 2);\n});\n\n'
+    'test("three words", () => {\n  assert.strictEqual(count("a b c"), 3);\n});\n'
+)
+
+NODE_TEST_TOP = (
+    NODE_TEST_HEAD + 'const { top } = require("../src/core.js");\n\n'
+    'test("top ignores letter case", () => {\n  assert.strictEqual(top("The cat the dog"), "the");\n});\n\n'
+    'test("top of an empty text is empty", () => {\n  assert.strictEqual(top(""), "");\n});\n'
+)
+
+
+def _plan_text(lang="python"):
     blocks = []
     for _, task in TASKS:
-        files = ", ".join(TASK_FILES[task])
+        files = ", ".join(TASK_FILES[lang][task])
         blocks.append(
             f"- [x] {task}: {TASK_TITLES[task]} - complexity: S, depends_on: none, files: [{files}]\n"
-            "  - Automated verification: python -m pytest -q\n"
-            f"  - Entry point: {ENTRY_POINTS[task]}\n"
+            f"  - Automated verification: {SUITE_COMMANDS[lang]}\n"
+            f"  - Entry point: {ENTRY_POINTS[lang][task]}\n"
         )
     return (
         "---\n"
@@ -222,12 +351,16 @@ def _clean_env():
     return launch.git_environment()
 
 
-def _run(argv, cwd, *, what, check=True):
-    """Run `argv` with no console window; returns the CompletedProcess (text output)."""
+def _run(argv, cwd, *, what, check=True, env=None):
+    """Run `argv` with no console window; returns the CompletedProcess (text output).
+
+    `env` is the whole environment of the process; without it the caller's own
+    environment minus the git location variables.
+    """
     try:
         done = subprocess.run(
             [str(a) for a in argv], cwd=str(cwd), capture_output=True, text=True,
-            encoding="utf-8", errors="replace", env=_clean_env(), creationflags=NO_WINDOW,
+            encoding="utf-8", errors="replace", env=env or _clean_env(), creationflags=NO_WINDOW,
         )
     except OSError as error:
         raise ProbeError(f"{what}: cannot run {argv[0]}: {error}") from error
@@ -248,6 +381,29 @@ def _git(project, *args, check=True):
 def _write(path, text):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(text.encode("utf-8"))
+
+
+def _check_lang(lang):
+    if lang not in LANGUAGES:
+        raise ValueError(f"lang must be one of {', '.join(LANGUAGES)}, not {lang!r}")
+
+
+def _node_env(project):
+    """The environment of every Node command: npm's global prefix is the project's c8 folder.
+
+    Both spellings of the variable are replaced, so the c8 that `build` installed
+    is found from any folder, a scratch worktree included.
+    """
+    env = {k: v for k, v in _clean_env().items() if k.upper() != "NPM_CONFIG_PREFIX"}
+    env["npm_config_prefix"] = str(Path(project) / NODE_TOOLS)
+    return env
+
+
+def _npm():
+    found = shutil.which("npm")
+    if found is None:
+        raise ProbeError("npm is not installed: c8 cannot be installed")
+    return found
 
 
 def venv_python(project):
@@ -292,19 +448,21 @@ def _land(project, task, files, message_title):
     _git(project, "merge", "-q", "--no-ff", "-m", f"Merge {task}: {message_title}", branch)
 
 
-def build(root, *, repo_root, uv="uv"):
+def build(root, *, repo_root, uv="uv", lang="python"):
     """Create the seeded project in `root` and return it.
 
     `root` must be missing or an empty folder outside every git work tree;
     otherwise Refused is raised before anything is written. A build that fails
-    after writing leaves `root` as it found it: missing, or empty.
+    after writing leaves `root` as it found it: missing, or empty. `lang` is
+    `python` (own virtual environment) or `node` (c8 installed into `.tools`).
     """
+    _check_lang(lang)
     root = Path(root)
     _check_target(root)
     existed = root.exists()
     root.mkdir(parents=True, exist_ok=True)
     try:
-        return _build_in(root, Path(repo_root), uv)
+        return _build_in(root, Path(repo_root), uv, lang)
     except BaseException:
         _remove_tree(root)
         if existed:
@@ -312,32 +470,59 @@ def build(root, *, repo_root, uv="uv"):
         raise
 
 
-def _build_in(root, repo_root, uv):
-    _run([uv, "venv", "--quiet", root / ".venv"], root, what="uv venv")
-    _run([uv, "pip", "install", "--quiet", "--python", venv_python(root), "coverage", "pytest"],
-         root, what="uv pip install")
-
+def _python_project():
     seed = {
         ".gitignore": GITIGNORE,
         "tally/__init__.py": "",
         "tally/core.py": CORE_SEED,
         "tally/__main__.py": MAIN_SEED,
         "tests/test_core.py": TEST_CORE,
-        SPEC_PATH: SPEC_TEXT,
-        PLAN_PATH: _plan_text(),
     }
+    tasks = {
+        "TASK-001": {"tally/core.py": CORE_A, "tests/test_fmt.py": TEST_FMT},
+        "TASK-002": {"tally/core.py": CORE_B, "tests/test_punct.py": TEST_PUNCT},
+        "TASK-003": {"tally/core.py": CORE_C, "tally/__main__.py": MAIN_C,
+                     "tests/test_top.py": TEST_TOP},
+    }
+    return seed, tasks
+
+
+def _node_project():
+    seed = {
+        ".gitignore": NODE_GITIGNORE,
+        "package.json": NODE_PACKAGE,
+        "src/core.js": NODE_CORE_SEED,
+        "bin/tally.js": NODE_TALLY_BIN,
+        "tests/core.test.js": NODE_TEST_CORE,
+    }
+    tasks = {
+        "TASK-001": {"src/core.js": NODE_CORE_A, "tests/fmt.test.js": NODE_TEST_FMT},
+        "TASK-002": {"src/core.js": NODE_CORE_B, "tests/punct.test.js": NODE_TEST_PUNCT},
+        "TASK-003": {"src/core.js": NODE_CORE_C, "src/server.js": NODE_SERVER,
+                     "scripts/drive.js": NODE_DRIVE, "tests/top.test.js": NODE_TEST_TOP},
+    }
+    return seed, tasks
+
+
+def _build_in(root, repo_root, uv, lang):
+    if lang == "node":
+        _run([_npm(), "install", "-g", "--prefix", root / NODE_TOOLS, "--no-audit", "--no-fund",
+              "--loglevel=error", "c8"], root, what="npm install c8")
+        seed, tasks = _node_project()
+    else:
+        _run([uv, "venv", "--quiet", root / ".venv"], root, what="uv venv")
+        _run([uv, "pip", "install", "--quiet", "--python", venv_python(root), "coverage", "pytest"],
+             root, what="uv pip install")
+        seed, tasks = _python_project()
+    seed = {**seed, SPEC_PATH: SPEC_TEXT, PLAN_PATH: _plan_text(lang)}
     for name, text in seed.items():
         _write(root / name, text)
     _git(root, "init", "-q", "--initial-branch=main")
     _git(root, "add", *seed)
     _git(root, "commit", "-q", "-m", "Seed the word tally")
 
-    _land(root, "TASK-001", {"tally/core.py": CORE_A, "tests/test_fmt.py": TEST_FMT},
-          TASK_TITLES["TASK-001"])
-    _land(root, "TASK-002", {"tally/core.py": CORE_B, "tests/test_punct.py": TEST_PUNCT},
-          TASK_TITLES["TASK-002"])
-    _land(root, "TASK-003", {"tally/core.py": CORE_C, "tally/__main__.py": MAIN_C,
-                             "tests/test_top.py": TEST_TOP}, TASK_TITLES["TASK-003"])
+    for task, files in tasks.items():
+        _land(root, task, files, TASK_TITLES[task])
 
     shutil.copytree(
         repo_root / "plugin" / "cli", root / ".claude" / "cli",
@@ -365,10 +550,15 @@ def merges(project):
     return dict(sorted(found.items()))
 
 
-def run_suite(project):
+def run_suite(project, lang="python"):
     """`(green, last output line)` of the project's test suite at HEAD."""
-    done = _run([venv_python(project), "-m", "pytest", "-q", "-p", "no:cacheprovider"],
-                project, what="pytest", check=False)
+    _check_lang(lang)
+    if lang == "node":
+        done = _run(["node", "--test"], project, what="node --test", check=False,
+                    env=_node_env(project))
+    else:
+        done = _run([venv_python(project), "-m", "pytest", "-q", "-p", "no:cacheprovider"],
+                    project, what="pytest", check=False)
     lines = [line.strip() for line in (done.stdout + "\n" + done.stderr).splitlines() if line.strip()]
     return done.returncode == 0, lines[-1] if lines else ""
 
@@ -391,10 +581,15 @@ def _compass(cli, *args):
     return [sys.executable, "-B", str(cli), *args]
 
 
-def _check_command(project, cli, check, task, merge):
+def _check_command(project, cli, check, task, merge, lang="python"):
+    if lang == "node":
+        if check == "reach":
+            return _compass(cli, "reach", "--run", ENTRY_POINTS["node"][task], "--lang", "node",
+                            "--diff", f"{merge}^1..{merge}")
+        return _compass(cli, "ablate", task, "--cmd", NODE_TEST_COMMAND)
     python = venv_python(project)
     if check == "reach":
-        entry = ENTRY_POINTS[task]
+        entry = ENTRY_POINTS["python"][task]
         command = f'"{python}"' + entry[len("python"):]
         return _compass(cli, "reach", "--run", command, "--lang", "python",
                         "--diff", f"{merge}^1..{merge}", "--python", python)
@@ -415,27 +610,30 @@ def _commit_record(project, record, task, check):
     _git(project, "commit", "-q", "-m", f"Record {task} {check} evidence")
 
 
-def _rerun(project, cli, record):
+def _rerun(project, cli, record, env=None):
     done = _run(_compass(cli, "evidence", "rerun", project / record), project,
-                what="evidence rerun", check=False)
+                what="evidence rerun", check=False, env=env)
     words = done.stdout.split()
     return words[0] if words and words[0] in ("match", "mismatch") else "error"
 
 
-def run_checks(project, *, cli):
+def run_checks(project, *, cli, lang="python"):
     """Run reach and ablate for every task through `compass evidence run`.
 
     Returns one dict per check in `TASKS` order, reach before ablate, with the
-    keys letter, task, check, verdict, expected, record and rerun.
+    keys letter, task, check, verdict, expected, record and rerun. A Node run
+    and its reruns carry the project's c8 prefix in their environment.
     """
+    _check_lang(lang)
     project = Path(project)
+    env = _node_env(project) if lang == "node" else None
     found = merges(project)
     rows = []
     for letter, task in TASKS:
         for check in ("reach", "ablate"):
-            inner = _check_command(project, cli, check, task, found[task])
+            inner = _check_command(project, cli, check, task, found[task], lang)
             done = _run(_compass(cli, "evidence", "run", "--task", task, "--check", check, "--", *inner),
-                        project, what=f"evidence run {task} {check}", check=False)
+                        project, what=f"evidence run {task} {check}", check=False, env=env)
             record = _record_line(done.stdout)
             word = None
             if record:
@@ -449,7 +647,7 @@ def run_checks(project, *, cli):
             })
     for row in rows:
         if row["record"]:
-            row["rerun"] = _rerun(project, cli, row["record"])
+            row["rerun"] = _rerun(project, cli, row["record"], env)
     return rows
 
 
@@ -559,22 +757,28 @@ def _judge_lines(result):
 
 def _parse_args(argv):
     parser = argparse.ArgumentParser(prog="planted.py", description="Planted-defect probe.")
+    parser.add_argument("--lang", choices=LANGUAGES, default="python",
+                        help="language of the seeded project (default python)")
     parser.add_argument("--root", help="folder to build the project in (missing or empty)")
     parser.add_argument("--judge", action="store_true", help="also run the 4j validator session")
     parser.add_argument("--json", metavar="FILE", help="write every result to FILE")
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.judge and args.lang != "python":
+        parser.error("--judge runs on the python project only")
+    return args
 
 
 def main(argv=None):
     args = _parse_args(sys.argv[1:] if argv is None else argv)
     started = time.monotonic()
+    lang_kwargs = {} if args.lang == "python" else {"lang": args.lang}
     if args.json and not Path(args.json).absolute().parent.is_dir():
         print(f"the folder of --json {args.json} does not exist", file=sys.stderr)
         return 2
     made_here = args.root is None
     root = Path(tempfile.mkdtemp(prefix="tally-probe-")) if made_here else Path(args.root)
     try:
-        project = build(root, repo_root=REPO_ROOT)
+        project = build(root, repo_root=REPO_ROOT, **lang_kwargs)
     except Refused as error:
         print(f"refused: {error}", file=sys.stderr)
         return 2
@@ -583,9 +787,9 @@ def main(argv=None):
         if made_here:
             print(f"probe folder kept: {root}", file=sys.stderr)
         return 1
-    green, suite_line = run_suite(project)
+    green, suite_line = run_suite(project, **lang_kwargs)
     cli = project / ".claude" / "cli" / "compass"
-    checks = run_checks(project, cli=cli)
+    checks = run_checks(project, cli=cli, **lang_kwargs)
     lines = format_lines(green, suite_line, checks)
 
     judged = None
