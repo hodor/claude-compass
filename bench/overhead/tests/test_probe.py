@@ -2023,6 +2023,25 @@ def test_mechanical_prompt_holds_the_state_block_at_the_boundary_and_no_summary(
         assert stale not in prompt
 
 
+def test_a_key_frozen_without_cwd_renders_the_block_in_the_transcripts_folder(
+        tmp_path, private_root, state_repo, cli_repo, fake_reply):
+    """Adversarial where: a key frozen before keys carried `cwd` (the pilot's)
+    makes every mechanical and compass ask a no-state record, though its
+    transcript names the folder the session ran in."""
+    point = _boundary_state_point(tmp_path, private_root, state_repo)
+    key_path = probe._point_dir(point, private_root) / "key.json"
+    key = topics.read_json(key_path)
+    del key["cwd"]
+    key_path.write_text(json.dumps(key), encoding="utf-8")
+    fake_reply.reply("{}")
+
+    _ask_state(point, "mechanical", cli_repo, private_root, fake_reply)
+
+    (call,) = fake_reply.calls()
+    assert BLOCK_TITLE in call["stdin"] and OPEN_TASK in call["stdin"]
+    assert not _stored_ask(point, private_root, "mechanical").get("no_state")
+
+
 def test_compass_prompt_holds_the_summary_before_the_state_block(
         tmp_path, private_root, state_repo, cli_repo, fake_reply):
     """Adversarial where: a compass arm that drops the block, drops the summary,

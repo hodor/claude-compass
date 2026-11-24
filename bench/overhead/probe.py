@@ -502,11 +502,12 @@ def _commit_at_boundary(cwd, boundary):
 
 def _state_block(point, key, repo_root, parent_env):
     """The block `compass session-state` renders for `point` at the boundary and at
-    the last commit before it, or None when the point has no commit or the command
+    the last commit before it, run in the key's frozen `cwd` or, for a key frozen
+    without one, the last folder the transcript names before the boundary; None when the point has no commit or the command
     prints nothing or fails."""
     transcript, index = _point_parts(point)
-    _, boundary, _ = _history(point)
-    cwd = key.get("cwd")
+    history, boundary, _ = _history(point)
+    cwd = key["cwd"] if isinstance(key.get("cwd"), str) else _last_cwd(history)
     commit = _commit_at_boundary(cwd, boundary)
     if commit is None:
         return None
