@@ -83,8 +83,8 @@ Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files a
 Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files and checks are there.
 
 - [x] TASK-413: 4j's split kept: the probe showed no miss and no false alarm - complexity: S, depends_on: TASK-412
-- [ ] TASK-441: `compass evidence run` starts a relative forward-slash path on Windows - complexity: S, depends_on: none
-- [ ] TASK-418: A second planted-defect probe on a Node project - complexity: L, depends_on: TASK-412
+- [x] TASK-441: `compass evidence run` starts a relative forward-slash path on Windows - complexity: S, depends_on: none
+- [x] TASK-418: A second planted-defect probe on a Node project - complexity: L, depends_on: TASK-412
 - [ ] TASK-419: Release of the later wave and local refresh - complexity: S, depends_on: TASK-441, TASK-418
 
 ## PLAN-033 Wave 4: the task in progress and the judge
