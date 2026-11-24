@@ -855,3 +855,49 @@ def test_main_run_rejects_jobs_below_one_before_spending_any(tmp_path):
     runner = ScriptedRunner(["letter: M\nwords: w"])
     assert letters.main(_run_args(tmp_path, plans, extra=("--jobs", "0")), runner=runner) == 1
     assert runner.calls == 0
+
+
+def _rubric_file(folder, scope_s="One file and its tests"):
+    path = Path(folder) / "rubric.md"
+    path.write_text(
+        "# Candidate\n\n## Task Sizing\n\n| Size | Scope | Example |\n|---|---|---|\n"
+        "| S | %s | e |\n| M | 2-4 files and their tests | e |\n| L | 5+ files, or a new subsystem | e |\n\n"
+        "## Next\n\nRUBRICTAIL\n" % scope_s,
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_main_run_measures_a_candidate_rubric_and_keeps_its_progress_apart(tmp_path):
+    """Adversarial where: `--rubric` is accepted but the sessions still see
+    the shipped planner's table; the text after the sizing section leaks into
+    the prompt; or a progress file written under one rubric resumes under
+    another, mixing two rubrics' letters in one report."""
+    plans = _vault_plans(tmp_path)
+    rubric = _rubric_file(tmp_path)
+    prompts = []
+
+    def runner(argv, cwd):
+        prompts.append(argv[-1])
+        return "letter: S\nwords: one file and its tests"
+
+    args = _run_args(tmp_path, plans, extra=("--rubric", str(rubric)))
+    assert letters.main(args, runner=runner) == 0
+    assert prompts and all("One file and its tests" in p for p in prompts)
+    assert not any("Single file, straightforward" in p for p in prompts)
+    assert not any("RUBRICTAIL" in p for p in prompts)
+    assert (tmp_path / "out.md").is_file()
+
+    _rubric_file(tmp_path, scope_s="A single small file")
+    calls = []
+    assert letters.main(args, runner=lambda argv, cwd: calls.append(1) or "letter: S") == 1
+    assert calls == []
+
+
+def test_a_rubric_file_without_a_sizing_table_is_refused_before_any_session(tmp_path):
+    plans = _vault_plans(tmp_path)
+    rubric = tmp_path / "bad.md"
+    rubric.write_text("# No sizing here\n", encoding="utf-8")
+    runner = ScriptedRunner(["letter: M"])
+    assert letters.main(_run_args(tmp_path, plans, extra=("--rubric", str(rubric))), runner=runner) == 1
+    assert runner.calls == 0
