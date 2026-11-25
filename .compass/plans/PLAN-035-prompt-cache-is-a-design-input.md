@@ -73,6 +73,8 @@ Answered 2026-11-24: option 1. `includeGitInstructions: false` is written only w
 2. Adopt it for every subagent type regardless.
 3. Do not adopt it.
 
+Decided 2026-11-24: option 1. In [[RESEARCH-subagent-ttl-ab]] the 1-hour lifetime cost about 41% more per subagent launch in each of the 3 pairs where both builds finished uncapped, at an equal judged outcome, so no subagent type qualifies and the lifetime stays at the host default.
+
 ## Prerequisites
 
 - Gate 1 answered at approval; without an answer TASK-421 takes the recommended option.
@@ -136,7 +138,7 @@ One task, the only Later line that needs neither Gate 2 nor a subscription run. 
 - [x] TASK-425: If Gate 2 says off: `looprunner.launch_session` sets `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1` for workers and judges unless the environment already sets it - files: [plugin/cli/looprunner.py, plugin/cli/tests/test_looprunner.py]
 - [ ] TASK-426: The gain in a real Compass project: after the switch lands in this repo, a week of sessions compared with the baseline through `compass cache --compare`, the change in first-request read and next-session reuse recorded in the baseline document; the subagent rows show whether subagents gain too. The week counts from 2026-11-24, the day the switch lands in this repo (TASK-424 and TASK-425 merged and `includeGitInstructions: false` present in `.claude/settings.json`); the comparison runs on or after 2026-12-01, and a later landing moves both dates by the same number of days
 - [x] TASK-428: A/B of a 1-hour subagent cache lifetime on builder waves, repo-local in `bench/overhead/`, through [[PLAN-034-checking-cost-follows-task-and-model]]'s variant arms (TASK-343): one arm adds `subagentPromptCacheTtl: 1h` to the project settings, the other is unchanged Compass, same topics, within plan usage; `compass cache --json` per build gives subagent first-request and after-gap reads, cross-agent reuse 5-60 minutes apart, and list-price weighted cost at equal judged outcome, recorded in a research document - files: [bench/overhead/variants/, .compass/research/whole-overhead/prompt-cache/RESEARCH-subagent-ttl-ab.md], lessons: [LESSON-subscription-cost-is-an-estimate-not-a-budget, LESSON-blind-the-author-in-self-validation]
-- [ ] TASK-429: Per Gate 3, set the 1-hour lifetime in the form the A/B tested, for the types where it paid - files: [plugin/cli/commands/self_update.py, plugin/templates/agents/builder.md]
+- [x] TASK-429: Per Gate 3, set the 1-hour lifetime in the form the A/B tested, for the types where it paid (no type paid; nothing set) - files: [plugin/cli/commands/self_update.py, plugin/templates/agents/builder.md]
 - [ ] TASK-430: Ship each later wave: version bump and local install refresh - files: [plugin/.claude-plugin/plugin.json]
 
 ## Risks
