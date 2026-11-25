@@ -44,3 +44,5 @@ Axes 1 and 2 both found that a new session reuses about 7.8K tokens of the previ
 Review: [[REVIEW-prompt-cache]].
 
 Baseline recorded by `compass cache`: [[RESEARCH-cache-baseline-measured]].
+
+A/B of a 1-hour cache lifetime for subagents on bench builds: [[RESEARCH-subagent-ttl-ab]].
