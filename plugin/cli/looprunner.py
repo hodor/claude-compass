@@ -23,7 +23,8 @@ It takes no lock, launches nothing and writes no file.
 
 The actuator is `claude -p --output-format json` with the caps from
 `loop.json`; the prompt arrives on stdin and the environment carries
-`COMPASS_WORKER_SESSION=1`. Each iteration is a fresh session. The prompt
+`COMPASS_WORKER_SESSION=1` and, unless already set,
+`CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1`. Each iteration is a fresh session. The prompt
 holds the actuator's instructions, the golden patterns, the selected work and
 the feedback, and none of the budget or cap numbers.
 
@@ -746,7 +747,8 @@ class _Run:
     def launch_session(self, prompt, caps, tools):
         """Run a fresh headless session with the model, caps and timeout of
         `caps` (the definition or its judge object) and the tool names
-        `tools`, the prompt on stdin."""
+        `tools`, the prompt on stdin, with the git snapshot off unless the
+        environment already sets `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS`."""
         argv = [
             self.binary, "-p", "--output-format", "json",
             "--model", caps["model"],
@@ -759,6 +761,9 @@ class _Run:
         env = dict(os.environ)
         env["COMPASS_WORKER_SESSION"] = "1"
         env.setdefault("CLAUDE_PROJECT_DIR", str(self.project))
+        # Leaves the host's git snapshot out of the first request; a value
+        # the caller's environment holds is kept.
+        env.setdefault("CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS", "1")
         return _run_process(argv, self.project, caps["timeout_s"], prompt.encode("utf-8"), env)
 
     def run_judge(self, scratch, after, rules_text):

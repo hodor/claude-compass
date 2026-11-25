@@ -7,7 +7,7 @@ confidence: medium
 area: tooling
 tags: [tokens, cost, prompt-caching, measurement, subagents, session-start, git-status, ttl]
 created: 2026-11-21
-updated: 2026-11-22
+updated: 2026-11-24
 git_branch: "master"
 git_commit: "4585279"
 author: planner
@@ -65,6 +65,8 @@ Each gate is a question to you, its recommended option first. A choice that remo
 1. Turn it off by default, a project's own `includeGitInstructions` value left as it is so `true` keeps the snapshot (Recommended).
 2. Turn it off in this repo only, measured, and decide on shipping after TASK-426.
 3. Keep the snapshot.
+
+Answered 2026-11-24: option 1. `includeGitInstructions: false` is written only when the project's settings lack the key, so a project's `true` keeps the snapshot. TASK-424 and TASK-425 build it; TASK-428's subscription run is allowed.
 
 **Gate 3, after TASK-428: adopt a 1-hour cache lifetime for subagents (review candidate 4, Divergent 2).** Nothing functional is lost; the risk is about 15% higher subagent cost if reuse does not rise (A3 F13), and the setting has no effect while a subscription draws usage credits (A3 F2).
 1. Adopt it only where the A/B shows a lower weighted cost at equal judged outcome, in the form the A/B tested (Recommended).
@@ -130,10 +132,10 @@ One task, the only Later line that needs neither Gate 2 nor a subscription run. 
 
 ## Later (intent only)
 
-- [ ] TASK-424: If Gate 2 says off: `merge_settings` sets `includeGitInstructions: false` in the project's `.claude/settings.json` only when the key is absent, so it reaches every install at its next self-update and a project's `true` keeps the snapshot; the setup and update skills say what the setting removes - files: [plugin/cli/commands/self_update.py, plugin/cli/tests/test_self_update.py, plugin/skills/setup/SKILL.md, plugin/skills/update/SKILL.md]
-- [ ] TASK-425: If Gate 2 says off: `looprunner.launch_session` sets `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1` for workers and judges unless the environment already sets it - files: [plugin/cli/looprunner.py, plugin/cli/tests/test_looprunner.py]
-- [ ] TASK-426: The gain in a real Compass project: after the switch lands in this repo, a week of sessions compared with the baseline through `compass cache --compare`, the change in first-request read and next-session reuse recorded in the baseline document; the subagent rows show whether subagents gain too
-- [ ] TASK-428: A/B of a 1-hour subagent cache lifetime on builder waves, repo-local in `bench/overhead/`, through [[PLAN-034-checking-cost-follows-task-and-model]]'s variant arms (TASK-343): one arm adds `subagentPromptCacheTtl: 1h` to the project settings, the other is unchanged Compass, same topics, within plan usage; `compass cache --json` per build gives subagent first-request and after-gap reads, cross-agent reuse 5-60 minutes apart, and list-price weighted cost at equal judged outcome, recorded in a research document - files: [bench/overhead/variants/, .compass/research/whole-overhead/prompt-cache/RESEARCH-subagent-ttl-ab.md], lessons: [LESSON-subscription-cost-is-an-estimate-not-a-budget, LESSON-blind-the-author-in-self-validation]
+- [x] TASK-424: If Gate 2 says off: `merge_settings` sets `includeGitInstructions: false` in the project's `.claude/settings.json` only when the key is absent, so it reaches every install at its next self-update and a project's `true` keeps the snapshot; the setup and update skills say what the setting removes - files: [plugin/cli/commands/self_update.py, plugin/cli/tests/test_self_update.py, plugin/skills/setup/SKILL.md, plugin/skills/update/SKILL.md]
+- [x] TASK-425: If Gate 2 says off: `looprunner.launch_session` sets `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1` for workers and judges unless the environment already sets it - files: [plugin/cli/looprunner.py, plugin/cli/tests/test_looprunner.py]
+- [ ] TASK-426: The gain in a real Compass project: after the switch lands in this repo, a week of sessions compared with the baseline through `compass cache --compare`, the change in first-request read and next-session reuse recorded in the baseline document; the subagent rows show whether subagents gain too. The week counts from 2026-11-24, the day the switch lands in this repo (TASK-424 and TASK-425 merged and `includeGitInstructions: false` present in `.claude/settings.json`); the comparison runs on or after 2026-12-01, and a later landing moves both dates by the same number of days
+- [x] TASK-428: A/B of a 1-hour subagent cache lifetime on builder waves, repo-local in `bench/overhead/`, through [[PLAN-034-checking-cost-follows-task-and-model]]'s variant arms (TASK-343): one arm adds `subagentPromptCacheTtl: 1h` to the project settings, the other is unchanged Compass, same topics, within plan usage; `compass cache --json` per build gives subagent first-request and after-gap reads, cross-agent reuse 5-60 minutes apart, and list-price weighted cost at equal judged outcome, recorded in a research document - files: [bench/overhead/variants/, .compass/research/whole-overhead/prompt-cache/RESEARCH-subagent-ttl-ab.md], lessons: [LESSON-subscription-cost-is-an-estimate-not-a-budget, LESSON-blind-the-author-in-self-validation]
 - [ ] TASK-429: Per Gate 3, set the 1-hour lifetime in the form the A/B tested, for the types where it paid - files: [plugin/cli/commands/self_update.py, plugin/templates/agents/builder.md]
 - [ ] TASK-430: Ship each later wave: version bump and local install refresh - files: [plugin/.claude-plugin/plugin.json]
 
@@ -159,6 +161,6 @@ Promoted:
 Held in Later, with what each waits on:
 - TASK-424 and TASK-425: Gate 2.
 - TASK-426: TASK-424 or TASK-425 landing in this repo, then a week of sessions. Its comparison must use a window of 30 days or more, or a band of about 17 points for a weekly one (the baseline's Finding 5).
-- TASK-428: your permission for a subscription run.
+- TASK-428: your permission for a subscription run. Run 2026-11-24; result in [[RESEARCH-subagent-ttl-ab]]: cross-agent reuse rose 13 points, subagent cache cost per launch rose about 40%, judged outcome equal.
 - TASK-429: Gate 3, which needs TASK-428's result.
 - TASK-430: a wave that changes shipped code; Wave 2 adds tests only, so it ships nothing.

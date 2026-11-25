@@ -51,7 +51,8 @@ event), and `reading_before` / `reading_after`, each
 
 The actuator is the binary `COMPASS_CLAUDE_BIN` names. Its stdin is the
 prompt as UTF-8 bytes; its environment is the inherited one plus
-`COMPASS_WORKER_SESSION=1`.
+`COMPASS_WORKER_SESSION=1` and, unless already set,
+`CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1`.
 
 Adversarial themes: budget arithmetic exactly on the boundary and on the UTC
 day line, a lock that outlives its run, a timeout that kills only the
@@ -529,6 +530,70 @@ class ActuatorInvocationTests(RunnerHarness):
         self.assertGreaterEqual(len(logged), 2)
         for line in logged:
             self.assertEqual(Path(line).resolve(), self.project)
+
+
+class GitSnapshotEnvironmentTests(RunnerHarness):
+    """Workers and judges launch with `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1`
+    so the host leaves its git snapshot out of their first request, unless
+    the environment already sets the variable."""
+
+    VAR = "CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS"
+
+    def setUp(self):
+        super().setUp()
+        saved = os.environ.get(self.VAR)
+        self.addCleanup(
+            lambda: os.environ.pop(self.VAR, None) if saved is None
+            else os.environ.__setitem__(self.VAR, saved)
+        )
+        os.environ.pop(self.VAR, None)
+
+    def launched_env(self, caps):
+        """The environment `launch_session` hands the child for `caps`."""
+        seen = {}
+
+        def fake(argv, cwd, timeout, stdin_bytes=None, env=None):
+            seen["env"] = env
+            return looprunner._Process(returncode=0)
+
+        original = looprunner._run_process
+        looprunner._run_process = fake
+        self.addCleanup(setattr, looprunner, "_run_process", original)
+        self.new_loop()
+        run = looprunner._Run(self.loop_dir, self.default_definition(), False, None)
+        run.binary = str(self.stub_bin)
+        run.launch_session("prompt", caps, ["Read"])
+        return seen["env"]
+
+    CAPS = {"model": "m", "max_turns": 3, "max_budget_usd": 0.5, "timeout_s": 30}
+
+    def test_worker_iteration_sets_the_variable(self):
+        # Adversarial where: the variable is set only on a code path the
+        # real iteration never reaches.
+        self.new_loop()
+        self.assertEqual(self.iterate()[0], 0)
+        (call,) = self.calls()
+        self.assertEqual(call["env"].get(self.VAR), "1")
+        self.assertEqual(call["env"].get("COMPASS_WORKER_SESSION"), "1")
+
+    def test_judge_caps_set_the_variable(self):
+        # A judge launches through the same session launcher with its own caps.
+        judge_caps = dict(self.CAPS, model="judge-model", runs=3)
+        self.assertEqual(self.launched_env(judge_caps).get(self.VAR), "1")
+
+    def test_an_existing_value_is_kept(self):
+        # Adversarial where: the launcher overwrites a value the caller set,
+        # including one that keeps the snapshot on.
+        for value in ("0", "1", ""):
+            with self.subTest(value=value):
+                os.environ[self.VAR] = value
+                self.assertEqual(self.launched_env(self.CAPS).get(self.VAR), value)
+
+    def test_parent_environment_is_not_modified(self):
+        # Adversarial where: the launcher writes into os.environ instead of
+        # the child's copy, leaking the setting into the runner's process.
+        self.launched_env(self.CAPS)
+        self.assertNotIn(self.VAR, os.environ)
 
 
 class RunRecordTests(RunnerHarness):
