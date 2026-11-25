@@ -688,3 +688,24 @@ Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, fi
 ### PLAN-033 Wave 4: the task in progress and the judge
 - [x] TASK-437: The state block names the task in progress - complexity: S, depends_on: TASK-341
 - [x] TASK-340: A judge for the free-text probes, with a hand-graded agreement sample - complexity: M, depends_on: TASK-437
+
+## 2026-11-24
+
+### PLAN-033 Wave 5: the summary names the task in progress
+
+Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, files and checks are there. The human approved this wave and its subscription runs on 2026-11-24.
+
+- [x] TASK-438: The PreCompact instructions name the task in progress - complexity: S, depends_on: TASK-437
+- [x] TASK-439: The probe gains two re-compaction arms, `recompact-task` and its control `recompact` - complexity: M, depends_on: TASK-438
+- [x] TASK-440: Run both arms on every point; results on the reference-arms page - complexity: S, depends_on: TASK-439
+
+### PLAN-036 Wave 1: verification beyond test-pass
+
+Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files and checks are there.
+
+- [x] TASK-412: The planted-defect probe, the spec's KPI. `bench/verification/planted.py` builds a throwaway Python project in a temp folder with its... - complexity: M, depends_on: TASK-411
+
+### PLAN-036 Wave 3: the probe on Node, evidence on Windows, release
+- [x] TASK-413: 4j's split kept: the probe showed no miss and no false alarm - complexity: S, depends_on: TASK-412
+- [x] TASK-441: `compass evidence run` starts a relative forward-slash path on Windows - complexity: S, depends_on: none
+- [x] TASK-418: A second planted-defect probe on a Node project - complexity: L, depends_on: TASK-412

@@ -75,7 +75,7 @@ Grade key: vendor-doc = Anthropic documentation (asserted behavior, not measured
 7. **SubagentStop carries `last_assistant_message`, `agent_transcript_path` and `agent_id`; since 2.1.271 a subagent can deliver its report through a `SubagentHandback` tool, leaving `last_assistant_message` as only its closing text.** (confidence: medium)
    Compass `capture-signal` reads `last_assistant_message` into a capture file (`capture_signal.py:153`). A subagent that reports through SubagentHandback would put the report in `tool_input.message` of a PreToolUse/PostToolUse hook on `SubagentHandback`, not in that field. Whether Compass's agents use the tool is not established.
    - https://code.claude.com/docs/en/hooks - SubagentStop input
-   - `plugin/cli/commands/capture_signal.py:153`
+   - `plugin/cli/commands/capture_signal.py:201`
    - Marks: vendor-doc + local-code; single source for the handback semantics
    - Grade: medium
 
@@ -324,3 +324,5 @@ Ranked by architectural impact. "Covered" means the vault or `plugin/` already d
 9. **For SDK use, set `onFailure: "block"` on guard hooks and keep `settingSources` including `project`.** North star: accuracy (the guard is the "nothing destroys information" enforcement).
    - Change: documentation or a CLI check; shell hooks in `hooks.json` can set `onFailure: "block"` since 2.1.295.
    - Covered: no. Evidence: findings 10, 32.
+
+> Root-index description preserved when this document was folded under its topic folder (2026-11-24): Claude Code 2.1.330 hook, skill, subagent, plugin, memory and compaction features mapped against Compass hooks, CLI and skills; first pass, API-side features pending

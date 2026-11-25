@@ -16,7 +16,7 @@ summary: "Verdict DRAFT: headless sonnet, following the ast-grep author's recipe
 
 # Can an agent draft accurate ast-grep rules from natural-language rules
 
-From [[specs/pipeline/SPEC-026-control-theory-for-loops]], task TASK-155 of [[plans/PLAN-021-control-loops]]. Follows [[RESEARCH-loop-judge-sensor-experiment]]; feeds TASK-160 and TASK-161.
+From [[specs/pipeline/SPEC-026-control-theory-for-loops]], task TASK-155 of [[plans/pipeline/PLAN-021-control-loops]]. Follows [[RESEARCH-loop-judge-sensor-experiment]]; feeds TASK-160 and TASK-161.
 
 ## Question
 Given a rule in plain language and no labels, does a headless sonnet session following the ast-grep author's recipe draft a rule whose matches on the TASK-154 corpus have precision 1.0 and recall 1.0?

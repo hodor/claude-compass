@@ -5,21 +5,6 @@ updated: 2026-09-13
 
 # Active Tasks
 
-## Sizing + discoverability initiative
-
-Triggered by a live failure in another project: a vision session produced seven epic-sized needs and Compass proposed seven flat specs with no signal anything was wrong.
-
-- [ ] Open: pin the project where the seven-monster-specs session happened ([[LESSON-pin-the-motivating-datum]]).
-
-## Per-domain organization initiative
-
-- [ ] v0.15.0's premature skill/sync edits were reverted; index depth-0 rule stays (shipped); everything further waits on the plan.
-
-## Research covers the whole spec (SPEC-023)
-
-- [ ] [[specs/pipeline/SPEC-024-walled-sources-through-the-browser]] awaits the human's ruling.
-- [ ] Open: a text-and-data-mining request to ACM is the human's to send if wanted.
-
 ## PLAN-018 Wave 2: prove the stop rule, exercise the list, close the autopilot gap
 
 Plan: [[PLAN-018-research-covers-the-whole-spec]]. Wave 1 shipped as v0.24.0 on 2026-09-14; its manual checks await the human. Wave 2 starts on his word.
@@ -72,20 +57,14 @@ Plan: [[PLAN-034-checking-cost-follows-task-and-model]]; each task's full text, 
 - [x] TASK-351: Two smoke builds on the subscription, one at a time - complexity: S, depends_on: TASK-343, TASK-346, TASK-349
 - [ ] TASK-352: The per-part spread pilot - complexity: M, depends_on: TASK-344, TASK-345, TASK-351
 
-## PLAN-036 Wave 1: verification beyond test-pass
+## PLAN-036 Wave 3: the probe on Node, evidence on Windows, release
 
 Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files and checks are there.
 
-- [ ] TASK-412: The planted-defect probe, the spec's KPI. `bench/verification/planted.py` builds a throwaway Python project in a temp folder with its... - complexity: M, depends_on: TASK-411
+- [ ] TASK-419: Release of the later wave and local refresh - complexity: S, depends_on: TASK-441, TASK-418
 
 ## PLAN-033 Wave 4: the task in progress and the judge
 
 Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, files and checks are there. The human approved the subscription runs with the arm comparison.
 
 - [ ] The human marks the 40 answers of the judge's grading sheet under the probe's private root; `python bench/overhead/probe_judge.py agreement` then prints the agreement.
-
-## Next Up
-
-- [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].
-- [ ] [[SPEC-006-multi-host-agent-cli-support]] hosts: hermes first, then deepseek-harness (dsh; fit assessed in [[research/distribution/RESEARCH-deepseek-harness-fit]], 2026-09-04), then Kimi Code / Codex.
-- [ ] Blinded rerun of the test-bar experiment ([[LESSON-blind-the-author-in-self-validation]]).

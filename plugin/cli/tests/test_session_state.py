@@ -2218,5 +2218,132 @@ class TaskInProgressTests(StateFixture):
         self.assertNotIn("Task in progress", session_state.render_block(state))
 
 
+class PreCompactTaskTests(StateFixture):
+    """On PreCompact the instructions end with a line naming the task in progress, the
+    id `## Task in progress` would print, so the host's summary names it."""
+
+    BASE_KEYS = ["intent", "path", "reason", "exclusion", "next step"]
+    TAIL = "Name it, with its id, in the summary as the work in hand."
+
+    def setUp(self):
+        super().setUp()
+        self.session_file = self.transcripts_folder() / f"{SESSION_ID}.jsonl"
+
+    def pre_compact(self, transcript=None, **extra):
+        event = {"hook_event_name": "PreCompact", "session_id": SESSION_ID, "trigger": "auto"}
+        if transcript is not None:
+            event["transcript_path"] = str(transcript)
+        event.update(extra)
+        code, text = self.run_cmd("--hook", stdin=json.dumps(event))
+        self.assertEqual(code, 0)
+        return text
+
+    def task_lines(self, text):
+        return [line for line in text.splitlines() if line.startswith("The task in progress is")]
+
+    def assert_base_only(self, text):
+        lowered = text.lower()
+        self.assertTrue(all(key in lowered for key in self.BASE_KEYS), text)
+        self.assertEqual(self.task_lines(text), [])
+        self.assertNotRegex(text, r"\b(?:TASK|PLAN)-\d+\b")
+
+    def test_the_last_id_the_assistant_named_is_named_with_its_open_task_line(self):
+        """Adversarial where: the first id wins, the checkbox stays in the line, or the
+        line lands before the five kept items instead of after them."""
+        self.write_active("# Active", "- [ ] TASK-5: older work", "- [ ] TASK-7: the work in hand now")
+        path = self.write_transcript(user_human("go on"), assistant_text("Starting TASK-5."),
+                                     assistant_text("TASK-5 is done; next TASK-7 runs."))
+        text = self.pre_compact(path)
+        self.assertEqual(self.task_lines(text), [
+            f"The task in progress is TASK-7: the work in hand now. {self.TAIL}"])
+        self.assertNotIn("[ ]", text)
+        self.assertGreater(text.find("The task in progress"), text.lower().find("next step"))
+        self.assertTrue(all(key in text.lower() for key in self.BASE_KEYS))
+
+    def test_an_id_with_no_open_line_is_named_alone(self):
+        """Adversarial where: TASK-1 borrows TASK-12's line, or a plan id is dropped."""
+        self.write_active("# Active", "- [ ] TASK-12: a different task", "- [x] TASK-1: finished")
+        path = self.write_transcript(user_human("go"), assistant_text("Back to TASK-1."))
+        self.assertEqual(self.task_lines(self.pre_compact(path)), [f"The task in progress is TASK-1. {self.TAIL}"])
+        path = self.write_transcript(user_human("go"), assistant_text("PLAN-033 is next."))
+        self.assertEqual(self.task_lines(self.pre_compact(path)), [f"The task in progress is PLAN-033. {self.TAIL}"])
+
+    def test_a_task_named_as_a_dependency_takes_its_own_line(self):
+        """Adversarial where: an earlier line naming the id as a dependency wins over its own."""
+        self.write_active("# Active", "- [ ] TASK-9: later work - depends_on: TASK-8",
+                          "- [ ] TASK-8: the task itself")
+        path = self.write_transcript(assistant_text("On TASK-8 now."))
+        self.assertEqual(self.task_lines(self.pre_compact(path)),
+                         [f"The task in progress is TASK-8: the task itself. {self.TAIL}"])
+
+    def test_a_task_open_only_as_another_tasks_dependency_is_named_alone(self):
+        """Adversarial where: the summarizer is handed TASK-9's line as the text of TASK-8."""
+        self.write_active("# Active", "- [ ] TASK-9: later work - depends_on: TASK-8")
+        path = self.write_transcript(assistant_text("On TASK-8 now."))
+        self.assertEqual(self.task_lines(self.pre_compact(path)), [f"The task in progress is TASK-8. {self.TAIL}"])
+
+    def test_only_the_main_transcripts_assistant_text_counts(self):
+        """Adversarial where: ids in the human's prompt, tool calls, tool results or
+        sidechain records name the task."""
+        self.write_active("# Active", "- [ ] TASK-2: the main task")
+        path = self.write_transcript(
+            assistant_text("Working on TASK-2."),
+            user_human("now TASK-94 please"),
+            assistant_text("Sidechain says TASK-91.", sidechain=True),
+            tool_call("c1", "Bash", {"command": "echo TASK-92"}),
+            tool_result("c1", content="TASK-93 printed"),
+        )
+        self.assertEqual(self.task_lines(self.pre_compact(path)),
+                         [f"The task in progress is TASK-2: the main task. {self.TAIL}"])
+
+    def test_the_sessions_own_transcript_stands_in_for_a_missing_transcript_path(self):
+        """Adversarial where: an event with no `transcript_path` loses the task line the
+        SessionStart path would still find."""
+        self.write_active("# Active", "- [ ] TASK-3: own transcript task")
+        self.write_transcript(assistant_text("TASK-3 next."), path=self.session_file)
+        self.assertEqual(self.task_lines(self.pre_compact()),
+                         [f"The task in progress is TASK-3: own transcript task. {self.TAIL}"])
+
+    def test_no_id_or_no_transcript_prints_the_five_items_alone(self):
+        """Adversarial where: a session naming no id prints an empty task line, SUBTASK-5
+        counts as an id, or a missing transcript raises."""
+        path = self.write_transcript(user_human("hello TASK-50"), assistant_text("No ids; SUBTASK-5 is none."))
+        self.assert_base_only(self.pre_compact(path))
+        self.assert_base_only(self.pre_compact(self.outside / "gone.jsonl"))
+
+    def test_a_missing_or_unreadable_active_file_still_names_the_id(self):
+        """Adversarial where: no active.md, or one that cannot be read, drops the id or crashes."""
+        path = self.write_transcript(assistant_text("On TASK-4."))
+        self.assertEqual(self.task_lines(self.pre_compact(path)), [f"The task in progress is TASK-4. {self.TAIL}"])
+        (self.project / ".compass" / "active.md").mkdir()
+        self.assertEqual(self.task_lines(self.pre_compact(path)), [f"The task in progress is TASK-4. {self.TAIL}"])
+
+    def test_a_failure_reading_the_transcript_prints_the_five_items(self):
+        """Adversarial where: an error in the id lookup blocks the compaction or prints nothing."""
+        path = self.write_transcript(assistant_text("On TASK-6."))
+        from commands import session_state
+        with unittest.mock.patch.object(session_state, "_last_named_id", side_effect=OSError("boom")):
+            self.assert_base_only(self.pre_compact(path))
+
+    def test_a_long_task_line_keeps_the_text_under_1500_characters(self):
+        """Adversarial where: a long open-task line pushes the instructions past the cap."""
+        self.write_active("# Active", "- [ ] TASK-11: " + "x" * 2000)
+        path = self.write_transcript(assistant_text("TASK-11 now."))
+        text = self.pre_compact(path)
+        self.assertEqual(len(self.task_lines(text)), 1)
+        self.assertLess(len(text), 1500)
+        self.assertTrue(text.rstrip().endswith(self.TAIL))
+
+    def test_agent_events_and_worker_sessions_still_print_nothing(self):
+        """Adversarial where: the task line reaches a subagent's or capture worker's compaction."""
+        self.write_active("# Active", "- [ ] TASK-2: the main task")
+        path = self.write_transcript(assistant_text("Working on TASK-2."))
+        for key in ("agent_id", "agent_type"):
+            with self.subTest(key=key):
+                self.assertEqual(self.pre_compact(path, **{key: "worker-1"}), "")
+        os.environ["COMPASS_WORKER_SESSION"] = "1"
+        self.assertEqual(self.pre_compact(path), "")
+
+
 if __name__ == "__main__":
     unittest.main()

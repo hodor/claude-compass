@@ -59,7 +59,7 @@ Repository mining of Compass (agents, skills, hooks, CLI, the token profiler's s
    - Across 271 saved subagent sessions (private sandbox builds, aggregates only): preloaded skill bodies are 13.7% of tester, 20.3% of researcher, 14.1% of builder, 13.6% of planner, 11.1% of reviewer, 20.3% of validator weighted tokens.
    - The agent file as system prompt is 2.9% to 8.2%; CLAUDE.md-style instructions 1.2% to 1.8%; the agent listing 1.3% to 2.0%.
    - Output tokens are the largest block (33% to 48%) because output weighs 5.0 against 1.0 for input.
-   - `bench/overhead/token_profile.py:profile_folder` (per-session sources); `bench/overhead/records.py:51-52` (OUTPUT_WEIGHT 5.0, CACHE_WRITE_WEIGHT 1.25)
+   - `bench/overhead/token_profile.py:profile_folder` (per-session sources); `bench/overhead/records.py:67-68` (OUTPUT_WEIGHT 5.0, CACHE_WRITE_WEIGHT 1.25)
    - Marks: code run on private data; no retraction; not a preprint; 0 citations; 1 source
    - Caveat: [[RESEARCH-whole-overhead-pilot-run-1]] records harness faults that inflate the Compass arm; treat shares as rough.
 
@@ -139,7 +139,7 @@ Repository mining of Compass (agents, skills, hooks, CLI, the token profiler's s
 
 15. **Cache pricing makes static and per-task context cost differently** (confidence: medium)
     - The profiler weights input 1.0, output 5.0, cache write 1.25 and cache read by model. A preload identical across launches can be a cache read after the first write inside the cache lifetime; a per-task packet is a cache write each launch. Sub-agent frontmatter offers `experimental.cacheTtl` (`5m` or `1h`).
-    - `bench/overhead/records.py:43-52,133`; https://code.claude.com/docs/en/sub-agents
+    - `bench/overhead/records.py:59-68,155`; https://code.claude.com/docs/en/sub-agents
     - Marks: code plus official docs; no retraction; not a preprint; 0 citations; 2 sources
     - Caveat: the saved profiles split cache tokens per item, so the real cache-read share of preloaded skills was not isolated in this pass.
 

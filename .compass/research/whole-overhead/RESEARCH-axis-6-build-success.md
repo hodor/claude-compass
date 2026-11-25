@@ -107,7 +107,7 @@ Marks note: citation counts are Semantic Scholar figures read on 2026-11-01. Ret
 9. **Compass already has mechanical, token-free checks on the quality of the tests an agent wrote** (confidence: high)
    `compass test-smells` fails empty tests, duplicate asserts and literal-only assertions; `compass test-checkpoint verify` reports a pre-build test that was modified rather than added to; the validator reruns the suite itself and records command output. In the vault's paired experiment, tests written under the admission bar caught 15 of 15 seeded defects against 13 of 15 before it, with a non-blinded author caveat.
    - `plugin/templates/agents/validator.md:86-92` - test-quality audit, report-only
-   - `plugin/templates/agents/validator.md:110-112` - rerun the suite
+   - `plugin/templates/agents/validator.md:120-122` - rerun the suite
    - `.compass/research/test-quality/RESEARCH-test-quality-bar-validation.md:19` - 15/15 vs 13/15 and the caveat
    - Marks: code, owner checked; local experiment, one paired run; no retraction applicable; not a preprint; no citations; 1 source
    - Grade: medium
@@ -202,7 +202,7 @@ Marks note: citation counts are Semantic Scholar figures read on 2026-11-01. Ret
     A lesson records a client agent grouping a folder only enough to duck under a numeric threshold. METR warns that penalizing what a monitor catches can drive hacking underground and says absence of obvious hacking is not proof it stopped. The bench README already reports a Pareto over success, tokens and cost and calls equal success at higher cost a loss.
     - `.compass/lessons/instructions/LESSON-threshold-in-prose-becomes-the-criterion.md:16-17` - the incident
     - https://metr.org/blog/2025-06-05-recent-reward-hacking/ - "drive it underground" and absence-is-not-proof
-    - `bench/README.md:59-65` - Pareto reporting
+    - `bench/README.md:62-68` - Pareto reporting
     - Marks: mixed (local lesson, vendor-independent evaluator report); no retraction applicable; not a preprint; no citations; 2 sources agree
     - Grade: medium
 
@@ -215,7 +215,7 @@ Marks note: citation counts are Semantic Scholar figures read on 2026-11-01. Ret
 ### G. Whether Compass's own quality signals count
 
 23. **Compass emits several quality signals, but not on every run and not without Compass** (confidence: high)
-    - Validator verdict `PASS / FAIL / PARTIAL` is the last line of its report (`plugin/templates/agents/validator.md:222`).
+    - Validator verdict `PASS / FAIL / PARTIAL` is the last line of its report (`plugin/templates/agents/validator.md:251`).
     - `/compass:build` step 8 offers the validator as optional; autopilot always runs it (`plugin/skills/build/SKILL.md:87`, `plugin/skills/autopilot/SKILL.md:57-59`).
     - Build writes a `phase-summary.yaml` with `fix_loop_cycles`, `validator_deviations`, `debug_invocations`, `stop_and_report_events`, `plan_revisions` (`plugin/skills/build/SKILL.md:60`).
     - The validator runs on opus at high effort with up to 25 turns (`plugin/templates/agents/validator.md:7-9`), so producing the signal itself spends tokens that axis 2 would attribute to Compass.

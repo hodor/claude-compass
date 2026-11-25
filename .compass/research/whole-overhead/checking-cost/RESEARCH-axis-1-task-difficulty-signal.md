@@ -32,7 +32,7 @@ Repository mining (empirical study of the artifact): read `plugin/` and `.claude
    - `plugin/templates/agents/planner.md:80` - task-line grammar with `complexity:`
    - `plugin/templates/agents/planner.md:149-155` - Task Sizing rubric (file count plus a judged "complexity" word)
    - `plugin/templates/agents/planner.md:118` - plan-level `Estimated complexity: [S/M/L overall]` in the approval message only
-   - Marks: source code read, n/a retraction, n/a preprint, n/a citations, convergence: the same grammar in `plugin/skills/obsidian/templates.md:198` and `plugin/skills/retroactive/SKILL.md:90`
+   - Marks: source code read, n/a retraction, n/a preprint, n/a citations, convergence: the same grammar in `plugin/skills/obsidian/templates.md:201` and `plugin/skills/retroactive/SKILL.md:90`
    - Grade: authoritative for current behavior (measured by reading)
 
 2. **It is set once, at plan-write time, by the planner agent, and the human sees it at plan approval.** Intent-only lines under `## Later` carry no complexity by rule; it is assigned when the build flow's step 7d promotes them into a detailed wave, so a task has a size only after its wave is elaborated (confidence: high).

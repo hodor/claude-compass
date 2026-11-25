@@ -193,6 +193,13 @@ COMPASS_HOOK_COMMAND = re.compile(
 )
 
 
+# Host settings key that, when false, drops the branch, `git status` and
+# recent-commits snapshot and the built-in commit instructions from the
+# session's first request; that snapshot changes between sessions and so
+# breaks the prompt cache.
+GIT_SNAPSHOT_KEY = "includeGitInstructions"
+
+
 def merge_settings(project_root, manifest_path):
     """Register the hooks manifest in `.claude/settings.json`: replace only
     hook groups whose commands the manifest ships or that run Compass's CLI,
@@ -201,7 +208,10 @@ def merge_settings(project_root, manifest_path):
     per-tool PostToolUse entries (the groups carrying `if`) into one
     `Write|Edit|MultiEdit|write|edit` matcher
     (the lowercase names are dsh's; inert under Claude Code), and strip
-    the `if` field the settings schema does not carry. Idempotent."""
+    the `if` field the settings schema does not carry, and set
+    `includeGitInstructions` to false when the settings lack the key, so the
+    host leaves its git snapshot out of every session's first request while
+    a value the project wrote stays as written. Idempotent."""
     manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))["hooks"]
     settings_path = Path(project_root) / ".claude" / "settings.json"
     settings = (
@@ -209,6 +219,7 @@ def merge_settings(project_root, manifest_path):
         if settings_path.is_file()
         else {}
     )
+    settings.setdefault(GIT_SNAPSHOT_KEY, False)
     hooks = settings.setdefault("hooks", {})
 
     shipped = {

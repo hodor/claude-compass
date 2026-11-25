@@ -107,7 +107,7 @@ Cells: Y agrees, N disagrees, - not addressed; confidence in brackets (h, m, l).
 3. **`obsidian` is the biggest piece: 44% to 57% of skill tokens** - 2/2
    - About 8.7% of builder, 9.7% of researcher, 11.4% of validator weighted tokens (axis 3, finding 13, derived by proportion).
 4. **Output is the largest weighted block** - 2/2
-   - 36% to 46% (axis 3, finding 11); 33% to 48% (axis 5, finding 3); output weighs 5.0 (`bench/overhead/records.py:51-53`).
+   - 36% to 46% (axis 3, finding 11); 33% to 48% (axis 5, finding 3); output weighs 5.0 (`bench/overhead/records.py:67-69`).
 5. **`initialPrompt` does not run for a spawned subagent** - 2/2 with evidence
    - Docs: auto-submitted only as main session agent, "Ignored for plugin subagents"; in 95 sessions the first user turn is the brief (axis 3, finding 6; high).
    - Axis 5, finding 4 (medium): same docs, start-here reads absent above 0.2% in profiles.

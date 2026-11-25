@@ -16,7 +16,7 @@ summary: "Verdict: --max-turns N lets exactly N tool rounds run (num_turns reads
 
 # Turn and budget caps past one turn and across resume
 
-From [[specs/pipeline/SPEC-026-control-theory-for-loops]], task TASK-153 of [[plans/PLAN-021-control-loops]]. Extends the one-turn observation in [[research/pipeline/RESEARCH-control-theory-for-loops]].
+From [[specs/pipeline/SPEC-026-control-theory-for-loops]], task TASK-153 of [[plans/pipeline/PLAN-021-control-loops]]. Extends the one-turn observation in [[research/pipeline/RESEARCH-control-theory-for-loops]].
 
 ## Question
 Does `--max-turns N` allow N tool rounds beyond N=1, and do `--max-turns` and `--max-budget-usd` count only the resumed invocation or the whole session?
@@ -90,7 +90,7 @@ Total spend of the experiment: \$0.3934 (six capped runs plus the three resume s
 
 ## Verdict
 
-The verdict rules were fixed in [[plans/PLAN-021-control-loops]] (TASK-153) before the first run:
+The verdict rules were fixed in [[plans/pipeline/PLAN-021-control-loops]] (TASK-153) before the first run:
 
 > If tool rounds equal the cap in all six capped runs, the default is 30 and the skill says "cap N allows N tool rounds"; otherwise the default is the measured rounds-per-cap ratio times 30, rounded down. The resume arms decide the no-resume rule: if a resumed run honors both caps, the rule stays only for the budget sum; if it ignores either, the rule is also the only cap protection.
 

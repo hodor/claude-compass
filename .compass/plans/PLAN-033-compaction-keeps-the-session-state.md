@@ -48,6 +48,11 @@ flowchart LR
   end
   T435 --> T437
   T338 --> T340
+  subgraph W5[Wave 5: the summary names the task]
+    T438[TASK-438 PreCompact names the task in progress] --> T439[TASK-439 re-compaction arms]
+    T439 --> T440[TASK-440 run on every point]
+  end
+  T340 --> T438
 ```
 
 
@@ -68,13 +73,13 @@ This plan implements the compaction-survival need of [[specs/pipeline/SPEC-025-s
 ## Current State
 
 - `plugin/hooks/hooks.json:66-87` - SessionStart holds a `startup` group (`self-update`) and a matcherless group (`capture-check`, which therefore also fires on `compact`); no PreCompact or PostCompact key exists. A grep of `plugin/` for `PreCompact|PostCompact|isCompactSummary|compact_boundary` finds no code.
-- `plugin/cli/sessionslib.py:145-173` - `records`, `_blocks`, `_message_text`: a forward reader that never raises on a malformed record, the base every new reader builds on. `:226-238` counts commits from Bash `tool_use` blocks. Nothing reads Read/Edit/Write `file_path`, the last human prompt, `AskUserQuestion` answers or test output.
+- `plugin/cli/sessionslib.py:154-182` - `records`, `_blocks`, `_message_text`: a forward reader that never raises on a malformed record, the base every new reader builds on. `:226-238` counts commits from Bash `tool_use` blocks. Nothing reads Read/Edit/Write `file_path`, the last human prompt, `AskUserQuestion` answers or test output.
 - `plugin/cli/commands/context_check.py:163-194` - the chunked reverse reader `_records_backward` and `_parse`; `:258-262` passes events carrying `agent_id`/`agent_type`.
 - `plugin/cli/commands/self_update.py:196-255` - `merge_settings` registers every manifest event generically, so a new PreCompact key and a third SessionStart group install with no installer change.
 - `plugin/cli/hostlib.py:45-58` - `DSH_EVENTS` has no PreCompact; `DSH_SKIPPED_COMMANDS` leaves `context-check` out of dsh because dsh hooks get an empty transcript path.
 - `plugin/cli/decisionslib.py:250` - `extract_decisions(text)` parses a document's D-NN bullets.
 - `plugin/skills/handoff/SKILL.md:26-33` runs five git commands by model call; `:47-97` has the model compose every section, Recent Changes, Decisions and Uncommitted Changes included.
-- `bench/overhead/launch.py:364` `run_session` (isolated headless session, `extra_args`), `sandbox.py:58` `new_project`, `records.py:105` `count_tokens`, `token_profile.py:283-296` (reads `compact_boundary` and the `isCompactSummary` record), `attribute.py:198` (finds transcripts holding a compaction). No module builds probes from a transcript.
+- `bench/overhead/launch.py:365` `run_session` (isolated headless session, `extra_args`), `sandbox.py:58` `new_project`, `records.py:105` `count_tokens`, `token_profile.py:283-296` (reads `compact_boundary` and the `isCompactSummary` record), `attribute.py:198` (finds transcripts holding a compaction). No module builds probes from a transcript.
 - `claude --help` on this machine lists `--tools ""` (no built-in tools) and `--autocompact <tokens>`.
 - The Bash tool's environment carries `CLAUDE_CODE_SESSION_ID`, so a command run from a skill can find its own session's transcript.
 
@@ -286,6 +291,33 @@ The tasks run in this order: TASK-437, TASK-340. Both start headless model sessi
 
 **Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before the next wave. Skip if the human asked for `all-phases` mode.
 
+### Wave 5 (detailed)
+
+The tasks run in this order: TASK-438, TASK-439, TASK-440. TASK-440 starts headless model sessions on the human's subscription; he approved those runs with this wave (2026-11-24). Probe runs go at most 3 sessions at a time.
+
+- [x] TASK-438: The PreCompact instructions name the task in progress - complexity: S, depends_on: TASK-437, files: [plugin/cli/commands/session_state.py, plugin/cli/tests/test_session_state.py]
+  - On PreCompact the hook prints the five kept items as it does now, then, when the event's transcript (its `transcript_path`, else the session's own) names a task or plan id in the main transcript's assistant text, one more line: `The task in progress is <id>: <the rest of its open-task line>. Name it, with its id, in the summary as the work in hand.` The id is the one `## Task in progress` prints; the line is the open task of the project's `active.md` that starts with that id, its checkbox and id removed. An id with no line of its own (finished, a plan id, or open only as another task's dependency) prints as `The task in progress is <id>.` followed by the same instruction. No id, no transcript, or a failure reading either prints the five items alone. The text stays under 1,500 characters.
+  - Automated verification: `python -m pytest plugin/cli/tests/test_session_state.py -q` passes: the line names the last id the assistant named with its open-task line; an id with no open line, or open only as another task's dependency, prints alone; ids in the human's prompt, tool calls, tool results and sidechain records are ignored; no id, a missing transcript and an unreadable `active.md` each print the five items alone, exit 0; a 240-character task line keeps the text under 1,500 characters; agent events and worker sessions still print nothing. `python -m pytest plugin/cli/tests -q` passes.
+  - Manual verification: none (TASK-440 measures it).
+  - Entry point: `printf '{"hook_event_name":"PreCompact","transcript_path":"<transcript>"}' | python plugin/cli/compass session-state --hook`
+
+- [x] TASK-439: The probe gains two re-compaction arms - complexity: M, depends_on: TASK-438, files: [bench/overhead/probe.py, bench/overhead/tests/test_probe.py, bench/overhead/README.md]
+  - `recompact-task`: the point's rebuilt session is resumed headless with `--input-format stream-json --tools ""` and `/compact` as its one message, a PreCompact hook registered through `--settings`. The hook prints the text `compass session-state --hook` prints for a PreCompact event on the rebuilt transcript, run in the sandbox project with `.compass/active.md` as it stood at the boundary's commit. The summary the host writes is read from the session's transcript after its new boundary; a fresh tool-less session then answers the frozen questions holding that summary followed by the state block, as the `compass` arm does.
+  - `recompact`, the control: the same, with the hook text `session-state` prints for a transcript that names no id (the five items alone), so the two arms differ only by the task line.
+  - `ask-<arm>.json` stores the hook text, the summary, the reply, the block and both sessions' tokens (the compaction's from its result event's `usage`); carried tokens are the answerer's. A point with no commit stores `"no_state": true` and starts no session; a compaction that writes no summary raises a session error. `report` lists both arms and gains one line per arm: the summaries naming the continuation probe's expected id, against the points with a continuation probe.
+  - Automated verification: `python -m pytest bench/overhead/tests -q -p no:cacheprovider` passes, through a fake `claude` that appends a boundary and a summary echoing its hook's text: the compaction session runs `--resume` with the rebuilt id, `--input-format stream-json`, `--tools ""`, `--strict-mcp-config` and a `--settings` PreCompact hook; the `recompact-task` hook text names the history's last assistant id and the `recompact` text names none; the answerer's prompt holds the new summary then the block and no recorded summary; a run with no new summary raises; the no-commit point starts no session; `report` prints both arms and the summaries-naming line.
+  - Manual verification: none.
+  - Entry point: `python bench/overhead/probe.py ask <point> --arm recompact-task`
+
+- [x] TASK-440: Run both arms on every point - complexity: S, depends_on: TASK-439, files: [.compass/research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md]
+  - `ask` with `recompact` and `recompact-task` on all 29 points, `grade` on every point and `report`.
+  - `RESEARCH-probe-reference-arms.md` gains a section `## The task named in the compaction instructions`: both arms against `host-summary`, `compass` and `mechanical`, `recompact-task` against `recompact`, as shares of `before`, the summaries-naming line, carried tokens and the run's cost. No path, prompt, session id or answer text.
+  - Automated verification: `grep -n "## The task named in the compaction instructions" .compass/research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md` finds the section; `grep -cE "[0-9a-f]{8}-[0-9a-f]{4}-" .compass/research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md` prints 0; `python -m pytest bench/overhead/tests -q -p no:cacheprovider` and `python -m pytest plugin/cli/tests -q` pass.
+  - Manual verification: the human reads the section.
+  - Entry point: `python bench/overhead/probe.py report`
+
+**Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before the next wave. Skip if the human asked for `all-phases` mode.
+
 ## Later (intent only)
 
 Nothing is held for later.
@@ -332,4 +364,12 @@ Elaborated 2026-11-24 from Wave 3's verified outcomes: [[research/pipeline/compa
 
 - **TASK-437, added** from the rerun's one loss: the block alone fell on continuation from 0.21 to 0.05. Comparing the stored blocks and replies at the points that flipped found the cause. Three points went from right to wrong. At one, the open-tasks section, cut to its floor because the characters left now go to files edited first, dropped the line of the task in hand, since `active.md` lists open tasks oldest first. At the other two the task's line stood unchanged (one block was byte-identical between runs) and the answerer named another id from the block. Underneath both: no line says which open task is in hand, so across both runs the expected id sat in 11 and 9 of the 19 blocks yet was answered at 4 and 1. The section names the id the session itself named last.
 - **TASK-340, changed: from intent to detail.** The judge lives in its own file, `probe_judge.py`, beside `probe.py`, and reads the probe's stored files; the hand-graded sample follows `grade.py`'s pattern without changing it. The sample is written and its grading waits on the human, so the agreement is reported as pending.
+
+## Wave 5 elaborated
+
+Elaborated 2026-11-24 from Wave 4's verified outcome, [[research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison#Rerun with the task in progress]] and [[research/pipeline/compaction-survival/RESEARCH-probe-reference-arms#The task-in-progress block against the before arm]]: the block alone answers continuation at 0.89, but with the host summary in front of it the answerer gives 0.42, and at 8 of the 9 points where the two arms disagree it gave the summary's answer. The human approved this wave and its runs on 2026-11-24.
+
+- **TASK-438, added:** the summary leads when both texts are present, so the task in progress goes into the text that steers the summary, the PreCompact instructions, and the summary itself names it.
+- **TASK-439, added:** the recorded summaries were written under other instructions, so measuring the change needs a fresh compaction. A headless `/compact` on a resumed session runs a real compaction ([[research/pipeline/compaction-survival/RESEARCH-axis-1-compaction-hooks]], finding 1) and a rebuilt session loads headless ([[research/pipeline/compaction-survival/RESEARCH-probe-reference-arms#Rebuilt session]]). One run joined the two: a rebuilt point resumed with `/compact` and a `--settings` PreCompact hook printing a codeword compacted, appended its boundary and summary to the rebuilt session's file, and the summary held the codeword. A fresh compaction also differs from the recorded one in host version and timing, so a control arm compacts with the instructions minus the task line, and the comparison that isolates the line is `recompact-task` against `recompact`.
+- **TASK-440, added:** the run itself, with results on the reference-arms page beside `before`.
 

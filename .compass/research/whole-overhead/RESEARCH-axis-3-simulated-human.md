@@ -92,7 +92,7 @@ Systematic mapping study (the chooser's default), run over three source kinds: C
 
 8. **Review surfaces are hard-coded and need an editor; "not configured" is the headless path** (confidence: high)
    `SURFACES = [obsidian, vscode, vscode.CURSOR]`. Obsidian needs an ancestor `.obsidian/` listed in Obsidian's own vault list (`COMPASS_OBSIDIAN_CONFIG` overrides the list's path) with the plugin on; VS Code and Cursor need `code`/`cursor` on PATH with the extension installed. A document must also be committed. Any miss prints `not configured: <why>` (exit 1) and the skill then asks the picker.
-   - `plugin/cli/review_surfaces/__init__.py` (SURFACES); `obsidian.py:126-146`; `vscode.py:168-195`; `plugin/cli/commands/review.py:39-41,388-392`.
+   - `plugin/cli/review_surfaces/__init__.py` (SURFACES); `obsidian.py:126-146`; `vscode.py:168-195`; `plugin/cli/commands/review.py:59-61,548-552`.
    - Marks: code read; no retraction; not a preprint; 0 citations; 1 source
    - Grade: high
 

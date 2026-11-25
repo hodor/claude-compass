@@ -78,14 +78,14 @@ Grading was allowed in the brief. Grades are by source type and measured/asserte
 7. **Errors stay in context; uniform context makes agents brittle** (confidence: medium)
    - Manus: failed actions and stack traces stay visible so the model updates its beliefs; hiding them "removes evidence". It also adds small variation in serialization and wording to avoid few-shot ruts across batches of similar items. The 12-factor point that resolved errors may be hidden (prior-art review finding 5) pulls the other way.
    - Manus URL above. Marks: vendor post, asserted, 1 source against the 12-factor opposite.
-   - Compass part: the builder fix loop respawns fresh fix builders that get "the specific FAIL, not the full task" ([[methodology]] parallel-execution rules), so failure evidence is passed forward in digest form. No doc states a retention rule.
+   - Compass part: the builder fix loop respawns fresh fix builders that get "the specific FAIL, not the full task" (`plugin/skills/methodology/SKILL.md` parallel-execution rules), so failure evidence is passed forward in digest form. No doc states a retention rule.
 
 8. **Durable project memory as four files drove a 25-hour, 13M-token Codex run** (confidence: medium)
    - OpenAI (developer blog): Prompt.md (goals, non-goals, constraints, "done when"), Plans.md (milestones with acceptance criteria and validation commands, a stop-and-fix rule, decision notes "so the agent doesn't keep switching approaches", intended architecture), Implement.md (runbook: plan is source of truth, validate after every milestone, narrow diffs), Documentation.md (live status and audit log). About 30k lines from an empty repo; the author calls the result "not perfect or production-ready".
    - https://developers.openai.com/blog/run-long-horizon-tasks-with-codex (read in full). A separate repo, friel-openai/plans.md, packages ExecPlans as a skill (search summary only).
    - Marks: vendor post, not retracted, not preprint, citations n/a; converges with Anthropic's NOTES.md and plan-to-memory advice (prior-art review findings 20, 24).
    - Grade: vendor post, one demonstration run, asserted.
-   - Compass part: spec, plan with acceptance criteria and per-task validation, ADRs for decisions, handoff for status: all present ([[methodology]]). The named extra is a "stop-and-fix" validation rule per milestone and a runbook file; the build skill's fix loop (max 3 cycles) covers the first.
+   - Compass part: spec, plan with acceptance criteria and per-task validation, ADRs for decisions, handoff for status: all present (`plugin/skills/methodology/SKILL.md`). The named extra is a "stop-and-fix" validation rule per milestone and a runbook file; the build skill's fix loop (max 3 cycles) covers the first.
 
 ### C. Repository knowledge as a harness (AGENTS.md and enforcement)
 
@@ -143,14 +143,14 @@ Grading was allowed in the brief. Grades are by source type and measured/asserte
    - https://cognition.com/blog/multi-agents-working (read in full)
    - Marks: vendor post, not retracted, not preprint, citations n/a; numbers are Cognition's own product telemetry.
    - Grade: vendor post, measured on its own PRs, not independently replicated.
-   - Compass part: tester and validator already run as separate agents after the builder ([[methodology]] "Task execution"). Whether the validator receives the builder's reasoning or only the diff and plan was not checked here; the clean-context finding concerns exactly that choice. Axis 4 is the home for this.
+   - Compass part: tester and validator already run as separate agents after the builder (`plugin/skills/methodology/SKILL.md` "Task execution"). Whether the validator receives the builder's reasoning or only the diff and plan was not checked here; the clean-context finding concerns exactly that choice. Axis 4 is the home for this.
 
 17. **Cursor's long runs: shared-file coordination failed; planners, workers and a fresh-start judge worked** (confidence: medium)
    - Equal-standing agents on a shared task file became risk-averse. Locks: 20 agents did as much as 2 or 3. Optimistic concurrency was sturdier but agents stayed cautious. What worked: recursive planners, workers that "just grind" on one task in their own repo copy, a judge at each cycle's end, then "the next iteration would start fresh". A separate integrator role created bottlenecks. "The prompts matter more" than harness and model. Restarts fresh to fight drift were still needed.
    - https://cursor.com/blog/scaling-agents (read in full; the second post, Towards self-driving codebases, was read only through a search summary)
    - Marks: vendor post, not retracted, not preprint, citations n/a; scale numbers (1M-line browser, Solid-to-React migration over 3 weeks) are self-reported.
    - Grade: vendor post, outcomes asserted.
-   - Compass part: builders already run in separate worktrees on non-overlapping files with the orchestrator merging ([[methodology]] "Parallel execution"), which matches the "no integrator, own your files" result; Compass's "fresh start per cycle" parallel is the fresh fix builder. The loop module (`plugin/cli/looplib.py`, `looprunner.py`) exists; whether it has a judge step was not read.
+   - Compass part: builders already run in separate worktrees on non-overlapping files with the orchestrator merging (`plugin/skills/methodology/SKILL.md` "Parallel execution"), which matches the "no integrator, own your files" result; Compass's "fresh start per cycle" parallel is the fresh fix builder. The loop module (`plugin/cli/looplib.py`, `looprunner.py`) exists; whether it has a judge step was not read.
 
 18. **Survey of 11 harnesses: no vector retrieval, hand-rolled loops, policy moving from prompt text to configuration** (confidence: medium)
    - A 83-page source-code study of Claude Code, Codex CLI, Gemini CLI, OpenHands, Aider, Hermes and others finds that none of about four million lines uses vector embeddings for code retrieval or imports a general agent framework; threshold compaction in 7 of 11; SKILL.md skills in 9 of 11, MCP in 8; Codex copies Claude Code's hook vocabulary "verbatim"; a 100-line loop (Mini-SWE-Agent) scores in OpenHands's range. 29 patterns and 18 recommendations, including a 90-line minimum harness.

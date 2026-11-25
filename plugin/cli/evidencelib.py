@@ -134,12 +134,32 @@ def _dirty_paths(root):
     return sorted(paths)
 
 
+def _start_argv(argv, cwd):
+    """The argv handed to the operating system for `argv` run in `cwd`.
+
+    On Windows a first word that is a relative path (it holds a separator and
+    is not drive-qualified or rooted) is rewritten with backslashes and joined
+    onto `cwd`, so `CreateProcess` finds it against the command's working
+    directory. Any other argv, and every platform other than Windows, is
+    returned unchanged.
+    """
+    if os.name != "nt" or not argv:
+        return argv
+    first = argv[0]
+    if "/" not in first and "\\" not in first:
+        return argv
+    native = first.replace("/", "\\")
+    if os.path.splitdrive(native)[0] or native.startswith("\\"):
+        return argv
+    return [os.path.normpath(os.path.join(os.path.abspath(cwd), native)), *argv[1:]]
+
+
 def _execute(argv, cwd):
     """Run `argv` in `cwd`; `(exit code, merged output bytes, start, end)`."""
     started = datetime.now().astimezone()
     try:
         done = subprocess.run(
-            argv,
+            _start_argv(argv, cwd),
             cwd=str(cwd),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,

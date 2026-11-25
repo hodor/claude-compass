@@ -116,6 +116,29 @@ Old open items moved here to keep the hot path under its cap.
 - [ ] Review and approve all plugin files - 3/21 approved, paused since 2026-03-12; largely superseded by the per-file reviews every later plan performed.
 - [ ] Blocked: Fleet pushes outstanding from the v0.6.x waves: 7 projects have no git, 2 no remote, 1 has all Compass paths gitignored (private project 1), 4 were push-rejected behind their remotes (3 private project 2 checkouts + wt-spec056) and need a human pull/rebase call. private project 3's remote no longer exists.
 
+## Parked from active.md (2026-11-24)
+
+### Sizing + discoverability initiative
+
+Triggered by a live failure in another project: a vision session produced seven epic-sized needs and Compass proposed seven flat specs with no signal anything was wrong.
+
+- [ ] Open: pin the project where the seven-monster-specs session happened ([[LESSON-pin-the-motivating-datum]]).
+
+### Per-domain organization initiative
+
+- [ ] v0.15.0's premature skill/sync edits were reverted; index depth-0 rule stays (shipped); everything further waits on the plan.
+
+### Research covers the whole spec (SPEC-023)
+
+- [ ] [[specs/pipeline/SPEC-024-walled-sources-through-the-browser]] awaits the human's ruling.
+- [ ] Open: a text-and-data-mining request to ACM is the human's to send if wanted.
+
+### Next Up
+
+- [ ] SubagentStop typed-signal fix, fleet-wide (payload evidence captured: `agent_type` empty string). Queued in [[backlog]].
+- [ ] [[SPEC-006-multi-host-agent-cli-support]] hosts: hermes first, then deepseek-harness (dsh; fit assessed in [[research/distribution/RESEARCH-deepseek-harness-fit]], 2026-09-04), then Kimi Code / Codex.
+- [ ] Blinded rerun of the test-bar experiment ([[LESSON-blind-the-author-in-self-validation]]).
+
 ## PLAN-023 Later (intent only)
 
 Plan: [[PLAN-023-taxonomy-review-at-spec-creation]].
@@ -207,7 +230,4 @@ Plan: [[PLAN-035-prompt-cache-is-a-design-input]]; intent lines are in its Later
 
 Plan: [[PLAN-036-verification-beyond-test-pass]]; intent lines are in its Later section.
 
-- [ ] TASK-413
 - [ ] TASK-417
-- [ ] TASK-418
-- [ ] TASK-419

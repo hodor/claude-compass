@@ -7,7 +7,7 @@ area: testing
 tags: [research, testing, verification, reachability, spec-coverage]
 summary: "how Compass can confirm new code is reached, tests depend on the change, and code meets the spec"
 created: 2026-11-21
-updated: 2026-11-21
+updated: 2026-11-24
 spec: "[[SPEC-034-verification-beyond-test-pass]]"
 grading: allowed
 ---
@@ -30,3 +30,4 @@ Grading: allowed (the human waived the axis gate).
 ## Status
 
 - All four axes complete. Consolidation: [[research/test-quality/beyond-test-pass/REVIEW-beyond-test-pass]]. A gap pass on non-CLI entry points (web route, UI action, hook subprocess) is appended to the reachability file.
+- Planted-defect probe, the KPI measurement: [[research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe]] - on a seeded project with one planted instance of each failure, the green suite flagged none and the three checks flagged each one, with no false alarm on the unplanted tasks and every record rerunning to match.

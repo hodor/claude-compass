@@ -47,7 +47,7 @@ Technology landscape comparison. Source read directly (`SECURITY.md` in full, `A
 
 4. **The RPC/scripting layer is agent-invoked, not wireable as an unconditional post-write action** (confidence: high)
  `tools/code_execution_tool.py` lets the LLM write a Python script that calls hermes tools via RPC in a child process ("collapsing multi-step pipelines into zero-context-cost turns" per the README). The model must choose to emit `execute_code`; it is an alternative *invocation path*, not a hook.
- - `tools/code_execution_tool.py:2-20,421-496`, `README.md:28`
+ - `tools/code_execution_tool.py:2-20,421-496`, `README.md:30`
 
 5. **Cron is time-based only, confirmed no file-watch trigger** (confidence: high)
  `cron/scheduler.py:tick()` polls `next_run_at` in `~/.hermes/cron/jobs.json`. Could serve only as an eventually-consistent fallback ("run `compass sync` every N minutes"), never a deterministic-on-write guarantee.

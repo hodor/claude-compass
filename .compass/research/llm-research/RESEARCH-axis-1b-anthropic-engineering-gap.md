@@ -179,7 +179,7 @@ The page https://code.claude.com/docs/en/best-practices was read end to end. It 
     - Evidence: https://www.anthropic.com/research/how-we-contain-claude ("Three types of risk", "Pattern 2", "Pattern 3", "Summary: principles")
     - Marks: vendor post, security-team authors; measured counts for the red-team case (n=25) and benchmark rates; one source; convergence with the sandboxing post (84%) and first-pass finding 19 (93%, 0.4%, 17%)
     - Grade: medium
-    - Compass part: `compass guard` filters subagent tool calls that destroy information; it is a tool-call filter, not an OS or network boundary. No Compass skill, rule or agent recommends enabling the host sandbox (grep of `plugin/skills`, `.claude/rules`, `.claude/agents`; one unrelated hit at `plugin/cli/hostlib.py:335`).
+    - Compass part: `compass guard` filters subagent tool calls that destroy information; it is a tool-call filter, not an OS or network boundary. No Compass skill, rule or agent recommends enabling the host sandbox (grep of `plugin/skills`, `.claude/rules`, `.claude/agents`; one unrelated hit at `plugin/cli/hostlib.py:336`).
 
 17. **Config read before the trust prompt ran attacker hooks; the fix was parsing project config only after consent** (confidence: high)
     - Three reported vulnerabilities involved code running before the user accepted the trust dialog, for example a cloned repository's project settings hook executing at startup. Advice: treat project-open, config-load and localhost listeners like inbound internet requests.

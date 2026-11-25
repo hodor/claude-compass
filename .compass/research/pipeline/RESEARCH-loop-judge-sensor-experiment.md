@@ -16,7 +16,7 @@ summary: "Verdict GATE: headless sonnet judging 5 rules over 30 files scored pre
 
 # Accuracy of an agent judging natural-language rules against planted violations
 
-From [[specs/pipeline/SPEC-026-control-theory-for-loops]], task TASK-154 of [[plans/PLAN-021-control-loops]]. Feeds TASK-158 (judge sensors).
+From [[specs/pipeline/SPEC-026-control-theory-for-loops]], task TASK-154 of [[plans/pipeline/PLAN-021-control-loops]]. Feeds TASK-158 (judge sensors).
 
 ## Question
 How accurately does a headless sonnet session, reading rules in natural language, find planted violations in a small Python corpus, and does a majority vote of its runs reach the fixed GATE thresholds?

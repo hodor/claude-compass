@@ -125,8 +125,8 @@ grading: allowed, so each finding carries a grade by source type and measured-ve
 
 14. **Transcript parsing for tool_use, compaction boundaries and compaction summaries already exists** (confidence: high)
     `plugin/cli/sessionslib.py` walks transcript records and extracts content blocks by type (`_blocks`, line 154) and counts commits from `Bash` `tool_use` blocks (line 226-234). `bench/overhead/token_profile.py` clears its modeled context at a `system` record with subtype `compact_boundary` and records an `isCompactSummary` user record as "compaction summary" (lines 283-296). `bench/overhead/attribute.py` names a compaction gap by the same boundary record (line 198). So the transcript carries both the pre-compaction tool_use history (ground truth) and the host's summary text.
-    - `plugin/cli/sessionslib.py:154-162, 226-236`
-    - `bench/overhead/token_profile.py:283-296`
+    - `plugin/cli/sessionslib.py:163-171, 226-236`
+    - `bench/overhead/token_profile.py:288-301`
     - `bench/overhead/attribute.py:198`
     - Marks: code read; convergence: 3 independent call sites
     - Grade: code, directly read

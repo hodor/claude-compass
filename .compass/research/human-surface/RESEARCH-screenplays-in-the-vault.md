@@ -214,16 +214,16 @@ No axis contradicts another on a fact. The open disagreements sit inside sources
    - `obsidian.py:33-38, 155-181, 250-252`.
 6. **Compass's scans read `.md` only; a script is a link target, never a vault document** (confidence: high; axes 3, 4, 5)
    No index line, properties check, tag index entry or graph node for a `.fountain`; links inside it count nowhere. `attachment_names` lists every non-`.md` file by name with extension and by vault path, so an Obsidian note's link to `pilot.fountain` resolves; a bare `[[pilot]]` is reported as a link to a missing document (broken_wikilink, tested).
-   - `plugin/cli/vaultlib.py:113-146, 375`; `commands/validate.py:75-96`; `vaultgraph.py:75-110`.
+   - `plugin/cli/vaultlib.py:114-147, 375`; `commands/validate.py:75-96`; `vaultgraph.py:75-110`.
 7. **The sync automatic step skips scripts** (confidence: high; axis 5)
    PostToolUse entries match `Write|Edit|MultiEdit(.compass/**/*.md)`, so a script edit runs no `compass sync` and records no lesson hint.
-   - `plugin/hooks/hooks.json`; `plugin/cli/commands/sync.py:1057-1064`.
+   - `plugin/hooks/hooks.json`; `plugin/cli/commands/sync.py:1374-1381`.
 8. **`compass move` renames every file in a moved folder** (confidence: medium; axis 3)
    Whether it rewrites Obsidian notes' links to a moved script was not read to the end.
    - `plugin/cli/commands/move.py:127, 140-153, 293`.
 9. **A folder holding only scripts raises no warning; a mixed folder follows its markdown** (confidence: high; code read of the Compass CLI)
    Validate, tree, sync and doctor say nothing about a folder with no `.md`, and its scripts still resolve as link targets. A folder mixing scripts with untyped markdown is reported as an unclassified folder (unclassified_root_folder); with typed markdown it becomes a type folder whose scripts are ignored.
-   - `plugin/cli/vaultlib.py:69-96, 137-145, 446-453`; `commands/validate.py:274-279`.
+   - `plugin/cli/vaultlib.py:70-97, 137-145, 446-453`; `commands/validate.py:274-279`.
 
 ## Forks
 

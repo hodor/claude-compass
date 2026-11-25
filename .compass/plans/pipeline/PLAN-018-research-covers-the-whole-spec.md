@@ -1,0 +1,215 @@
+---
+title: "Research Covers the Whole Spec"
+type: plan
+status: approved
+approved: 2026-09-13
+confidence: medium
+area: methodology
+tags: [research, pipeline, scope, sources, methodology, plugins]
+created: 2026-09-13
+updated: 2026-09-13
+depends_on: ["[[specs/pipeline/SPEC-023-research-covers-the-whole-spec]]", "[[research/pipeline/REVIEW-spec-023-research-consolidation]]", "[[research/pipeline/RESEARCH-scope-derivation-from-a-spec]]", "[[research/pipeline/RESEARCH-research-methodologies-catalog]]", "[[research/pipeline/RESEARCH-source-reliability-criteria]]", "[[research/pipeline/RESEARCH-source-inventory]]", "[[research/pipeline/RESEARCH-code-as-primary-source]]", "[[research/pipeline/RESEARCH-research-spawning-research]]"]
+summary: "rebuilds Compass's research surfaces so a run scopes to a whole spec instead of its question list, draws from a shipped list of sources with a retriever apiece, reads code instead of documentation, and grades its evidence only with the human told and able to refuse"
+---
+
+# Research Covers the Whole Spec
+
+## Goal
+
+This plan implements [[specs/pipeline/SPEC-023-research-covers-the-whole-spec]], which states the problem, from the evidence consolidated in [[research/pipeline/REVIEW-spec-023-research-consolidation]]. After it, a research run derives its axes from every part of a spec, states which methodology it is following, reaches each curated source through a retriever written for that source, prefers a library's own source over its documentation, and grades its evidence only after saying so and hearing no objection.
+
+## The waves
+
+The first wave gives research the two things it currently lacks: a way to read a whole spec, and a place to look. Compass gains a shipped list of research sources with a retrieval recipe for each one, a catalog of research methodologies an agent picks from, and an entry point that walks a spec's own sections into a list of investigation axes before anyone searches anything. That entry point is also where the human meets the run: his own questions enter the axis list ahead of everything the spec lists, he is told which grading the agents intend to apply to the evidence, and he can refuse it. The wave ends when a real research run on a real spec produces axes he recognises as covering the spec rather than echoing its questions.
+
+The second wave answers a question nobody in the field has answered: can a finished research document be scored for what it still misses, against the spec it was written for? A scorer exists for a related problem, and the way to point it at a spec is an inference from its code rather than a technique anyone has published. So the wave opens with an experiment, and how a run detects its own gaps is written from what the experiment shows.
+
+The third wave carries the same treatment to the remaining research surfaces: the paper-fetching skills, the autopilot pipeline, and a running record of which sources have misled a past run.
+
+## Prerequisites
+
+- [[specs/pipeline/SPEC-023-research-covers-the-whole-spec]] is approved, with decisions D-01 through D-07 and D-09 live and D-08 deferred.
+- The CLI test suite passes from the repo root: `python -m pytest plugin/cli/tests -q` currently reports 957 passed, 1 skipped.
+- Changes land in `plugin/`, which ships to users. `.compass/` is this project's own vault and is not the deliverable.
+
+## Desired End State
+
+A research run for a spec presents axes traceable to the spec's Problem, Decisions, Needs and Success criteria, with the human's own questions leading and the spec's listed questions answered but never setting the scope. Every finding names either a curated source reached through its own retriever, with its mechanical marks recorded, or a file and line in code that was read. Where an agent graded the evidence, the human was told before the grading was applied and could have refused it. A planner reading the result finds nothing it must go and look up itself, and a run that cannot close a gap says so in a form that spawns another pass.
+
+## What We're NOT Doing
+
+- Shadow libraries. D-08 parks them; they are profiled in [[research/pipeline/RESEARCH-source-inventory]] and stay off the shipped list.
+- Scripted access to ACM, DBLP or Internet Archive Scholar. Each was tested and each refuses a non-browser client, and ACM's terms name automated harvesting as a violation on top of that. A real browser does reach an ACM article page, and that route is [[specs/pipeline/SPEC-024-walled-sources-through-the-browser]], which is still a draft.
+- Excluding a source on a score. No agentic system surveyed computes a reliability verdict, and under D-09 nothing is excluded on quality: a grade and a score are disclosed, refusable and advisory, and they are recorded beside a finding rather than deciding whether it exists. What keeps a run off an uncurated pile is where it starts looking, which is the shipped list of TASK-120.
+- Changing how research documents are stored, indexed or linked.
+
+## Phases
+
+### Wave 1 (detailed): Read the whole spec, and know where to look
+
+- [x] TASK-120: Ship the curated source list with a retriever apiece - a data file holding one entry per source the spec names as shipped, each carrying its coverage, its access route, its key requirement, whether it is reachable by script or only through a browser, and the retrieval call that actually fetches from it; plus the sources tested and found dead or closed, kept as a do-not-try record rather than dropped; and the parser that reads it - complexity: M, depends_on: none, files: [plugin/cli/sources.yaml, plugin/cli/sourceslib.py, plugin/cli/tests/test_sourceslib.py], decisions: [SPEC-023-research-covers-the-whole-spec/D-03, SPEC-023-research-covers-the-whole-spec/D-09]
+  - The per-source retrieval call is the deliverable, not a later refinement. D-09 asks for a dedicated retriever per curated source regardless of what else gets built, so an entry without its own working call is an incomplete entry. Which sources ship is fixed by [[specs/pipeline/SPEC-023-research-covers-the-whole-spec]] D-03; every entry's coverage, host, key requirement and tested result comes from [[research/pipeline/RESEARCH-source-inventory]], whose live reachability section tested each one from this machine.
+  - The CLI has no YAML library. Every YAML it reads is parsed by a hand-rolled parser written for that one file's shape, as `plugin/cli/modelslib.py:89` and `plugin/cli/lessonslib.py:56-66` do, and `plugin/cli/` holds no `.yaml` file today. Either write `sourceslib.py` in that style or choose a flatter shape the existing style already reads; do not add a dependency.
+  - The data file must live under `plugin/cli/`. `plugin/cli/commands/self_update.py:438` copies only `*.md` out of a skill directory, so a catalog inside a skill would never reach an installed project; `self_update.py:252` copies the whole `plugin/cli/` tree.
+  - Automated verification: `python -m pytest plugin/cli/tests/test_sourceslib.py -q` passes, with a round-trip case per entry shape and a case asserting every shipped entry carries a non-empty retrieval call; `python -m pytest plugin/cli/tests -q` still passes with no regression against the 957-passing baseline.
+  - Manual verification: the human reads the parsed list and confirms it is the list he wants Compass to ship, including what sits in the do-not-try record.
+
+- [x] TASK-121: Give the source list a command - `compass sources` prints the list, and `--check` judges a source by the response content type rather than its status code - complexity: M, depends_on: TASK-120, files: [plugin/cli/commands/sources.py, plugin/cli/maincli.py, plugin/cli/tests/test_sources.py], decisions: [SPEC-023-research-covers-the-whole-spec/D-03]
+  - The content-type rule is the load-bearing part: a walled source answers a JSON call with a success status and an HTML challenge page, so a list validated by status code alone reports it as healthy.
+  - Keep the classifier separate from the network. `--check` classifies a response body that is handed to it, so the tests can feed it a challenge page and a real JSON payload as fixtures. Live calls run only under an explicit flag, so the suite stays hermetic.
+  - Registration is one entry in `COMMAND_SPECS` plus a handler module named after it with hyphens turned to underscores, which is the contract `plugin/cli/commands/doctor.py:311` checks.
+  - Automated verification: `python -m pytest plugin/cli/tests/test_sources.py -q` passes, including a case where an HTML challenge body under a success status is classified as unreachable; `python plugin/cli/compass sources` exits 0 and prints one row per entry, which is what proves the registration and the handler module both resolve; `python -m pytest plugin/cli/tests -q` still passes.
+  - Manual verification: `python plugin/cli/compass sources --check --live` is run once against every keyless entry and its verdicts match what the source inventory recorded.
+
+- [x] TASK-122: Ship the methodology catalog as a skill - each methodology the research found, with its own steps, inputs, output, the question shape it fits, and the failure modes its own authors name, so an agent picks one and says which - complexity: M, depends_on: none, files: [plugin/skills/research-methods/SKILL.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-06, SPEC-023-research-covers-the-whole-spec/D-03, SPEC-023-research-covers-the-whole-spec/D-09]
+  - Every methodology, and the five dimensions each is profiled on, comes from [[research/pipeline/RESEARCH-research-methodologies-catalog]]. Two of them need a stance the research does not take for you. The mapping study is the default conduct, because it is the methodology that does not ask an agent to judge quality. The reporting standard among them prescribes how a review is written up and not how it is run, so it is always paired with a conduct method rather than named as one.
+  - The grey-literature methodology carries what D-03 needs for a specialist's blog, and it survives into the catalog as description rather than as a gate. Its seven-question checklist asks whether grey literature is relevant to this question at all, which is a scoping judgment about the subject and not a quality judgment about any source, so it stays a decision the agent makes. Its three-tier outlet classification places a blog in the lowest tier without excluding it. Its eight-criterion instrument scores authority, methodology, objectivity, date, position, novelty, impact and outlet tier, and that score is recorded as a mark on the source and surfaced with the finding. Nothing is excluded on the score: what keeps a run off a pile of blogs is that it starts from the shipped list, and what admits a specialist's blog case by case is the human, seeing the score.
+  - The chooser is authoring work, not a lift: each methodology states its own fit in isolation and no source gives a procedure for picking between them. Two cautions belong in it. The abbreviated review shape is revised by its own methodologists every few years, so point at their current guidance rather than freezing a recipe. And a mapping study's instruction to skip quality assessment leaves the reliability check standing, because that check is the mechanical marks recorded on each finding, not a quality judgment.
+  - Automated verification: `plugin/skills/research-methods/SKILL.md` parses as frontmatter carrying `name`, `description` and `when_to_use`, checked by the same read every other skill in `plugin/skills/` satisfies; a grep finds a profile heading for each of the eight conduct methodologies the source research sections off, which are the scoping review, the rapid review, the systematic literature review, the systematic mapping study, snowballing, the grey-literature review, technology landscape and comparative evaluation, and repository mining, plus the reporting standard and protocol registration carried beside them as things that are not conduct methodologies; technology landscape and comparative evaluation keeps its heading as a conduct methodology, grounded in DESMET, which TASK-123's note on the shrinking of the old four-approach table says the same way, so a grep finds DESMET named for that slot, finds the second, non-unified answer listed beside it rather than merged into it, and finds the ThoughtWorks Radar present only as a format precedent; a grep finds the word marking the default conduct and the three grey-literature instruments; `python -m pytest plugin/cli/tests -q` still passes.
+  - Manual verification: the human reads the chooser and confirms that a question he would actually ask routes to a methodology he would actually want.
+
+- [x] TASK-123: Put the marks and the grade on the findings - amend the research document template so every finding carries its mechanical marks and records whether a grade was applied, and replace both copies of the four-approach list with a pointer at the catalog - complexity: S, depends_on: TASK-122, files: [plugin/skills/obsidian/SKILL.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-09, SPEC-023-research-covers-the-whole-spec/D-03]
+  - The marks are the five the spec names: evidence type, retraction status, preprint status, citation count, convergence. Evidence type is additionally graded by the agent, and the template records the grade beside the mark along with whether the human allowed it to be used, so a later reader can tell a graded finding from an ungraded one. [[research/pipeline/RESEARCH-source-reliability-criteria]] gives the preprint marking convention, and [[research/pipeline/RESEARCH-research-methodologies-catalog]] carries two worked owner checks to copy the format from, including why the check to run differs between a maintained library and a single-author paper artifact.
+  - The list appears twice in this file and both copies go: the four-row table at `plugin/skills/obsidian/SKILL.md:377-382`, and the sentence at `:410` that names three of the four approaches inside the Methodology field's own instruction.
+  - This is a deliberate capability change, not a pure replacement, and it is narrower than it looks. All four families survive into the catalog as profiled methodologies, technology landscape and comparative evaluation among them. What loses its standing is one artifact the old row pointed at, the ThoughtWorks Radar, which the research rules a format precedent rather than a methodology on its publisher's own statement that it is an opinionated sample and not a survey. DESMET becomes that family's grounding, as the peer-reviewed methodology for the comparison-shaped question, so TASK-122 keeps the heading and changes what stands behind it.
+  - Automated verification: a grep of `plugin/skills/obsidian/SKILL.md` for the table's row text returns no match, where it returns one today, and a grep for the three lowercase approach names in the Methodology instruction returns no match either; a grep for `research-methods` returns the pointer that replaced them; each of the five mark names and the grade field appear in the research template block; `python -m pytest plugin/cli/tests -q` still passes.
+  - Manual verification: the human reads one finding written to the new template and confirms the marks and the grade are legible without being longer than the finding.
+
+- [x] TASK-124: Turn the research entry point from a router into a scope derivation - it reads the whole spec, walks its sections into investigation axes, inserts the human's own questions ahead of everything, tells him what grading the run intends to apply and accepts his refusal, blocks on his reply, and enumerates what the session offers before any agent runs - complexity: M, depends_on: TASK-120, files: [plugin/skills/research/SKILL.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-01, SPEC-023-research-covers-the-whole-spec/D-02, SPEC-023-research-covers-the-whole-spec/D-07, SPEC-023-research-covers-the-whole-spec/D-09], lessons: [LESSON-verify-wiring-by-call-site-grep]
+  - The existing dispatch to codebase research and paper research is kept, not removed. This skill is the only thing that routes to either one today (`plugin/skills/research/SKILL.md:14-24,37-39`), and both remain untouched until later waves, so dropping the routing table would take a working capability away.
+  - Build the derivation in two steps, both drawn from the three families [[research/pipeline/RESEARCH-scope-derivation-from-a-spec]] classifies. Decompose the spec's own structure into the axes: ask how each Need would be met to go down a level, and ask why each Decision was made to find the concern above it. Then audit the resulting list against a fixed set of facets, so a whole category cannot go missing, which is the failure unstructured elicitation measurably produces. The research names the facet templates and the completeness facets to use. The third family, letting found evidence grow the scope, is what wave 2 builds.
+  - The spec's Open Questions are answered where research touches them and never lead. The human's questions lead, and the mechanism is structural rather than a weight, because no source states a comparative weight for a human-originated question. Copy two shapes from the same research: the human's question enters the list with no model judging whether to accept it and then becomes the focus the rest of the list regenerates around, and the gate presents the list, blocks on a reply, and routes any non-approval back to regeneration under a revision ceiling.
+  - The gate is also where D-09's grading is disclosed. Before any agent runs, the gate states which grading the run intends to apply to its evidence and on what basis, and a refusal from the human turns the grading off for the run without stopping it. The answer reaches the researchers as one named field in their brief, `grading:`, carrying `allowed` or `refused`, and TASK-125 reads that exact field. Both tasks must spell it the same way or the refusal is silently dropped, so the name is fixed here and is not the builder's to choose.
+  - Session capability discovery is `claude mcp list` and `claude plugin list --json`. Two rules govern the enumeration: dedupe on plugin name, because one plugin registers separately at user, project and local scope, and read whether it is enabled per scope.
+  - One precedent warns the design. The one shipped system that derived an axis list from a document up front was deprecated by its own authors, and the shape they abandoned generates a draft outline from a topic and reconciles it against evidence afterwards. This derivation parses the spec directly and never drafts an outline first.
+  - The skill's `allowed-tools` is `[Read, Bash]` today, which suits a router and not an entry point that reads a spec, enumerates the session and spawns agents. Widen it to what the derivation actually calls.
+  - Automated verification: a grep of `plugin/skills/research/SKILL.md` finds both `claude mcp list` and `claude plugin list --json`, where a grep across all of `plugin/` finds neither today; the same file still names both dispatch targets, `research-codebase` and `research-papers`; its frontmatter names `Agent` among its `allowed-tools`; the file names the two derivation steps, the gate, and the grading disclosure as headings; `python -m pytest plugin/cli/tests -q` still passes.
+  - Manual verification: run the entry point against [[specs/pipeline/SPEC-023-research-covers-the-whole-spec]] itself and confirm the axis list covers its Problem, Decisions and Needs rather than restating its decisions as questions. Inject a question mid-gate and confirm the rest of the list regenerates around it. Refuse the grading at the gate and confirm the run proceeds ungraded. Ask a plainly code-shaped question and confirm it still reaches codebase research.
+
+- [x] TASK-125: Teach the researcher agent the whole-spec habit - it states the methodology it chose, marks and grades every finding under the disclosure the gate made, reads a library's own source rather than its documentation, uses what the session offers, and reports a gap it cannot close as a gap rather than filling it - complexity: M, depends_on: TASK-122, TASK-123, TASK-124, files: [plugin/templates/agents/researcher.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-01, SPEC-023-research-covers-the-whole-spec/D-04, SPEC-023-research-covers-the-whole-spec/D-06, SPEC-023-research-covers-the-whole-spec/D-07, SPEC-023-research-covers-the-whole-spec/D-09], lessons: [LESSON-verify-wiring-by-call-site-grep]
+  - Every edit to this file belongs to this task, including the `skills:` frontmatter line that loads the new catalog. Agent templates are a standing collision point when plans run in parallel; consolidating them here keeps the wave parallel-safe.
+  - The grading contract is the part with a live human in it. The agent grades evidence type, weighting peer review by how much it is worth for the topic at hand, and it applies that grade only when its brief carries `grading: allowed`, the field TASK-124's gate sets. `grading: refused` means the findings are marked and not graded.
+  - A brief with no `grading:` field at all means no disclosure happened, so the run is ungraded and the document says the human was never asked. That is the case on every path that skips the entry point, which today includes an autopilot run and any directly spawned researcher, so ungraded is the common outcome until TASK-135 lands rather than a rare one. Either way the document records which of the three happened, so a reader knows whether a grade shaped what is in front of them and whether anyone consented to it.
+  - The existing clause telling the agent to expand a narrow brief stays and is now downstream of a derivation that was already spec-wide, so its job narrows to covering what the axis missed rather than compensating for a narrow axis.
+  - The agent's own text needs one line of justification for reading code over documentation, so a later reader knows the rule is evidence-backed rather than taste. [[research/pipeline/RESEARCH-code-as-primary-source]] holds the drift measurements to draw it from.
+  - Automated verification: `plugin/templates/agents/researcher.md` parses as frontmatter whose `skills:` list names the catalog skill TASK-122 creates; its report format block names all five marks, the grade, and a methodology field; a grep finds the plugin-discovery commands, both literal states `grading: allowed` and `grading: refused`, and the sentence covering a brief that carries no such field, which is a state no grep can find by its own token; the same grep for the two literal states run against `plugin/skills/research/SKILL.md` finds the field spelled identically; `python plugin/cli/compass models` still resolves the researcher row, which proves the frontmatter edit did not break model resolution; `python -m pytest plugin/cli/tests -q` still passes.
+  - Manual verification: spawn one researcher on a real axis and confirm the returned findings carry marks, name a methodology, and cite at least one source read as code rather than as documentation. Spawn a second with a refusal in its brief and confirm the findings come back marked and ungraded.
+
+- [x] TASK-126: Let codebase research reach outside the repository - the same skill that documents this repo also fetches and reads a library's canonical source, matched to the installed version where the ecosystem allows it - complexity: M, depends_on: none, files: [plugin/skills/research-codebase/SKILL.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-04, SPEC-023-research-covers-the-whole-spec/D-07]
+  - The skill today spawns locators and analyzers over the local checkout only, so the spec's instruction to fetch a library and read its source has no surface. [[research/pipeline/RESEARCH-code-as-primary-source]] gives the route per package ecosystem and the techniques for reading an unfamiliar codebase efficiently. Two facts shape what the skill can promise: a plain clone is the zero-quota, full-fidelity path to any code host, and matching an installed version to its exact source is a tag-guessing heuristic in every ecosystem except the two that record the location or the commit themselves.
+  - Automated verification: the recipe the skill documents runs end to end for one named public package, from source-repository lookup through clone to a read of one named symbol, and the commands are pasted into the task with their output; a grep of `plugin/skills/research-codebase/SKILL.md` finds the external-source section and the two version-exact ecosystems named; `python -m pytest plugin/cli/tests -q` still passes.
+  - Verification record: package `iniconfig`, installed version 2.3.0.
+    ```
+    $ pip show iniconfig
+    Name: iniconfig
+    Version: 2.3.0
+    Home-page: https://github.com/pytest-dev/iniconfig
+
+    $ curl -s https://pypi.org/pypi/iniconfig/2.3.0/json | python -c "import json,sys; d=json.load(sys.stdin); print(d['info']['project_urls'])"
+    {'Homepage': 'https://github.com/pytest-dev/iniconfig'}
+
+    $ git clone --branch v2.3.0 --depth 1 https://github.com/pytest-dev/iniconfig <scratchpad>/codesource/iniconfig
+    Cloning into '<scratchpad>/codesource/iniconfig'...
+    Note: switching to '7faed13ae50bad7c5da3f5782f254a8a7736bb84'.
+
+    $ grep -n "^class IniConfig" <scratchpad>/codesource/iniconfig/src/iniconfig/__init__.py
+    89:class IniConfig:
+
+    $ sed -n '89,122p' <scratchpad>/codesource/iniconfig/src/iniconfig/__init__.py
+    class IniConfig:
+        path: Final[str]
+        sections: Final[Mapping[str, Mapping[str, str]]]
+        _sources: Final[Mapping[tuple[str, str | None], int]]
+
+        def __init__(
+            self,
+            path: str | os.PathLike[str],
+            ...
+        ) -> None:
+            self.path = os.fspath(path)
+            if _sections is not None and _sources is not None:
+                sections_data = _sections
+                sources = _sources
+            else:
+                if data is None:
+                    with open(self.path, encoding=encoding) as fp:
+                        data = fp.read()
+                sections_data, sources = _parse.parse_ini_data(
+                    self.path, data, strip_inline_comments=False
+                )
+            self._sources = sources
+            self.sections = sections_data
+    ```
+    Read `IniConfig.__init__` at `src/iniconfig/__init__.py:89-122` in the tag-matched clone, showing it delegates parsing to `_parse.parse_ini_data`, not from documentation.
+
+    ```
+    $ grep -n "^## External source" plugin/skills/research-codebase/SKILL.md
+    158:## External source: a library's own code, not its docs
+
+    $ grep -n "Go modules\|NuGet" plugin/skills/research-codebase/SKILL.md
+    173:| Go modules | `go list -m -json <module>` - the import path is itself the VCS location |
+    175:| NuGet | the `.nuspec`'s Source Link `<repository url="..." commit="...">` |
+    181:Go modules and NuGet packages built with Source Link record the exact source: Go's import path resolves natively to the VCS ref, and Source Link embeds the built commit in the `.nuspec`. No other packaging standard ties a published version to a git tag, so match by heuristic there: try `v<version>`, `<version>`, and a monorepo-prefixed tag like `<name>@<version>`.
+    ```
+  - Manual verification: ask the skill how one function in an installed third-party library behaves and confirm the answer cites that library's source at file and line, not its documentation.
+
+- [x] TASK-127: Rewrite the Research section of the shipped pipeline rules so the invariants hold wherever research runs, not only inside one skill - complexity: S, depends_on: TASK-123, TASK-124, files: [plugin/templates/rules/compass-pipeline.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-01, SPEC-023-research-covers-the-whole-spec/D-02, SPEC-023-research-covers-the-whole-spec/D-05, SPEC-023-research-covers-the-whole-spec/D-09]
+  - Five rules, each stated positively: axes span the spec; the human's questions lead and the spec's listed questions are answered without leading; every finding names a checked source or a file and line, with its marks; a grade is applied only after the human is told and does not refuse; and a run that finds it needs more research spawns research, never a plan.
+  - The fifth rule stands whatever the wave-2 experiment shows. What the experiment settles is how a run detects its own gap, not what it does once it has one.
+  - The section carries three rules today and every one of them survives. Two stay as they are: research traces to a spec, and every finding gets a confidence level. The third, the invitation that presents the planned axes and brings the human in, is the same gate the new second rule sharpens, so the two merge into one line that keeps the invitation's own words and adds whose questions lead. The section has no line budget: it runs as long as the invariants need, written in the register the surrounding sections use. An invariant is never dropped to hit a length.
+  - Automated verification: a grep of the Research section of `plugin/templates/rules/compass-pipeline.md` finds the words carrying each of the five new invariants and each of the two surviving old ones, and finds the invitation's own wording still present inside the merged line; `python -m pytest plugin/cli/tests -q` still passes.
+  - Manual verification: a fresh reader holding only the rules file can say what a research run must cover, what it must ask before grading, and when it must spawn another pass.
+
+- [x] TASK-128: Close the wave by making the changes real in this repo and stamping the release - refresh the local install from `plugin/`, bump the plugin version, and confirm the installed copy reports healthy - complexity: S, depends_on: TASK-120, TASK-121, TASK-122, TASK-123, TASK-124, TASK-125, TASK-126, TASK-127, files: [plugin/.claude-plugin/plugin.json]
+  - Editing `plugin/` does not change how this repo behaves. `.claude/` is a generated copy, and the health checks read that copy rather than the source: `compass doctor` loads `COMMAND_SPECS` from `.claude/cli/maincli.py` (`plugin/cli/commands/doctor.py:291`) and counts skill directories under `.claude/skills/`. Until the refresh runs, every such check reports the state before this wave.
+  - Automated verification: after the refresh, `python .claude/cli/compass doctor` exits 0 and its CLI-completeness line accounts for the new command; `.claude/skills/research-methods/SKILL.md` exists; `python .claude/cli/compass sources` runs from the installed copy; the version in `plugin/.claude-plugin/plugin.json` is higher than 0.23.5.
+  - Manual verification: start a fresh session in this repo and confirm the research entry point behaves as TASK-124 describes, which is the only check that the installed copy is what is actually loaded.
+
+**Pause point:** when automated verification passes, wait for the human to confirm manual verification succeeded before the next wave.
+
+**Known limitation this wave leaves standing:** the autopilot pipeline spawns the researcher agent directly (`plugin/skills/autopilot/SKILL.md:30-32`) and never calls the research entry point, so an autopilot run gets the wave's researcher changes but not its derivation, its axis gate, or its grading disclosure. Since the grade is applied only where a disclosure happened, an autopilot run comes back marked and ungraded, and says so. That is the safe direction and the wrong default, and TASK-135 closes it.
+
+### Wave 2 (detailed): Prove the stop rule, exercise the list, close the autopilot gap
+
+- [ ] TASK-129: Run the completeness scorer against a real spec and a real research document and record whether it detects a gap a human agrees is a gap - files: [.compass/research/pipeline/RESEARCH-spec-coverage-experiment.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-05], commit-upfront: the experiment's shape is inferred from the code contract and fixed now, because a later change to it would invalidate everything written against its result
+  - No source anywhere scores a research report against a requirements document, and four candidate scorers were profiled and each scores against something a spec is not. One runnable scorer exists for a neighbouring problem: it breaks a ground truth into atomic claims, marks which are essential, and checks a finished text for each. [[research/pipeline/RESEARCH-research-spawning-research]] names it, its license and its three stages.
+  - The mapping onto a spec is read off that pipeline's data contract rather than stated by any source, which is why this is an experiment: the spec's Problem becomes the query, its Decisions and Needs become the ground truth the claims are drawn from, the finished research document is the text checked, and the recall over essential claims is the coverage score.
+  - Automated verification: the pipeline runs end to end against [[specs/pipeline/SPEC-023-research-covers-the-whole-spec]] and [[research/pipeline/REVIEW-spec-023-research-consolidation]] and emits a numeric score with a per-claim breakdown.
+  - Manual verification: the human reads the claims marked unsupported and says whether they are real gaps or artifacts of the mapping. A run where they are artifacts retires the mechanism rather than tuning it.
+
+- [ ] TASK-131: Exercise every shipped retriever against its live source and record the result beside the entry - complexity: S, depends_on: none, files: [plugin/cli/sources.yaml, plugin/cli/tests/test_sourceslib.py], decisions: [SPEC-023-research-covers-the-whole-spec/D-09, SPEC-023-research-covers-the-whole-spec/D-03]
+  - `compass sources --check --live` already prints a verdict per scripted entry. This task runs it, records each verdict and its date as a `tested` field on the entry in `plugin/cli/sources.yaml`, and moves any entry whose live verdict is unreachable into the do-not-try record with the same reason and date rather than deleting it.
+  - The pre-build station writes the test first: every active entry carries a `tested` field with an ISO date, and no entry in the do-not-try record lacks a reason.
+  - Automated verification: `python plugin/cli/compass sources --check --live` exits 0 and its output is pasted into this block with one verdict per scripted entry; `python -m pytest plugin/cli/tests/test_sourceslib.py -q` passes with the new test; the full suite passes.
+  - Manual verification: the human compares the verdicts with the reachability findings in [[research/pipeline/RESEARCH-source-inventory]] and confirms any entry that moved to do-not-try belongs there.
+
+- [ ] TASK-135: Make the autopilot research step call the entry point, so a pipeline run gets the derivation, the axis gate and the grading disclosure - complexity: S, depends_on: none, files: [plugin/skills/autopilot/SKILL.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-01, SPEC-023-research-covers-the-whole-spec/D-05]
+  - Autopilot's step 2 spawns the researcher directly, so a pipeline run gets the researcher's habits but neither the axis derivation nor the gate where grading is disclosed; findings from such a run come back ungraded. This task routes step 2 through the research entry point and carries the gate's outcome into autopilot's own plan-approval checkpoint, so one human stop serves both.
+  - Automated verification: a grep of `plugin/skills/autopilot/SKILL.md` finds the research entry point named as the step-2 call and the `grading:` field carried into the checkpoint block; the full suite passes.
+  - Manual verification: run autopilot on one S task in this repo and confirm the axis list and the grading disclosure appear before any researcher spawns.
+
+## Later (intent only)
+
+- [ ] TASK-130: Write how a run detects its own gap, from the experiment's result, and refine the shipped rule to match - files: [plugin/skills/research/SKILL.md, plugin/templates/agents/reviewer.md, plugin/templates/rules/compass-pipeline.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-05]
+- [ ] TASK-132: Build the source ledger, so a source that misled a run and a paper that a later paper overturned are both visible to the next run - files: [plugin/skills/lessons/SKILL.md, plugin/cli/sources.yaml], decisions: [SPEC-023-research-covers-the-whole-spec/D-09]
+- [ ] TASK-133: Reshape paper research onto the curated retrievers and the chosen conduct, rather than a fixed three-perspective triad over one index - files: [plugin/skills/research-papers/SKILL.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-03, SPEC-023-research-covers-the-whole-spec/D-06]
+- [ ] TASK-134: Route the paper-fetching skill through the curated retrievers, which it has no reliability filter for today - files: [plugin/skills/papers/SKILL.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-03]
+- [ ] TASK-136: Read the walled sources through the human's browser, once [[specs/pipeline/SPEC-024-walled-sources-through-the-browser]] is approved - files: [plugin/cli/sources.yaml, plugin/skills/research/SKILL.md]
+
+## Wave 2 elaborated
+
+- TASK-129: unchanged - intent held. Its block was already written to full detail with commit-upfront, and wave 1 produced nothing that changes the experiment's shape.
+- TASK-131: detailed from wave 1's outcome. The list and its check command shipped and were verified (TASK-120, TASK-121), so the live exercise is one command run plus a recorded field per entry, and an unreachable verdict moves an entry to do-not-try instead of deleting it.
+- TASK-135: detailed from wave 1's known limitation. TASK-124 verified the gate and the grading disclosure exist in the entry point, and TASK-125 verified that a researcher with no grading field returns ungraded findings; autopilot is the one path that still bypasses the gate.
+
+## Risks
+
+- **The derivation produces axes that span the spec on paper and read as boilerplate in practice.** The one shipped precedent for this shape was deprecated by its own authors. Mitigation: TASK-124's manual verification runs the derivation against a real spec and judges the axes, and the wave pauses there before anything downstream is built.
+- **The grading disclosure becomes a prompt the human clicks past.** A disclosure nobody reads is not consent, and it arrives at the same gate that already asks him to approve an axis list. Mitigation: the disclosure states what the grading would change about the findings, not that grading exists, and TASK-124's manual verification exercises the refusal path rather than only the approval path.
+- **The completeness scorer turns out not to transfer to a spec.** Nobody has pointed one at a requirements document, and the mapping is an inference. Mitigation: TASK-129 is an experiment whose failure retires the mechanism, and the detection rule in TASK-130 is written after the result, not before.
+- **The shipped source list ages.** Its access facts were tested on 2026-09-13, and several entries changed their terms, their pricing or their endpoints within the year before that, with two going dead entirely. Mitigation: `compass sources --check` makes the list falsifiable on demand rather than trusted.
+- **A scriptable exception for ACM stays unavailable.** Its text-and-data-mining clause has no self-service path, and asking for one means sending a real request on behalf of a real institution, which only the human can do. This plan treats ACM as browser-only and does not depend on that request.
+
+## Inherited Questions (from spec)
+
+None. [[specs/pipeline/SPEC-023-research-covers-the-whole-spec]] carries no Open Questions section; its D-08 is marked deferred and is out of scope here.

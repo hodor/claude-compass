@@ -1,0 +1,12 @@
+diff --git a/plugin/cli/commands/self_update.py b/plugin/cli/commands/self_update.py
+index c46e5b8..69127cb 100644
+--- a/plugin/cli/commands/self_update.py
++++ b/plugin/cli/commands/self_update.py
+@@ -220,6 +220,7 @@ def merge_settings(project_root, manifest_path):
+         else {}
+     )
+     settings.setdefault(GIT_SNAPSHOT_KEY, False)
++    settings.setdefault("subagentPromptCacheTtl", "1h")
+     hooks = settings.setdefault("hooks", {})
+ 
+     shipped = {

@@ -2858,3 +2858,191 @@ def test_resumed_tokens_read_the_last_result_usage_only():
     ]
     assert probe._resumed_tokens(events, "m") == {"m": {"input": 2, "output": 7, "cache_read": 3, "cache_write": 61568}}
     assert probe._resumed_tokens([], "m") == {"m": {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0}}
+
+
+# re-compaction arms ---------------------------------------------------------------
+
+import sys  # noqa: E402
+
+import fake_compact_claude  # noqa: E402
+from fake_reply_claude import ReplyFake  # noqa: E402
+
+TASK_LINE = "The task in progress is TASK-1"
+
+
+@pytest.fixture
+def fake_compact(tmp_path, monkeypatch):
+    folder = tmp_path / "fake-compact"
+    folder.mkdir()
+    fake = ReplyFake(folder, monkeypatch)
+    fake.command = [sys.executable, str(Path(fake_compact_claude.__file__).resolve())]
+    monkeypatch.delenv("FAKE_COMPACT_MODE", raising=False)
+    return fake
+
+
+def _task_point(tmp_path, private_root, cwd, **options):
+    """A boundary state point whose assistant text names TASK-1 before the boundary
+    and TASK-99 after it."""
+    point = _boundary_state_point(tmp_path, private_root, cwd, **options)
+    transcript, index = probe._point_parts(point)
+    lines = Path(transcript).read_text(encoding="utf-8").splitlines()
+    named = assistant(90, "Working on TASK-1 now.")
+    named["cwd"] = str(cwd)
+    if options.get("subagent"):
+        named["isSidechain"] = True
+    later = dict(assistant(91, "Then TASK-99."), cwd=str(cwd), isSidechain=bool(options.get("subagent")))
+    lines = lines[:index] + [json.dumps(named)] + lines[index:] + [json.dumps(later)]
+    Path(transcript).write_text("\n".join(lines) + "\n", encoding="utf-8")
+    new_point = f"{transcript}#{index + 1}"
+    probe.build(new_point, private_root=private_root)
+    return new_point
+
+
+def test_recompact_task_compacts_the_rebuilt_session_naming_the_task_then_asks_from_the_new_summary(
+        tmp_path, private_root, state_repo, cli_repo, fake_compact):
+    """Adversarial where: the compaction is not a resumed `/compact` with no tools, the
+    hook is not registered or names no task, the open tasks come from HEAD instead of
+    the boundary's commit, or the answerer holds the recorded summary or no block."""
+    point = _task_point(tmp_path, private_root, state_repo)
+    fake_compact.reply("{}")
+
+    stored = _ask_state(point, "recompact-task", cli_repo, private_root, fake_compact)
+
+    compaction, answerer = fake_compact.calls()
+    argv = compaction["argv"]
+    assert argv[argv.index("--input-format") + 1] == "stream-json"
+    assert argv[argv.index("--tools") + 1] == ""
+    assert argv[argv.index("--model") + 1] == FIXTURE_MODEL
+    assert "--strict-mcp-config" in argv
+    session = argv[argv.index("--resume") + 1]
+    project = Path(compaction["cwd"])
+    assert project.resolve().is_relative_to(Path(private_root).resolve())
+    rebuilt = Path(private_root) / "claude-config" / "projects" / probe.launch.encode_cwd(project) / f"{session}.jsonl"
+    assert rebuilt.is_file()
+    assert json.loads(compaction["stdin"])["message"]["content"] == "/compact"
+    settings = json.loads(Path(argv[argv.index("--settings") + 1]).read_text(encoding="utf-8"))
+    assert settings["hooks"]["PreCompact"][0]["hooks"][0]["type"] == "command"
+    assert TASK_LINE in stored["precompact"]
+    assert f"{OPEN_TASK} the committed open task" in stored["precompact"]
+    assert LATER_TASK not in stored["precompact"] and "TASK-99" not in stored["precompact"]
+    assert "--resume" not in answerer["argv"]
+    assert answerer["argv"][answerer["argv"].index("--tools") + 1] == ""
+    prompt = answerer["stdin"]
+    assert fake_compact_claude.NEW_SUMMARY in prompt and TASK_LINE in prompt
+    assert STATE_SUMMARY not in prompt
+    assert prompt.index(fake_compact_claude.NEW_SUMMARY) < prompt.index(BLOCK_TITLE)
+    assert answerer["cwd"] != compaction["cwd"]
+    assert stored["summary"].startswith(fake_compact_claude.NEW_SUMMARY)
+    assert stored["block"].startswith("#") or BLOCK_TITLE in stored["block"]
+    assert stored["tokens"] and stored["compaction_tokens"]
+    assert _stored_ask(point, private_root, "recompact-task")["precompact"] == stored["precompact"]
+
+
+def test_recompact_control_prints_the_five_items_and_no_id(
+        tmp_path, private_root, state_repo, cli_repo, fake_compact):
+    """Adversarial where: the control arm's hook still names the task, so the two arms
+    differ by nothing, or prints nothing and compacts with no instructions."""
+    point = _task_point(tmp_path, private_root, state_repo)
+    fake_compact.reply("{}")
+
+    stored = _ask_state(point, "recompact", cli_repo, private_root, fake_compact)
+
+    assert "next step" in stored["precompact"].lower()
+    assert not re.search(r"\b(?:TASK|PLAN)-\d+\b", stored["precompact"])
+    assert TASK_LINE not in stored["summary"]
+    compaction, _ = fake_compact.calls()
+    assert "--settings" in compaction["argv"]
+
+
+def test_the_hook_text_ignores_the_callers_session_variables(
+        tmp_path, private_root, state_repo, cli_repo, fake_compact, monkeypatch):
+    """Adversarial where: the probe's own session-state call reads the caller's project
+    or session transcript instead of the sandbox and the rebuilt session."""
+    point = _task_point(tmp_path, private_root, state_repo)
+    elsewhere = tmp_path / "elsewhere"
+    (elsewhere / ".compass").mkdir(parents=True)
+    (elsewhere / ".compass" / "active.md").write_text("- [ ] TASK-1: ZQWRONGPROJECT\n", encoding="utf-8")
+    env = dict(os.environ, CLAUDE_PROJECT_DIR=str(elsewhere), CLAUDE_CODE_SESSION_ID="zz", COMPASS_WORKER_SESSION="1")
+    fake_compact.reply("{}")
+
+    stored = _ask_state(point, "recompact-task", cli_repo, private_root, fake_compact, parent_env=env)
+
+    assert TASK_LINE in stored["precompact"]
+    assert "ZQWRONGPROJECT" not in stored["precompact"]
+
+
+def test_a_compaction_that_writes_no_summary_raises_before_the_answerer(
+        tmp_path, private_root, state_repo, cli_repo, fake_compact, monkeypatch):
+    """Adversarial where: a failed compaction is answered from the recorded summary or
+    from nothing and graded as the arm."""
+    point = _task_point(tmp_path, private_root, state_repo)
+    monkeypatch.setenv("FAKE_COMPACT_MODE", "nosummary")
+
+    with pytest.raises(probe.SessionError):
+        _ask_state(point, "recompact-task", cli_repo, private_root, fake_compact)
+
+    assert len(fake_compact.calls()) == 1
+    assert not (probe._point_dir(point, private_root) / "ask-recompact-task.json").exists()
+
+
+def test_a_point_with_no_commit_starts_no_compaction(
+        tmp_path, private_root, state_repo, cli_repo, fake_compact):
+    """Adversarial where: a point with no state compacts anyway and is graded."""
+    point = _task_point(tmp_path, private_root, state_repo, stamp=FIRST_COMMIT - timedelta(seconds=1))
+    for arm in probe.RECOMPACT_ARMS:
+        assert _ask_state(point, arm, cli_repo, private_root, fake_compact).get("no_state") is True
+    assert fake_compact.calls() == []
+
+
+def test_a_subagent_point_compacts_with_no_hook_and_carries_no_block(
+        tmp_path, private_root, cli_repo, fake_compact):
+    """Adversarial where: a subagent's compaction gets the main session's instructions,
+    which the Compass hook never prints for an agent, or its working folder being gone
+    makes it a no-state point."""
+    point = _task_point(tmp_path, private_root, tmp_path / "gone", subagent=True)
+    fake_compact.reply("{}")
+
+    stored = _ask_state(point, "recompact-task", cli_repo, private_root, fake_compact)
+
+    compaction, answerer = fake_compact.calls()
+    assert "--settings" not in compaction["argv"]
+    assert stored["precompact"] == ""
+    assert "block" not in stored
+    assert BLOCK_TITLE not in answerer["stdin"]
+    assert fake_compact_claude.NEW_SUMMARY in answerer["stdin"]
+
+
+def test_report_lists_the_recompact_arms_and_how_many_summaries_name_the_task(
+        tmp_path, private_root, state_repo, cli_repo, fake_compact):
+    """Adversarial where: the report drops the new arms, counts a summary naming a
+    longer id (TASK-12 for TASK-1), or prints the summary's text."""
+    point = _task_point(tmp_path, private_root, state_repo)
+    fake_compact.reply(json.dumps({"continuation": "TASK-1"}))
+    for arm in probe.RECOMPACT_ARMS:
+        _ask_state(point, arm, cli_repo, private_root, fake_compact)
+    probe.grade(point, private_root=private_root)
+
+    text = probe.report(private_root=private_root)
+
+    rows = _main_rows(text)
+    assert rows[("recompact-task", "continuation")][3] == "1.00"
+    assert rows[("recompact", "continuation")][3] == "1.00"
+    assert "summaries naming the expected task id, recompact-task: 1 of 1" in text
+    assert "summaries naming the expected task id, recompact: 0 of 1" in text
+    assert fake_compact_claude.NEW_SUMMARY not in text and OPEN_TASK not in text
+
+    path = probe._point_dir(point, private_root) / "ask-recompact.json"
+    stored = topics.read_json(path)
+    stored["summary"] = "ZQ the work was TASK-12."
+    topics.write_json(path, stored)
+    assert "summaries naming the expected task id, recompact: 0 of 1" in probe.report(private_root=private_root)
+
+
+def test_the_command_line_accepts_the_recompact_arms(
+        tmp_path, private_root, state_repo, cli_repo, fake_compact):
+    """Adversarial where: the arms exist in `ask` but the command line refuses them."""
+    point = _task_point(tmp_path, private_root, state_repo)
+    fake_compact.reply("{}")
+    code = probe.main(["--private-root", str(private_root), "ask", point, "--arm", "recompact-task"],
+                      claude_cmd=fake_compact.command, repo_root=cli_repo)
+    assert code == 0

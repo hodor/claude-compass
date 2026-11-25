@@ -65,7 +65,7 @@ Repository mining (empirical study of the artifact), because the core question i
 
 7. **Existing join points for an outcome signal** (confidence: medium)
    Plan task lines carry an optional `lessons: [...]` field; `compass lesson-coverage` resolves each against the catalog and reports `cited`, `scoped`, or `surfaced-but-uncited`, advisory only. Catalog `score` and `seen` count recurrence. No file records whether the task that cited a lesson later passed or failed, though `test-checkpoint` and the validator verdict exist per task.
-   - `plugin/cli/commands/lesson_coverage.py:1-40`; `plugin/cli/lessonslib.py:19-27` (ranking uses tags, area, score)
+   - `plugin/cli/commands/lesson_coverage.py:1-40`; `plugin/cli/lessonslib.py:21-29` (ranking uses tags, area, score)
    - Marks: code read, n/a, n/a, n/a, single-artifact
    - Grade: medium (per-task verdict storage not read in full)
 
@@ -101,7 +101,7 @@ Repository mining (empirical study of the artifact), because the core question i
 
 13. **The Data rule fixes the shape of every correction** (confidence: high)
     Drift is reported, and replaced text moves colder. `lesson-write` already preserves earlier wording under `## Record (preserved)` (example `.compass/lessons/hooks/LESSON-hook-if-clause-no-or.md`). `sync._text_preserved` refuses to drop an index line whose text is not kept in its target. `compass guard` denies deletes for subagents. So a correction proposal is an edit plus preserved old text, and a drift report is a new file, not an in-place rewrite.
-    - `plugin/cli/commands/sync.py:222-232`; `.claude/rules/compass-pipeline.md` "Data"
+    - `plugin/cli/commands/sync.py:223-233`; `.claude/rules/compass-pipeline.md` "Data"
     - Marks: code and vault read, n/a, n/a, n/a, single-artifact
     - Grade: high
 

@@ -32,8 +32,8 @@ Prior-art source read (GSD `decisions.cts` + `gap-checker.cts`, local verified c
 
 1. **An authoring convention already exists in the wild and mostly converged** (confidence: high)
  Three specs carry a `## Decisions (made by the human)` section. SPEC-007 and SPEC-009 already use exactly `- **D-NN:** text` bullets; SPEC-005 uses bold-phrase bullets without IDs (`- **The index is machine-only.** ...`). No skill or template defines this section - it is emergent.
- - `.compass/specs/SPEC-007-decision-coverage-tracing.md:41-48` - six `- **D-NN:** text` bullets
- - `.compass/specs/SPEC-009-configurable-pipeline-workflows.md:40-42` - same form, one bullet
+ - `.compass/specs/pipeline/SPEC-007-decision-coverage-tracing.md:41-48` - six `- **D-NN:** text` bullets
+ - `.compass/specs/pipeline/SPEC-009-configurable-pipeline-workflows.md:40-42` - same form, one bullet
  - `.compass/specs/SPEC-005-index-auto-maintained-and-mirrored-per-folder.md:29-37` - ID-less bold-phrase form
  - `plugin/skills/spec/SKILL.md`, `plugin/skills/obsidian/SKILL.md` spec template - zero mentions of a Decisions section (grep confirmed)
 
@@ -93,7 +93,7 @@ Prior-art source read (GSD `decisions.cts` + `gap-checker.cts`, local verified c
 
 12. **Bare `D-NN` matching is unsafe in Compass; the citation must carry the source-document qualifier** (confidence: high)
  GSD never collides because its scope is one CONTEXT.md per phase directory. Compass plans draw from multiple sources and `D-01` already exists in both SPEC-007 and SPEC-009; hierarchical specs even reuse `SPEC-001` across folders, so the qualifier must be a wikilink-resolvable document name, not just the `SPEC-NNN` prefix. Proposed citation token: `<doc-stem>/D-NN`, e.g. `SPEC-007-decision-coverage-tracing/D-03` (path-qualified stem for nested specs). The matcher resolves the qualifier through the same name set `validate.py` already builds for wikilinks (bare stem, folder name, path-qualified name), then greps `\b<qualifier>/D-NN\b` in the plan body.
- - `.compass/specs/SPEC-007-decision-coverage-tracing.md:43` and `SPEC-009-configurable-pipeline-workflows.md:42` - two live `D-01`s today
+ - `.compass/specs/pipeline/SPEC-007-decision-coverage-tracing.md:43` and `SPEC-009-configurable-pipeline-workflows.md:42` - two live `D-01`s today
  - `plugin/cli/commands/validate.py:43-58` - `_resolvable_names`: the existing resolution set to reuse
  - [[ADR-004-hierarchical-specs-with-facets]] - local numbering means short prefixes collide across folders
 
@@ -102,15 +102,15 @@ Prior-art source read (GSD `decisions.cts` + `gap-checker.cts`, local verified c
 
 14. **Task-level citation: a `decisions:` field on the task line, same shape as `files:`** (confidence: high)
  SPEC-007 D-04 requires tasks to cite the IDs they implement, audited (not gated) at validation. The plan task line already carries structured suffix fields: `- [ ] TASK-NNN: desc - complexity: S, depends_on: none, files: [list]`. Adding `decisions: [SPEC-007-decision-coverage-tracing/D-03]` is the same grammar, greppable by the CLI, and gives the validator a per-task audit target. Plan-level coverage can still count any citation anywhere in the plan body (GSD's rule); the task field is the finer grain for the audit.
- - `plugin/templates/agents/planner.md:71-79` - the task-line grammar
+ - `plugin/templates/agents/planner.md:74-82` - the task-line grammar
  - `.compass/plans/PLAN-002-compass-cli-implementation.md:54, 68` - real task lines with the suffix-field pattern
- - `.compass/specs/SPEC-007-decision-coverage-tracing.md:46` - D-04 wording
+ - `.compass/specs/pipeline/SPEC-007-decision-coverage-tracing.md:46` - D-04 wording
 
 15. **Default source set: derive from the plan's `depends_on` frontmatter, filtered to spec/decision types** (confidence: high)
  Plans already declare their sources (`depends_on: ["[[SPEC-004...]]", "[[ADR-005...]]", "[[RESEARCH-...]]"]`). Filtering that list to documents of `type: spec`/`decision` gives the checker its "--against" set with zero new ceremony, and it is exactly D-06's default role binding (specs+ADRs covered by plans). An explicit `--against` flag overrides for custom workflows later.
  - `.compass/plans/PLAN-002-compass-cli-implementation.md:11` - a real 3-source depends_on including an ADR
  - `plugin/templates/agents/planner.md:51` - planner template emits depends_on
- - `.compass/specs/SPEC-007-decision-coverage-tracing.md:48` - D-06 default roles
+ - `.compass/specs/pipeline/SPEC-007-decision-coverage-tracing.md:48` - D-06 default roles
 
 ### Axis 4: Where the gate and audit attach
 
@@ -134,7 +134,7 @@ Prior-art source read (GSD `decisions.cts` + `gap-checker.cts`, local verified c
 19. **Validator attachment: a new protocol step running `compass coverage` with the mandatory Command/Output/Result block, plus a per-task cited-ID audit** (confidence: high)
  The validator's contract is "running commands is verification"; every check needs a `Command run:` block. Decision-coverage audit fits as: (a) run `compass coverage <plan>` and record the block; (b) for each task, cross-check its `decisions:` citations against the task's diff, classifying like the existing checkbox audit (cited-but-no-evidence, implemented-but-uncited). The validator is read-only, so it reports; it does not gate - matching D-04.
  - `plugin/templates/agents/validator.md:20-30` - the check format; `validator.md:54-72` - the per-task audit pattern to extend
- - `.compass/specs/SPEC-007-decision-coverage-tracing.md:46` - audit-not-gate at task level
+ - `.compass/specs/pipeline/SPEC-007-decision-coverage-tracing.md:46` - audit-not-gate at task level
 
 20. **SPEC-009 deferral: hardcode the default binding behind one config-lookup seam** (confidence: medium)
  [[SPEC-009-configurable-pipeline-workflows]] (which owns workflow-declared roles and gate transitions, its D-01) is deferred to backlog. GSD shows the cheap forward-compatible shape: the gate reads one config key with a default (`readGate` returns true when `workflow.post_planning_gaps` is absent). Compass can ship with the specs+ADRs -> plans binding and the plan-approval transition as the built-in default, resolved through a single function that SPEC-009 later re-points at workflow config.
@@ -145,8 +145,8 @@ Prior-art source read (GSD `decisions.cts` + `gap-checker.cts`, local verified c
 
 21. **The 5 existing ADRs hold roughly 24 discrete rulings, unevenly shaped** (confidence: high)
  Counting bold/numbered rulings inside each `## Decision` section: ADR-001 ~2 (skill + vault), ADR-002 6 (numbered mechanisms), ADR-003 1-2 (JIT rule + per-artifact table), ADR-004 8 (4 architecture parts + 4 open-question resolutions), ADR-005 ~7 (CLI+Python+hook decision, command surface, 4 hook-contract facts, skill shrink). None uses D-NN IDs; the shapes vary (numbered lists, bold-phrase bullets, tables, subheadings), so retrofit is judgment work, not a mechanical rename.
- - `.compass/decisions/ADR-002-retrospective-lessons-subsystem.md:38-45` - the six mechanisms
- - `.compass/decisions/ADR-004-hierarchical-specs-with-facets.md:26-68` - parts 1-4 + the four resolutions
+ - `.compass/decisions/learning/ADR-002-retrospective-lessons-subsystem.md:38-45` - the six mechanisms
+ - `.compass/decisions/vault-structure/ADR-004-hierarchical-specs-with-facets.md:26-68` - parts 1-4 + the four resolutions
  - `.compass/decisions/ADR-005-compass-cli-for-mechanical-work.md:25-65` - decision + command table + hook facts
 
 22. **All 5 ADRs are already implemented by completed plans, so retrofitted IDs would have no live plan to cover them** (confidence: high)

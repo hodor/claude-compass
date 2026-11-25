@@ -433,6 +433,82 @@ class SettingsMergeTests(SelfUpdateFixture):
         self.assertEqual(self.settings(), first)
 
 
+class GitSnapshotSettingTests(SelfUpdateFixture):
+    """`merge_settings` turns the host's git snapshot off by writing
+    `includeGitInstructions: false` only when the key is absent; a value the
+    project already holds stays exactly as it is."""
+
+    def settings_path(self):
+        return self.project / ".claude" / "settings.json"
+
+    def manifest(self):
+        return self.external_src / "hooks" / "hooks.json"
+
+    def merge(self):
+        self_update.merge_settings(self.project, self.manifest())
+        return json.loads(self.settings_path().read_text(encoding="utf-8"))
+
+    def test_fresh_settings_file_gets_false(self):
+        # Adversarial where: the key is written only into an existing file,
+        # or written as the string "false" instead of a JSON boolean.
+        self.assertFalse(self.settings_path().exists())
+        settings = self.merge()
+        self.assertIs(settings["includeGitInstructions"], False)
+
+    def test_existing_file_without_the_key_gets_false_and_keeps_the_rest(self):
+        self.settings_path().write_text(
+            json.dumps({"permissions": {"allow": ["Bash(ls:*)"]}, "model": "x"}),
+            encoding="utf-8",
+        )
+        settings = self.merge()
+        self.assertIs(settings["includeGitInstructions"], False)
+        self.assertEqual(settings["permissions"], {"allow": ["Bash(ls:*)"]})
+        self.assertEqual(settings["model"], "x")
+
+    def test_existing_true_is_kept(self):
+        # Adversarial where: the merge forces false over a project's choice
+        # to keep the snapshot.
+        self.settings_path().write_text(
+            json.dumps({"includeGitInstructions": True}), encoding="utf-8"
+        )
+        settings = self.merge()
+        self.assertIs(settings["includeGitInstructions"], True)
+        self.assertIs(self.merge()["includeGitInstructions"], True)
+
+    def test_existing_false_is_kept(self):
+        self.settings_path().write_text(
+            json.dumps({"includeGitInstructions": False}), encoding="utf-8"
+        )
+        self.assertIs(self.merge()["includeGitInstructions"], False)
+
+    def test_non_boolean_value_is_left_as_written(self):
+        # Adversarial where: a present but odd value is treated as absent
+        # and overwritten; the project owns any value it wrote.
+        for value in ("true", None, 0):
+            with self.subTest(value=value):
+                self.settings_path().write_text(
+                    json.dumps({"includeGitInstructions": value}), encoding="utf-8"
+                )
+                self.assertEqual(self.merge()["includeGitInstructions"], value)
+
+    def test_settings_local_is_never_written(self):
+        # Adversarial where: the key lands in the user-owned local file.
+        self.merge()
+        self.assertFalse((self.project / ".claude" / "settings.local.json").exists())
+
+    def test_self_update_reaches_the_key(self):
+        # The key arrives through the normal self-update path, not only
+        # through a direct merge_settings call.
+        self.fake_remote()
+        self.perform()
+        settings = json.loads(self.settings_path().read_text(encoding="utf-8"))
+        self.assertIs(settings["includeGitInstructions"], False)
+
+    def test_merge_stays_idempotent_with_the_key(self):
+        first = self.merge()
+        self.assertEqual(self.merge(), first)
+
+
 class NeverBlocksTests(SelfUpdateFixture):
     def run_cli(self, args):
         cwd = os.getcwd()

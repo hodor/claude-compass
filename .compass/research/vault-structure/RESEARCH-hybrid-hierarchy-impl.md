@@ -33,7 +33,7 @@ Read every module in `plugin/cli/` in full; grepped `plugin/skills/`, `plugin/te
 1. **Discovery is a three-part hybrid: denylist + core-name list + content signal** (confidence: high)
  - `plugin/cli/vaultlib.py:13` - `NON_TYPE_DIRS = {"meta", "tmp", "archive", ".annotations"}` (denylist, plus any dot-dir at `vaultlib.py:55`).
  - `plugin/cli/vaultlib.py:16` - `CORE_TYPE_DIRS = ["specs", "plans", "research", "decisions", "lessons", "handoffs", "prs"]`, always scanned even when empty.
- - `plugin/cli/vaultlib.py:31-40` - `_has_typed_artifact`: any other subdir is admitted as a type dir if a depth-1 `*.md` OR a `*/index.md` has a `type:` frontmatter field. Rationale in [[LESSON-type-dir-discovery-needs-content-signal]] (the private project 1 `claude/` false-positive incident).
+ - `plugin/cli/vaultlib.py:32-41` - `_has_typed_artifact`: any other subdir is admitted as a type dir if a depth-1 `*.md` OR a `*/index.md` has a `type:` frontmatter field. Rationale in [[LESSON-type-dir-discovery-needs-content-signal]] (the private project 1 `claude/` false-positive incident).
 
 2. **A unit folder WITH its own typed `index.md` is misclassified as a type directory today** (confidence: high, verified live)
  - `vaultlib.py:35` - `directory.glob("*.md")` picks up `compass-cli/index.md`; if it has `type:`, the whole unit is treated as an artifact type named `compass-cli`.
@@ -91,14 +91,14 @@ Read every module in `plugin/cli/` in full; grepped `plugin/skills/`, `plugin/te
 ### C. Skills, templates, hooks
 
 15. **hooks.json matchers already cover unit folders** (confidence: high)
- - `plugin/hooks/hooks.json:12,24,36` - `Write/Edit/MultiEdit(.compass/**/*.md)`; `**` matches any depth, so a write inside `.compass/compass-cli/specs/` fires `compass sync` today. The Stop/SubagentStop hooks reference only `tmp/` paths. No hook changes needed.
+ - `plugin/hooks/hooks.json:36,48,60` - `Write/Edit/MultiEdit(.compass/**/*.md)`; `**` matches any depth, so a write inside `.compass/compass-cli/specs/` fires `compass sync` today. The Stop/SubagentStop hooks reference only `tmp/` paths. No hook changes needed.
  - `sync.py:279` - the hook path filter is just "`/.compass/` in path"; layout-agnostic.
 
 16. **Skills that hardcode flat write destinations (would drop unit artifacts in the wrong place)** (confidence: high)
- - `plugin/skills/spec/SKILL.md:59` - new specs always to `.compass/specs/` with the root-glob JIT rule.
- - `plugin/skills/retroactive/SKILL.md:48,95` - specs/ADRs always root.
- - `plugin/skills/research-codebase/SKILL.md:82`, `research-papers/SKILL.md:82` - research always to `.compass/research/`.
- - `plugin/templates/agents/researcher.md:65`, `reviewer.md:63`, `planner.md:117`, `builder.md:74` - same pattern in agent templates.
+ - `plugin/skills/spec/SKILL.md:49` - new specs always to `.compass/specs/` with the root-glob JIT rule.
+ - `plugin/skills/retroactive/SKILL.md:50,97` - specs/ADRs always root.
+ - `plugin/skills/research-codebase/SKILL.md:84`, `research-papers/SKILL.md:82` - research always to `.compass/research/`.
+ - `plugin/templates/agents/researcher.md:87`, `reviewer.md:63`, `planner.md:117`, `builder.md:74` - same pattern in agent templates.
  - Each needs a "resolve the destination root: vault root or current unit" step; the pattern is one shared paragraph, not per-skill logic.
 
 17. **The documented JIT numbering globs are root-only and now wrong for units** (confidence: high)
@@ -149,7 +149,7 @@ Read every module in `plugin/cli/` in full; grepped `plugin/skills/`, `plugin/te
 ### F. Promotion trigger options (for the ADR; human decides)
 
 26. **Existing precedent: the folder-spec trigger is "3+ sub-concerns OR ~2K tokens"** (confidence: high)
- - `.compass/decisions/ADR-004-hierarchical-specs-with-facets.md:38`; operationalized in `promote-spec/SKILL.md:7,12`. SPEC-010 requires the unit trigger to be "clear, mechanical" (`SPEC-010:42`) yet leaves it open (`SPEC-010:87`).
+ - `.compass/decisions/vault-structure/ADR-004-hierarchical-specs-with-facets.md:38`; operationalized in `promote-spec/SKILL.md:7,12`. SPEC-010 requires the unit trigger to be "clear, mechanical" (`SPEC-010:42`) yet leaves it open (`SPEC-010:87`).
  - Candidate triggers:
  - **T1 - Type-spread threshold:** work traceable to one spec has artifacts in >=3 distinct type folders (spec + plan + ADR, spec + research + plan, ...). Mechanical: computable from `depends_on` frontmatter, which every CLI-set file already carries (e.g. `PLAN-002:11`, `ADR-005:13`). Misses artifacts whose authors omitted `depends_on`; measures cohesion, which is what "unit of work" means.
  - **T2 - Artifact-count threshold:** >=N artifacts (e.g. 5, the CLI set's size) reference one root spec, regardless of type spread. Simplest to compute; blind to cohesion (5 research docs on one spec is a folder-spec case, not a unit).

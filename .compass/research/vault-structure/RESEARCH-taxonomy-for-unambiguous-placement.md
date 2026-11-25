@@ -303,7 +303,7 @@ ADR-021 (accepted 2026-08-30, shipped v0.15.0) rules D-01 (root index lists dept
 
 ### Finding 2: The vault's own live proposal already exercises three distinct domain-folder shapes
 
-`.compass/tmp/domain-proposal-2026-08-30.md` (Structure-pass output, awaiting the human's approval per `.compass/active.md:17`) groups 22 root specs into 5 lines and 35 research docs into ~9, using three different realizations:
+`.compass/tmp/domain-proposal-2026-08-30.md` (Structure-pass output, awaiting the human's approval per `.compass/active.md:16`) groups 22 root specs into 5 lines and 35 research docs into ~9, using three different realizations:
 - **Promoted-natural-parent** (D1, D2): an existing spec already conceptually parents its group; `compass promote` turns it into the folder, e.g. `SPEC-003-hierarchical-vault-organization` promoted to hold SPEC-005, SPEC-010, SPEC-016, SPEC-019, SPEC-011, SPEC-022 as children.
 - **Thin synthetic grouping, no natural parent** (D3 `specs/distribution/`, D4 `specs/pipeline/`): explicitly labeled "new grouping folder ... thin domain index" - no existing spec is promoted; the folder and its `index.md` are created fresh.
 - **Research folder backed by a synthesis doc** (R1, R2) vs **"thin index"** research folder with no synthesis doc (R3-R6, e.g. `research/hermes/`, `research/distribution/`).
@@ -316,7 +316,7 @@ Units (`compass make-unit`) are available but unused in this round - none of the
 
 ### Finding 4: `compass make-unit` is root-only and multi-type; a domain folder as proposed is same-type and can nest anywhere
 
-`make_unit.py` refuses any name in `RESERVED_NAMES` and writes the unit directly under the vault root (`vault_root / name`), with per-artifact-type subdirectories (`specs/`, `research/`, `plans/`, `decisions/`, `lessons/`) inside it (ADR-006 D-01: units live at the vault root only). A SPEC-022 domain folder (e.g. `specs/distribution/`) is a same-type grouping one level inside an existing type dir, and D-02 requires it to recurse to any depth - structurally the opposite shape from a unit (cross-type, root-only, one level). Units and domain folders are not the same mechanism despite both being folders with `index.md`. (Confidence: high - `plugin/cli/commands/make_unit.py:61,119-171`, `.compass/decisions/ADR-006-hybrid-hierarchy-implementation.md:25`)
+`make_unit.py` refuses any name in `RESERVED_NAMES` and writes the unit directly under the vault root (`vault_root / name`), with per-artifact-type subdirectories (`specs/`, `research/`, `plans/`, `decisions/`, `lessons/`) inside it (ADR-006 D-01: units live at the vault root only). A SPEC-022 domain folder (e.g. `specs/distribution/`) is a same-type grouping one level inside an existing type dir, and D-02 requires it to recurse to any depth - structurally the opposite shape from a unit (cross-type, root-only, one level). Units and domain folders are not the same mechanism despite both being folders with `index.md`. (Confidence: high - `plugin/cli/commands/make_unit.py:61,119-171`, `.compass/decisions/vault-structure/ADR-006-hybrid-hierarchy-implementation.md:25`)
 
 ### Finding 5: The team lead's tension - "a domain is not itself a problem statement" - is visible in the vault's own naming choice, unresolved in template terms
 
@@ -385,8 +385,8 @@ Confidence: high. Evidence: `plugin/cli/vaultlib.py:229-278`; confirmed by exist
 
 ### Finding 2: `classify_root_dirs` never sees nested domain folders
 
-`classify_root_dirs(root)` (`plugin/cli/vaultlib.py:55-82`) only classifies DIRECT children of the vault root (or a unit root) into `type_dirs` / `units` / `unclassified`. A domain folder nested inside `specs/` or `research/` never passes through this function - it is only ever discovered later, inside `_scan_type_dir`'s `rglob`. Unit-detection (`type: unit` frontmatter) is therefore never checked for a domain subfolder; a domain folder can never itself become a "unit" through this code path today.
-Confidence: high. Evidence: `plugin/cli/vaultlib.py:55-82`, `:229-278`.
+`classify_root_dirs(root)` (`plugin/cli/vaultlib.py:70-97`) only classifies DIRECT children of the vault root (or a unit root) into `type_dirs` / `units` / `unclassified`. A domain folder nested inside `specs/` or `research/` never passes through this function - it is only ever discovered later, inside `_scan_type_dir`'s `rglob`. Unit-detection (`type: unit` frontmatter) is therefore never checked for a domain subfolder; a domain folder can never itself become a "unit" through this code path today.
+Confidence: high. Evidence: `plugin/cli/vaultlib.py:70-97`, `:229-278`.
 
 ### Finding 3: Arbitrary-depth nesting already works and is already tested
 
@@ -415,7 +415,7 @@ Confidence: high. Evidence: `plugin/cli/commands/sync.py:100-117`, `:139-144`.
 
 ### Finding 7: Ambiguous-wikilink collision risk across type dirs for same-named domains
 
-`resolvable_names_map(vault_root)` (`plugin/cli/vaultlib.py:304-326`) builds one name-to-paths map from every markdown file vault-wide (`all_markdown_files`, `:99-114`), adding for every `index.md` file both the bare parent-folder name and its path-qualified name. If two domain folders share a bare name across different type dirs (e.g. `specs/distribution/index.md` and `research/distribution/index.md`), the bare name `distribution` maps to two paths - `validate.py`'s `_check_links` flags this as `ambiguous_wikilink`. Domain folders have no path-qualification convention of their own (unlike units, whose artifacts are always linked path-qualified per `.claude/rules/wikilinks.md`).
+`resolvable_names_map(vault_root)` (`plugin/cli/vaultlib.py:460-482`) builds one name-to-paths map from every markdown file vault-wide (`all_markdown_files`, `:99-114`), adding for every `index.md` file both the bare parent-folder name and its path-qualified name. If two domain folders share a bare name across different type dirs (e.g. `specs/distribution/index.md` and `research/distribution/index.md`), the bare name `distribution` maps to two paths - `validate.py`'s `_check_links` flags this as `ambiguous_wikilink`. Domain folders have no path-qualification convention of their own (unlike units, whose artifacts are always linked path-qualified per `.claude/rules/wikilinks.md`).
 Confidence: medium (code-traced, not reproduced with an actual same-named collision in this vault).
 
 ### Finding 8: `compass next-num` already supports arbitrary multi-level nested domain scopes
@@ -441,8 +441,8 @@ Confidence: high. Evidence: `plugin/cli/commands/make_unit.py` (`_plan_moves`, l
 
 ### Finding 11: `validate.py`'s sizing reconciliation already covers every folder-index at any depth
 
-`_reconcile_sizing` (`plugin/cli/commands/validate.py:115-136`) iterates every unit folder AND every record where `record["kind"] == "folder-index"` - i.e. every domain/folder-spec index.md at any depth - checking for `sizing_unrecorded` / `sizing_orphaned_id`. No new code is needed for domain-folder creation via `promote`/`make-unit` to be covered by this existing reconciliation, since both commands already sizing-log their moves.
-Confidence: high. Evidence: `plugin/cli/commands/validate.py:115-136`.
+`_reconcile_sizing` (`plugin/cli/commands/validate.py:169-190`) iterates every unit folder AND every record where `record["kind"] == "folder-index"` - i.e. every domain/folder-spec index.md at any depth - checking for `sizing_unrecorded` / `sizing_orphaned_id`. No new code is needed for domain-folder creation via `promote`/`make-unit` to be covered by this existing reconciliation, since both commands already sizing-log their moves.
+Confidence: high. Evidence: `plugin/cli/commands/validate.py:169-190`.
 
 ### Finding 12: `vaultgraph` containment edges already compose across arbitrary domain nesting
 
@@ -461,13 +461,13 @@ Confidence: high. Evidence: `plugin/skills/spec/SKILL.md:65,89-91`.
 
 ### Finding 15: The vision skill's "Spec Roadmap" section pre-lists specs before they exist, with no domain-hint field
 
-`plugin/skills/vision/SKILL.md:99-103` template lists proposed specs as flat `[[SPEC-NNN-name]] - [one-line problem] - status: not yet created` with no domain/taxonomy field. If D-04's `taxonomy_hint` mechanism is meant to originate as early as vision capture, this template has no slot for it today.
-Confidence: high. Evidence: `plugin/skills/vision/SKILL.md:99-107`.
+`plugin/skills/vision/SKILL.md:111-115` template lists proposed specs as flat `[[SPEC-NNN-name]] - [one-line problem] - status: not yet created` with no domain/taxonomy field. If D-04's `taxonomy_hint` mechanism is meant to originate as early as vision capture, this template has no slot for it today.
+Confidence: high. Evidence: `plugin/skills/vision/SKILL.md:111-119`.
 
 ### Finding 16: methodology and setup skills both document research/plans/decisions/lessons/handoffs/prs as "flat, one file each" - a documentation claim SPEC-022 D-02 directly contradicts
 
 `plugin/skills/methodology/SKILL.md:269`: `research/ plans/ decisions/ lessons/ handoffs/ prs/ - flat, one file each`. This is a Claude-facing statement of the vault-tree contract. SPEC-022 D-02 explicitly extends the domain-folder taxonomy to "specs, research, anything else inside Compass" - meaning this documented contract would no longer hold for `research/` (and potentially others) once domain grouping is adopted there.
-`plugin/skills/setup/SKILL.md:232-251` (new-project scaffold) shows a flat directory tree for `.compass/` with `research/`, `plans/`, `decisions/`, `lessons/`, `handoffs/`, `prs/` as plain directories (no nested example) - consistent with, but not as explicit as, methodology's "flat, one file each" line. Neither skill currently shows a nested-domain example under `research/` the way the obsidian skill does for `specs/`.
+`plugin/skills/setup/SKILL.md:175-194` (new-project scaffold) shows a flat directory tree for `.compass/` with `research/`, `plans/`, `decisions/`, `lessons/`, `handoffs/`, `prs/` as plain directories (no nested example) - consistent with, but not as explicit as, methodology's "flat, one file each" line. Neither skill currently shows a nested-domain example under `research/` the way the obsidian skill does for `specs/`.
 Confidence: high. Evidence: `plugin/skills/methodology/SKILL.md:269`; `plugin/skills/setup/SKILL.md:232-251`.
 
 ### Finding 17: SPEC-005 (revived by D-05) specified machine-only, cost-bounded per-folder index generation - and was held specifically on unproven LLM cost, not on design disagreement

@@ -263,3 +263,75 @@ log:
     by: agent
     at: 2026-11-01
     volatile: []
+  - id: sz-2026-11-19-1
+    action: decision
+    shape: domain
+    subject: "ideas/how-we-work"
+    reason: "category heading in an imported idea table"
+    by: agent
+    at: 2026-11-19
+    volatile: []
+  - id: sz-2026-11-19-2
+    action: decision
+    shape: domain
+    subject: "ideas/tools-and-setup"
+    reason: "category heading in an imported idea table"
+    by: agent
+    at: 2026-11-19
+    volatile: []
+  - id: sz-2026-11-24-1
+    action: decision
+    shape: domain
+    subject: "plans/learning"
+    reason: "fold flat plan lines under the spec topic folders"
+    by: agent
+    at: 2026-11-24
+    volatile: []
+  - id: sz-2026-11-24-2
+    action: decision
+    shape: domain
+    subject: "plans/vault-structure"
+    reason: "fold flat plan lines under the spec topic folders"
+    by: agent
+    at: 2026-11-24
+    volatile: []
+  - id: sz-2026-11-24-3
+    action: decision
+    shape: domain
+    subject: "plans/pipeline"
+    reason: "fold flat plan lines under the spec topic folders"
+    by: agent
+    at: 2026-11-24
+    volatile: []
+  - id: sz-2026-11-24-4
+    action: decision
+    shape: domain
+    subject: "plans/distribution"
+    reason: "fold flat plan lines under the spec topic folders"
+    by: agent
+    at: 2026-11-24
+    volatile: []
+  - id: sz-2026-11-24-5
+    action: decision
+    shape: domain
+    subject: "plans/tooling"
+    reason: "fold flat plan lines under the spec topic folders"
+    by: agent
+    at: 2026-11-24
+    volatile: []
+  - id: sz-2026-11-24-6
+    action: decision
+    shape: domain
+    subject: "plans/human-surface"
+    reason: "fold flat plan lines under the spec topic folders"
+    by: agent
+    at: 2026-11-24
+    volatile: []
+  - id: sz-2026-11-24-7
+    action: decision
+    shape: domain
+    subject: "lessons/verification"
+    reason: "pair of root lessons sharing one craft"
+    by: agent
+    at: 2026-11-24
+    volatile: []

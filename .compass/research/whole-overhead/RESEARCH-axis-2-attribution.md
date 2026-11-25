@@ -45,7 +45,7 @@ Technology landscape / comparative evaluation (DESMET feature-analysis mode): th
 
 1. **`bench/` is a paired with/without design, but its wrappers are not on disk** (confidence: high)
    `bench/README.md` defines two arms (compass vs baseline) that differ only in what is installed in the workspace, same binary, model, tool allowlist and turn budget. The README layout lists `agents/compass-agent.sh` and `baseline-agent.sh`; `bench/agents/` does not exist, and `results/` is `runs/`. Only `analyze.py`, `setup.sh`, `fleet_update.py`, configs and fixtures remain.
-   - `bench/README.md:26-33` - arms and what differs
+   - `bench/README.md:29-36` - arms and what differs
    - `bench/README.md:11-12` - lists `agents/` wrappers; `ls bench/` shows no `agents/` directory
    - `bench/configs/arm-compass.yaml:9-22` - model `claude-opus-4-7`, `budget_usd: 2.00`, allowlist includes `Task`, `stream-json`
    - Marks: code read, owner checked (this repo); n/a retraction; not a preprint; no citations; 1 source
@@ -155,7 +155,7 @@ Technology landscape / comparative evaluation (DESMET feature-analysis mode): th
 17. **Switches that make a "without Compass" arm exist, and `--bare` removes more than Compass** (confidence: medium)
     `--bare` skips hooks, skills, custom commands, subagents, installed plugins, MCP servers, auto memory and CLAUDE.md; `--disable-slash-commands` disables skills and commands; `--plugin-dir` loads a plugin for one session; `--setting-sources`, `--settings`, `--strict-mcp-config`, `--max-budget-usd` (subagent spend counts toward the cap) and `--no-session-persistence` also exist. The bench arm used a scaffold copied into the workspace for the Compass side and nothing for the baseline.
     - https://code.claude.com/docs/en/cli-reference - flag table
-    - `bench/README.md:30-31` - how the arms were installed
+    - `bench/README.md:33-34` - how the arms were installed
     - Marks: vendor documentation; 1 source
     - Grade: moderate
     - Caveat: that `--bare` also drops non-Compass items is the flag's documented scope; how it compares to an empty project directory was not tested.
