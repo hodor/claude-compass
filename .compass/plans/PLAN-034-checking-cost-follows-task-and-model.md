@@ -172,10 +172,16 @@ Harness fixes made while running TASK-350 to TASK-352, each test-first:
 
 **Pause point:** when the automated checks pass, wait for you to confirm the manual checks of TASK-342, TASK-350 and TASK-352 before Stage 2 is detailed.
 
+### Wave 2 (detailed): the letter's rubric
+
+- [ ] TASK-354: Tighten the `complexity:` rubric at the three places TASK-350 showed blind raters and planners parting, the Scope column no longer than today's, re-run TASK-350's measurement on the same 30 tasks, seed and models, and keep the new rubric only if agreement rises. The candidate is `bench/overhead/rubrics/sizing-tests-apart.md`: a task's own tests do not count toward its size, M is 2-4 files so five files sit in L alone, and L also names a new subsystem (Scope column 75 characters against 88). `letters.py run --rubric <file>` measures a candidate without shipping it and keeps its progress apart by the rubric's hash. Kept when, against [[RESEARCH-letter-repeatability]]: Fleiss' kappa within each model does not fall below 0.80, the pooled kappa of both models does not fall below 0.70, and sessions giving the planner's letter rise above 47% on both models; then the table is copied into `plugin/templates/agents/planner.md` and the result appended to the research document either way - complexity: M, depends_on: TASK-350, files: [bench/overhead/letters.py, bench/overhead/tests/test_letters.py, bench/overhead/rubrics/sizing-tests-apart.md, plugin/templates/agents/planner.md, .compass/research/whole-overhead/checking-cost/RESEARCH-letter-repeatability.md], lessons: [LESSON-remove-context-before-adding]
+  - Automated verification: `python -m pytest bench/overhead/tests/test_letters.py -q` passes, including a run that sees the candidate's table and not the shipped one, and a refusal to resume a progress file written under another rubric; the re-run's report lists all 30 tasks; the dash check exits 0.
+  - Manual verification: you read the re-run's three figures against the old ones.
+  - Built so far: `--rubric` and the candidate file (commit 7cfa1aa). Waiting: the re-run, 180 tool-less sessions on the subscription.
+
 ## Later (intent only)
 
 - [ ] TASK-353: Station ablation at the batch size TASK-352 sets: the post-build tester, then the validator, each removed against full Compass on pool topics, with the noninferiority margin fixed before the batch runs; defects caught per station from the station rows and the goal-count difference, broken down by the tasks' letters; a station is lighter-eligible for a letter only where the verdict is "not worse" - files: [bench/overhead/variants/validator.patch, .compass/research/whole-overhead/checking-cost/RESEARCH-station-ablation.md]
-- [ ] TASK-354: Tighten the `complexity:` rubric where TASK-350 showed disagreement, the rubric text no longer than today's, then re-run TASK-350's measurement and keep the new rubric only if agreement rises - files: [plugin/templates/agents/planner.md, .compass/research/whole-overhead/checking-cost/RESEARCH-letter-repeatability.md], lessons: [LESSON-remove-context-before-adding]
 - [ ] TASK-355: The checking-level table: `compass checking-level <TASK-NNN>` resolves (letter, model) to a level from a built-in table where every cell is full checking, then `.compass/meta/checking.yaml`, then environment, with the precedence and source label of [[ADR-008-model-resolution-table]]; the level is written into each station row - files: [plugin/cli/checkinglib.py, plugin/cli/commands/checking_level.py, plugin/cli/maincli.py, plugin/cli/stationlib.py]
 - [ ] TASK-356: The build and autopilot skills read the level; a failing post-build test or a fix cycle raises the task to full checking for the rest of its run; a cell's built-in value drops below full only where TASK-353 showed defects caught do not fall - files: [plugin/skills/build/SKILL.md, plugin/skills/autopilot/SKILL.md, plugin/cli/checkinglib.py]
 - [ ] TASK-357: A model or host change is noticed: a `doctor` advisory row when the model or Claude Code version in recent station rows differs from the last re-baseline's, naming the re-baseline to run - files: [plugin/cli/commands/doctor.py, plugin/cli/tests/test_doctor.py]
@@ -207,3 +213,13 @@ No intent line is promoted. Every one of them waits on a Stage 1 outcome that ha
 - TASK-360 waits on TASK-356: the KPI compares checking-station tokens per letter against full checking, which differs only once levels are read.
 
 What the station log shows after Wave 1, read with `compass stations`: 45 rows over S, M and L tasks, all on one model apart from two test-fixture rows; 17 of the 19 builder rows are `unparsed`, since a builder report has no verdict form; 13 rows match no plan task, 10 with no task id and 3 with `TASK-40`, which names no task. 32 of the 45 rows are 16 spawns written twice within the same second, and two `tester-post` rows for TASK-346 with model `claude-env-pin-7` and source `env` are the fixture of `plugin/cli/tests/test_capture_signal_station.py`, whose report and capture file reached this vault's `.compass/meta/` and `.compass/tmp/subagent-captures/` during a test run.
+
+## Wave 2 elaborated, after the Wave 1 runs
+
+TASK-350 and TASK-351 have run; TASK-352 is running. One intent line is promoted.
+
+- **TASK-354, promoted.** TASK-350 found the letter repeatable under the written rubric (kappa 0.88 and 0.84 within a model, 0.70 across the two) but not the letter planners wrote (43% and 47% of sessions agree with it), and it located the parting at three places in the table. That is the condition the line names. Its harness part is built; the re-run spends subscription sessions and waits for your go.
+- **TASK-355 stays.** A table keyed on the letter needs the letter planners write to be the rubric's letter. Today it is not, so the key waits on TASK-354's result; if the re-run does not raise agreement, checking keys on escalation alone and the table is keyed on the model only.
+- **TASK-353 waits on TASK-352's report**, which gives its batch size and margin.
+- **TASK-356 to TASK-360** keep the reasons of the section above: each waits on TASK-353 or TASK-358, and neither has run.
+
