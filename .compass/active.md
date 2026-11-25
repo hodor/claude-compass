@@ -69,7 +69,7 @@ Plan: [[PLAN-031-screenplays-in-the-vault]]; each task's full text, files and ch
 Plan: [[PLAN-034-checking-cost-follows-task-and-model]]; each task's full text, files and checks are there.
 
 - [x] TASK-350: Letter repeatability, measured - complexity: M, depends_on: none
-- [ ] TASK-351: Two smoke builds on the subscription, one at a time - complexity: S, depends_on: TASK-343, TASK-346, TASK-349
+- [x] TASK-351: Two smoke builds on the subscription, one at a time - complexity: S, depends_on: TASK-343, TASK-346, TASK-349
 - [ ] TASK-352: The per-part spread pilot - complexity: M, depends_on: TASK-344, TASK-345, TASK-351
 
 ## PLAN-036 Wave 1: verification beyond test-pass

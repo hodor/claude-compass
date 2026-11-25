@@ -37,7 +37,7 @@ The variant removes the post-build and post-merge tester from Compass. It ran tw
 | Pre-build tester spawns | 7 | 6, and one tester asked to update tests pinned to numbers a balance task retuned |
 | Station rows in the build's record | yes, 8 station and model keys | yes, 8 station and model keys |
 | `build_model` in the record | the subagents' model (Sonnet), though the main session ran Opus | the main session's model (Opus) |
-| How the build ended | wall-time cap (150 minutes), 31 turns | wall-time cap (150 minutes) |
+| How the build ended | wall-time cap (150 minutes), 31 turns | wall-time cap (150 minutes), 41 turns |
 | Goal items met, partly met, not met | 6, 3, 1 | 7, 2, 1 |
 
 What the first run showed, and what changed:
@@ -46,6 +46,18 @@ What the first run showed, and what changed:
 - **`build_model` named the subagents' model.** `modelUsage` counts subagent usage, and the builders and testers, on Sonnet, wrote more output than the Opus main session. `records.build_model` now reads the main session's model from the first `system/init` event and falls back to the most-output rule only when that event names no model.
 - **Some tester reports are free-form.** Of the 7 tester spawns in the second run, 5 left a station row: 1 `tester-pre` and 4 `unparsed`, whose reports skip the template's `### Mode` section. One spawn was still running at the cap and one ended with no final report. The spawn prompts all name their station, so the spawn counts above are read from the prompts, not from the station log.
 
-### Smoke 2: one full Compass build with the context stop at 15%
+### Smoke 2: one full Compass build with an early context stop
 
-Pending.
+`COMPASS_CONTEXT_THRESHOLD` moves the context stop of `compass context-check` from 80% of the window. The main session of these builds runs on Opus with a 1,000,000-token window and peaked at 20% (smoke 1, first run) and 25% (second run), so a stop at 50% would never fire; the build ran at 15%, then at 10%.
+
+| Check | Threshold 15% | Threshold 10% |
+|---|---|---|
+| Main session's peak context | 13% of the window | 17% of the window |
+| The stop fired | no: the build ended before reaching 15% | yes, about half an hour in, at 10% |
+| What the simulated human saw | nothing to answer | the turn's text only: in a headless session the stop's reason reaches the transcript as a hook attachment, not the turn text, and no human session held it |
+| What the simulated human answered | none | a plain go-on, with no handoff |
+| The build went on | not applicable | yes: 33 turns in all |
+| How the build ended | the simulated human said done after 112 minutes, 13 turns | the simulated human said done after 140 minutes |
+| Goal items met, partly met, not met | 9, 0, 1 | 8, 1, 1 |
+
+The stop works in a headless build and does not end it: the main agent stops before its next step, the driver sends the human's next message, and the build continues. The simulated human never learns why the agent stopped, so a pilot build measures the cost of an unexplained pause, not of a handoff.
