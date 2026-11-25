@@ -167,7 +167,7 @@ Harness fixes made while running TASK-350 to TASK-352, each test-first:
 - `variants/post-tester.patch` also edits the builder agent, the tester agent and the methodology skill: with the build and autopilot skills alone patched, the first variant smoke build still spawned a post-build tester. `tests/test_variants.py` checks seven cue phrases are gone; smoke 1 ran again on the full patch.
 - `records.build_model` names the main session's model from the first `system/init` event: the most-output rule filed the first smoke build, an Opus main session, under the Sonnet model of its builders.
 - TASK-351's threshold build ran at 15%, then 10%, in place of 50%: the main sessions of these builds peak between 13% and 25% of Opus's 1,000,000-token window, and the 15% build ended without reaching its stop.
-- `spread.py` also summarizes pairs whose two builds both hit the wall-time cap, as equal-time pairs: every variant build and two of three Compass builds of the smoke topic ran to the 150-minute cap.
+- `spread.py` also summarizes pairs whose two builds both hit the wall-time cap, as equal-time pairs: both variant smoke builds ran to the 150-minute cap, as did four of the second pilot's six Compass builds of the pool topics.
 - The second pilot's run log, whose Compass builds ran an older Compass, moved whole to `run-log.second-pilot.jsonl` beside it, so TASK-352's full-arm builds are built fresh at this commit rather than paired from that log.
 
 **Pause point:** when the automated checks pass, wait for you to confirm the manual checks of TASK-342, TASK-350 and TASK-352 before Stage 2 is detailed.
