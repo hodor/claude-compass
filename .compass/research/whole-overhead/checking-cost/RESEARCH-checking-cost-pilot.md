@@ -67,5 +67,6 @@ The stop works in a headless build and does not end it: the main agent stops bef
 ### Changes between builds
 
 - **Step 7b's capture-check now gets an empty input.** The build skill ran `compass capture-check --hook` from Bash at the phase pause, and that command waits on stdin. The pilot's first build, a full Compass build, sat idle on it for about 12 minutes until the process was ended by hand; the build then went on. The fix (`< /dev/null` in step 7b) reached both arms while that build ran: the full arm through a merge into the branch whose `plugin/` the builds install, the variant through the same one-line change committed in its worktree. Every build after the first, in both arms, runs the fixed text.
+- **The first build was interrupted.** The machine restarted about 25 minutes after the hang, during that first full Compass build; it had logged no event, so it is not counted, and the resumed pilot built its slot again from the start. On resume the pilot made the variant worktree afresh from the branch head, which carries the step-7b fix, so every counted build in both arms runs the fixed skill.
 - **Hang check over every build.** The four smoke builds made no hand-run capture-check call. Each pilot build's main transcript is checked the same way below.
 
