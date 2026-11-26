@@ -7,7 +7,7 @@ area: tooling
 tags: [tokens, cost, harness, verification, models, measurement]
 summary: "research for SPEC-034: how Compass sizes tasks, what its checking stations cost per task, and how a part-by-part re-baseline on a model change would run"
 created: 2026-11-21
-updated: 2026-11-24
+updated: 2026-11-26
 spec: "[[SPEC-034-checking-cost-follows-task-and-model]]"
 ---
 
@@ -30,5 +30,6 @@ Research for [[SPEC-034-checking-cost-follows-task-and-model]]. Prior evidence: 
 
 ## Measurements
 
-- [[RESEARCH-letter-repeatability]] - blind raters give the same complexity letter to a task almost every time (kappa 0.88 on the strong model, 0.84 on the balanced one, 0.70 across the two), yet agree with the letter the planner wrote on fewer than half the sessions: they read the rubric's file counts, and the planners' S and L letters do not follow them
+- [[RESEARCH-letter-repeatability]] - blind raters give the same complexity letter to a task almost every time (kappa 0.88 on the strong model, 0.84 on the balanced one, 0.70 across the two), yet agree with the letter the planner wrote on fewer than half the sessions; a rubric counting a task's tests apart raised cross-model kappa to 0.84 but lowered agreement with planners to 41-42%, so the shipped rubric stays
 - [[RESEARCH-checking-cost-pilot]] - 12 pilot builds, 8 stopped by the 150-minute cap: the per-part goal effect varies so much within a topic (SD 0.45 of the goal share) that detecting a drop of one goal item in ten needs about 316 builds per arm (941 at the upper bound); removing the post-build tester did not save tokens
+- [[RESEARCH-station-ablation]] - 11 defects planted into finished pilot tasks and every checking station replayed on each: the validator caught all 10 that any station caught, no station caught a defect alone, so every station is lighter-eligible on this batch; the testers caught 1 of 4 defects on L tasks where review and validator caught 3; the claim needs about 100 defects (about 350 more sessions) before it bounds a station's lone catches below one in ten
