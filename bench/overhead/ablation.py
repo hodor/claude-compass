@@ -39,6 +39,7 @@ under `<out>/work/` for audit.
 """
 
 import argparse
+import io
 import json
 import os
 import random
@@ -47,6 +48,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import tokenize
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -407,12 +409,68 @@ def default_compile_check(dest, site, lang):
     return code == 0
 
 
-def _candidate_sites(diff_text, lang, cls):
+def multiline_text_lines(source, lang):
+    """The 1-based numbers of the lines a string literal or comment spanning
+    more than one line touches (a Python docstring or triple-quoted string, a
+    Go raw string or block comment). A line-by-line reading cannot tell their
+    inner lines from code."""
+    lines = set()
+    if lang == "python":
+        try:
+            tokens = list(tokenize.generate_tokens(io.StringIO(source).readline))
+        except (tokenize.TokenError, SyntaxError, IndentationError):
+            return set(range(1, source.count("\n") + 2))
+        starts = []
+        for token in tokens:
+            name = tokenize.tok_name[token.type]
+            if name in ("FSTRING_START", "TSTRING_START"):
+                starts.append(token.start[0])
+            elif name in ("FSTRING_END", "TSTRING_END") and starts:
+                first = starts.pop()
+                if token.end[0] > first:
+                    lines.update(range(first, token.end[0] + 1))
+            elif token.type == tokenize.STRING and token.end[0] > token.start[0]:
+                lines.update(range(token.start[0], token.end[0] + 1))
+        return lines
+    i, line, n = 0, 1, len(source)
+    while i < n:
+        ch = source[i]
+        if ch == "\n":
+            line += 1
+            i += 1
+        elif source.startswith("//", i):
+            while i < n and source[i] != "\n":
+                i += 1
+        elif ch == '"' or ch == "'":
+            i += 1
+            while i < n and source[i] not in (ch, "\n"):
+                i += 2 if source[i] == "\\" else 1
+            i += 1
+        elif ch == "`" or source.startswith("/*", i):
+            end_mark = "`" if ch == "`" else "*/"
+            end = source.find(end_mark, i + (1 if ch == "`" else 2))
+            end = n if end < 0 else end + len(end_mark)
+            last = line + source.count("\n", i, end)
+            if last > line:
+                lines.update(range(line, last + 1))
+            line, i = last, end
+        else:
+            i += 1
+    return lines
+
+
+def _candidate_sites(diff_text, lang, cls, read=None):
+    """`(path, line, cls, col, old, new)` for every site on an added source
+    line; `read(path)` gives a file's text, whose multi-line strings and
+    comments are left out."""
     found = []
     for path, lines in sorted(added_lines(diff_text).items()):
         if not is_source_path(path, lang):
             continue
+        skip = multiline_text_lines(read(path), lang) if read is not None else set()
         for number, text in lines:
+            if number in skip:
+                continue
             for kind, col, old, new in mutation_sites(text, lang):
                 if cls is None or kind == cls:
                     found.append((path, number, kind, col, old, new))
@@ -433,7 +491,8 @@ def plant(task, dest, *, seed, cls=None, compile_check=None):
     _git(dest, "branch", "-f", "clean", task.build_commit)
     _git(dest, "checkout", "-q", "-f", "clean")
     diff = _git_raw(dest, "diff", "--no-color", "--no-ext-diff", "-U0", task.build_commit + "^", task.build_commit)
-    candidates = _candidate_sites(diff, task.lang, cls)
+    candidates = _candidate_sites(
+        diff, task.lang, cls, read=lambda path: (dest / path).read_bytes().decode("utf-8", "replace"))
     random.Random(seed).shuffle(candidates)
     check = compile_check or (lambda d, s: default_compile_check(d, s, task.lang))
     for path, number, kind, col, old, new in candidates:
@@ -554,15 +613,23 @@ def _basename(path):
     return Path(path).name
 
 
+def _names_function(text, site):
+    return bool(site.function) and re.search(r"(?<!\w)" + re.escape(site.function) + r"(?!\w)", text) is not None
+
+
 def names_site(text, site, window=LINE_WINDOW):
+    """Whether `text` points at the planted site: the site's file with a line
+    within `window` of it, or the site's file together with the name of the
+    function enclosing it (a function name alone, such as `handle`, is too
+    common a word to credit)."""
     text = text or ""
     base = re.escape(_basename(site.path))
-    for match in re.finditer(r"(?<![\w.\-])(?:[\w.\-]+/)*" + base + r":(\d+)", text):
-        if abs(int(match.group(1)) - site.line) <= window:
+    named_file = False
+    for match in re.finditer(r"(?<![\w.\-])(?:[\w.\-]+[/\\])*" + base + r"(?!\w)(?::(\d+))?", text):
+        named_file = True
+        if match.group(1) is not None and abs(int(match.group(1)) - site.line) <= window:
             return True
-    if site.function and re.search(r"(?<!\w)" + re.escape(site.function) + r"(?!\w)", text):
-        return True
-    return False
+    return named_file and _names_function(text, site)
 
 
 _FINDING = re.compile(r"^[\s>*_\-]*\**FINDING\**[\s*`]+(?!none\b)([^\s`*:]+):(\d+)[`*]*\s*:\s*(.+?)\s*$",
@@ -582,9 +649,27 @@ def review_caught(report, site):
     for path, line, sentence in parse_findings(report):
         if _basename(path) == _basename(site.path) and abs(line - site.line) <= LINE_WINDOW:
             return True
-        if site.function and re.search(r"(?<!\w)" + re.escape(site.function) + r"(?!\w)", sentence):
+        if _basename(path) == _basename(site.path) and _names_function(sentence, site):
             return True
     return False
+
+
+def bugs_section(report):
+    """The text under the tester report's `Bugs Found` heading, up to the next
+    heading of the same or a higher level; empty when there is none."""
+    match = re.search(r"^(#{2,6})\s*Bugs Found[^\n]*\n(.*?)(?=^#{2,6}\s|\Z)", report or "",
+                      re.MULTILINE | re.DOTALL)
+    return match.group(2) if match else ""
+
+
+def tester_caught(report, site, tests_caught):
+    """Whether the post-build tester caught the planted defect: a test it
+    wrote or changed tells the planted state from the clean one, or its
+    report counts a bug (`stationlib`) whose Bugs Found entry names the site."""
+    if tests_caught:
+        return True
+    parsed = stationlib.parse_report("tester", report)
+    return (parsed.get("bugs") or 0) > 0 and names_site(bugs_section(report), site)
 
 
 def validator_failed(report):
@@ -840,7 +925,8 @@ def _station(entry, station, work, task, private_root, claude_cmd, prompt_set):
     planted = run_tests(work / "repo", files, task.lang)
     clean = run_tests(work / "clean", files, task.lang)
     parsed = stationlib.parse_report("tester", reply)
-    return {"caught": caught_by_tests(clean, planted), "files": len(files),
+    tests = caught_by_tests(clean, planted)
+    return {"caught": tester_caught(reply, site, tests), "tests_caught": tests, "files": len(files),
             "row": {k: parsed.get(k) for k in ("station", "bugs", "verdict")}}
 
 
@@ -933,6 +1019,33 @@ def _fold(entry):
                 entry["rows"][station] = sessions[station]["row"]
 
 
+def rejudge(out):
+    """Judge every saved session reply again with the current judges and
+    rewrite the verdicts in `<out>/progress.json`. The test-run results of
+    the tester are kept as recorded; no session or test runs."""
+    out = Path(out)
+    data = json.loads((out / "progress.json").read_text(encoding="utf-8"))
+    for entry in data.get("done", {}).values():
+        site = Site(**{k: v for k, v in entry["site"].items() if k != "text"})
+        replies = out / "work" / ("%s-%s" % (entry["project"], entry["task"])) / "replies"
+        for station, result in entry.get("sessions", {}).items():
+            path = replies / (station + ".md")
+            if not path.is_file():
+                continue
+            reply = path.read_text(encoding="utf-8")
+            if station.startswith("review-"):
+                result["caught"] = review_caught(reply, site)
+            elif station == "validator":
+                result["caught"] = validator_caught(reply, site)
+            else:
+                tests = result.get("tests_caught", result["caught"])
+                result["tests_caught"] = tests
+                result["caught"] = tester_caught(reply, site, tests)
+        _fold(entry)
+    _save(out, data)
+    return data
+
+
 def _complete(entry):
     return all(station in entry.get("caught", {}) for station in STATIONS)
 
@@ -976,6 +1089,8 @@ def main(argv=None, *, claude_cmd=None):
     run_cmd.add_argument("--dry-run", action="store_true")
     report = sub.add_parser("report")
     report.add_argument("--out", required=True)
+    report.add_argument("--rejudge", action="store_true",
+                        help="judge the saved replies again before reporting")
     args = parser.parse_args(argv)
     try:
         if args.command == "pick":
@@ -987,7 +1102,8 @@ def main(argv=None, *, claude_cmd=None):
             if not path.is_file():
                 print("ablation: no progress file in %s" % args.out, file=sys.stderr)
                 return 1
-            print(render_report(json.loads(path.read_text(encoding="utf-8"))))
+            data = rejudge(args.out) if args.rejudge else json.loads(path.read_text(encoding="utf-8"))
+            print(render_report(data))
             return 0
         return run(args, claude_cmd=claude_cmd)
     except Refused as error:

@@ -239,7 +239,9 @@ SITE = ablation.Site(path="src/game/combat.py", line=40, cls="comparison", col=8
     ("see combat.py:36", False),
     ("combat.py has a bug", False),
     ("other.py:40 is wrong", False),
-    ("resolve_hit lets a tie through", True),
+    ("resolve_hit lets a tie through", False),
+    ("in combat.py, resolve_hit lets a tie through", True),
+    ("in combat.pyc, resolve_hit lets a tie through", False),
     ("resolve_hits_all is fine", False),
     ("nothing here", False),
 ])
@@ -273,7 +275,8 @@ def test_review_caught_by_line_window_or_function():
     assert ablation.review_caught("FINDING src/game/combat.py:42: off by one", SITE)
     assert not ablation.review_caught("FINDING src/game/combat.py:50: off by one", SITE)
     assert not ablation.review_caught("FINDING src/other/combat2.py:40: off by one", SITE)
-    assert ablation.review_caught("FINDING src/game/rules.py:3: resolve_hit admits a tie", SITE)
+    assert ablation.review_caught("FINDING src/game/combat.py:90: resolve_hit admits a tie", SITE)
+    assert not ablation.review_caught("FINDING src/game/rules.py:3: resolve_hit admits a tie", SITE)
     assert not ablation.review_caught("resolve_hit is wrong, but no FINDING line", SITE)
 
 

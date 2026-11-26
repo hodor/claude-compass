@@ -218,3 +218,58 @@ def test_a_project_naming_no_test_runner_uses_the_running_interpreter(tmp_path, 
     monkeypatch.setattr(ablation.shutil, "which", lambda name: None)
     (tmp_path / "uv.lock").write_text("", encoding="utf-8")
     assert ablation._uv_python(tmp_path) == [sys.executable]
+
+
+TESTER_REPORT = """## Test Report
+
+### Mode
+post-build
+
+### Bugs Found
+- **Inverted condition in `messageOf`:** `reader/fields.go:112-120`. The branch should be `==`.
+
+### Coverage
+- reader/other.go:114 is covered
+"""
+
+
+def _go_site():
+    return ablation.Site(path="reader/fields.go", line=114, cls="equality", col=11, old="==", new="!=",
+                         function=None)
+
+
+def test_a_tester_bug_naming_the_site_is_a_catch():
+    assert ablation.tester_caught(TESTER_REPORT, _go_site(), tests_caught=False)
+
+
+def test_a_site_named_outside_bugs_found_is_no_catch():
+    report = TESTER_REPORT.replace("reader/fields.go:112-120", "the reader")
+    report = report.replace("reader/other.go:114", "reader/fields.go:114")
+    assert not ablation.tester_caught(report, _go_site(), tests_caught=False)
+
+
+def test_a_tester_report_with_no_bug_is_no_catch_unless_its_tests_tell_apart():
+    report = TESTER_REPORT.replace("### Bugs Found\n", "### Notes\n")
+    assert not ablation.tester_caught(report, _go_site(), tests_caught=False)
+    assert ablation.tester_caught(report, _go_site(), tests_caught=True)
+
+
+def test_rejudge_reads_the_saved_replies_and_refolds(tmp_path):
+    out = tmp_path / "out"
+    replies = out / "work" / "proj-a-TASK-004" / "replies"
+    replies.mkdir(parents=True)
+    (replies / "tester-post.md").write_text(TESTER_REPORT, encoding="utf-8")
+    (replies / "review-style.md").write_text("FINDING none\n", encoding="utf-8")
+    (replies / "review-correctness.md").write_text("FINDING reader/fields.go:115: inverted\n", encoding="utf-8")
+    (replies / "validator.md").write_text("VERDICT: PASS\n", encoding="utf-8")
+    site = {"path": "reader/fields.go", "line": 114, "cls": "equality", "col": 11, "old": "==", "new": "!=",
+            "function": None, "text": "x"}
+    sessions = {s: {"caught": False} for s in ablation.SESSIONS}
+    entry = {"project": "proj-a", "task": "TASK-004", "letter": "S", "lang": "go", "site": site,
+             "caught": {"tester-pre": True}, "rows": {}, "sessions": sessions}
+    (out / "progress.json").write_text(json.dumps({"config": {}, "done": {"proj-a|TASK-004": entry}}),
+                                       encoding="utf-8")
+    data = ablation.rejudge(out)
+    caught = data["done"]["proj-a|TASK-004"]["caught"]
+    assert caught == {"tester-pre": True, "builder-review": True, "tester-post": True, "validator": False}
+    assert data["done"]["proj-a|TASK-004"]["sessions"]["tester-post"]["tests_caught"] is False
