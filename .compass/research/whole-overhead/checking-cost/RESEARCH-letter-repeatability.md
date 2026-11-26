@@ -35,8 +35,8 @@ flowchart LR
   PL -->|"20 of 60"| RL
 ```
 
-> [!question] You decide
-> Is the letter steady enough to key checking on? The raters agree with each other (kappa 0.70 to 0.88), so a letter assigned from the rubric is repeatable. They do not reproduce the letters already in the plans (43% and 47% of sessions), so the letters written so far are a different scale from the rubric's. The recommendation: key checking on a letter only after TASK-354 makes the rubric and the planners' practice the same scale, and re-measure then.
+> [!note] Decided 2026-11-26
+> Is the letter steady enough to key checking on? The raters agree with each other (kappa 0.70 to 0.88), so a letter assigned from the rubric is repeatable. They do not reproduce the letters already in the plans (43% and 47% of sessions), so the letters written so far are a different scale from the rubric's. Checking is keyed on a letter only after TASK-354 makes the rubric and the planners' practice the same scale, and re-measure then.
 
 Measured by `bench/overhead/letters.py` for [[PLAN-034-checking-cost-follows-task-and-model]] TASK-350, to learn whether the `complexity:` letter is steady enough to set a task's checking level ([[ADR-024-difficulty-class-is-judged-not-scored]] allows a judged class).
 

@@ -23,14 +23,8 @@ flowchart LR
   E --> F["Batch for a 1-in-10 drop:<br/>about 316 builds per arm"]
 ```
 
-> [!question] You decide
-> TASK-353, the station ablation, cannot run as written: at this spread, a drop of one goal item in ten needs about 316 builds per arm. What should it measure instead?
-> 1. (Recommended) Plant defects and count which station's rows catch them; no large build batch.
-> 2. A larger drop (0.3 needs about 36 builds per arm) on topics small enough to finish inside the cap.
-> 3. Raise the wall cap and keep the goal-share design.
-> 4. Drop the station ablation and set checking levels from escalation alone.
->
-> Also: approving this page gives the go for TASK-354's re-run, 180 more tool-less sessions on the subscription, which tests whether the candidate rubric brings the planners' letters onto the raters' scale ([[RESEARCH-letter-repeatability]]).
+> [!note] Decided 2026-11-26
+> TASK-353 measures planted defects: defects are planted in pilot builds and the station rows show which checking station catches each one, so no large build batch is needed. TASK-354's 180-session re-run of the letter test with the candidate rubric is approved ([[RESEARCH-letter-repeatability]]).
 
 Measured for [[PLAN-034-checking-cost-follows-task-and-model]] TASK-351 and TASK-352 with `bench/overhead/pilot.py` and `bench/overhead/spread.py`. Topics are pool topics with frozen goals, named by letter; no topic text, path or session id appears here.
 
