@@ -575,6 +575,8 @@ def _uses_uv(tree):
         return False
     if (Path(tree) / "uv.lock").is_file():
         return True
+    if requirement_files(tree):
+        return True
     pyproject = Path(tree) / "pyproject.toml"
     return pyproject.is_file() and "pytest" in pyproject.read_text(encoding="utf-8", errors="replace")
 
@@ -940,15 +942,31 @@ def _station(entry, station, work, task, private_root, claude_cmd, prompt_set):
             "row": {k: parsed.get(k) for k in ("station", "bugs", "verdict")}}
 
 
+def requirement_files(tree):
+    """The `requirements*.txt` files at the root of `tree`, sorted."""
+    return sorted(p.name for p in Path(tree).glob("requirements*.txt") if p.is_file())
+
+
+def setup_commands(tree):
+    """The commands that give `tree` its own environment: `uv sync` with every
+    group and extra, then `uv pip install -r` of each root requirements file,
+    since some projects list their test tools only there."""
+    if not _uses_uv(tree):
+        return []
+    frozen = ["--frozen"] if (Path(tree) / "uv.lock").is_file() else []
+    commands = [["uv", "sync", *frozen, "--all-groups", "--all-extras", "--quiet"]]
+    for name in requirement_files(tree):
+        commands.append(["uv", "pip", "install", "--quiet", "--python", ".venv", "-r", name])
+    return commands
+
+
 def _setup_env(work, lang):
     if lang != "python":
         return
-    for name in ("repo", "clean"):
-        tree = work / name
-        if _uses_uv(tree):
-            env = {k: v for k, v in os.environ.items() if k.upper() != "VIRTUAL_ENV"}
-            frozen = ["--frozen"] if (tree / "uv.lock").is_file() else []
-            _run(["uv", "sync", *frozen, "--all-groups", "--all-extras", "--quiet"], tree, env=env)
+    env = {k: v for k, v in os.environ.items() if k.upper() != "VIRTUAL_ENV"}
+    for name in ("repo", "clean", "validate"):
+        for argv in setup_commands(work / name):
+            _run(argv, work / name, env=env)
 
 
 def run(args, *, claude_cmd=None):

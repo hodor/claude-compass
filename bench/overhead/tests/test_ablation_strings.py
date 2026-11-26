@@ -80,3 +80,23 @@ def test_a_run_with_no_test_result_is_a_run_error(tmp_path, monkeypatch):
     failing = ablation.run_tests(tmp_path, ["tests/test_a.py"], "python")
     assert ablation.run_errors(failing) == ["<run tests/test_a.py exit 1>"]
     assert not ablation.caught_by_tests(failing, failing)
+
+
+def test_setup_installs_root_requirement_files_after_the_sync(tmp_path, monkeypatch):
+    monkeypatch.setattr(ablation.shutil, "which", lambda name: "uv")
+    (tmp_path / "pyproject.toml").write_text("[project]\nname = 'p'\n", encoding="utf-8")
+    (tmp_path / "uv.lock").write_text("", encoding="utf-8")
+    (tmp_path / "requirements.txt").write_text("pytest\n", encoding="utf-8")
+    (tmp_path / "requirements-dev.txt").write_text("hypothesis\n", encoding="utf-8")
+    (tmp_path / "notes-requirements.txt").write_text("x\n", encoding="utf-8")
+    commands = ablation.setup_commands(tmp_path)
+    assert commands[0][:2] == ["uv", "sync"] and "--frozen" in commands[0]
+    assert [c[-1] for c in commands[1:]] == ["requirements-dev.txt", "requirements.txt"]
+
+
+def test_requirements_alone_make_a_project_run_through_uv(tmp_path, monkeypatch):
+    monkeypatch.setattr(ablation.shutil, "which", lambda name: "uv")
+    (tmp_path / "pyproject.toml").write_text("[project]\nname = 'p'\n", encoding="utf-8")
+    assert ablation.setup_commands(tmp_path) == []
+    (tmp_path / "requirements.txt").write_text("pytest\n", encoding="utf-8")
+    assert ablation._uv_python(tmp_path)[:2] == ["uv", "run"]
