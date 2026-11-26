@@ -1,13 +1,13 @@
 ---
 title: "Checking-cost pilot: smoke builds and the per-part spread"
 type: research
-status: draft
+status: complete
 confidence: low
 area: tooling
 tags: [tokens, cost, verification, measurement, bench, tester]
-summary: "the post-tester variant survives a headless build once every post-build tester cue is removed, and its station rows reach the record; Compass builds of the pool topics run past the 150-minute wall cap, so the spread pilot's pairs are mostly equal-time pairs"
+summary: "12 pilot builds, 8 stopped by the 150-minute cap: the per-part goal effect varies so much within a topic (SD 0.45 of the goal share) that detecting a drop of one goal item in ten needs about 316 builds per arm (941 at the upper bound); removing the post-build tester did not save tokens"
 created: 2026-11-24
-updated: 2026-11-24
+updated: 2026-11-26
 author: "build-lead"
 depends_on: ["[[PLAN-034-checking-cost-follows-task-and-model]]"]
 ---
@@ -19,7 +19,8 @@ flowchart LR
   A["Smoke 1: variant build<br/>(first patch)"] -->|"one post-build tester<br/>still spawned"| B["Patch extended to the<br/>builder, tester and<br/>methodology text"]
   B --> C["Smoke 1 again:<br/>no post-build tester"]
   C --> D["Smoke 2: full Compass,<br/>context stop at 15%"]
-  D --> E["Spread pilot:<br/>12 builds"]
+  D --> E["Spread pilot:<br/>12 builds, 8 capped"]
+  E --> F["Batch for a 1-in-10 drop:<br/>about 316 builds per arm"]
 ```
 
 Measured for [[PLAN-034-checking-cost-follows-task-and-model]] TASK-351 and TASK-352 with `bench/overhead/pilot.py` and `bench/overhead/spread.py`. Topics are pool topics with frozen goals, named by letter; no topic text, path or session id appears here.
@@ -69,4 +70,49 @@ The stop works in a headless build and does not end it: the main agent stops bef
 - **Step 7b's capture-check now gets an empty input.** The build skill ran `compass capture-check --hook` from Bash at the phase pause, and that command waits on stdin. The pilot's first build, a full Compass build, sat idle on it for about 12 minutes until the process was ended by hand; the build then went on. The fix (`< /dev/null` in step 7b) reached both arms while that build ran: the full arm through a merge into the branch whose `plugin/` the builds install, the variant through the same one-line change committed in its worktree. Every build after the first, in both arms, runs the fixed text.
 - **The first build was interrupted.** The machine restarted about 25 minutes after the hang, during that first full Compass build; it had logged no event, so it is not counted, and the resumed pilot built its slot again from the start. On resume the pilot made the variant worktree afresh from the branch head, which carries the step-7b fix, so every counted build in both arms runs the fixed skill.
 - **Hang check over every build.** The four smoke builds made no hand-run capture-check call. Each pilot build's main transcript is checked the same way below.
+
+### The twelve builds
+
+Three pool topics (A, B, C), each built twice in full Compass and twice in `compass-minus-post-tester`, one build at a time, judged against their frozen goals. Every build closed; none hit a usage limit. The record holds one build row per build, twelve in all, each with the main session's model (Opus).
+
+| Topic | Run | Full Compass: end, minutes, goals met | Variant: end, minutes, goals met |
+|---|---|---|---|
+| A | 1 | cap, 150, 1 of 11 | cap, 150, 2 of 11 |
+| A | 2 | simulated human done, 45, 5 of 11 | cap, 150, 3 of 11 |
+| B | 1 | cap, 150, 3 of 10 | cap, 150, 0 of 10 |
+| B | 2 | simulated human done, 113, 0 of 10 | simulated human done, 139, 4 of 10 |
+| C | 1 | cap, 150, 9 of 10 | cap, 150, 4 of 10 |
+| C | 2 | cap, 150, 6 of 10 | simulated human done, 33, 9 of 10 |
+
+Eight of twelve builds ran to the 150-minute cap. Only one pair (B run 2) ended by the simulated human on both sides, and three pairs (A, B and C run 1) hit the cap on both sides.
+
+### What the pilot measures
+
+| Measure | Pairs | Mean goal share difference (variant minus full) | Verdict at a 5% margin |
+|---|---|---|---|
+| Both builds ended by the simulated human | 1 | +0.40 | none (fewer than two pairs) |
+| Both builds stopped by the cap (same wall time) | 3 | -0.24 | worse (lower bound -0.43) |
+| All six pairs, however they ended | 6 | -0.03 | worse (lower bound -0.26) |
+
+No topic has two pairs of the same kind, so the planned spread, within a topic over counted pairs, cannot be computed. Over all six pairs, however they ended, the within-topic standard deviation of the goal share difference is 0.45 (3 degrees of freedom; upper 80% bound 0.77). That figure mixes capped and finished builds, so it is indicative only, and it gives:
+
+| Drop in goal share to detect | Builds per arm at the estimate | At the upper 80% bound |
+|---|---|---|
+| 0.1 (one goal item in ten) | 316 | 941 |
+| 0.2 | 79 | |
+| 0.3 | 36 | |
+
+At about two and a half hours a build and three builds per five-hour window, 316 builds per arm is several months of the subscription. The goal share of one build is too noisy a measure of what one checking station buys.
+
+### Tokens and stations
+
+- **The variant did not save tokens.** Its weighted tokens were 33% above the full arm on the one finished pair and 8.5% above on the three equal-time pairs. Without the post-build tester, the variant spawned more builders and more pre-build testers in the same time (per equal-time pair, 14 builder and 14 tester station rows in the variant against 6 and 5 in the full arm).
+- **The full arm rarely ran its post-build tester.** Read from the spawn prompts: 3, 3 and 2 post-build tester spawns in three full Compass builds, none in the other three; one variant build (topic B run 1) spawned one even with every cue removed from its install.
+- **Most tester rows are `unparsed`.** Testers often reply without the template's `### Mode` section, so the station log's `tester-pre` and `tester-post` counts undercount; the counts above come from the spawn prompts.
+- **The builders' review takes 13% of builder tokens** (12.6% on the finished pair, 13.1% on the equal-time pairs), in line with the gap pass's 10%.
+- **Hang check.** Four pilot builds ran `compass capture-check` from Bash, each returning within a second; no pilot build after the first hung on it.
+
+### What follows for the ablation
+
+TASK-353 was to run the station ablation at the batch size this pilot sets. At a one-in-ten drop that batch is out of reach, and capped builds, the most common end, measure speed as much as checking. The ablation needs a different measure of what a station catches before it runs: the station rows read beside a planted defect, or a larger drop to detect on smaller topics that finish inside the cap.
 
