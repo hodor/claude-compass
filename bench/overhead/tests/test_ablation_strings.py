@@ -71,3 +71,12 @@ def test_plant_draws_only_from_code_lines(tmp_path):
         site = ablation.plant(task, tmp_path / ("p%d" % seed), seed=seed, compile_check=lambda d, s: True)
         assert site.line == 12, (seed, site)
         assert site.function == "inside"
+
+
+def test_a_run_with_no_test_result_is_a_run_error(tmp_path, monkeypatch):
+    monkeypatch.setattr(ablation, "_run", lambda argv, cwd, **kw: (1, "No module named pytest\n"))
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_a.py").write_text("def test_a():\n    pass\n", encoding="utf-8")
+    failing = ablation.run_tests(tmp_path, ["tests/test_a.py"], "python")
+    assert ablation.run_errors(failing) == ["<run tests/test_a.py exit 1>"]
+    assert not ablation.caught_by_tests(failing, failing)

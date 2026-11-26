@@ -556,6 +556,15 @@ def caught_by_tests(clean_failing, planted_failing):
     return bool(set(planted_failing) - set(clean_failing))
 
 
+# The name a test run that produced no test result is filed under: a
+# missing test runner, an import or build error, a timeout.
+RUN_ERROR = "<run %s exit %d>"
+
+
+def run_errors(failing):
+    return sorted(name for name in failing if name.startswith("<run "))
+
+
 _GO_TEST_FUNC = re.compile(r"^func (Test\w+)\(", re.MULTILINE)
 
 
@@ -592,8 +601,8 @@ def run_tests(tree, files, lang):
         env = {k: v for k, v in os.environ.items() if k.upper() != "VIRTUAL_ENV"}
         code, out = _run(argv, tree, env=env)
         failing = failing_tests(out, lang)
-        if code not in (0, 1) and not failing:
-            failing = {"<run %s exit %d>" % (",".join(files), code)}
+        if code != 0 and not failing:
+            failing = {RUN_ERROR % (",".join(files), code)}
         return failing
     names = set()
     for f in files:
@@ -602,7 +611,7 @@ def run_tests(tree, files, lang):
     code, out = _run(["go", "test", "-count=1", "-v", *packages], tree)
     failing = {name for name in failing_tests(out, lang) if name.split("/")[0] in names}
     if code != 0 and not failing and "--- FAIL" not in out:
-        failing = {"<build %s exit %d>" % (",".join(packages), code)}
+        failing = {RUN_ERROR % (",".join(packages), code)}
     return failing
 
 
@@ -899,7 +908,8 @@ def _pre_tests(work, task):
     clean = run_tests(work / "clean", files, task.lang)
     planted = run_tests(work / "repo", files, task.lang)
     return caught_by_tests(clean, planted), {"files": len(files), "clean_failing": len(clean),
-                                             "planted_failing": len(planted)}
+                                             "planted_failing": len(planted),
+                                             "run_errors": len(run_errors(clean)) + len(run_errors(planted))}
 
 
 def _station(entry, station, work, task, private_root, claude_cmd, prompt_set):
@@ -968,7 +978,7 @@ def run(args, *, claude_cmd=None):
             _setup_env(work, task.lang)
             data["done"][task.key] = entry
             _save(out, data)
-        if "tester-pre" not in entry["caught"]:
+        if "tester-pre" not in entry["caught"] or args.recheck_pre:
             caught, counts = _pre_tests(work, task)
             entry["caught"]["tester-pre"] = caught
             entry["rows"]["tester-pre"] = counts
@@ -1087,6 +1097,8 @@ def main(argv=None, *, claude_cmd=None):
     run_cmd.add_argument("--jobs", type=int, default=1)
     run_cmd.add_argument("--private-root")
     run_cmd.add_argument("--dry-run", action="store_true")
+    run_cmd.add_argument("--recheck-pre", action="store_true",
+                         help="run the pre-build tester's tests again for defects already planted")
     report = sub.add_parser("report")
     report.add_argument("--out", required=True)
     report.add_argument("--rejudge", action="store_true",
