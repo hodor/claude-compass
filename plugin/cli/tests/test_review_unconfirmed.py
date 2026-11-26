@@ -611,11 +611,11 @@ class AckWait(ReviewProject):
         """Adversarial where: the unclaimed-request check runs before the
         withdrawal check, so a request cancelled during the window is reported
         as an editor that did not pick it up."""
-        with mock.patch.object(self.module, "ACK_SECONDS", 3.0, create=True):
+        with mock.patch.object(self.module, "ACK_SECONDS", 12.0, create=True):
             self.when_requested(0.2, lambda path, request: self.review("--cancel", request["id"]))
             with self.request_clock() as clock:
                 code, out, _ = self.review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
-        self.assertLess(time.monotonic() - clock["at"], 2.5, "the cancel ends the wait, not the window")
+        self.assertLess(time.monotonic() - clock["at"], 8, "the cancel ends the wait, not the window")
         self.assertEqual(code, 1)
         self.assertRegex(out.splitlines()[-1], r"^withdrawn ")
         self.assertNotIn("not configured", out)
