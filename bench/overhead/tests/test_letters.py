@@ -676,7 +676,10 @@ def test_main_dry_run_prints_ids_and_one_prompt_without_the_original_letter(tmp_
     def refuse(*a, **kw):
         raise AssertionError("dry run started a subprocess")
 
-    monkeypatch.setattr(letters.subprocess, "run", refuse)
+    import launch
+
+    monkeypatch.setattr(launch, "_run", refuse)
+    monkeypatch.setattr(launch, "run_session", refuse)
     assert letters.main(["--n", "6", "--seed", "3", "--plans", str(plans), "--dry-run"]) == 0
     shown = capsys.readouterr().out
     assert len(set(re.findall(r"^PLAN-904/TASK-\d+$", shown, re.MULTILINE))) == 6
@@ -703,51 +706,198 @@ def _stub_claude_on_path(folder):
     return {"PATH": str(stub), "ANTHROPIC_API_KEY": "must-not-pass", "KEEP": "1"}
 
 
-def test_default_runner_maps_exit_codes_and_isolates_the_session(tmp_path, monkeypatch):
-    """Adversarial where: a zero-exit reply in which the model quotes the
-    words `usage limit` is taken as a halt; a nonzero exit without a rejected
-    rate-limit event is taken as a limit (the batch would stop forever instead
-    of failing); a halt is read from structured events, not from text; the
-    session inherits the operator's API key or runs without stdin closed or in
-    the wrong folder."""
-    parent = _stub_claude_on_path(tmp_path)
-    seen = {}
-    queue = []
+def _fake_launch_run(monkeypatch, queue, seen):
+    """Replace launch._run, the one place a session process starts, with a
+    queue of canned (returncode, stdout, stderr) results."""
+    import launch
 
-    def fake_run(command, **kwargs):
-        seen.update(kwargs, command=command)
+    def fake_run(command, prompt, cwd, env, timeout):
+        seen.update(command=command, prompt=prompt, cwd=cwd, env=env, timeout=timeout)
         return queue.pop(0)
 
-    monkeypatch.setattr(letters.subprocess, "run", fake_run)
-    argv = letters.session_command("m", "p")
+    monkeypatch.setattr(launch, "_run", fake_run)
+    monkeypatch.setattr(launch, "check_plugin_clean", lambda repo_root, require_plugin=False: "sha0")
+
+
+def test_default_runner_goes_through_launch_and_isolates_the_session(tmp_path, monkeypatch):
+    """Adversarial where: the runner starts its own process instead of the
+    bench's launcher (so no CREATE_NO_WINDOW, no process-tree kill at the
+    timeout); the prompt rides on the command line; a flag the launcher
+    already adds is passed twice; a zero-exit reply quoting the words `usage
+    limit` is taken as a halt; a nonzero exit without a rejected rate-limit
+    event is taken as a limit; the session inherits the operator's API key."""
+    import json
+
+    parent = _stub_claude_on_path(tmp_path)
+    parent["ANTHROPIC_API_KEY"] = "must-not-pass"
+    seen, queue = {}, []
+    _fake_launch_run(monkeypatch, queue, seen)
+    prompt = "--looks-like-a-flag\nrate this task"
+    argv = letters.session_command("m", prompt)
     folder = tmp_path / "work"
     folder.mkdir()
-
-    import json
 
     def events(*items):
         return "\n".join(json.dumps(item) for item in items) + "\n"
 
     answer = "letter: M\nwords: the usage limit text"
-    queue.append(_Done(0, events({"type": "result", "is_error": False, "result": answer})))
+    queue.append((0, events({"type": "result", "is_error": False, "result": answer}), ""))
     reply = letters.default_runner(argv, folder, private_root=tmp_path / "priv", parent_env=parent)
     assert reply.startswith("letter: M")
     assert seen["cwd"] == str(folder)
-    assert seen["stdin"] == subprocess.DEVNULL
+    assert seen["prompt"] == prompt
+    command = seen["command"]
+    assert prompt not in command
     assert "ANTHROPIC_API_KEY" not in seen["env"]
     assert seen["env"]["CLAUDE_CONFIG_DIR"].startswith(str(tmp_path / "priv"))
-    assert seen["command"][1:] == argv[1:]
+    assert command[command.index("--model") + 1] == "m"
+    assert command[command.index("--tools") + 1] == ""
+    for flag in ("--no-session-persistence", "--strict-mcp-config", "-p", "--verbose", "--setting-sources", "--output-format"):
+        assert command.count(flag) == 1, flag
+    assert "--" not in command
+    assert seen["timeout"] == letters.SESSION_TIMEOUT
 
-    queue.append(_Done(1, events({"type": "rate_limit_event", "rate_limit_info": {"status": "rejected", "resetsAt": 1}})))
+    queue.append((1, events({"type": "rate_limit_event", "rate_limit_info": {"status": "rejected", "resetsAt": 1}}), ""))
     with pytest.raises(letters.UsageLimit):
         letters.default_runner(argv, folder, private_root=tmp_path / "priv", parent_env=parent)
 
-    queue.append(_Done(1, "", "network down"))
+    queue.append((1, "", "network down"))
     with pytest.raises(letters.SessionFailed) as caught:
         letters.default_runner(argv, folder, private_root=tmp_path / "priv", parent_env=parent)
     assert not isinstance(caught.value, letters.UsageLimit)
 
-    queue.append(_Done(1, "", "Claude usage limit reached. Resets at 3pm"))
+    queue.append((1, "", "Claude usage limit reached. Resets at 3pm"))
     with pytest.raises(letters.SessionFailed) as caught:
         letters.default_runner(argv, folder, private_root=tmp_path / "priv", parent_env=parent)
     assert not isinstance(caught.value, letters.UsageLimit)
+
+    queue.append((None, "", ""))
+    with pytest.raises(letters.SessionFailed):
+        letters.default_runner(argv, folder, private_root=tmp_path / "priv", parent_env=parent)
+
+
+class ConcurrentRunner:
+    """Thread-safe fake runner that records the most sessions in flight at once."""
+
+    def __init__(self, reply, hold=0.02, limit_after=None):
+        import threading
+
+        self.reply = reply
+        self.hold = hold
+        self.limit_after = limit_after
+        self.lock = threading.Lock()
+        self.calls = 0
+        self.active = 0
+        self.peak = 0
+
+    def __call__(self, argv, cwd):
+        import time
+
+        with self.lock:
+            if self.limit_after is not None and self.calls >= self.limit_after:
+                raise letters.UsageLimit("usage limit reached")
+            self.calls += 1
+            self.active += 1
+            self.peak = max(self.peak, self.active)
+        try:
+            time.sleep(self.hold)
+            return self.reply(argv) if callable(self.reply) else self.reply
+        finally:
+            with self.lock:
+                self.active -= 1
+
+
+def test_run_batch_with_jobs_runs_sessions_side_by_side_and_never_more_than_jobs(tmp_path):
+    """Adversarial where: `jobs` is ignored (sessions still one at a time), it
+    is exceeded, or the threads lose sessions or mix up which letter belongs
+    to which task and model in the progress file."""
+    tasks = _batch_tasks()
+    models = ["strong-a", "balanced-b"]
+    config = {"ids": [t.id for t in tasks], "models": models, "sessions": 3, "seed": 5}
+
+    def reply(argv):
+        model = argv[argv.index("--model") + 1]
+        return "letter: %s\nwords: w" % ("S" if model == "strong-a" else "L")
+
+    runner = ConcurrentRunner(reply)
+    results = letters.run_batch(
+        tasks, models, 3, _plan_table(), runner=runner, progress_path=tmp_path / "p.json", config=config, jobs=3
+    )
+    assert runner.calls == 24
+    assert runner.peak == 3
+    assert all(r["ratings"] == {"strong-a": ["S"] * 3, "balanced-b": ["L"] * 3} for r in results)
+    assert len(_read_json(tmp_path / "p.json")["done"]) == 24
+
+
+def test_run_batch_with_jobs_halts_at_a_usage_limit_keeping_every_finished_session(tmp_path):
+    """Adversarial where: a usage limit in one thread is swallowed while other
+    threads keep starting sessions, or the sessions that finished beside the
+    halted one are not saved, so a resume re-bills them."""
+    tasks = _batch_tasks()
+    models = ["a", "b"]
+    config = {"ids": [t.id for t in tasks], "models": models, "sessions": 3, "seed": 5}
+    progress = tmp_path / "p.json"
+    halted = ConcurrentRunner("letter: M\nwords: w", limit_after=8)
+    with pytest.raises(letters.UsageLimit):
+        letters.run_batch(tasks, models, 3, _plan_table(), runner=halted, progress_path=progress, config=config, jobs=3)
+    assert halted.calls == 8
+    assert len(_read_json(progress)["done"]) == 8
+
+    resumed = ConcurrentRunner("letter: S\nwords: w")
+    letters.run_batch(tasks, models, 3, _plan_table(), runner=resumed, progress_path=progress, config=config, jobs=3)
+    assert resumed.calls == 24 - 8
+
+
+def test_main_run_rejects_jobs_below_one_before_spending_any(tmp_path):
+    plans = _vault_plans(tmp_path)
+    """Adversarial where: `--jobs 0` starts nothing yet hangs, or a negative
+    count reaches the thread pool and raises after the draw."""
+    runner = ScriptedRunner(["letter: M\nwords: w"])
+    assert letters.main(_run_args(tmp_path, plans, extra=("--jobs", "0")), runner=runner) == 1
+    assert runner.calls == 0
+
+
+def _rubric_file(folder, scope_s="One file and its tests"):
+    path = Path(folder) / "rubric.md"
+    path.write_text(
+        "# Candidate\n\n## Task Sizing\n\n| Size | Scope | Example |\n|---|---|---|\n"
+        "| S | %s | e |\n| M | 2-4 files and their tests | e |\n| L | 5+ files, or a new subsystem | e |\n\n"
+        "## Next\n\nRUBRICTAIL\n" % scope_s,
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_main_run_measures_a_candidate_rubric_and_keeps_its_progress_apart(tmp_path):
+    """Adversarial where: `--rubric` is accepted but the sessions still see
+    the shipped planner's table; the text after the sizing section leaks into
+    the prompt; or a progress file written under one rubric resumes under
+    another, mixing two rubrics' letters in one report."""
+    plans = _vault_plans(tmp_path)
+    rubric = _rubric_file(tmp_path)
+    prompts = []
+
+    def runner(argv, cwd):
+        prompts.append(argv[-1])
+        return "letter: S\nwords: one file and its tests"
+
+    args = _run_args(tmp_path, plans, extra=("--rubric", str(rubric)))
+    assert letters.main(args, runner=runner) == 0
+    assert prompts and all("One file and its tests" in p for p in prompts)
+    assert not any("Single file, straightforward" in p for p in prompts)
+    assert not any("RUBRICTAIL" in p for p in prompts)
+    assert (tmp_path / "out.md").is_file()
+
+    _rubric_file(tmp_path, scope_s="A single small file")
+    calls = []
+    assert letters.main(args, runner=lambda argv, cwd: calls.append(1) or "letter: S") == 1
+    assert calls == []
+
+
+def test_a_rubric_file_without_a_sizing_table_is_refused_before_any_session(tmp_path):
+    plans = _vault_plans(tmp_path)
+    rubric = tmp_path / "bad.md"
+    rubric.write_text("# No sizing here\n", encoding="utf-8")
+    runner = ScriptedRunner(["letter: M"])
+    assert letters.main(_run_args(tmp_path, plans, extra=("--rubric", str(rubric))), runner=runner) == 1
+    assert runner.calls == 0

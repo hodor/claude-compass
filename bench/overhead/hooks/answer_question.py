@@ -504,6 +504,7 @@ def _command_answerer(argv):
     def answer(questions):
         done = subprocess.run(
             argv, input=json.dumps({"questions": questions}), capture_output=True, text=True, encoding="utf-8",
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         if done.returncode != 0:
             detail = (done.stderr or "").strip()[-300:]

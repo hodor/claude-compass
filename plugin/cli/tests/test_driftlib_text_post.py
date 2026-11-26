@@ -74,7 +74,7 @@ class IndexLineShapeTests(unittest.TestCase):
             "dash inside description": (
                 "summary: Alpha - beta - gamma", "Alpha - beta - gamma"),
             "em dash inside description": (
-                "summary: Alpha — beta", "Alpha — beta"),
+                "summary: Alpha \u2014 beta", "Alpha \u2014 beta"),
         }
         for name, (summary, desc) in rows.items():
             with self.subTest(name):

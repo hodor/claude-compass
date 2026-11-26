@@ -55,7 +55,7 @@ class AuthoredIdPatternTest(unittest.TestCase):
             "** O-01:** x",
             "**K-01:** x",
             "__O-01:__ x",
-            "**O–01:** x",
+            "**O\u201301:** x",
             "[ ]**O-02:** x",
         ]
         for miss in near_misses:

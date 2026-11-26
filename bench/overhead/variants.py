@@ -45,7 +45,7 @@ def default_variants_root():
 def _git(cwd, *args):
     return subprocess.run(
         ["git", *args], cwd=cwd, capture_output=True, text=True, encoding="utf-8",
-        env=launch.git_environment(),
+        env=launch.git_environment(), **launch.NO_WINDOW,
     )
 
 

@@ -19,7 +19,7 @@ The run log, the pool, the goals and the records live under the private root;
 a private root inside a git work tree is refused.
 
     python pilot.py --private-root DIR --projects-root DIR [--report FILE]
-        [--arms ARM ARM ...] [--topics ID ID ...]
+        [--arms ARM ARM ...] [--topics ID ID ...] [--runs N] [--run-log FILE]
 
 `--arms` names the arms to build, `compass`, `baseline` or a variant id
 `compass-minus-<part>` (default: `compass` and `baseline`). A variant arm builds
@@ -28,7 +28,9 @@ in a worktree of HEAD with `bench/overhead/variants/<part>.patch` applied
 topics with their frozen goals: no probe, pick or freeze runs, and every named
 topic is built in every named arm. Builds already closed in the run log are not
 built again, so a variant replay pairs with the Compass builds a first run
-logged.
+logged. `--runs` sets the builds per topic in each arm (default 2), and
+`--run-log` names a run log of its own, so a single smoke build stays out of
+the pilot's run log.
 
 Exit codes: 0 complete, 1 blocked or refused, 3 usage limit.
 """
@@ -261,7 +263,7 @@ class _Pilot:
     def __init__(
         self, *, repo_root, private_root, projects_root, claude_cmd, parent_env, probe_size,
         topic_count, runs_per_arm, pick, freeze, judge, drive, new_project, clock, profile=None,
-        arms=ARMS, topic_ids=None, variant_trees=None,
+        arms=ARMS, topic_ids=None, variant_trees=None, run_log=None,
     ):
         self.repo_root = Path(repo_root)
         self.private_root = Path(private_root)
@@ -275,7 +277,7 @@ class _Pilot:
         self.drive, self.new_project, self.clock = drive, new_project, clock
         self.profile = profile or self._profile_without_waiting
         self.waits_for_workers = profile is None
-        self.log_path = run_log_path(self.private_root)
+        self.log_path = Path(run_log) if run_log is not None else run_log_path(self.private_root)
         self.arms = tuple(arms)
         self.topic_ids = None if topic_ids is None else list(topic_ids)
         self.variant_trees = variant_trees or {}
@@ -695,6 +697,11 @@ def _check_topic_ids(topic_ids, private_root):
             raise PilotError(f"topic {topic_id} has no frozen goals") from error
 
 
+def _inside_work_tree(folder):
+    folder = Path(folder).resolve()
+    return any((parent / ".git").exists() for parent in [folder, *folder.parents])
+
+
 def _make_variant_trees(arms, repo_root, private_root):
     """{variant arm: worktree}: a fresh worktree of HEAD with the variant's patch
     applied, for each variant arm; a worktree left by an earlier run is replaced."""
@@ -712,7 +719,7 @@ def run_pilot(
     *, repo_root, private_root, projects_root, report_path=None, claude_cmd=None, parent_env=None,
     probe_size=10, topic_count=3, runs_per_arm=2, pick=topics.pick_topic, freeze=goals.write_goals,
     judge=judge_module.judge_project, drive=drive_module.main, new_project=sandbox.new_project,
-    clock=time.monotonic, profile=None, arms=None, topic_ids=None,
+    clock=time.monotonic, profile=None, arms=None, topic_ids=None, run_log=None,
 ):
     """Run the pilot, or resume it from its run log, and return a PilotResult.
 
@@ -724,7 +731,9 @@ def run_pilot(
     arm builds in a fresh worktree of HEAD under `<private_root>/variants`, which
     is passed to `drive` as `--repo-root`; the logged `compass` builds of the named
     topics are read into the aggregates as the variant's pairs even when `compass`
-    is not in `arms`. With `topic_ids`, no probe, pick or
+    is not in `arms`. `run_log` (default `<private_root>/pilot/run-log.jsonl`)
+    names the run log every event is written to and resumed from; a run log
+    inside a git work tree is refused. With `topic_ids`, no probe, pick or
     freeze runs: the named pool topics are built with their frozen goals. PilotError
     is raised, before any session, for an arm outside the accepted forms, a repeated
     arm or topic id, a topic id outside the pool and a topic without frozen goals.
@@ -732,6 +741,10 @@ def run_pilot(
     topics.check_private_root(private_root)
     arms = ARMS if arms is None else tuple(arms)
     _check_arms(arms)
+    if runs_per_arm < 1:
+        raise PilotError(f"runs per arm must be at least 1, not {runs_per_arm}")
+    if run_log is not None and _inside_work_tree(Path(run_log).parent):
+        raise PilotError("the run log would sit inside a git work tree")
     if topic_ids is not None:
         topic_ids = list(topic_ids)
         _check_topic_ids(topic_ids, private_root)
@@ -741,7 +754,7 @@ def run_pilot(
         claude_cmd=claude_cmd, parent_env=parent_env, probe_size=probe_size,
         topic_count=topic_count, runs_per_arm=runs_per_arm, pick=pick, freeze=freeze,
         judge=judge, drive=drive, new_project=new_project, clock=clock, profile=profile,
-        arms=arms, topic_ids=topic_ids, variant_trees=variant_trees,
+        arms=arms, topic_ids=topic_ids, variant_trees=variant_trees, run_log=run_log,
     )
     try:
         try:
@@ -778,7 +791,9 @@ def _number(value, digits=1, reason="no finished build"):
 
 def _git_line(repo_root, *args):
     try:
-        done = subprocess.run(["git", *args], cwd=repo_root, capture_output=True, text=True, timeout=30)
+        done = subprocess.run(
+            ["git", *args], cwd=repo_root, capture_output=True, text=True, timeout=30, **launch.NO_WINDOW,
+        )
     except (OSError, subprocess.SubprocessError):
         return None
     return done.stdout.strip() if done.returncode == 0 and done.stdout.strip() else None
@@ -1021,6 +1036,8 @@ def main(argv=None):
     parser.add_argument("--report", default=None)
     parser.add_argument("--arms", nargs="+", default=None, metavar="ARM")
     parser.add_argument("--topics", nargs="+", default=None, metavar="ID")
+    parser.add_argument("--runs", type=int, default=2, help="builds per topic in each arm (default 2)")
+    parser.add_argument("--run-log", default=None, help="run log (default <private root>/pilot/run-log.jsonl)")
     args = parser.parse_args(argv)
     repo_root = Path(__file__).resolve().parents[2]
     private_root = Path(args.private_root) if args.private_root else topics.private_dir()
@@ -1028,7 +1045,7 @@ def main(argv=None):
         result = run_pilot(
             repo_root=repo_root, private_root=private_root,
             projects_root=args.projects_root or sandbox.DEFAULT_PROJECTS_ROOT, report_path=args.report,
-            arms=args.arms, topic_ids=args.topics,
+            arms=args.arms, topic_ids=args.topics, runs_per_arm=args.runs, run_log=args.run_log,
         )
     except (records.Refused, launch.Refused, sandbox.Refused, PilotError, variants.VariantError) as error:
         sys.stderr.write(f"refused: {error}\n")

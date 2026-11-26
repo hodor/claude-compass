@@ -23,8 +23,11 @@ row names it under `unpriced_models`.
 
 Arms. A row's arm is `compass`, `baseline` or a variant id `compass-minus-<part>`
 (Compass with one harness part removed); `variant` holds the id for a variant
-and is None otherwise. `build_model` names the model with the most output
-tokens over the session's stretches, None when no `result` event arrived.
+and is None otherwise. `build_model` names the main session's model, read from
+the first `system/init` event; when that event names no model id, the model
+with the most output tokens over the session's stretches, and None when no
+`result` event arrived either. Subagents' usage counts in `modelUsage`, so the
+output rule alone would file a build under its builders' model.
 
 Stations. A build row's `stations` maps `<station>|<model>` to integer counts
 read from the project's `.compass/meta/station-log.jsonl`: `spawns`, `bugs`,
@@ -216,9 +219,23 @@ def is_arm(arm):
     return arm in ARMS or is_variant(arm)
 
 
-def build_model(totals):
-    """The model of `count_tokens` output with the most output tokens (the first
-    one on a tie), or None when `totals` is empty."""
+def init_model(events):
+    """The `model` of the first `system/init` event when it is a Claude model
+    id (`_MODEL_ID`), else None."""
+    for event in events:
+        if isinstance(event, dict) and event.get("type") == "system" and event.get("subtype") == "init":
+            model = event.get("model")
+            return model if isinstance(model, str) and _MODEL_ID.fullmatch(model) else None
+    return None
+
+
+def build_model(totals, events=()):
+    """The main session's model from `events` (see `init_model`), else the model
+    of `count_tokens` output with the most output tokens (the first one on a
+    tie), or None when neither is known."""
+    named = init_model(events)
+    if named is not None:
+        return named
     best = None
     for model, counts in totals.items():
         if best is None or counts["output"] > totals[best]["output"]:
@@ -320,7 +337,7 @@ def record_session(events, *, role, outcome, arm=None, plugin_sha=None, private_
         "outcome": outcome,
         "arm": arm,
         "variant": arm if is_variant(arm) else None,
-        "build_model": build_model(totals),
+        "build_model": build_model(totals, events),
         "plugin_sha": plugin_sha,
         "claude_code_version": _first_version(events),
         "results": _count_results(events),
