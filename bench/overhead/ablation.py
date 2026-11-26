@@ -989,10 +989,18 @@ def run(args, *, claude_cmd=None):
     for index, task in enumerate(tasks):
         work = out / "work" / ("%s-%s" % (Path(task.project).name, task.task))
         entry = data["done"].get(task.key)
+        if task.key in data.get("skipped", {}):
+            continue
         if entry is None:
             if work.exists():
                 shutil.rmtree(work, ignore_errors=True)
-            entry = _prepare(task, work, args.seed + index)
+            try:
+                entry = _prepare(task, work, args.seed + index)
+            except Refused as error:
+                data.setdefault("skipped", {})[task.key] = {"letter": task.letter, "reason": str(error)}
+                _save(out, data)
+                print("skipped %s: %s" % (task.key, error), file=sys.stderr)
+                continue
             _setup_env(work, task.lang)
             data["done"][task.key] = entry
             _save(out, data)
@@ -1081,6 +1089,8 @@ def _complete(entry):
 def render_report(data):
     entries = [e for e in data.get("done", {}).values() if _complete(e)]
     lines = ["defects with every station read: %d of %d" % (len(entries), len(data.get("done", {})))]
+    for key, skipped in sorted(data.get("skipped", {}).items()):
+        lines.append("skipped %s (%s): no compiling mutant" % (key, skipped["letter"]))
     table = eligibility([{"letter": e["letter"], "caught": e["caught"]} for e in entries])
     lines.append("")
     lines.append("| Letter | Defects | Caught by none | " + " | ".join(STATIONS) + " |")
