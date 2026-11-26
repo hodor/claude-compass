@@ -33,24 +33,19 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[research/rolling-wave/index|rolling-wave]] (folder, 4 children) - plan detail tracking proximity - receding horizons, flow theory, practice
 - [[research/test-quality/index|test-quality]] (folder, 8 children) - what makes a test suite good and how to measure it
 - [[research/vault-structure/index|vault-structure]] (folder, 10 children) - evidence on organizing and retrieving vault memory - hierarchy, tiers, RAG, graphs, taxonomy
-- [[research/pipeline/index|pipeline]] (folder, 17 children) - evidence on the pipeline as a method - benchmarks, scientific rigor, decision-coverage mechanics
-- [[research/human-surface/index|human-surface]] (folder, 14 children) - how Compass puts things in front of the human: the questions it asks, the documents it hands over for review, and how all of it reads
-- [[research/whole-overhead/index|whole-overhead]] (folder, 19 children) - evidence on measuring Compass's whole token overhead on projects agents build, and cutting it biggest area first
-  - [[research/llm-research/RESULTS-wave-1-checks]] - release 0.37.0 ships the first waves of PLAN-032 to PLAN-036; this page holds their manual checks, Gate 2 of the prompt-cache plan, and the four runs that need your go before they spend subscription usage
+- [[research/pipeline/index|pipeline]] (folder, 7 children) - evidence on the pipeline as a method - benchmarks, scientific rigor, decision-coverage mechanics
+- [[research/human-surface/index|human-surface]] (folder, 8 children) - how Compass puts things in front of the human: the questions it asks, the documents it hands over for review, and how all of it reads
+- [[research/whole-overhead/index|whole-overhead]] (folder, 4 children) - evidence on measuring Compass's whole token overhead on projects agents build, and cutting it biggest area first
   - [[research/methodology/PROPOSAL-hot-path-consolidation-2026-11]] - topic folders for the 35 flat plan lines and the stray research lines, old notes parked out of active.md: start-here files from 6,596 to 3,926 tokens now, 3,472 after the four open plans merge
 - [[research/llm-research/index|llm-research]] (folder, 11 children) - the survey of Anthropic's engineering posts and 2025-2026 LLM agent research for changes Compass should make - its axes, gap passes, merged review and the checks of the stages it led to
 
 ## Plans
 
-- [[PLAN-033-compaction-keeps-the-session-state]] - after a compaction a hook puts a state block built from the transcript, vault and git (open tasks, files touched, decisions, last request) back in front of the model with no model call, PreCompact tells the host summary which sections to keep, the handoff fills its file trail and decisions from the same command, and a probe pilot in bench/overhead measures what the host summary alone keeps
-- [[PLAN-034-checking-cost-follows-task-and-model]] - instruments first: the bench learns variant arms, a noninferiority guard and builder-review attribution, Compass records every checking spawn with its task, verdict and model, the planner's letter is tested for repeatability, and a pilot sizes the station ablation; checking levels change only in later waves, and only where measurement shows defects caught do not fall
-- [[PLAN-035-prompt-cache-is-a-design-input]] - measure first: a `compass cache` report reads the host's transcripts for first-request reads, next-session pairing with the first block that differs, per-agent-type and loop hit rates and the cache-write tier, and records the baseline; then, at your gate, Compass turns the git snapshot off and checks the gain, and a subagent 1-hour cache lifetime ships only if an A/B on builder waves shows it pays
-- [[PLAN-036-verification-beyond-test-pass]] - the validator gains three rerunnable checks per task: changed lines reached from the task's named entry point, tests that flip when the task's code is reverted, and each spec requirement judged met or returned as work; the builder adds a correctness review beside its style review, the reviewer matrix records model family, and a planted-defect probe measures the KPI
 - [[plans/learning/index|learning]] (folder, 6 children) - plans that implement the learning specs - lessons, the capture loop, fidelity to the human's words, ideas
 - [[plans/distribution/index|distribution]] (folder, 4 children) - plans that implement the distribution specs - model resolution, self-update, dsh host support, local additions
 - [[plans/human-surface/index|human-surface]] (folder, 5 children) - plans that implement the human-surface specs - review in Obsidian, visual documents, numbered choices, screenplays
-- [[plans/pipeline/index|pipeline]] (folder, 6 children) - plans that implement the pipeline specs - decision coverage, test quality, staged plans, research scope, the context stop, control loops, compaction, verification
-- [[plans/tooling/index|tooling]] (folder, 4 children) - plans that implement the tooling specs - invisible capture, capability usage, whole token overhead, agent context, checking cost, prompt cache
+- [[plans/pipeline/index|pipeline]] (folder, 8 children) - plans that implement the pipeline specs - decision coverage, test quality, staged plans, research scope, the context stop, control loops, compaction, verification
+- [[plans/tooling/index|tooling]] (folder, 6 children) - plans that implement the tooling specs - invisible capture, capability usage, whole token overhead, agent context, checking cost, prompt cache
 - [[plans/vault-structure/index|vault-structure]] (folder, 6 children) - plans that implement the vault-structure specs - hierarchy, the active sweep, graph queries, sizing, topic folders
 
 ## Decisions

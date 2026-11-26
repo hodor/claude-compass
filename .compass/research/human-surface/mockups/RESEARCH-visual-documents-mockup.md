@@ -16,7 +16,7 @@ author: "builder"
 
 # Visual Documents: Mockup
 
-Three documents as the human reads them to approve them: [[specs/human-surface/SPEC-031-working-in-compass-is-visual|the spec]], [[PLAN-024-working-in-compass-is-visual|the plan]] and [[research/human-surface/RESEARCH-working-in-compass-is-visual|the research]] for [[specs/human-surface/SPEC-031-working-in-compass-is-visual|Working in Compass Is Visual (SPEC-031)]]. Each opens with a picture of what is being approved and what the human decides, then its text in plain words (no coined terms; the word list is [[research/human-surface/RESEARCH-plain-words-mockup]]). Only forms Obsidian renders natively are used: Mermaid, callouts, tables, embeds. Each mocked document is a `##` section here. The plan and the research end with a folded block that embeds the sections the mock does not show.
+Three documents as the human reads them to approve them: [[specs/human-surface/SPEC-031-working-in-compass-is-visual|the spec]], [[PLAN-024-working-in-compass-is-visual|the plan]] and [[research/human-surface/RESEARCH-working-in-compass-is-visual|the research]] for [[specs/human-surface/SPEC-031-working-in-compass-is-visual|Working in Compass Is Visual (SPEC-031)]]. Each opens with a picture of what is being approved and what the human decides, then its text in plain words (no coined terms; the word list is [[research/human-surface/mockups/RESEARCH-plain-words-mockup]]). Only forms Obsidian renders natively are used: Mermaid, callouts, tables, embeds. Each mocked document is a `##` section here. The plan and the research end with a folded block that embeds the sections the mock does not show.
 
 ## Byte table
 

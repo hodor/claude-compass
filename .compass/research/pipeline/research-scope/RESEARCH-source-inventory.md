@@ -16,7 +16,7 @@ summary: "profiles 34 research and code sources beyond ACM DL and arXiv - covera
 
 # Research Source Inventory: What Compass Could Embed Beyond ACM DL and arXiv
 
-Serves [[specs/pipeline/SPEC-023-research-covers-the-whole-spec]] D-03 (curated source list, checked reliability) and D-07 (use plugins already present in the session). Reliability *criteria* (CRAAP, SIFT, venue rankings, how open-source agents filter sources) are covered by [[research/pipeline/RESEARCH-source-reliability-criteria]] and are not restated here. Locating and reading canonical source code for a given library version is covered by [[research/pipeline/RESEARCH-code-as-primary-source]]; this document instead profiles the source *services* themselves - what they hold, how an agent reaches them, and under what terms.
+Serves [[specs/pipeline/SPEC-023-research-covers-the-whole-spec]] D-03 (curated source list, checked reliability) and D-07 (use plugins already present in the session). Reliability *criteria* (CRAAP, SIFT, venue rankings, how open-source agents filter sources) are covered by [[research/pipeline/research-scope/RESEARCH-source-reliability-criteria]] and are not restated here. Locating and reading canonical source code for a given library version is covered by [[research/pipeline/research-scope/RESEARCH-code-as-primary-source]]; this document instead profiles the source *services* themselves - what they hold, how an agent reaches them, and under what terms.
 
 ## Question
 
@@ -35,11 +35,11 @@ Technology Landscape survey (per-item profiles plus a comparison matrix) - the q
 ### What this session already reaches
 
 1. **The `papers` skill already covers Hugging Face paper pages and arXiv** (confidence: high)
-   `plugin/skills/papers/SKILL.md:1-148` fetches paper markdown and structured metadata from `huggingface.co/papers/{id}.md` and `/api/papers/{id}`, plus arXiv-linked models/datasets/spaces and a papers search endpoint - all unauthenticated. Tested live in this session: `curl https://huggingface.co/api/papers/search?q=transformer&limit=1` -> HTTP 200; `curl https://huggingface.co/api/models?search=bert&limit=1` -> HTTP 200. It has no source-reliability filter of its own (see [[research/pipeline/RESEARCH-source-reliability-criteria]] finding 15).
+   `plugin/skills/papers/SKILL.md:1-148` fetches paper markdown and structured metadata from `huggingface.co/papers/{id}.md` and `/api/papers/{id}`, plus arXiv-linked models/datasets/spaces and a papers search endpoint - all unauthenticated. Tested live in this session: `curl https://huggingface.co/api/papers/search?q=transformer&limit=1` -> HTTP 200; `curl https://huggingface.co/api/models?search=bert&limit=1` -> HTTP 200. It has no source-reliability filter of its own (see [[research/pipeline/research-scope/RESEARCH-source-reliability-criteria]] finding 15).
    - `plugin/skills/papers/SKILL.md`
 
 2. **No zoekt or dedicated code-search skill/MCP exists in this repository** (confidence: high)
-   `Grep`/`Glob` for "zoekt" and "code search" across `plugin/` and `.claude/` returned zero matches; no `.mcp.json` at the project level references any code-search server. Whatever "zoekt code-search skills" a session has access to is host-provided, not shipped by Compass - Compass's own code-reading capability today is `Read`/`Grep`/`Glob`/`Bash git clone`, documented in [[research/pipeline/RESEARCH-code-as-primary-source]].
+   `Grep`/`Glob` for "zoekt" and "code search" across `plugin/` and `.claude/` returned zero matches; no `.mcp.json` at the project level references any code-search server. Whatever "zoekt code-search skills" a session has access to is host-provided, not shipped by Compass - Compass's own code-reading capability today is `Read`/`Grep`/`Glob`/`Bash git clone`, documented in [[research/pipeline/research-scope/RESEARCH-code-as-primary-source]].
 
 3. **Serena is configured at the session/MCP level, not tested in this pass** (confidence: low)
    A system-level instruction in this session references a `serena` MCP server with an `initial_instructions` tool, but that tool was not present in this research role's own tool list, so its behavior could not be independently verified here. Per general knowledge (not tested), Serena provides LSP-backed semantic code navigation for a local checkout, which is complementary to but distinct from external literature/source fetching - it would help *read* a cloned library, not discover new sources.
@@ -273,7 +273,7 @@ Technology Landscape survey (per-item profiles plus a comparison matrix) - the q
 
 ## Follow-up Research - 2026-09-13
 
-Closes the [[research/pipeline/REVIEW-spec-023-research-consolidation]] gap C6/"ACM Digital Library access mechanics": every path by which an agent can reach ACM content, tested live where unauthenticated.
+Closes the [[research/pipeline/research-scope/REVIEW-spec-023-research-consolidation]] gap C6/"ACM Digital Library access mechanics": every path by which an agent can reach ACM content, tested live where unauthenticated.
 
 40. **ACM Digital Library has no public API today; the one GitHub hit is a catalog entry, not a client** (confidence: high)
     Northeastern's TDM library guide states ACM no longer provides API access to its collections. The only GitHub repository matching "ACM digital library API" is `api-evangelist/acm` (0 stars, updated 2026-09-12), self-described as "an independent third-party profile of a public API surface" - a documentation/cataloging exercise by a single-author project that profiles thousands of unrelated APIs the same way, not working client code. A separate GitHub code search for "acm dl scraper" returns one zero-star, single-purpose conference-import script (`jviterbo/SOL-to-ACM-DL-Converter`), not a general-purpose or actively maintained client.

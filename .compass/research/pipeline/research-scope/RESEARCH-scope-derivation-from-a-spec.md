@@ -22,7 +22,7 @@ How does a research scope (a set of investigation axes) get derived from a requi
 
 ## Scope
 
-In scope: (1) systematic/scoping-review question-framing methods (PICO, PICOC, SPIDER, PCC) and Kitchenham's software-engineering guidance on formulating review questions; (2) requirements-engineering techniques for decomposing a problem statement into investigation areas (goal-oriented RE, SRS completeness standards); (3) the actual decomposition code and prompts of five agentic deep-research systems (GPT-Researcher, STORM, LangChain Open Deep Research, Hugging Face Open Deep Research, and the published descriptions of OpenAI/Gemini/Perplexity Deep Research). Out of scope: which methodology Compass should mandate, and the catalog of methodology *types* generally (that is [[research/pipeline/RESEARCH-research-methodologies-catalog]]); source-reliability criteria specifically (that is [[research/pipeline/RESEARCH-source-reliability-criteria]] - noted here only where a decomposition system's curation logic bears directly on scope).
+In scope: (1) systematic/scoping-review question-framing methods (PICO, PICOC, SPIDER, PCC) and Kitchenham's software-engineering guidance on formulating review questions; (2) requirements-engineering techniques for decomposing a problem statement into investigation areas (goal-oriented RE, SRS completeness standards); (3) the actual decomposition code and prompts of five agentic deep-research systems (GPT-Researcher, STORM, LangChain Open Deep Research, Hugging Face Open Deep Research, and the published descriptions of OpenAI/Gemini/Perplexity Deep Research). Out of scope: which methodology Compass should mandate, and the catalog of methodology *types* generally (that is [[research/pipeline/research-scope/RESEARCH-research-methodologies-catalog]]); source-reliability criteria specifically (that is [[research/pipeline/research-scope/RESEARCH-source-reliability-criteria]] - noted here only where a decomposition system's curation logic bears directly on scope).
 
 ## Methodology
 
@@ -50,7 +50,7 @@ Five parallel passes: two academic-literature passes fetching primary sources di
 
 5. **Narrow-versus-broad research questions is a real fork, resolved by review type, not by rule** (confidence: high)
    The same report cites Staples & Niazi recommending narrow, focused RQs for a full SLR (§5.6), then in §8 recommends the opposite for systematic mapping studies: "Mapping studies generally have broader research questions driving them and often ask multiple research questions... the aim here is for broad coverage rather than narrow focus." Which one applies depends on which methodology was chosen for the case.
-   - EBSE-2007-01 §5.6, §8, verbatim quotes fetched directly. See [[research/pipeline/RESEARCH-research-methodologies-catalog]] for the full methodology-choice catalog.
+   - EBSE-2007-01 §5.6, §8, verbatim quotes fetched directly. See [[research/pipeline/research-scope/RESEARCH-research-methodologies-catalog]] for the full methodology-choice catalog.
 
 6. **Scope is set once volume and shape of the field are known, not upfront** (confidence: high)
    Arksey & O'Malley 2005: "Our recommendation would be to maintain a wide approach in order to generate breadth of coverage. Decisions about how to set parameters... can be made once some sense of the volume and general scope of the field has been gained." The process is explicitly iterative, not linear, and steps are repeated as understanding grows.
@@ -107,7 +107,7 @@ Five parallel passes: two academic-literature passes fetching primary sources di
     - `gpt_researcher/skills/deep_research.py:292-578`, `gpt_researcher/config/variables/default.py:39-41`.
 
 19. **GPT-Researcher's source curation is optional, LLM-judgment-based, and off by default; no domain allowlist exists** (confidence: high)
-    Curation runs through `curator.py`, gated by `CURATE_SOURCES: False` in the default config, and is pure per-run LLM judgment over whatever the scraper returned - a grep for `allowlist|trusted_domain|blocklist|blacklist` across the whole codebase returned nothing. See [[research/pipeline/RESEARCH-source-reliability-criteria]] for the broader curation-mechanism comparison.
+    Curation runs through `curator.py`, gated by `CURATE_SOURCES: False` in the default config, and is pure per-run LLM judgment over whatever the scraper returned - a grep for `allowlist|trusted_domain|blocklist|blacklist` across the whole codebase returned nothing. See [[research/pipeline/research-scope/RESEARCH-source-reliability-criteria]] for the broader curation-mechanism comparison.
     - `gpt_researcher/skills/curator.py:35-111`, `gpt_researcher/config/variables/default.py:17`, `gpt_researcher/skills/researcher.py:211-214`.
 
 20. **STORM discovers "perspectives" by asking the model to recall related topics, then generating one persona per angle** (confidence: high)
@@ -186,7 +186,7 @@ The three are complementary, not competing: PICOC-style facets can seed the *ini
 
 ## Follow-up Research - 2026-09-13
 
-Closes the gap named in [[research/pipeline/REVIEW-spec-023-research-consolidation]]: no round-one document addressed how a human's question outranks a spec's listed questions (SPEC-023 D-02, Needs). Four parallel passes: direct code reading of Co-STORM, GPT-Researcher's `multi_agents/` orchestrator, and LangChain Open Deep Research (continuing this document's own D-04 method); one pass on Google Gemini, OpenAI, and Perplexity's vendor documentation; one pass on the mixed-initiative and conversational-search literature; one pass on requirements-engineering prioritization and systematic-review protocol amendment rules.
+Closes the gap named in [[research/pipeline/research-scope/REVIEW-spec-023-research-consolidation]]: no round-one document addressed how a human's question outranks a spec's listed questions (SPEC-023 D-02, Needs). Four parallel passes: direct code reading of Co-STORM, GPT-Researcher's `multi_agents/` orchestrator, and LangChain Open Deep Research (continuing this document's own D-04 method); one pass on Google Gemini, OpenAI, and Perplexity's vendor documentation; one pass on the mixed-initiative and conversational-search literature; one pass on requirements-engineering prioritization and systematic-review protocol amendment rules.
 
 ### Open-source systems: the mechanism is structural, never a scored field
 
@@ -207,7 +207,7 @@ Closes the gap named in [[research/pipeline/REVIEW-spec-023-research-consolidati
     - `knowledge_storm/collaborative_storm/engine.py:245,408-423`
 
 36. **GPT-Researcher's `multi_agents/` orchestrator has a dedicated human-plan-review loop, undocumented by round one** (confidence: high)
-    `HumanAgent.review_plan()` presents the generated section outline to the human ("Any feedback on this plan of topics to research?") and blocks on a reply (console `input()` or a websocket message). Any non-empty, non-approval reply increments `plan_revision_count` and `route_human_feedback` returns `"revise"`, sending the plan back for regeneration; approval (`"no"`, matched by `is_human_plan_approval`) proceeds. This is a second, independent code precedent for a human's stated objection displacing the system's own plan - distinct from the style-guideline critique loop [[research/pipeline/RESEARCH-research-spawning-research]] E-15 already read in the same directory.
+    `HumanAgent.review_plan()` presents the generated section outline to the human ("Any feedback on this plan of topics to research?") and blocks on a reply (console `input()` or a websocket message). Any non-empty, non-approval reply increments `plan_revision_count` and `route_human_feedback` returns `"revise"`, sending the plan back for regeneration; approval (`"no"`, matched by `is_human_plan_approval`) proceeds. This is a second, independent code precedent for a human's stated objection displacing the system's own plan - distinct from the style-guideline critique loop [[research/pipeline/research-scope/RESEARCH-research-spawning-research]] E-15 already read in the same directory.
     - `multi_agents/agents/human.py:10-60`, `multi_agents/agents/plan_review.py:1-21`
 
 37. **The revision loop is bounded, and the bound is enforced against the human, not the system** (confidence: high)

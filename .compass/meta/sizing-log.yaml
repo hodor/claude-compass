@@ -335,3 +335,43 @@ log:
     by: agent
     at: 2026-11-24
     volatile: []
+  - id: sz-2026-11-26-1
+    action: decision
+    shape: domain
+    subject: "research/pipeline/control-loops"
+    reason: "research folder over the 12-item ceiling"
+    by: agent
+    at: 2026-11-26
+    volatile: []
+  - id: sz-2026-11-26-2
+    action: decision
+    shape: domain
+    subject: "research/pipeline/research-scope"
+    reason: "research folder over the 12-item ceiling"
+    by: agent
+    at: 2026-11-26
+    volatile: []
+  - id: sz-2026-11-26-3
+    action: decision
+    shape: domain
+    subject: "research/whole-overhead/real-projects"
+    reason: "research folder over the 12-item ceiling"
+    by: agent
+    at: 2026-11-26
+    volatile: []
+  - id: sz-2026-11-26-4
+    action: decision
+    shape: domain
+    subject: "research/whole-overhead/agent-context"
+    reason: "research folder over the 12-item ceiling"
+    by: agent
+    at: 2026-11-26
+    volatile: []
+  - id: sz-2026-11-26-5
+    action: decision
+    shape: domain
+    subject: "research/human-surface/mockups"
+    reason: "research folder over the 12-item ceiling"
+    by: agent
+    at: 2026-11-26
+    volatile: []

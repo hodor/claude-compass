@@ -8,7 +8,7 @@ tags: [compaction, probes, session-continuity, handoff, bench, kpi]
 summary: "Eight recorded compactions, two arms, 16 tool-less sessions: the host summary scores artifact recall 0.31, continuation 0.33, decision 0.67 and recall 0.00 against a floor of 0.00 everywhere; no reply failed to parse; artifact and continuation probes are frequent enough to compare arms, recall and decision are not"
 created: 2026-11-22
 updated: 2026-11-22
-depends_on: ["[[plans/PLAN-033-compaction-keeps-the-session-state]]", "[[research/pipeline/compaction-survival/RESEARCH-axis-4-probe-kpi]]"]
+depends_on: ["[[plans/pipeline/PLAN-033-compaction-keeps-the-session-state]]", "[[research/pipeline/compaction-survival/RESEARCH-axis-4-probe-kpi]]"]
 ---
 
 # Probe pilot: what the host summary keeps

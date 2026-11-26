@@ -5,7 +5,7 @@ status: complete
 confidence: low
 area: methodology
 tags: [terminal, cli, plain-language, mockup, human-surface, review]
-depends_on: ["[[PLAN-024-working-in-compass-is-visual]]", "[[research/human-surface/RESEARCH-plain-words-mockup]]", "[[specs/human-surface/SPEC-030-review-documents-open-in-obsidian]]", "[[specs/human-surface/SPEC-031-working-in-compass-is-visual]]"]
+depends_on: ["[[PLAN-024-working-in-compass-is-visual]]", "[[research/human-surface/mockups/RESEARCH-plain-words-mockup]]", "[[specs/human-surface/SPEC-030-review-documents-open-in-obsidian]]", "[[specs/human-surface/SPEC-031-working-in-compass-is-visual]]"]
 summary: "for ten moments of reading and approving specs, plans and research: what the person sees in the markdown editor and in the terminal, with line and byte counts against the old output"
 created: 2026-10-27
 updated: 2026-10-27
@@ -22,7 +22,7 @@ When a review surface is configured (Obsidian through the Compass Review plugin,
 
 The terminal carries the content as plain text, and gates go through `AskUserQuestion`, only when `compass review` answers `not configured`. That is the fallback, in its own part below.
 
-Each moment shows a real transcript line (before), what the editor carries, the one terminal line, and the fallback rewrite. Fallback rewrites use the words of [[research/human-surface/RESEARCH-plain-words-mockup]]: the title before the id, one fact per line, a choice as numbered options; the terminal is plain text with no color or symbols. This page belongs to [[specs/human-surface/SPEC-031-working-in-compass-is-visual]]. The word "wave" is written "stage" in every rewrite.
+Each moment shows a real transcript line (before), what the editor carries, the one terminal line, and the fallback rewrite. Fallback rewrites use the words of [[research/human-surface/mockups/RESEARCH-plain-words-mockup]]: the title before the id, one fact per line, a choice as numbered options; the terminal is plain text with no color or symbols. This page belongs to [[specs/human-surface/SPEC-031-working-in-compass-is-visual]]. The word "wave" is written "stage" in every rewrite.
 
 ## Counts
 

@@ -11,7 +11,7 @@ updated: 2026-11-05
 git_branch: "master"
 git_commit: "de37a02"
 author: "planner"
-depends_on: ["[[SPEC-027-compass-uses-fewer-tokens]]", "[[research/whole-overhead/REVIEW-agent-context-2026-11]]"]
+depends_on: ["[[SPEC-027-compass-uses-fewer-tokens]]", "[[research/whole-overhead/agent-context/REVIEW-agent-context-2026-11]]"]
 summary: "slim launched agents by design A: per-agent-type token measure and the initialPrompt check first, then a split obsidian skill and a start-here fix land after the pilot; the lessons skill stays until a paired run shows it can go"
 ---
 
@@ -59,7 +59,7 @@ Approved 2026-11-05 with these readings of the approved rulings: (1) the `obsidi
 
 ## Goal
 
-This plan implements [[SPEC-027-compass-uses-fewer-tokens]], the spec (what we need: Compass uses fewer tokens without losing quality), from the four approved rulings and the ranked changes of [[research/whole-overhead/REVIEW-agent-context-2026-11]]. A launched Compass agent today starts with about 39k tokens, 60% of them preloaded skill bodies; `obsidian` alone is 36.9k characters and is 44% to 57% of skill tokens. Design A cuts that with no hook: the always-loaded part of each skill holds only what every launch needs, and the rest sits in side files an agent reads when its task calls for them. Every change is judged by one number: weighted tokens per launched agent, per agent type, at equal task outcome, measured with `bench/overhead/token_profile.py` on builds the pilot harness runs.
+This plan implements [[SPEC-027-compass-uses-fewer-tokens]], the spec (what we need: Compass uses fewer tokens without losing quality), from the four approved rulings and the ranked changes of [[research/whole-overhead/agent-context/REVIEW-agent-context-2026-11]]. A launched Compass agent today starts with about 39k tokens, 60% of them preloaded skill bodies; `obsidian` alone is 36.9k characters and is 44% to 57% of skill tokens. Design A cuts that with no hook: the always-loaded part of each skill holds only what every launch needs, and the rest sits in side files an agent reads when its task calls for them. Every change is judged by one number: weighted tokens per launched agent, per agent type, at equal task outcome, measured with `bench/overhead/token_profile.py` on builds the pilot harness runs.
 
 ## The waves
 

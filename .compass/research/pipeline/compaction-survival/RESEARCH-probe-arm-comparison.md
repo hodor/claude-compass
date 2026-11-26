@@ -12,7 +12,7 @@ updated: 2026-11-24
 git_branch: "master"
 git_commit: "f2e2579"
 author: builder
-depends_on: ["[[plans/PLAN-033-compaction-keeps-the-session-state]]", "[[research/pipeline/compaction-survival/RESEARCH-probe-pilot]]"]
+depends_on: ["[[plans/pipeline/PLAN-033-compaction-keeps-the-session-state]]", "[[research/pipeline/compaction-survival/RESEARCH-probe-pilot]]"]
 ---
 
 # Probe arm comparison
@@ -171,7 +171,7 @@ The state block ends at the first section that does not fit its 7,900-character 
 
 ## Options for the next step
 
-The open steps of [[plans/PLAN-033-compaction-keeps-the-session-state]], in the recommended order:
+The open steps of [[plans/pipeline/PLAN-033-compaction-keeps-the-session-state]], in the recommended order:
 
 1. **Revise the state block (recommended first; not yet a task in the plan).** The block names edited files only when its size budget leaves room after the open tasks and decisions: 12 of 29 blocks end before the files section, and across all 29 the block lists 94 of the 583 files the questions expect. The block alone scores worse than the host summary on the pooled state score, and fixing the order or caps costs a rerun of two arms, no new arm.
 2. **The `before` arm, TASK-434 (recommended second).** The model holds the history itself, with no compaction, which gives the ceiling every other arm is read against; without it, 0.45 for the host summary has no frame.

@@ -15,7 +15,7 @@ summary: "ACM, DBLP, and Internet Archive Scholar refuse every scripted request;
 
 ## Problem
 
-Three sources on the curated list refuse every scripted request. ACM Digital Library challenges any non-browser client on every subdomain, even for open-access papers, and its terms ban scripted harvesting. DBLP and Internet Archive Scholar answer a JSON call with HTTP 200 and a bot-challenge page, so a status check reports them reachable when they are not. An agent using curl, WebFetch, or a client library never reads them, and a research run that lists them as sources silently covers less than it claims ([[research/pipeline/RESEARCH-source-inventory]], findings 40 to 53).
+Three sources on the curated list refuse every scripted request. ACM Digital Library challenges any non-browser client on every subdomain, even for open-access papers, and its terms ban scripted harvesting. DBLP and Internet Archive Scholar answer a JSON call with HTTP 200 and a bot-challenge page, so a status check reports them reachable when they are not. An agent using curl, WebFetch, or a client library never reads them, and a research run that lists them as sources silently covers less than it claims ([[research/pipeline/research-scope/RESEARCH-source-inventory]], findings 40 to 53).
 
 A real browser passes. The Claude in Chrome extension, driving the human's own Chrome, reached a full ACM article page logged out: abstract, references, cited-by. That path exists in the session and no research skill knows to use it.
 

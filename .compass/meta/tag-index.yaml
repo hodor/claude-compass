@@ -2,9 +2,10 @@
 # To merge / rename / retire tags, run /compass:consolidate.
 tags:
   ablation:
-  - plans/PLAN-036-verification-beyond-test-pass.md
+  - plans/pipeline/PLAN-036-verification-beyond-test-pass.md
   - research/pipeline/RESEARCH-evaluation-benchmarks.md
   - research/test-quality/beyond-test-pass/RESEARCH-change-ablation.md
+  - research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md
   - research/test-quality/beyond-test-pass/REVIEW-beyond-test-pass.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-3-part-by-part-rebaseline.md
   acceptance-criteria:
@@ -14,7 +15,7 @@ tags:
   ace:
   - research/learning/consolidation-from-sources/AXIS-1-consolidation-and-delta-edits.md
   acm:
-  - research/pipeline/REVIEW-spec-023-research-consolidation.md
+  - research/pipeline/research-scope/REVIEW-spec-023-research-consolidation.md
   - specs/pipeline/SPEC-024-walled-sources-through-the-browser.md
   active-tasks:
   - decisions/vault-structure/ADR-014-active-sweep-on-sync.md
@@ -34,6 +35,8 @@ tags:
   - lessons/pipeline/LESSON-adversarial-plan-review-before-build.md
   - lessons/test-quality/LESSON-test-delimited-blocks-with-the-delimiter-quoted.md
   - specs/pipeline/SPEC-013-test-quality.md
+  agent-context:
+  - research/whole-overhead/agent-context/index.md
   agent-instructions:
   - lessons/instructions/LESSON-threshold-in-prose-becomes-the-criterion.md
   agent-memory:
@@ -48,7 +51,7 @@ tags:
   agents:
   - research/llm-research/RESEARCH-llm-research-for-compass.md
   - research/rolling-wave/RESEARCH-rolling-wave-agent-planning.md
-  - research/whole-overhead/RESEARCH-axis-3-simulated-human.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-3-simulated-human.md
   agents-md:
   - research/llm-research/RESEARCH-axis-6-harness-engineering.md
   agile:
@@ -76,7 +79,7 @@ tags:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   - research/hermes/RESEARCH-hermes-skill-review-gate.md
-  - research/human-surface/RESEARCH-plugin-ui-mockup.md
+  - research/human-surface/mockups/RESEARCH-plugin-ui-mockup.md
   architecture:
   - specs/SPEC-001-compass-vision-and-architecture.md
   archive:
@@ -91,7 +94,7 @@ tags:
   ast:
   - plans/pipeline/PLAN-007-test-quality.md
   ast-grep:
-  - research/pipeline/RESEARCH-loop-ast-grep-rule-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-ast-grep-rule-experiment.md
   attribution:
   - research/learning/consolidation-from-sources/AXIS-3-lesson-track-record.md
   auto-maintenance:
@@ -129,18 +132,19 @@ tags:
   bayesian:
   - research/pipeline/RESEARCH-scientific-method-in-compass.md
   bench:
-  - plans/PLAN-034-checking-cost-follows-task-and-model.md
   - plans/tooling/PLAN-028-whole-overhead-on-real-projects.md
+  - plans/tooling/PLAN-034-checking-cost-follows-task-and-model.md
   - research/pipeline/compaction-survival/RESEARCH-axis-4-probe-kpi.md
   - research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison.md
   - research/pipeline/compaction-survival/RESEARCH-probe-pilot.md
   - research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-3-part-by-part-rebaseline.md
+  - research/whole-overhead/checking-cost/RESEARCH-checking-cost-pilot.md
   benchmarks:
   - research/llm-research/RESEARCH-axis-3-agent-memory.md
   - research/pipeline/RESEARCH-evaluation-benchmarks.md
   bibliographic-apis:
-  - research/pipeline/RESEARCH-source-inventory.md
+  - research/pipeline/research-scope/RESEARCH-source-inventory.md
   blinding:
   - lessons/experiments/LESSON-blind-the-author-in-self-validation.md
   bloat:
@@ -163,14 +167,14 @@ tags:
   briefs:
   - lessons/subagents/LESSON-research-briefs-forbid-local-paths.md
   - lessons/subagents/LESSON-researcher-briefs-demand-early-output-file.md
-  - research/whole-overhead/RESEARCH-agent-context-prior-art.md
+  - research/whole-overhead/agent-context/RESEARCH-agent-context-prior-art.md
   browser:
   - specs/pipeline/SPEC-024-walled-sources-through-the-browser.md
   budget:
   - lessons/pipeline/LESSON-subscription-cost-is-an-estimate-not-a-budget.md
   budgets:
   - plans/pipeline/PLAN-021-control-loops.md
-  - research/pipeline/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/control-loops/RESEARCH-control-theory-for-loops.md
   bug-reports:
   - lessons/test-quality/LESSON-revert-to-prove-a-regression-test.md
   build:
@@ -199,7 +203,7 @@ tags:
   call-sites:
   - lessons/verification/LESSON-verify-wiring-by-call-site-grep.md
   callouts:
-  - research/human-surface/RESEARCH-visual-documents-mockup.md
+  - research/human-surface/mockups/RESEARCH-visual-documents-mockup.md
   capture:
   - decisions/learning/ADR-013-detached-worker-quiet-fallback.md
   - decisions/learning/ADR-016-capture-by-extraction.md
@@ -235,7 +239,7 @@ tags:
   checking:
   - decisions/pipeline/ADR-024-difficulty-class-is-judged-not-scored.md
   ci:
-  - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-fresh-checkout-experiment.md
   clarity:
   - specs/human-surface/SPEC-029-questions-to-the-human-are-clear-and-visual.md
   class-here:
@@ -250,8 +254,8 @@ tags:
   - lessons/platform/LESSON-load-deferred-ask-tool-before-asking.md
   - research/llm-research/RESEARCH-axis-2-host-features.md
   - research/llm-research/RESEARCH-axis-2b-host-features-gap.md
-  - research/pipeline/RESEARCH-loop-caps-experiment.md
   - research/pipeline/compaction-survival/RESEARCH-axis-1-compaction-hooks.md
+  - research/pipeline/control-loops/RESEARCH-loop-caps-experiment.md
   - research/whole-overhead/prompt-cache/RESEARCH-prefix-break-isolated.md
   - research/whole-overhead/prompt-cache/RESEARCH-session-start-prefix.md
   cli:
@@ -281,9 +285,9 @@ tags:
   - research/distribution/RESEARCH-model-resolution-impl.md
   - research/distribution/RESEARCH-self-update-surfaces.md
   - research/human-surface/RESEARCH-plain-output-checks.md
-  - research/human-surface/RESEARCH-plain-words-mockup.md
-  - research/human-surface/RESEARCH-terminal-output-mockup.md
   - research/human-surface/RESEARCH-working-in-compass-is-visual.md
+  - research/human-surface/mockups/RESEARCH-plain-words-mockup.md
+  - research/human-surface/mockups/RESEARCH-terminal-output-mockup.md
   - research/pipeline/RESEARCH-decision-coverage-impl.md
   - research/test-quality/RESEARCH-test-quality-bar-validation.md
   - research/test-quality/RESEARCH-test-quality-empirical.md
@@ -295,10 +299,10 @@ tags:
   co-location:
   - specs/vault-structure/SPEC-010-universal-hybrid-hierarchy.md
   code-hosts:
-  - research/pipeline/RESEARCH-source-inventory.md
+  - research/pipeline/research-scope/RESEARCH-source-inventory.md
   code-reading:
   - lessons/verification/LESSON-verify-wiring-by-call-site-grep.md
-  - research/pipeline/RESEARCH-code-as-primary-source.md
+  - research/pipeline/research-scope/RESEARCH-code-as-primary-source.md
   code-sweep:
   - lessons/distribution/LESSON-sweep-misses-config-in-skill-prose.md
   codex:
@@ -310,7 +314,7 @@ tags:
   commit:
   - lessons/subagents/LESSON-parallel-builders-share-one-git-index.md
   compaction:
-  - plans/PLAN-033-compaction-keeps-the-session-state.md
+  - plans/pipeline/PLAN-033-compaction-keeps-the-session-state.md
   - research/llm-research/RESEARCH-axis-2-host-features.md
   - research/llm-research/RESEARCH-axis-3-agent-memory.md
   - research/llm-research/RESEARCH-axis-6-harness-engineering.md
@@ -323,7 +327,7 @@ tags:
   - research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md
   - research/pipeline/compaction-survival/REVIEW-compaction-survival.md
   - research/pipeline/compaction-survival/index.md
-  - research/whole-overhead/RESEARCH-agent-context-prior-art.md
+  - research/whole-overhead/agent-context/RESEARCH-agent-context-prior-art.md
   compass-cli:
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
   compass-fit:
@@ -331,7 +335,7 @@ tags:
   competitive:
   - research/distribution/RESEARCH-gsd-core-improvements-for-compass.md
   completeness-scoring:
-  - research/pipeline/REVIEW-spec-023-research-consolidation.md
+  - research/pipeline/research-scope/REVIEW-spec-023-research-consolidation.md
   compression:
   - lessons/verification/LESSON-verify-exactness-past-a-compressing-layer.md
   - research/hermes/RESEARCH-hermes-changes-since-july.md
@@ -365,7 +369,7 @@ tags:
   - research/learning/consolidation-from-sources/index.md
   - research/llm-research/RESEARCH-axis-3-agent-memory.md
   - research/methodology/PROPOSAL-hot-path-consolidation-2026-11.md
-  - research/pipeline/REVIEW-spec-023-research-consolidation.md
+  - research/pipeline/research-scope/REVIEW-spec-023-research-consolidation.md
   - specs/learning/SPEC-012-learning-loop/SPEC-002-consolidation-grounded-in-sources.md
   - specs/vault-structure/SPEC-022-vault-organized-per-domain.md
   containment:
@@ -376,9 +380,9 @@ tags:
   - plans/tooling/PLAN-029-crafted-agent-context.md
   - research/hermes/RESEARCH-hermes-launched-agent-context.md
   - research/llm-research/RESEARCH-axis-3-agent-memory.md
-  - research/whole-overhead/RESEARCH-compass-agent-context-measured.md
-  - research/whole-overhead/RESEARCH-compass-context-launcher-options.md
-  - research/whole-overhead/REVIEW-agent-context-2026-11.md
+  - research/whole-overhead/agent-context/RESEARCH-compass-agent-context-measured.md
+  - research/whole-overhead/agent-context/RESEARCH-compass-context-launcher-options.md
+  - research/whole-overhead/agent-context/REVIEW-agent-context-2026-11.md
   context-budget:
   - research/hermes/RESEARCH-hermes-memory-today.md
   context-compression:
@@ -387,21 +391,23 @@ tags:
   - research/llm-research/RESEARCH-axis-1-anthropic-engineering.md
   - research/llm-research/RESEARCH-axis-6-harness-engineering.md
   - research/rolling-wave/RESEARCH-rolling-wave-agent-planning.md
-  - research/whole-overhead/RESEARCH-agent-context-prior-art.md
+  - research/whole-overhead/agent-context/RESEARCH-agent-context-prior-art.md
   context-files:
   - research/llm-research/RESEARCH-axis-5-spec-driven-frameworks.md
   context-window:
-  - plans/PLAN-033-compaction-keeps-the-session-state.md
   - plans/pipeline/PLAN-019-stop-at-80-percent-context.md
+  - plans/pipeline/PLAN-033-compaction-keeps-the-session-state.md
   - research/learning/RESEARCH-clone-old-sessions.md
   - research/pipeline/RESEARCH-context-threshold-stop.md
   - research/pipeline/compaction-survival/RESEARCH-axis-2-masking-vs-summary.md
   - research/pipeline/compaction-survival/index.md
   - specs/learning/SPEC-022-clone-old-sessions.md
   - specs/pipeline/SPEC-025-stop-and-suggest-handoff-at-80-percent-context.md
+  control-loops:
+  - research/pipeline/control-loops/index.md
   control-theory:
   - plans/pipeline/PLAN-021-control-loops.md
-  - research/pipeline/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/control-loops/RESEARCH-control-theory-for-loops.md
   - specs/pipeline/SPEC-026-control-theory-for-loops.md
   converge:
   - research/test-quality/beyond-test-pass/RESEARCH-spec-conformance.md
@@ -409,8 +415,8 @@ tags:
   - research/hermes/REVIEW-hermes-skill-creation-2026-11.md
   - research/learning/consolidation-from-sources/REVIEW-consolidation-from-sources.md
   - research/llm-research/REVIEW-llm-research-for-compass.md
-  - research/pipeline/RESEARCH-control-theory-for-loops.md
-  - research/pipeline/REVIEW-spec-023-research-consolidation.md
+  - research/pipeline/control-loops/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/research-scope/REVIEW-spec-023-research-consolidation.md
   - research/test-quality/RESEARCH-test-quality-synthesis.md
   conversation-surface:
   - decisions/learning/ADR-013-detached-worker-quiet-fallback.md
@@ -423,26 +429,29 @@ tags:
   cost:
   - decisions/distribution/ADR-008-model-resolution-table.md
   - lessons/pipeline/LESSON-subscription-cost-is-an-estimate-not-a-budget.md
-  - plans/PLAN-034-checking-cost-follows-task-and-model.md
-  - plans/PLAN-035-prompt-cache-is-a-design-input.md
   - plans/distribution/PLAN-005-model-table.md
   - plans/tooling/PLAN-028-whole-overhead-on-real-projects.md
+  - plans/tooling/PLAN-034-checking-cost-follows-task-and-model.md
+  - plans/tooling/PLAN-035-prompt-cache-is-a-design-input.md
   - research/distribution/RESEARCH-model-resolution-impl.md
   - research/learning/consolidation-from-sources/AXIS-5-gap-pass.md
   - research/test-quality/beyond-test-pass/RESEARCH-integration-and-evidence.md
-  - research/whole-overhead/RESEARCH-whole-overhead-axes.md
-  - research/whole-overhead/REVIEW-whole-overhead.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-1-task-difficulty-signal.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-2-checking-station-cost.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-3-part-by-part-rebaseline.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-4-difficulty-keyed-checking-rule.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-5-gap-pass.md
+  - research/whole-overhead/checking-cost/RESEARCH-checking-cost-pilot.md
+  - research/whole-overhead/checking-cost/RESEARCH-letter-repeatability.md
   - research/whole-overhead/checking-cost/REVIEW-checking-cost.md
   - research/whole-overhead/checking-cost/index.md
   - research/whole-overhead/prompt-cache/RESEARCH-cache-baseline-measured.md
   - research/whole-overhead/prompt-cache/RESEARCH-cache-hit-baseline.md
+  - research/whole-overhead/prompt-cache/RESEARCH-subagent-ttl-ab.md
   - research/whole-overhead/prompt-cache/REVIEW-prompt-cache.md
   - research/whole-overhead/prompt-cache/index.md
+  - research/whole-overhead/real-projects/RESEARCH-whole-overhead-axes.md
+  - research/whole-overhead/real-projects/REVIEW-whole-overhead.md
   - specs/distribution/SPEC-008-central-model-resolution-table.md
   - specs/tooling/SPEC-027-compass-uses-fewer-tokens/SPEC-032-whole-overhead-measured-on-real-projects.md
   - specs/tooling/SPEC-027-compass-uses-fewer-tokens/SPEC-033-prompt-cache-is-a-design-input.md
@@ -465,7 +474,7 @@ tags:
   cron:
   - research/hermes/RESEARCH-hermes-launched-agent-context.md
   curation:
-  - research/pipeline/RESEARCH-source-reliability-criteria.md
+  - research/pipeline/research-scope/RESEARCH-source-reliability-criteria.md
   curator:
   - research/hermes/RESEARCH-hermes-changes-since-july.md
   - research/hermes/RESEARCH-hermes-fit-2026-11.md
@@ -511,9 +520,9 @@ tags:
   - handoffs/2026-03-12_23-50-59_session-3-skills-approved.md
   - lessons/subagents/LESSON-parallel-research-check-siblings-first.md
   deep-research:
-  - research/pipeline/RESEARCH-research-spawning-research.md
+  - research/pipeline/research-scope/RESEARCH-research-spawning-research.md
   deep-research-agents:
-  - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
+  - research/pipeline/research-scope/RESEARCH-scope-derivation-from-a-spec.md
   deepseek:
   - plans/distribution/PLAN-017-dsh-host-support.md
   - research/distribution/RESEARCH-deepseek-harness-fit.md
@@ -569,12 +578,12 @@ tags:
   - lessons/distribution/LESSON-self-update-silent-on-bad-repository-url.md
   - plans/distribution/PLAN-026-local-additions-tell-the-truth.md
   documentation-drift:
-  - research/pipeline/RESEARCH-code-as-primary-source.md
+  - research/pipeline/research-scope/RESEARCH-code-as-primary-source.md
   documents:
   - plans/human-surface/PLAN-024-working-in-compass-is-visual.md
   - research/human-surface/RESEARCH-plain-output-checks.md
-  - research/human-surface/RESEARCH-plain-words-mockup.md
-  - research/human-surface/RESEARCH-visual-documents-mockup.md
+  - research/human-surface/mockups/RESEARCH-plain-words-mockup.md
+  - research/human-surface/mockups/RESEARCH-visual-documents-mockup.md
   - specs/human-surface/SPEC-031-working-in-compass-is-visual.md
   domain:
   - decisions/distribution/index.md
@@ -637,7 +646,7 @@ tags:
   embeddings:
   - research/vault-structure/RESEARCH-rag-fit-for-large-vaults.md
   embeds:
-  - research/human-surface/RESEARCH-visual-documents-mockup.md
+  - research/human-surface/mockups/RESEARCH-visual-documents-mockup.md
   empirical:
   - lessons/experiments/LESSON-blind-the-author-in-self-validation.md
   - lessons/test-quality/LESSON-revert-to-prove-a-regression-test.md
@@ -661,22 +670,22 @@ tags:
   evidence:
   - lessons/experiments/LESSON-pin-the-motivating-datum.md
   - lessons/hooks/LESSON-hook-payloads-observe-before-coding.md
-  - plans/PLAN-036-verification-beyond-test-pass.md
+  - plans/pipeline/PLAN-036-verification-beyond-test-pass.md
   - research/test-quality/beyond-test-pass/RESEARCH-integration-and-evidence.md
   - research/test-quality/beyond-test-pass/REVIEW-beyond-test-pass.md
   exactness:
   - lessons/verification/LESSON-verify-exactness-past-a-compressing-layer.md
   experiment:
-  - research/pipeline/RESEARCH-loop-ast-grep-rule-experiment.md
-  - research/pipeline/RESEARCH-loop-caps-experiment.md
-  - research/pipeline/RESEARCH-loop-judge-sensor-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-ast-grep-rule-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-caps-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-judge-sensor-experiment.md
   - research/vault-structure/RESEARCH-grep-vs-graph-experiment.md
   experiments:
   - lessons/experiments/LESSON-blind-the-author-in-self-validation.md
   - lessons/experiments/LESSON-deterministic-fixtures-survive-scratch-wipes.md
   - lessons/experiments/index.md
   extension:
-  - research/human-surface/RESEARCH-vscode-review-mockup.md
+  - research/human-surface/mockups/RESEARCH-vscode-review-mockup.md
   extension-surface:
   - research/hermes/RESEARCH-hermes-agent-capabilities.md
   faceted:
@@ -701,7 +710,7 @@ tags:
   - research/test-quality/RESEARCH-test-quality-literature.md
   feedback:
   - plans/pipeline/PLAN-021-control-loops.md
-  - research/pipeline/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/control-loops/RESEARCH-control-theory-for-loops.md
   - specs/learning/SPEC-029-human-verdicts-reach-compass.md
   - specs/pipeline/SPEC-026-control-theory-for-loops.md
   feedback-loop:
@@ -723,7 +732,7 @@ tags:
   flow-control:
   - lessons/pipeline/LESSON-subscription-cost-is-an-estimate-not-a-budget.md
   - plans/pipeline/PLAN-021-control-loops.md
-  - research/pipeline/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/control-loops/RESEARCH-control-theory-for-loops.md
   focus:
   - research/human-surface/RESEARCH-review-in-obsidian.md
   folder-spec:
@@ -744,12 +753,12 @@ tags:
   frameworks:
   - research/llm-research/RESEARCH-axis-5-spec-driven-frameworks.md
   fresh-checkout:
-  - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-fresh-checkout-experiment.md
   frontmatter:
   - research/vault-structure/RESEARCH-okf-improvements-for-compass.md
   fsm:
   - plans/pipeline/PLAN-021-control-loops.md
-  - research/pipeline/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/control-loops/RESEARCH-control-theory-for-loops.md
   gates:
   - decisions/pipeline/ADR-007-decision-coverage-mechanism.md
   - lessons/platform/LESSON-load-deferred-ask-tool-before-asking.md
@@ -767,13 +776,13 @@ tags:
   git-hooks:
   - loops/LOOP-002-no-private-data/index.md
   git-status:
-  - plans/PLAN-035-prompt-cache-is-a-design-input.md
+  - plans/tooling/PLAN-035-prompt-cache-is-a-design-input.md
   - research/whole-overhead/prompt-cache/RESEARCH-cache-baseline-measured.md
   - research/whole-overhead/prompt-cache/RESEARCH-prefix-break-isolated.md
   - research/whole-overhead/prompt-cache/RESEARCH-session-start-prefix.md
   - research/whole-overhead/prompt-cache/REVIEW-prompt-cache.md
   github-actions:
-  - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-fresh-checkout-experiment.md
   goal:
   - research/llm-research/RESEARCH-axis-2b-host-features-gap.md
   goodhart:
@@ -791,13 +800,13 @@ tags:
   grep:
   - research/vault-structure/RESEARCH-grep-vs-graph-experiment.md
   grey-literature:
-  - research/pipeline/RESEARCH-research-methodologies-catalog.md
+  - research/pipeline/research-scope/RESEARCH-research-methodologies-catalog.md
   gsd:
   - research/distribution/RESEARCH-gsd-core-improvements-for-compass.md
   - research/pipeline/RESEARCH-decision-coverage-impl.md
   guard:
-  - research/pipeline/RESEARCH-control-theory-for-loops.md
-  - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
+  - research/pipeline/control-loops/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/control-loops/RESEARCH-loop-fresh-checkout-experiment.md
   guards:
   - research/hermes/RESEARCH-hermes-skill-safety.md
   handoff:
@@ -812,8 +821,8 @@ tags:
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_16-47-06_wave1-tree-uncommitted.md
   - handoffs/PLAN-016-domain-taxonomy/2026-08-30_17-31-12_v0.16-vault-migrated.md
   - handoffs/PLAN-017-dsh-host-support/2026-09-05_21-30-00_wave6-zero-decision-queued.md
-  - plans/PLAN-033-compaction-keeps-the-session-state.md
   - plans/pipeline/PLAN-019-stop-at-80-percent-context.md
+  - plans/pipeline/PLAN-033-compaction-keeps-the-session-state.md
   - research/llm-research/RESEARCH-axis-4-multi-agent-verification.md
   - research/pipeline/RESEARCH-context-threshold-stop.md
   - research/pipeline/compaction-survival/RESEARCH-axis-2-masking-vs-summary.md
@@ -824,12 +833,12 @@ tags:
   - research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md
   - research/pipeline/compaction-survival/REVIEW-compaction-survival.md
   - research/pipeline/compaction-survival/index.md
-  - research/whole-overhead/RESEARCH-agent-context-prior-art.md
+  - research/whole-overhead/agent-context/RESEARCH-agent-context-prior-art.md
   - specs/pipeline/SPEC-025-stop-and-suggest-handoff-at-80-percent-context.md
   harness:
   - decisions/pipeline/ADR-024-difficulty-class-is-judged-not-scored.md
   - decisions/vault-structure/ADR-011-sizing-is-a-procedure-not-a-score.md
-  - plans/PLAN-034-checking-cost-follows-task-and-model.md
+  - plans/tooling/PLAN-034-checking-cost-follows-task-and-model.md
   - plans/vault-structure/PLAN-009-sizing-mechanism.md
   - research/distribution/RESEARCH-model-resolution-impl.md
   - research/llm-research/RESEARCH-axis-1-anthropic-engineering.md
@@ -875,7 +884,7 @@ tags:
   - research/hermes/RESEARCH-hermes-skill-safety.md
   - research/hermes/RESEARCH-hermes-vs-compass-fit.md
   - research/hermes/REVIEW-hermes-skill-creation-2026-11.md
-  - research/whole-overhead/REVIEW-agent-context-2026-11.md
+  - research/whole-overhead/agent-context/REVIEW-agent-context-2026-11.md
   hierarchical-placement:
   - lessons/vault-structure/LESSON-hierarchical-placement-tolerate-disagreement.md
   hierarchical-specs:
@@ -917,12 +926,12 @@ tags:
   - lessons/hooks/LESSON-plugin-dir-plus-setup-double-registers-hooks.md
   - lessons/hooks/index.md
   - lessons/vault-structure/LESSON-scratch-vaults-need-compass-dir.md
-  - plans/PLAN-033-compaction-keeps-the-session-state.md
   - plans/distribution/PLAN-012-self-update.md
   - plans/distribution/PLAN-017-dsh-host-support.md
   - plans/learning/PLAN-001-lessons-and-index-implementation.md
   - plans/learning/PLAN-006-learning-loop.md
   - plans/pipeline/PLAN-019-stop-at-80-percent-context.md
+  - plans/pipeline/PLAN-033-compaction-keeps-the-session-state.md
   - plans/tooling/PLAN-010-invisible-capture.md
   - research/distribution/RESEARCH-deepseek-harness-fit.md
   - research/distribution/RESEARCH-dsh-live-probes.md
@@ -933,14 +942,14 @@ tags:
   - research/llm-research/RESEARCH-axis-2-host-features.md
   - research/llm-research/RESEARCH-axis-2b-host-features-gap.md
   - research/pipeline/RESEARCH-context-threshold-stop.md
-  - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
   - research/pipeline/compaction-survival/RESEARCH-axis-1-compaction-hooks.md
   - research/pipeline/compaction-survival/RESEARCH-axis-2-masking-vs-summary.md
   - research/pipeline/compaction-survival/RESEARCH-axis-3-mechanical-state.md
   - research/pipeline/compaction-survival/REVIEW-compaction-survival.md
   - research/pipeline/compaction-survival/index.md
+  - research/pipeline/control-loops/RESEARCH-loop-fresh-checkout-experiment.md
   - research/vault-structure/RESEARCH-active-set-prior-art.md
-  - research/whole-overhead/RESEARCH-compass-context-launcher-options.md
+  - research/whole-overhead/agent-context/RESEARCH-compass-context-launcher-options.md
   - specs/distribution/SPEC-020-compass-updates-itself.md
   - specs/learning/SPEC-002-lessons-and-index-subsystem.md
   - specs/pipeline/SPEC-025-stop-and-suggest-handoff-at-80-percent-context.md
@@ -990,31 +999,31 @@ tags:
   - plans/human-surface/PLAN-022-review-in-obsidian.md
   - plans/human-surface/PLAN-027-numbered-choices.md
   - research/human-surface/RESEARCH-review-in-obsidian.md
-  - research/human-surface/RESEARCH-review-mockup.md
+  - research/human-surface/mockups/RESEARCH-review-mockup.md
   - specs/human-surface/SPEC-029-questions-to-the-human-are-clear-and-visual.md
   - specs/human-surface/SPEC-030-review-documents-open-in-obsidian.md
   human-practice:
   - lessons/experiments/LESSON-human-practice-rationing-assumes-human-scarcity.md
   human-priority:
-  - research/pipeline/REVIEW-spec-023-research-consolidation.md
+  - research/pipeline/research-scope/REVIEW-spec-023-research-consolidation.md
   human-surface:
   - plans/human-surface/PLAN-024-working-in-compass-is-visual.md
   - plans/human-surface/PLAN-025-review-across-files-and-sessions.md
   - plans/human-surface/PLAN-031-screenplays-in-the-vault.md
   - plans/human-surface/index.md
   - research/human-surface/RESEARCH-plain-output-checks.md
-  - research/human-surface/RESEARCH-plain-words-mockup.md
-  - research/human-surface/RESEARCH-plugin-ui-mockup.md
   - research/human-surface/RESEARCH-review-across-files-and-sessions.md
   - research/human-surface/RESEARCH-review-live-checks.md
-  - research/human-surface/RESEARCH-review-panel-mockup.md
   - research/human-surface/RESEARCH-screenplays-in-the-vault.md
-  - research/human-surface/RESEARCH-terminal-output-mockup.md
-  - research/human-surface/RESEARCH-visual-documents-mockup.md
   - research/human-surface/RESEARCH-visual-trials-in-obsidian.md
-  - research/human-surface/RESEARCH-vscode-review-mockup.md
   - research/human-surface/RESEARCH-working-in-compass-is-visual.md
   - research/human-surface/index.md
+  - research/human-surface/mockups/RESEARCH-plain-words-mockup.md
+  - research/human-surface/mockups/RESEARCH-plugin-ui-mockup.md
+  - research/human-surface/mockups/RESEARCH-review-panel-mockup.md
+  - research/human-surface/mockups/RESEARCH-terminal-output-mockup.md
+  - research/human-surface/mockups/RESEARCH-visual-documents-mockup.md
+  - research/human-surface/mockups/RESEARCH-vscode-review-mockup.md
   - specs/human-surface/SPEC-032-screenplays-in-the-vault.md
   - specs/human-surface/index.md
   human-voice:
@@ -1023,7 +1032,7 @@ tags:
   - lessons/pipeline/LESSON-stated-definitions-are-not-research-axes.md
   humanlayer:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
-  - research/pipeline/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/control-loops/RESEARCH-control-theory-for-loops.md
   humans-words:
   - handoffs/2026-08-29_20-30-00_five-releases-queue-at-human-gates.md
   hybrid:
@@ -1067,7 +1076,7 @@ tags:
   indexes:
   - lessons/vault-structure/index.md
   initialprompt:
-  - research/whole-overhead/RESEARCH-initialprompt-in-subagents.md
+  - research/whole-overhead/agent-context/RESEARCH-initialprompt-in-subagents.md
   install:
   - decisions/distribution/index.md
   - plans/human-surface/PLAN-031-screenplays-in-the-vault.md
@@ -1097,17 +1106,17 @@ tags:
   issues:
   - handoffs/2026-10-29_09-30-00_issues-then-loops-then-workflow-spec.md
   iteration:
-  - research/pipeline/RESEARCH-research-spawning-research.md
+  - research/pipeline/research-scope/RESEARCH-research-spawning-research.md
   jargon:
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   - plans/human-surface/PLAN-024-working-in-compass-is-visual.md
-  - research/human-surface/RESEARCH-plain-words-mockup.md
   - research/human-surface/RESEARCH-working-in-compass-is-visual.md
+  - research/human-surface/mockups/RESEARCH-plain-words-mockup.md
   - specs/human-surface/SPEC-031-working-in-compass-is-visual.md
   jit:
   - decisions/vault-structure/ADR-003-drop-counter-file-jit-compute.md
   judge:
-  - research/pipeline/RESEARCH-loop-judge-sensor-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-judge-sensor-experiment.md
   kanban:
   - research/rolling-wave/RESEARCH-rolling-wave-software-practice.md
   kernel:
@@ -1132,8 +1141,8 @@ tags:
   large-vault:
   - research/vault-structure/RESEARCH-rag-fit-for-large-vaults.md
   launcher:
-  - research/whole-overhead/RESEARCH-compass-context-launcher-options.md
-  - research/whole-overhead/REVIEW-agent-context-2026-11.md
+  - research/whole-overhead/agent-context/RESEARCH-compass-context-launcher-options.md
+  - research/whole-overhead/agent-context/REVIEW-agent-context-2026-11.md
   layout:
   - lessons/test-quality/LESSON-vendored-test-suite-must-be-layout-aware.md
   lean:
@@ -1214,9 +1223,9 @@ tags:
   llm-as-judge:
   - research/llm-research/RESEARCH-axis-4-multi-agent-verification.md
   llm-judge:
-  - research/pipeline/RESEARCH-control-theory-for-loops.md
-  - research/pipeline/RESEARCH-loop-judge-sensor-experiment.md
   - research/pipeline/compaction-survival/RESEARCH-axis-4-probe-kpi.md
+  - research/pipeline/control-loops/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/control-loops/RESEARCH-loop-judge-sensor-experiment.md
   llm-research:
   - research/llm-research/RESEARCH-axis-3-agent-memory.md
   - research/llm-research/REVIEW-llm-research-for-compass.md
@@ -1239,14 +1248,14 @@ tags:
   - lessons/pipeline/LESSON-subscription-cost-is-an-estimate-not-a-budget.md
   - plans/pipeline/PLAN-021-control-loops.md
   - plans/tooling/PLAN-028-whole-overhead-on-real-projects.md
-  - research/pipeline/RESEARCH-control-theory-for-loops.md
-  - research/pipeline/RESEARCH-loop-ast-grep-rule-experiment.md
-  - research/pipeline/RESEARCH-loop-caps-experiment.md
-  - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
-  - research/pipeline/RESEARCH-loop-judge-sensor-experiment.md
-  - research/whole-overhead/RESEARCH-axis-7-optimization-loop.md
-  - research/whole-overhead/RESEARCH-whole-overhead-axes.md
-  - research/whole-overhead/REVIEW-whole-overhead.md
+  - research/pipeline/control-loops/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/control-loops/RESEARCH-loop-ast-grep-rule-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-caps-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-fresh-checkout-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-judge-sensor-experiment.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-7-optimization-loop.md
+  - research/whole-overhead/real-projects/RESEARCH-whole-overhead-axes.md
+  - research/whole-overhead/real-projects/REVIEW-whole-overhead.md
   - specs/learning/SPEC-028-agent-memory-is-good-enough.md
   - specs/pipeline/SPEC-026-control-theory-for-loops.md
   - specs/pipeline/SPEC-030-a-loop-moves-specs-through-the-pipeline.md
@@ -1256,12 +1265,12 @@ tags:
   lost-in-the-middle:
   - research/vault-structure/RESEARCH-hierarchical-knowledge-base-design.md
   majority-vote:
-  - research/pipeline/RESEARCH-loop-judge-sensor-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-judge-sensor-experiment.md
   manual-verification:
   - lessons/pipeline/LESSON-manual-verification-is-judgment-only.md
   - research/llm-research/RESULTS-wave-1-checks.md
   mapping-study:
-  - research/pipeline/RESEARCH-research-methodologies-catalog.md
+  - research/pipeline/research-scope/RESEARCH-research-methodologies-catalog.md
   markdown:
   - specs/human-surface/SPEC-031-working-in-compass-is-visual.md
   markers:
@@ -1270,14 +1279,14 @@ tags:
   materializers:
   - plans/distribution/PLAN-017-dsh-host-support.md
   max-budget-usd:
-  - research/pipeline/RESEARCH-loop-caps-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-caps-experiment.md
   max-turns:
-  - research/pipeline/RESEARCH-loop-caps-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-caps-experiment.md
   maya:
-  - research/pipeline/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/control-loops/RESEARCH-control-theory-for-loops.md
   mcp:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
-  - research/pipeline/RESEARCH-code-as-primary-source.md
+  - research/pipeline/research-scope/RESEARCH-code-as-primary-source.md
   mcp-rejected:
   - compass-cli/decisions/ADR-005-compass-cli-for-mechanical-work.md
   md-editor:
@@ -1289,29 +1298,20 @@ tags:
   - lessons/experiments/LESSON-blind-the-author-in-self-validation.md
   - lessons/experiments/index.md
   - lessons/pipeline/LESSON-adversarial-plan-review-before-build.md
-  - plans/PLAN-034-checking-cost-follows-task-and-model.md
-  - plans/PLAN-035-prompt-cache-is-a-design-input.md
   - plans/tooling/PLAN-028-whole-overhead-on-real-projects.md
   - plans/tooling/PLAN-029-crafted-agent-context.md
+  - plans/tooling/PLAN-034-checking-cost-follows-task-and-model.md
+  - plans/tooling/PLAN-035-prompt-cache-is-a-design-input.md
   - plans/vault-structure/PLAN-016-domain-taxonomy.md
   - research/test-quality/index.md
-  - research/whole-overhead/RESEARCH-agent-context-prior-art.md
-  - research/whole-overhead/RESEARCH-axis-1-session-records.md
-  - research/whole-overhead/RESEARCH-axis-2-attribution.md
-  - research/whole-overhead/RESEARCH-axis-3-simulated-human.md
-  - research/whole-overhead/RESEARCH-axis-4-topics-and-sample-size.md
-  - research/whole-overhead/RESEARCH-axis-5-sandbox-and-privacy.md
-  - research/whole-overhead/RESEARCH-axis-6-build-success.md
-  - research/whole-overhead/RESEARCH-axis-8-gap-pass.md
-  - research/whole-overhead/RESEARCH-compass-agent-context-measured.md
-  - research/whole-overhead/RESEARCH-initialprompt-in-subagents.md
-  - research/whole-overhead/RESEARCH-whole-overhead-axes.md
-  - research/whole-overhead/RESEARCH-whole-overhead-pilot-run-1.md
-  - research/whole-overhead/RESEARCH-whole-overhead-pilot.md
-  - research/whole-overhead/REVIEW-whole-overhead.md
+  - research/whole-overhead/agent-context/RESEARCH-agent-context-prior-art.md
+  - research/whole-overhead/agent-context/RESEARCH-compass-agent-context-measured.md
+  - research/whole-overhead/agent-context/RESEARCH-initialprompt-in-subagents.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-2-checking-station-cost.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-3-part-by-part-rebaseline.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-5-gap-pass.md
+  - research/whole-overhead/checking-cost/RESEARCH-checking-cost-pilot.md
+  - research/whole-overhead/checking-cost/RESEARCH-letter-repeatability.md
   - research/whole-overhead/checking-cost/REVIEW-checking-cost.md
   - research/whole-overhead/checking-cost/index.md
   - research/whole-overhead/prompt-cache/RESEARCH-cache-baseline-measured.md
@@ -1319,8 +1319,20 @@ tags:
   - research/whole-overhead/prompt-cache/RESEARCH-cache-ttl-subagents-loops.md
   - research/whole-overhead/prompt-cache/RESEARCH-prefix-break-isolated.md
   - research/whole-overhead/prompt-cache/RESEARCH-session-start-prefix.md
+  - research/whole-overhead/prompt-cache/RESEARCH-subagent-ttl-ab.md
   - research/whole-overhead/prompt-cache/REVIEW-prompt-cache.md
   - research/whole-overhead/prompt-cache/index.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-1-session-records.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-2-attribution.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-3-simulated-human.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-4-topics-and-sample-size.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-5-sandbox-and-privacy.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-6-build-success.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-8-gap-pass.md
+  - research/whole-overhead/real-projects/RESEARCH-whole-overhead-axes.md
+  - research/whole-overhead/real-projects/RESEARCH-whole-overhead-pilot-run-1.md
+  - research/whole-overhead/real-projects/RESEARCH-whole-overhead-pilot.md
+  - research/whole-overhead/real-projects/REVIEW-whole-overhead.md
   - specs/learning/SPEC-028-agent-memory-is-good-enough.md
   - specs/pipeline/SPEC-031-a-loop-improves-spec-quality.md
   - specs/tooling/SPEC-027-compass-uses-fewer-tokens/SPEC-032-whole-overhead-measured-on-real-projects.md
@@ -1347,26 +1359,26 @@ tags:
   - research/llm-research/RESEARCH-llm-research-for-compass.md
   - research/llm-research/REVIEW-llm-research-for-compass.md
   - research/vault-structure/index.md
-  - research/whole-overhead/REVIEW-agent-context-2026-11.md
+  - research/whole-overhead/agent-context/REVIEW-agent-context-2026-11.md
   - specs/learning/SPEC-002-lessons-and-index-subsystem.md
   - specs/learning/SPEC-012-learning-loop/SPEC-002-consolidation-grounded-in-sources.md
   - specs/learning/SPEC-028-agent-memory-is-good-enough.md
   - specs/vault-structure/index.md
   mermaid:
-  - research/human-surface/RESEARCH-visual-documents-mockup.md
   - research/human-surface/RESEARCH-visual-trials-in-obsidian.md
+  - research/human-surface/mockups/RESEARCH-visual-documents-mockup.md
   methodology:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
   - decisions/pipeline/index.md
   - lessons/subagents/LESSON-parallel-research-check-siblings-first.md
   - plans/pipeline/PLAN-018-research-covers-the-whole-spec.md
-  - research/pipeline/RESEARCH-code-as-primary-source.md
-  - research/pipeline/RESEARCH-research-methodologies-catalog.md
-  - research/pipeline/RESEARCH-research-spawning-research.md
-  - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
-  - research/pipeline/RESEARCH-source-inventory.md
-  - research/pipeline/RESEARCH-source-reliability-criteria.md
-  - research/pipeline/REVIEW-spec-023-research-consolidation.md
+  - research/pipeline/research-scope/RESEARCH-code-as-primary-source.md
+  - research/pipeline/research-scope/RESEARCH-research-methodologies-catalog.md
+  - research/pipeline/research-scope/RESEARCH-research-spawning-research.md
+  - research/pipeline/research-scope/RESEARCH-scope-derivation-from-a-spec.md
+  - research/pipeline/research-scope/RESEARCH-source-inventory.md
+  - research/pipeline/research-scope/RESEARCH-source-reliability-criteria.md
+  - research/pipeline/research-scope/REVIEW-spec-023-research-consolidation.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
   - specs/pipeline/index.md
   methodology-layer:
@@ -1384,15 +1396,17 @@ tags:
   mockup:
   - lessons/pipeline/LESSON-ui-change-needs-agreed-mockup-before-build.md
   - plans/human-surface/PLAN-024-working-in-compass-is-visual.md
-  - research/human-surface/RESEARCH-plain-words-mockup.md
-  - research/human-surface/RESEARCH-plugin-ui-mockup.md
-  - research/human-surface/RESEARCH-review-mockup.md
-  - research/human-surface/RESEARCH-review-panel-mockup.md
-  - research/human-surface/RESEARCH-terminal-output-mockup.md
-  - research/human-surface/RESEARCH-visual-documents-mockup.md
-  - research/human-surface/RESEARCH-vscode-review-mockup.md
+  - research/human-surface/mockups/RESEARCH-plain-words-mockup.md
+  - research/human-surface/mockups/RESEARCH-plugin-ui-mockup.md
+  - research/human-surface/mockups/RESEARCH-review-mockup.md
+  - research/human-surface/mockups/RESEARCH-review-panel-mockup.md
+  - research/human-surface/mockups/RESEARCH-terminal-output-mockup.md
+  - research/human-surface/mockups/RESEARCH-visual-documents-mockup.md
+  - research/human-surface/mockups/RESEARCH-vscode-review-mockup.md
+  mockups:
+  - research/human-surface/mockups/index.md
   model-family:
-  - plans/PLAN-036-verification-beyond-test-pass.md
+  - plans/pipeline/PLAN-036-verification-beyond-test-pass.md
   - research/test-quality/beyond-test-pass/RESEARCH-integration-and-evidence.md
   - research/test-quality/beyond-test-pass/REVIEW-beyond-test-pass.md
   model-policy:
@@ -1401,9 +1415,10 @@ tags:
   - research/distribution/RESEARCH-model-resolution-impl.md
   - specs/distribution/SPEC-008-central-model-resolution-table.md
   models:
-  - plans/PLAN-034-checking-cost-follows-task-and-model.md
+  - plans/tooling/PLAN-034-checking-cost-follows-task-and-model.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-1-task-difficulty-signal.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-4-difficulty-keyed-checking-rule.md
+  - research/whole-overhead/checking-cost/RESEARCH-letter-repeatability.md
   - research/whole-overhead/checking-cost/REVIEW-checking-cost.md
   - research/whole-overhead/checking-cost/index.md
   - specs/tooling/SPEC-027-compass-uses-fewer-tokens/SPEC-034-checking-cost-follows-task-and-model.md
@@ -1413,7 +1428,7 @@ tags:
   - research/llm-research/RESEARCH-axis-1-anthropic-engineering.md
   - research/llm-research/RESEARCH-axis-4-multi-agent-verification.md
   - research/llm-research/RESEARCH-llm-research-for-compass.md
-  - research/pipeline/RESEARCH-research-spawning-research.md
+  - research/pipeline/research-scope/RESEARCH-research-spawning-research.md
   multi-file:
   - plans/human-surface/PLAN-025-review-across-files-and-sessions.md
   - research/human-surface/RESEARCH-review-across-files-and-sessions.md
@@ -1465,15 +1480,15 @@ tags:
   - plans/human-surface/PLAN-025-review-across-files-and-sessions.md
   - plans/human-surface/PLAN-031-screenplays-in-the-vault.md
   - plans/learning/PLAN-030-ideas-keep-their-status.md
-  - research/human-surface/RESEARCH-plugin-ui-mockup.md
   - research/human-surface/RESEARCH-review-across-files-and-sessions.md
   - research/human-surface/RESEARCH-review-in-obsidian.md
   - research/human-surface/RESEARCH-review-live-checks.md
-  - research/human-surface/RESEARCH-review-mockup.md
-  - research/human-surface/RESEARCH-review-panel-mockup.md
   - research/human-surface/RESEARCH-screenplays-in-the-vault.md
   - research/human-surface/RESEARCH-visual-trials-in-obsidian.md
   - research/human-surface/RESEARCH-working-in-compass-is-visual.md
+  - research/human-surface/mockups/RESEARCH-plugin-ui-mockup.md
+  - research/human-surface/mockups/RESEARCH-review-mockup.md
+  - research/human-surface/mockups/RESEARCH-review-panel-mockup.md
   - specs/human-surface/SPEC-030-review-documents-open-in-obsidian.md
   - specs/human-surface/SPEC-031-working-in-compass-is-visual.md
   - specs/human-surface/SPEC-032-screenplays-in-the-vault.md
@@ -1506,12 +1521,12 @@ tags:
   - lessons/subagents/LESSON-researcher-briefs-demand-early-output-file.md
   overhead:
   - plans/tooling/PLAN-029-crafted-agent-context.md
-  - research/whole-overhead/RESEARCH-compass-agent-context-measured.md
-  - research/whole-overhead/RESEARCH-compass-context-launcher-options.md
-  - research/whole-overhead/RESEARCH-initialprompt-in-subagents.md
-  - research/whole-overhead/RESEARCH-whole-overhead-pilot-run-1.md
-  - research/whole-overhead/RESEARCH-whole-overhead-pilot.md
-  - research/whole-overhead/REVIEW-agent-context-2026-11.md
+  - research/whole-overhead/agent-context/RESEARCH-compass-agent-context-measured.md
+  - research/whole-overhead/agent-context/RESEARCH-compass-context-launcher-options.md
+  - research/whole-overhead/agent-context/RESEARCH-initialprompt-in-subagents.md
+  - research/whole-overhead/agent-context/REVIEW-agent-context-2026-11.md
+  - research/whole-overhead/real-projects/RESEARCH-whole-overhead-pilot-run-1.md
+  - research/whole-overhead/real-projects/RESEARCH-whole-overhead-pilot.md
   overlays:
   - decisions/distribution/ADR-020-local-overlays-appended-after-refresh.md
   - plans/distribution/PLAN-026-local-additions-tell-the-truth.md
@@ -1550,19 +1565,19 @@ tags:
   phases:
   - specs/pipeline/SPEC-009-configurable-pipeline-workflows.md
   pilot:
-  - research/whole-overhead/RESEARCH-whole-overhead-pilot-run-1.md
-  - research/whole-overhead/RESEARCH-whole-overhead-pilot.md
+  - research/whole-overhead/real-projects/RESEARCH-whole-overhead-pilot-run-1.md
+  - research/whole-overhead/real-projects/RESEARCH-whole-overhead-pilot.md
   pipeline:
   - lessons/pipeline/index.md
   - plans/pipeline/PLAN-018-research-covers-the-whole-spec.md
   - plans/pipeline/index.md
-  - research/pipeline/RESEARCH-research-methodologies-catalog.md
-  - research/pipeline/RESEARCH-research-spawning-research.md
-  - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
-  - research/pipeline/RESEARCH-source-inventory.md
-  - research/pipeline/RESEARCH-source-reliability-criteria.md
-  - research/pipeline/REVIEW-spec-023-research-consolidation.md
   - research/pipeline/index.md
+  - research/pipeline/research-scope/RESEARCH-research-methodologies-catalog.md
+  - research/pipeline/research-scope/RESEARCH-research-spawning-research.md
+  - research/pipeline/research-scope/RESEARCH-scope-derivation-from-a-spec.md
+  - research/pipeline/research-scope/RESEARCH-source-inventory.md
+  - research/pipeline/research-scope/RESEARCH-source-reliability-criteria.md
+  - research/pipeline/research-scope/REVIEW-spec-023-research-consolidation.md
   - specs/pipeline/SPEC-009-configurable-pipeline-workflows.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
   - specs/pipeline/SPEC-030-a-loop-moves-specs-through-the-pipeline.md
@@ -1575,9 +1590,9 @@ tags:
   plain-language:
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md
   - research/human-surface/RESEARCH-plain-output-checks.md
-  - research/human-surface/RESEARCH-plain-words-mockup.md
-  - research/human-surface/RESEARCH-terminal-output-mockup.md
   - research/human-surface/RESEARCH-working-in-compass-is-visual.md
+  - research/human-surface/mockups/RESEARCH-plain-words-mockup.md
+  - research/human-surface/mockups/RESEARCH-terminal-output-mockup.md
   plan-approval:
   - lessons/pipeline/LESSON-ui-change-needs-agreed-mockup-before-build.md
   - research/rolling-wave/RESEARCH-rolling-wave-software-practice.md
@@ -1607,9 +1622,9 @@ tags:
   - lessons/platform/index.md
   plugin:
   - plans/human-surface/PLAN-022-review-in-obsidian.md
-  - research/human-surface/RESEARCH-plugin-ui-mockup.md
   - research/human-surface/RESEARCH-review-in-obsidian.md
-  - research/human-surface/RESEARCH-review-panel-mockup.md
+  - research/human-surface/mockups/RESEARCH-plugin-ui-mockup.md
+  - research/human-surface/mockups/RESEARCH-review-panel-mockup.md
   plugin-config:
   - lessons/hooks/LESSON-hook-if-clause-no-or.md
   plugin-dir:
@@ -1637,10 +1652,10 @@ tags:
   pre-registration:
   - research/pipeline/RESEARCH-scientific-method-in-compass.md
   precision:
-  - research/pipeline/RESEARCH-loop-ast-grep-rule-experiment.md
-  - research/pipeline/RESEARCH-loop-judge-sensor-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-ast-grep-rule-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-judge-sensor-experiment.md
   precompact:
-  - plans/PLAN-033-compaction-keeps-the-session-state.md
+  - plans/pipeline/PLAN-033-compaction-keeps-the-session-state.md
   - research/pipeline/compaction-survival/RESEARCH-axis-1-compaction-hooks.md
   - research/pipeline/compaction-survival/REVIEW-compaction-survival.md
   prior-art:
@@ -1654,13 +1669,14 @@ tags:
   privacy:
   - lessons/subagents/LESSON-research-briefs-forbid-local-paths.md
   - loops/LOOP-002-no-private-data/index.md
-  - research/whole-overhead/RESEARCH-axis-5-sandbox-and-privacy.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-5-sandbox-and-privacy.md
   - specs/learning/SPEC-029-human-verdicts-reach-compass.md
   probe:
   - lessons/vault-structure/LESSON-scope-notes-are-load-bearing.md
+  - research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md
   probes:
   - lessons/vault-structure/LESSON-scratch-vaults-need-compass-dir.md
-  - plans/PLAN-033-compaction-keeps-the-session-state.md
+  - plans/pipeline/PLAN-033-compaction-keeps-the-session-state.md
   - research/distribution/RESEARCH-dsh-live-probes.md
   - research/pipeline/compaction-survival/RESEARCH-axis-4-probe-kpi.md
   - research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison.md
@@ -1671,7 +1687,7 @@ tags:
   - decisions/ADR-017-capability-index-and-usage-record.md
   - decisions/learning/ADR-010-identity-resident-fetch-mandatory.md
   - research/vault-structure/RESEARCH-cache-theory-for-context-tiers.md
-  - research/whole-overhead/RESEARCH-agent-context-prior-art.md
+  - research/whole-overhead/agent-context/RESEARCH-agent-context-prior-art.md
   - specs/tooling/SPEC-017-capabilities-are-reachable-and-measured.md
   progressive-elaboration:
   - research/rolling-wave/RESEARCH-rolling-wave-agent-planning.md
@@ -1682,7 +1698,7 @@ tags:
   prompt-cache:
   - research/hermes/RESEARCH-hermes-memory-today.md
   prompt-caching:
-  - plans/PLAN-035-prompt-cache-is-a-design-input.md
+  - plans/tooling/PLAN-035-prompt-cache-is-a-design-input.md
   - research/llm-research/RESEARCH-axis-2b-host-features-gap.md
   - research/llm-research/REVIEW-llm-research-for-compass.md
   - research/whole-overhead/prompt-cache/RESEARCH-cache-baseline-measured.md
@@ -1690,6 +1706,7 @@ tags:
   - research/whole-overhead/prompt-cache/RESEARCH-cache-ttl-subagents-loops.md
   - research/whole-overhead/prompt-cache/RESEARCH-prefix-break-isolated.md
   - research/whole-overhead/prompt-cache/RESEARCH-session-start-prefix.md
+  - research/whole-overhead/prompt-cache/RESEARCH-subagent-ttl-ab.md
   - research/whole-overhead/prompt-cache/REVIEW-prompt-cache.md
   - research/whole-overhead/prompt-cache/index.md
   - specs/tooling/SPEC-027-compass-uses-fewer-tokens/SPEC-033-prompt-cache-is-a-design-input.md
@@ -1697,9 +1714,9 @@ tags:
   - decisions/learning/ADR-016-capture-by-extraction.md
   - research/learning/RESEARCH-humans-words-fidelity.md
   protocol:
-  - research/pipeline/RESEARCH-research-methodologies-catalog.md
+  - research/pipeline/research-scope/RESEARCH-research-methodologies-catalog.md
   prototype:
-  - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-fresh-checkout-experiment.md
   provenance:
   - decisions/learning/ADR-025-drift-recheck-runs-outside-consolidation-cadence.md
   - lessons/experiments/LESSON-pin-the-motivating-datum.md
@@ -1713,7 +1730,7 @@ tags:
   python-cli:
   - handoffs/2026-06-10_23-00-00_python-cli-next-up.md
   quality:
-  - research/whole-overhead/RESEARCH-axis-6-build-success.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-6-build-success.md
   - specs/learning/SPEC-029-human-verdicts-reach-compass.md
   - specs/pipeline/SPEC-031-a-loop-improves-spec-quality.md
   queries:
@@ -1735,20 +1752,23 @@ tags:
   rationing:
   - lessons/experiments/LESSON-human-practice-rationing-assumes-human-scarcity.md
   reachability:
-  - plans/PLAN-036-verification-beyond-test-pass.md
+  - plans/pipeline/PLAN-036-verification-beyond-test-pass.md
+  - research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md
   - research/test-quality/beyond-test-pass/RESEARCH-reachability.md
   - research/test-quality/beyond-test-pass/REVIEW-beyond-test-pass.md
   - research/test-quality/beyond-test-pass/index.md
   - specs/pipeline/SPEC-034-verification-beyond-test-pass.md
   react-doctor:
-  - research/pipeline/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/control-loops/RESEARCH-control-theory-for-loops.md
   readability:
   - research/human-surface/RESEARCH-working-in-compass-is-visual.md
   real-options:
   - research/vault-structure/RESEARCH-decomposition-criteria-for-sizing.md
+  real-projects:
+  - research/whole-overhead/real-projects/index.md
   recall:
-  - research/pipeline/RESEARCH-loop-ast-grep-rule-experiment.md
-  - research/pipeline/RESEARCH-loop-judge-sensor-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-ast-grep-rule-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-judge-sensor-experiment.md
   - specs/learning/SPEC-028-agent-memory-is-good-enough.md
   reconciliation:
   - lessons/vault-structure/LESSON-sizing-unrecorded-blind-to-born-folder.md
@@ -1771,7 +1791,7 @@ tags:
   releases:
   - handoffs/2026-08-31_12-04-15_v0.17.x-hardening.md
   reliability:
-  - research/pipeline/RESEARCH-source-reliability-criteria.md
+  - research/pipeline/research-scope/RESEARCH-source-reliability-criteria.md
   replanning:
   - research/rolling-wave/RESEARCH-rolling-wave-agent-planning.md
   replication:
@@ -1781,9 +1801,9 @@ tags:
   repository:
   - lessons/distribution/LESSON-self-update-silent-on-bad-repository-url.md
   repository-mining:
-  - research/pipeline/RESEARCH-research-methodologies-catalog.md
+  - research/pipeline/research-scope/RESEARCH-research-methodologies-catalog.md
   requirements-engineering:
-  - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
+  - research/pipeline/research-scope/RESEARCH-scope-derivation-from-a-spec.md
   research:
   - lessons/pipeline/LESSON-stated-definitions-are-not-research-axes.md
   - lessons/subagents/LESSON-parallel-research-check-siblings-first.md
@@ -1793,15 +1813,16 @@ tags:
   - research/llm-research/RESEARCH-axis-2b-host-features-gap.md
   - research/llm-research/RESEARCH-axis-4-multi-agent-verification.md
   - research/llm-research/RESEARCH-llm-research-for-compass.md
-  - research/pipeline/RESEARCH-code-as-primary-source.md
-  - research/pipeline/RESEARCH-research-methodologies-catalog.md
-  - research/pipeline/RESEARCH-research-spawning-research.md
-  - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
-  - research/pipeline/RESEARCH-source-inventory.md
-  - research/pipeline/RESEARCH-source-reliability-criteria.md
-  - research/pipeline/REVIEW-spec-023-research-consolidation.md
+  - research/pipeline/research-scope/RESEARCH-code-as-primary-source.md
+  - research/pipeline/research-scope/RESEARCH-research-methodologies-catalog.md
+  - research/pipeline/research-scope/RESEARCH-research-spawning-research.md
+  - research/pipeline/research-scope/RESEARCH-scope-derivation-from-a-spec.md
+  - research/pipeline/research-scope/RESEARCH-source-inventory.md
+  - research/pipeline/research-scope/RESEARCH-source-reliability-criteria.md
+  - research/pipeline/research-scope/REVIEW-spec-023-research-consolidation.md
   - research/test-quality/beyond-test-pass/RESEARCH-change-ablation.md
   - research/test-quality/beyond-test-pass/RESEARCH-integration-and-evidence.md
+  - research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md
   - research/test-quality/beyond-test-pass/REVIEW-beyond-test-pass.md
   - research/test-quality/beyond-test-pass/index.md
   - research/whole-overhead/prompt-cache/RESEARCH-prefix-break-isolated.md
@@ -1810,6 +1831,8 @@ tags:
   - specs/pipeline/SPEC-024-walled-sources-through-the-browser.md
   research-redesign:
   - handoffs/2026-03-12_review-all-plugin-files.md
+  research-scope:
+  - research/pipeline/research-scope/index.md
   research-synthesis:
   - lessons/experiments/LESSON-human-practice-rationing-assumes-human-scarcity.md
   researcher:
@@ -1817,7 +1840,7 @@ tags:
   - lessons/subagents/LESSON-researcher-briefs-demand-early-output-file.md
   resume:
   - lessons/subagents/LESSON-long-agents-stall-resume-them.md
-  - research/pipeline/RESEARCH-loop-caps-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-caps-experiment.md
   retention:
   - plans/learning/PLAN-020-clone-old-sessions.md
   retrieval:
@@ -1849,23 +1872,23 @@ tags:
   - plans/human-surface/PLAN-025-review-across-files-and-sessions.md
   - research/hermes/RESEARCH-hermes-skill-review-gate.md
   - research/hermes/REVIEW-hermes-skill-creation-2026-11.md
-  - research/human-surface/RESEARCH-plugin-ui-mockup.md
   - research/human-surface/RESEARCH-review-across-files-and-sessions.md
   - research/human-surface/RESEARCH-review-in-obsidian.md
   - research/human-surface/RESEARCH-review-live-checks.md
-  - research/human-surface/RESEARCH-review-mockup.md
-  - research/human-surface/RESEARCH-review-panel-mockup.md
-  - research/human-surface/RESEARCH-terminal-output-mockup.md
-  - research/human-surface/RESEARCH-vscode-review-mockup.md
+  - research/human-surface/mockups/RESEARCH-plugin-ui-mockup.md
+  - research/human-surface/mockups/RESEARCH-review-mockup.md
+  - research/human-surface/mockups/RESEARCH-review-panel-mockup.md
+  - research/human-surface/mockups/RESEARCH-terminal-output-mockup.md
+  - research/human-surface/mockups/RESEARCH-vscode-review-mockup.md
   - research/learning/consolidation-from-sources/REVIEW-consolidation-from-sources.md
   - research/llm-research/RESEARCH-axis-4-multi-agent-verification.md
   - research/llm-research/REVIEW-llm-research-for-compass.md
-  - research/pipeline/REVIEW-spec-023-research-consolidation.md
+  - research/pipeline/research-scope/REVIEW-spec-023-research-consolidation.md
   - research/test-quality/beyond-test-pass/REVIEW-beyond-test-pass.md
-  - research/whole-overhead/REVIEW-agent-context-2026-11.md
-  - research/whole-overhead/REVIEW-whole-overhead.md
+  - research/whole-overhead/agent-context/REVIEW-agent-context-2026-11.md
   - research/whole-overhead/checking-cost/REVIEW-checking-cost.md
   - research/whole-overhead/prompt-cache/REVIEW-prompt-cache.md
+  - research/whole-overhead/real-projects/REVIEW-whole-overhead.md
   - specs/human-surface/SPEC-030-review-documents-open-in-obsidian.md
   - specs/human-surface/SPEC-031-working-in-compass-is-visual.md
   - specs/learning/SPEC-012-learning-loop/SPEC-001-skills-created-automatically-reviewed-in-the-md-editor.md
@@ -1888,15 +1911,15 @@ tags:
   routing:
   - research/whole-overhead/checking-cost/RESEARCH-axis-4-difficulty-keyed-checking-rule.md
   rule-compilation:
-  - research/pipeline/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/control-loops/RESEARCH-control-theory-for-loops.md
   rule-synthesis:
-  - research/pipeline/RESEARCH-loop-ast-grep-rule-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-ast-grep-rule-experiment.md
   rules:
   - research/whole-overhead/prompt-cache/RESEARCH-session-start-prefix.md
   sandboxing:
   - research/llm-research/RESEARCH-axis-1b-anthropic-engineering-gap.md
   saturation:
-  - research/pipeline/RESEARCH-research-spawning-research.md
+  - research/pipeline/research-scope/RESEARCH-research-spawning-research.md
   scaling:
   - research/vault-structure/RESEARCH-rag-fit-for-large-vaults.md
   scientific-method:
@@ -1904,15 +1927,15 @@ tags:
   scope:
   - lessons/vault-structure/LESSON-next-num-scope-doubles-type-dir.md
   - plans/pipeline/PLAN-018-research-covers-the-whole-spec.md
-  - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
-  - research/pipeline/REVIEW-spec-023-research-consolidation.md
+  - research/pipeline/research-scope/RESEARCH-scope-derivation-from-a-spec.md
+  - research/pipeline/research-scope/REVIEW-spec-023-research-consolidation.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
   scope-notes:
   - lessons/vault-structure/LESSON-scope-notes-are-load-bearing.md
   - plans/vault-structure/PLAN-016-domain-taxonomy.md
   - research/vault-structure/RESEARCH-taxonomy-for-unambiguous-placement.md
   scoping-review:
-  - research/pipeline/RESEARCH-research-methodologies-catalog.md
+  - research/pipeline/research-scope/RESEARCH-research-methodologies-catalog.md
   scratchpad:
   - lessons/experiments/LESSON-deterministic-fixtures-survive-scratch-wipes.md
   - lessons/platform/LESSON-windows-heredoc-backslash-escapes.md
@@ -1932,15 +1955,15 @@ tags:
   - lessons/distribution/LESSON-self-update-corrections-lag-one-version.md
   - lessons/distribution/LESSON-self-update-silent-on-bad-repository-url.md
   - plans/distribution/PLAN-026-local-additions-tell-the-truth.md
-  - research/pipeline/RESEARCH-loop-fresh-checkout-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-fresh-checkout-experiment.md
   sensors:
   - plans/pipeline/PLAN-021-control-loops.md
-  - research/pipeline/RESEARCH-control-theory-for-loops.md
-  - research/pipeline/RESEARCH-loop-ast-grep-rule-experiment.md
-  - research/pipeline/RESEARCH-loop-judge-sensor-experiment.md
+  - research/pipeline/control-loops/RESEARCH-control-theory-for-loops.md
+  - research/pipeline/control-loops/RESEARCH-loop-ast-grep-rule-experiment.md
+  - research/pipeline/control-loops/RESEARCH-loop-judge-sensor-experiment.md
   - specs/pipeline/SPEC-026-control-theory-for-loops.md
   session-continuity:
-  - plans/PLAN-033-compaction-keeps-the-session-state.md
+  - plans/pipeline/PLAN-033-compaction-keeps-the-session-state.md
   - research/pipeline/compaction-survival/RESEARCH-axis-3-mechanical-state.md
   - research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison.md
   - research/pipeline/compaction-survival/RESEARCH-probe-pilot.md
@@ -1953,8 +1976,8 @@ tags:
   - research/hermes/RESEARCH-hermes-fit-2026-11.md
   session-start:
   - decisions/distribution/ADR-015-self-update-on-session-start.md
-  - plans/PLAN-035-prompt-cache-is-a-design-input.md
   - plans/distribution/PLAN-012-self-update.md
+  - plans/tooling/PLAN-035-prompt-cache-is-a-design-input.md
   - research/distribution/RESEARCH-self-update-surfaces.md
   - research/whole-overhead/prompt-cache/RESEARCH-prefix-break-isolated.md
   - research/whole-overhead/prompt-cache/RESEARCH-session-start-prefix.md
@@ -1967,7 +1990,7 @@ tags:
   - research/learning/RESEARCH-clone-old-sessions.md
   - specs/learning/SPEC-022-clone-old-sessions.md
   sessionstart:
-  - plans/PLAN-033-compaction-keeps-the-session-state.md
+  - plans/pipeline/PLAN-033-compaction-keeps-the-session-state.md
   - research/pipeline/compaction-survival/RESEARCH-axis-1-compaction-hooks.md
   - research/pipeline/compaction-survival/REVIEW-compaction-survival.md
   settings:
@@ -1977,12 +2000,12 @@ tags:
   - lessons/hooks/LESSON-plugin-dir-plus-setup-double-registers-hooks.md
   - plans/distribution/PLAN-005-model-table.md
   shadow-libraries:
-  - research/pipeline/RESEARCH-source-inventory.md
+  - research/pipeline/research-scope/RESEARCH-source-inventory.md
   shape-up:
   - research/rolling-wave/RESEARCH-rolling-wave-software-practice.md
   side-panel:
-  - research/human-surface/RESEARCH-review-panel-mockup.md
-  - research/human-surface/RESEARCH-vscode-review-mockup.md
+  - research/human-surface/mockups/RESEARCH-review-panel-mockup.md
+  - research/human-surface/mockups/RESEARCH-vscode-review-mockup.md
   signals:
   - decisions/learning/ADR-019-subagentstop-redelivery-and-teammate-typing.md
   silent-failure:
@@ -1995,6 +2018,7 @@ tags:
   - plans/vault-structure/PLAN-009-sizing-mechanism.md
   - research/vault-structure/RESEARCH-decomposition-criteria-for-sizing.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-1-task-difficulty-signal.md
+  - research/whole-overhead/checking-cost/RESEARCH-letter-repeatability.md
   - specs/vault-structure/SPEC-016-sizing-work-beyond-one-spec.md
   skill:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
@@ -2017,19 +2041,19 @@ tags:
   - research/hermes/RESEARCH-hermes-skill-safety.md
   - research/hermes/REVIEW-hermes-skill-creation-2026-11.md
   - research/llm-research/RESEARCH-axis-2-host-features.md
-  - research/whole-overhead/RESEARCH-compass-agent-context-measured.md
-  - research/whole-overhead/RESEARCH-compass-context-launcher-options.md
-  - research/whole-overhead/REVIEW-agent-context-2026-11.md
+  - research/whole-overhead/agent-context/RESEARCH-compass-agent-context-measured.md
+  - research/whole-overhead/agent-context/RESEARCH-compass-context-launcher-options.md
+  - research/whole-overhead/agent-context/REVIEW-agent-context-2026-11.md
   - specs/learning/SPEC-012-learning-loop/SPEC-001-skills-created-automatically-reviewed-in-the-md-editor.md
   snowballing:
-  - research/pipeline/RESEARCH-research-methodologies-catalog.md
+  - research/pipeline/research-scope/RESEARCH-research-methodologies-catalog.md
   source-code:
-  - research/pipeline/RESEARCH-code-as-primary-source.md
+  - research/pipeline/research-scope/RESEARCH-code-as-primary-source.md
   sources:
   - plans/pipeline/PLAN-018-research-covers-the-whole-spec.md
-  - research/pipeline/RESEARCH-source-inventory.md
-  - research/pipeline/RESEARCH-source-reliability-criteria.md
-  - research/pipeline/REVIEW-spec-023-research-consolidation.md
+  - research/pipeline/research-scope/RESEARCH-source-inventory.md
+  - research/pipeline/research-scope/RESEARCH-source-reliability-criteria.md
+  - research/pipeline/research-scope/REVIEW-spec-023-research-consolidation.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
   - specs/pipeline/SPEC-024-walled-sources-through-the-browser.md
   spawn:
@@ -2041,7 +2065,8 @@ tags:
   spec-012:
   - handoffs/2026-08-05_19-27-13_learning-loop-diagnosed-spec012-next.md
   spec-coverage:
-  - plans/PLAN-036-verification-beyond-test-pass.md
+  - plans/pipeline/PLAN-036-verification-beyond-test-pass.md
+  - research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md
   - research/test-quality/beyond-test-pass/RESEARCH-spec-conformance.md
   - research/test-quality/beyond-test-pass/REVIEW-beyond-test-pass.md
   - research/test-quality/beyond-test-pass/index.md
@@ -2081,7 +2106,7 @@ tags:
   - lessons/subagents/LESSON-long-agents-stall-resume-them.md
   - lessons/subagents/LESSON-orchestrating-briefs-require-foreground-spawns.md
   start-here:
-  - research/whole-overhead/RESEARCH-initialprompt-in-subagents.md
+  - research/whole-overhead/agent-context/RESEARCH-initialprompt-in-subagents.md
   stash:
   - lessons/subagents/LESSON-agents-never-stash-the-shared-tree.md
   state-digest:
@@ -2093,7 +2118,7 @@ tags:
   stdlib:
   - research/test-quality/RESEARCH-test-quality-tooling.md
   stopping-rules:
-  - research/pipeline/RESEARCH-research-spawning-research.md
+  - research/pipeline/research-scope/RESEARCH-research-spawning-research.md
   strategy:
   - research/hermes/RESEARCH-hermes-vs-compass-fit.md
   subagents:
@@ -2105,20 +2130,21 @@ tags:
   - lessons/subagents/LESSON-subagent-worktrees-fork-stale.md
   - lessons/subagents/LESSON-teammate-spawn-omit-name.md
   - lessons/subagents/index.md
-  - plans/PLAN-035-prompt-cache-is-a-design-input.md
   - plans/tooling/PLAN-029-crafted-agent-context.md
+  - plans/tooling/PLAN-035-prompt-cache-is-a-design-input.md
   - research/distribution/RESEARCH-deepseek-harness-fit.md
   - research/hermes/RESEARCH-hermes-launched-agent-context.md
   - research/llm-research/RESEARCH-axis-2-host-features.md
   - research/pipeline/RESEARCH-context-threshold-stop.md
-  - research/whole-overhead/RESEARCH-agent-context-prior-art.md
-  - research/whole-overhead/RESEARCH-compass-agent-context-measured.md
-  - research/whole-overhead/RESEARCH-compass-context-launcher-options.md
-  - research/whole-overhead/RESEARCH-initialprompt-in-subagents.md
-  - research/whole-overhead/REVIEW-agent-context-2026-11.md
+  - research/whole-overhead/agent-context/RESEARCH-agent-context-prior-art.md
+  - research/whole-overhead/agent-context/RESEARCH-compass-agent-context-measured.md
+  - research/whole-overhead/agent-context/RESEARCH-compass-context-launcher-options.md
+  - research/whole-overhead/agent-context/RESEARCH-initialprompt-in-subagents.md
+  - research/whole-overhead/agent-context/REVIEW-agent-context-2026-11.md
   - research/whole-overhead/prompt-cache/RESEARCH-cache-baseline-measured.md
   - research/whole-overhead/prompt-cache/RESEARCH-cache-hit-baseline.md
   - research/whole-overhead/prompt-cache/RESEARCH-cache-ttl-subagents-loops.md
+  - research/whole-overhead/prompt-cache/RESEARCH-subagent-ttl-ab.md
   - research/whole-overhead/prompt-cache/REVIEW-prompt-cache.md
   - research/whole-overhead/prompt-cache/index.md
   - specs/tooling/SPEC-027-compass-uses-fewer-tokens/SPEC-033-prompt-cache-is-a-design-input.md
@@ -2153,8 +2179,8 @@ tags:
   - research/rolling-wave/RESEARCH-rolling-wave-synthesis.md
   - research/test-quality/RESEARCH-test-quality-synthesis.md
   systematic-review:
-  - research/pipeline/RESEARCH-research-methodologies-catalog.md
-  - research/pipeline/RESEARCH-scope-derivation-from-a-spec.md
+  - research/pipeline/research-scope/RESEARCH-research-methodologies-catalog.md
+  - research/pipeline/research-scope/RESEARCH-scope-derivation-from-a-spec.md
   tamper-evidence:
   - decisions/pipeline/ADR-012-test-checkpoint-py-membership-git-authoritative.md
   taskwarrior:
@@ -2191,8 +2217,8 @@ tags:
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   - lessons/vault-structure/LESSON-template-shape-vs-template-precondition.md
   terminal:
-  - research/human-surface/RESEARCH-terminal-output-mockup.md
   - research/human-surface/RESEARCH-working-in-compass-is-visual.md
+  - research/human-surface/mockups/RESEARCH-terminal-output-mockup.md
   test-checkpoint:
   - decisions/pipeline/ADR-012-test-checkpoint-py-membership-git-authoritative.md
   test-design:
@@ -2218,6 +2244,7 @@ tags:
   - lessons/subagents/LESSON-agents-never-stash-the-shared-tree.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-2-checking-station-cost.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-5-gap-pass.md
+  - research/whole-overhead/checking-cost/RESEARCH-checking-cost-pilot.md
   tester-agent:
   - plans/pipeline/PLAN-007-test-quality.md
   - specs/pipeline/SPEC-013-test-quality.md
@@ -2227,8 +2254,8 @@ tags:
   - lessons/test-quality/LESSON-untestable-criterion-is-a-spec-defect.md
   - lessons/test-quality/LESSON-vendored-test-suite-must-be-layout-aware.md
   - lessons/test-quality/index.md
-  - plans/PLAN-036-verification-beyond-test-pass.md
   - plans/pipeline/PLAN-007-test-quality.md
+  - plans/pipeline/PLAN-036-verification-beyond-test-pass.md
   - research/test-quality/RESEARCH-fleet-test-census.md
   - research/test-quality/RESEARCH-test-quality-bar-validation.md
   - research/test-quality/RESEARCH-test-quality-craft-and-practice.md
@@ -2237,6 +2264,7 @@ tags:
   - research/test-quality/RESEARCH-test-quality-synthesis.md
   - research/test-quality/RESEARCH-test-quality-tooling.md
   - research/test-quality/beyond-test-pass/RESEARCH-change-ablation.md
+  - research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md
   - research/test-quality/beyond-test-pass/RESEARCH-reachability.md
   - research/test-quality/beyond-test-pass/RESEARCH-spec-conformance.md
   - research/test-quality/beyond-test-pass/REVIEW-beyond-test-pass.md
@@ -2267,34 +2295,37 @@ tags:
   - decisions/distribution/ADR-008-model-resolution-table.md
   - decisions/pipeline/ADR-024-difficulty-class-is-judged-not-scored.md
   - handoffs/2026-06-19_10-33-39_cli-shipped-spec005-on-hold.md
-  - plans/PLAN-034-checking-cost-follows-task-and-model.md
-  - plans/PLAN-035-prompt-cache-is-a-design-input.md
   - plans/tooling/PLAN-028-whole-overhead-on-real-projects.md
   - plans/tooling/PLAN-029-crafted-agent-context.md
+  - plans/tooling/PLAN-034-checking-cost-follows-task-and-model.md
+  - plans/tooling/PLAN-035-prompt-cache-is-a-design-input.md
   - research/distribution/RESEARCH-model-resolution-impl.md
-  - research/whole-overhead/RESEARCH-axis-1-session-records.md
-  - research/whole-overhead/RESEARCH-axis-2-attribution.md
-  - research/whole-overhead/RESEARCH-axis-3-simulated-human.md
-  - research/whole-overhead/RESEARCH-axis-4-topics-and-sample-size.md
-  - research/whole-overhead/RESEARCH-axis-5-sandbox-and-privacy.md
-  - research/whole-overhead/RESEARCH-axis-6-build-success.md
-  - research/whole-overhead/RESEARCH-axis-7-optimization-loop.md
-  - research/whole-overhead/RESEARCH-axis-8-gap-pass.md
-  - research/whole-overhead/RESEARCH-compass-context-launcher-options.md
-  - research/whole-overhead/RESEARCH-whole-overhead-axes.md
-  - research/whole-overhead/REVIEW-whole-overhead.md
+  - research/whole-overhead/agent-context/RESEARCH-compass-context-launcher-options.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-1-task-difficulty-signal.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-2-checking-station-cost.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-3-part-by-part-rebaseline.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-4-difficulty-keyed-checking-rule.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-5-gap-pass.md
+  - research/whole-overhead/checking-cost/RESEARCH-checking-cost-pilot.md
+  - research/whole-overhead/checking-cost/RESEARCH-letter-repeatability.md
   - research/whole-overhead/checking-cost/REVIEW-checking-cost.md
   - research/whole-overhead/checking-cost/index.md
   - research/whole-overhead/prompt-cache/RESEARCH-cache-baseline-measured.md
   - research/whole-overhead/prompt-cache/RESEARCH-cache-hit-baseline.md
   - research/whole-overhead/prompt-cache/RESEARCH-cache-ttl-subagents-loops.md
+  - research/whole-overhead/prompt-cache/RESEARCH-subagent-ttl-ab.md
   - research/whole-overhead/prompt-cache/REVIEW-prompt-cache.md
   - research/whole-overhead/prompt-cache/index.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-1-session-records.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-2-attribution.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-3-simulated-human.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-4-topics-and-sample-size.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-5-sandbox-and-privacy.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-6-build-success.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-7-optimization-loop.md
+  - research/whole-overhead/real-projects/RESEARCH-axis-8-gap-pass.md
+  - research/whole-overhead/real-projects/RESEARCH-whole-overhead-axes.md
+  - research/whole-overhead/real-projects/REVIEW-whole-overhead.md
   - specs/distribution/SPEC-008-central-model-resolution-table.md
   - specs/tooling/SPEC-027-compass-uses-fewer-tokens/SPEC-032-whole-overhead-measured-on-real-projects.md
   - specs/tooling/SPEC-027-compass-uses-fewer-tokens/SPEC-033-prompt-cache-is-a-design-input.md
@@ -2304,7 +2335,7 @@ tags:
   - lessons/hooks/LESSON-hook-payloads-observe-before-coding.md
   tooling:
   - plans/tooling/index.md
-  - research/pipeline/RESEARCH-code-as-primary-source.md
+  - research/pipeline/research-scope/RESEARCH-code-as-primary-source.md
   - research/test-quality/RESEARCH-test-quality-tooling.md
   - specs/tooling/index.md
   tools-and-setup:
@@ -2341,8 +2372,9 @@ tags:
   - research/learning/consolidation-from-sources/AXIS-4-periodic-pass-host.md
   - specs/learning/SPEC-012-learning-loop/index.md
   ttl:
-  - plans/PLAN-035-prompt-cache-is-a-design-input.md
+  - plans/tooling/PLAN-035-prompt-cache-is-a-design-input.md
   - research/whole-overhead/prompt-cache/RESEARCH-cache-ttl-subagents-loops.md
+  - research/whole-overhead/prompt-cache/RESEARCH-subagent-ttl-ab.md
   - research/whole-overhead/prompt-cache/REVIEW-prompt-cache.md
   turn-limits:
   - lessons/subagents/LESSON-long-agents-stall-resume-them.md
@@ -2402,8 +2434,8 @@ tags:
   - specs/pipeline/SPEC-007-decision-coverage-tracing.md
   validator:
   - decisions/pipeline/ADR-007-decision-coverage-mechanism.md
-  - plans/PLAN-036-verification-beyond-test-pass.md
   - plans/pipeline/PLAN-004-decision-coverage.md
+  - plans/pipeline/PLAN-036-verification-beyond-test-pass.md
   - research/llm-research/RESEARCH-axis-4-multi-agent-verification.md
   - research/test-quality/beyond-test-pass/RESEARCH-integration-and-evidence.md
   - research/test-quality/beyond-test-pass/RESEARCH-reachability.md
@@ -2447,12 +2479,13 @@ tags:
   - lessons/verification/LESSON-verify-exactness-past-a-compressing-layer.md
   - lessons/verification/LESSON-verify-wiring-by-call-site-grep.md
   - lessons/verification/index.md
-  - plans/PLAN-034-checking-cost-follows-task-and-model.md
-  - plans/PLAN-036-verification-beyond-test-pass.md
+  - plans/pipeline/PLAN-036-verification-beyond-test-pass.md
+  - plans/tooling/PLAN-034-checking-cost-follows-task-and-model.md
   - research/llm-research/RESEARCH-axis-4-multi-agent-verification.md
   - research/llm-research/REVIEW-llm-research-for-compass.md
   - research/test-quality/beyond-test-pass/RESEARCH-change-ablation.md
   - research/test-quality/beyond-test-pass/RESEARCH-integration-and-evidence.md
+  - research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md
   - research/test-quality/beyond-test-pass/RESEARCH-reachability.md
   - research/test-quality/beyond-test-pass/RESEARCH-spec-conformance.md
   - research/test-quality/beyond-test-pass/REVIEW-beyond-test-pass.md
@@ -2461,6 +2494,8 @@ tags:
   - research/whole-overhead/checking-cost/RESEARCH-axis-2-checking-station-cost.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-4-difficulty-keyed-checking-rule.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-5-gap-pass.md
+  - research/whole-overhead/checking-cost/RESEARCH-checking-cost-pilot.md
+  - research/whole-overhead/checking-cost/RESEARCH-letter-repeatability.md
   - research/whole-overhead/checking-cost/REVIEW-checking-cost.md
   - research/whole-overhead/checking-cost/index.md
   - specs/pipeline/SPEC-013-test-quality.md
@@ -2486,7 +2521,7 @@ tags:
   - plans/human-surface/PLAN-025-review-across-files-and-sessions.md
   - plans/human-surface/PLAN-031-screenplays-in-the-vault.md
   - research/human-surface/RESEARCH-screenplays-in-the-vault.md
-  - research/human-surface/RESEARCH-vscode-review-mockup.md
+  - research/human-surface/mockups/RESEARCH-vscode-review-mockup.md
   - specs/human-surface/SPEC-032-screenplays-in-the-vault.md
   walkthroughs:
   - lessons/pipeline/LESSON-walkthroughs-in-the-humans-words.md

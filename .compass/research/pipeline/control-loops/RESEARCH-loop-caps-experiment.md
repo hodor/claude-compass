@@ -16,7 +16,7 @@ summary: "Verdict: --max-turns N lets exactly N tool rounds run (num_turns reads
 
 # Turn and budget caps past one turn and across resume
 
-From [[specs/pipeline/SPEC-026-control-theory-for-loops]], task TASK-153 of [[plans/pipeline/PLAN-021-control-loops]]. Extends the one-turn observation in [[research/pipeline/RESEARCH-control-theory-for-loops]].
+From [[specs/pipeline/SPEC-026-control-theory-for-loops]], task TASK-153 of [[plans/pipeline/PLAN-021-control-loops]]. Extends the one-turn observation in [[research/pipeline/control-loops/RESEARCH-control-theory-for-loops]].
 
 ## Question
 Does `--max-turns N` allow N tool rounds beyond N=1, and do `--max-turns` and `--max-budget-usd` count only the resumed invocation or the whole session?
@@ -57,7 +57,7 @@ Total spend of the experiment: \$0.3934 (six capped runs plus the three resume s
 ## Findings
 
 1. **`--max-turns N` let exactly N tool rounds run in all six capped runs, N=3 and N=5; `num_turns` reads N+1** (confidence: high)
-   Cap 3 produced 3 `tool_use` and 3 `tool_result` blocks and 3 files on disk in each of three runs; cap 5 produced 5 and 5 and 5 files in each of three runs. Every run ended `error_max_turns`, `terminal_reason: max_turns`, exit code 1, with the eighth-round prompt unfinished. `num_turns` equals executed `tool_result` count plus 1 in every row of the table, matching the N=1 run (num_turns 2) in [[research/pipeline/RESEARCH-control-theory-for-loops]].
+   Cap 3 produced 3 `tool_use` and 3 `tool_result` blocks and 3 files on disk in each of three runs; cap 5 produced 5 and 5 and 5 files in each of three runs. Every run ended `error_max_turns`, `terminal_reason: max_turns`, exit code 1, with the eighth-round prompt unfinished. `num_turns` equals executed `tool_result` count plus 1 in every row of the table, matching the N=1 run (num_turns 2) in [[research/pipeline/control-loops/RESEARCH-control-theory-for-loops]].
    - `.compass/tmp/loop-experiments/caps/a3r1.json` to `a5r3.json`, `transcripts/a3r1.jsonl` to `a5r3.jsonl`
    - Marks: live run, code executed, transcript read; n/a retraction; not a preprint; n/a citations; 6 runs agree and agree with the N=1 run of the earlier gap pass
 

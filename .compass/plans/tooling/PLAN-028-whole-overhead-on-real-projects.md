@@ -11,7 +11,7 @@ updated: 2026-11-01
 git_branch: "master"
 git_commit: "6ed12b0"
 author: "planner"
-depends_on: ["[[specs/tooling/SPEC-027-compass-uses-fewer-tokens/SPEC-032-whole-overhead-measured-on-real-projects]]", "[[research/whole-overhead/REVIEW-whole-overhead]]"]
+depends_on: ["[[specs/tooling/SPEC-027-compass-uses-fewer-tokens/SPEC-032-whole-overhead-measured-on-real-projects]]", "[[research/whole-overhead/real-projects/REVIEW-whole-overhead]]"]
 summary: "a pilot of twelve headless builds on the human's subscription, in throwaway projects outside the repo, with and without Compass, sets the batch size and closes the research's open checks; then a baseline batch, the overhead broken into areas, and a loop that cuts the biggest area first"
 ---
 
@@ -50,7 +50,7 @@ Numbers are task ids; yellow tasks are yours. A stage (written "Wave" in the sec
 
 ## Goal
 
-This plan implements [[specs/tooling/SPEC-027-compass-uses-fewer-tokens/SPEC-032-whole-overhead-measured-on-real-projects|Compass's Whole Overhead, Measured on Real Projects (SPEC-032)]], the spec (what we need), from the evidence and the six rulings in [[research/whole-overhead/REVIEW-whole-overhead]]. Agents pick a project and build it from first setup to the result, headless on the human's Claude subscription, in two arms (two versions of the same build): one with Compass and one without, while a script plays the human. Every token of every session is counted from Claude Code's own records. The share that is Compass overhead is measured, broken into areas, and cut biggest area first by a control loop, with build success judged by signals that exist the same way in both arms.
+This plan implements [[specs/tooling/SPEC-027-compass-uses-fewer-tokens/SPEC-032-whole-overhead-measured-on-real-projects|Compass's Whole Overhead, Measured on Real Projects (SPEC-032)]], the spec (what we need), from the evidence and the six rulings in [[research/whole-overhead/real-projects/REVIEW-whole-overhead]]. Agents pick a project and build it from first setup to the result, headless on the human's Claude subscription, in two arms (two versions of the same build): one with Compass and one without, while a script plays the human. Every token of every session is counted from Claude Code's own records. The share that is Compass overhead is measured, broken into areas, and cut biggest area first by a control loop, with build success judged by signals that exist the same way in both arms.
 
 ## The waves
 
@@ -98,7 +98,7 @@ The research's six rulings, approved 2026-11-01, bind every task:
 - The Agent SDK is used only if neither plain `claude -p` route offers the question tool (TASK-246), and then in `bench/overhead/.venv`, never system Python.
 - No container or VM; no OpenTelemetry collector (the pilot only records whether the console exporter names Compass's parts).
 - No change to `plugin/` in Stage 1, and no change to the external-benchmark harness in `bench/` beyond its README.
-- No sequential stopping rule for the share ([[research/whole-overhead/RESEARCH-axis-8-gap-pass]], gap 3); batches are fixed in size from the pilot's spread.
+- No sequential stopping rule for the share ([[research/whole-overhead/real-projects/RESEARCH-axis-8-gap-pass]], gap 3); batches are fixed in size from the pilot's spread.
 - No parallel builds: one build at a time, so a usage limit stops one build.
 
 ## Phases
@@ -155,4 +155,4 @@ TASK-246 and TASK-247 run in parallel after TASK-245: they touch separate files,
 - **The within-topic spread rests on three topics.** Its uncertainty is wide, so the report gives the batch size at the upper bound of the spread beside the point estimate.
 - **The simulated human is too cooperative and inflates success.** The hidden brief, the specificity rule and the question budget fence it; your grading in TASK-249 measures how far the judge can be trusted.
 - **Capture workers run outside the harness's flags.** They are launched by Compass's own hook with their own command line; the pilot records their flags and counts their tokens, and their difference from the build's flags stays a known difference in the report.
-- **`claude -p` can exit 1 with nothing on stdout at a long-run limit** ([[research/whole-overhead/RESEARCH-axis-8-gap-pass]], finding 10). `launch.py` checks the transcript tail for an `isApiErrorMessage` entry and treats an unexplained empty exit as a limit, so the batch stops rather than retrying into the limit.
+- **`claude -p` can exit 1 with nothing on stdout at a long-run limit** ([[research/whole-overhead/real-projects/RESEARCH-axis-8-gap-pass]], finding 10). `launch.py` checks the transcript tail for an `isApiErrorMessage` entry and treats an unexplained empty exit as a limit, so the batch stops rather than retrying into the limit.

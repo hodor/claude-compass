@@ -31,10 +31,10 @@ flowchart LR
 >
 > | Check | Where to look | Question |
 > | --- | --- | --- |
-> | The writing guide every agent follows for documents you read | [[#Writing guide]] | Does it describe the documents you approved in [[research/human-surface/RESEARCH-visual-documents-mockup]]? |
+> | The writing guide every agent follows for documents you read | [[#Writing guide]] | Does it describe the documents you approved in [[research/human-surface/mockups/RESEARCH-visual-documents-mockup]]? |
 > | `compass doctor`, the install health check | [[#Doctor output]] | Does it read plainly? |
 > | `compass validate`, the vault check | [[#Validate output]] | Does it read plainly? |
-> | How this review reached you | This document, and the terminal, which showed one line naming its title, id and commit | Does it match [[research/human-surface/RESEARCH-terminal-output-mockup]]? |
+> | How this review reached you | This document, and the terminal, which showed one line naming its title, id and commit | Does it match [[research/human-surface/mockups/RESEARCH-terminal-output-mockup]]? |
 >
 > Approve if all four hold; a note on any row says what to change.
 

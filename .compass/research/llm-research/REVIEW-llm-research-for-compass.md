@@ -116,7 +116,7 @@ Ranked by north-star rank served, then evidence strength.
 - **Evidence:** cache orders tools, system, messages and a change invalidates everything after it (2b B1, B2, vendor-doc, h); the startup git-status block lists churned vault files, so sequential sessions in a Compass project share no prefix past it (2b B3, inferred, m); subagents default to a 5-minute TTL and Compass sets none (2b B7, h); Manus calls hit rate "the single most important metric" (6 f1, vendor, asserted); summarizer calls reuse the cache poorly (3 f3, m-h); context files raised cost over 20% with no success gain (5 f15, preprint, m).
 - **North star:** 3, 4.
 - **Touches:** `plugin/hooks/hooks.json`, `plugin/cli/looprunner.py:760` (worker env), `plugin/templates/agents/*` (cache TTL frontmatter), `plugin/cli/commands/sync.py` (which files churn), rule-file frontmatter.
-- **Covered:** partly. [[research/whole-overhead/REVIEW-agent-context-2026-11]] item 11 keeps fixed launch text byte-identical; [[LOOP-003-session-context]] shrinks session text. Neither names the git-status snapshot, TTLs or hit rate.
+- **Covered:** partly. [[research/whole-overhead/agent-context/REVIEW-agent-context-2026-11]] item 11 keeps fixed launch text byte-identical; [[LOOP-003-session-context]] shrinks session text. Neither names the git-status snapshot, TTLs or hit rate.
 - **Spec:** child of [[SPEC-027-compass-uses-fewer-tokens]] or new. Settle C1 and C2 first.
 
 ### A2. A periodic, source-grounded consolidation pass (claims 4, 5, 6)
@@ -156,7 +156,7 @@ Ranked by north-star rank served, then evidence strength.
 - **Evidence:** observation masking matched or beat LLM summary in 4 of 5 setups at half the cost, and summaries lengthened runs 13-15% (3 f3, preprint, m-h); rule-based elision is the most efficient context step (5 f20, m); PreCompact and PostCompact payloads exist and are unused (2 f5, vendor doc, h); post-compaction keeps only 5,000 tokens per skill (2 f13, h); Factory's anchored summary beat both vendors' and every method lost the file trail (6 f14, vendor, measured, self-favoring).
 - **North star:** 2, 4.
 - **Touches:** `plugin/hooks/hooks.json`, `plugin/skills/handoff/SKILL.md`, `plugin/cli/commands/context_check.py`.
-- **Covered:** partly. The 80% and 95% stop ([[SPEC-025-stop-and-suggest-handoff-at-80-percent-context]], [[PLAN-019-stop-at-80-percent-context]]); masking is already cited in [[research/whole-overhead/RESEARCH-axis-7-optimization-loop]] finding 17 (axis 3 did not note this); backlog holds the hermes 50% compression trigger. No compaction hook.
+- **Covered:** partly. The 80% and 95% stop ([[SPEC-025-stop-and-suggest-handoff-at-80-percent-context]], [[PLAN-019-stop-at-80-percent-context]]); masking is already cited in [[research/whole-overhead/real-projects/RESEARCH-axis-7-optimization-loop]] finding 17 (axis 3 did not note this); backlog holds the hermes 50% compression trigger. No compaction hook.
 - **Spec:** existing [[SPEC-025-stop-and-suggest-handoff-at-80-percent-context]]. See disagreement 3.
 
 ### A7. The vault as an injection surface (claim 17)
@@ -214,7 +214,7 @@ Stale text in prose, no code effect: `hooks.json` description says TeammateIdle 
 
 ## Disagreements for the human
 
-1. **How the hot path reaches subagents.** Axes 2 and 2b recommend a `SubagentStart` hook. [[PLAN-029-crafted-agent-context]] ruling 2 (approved 2026-11-05) puts it in the brief the orchestrating skills write, with a hook only if the brief route fails. Both agree `initialPrompt` is dead ([[research/whole-overhead/RESEARCH-initialprompt-in-subagents]] and 2b C5). Axis 6 candidate 1 puts a cache-ordering rule inside `initialPrompt`, a field that does not run.
+1. **How the hot path reaches subagents.** Axes 2 and 2b recommend a `SubagentStart` hook. [[PLAN-029-crafted-agent-context]] ruling 2 (approved 2026-11-05) puts it in the brief the orchestrating skills write, with a hook only if the brief route fails. Both agree `initialPrompt` is dead ([[research/whole-overhead/agent-context/RESEARCH-initialprompt-in-subagents]] and 2b C5). Axis 6 candidate 1 puts a cache-ordering rule inside `initialPrompt`, a field that does not run.
 2. **Rule-file scoping premise.** Axis 2 candidate 5 says `compass-pipeline.md` has no `paths:`; 2b B5 read `paths: ["**"]` on three of four rule files. 2b holds; the behavior is open (C2).
 3. **Compaction: shape it or avoid it.** Axis 2 proposes PreCompact hooks to steer the host summary; axis 3 (masking beats summary, m-h) and Amp (6 f13) favor less summarizing; Factory and OpenHands (6 f3, f14) tune summaries and measure gains. No source compares the approaches.
 4. **Memory writes: judgment or mechanics.** 1 f6: free judgment of what to remember beat fixed rules on strong models. 3 f1: deterministic, non-LLM delta merges beat LLM rewrites. They target different steps (what to write vs how to merge), and neither tested both together.
@@ -229,21 +229,21 @@ Stale text in prose, no code effect: `hooks.json` description says TeammateIdle 
 
 | Candidate from an axis | Where Compass already does or decided it |
 |---|---|
-| Hot path into subagents without `initialPrompt` (2 c1, 2b c1) | [[PLAN-029-crafted-agent-context]] TASK-260 (done: [[research/whole-overhead/RESEARCH-initialprompt-in-subagents]]) and TASK-267 |
-| Fixed launch text byte-identical for the cache (6 f1 partly) | [[research/whole-overhead/REVIEW-agent-context-2026-11]] item 11 |
+| Hot path into subagents without `initialPrompt` (2 c1, 2b c1) | [[PLAN-029-crafted-agent-context]] TASK-260 (done: [[research/whole-overhead/agent-context/RESEARCH-initialprompt-in-subagents]]) and TASK-267 |
+| Fixed launch text byte-identical for the cache (6 f1 partly) | [[research/whole-overhead/agent-context/REVIEW-agent-context-2026-11]] item 11 |
 | Skill bodies loaded lazily; split large skills (6 f5, 1 f15) | [[PLAN-029-crafted-agent-context]] TASK-261 (`obsidian` side files now exist) |
 | Subagent report size band (1 f12) | [[PLAN-029-crafted-agent-context]] TASK-270 |
 | Host auto memory vs vault (2 c7) | [[PLAN-029-crafted-agent-context]] TASK-271 measures memory-folder use; `consolidate-memory` skill |
 | 100-line AGENTS.md as a map (6 f9) | [[SPEC-001-compass-vision-and-architecture]], [[ADR-004-hierarchical-specs-with-facets]], `compass hot-path` cap |
 | No vector retrieval (6 f18, 1b f1) | [[research/vault-structure/RESEARCH-rag-fit-for-large-vaults]]; contextual-retrieval's 200,000-token whole-prompt threshold is uncited there |
-| Observation masking as a cost lever (3 f3) | [[research/whole-overhead/RESEARCH-axis-7-optimization-loop]] finding 17 cites it; not adopted |
+| Observation masking as a cost lever (3 f3) | [[research/whole-overhead/real-projects/RESEARCH-axis-7-optimization-loop]] finding 17 cites it; not adopted |
 | Keep `looprunner` over `/goal`, `/loop`, `--bg` (2b c7) | [[PLAN-021-control-loops]], [[SPEC-026-control-theory-for-loops]] |
 | Keep `self-update` over host auto-update (2b c8) | [[SPEC-020-compass-updates-itself]], ADR-015 |
 | One writer per file, orchestrator merges (1 f11, 4 f9, 6 f16, f17) | methodology skill "Parallel execution" |
 | Generator separate from evaluator (1 f7) | validator agent; builder never runs tests |
 | Acceptance tests from the spec before build (1b f7) | [[SPEC-013-test-quality]], tester pre-build station |
 | `--max-turns`, `--max-budget-usd` on unattended runs (1b f15) | `plugin/cli/looprunner.py` |
-| LLM-judge biases and reward hacking on tests (4 intro) | [[research/whole-overhead/RESEARCH-axis-6-build-success]] findings 10-14 |
+| LLM-judge biases and reward hacking on tests (4 intro) | [[research/whole-overhead/real-projects/RESEARCH-axis-6-build-success]] findings 10-14 |
 | Fresh-eyes reader for documents (5 f9) | `obsidian` skill, `writing-principles.md` |
 | Re-measure on model or host change, whole-arm level (1 f1 partly) | [[PLAN-028-whole-overhead-on-real-projects]] TASK-256 |
 | Shrinking always-loaded text by a loop (claim 15 partly) | [[LOOP-003-session-context]], [[SPEC-027-compass-uses-fewer-tokens]] |

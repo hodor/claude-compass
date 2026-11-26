@@ -11,7 +11,7 @@ updated: 2026-11-04
 git_branch: "master"
 git_commit: "71dd0be"
 author: "reviewer"
-depends_on: ["[[research/hermes/RESEARCH-hermes-memory-today]]", "[[research/hermes/RESEARCH-hermes-launched-agent-context]]", "[[research/whole-overhead/RESEARCH-compass-agent-context-measured]]", "[[research/whole-overhead/RESEARCH-agent-context-prior-art]]", "[[research/whole-overhead/RESEARCH-compass-context-launcher-options]]"]
+depends_on: ["[[research/hermes/RESEARCH-hermes-memory-today]]", "[[research/hermes/RESEARCH-hermes-launched-agent-context]]", "[[research/whole-overhead/agent-context/RESEARCH-compass-agent-context-measured]]", "[[research/whole-overhead/agent-context/RESEARCH-agent-context-prior-art]]", "[[research/whole-overhead/agent-context/RESEARCH-compass-context-launcher-options]]"]
 ---
 
 # Review: what a launched agent needs in its context
@@ -50,9 +50,9 @@ Approved 2026-11-05:
 
 - Axis 1: [[research/hermes/RESEARCH-hermes-memory-today]] (Hermes memory, caps, what loads every turn)
 - Axis 2: [[research/hermes/RESEARCH-hermes-launched-agent-context]] (how Hermes builds a launched agent's context)
-- Axis 3: [[research/whole-overhead/RESEARCH-compass-agent-context-measured]] (what Compass agents load and use, measured on 95 subagent sessions)
-- Axis 4: [[research/whole-overhead/RESEARCH-agent-context-prior-art]] (published practice on minimal agent context)
-- Axis 5: [[research/whole-overhead/RESEARCH-compass-context-launcher-options]] (launch mechanisms and three designs, profiles of 271 subagent sessions)
+- Axis 3: [[research/whole-overhead/agent-context/RESEARCH-compass-agent-context-measured]] (what Compass agents load and use, measured on 95 subagent sessions)
+- Axis 4: [[research/whole-overhead/agent-context/RESEARCH-agent-context-prior-art]] (published practice on minimal agent context)
+- Axis 5: [[research/whole-overhead/agent-context/RESEARCH-compass-context-launcher-options]] (launch mechanisms and three designs, profiles of 271 subagent sessions)
 
 Axes 3 and 5 measure different session sets from the same first pilot run, whose harness faults inflate the Compass arm ([[RESEARCH-whole-overhead-pilot-run-1]]); both treat the shares as rough.
 

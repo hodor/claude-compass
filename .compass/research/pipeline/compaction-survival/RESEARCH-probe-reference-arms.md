@@ -10,7 +10,7 @@ created: 2026-11-24
 updated: 2026-11-24
 git_branch: "build/plan-033-w3"
 author: builder
-depends_on: ["[[plans/PLAN-033-compaction-keeps-the-session-state]]", "[[research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison]]"]
+depends_on: ["[[plans/pipeline/PLAN-033-compaction-keeps-the-session-state]]", "[[research/pipeline/compaction-survival/RESEARCH-probe-arm-comparison]]"]
 ---
 
 # Probe reference arms

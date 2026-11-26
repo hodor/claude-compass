@@ -29,7 +29,7 @@ flowchart LR
 
 ## Question
 
-Four questions left open by the [[research/whole-overhead/REVIEW-whole-overhead|review]]: what Anthropic's terms say about unattended `claude -p` on a Pro or Max subscription, what `-p` does when the usage limit is hit, how to put an interval and a stopping rule on a ratio of two noisy sums over paired builds, and how evaluation practice handles model or CLI drift between a baseline and a later re-measure.
+Four questions left open by the [[research/whole-overhead/real-projects/REVIEW-whole-overhead|review]]: what Anthropic's terms say about unattended `claude -p` on a Pro or Max subscription, what `-p` does when the usage limit is hit, how to put an interval and a stopping rule on a ratio of two noisy sums over paired builds, and how evaluation practice handles model or CLI drift between a baseline and a later re-measure.
 
 ## Methodology
 
@@ -160,7 +160,7 @@ Rapid review (what exists, time short), a documented abbreviation of the systema
     - Grade: low
 
 17. **Bootstrap of ratios resamples the independent unit and recomputes the ratio of sums** (confidence: low)
-    Sources found compare bootstrap with delta and Fieller in simulation (one reports a bootstrap type I error of about 0.057 to 0.067 at a nominal 0.05, willingness-to-pay data) and give a geometric treatment of Fieller, generalizations and bootstrap. Clustered data is the open point: the KDD 2018 delta-method paper handles clusters (carried from [[research/whole-overhead/RESEARCH-axis-4-topics-and-sample-size|axis 4]], finding 17, itself via summary), and axis 4 records grouped items inflating error up to 3x. Which unit to resample (build or topic) is therefore a design choice the sources do not settle.
+    Sources found compare bootstrap with delta and Fieller in simulation (one reports a bootstrap type I error of about 0.057 to 0.067 at a nominal 0.05, willingness-to-pay data) and give a geometric treatment of Fieller, generalizations and bootstrap. Clustered data is the open point: the KDD 2018 delta-method paper handles clusters (carried from [[research/whole-overhead/real-projects/RESEARCH-axis-4-topics-and-sample-size|axis 4]], finding 17, itself via summary), and axis 4 records grouped items inflating error up to 3x. Which unit to resample (build or topic) is therefore a design choice the sources do not settle.
     - https://www.york.ac.uk/media/che/documents/papers/researchpapers/rp8_comparison_of_approaches_to_estimating_confidence_intervals_for_WTP.pdf; https://arxiv.org/pdf/0711.0198 (titles and summaries only)
     - Marks: working paper and preprint seen by summary; n/a; preprint, version not checked; citations not retrieved; 2 sources, different aims
     - Grade: low

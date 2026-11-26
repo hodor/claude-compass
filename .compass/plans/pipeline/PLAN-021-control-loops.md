@@ -11,13 +11,13 @@ approved: 2026-10-18
 git_branch: master
 git_commit: 8082347
 author: planner
-depends_on: ["[[specs/pipeline/SPEC-026-control-theory-for-loops]]", "[[research/pipeline/RESEARCH-control-theory-for-loops]]"]
+depends_on: ["[[specs/pipeline/SPEC-026-control-theory-for-loops]]", "[[research/pipeline/control-loops/RESEARCH-control-theory-for-loops]]"]
 summary: "control loops under .compass/loops/: `compass loop run` drives sensor, controller and actuator as a state machine inside caps and budget, plus four experiments"
 ---
 
 # Control Loops as Vault Artifacts
 
-This plan implements [[specs/pipeline/SPEC-026-control-theory-for-loops]] on the evidence of [[research/pipeline/RESEARCH-control-theory-for-loops]]. A user, or Compass itself, gets a control loop for a task: a folder in the vault holding the loop's end state, sensor, controller, actuator, golden patterns, feedback file and state (D-01). Each run moves through an explicit state machine, measures itself, stays inside the caps and budget it is given, and stops on its own when it reaches the end state, runs out of budget, or keeps making things worse.
+This plan implements [[specs/pipeline/SPEC-026-control-theory-for-loops]] on the evidence of [[research/pipeline/control-loops/RESEARCH-control-theory-for-loops]]. A user, or Compass itself, gets a control loop for a task: a folder in the vault holding the loop's end state, sensor, controller, actuator, golden patterns, feedback file and state (D-01). Each run moves through an explicit state machine, measures itself, stays inside the caps and budget it is given, and stops on its own when it reaches the end state, runs out of budget, or keeps making things worse.
 
 ## The waves
 
@@ -228,7 +228,7 @@ TASK-158 and TASK-159 own disjoint files and run in parallel. TASK-236 follows b
 
 ## Wave 2 elaborated
 
-Wave 1's verified outcomes: [[research/pipeline/RESEARCH-loop-caps-experiment]], [[research/pipeline/RESEARCH-loop-judge-sensor-experiment]], [[research/pipeline/RESEARCH-loop-ast-grep-rule-experiment]], [[research/pipeline/RESEARCH-loop-fresh-checkout-experiment]], the live record in [[research/pipeline/RESEARCH-control-theory-for-loops]] (four helpful runs, a WIP throttle, `done`, 0.137 USD, status matching the ledger), and the code as built.
+Wave 1's verified outcomes: [[research/pipeline/control-loops/RESEARCH-loop-caps-experiment]], [[research/pipeline/control-loops/RESEARCH-loop-judge-sensor-experiment]], [[research/pipeline/control-loops/RESEARCH-loop-ast-grep-rule-experiment]], [[research/pipeline/control-loops/RESEARCH-loop-fresh-checkout-experiment]], the live record in [[research/pipeline/control-loops/RESEARCH-control-theory-for-loops]] (four helpful runs, a WIP throttle, `done`, 0.137 USD, status matching the ledger), and the code as built.
 
 **Activation guard, decided.** `compass loop activate` always activates and prints one warning per part the templates leave unfilled, a soft guard; the human chose it over a refusal on `activate` or on `run`, and it is merged on master. TASK-159 and TASK-160 hold under it unchanged.
 

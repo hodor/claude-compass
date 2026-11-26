@@ -106,7 +106,7 @@ A = axis. Cell: Y/N/P(partial), grade (h/m/l), evidence type. "-" = not addresse
    - Position A (axis 2): rank 1 is the SessionStart(compact) re-injection; probe is rank 5, "if it matters" (axis 2 Candidate changes).
    - Position B (axis 4): pilot probes on recorded sessions with a compaction "before building anything else"; candidate pool exists (axis 4 c5, `bench/overhead/attribute.py:198`).
 2. **Where the probe runs** - split.
-   - Position A (axis 4): a repo-local module in `bench/overhead`, beside `judge.py`, not shipped (axis 4 c1); matches the vault rule that success signals exist in both arms ([[research/whole-overhead/REVIEW-whole-overhead]] decision 4).
+   - Position A (axis 4): a repo-local module in `bench/overhead`, beside `judge.py`, not shipped (axis 4 c1); matches the vault rule that success signals exist in both arms ([[research/whole-overhead/real-projects/REVIEW-whole-overhead]] decision 4).
    - Position B (prior, [[research/llm-research/RESEARCH-axis-6-harness-engineering]] candidate 4): a `compass` check that probes a fresh agent against a written handoff, i.e. a user-facing command.
 
 ## Cross-axis findings the axes did not state

@@ -15,7 +15,7 @@ summary: "What OpenAI, Manus, Cursor, Cognition, Amp, Factory, OpenHands, Cline,
 
 # Axis 6: harness engineering from other labs and agent vendors, 2025-2026
 
-From [[RESEARCH-llm-research-for-compass]] (axis 6). Builds on [[research/whole-overhead/RESEARCH-agent-context-prior-art]]; that review's findings (Anthropic context engineering, 12-factor agents, Cognition's "Don't build multi-agents", Chroma context rot, ACON) are not repeated.
+From [[RESEARCH-llm-research-for-compass]] (axis 6). Builds on [[research/whole-overhead/agent-context/RESEARCH-agent-context-prior-art]]; that review's findings (Anthropic context engineering, 12-factor agents, Cognition's "Don't build multi-agents", Chroma context rot, ACON) are not repeated.
 
 ## Question
 
@@ -66,7 +66,7 @@ Grading was allowed in the brief. Grades are by source type and measured/asserte
    - https://cursor.com/blog/dynamic-context-discovery
    - Marks: vendor post, not retracted, not preprint, citations n/a; the survey reports deferred loading as "the dominant pattern" for skills and Claude Code as having 43 typed tools with deferred loading (arXiv:2609.00006 §8.3, §12.5), so 2 sources.
    - Grade: measured A/B, vendor-run, no confidence interval.
-   - Compass part: Compass already measures that skill preloading is its largest startup cost (60% of a builder's first request, per [[research/whole-overhead/REVIEW-agent-context-2026-11]]). The Cursor figure is a second data point for the same direction; the 15,000-token description threshold is in the prior-art review.
+   - Compass part: Compass already measures that skill preloading is its largest startup cost (60% of a builder's first request, per [[research/whole-overhead/agent-context/REVIEW-agent-context-2026-11]]). The Cursor figure is a second data point for the same direction; the 15,000-token description threshold is in the prior-art review.
 
 6. **Todo recitation: rewrite the plan at the end of the context so it sits in recent attention** (confidence: medium)
    - Manus keeps a `todo.md` it rewrites and ticks off across about 50 tool calls per task. Cline's Focus Chain injects a generated todo list every six turns and keeps it through summarization (v3.25, about 14-15 months old). Mechanism claimed: the plan stays out of the "lost in the middle" zone.

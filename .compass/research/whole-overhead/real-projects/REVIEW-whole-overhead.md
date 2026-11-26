@@ -41,17 +41,17 @@ flowchart LR
 
 ## Inputs
 
-Seven research axes for [[specs/tooling/SPEC-027-compass-uses-fewer-tokens/SPEC-032-whole-overhead-measured-on-real-projects|SPEC-032]], the spec (what we need), questions from [[research/whole-overhead/RESEARCH-whole-overhead-axes|the axes document]]:
+Seven research axes for [[specs/tooling/SPEC-027-compass-uses-fewer-tokens/SPEC-032-whole-overhead-measured-on-real-projects|SPEC-032]], the spec (what we need), questions from [[research/whole-overhead/real-projects/RESEARCH-whole-overhead-axes|the axes document]]:
 
 | | Axis | Document |
 |---|---|---|
-| A1 | What a session records | [[research/whole-overhead/RESEARCH-axis-1-session-records\|axis 1]] |
-| A2 | Which tokens are Compass's | [[research/whole-overhead/RESEARCH-axis-2-attribution\|axis 2]] |
-| A3 | Agents acting as humans | [[research/whole-overhead/RESEARCH-axis-3-simulated-human\|axis 3]] |
-| A4 | Topics and how many builds | [[research/whole-overhead/RESEARCH-axis-4-topics-and-sample-size\|axis 4]] |
-| A5 | Throwaway projects, kept private | [[research/whole-overhead/RESEARCH-axis-5-sandbox-and-privacy\|axis 5]] |
-| A6 | Did the build still succeed | [[research/whole-overhead/RESEARCH-axis-6-build-success\|axis 6]] |
-| A7 | Biggest area first, as a loop | [[research/whole-overhead/RESEARCH-axis-7-optimization-loop\|axis 7]] |
+| A1 | What a session records | [[research/whole-overhead/real-projects/RESEARCH-axis-1-session-records\|axis 1]] |
+| A2 | Which tokens are Compass's | [[research/whole-overhead/real-projects/RESEARCH-axis-2-attribution\|axis 2]] |
+| A3 | Agents acting as humans | [[research/whole-overhead/real-projects/RESEARCH-axis-3-simulated-human\|axis 3]] |
+| A4 | Topics and how many builds | [[research/whole-overhead/real-projects/RESEARCH-axis-4-topics-and-sample-size\|axis 4]] |
+| A5 | Throwaway projects, kept private | [[research/whole-overhead/real-projects/RESEARCH-axis-5-sandbox-and-privacy\|axis 5]] |
+| A6 | Did the build still succeed | [[research/whole-overhead/real-projects/RESEARCH-axis-6-build-success\|axis 6]] |
+| A7 | Biggest area first, as a loop | [[research/whole-overhead/real-projects/RESEARCH-axis-7-optimization-loop\|axis 7]] |
 
 ## Where the axes agree
 
@@ -81,22 +81,22 @@ Single-axis findings carried into the plan are listed under "What research settl
 
 High confidence:
 
-1. **Token counts come from the records, the split must be derived.** Read `modelUsage` from `claude -p --output-format json` (whole tree, subagents included, checked to the token) or the transcript's `cost-state`; count each message id once. [[research/whole-overhead/RESEARCH-axis-1-session-records|A1]] findings 1 to 4, 7, 8.
+1. **Token counts come from the records, the split must be derived.** Read `modelUsage` from `claude -p --output-format json` (whole tree, subagents included, checked to the token) or the transcript's `cost-state`; count each message id once. [[research/whole-overhead/real-projects/RESEARCH-axis-1-session-records|A1]] findings 1 to 4, 7, 8.
 2. **The existing benchmark is no baseline.** Three single runs, Compass loaded as text, wrappers missing on disk; the first real baseline comes from new builds. Matrix row 4.
 3. **The loop sensor undercounts.** It sees shipped text only, not command output, vault reads, hook output or spawned agents' work. Matrix row 5.
-4. **Pickers can be answered by a script.** A PreToolUse hook returning `updatedInput` with answers plays the human with no SDK code in the loop, once a permission host exists. Subagents never ask. [[research/whole-overhead/RESEARCH-axis-3-simulated-human|A3]] findings 1 to 5.
+4. **Pickers can be answered by a script.** A PreToolUse hook returning `updatedInput` with answers plays the human with no SDK code in the loop, once a permission host exists. Subagents never ask. [[research/whole-overhead/real-projects/RESEARCH-axis-3-simulated-human|A3]] findings 1 to 5.
 5. **Review gates fall back to pickers** when no editor surface is configured, so a headless build sees one kind of question. A3 findings 7, 8.
-6. **Pairing reduces builds needed.** At a correlation of 0.5 a paired design needs about half the builds; the count then depends on the share's spread, still unmeasured. [[research/whole-overhead/RESEARCH-axis-4-topics-and-sample-size|A4]] findings 13 to 15.
-7. **Today's loop machinery cannot judge a noisy sensor.** Its judge compares by sign with no noise band, 1-token gains reset the no-progress halt, and sensor spend sits outside the budget. [[research/whole-overhead/RESEARCH-axis-7-optimization-loop|A7]] findings 3 to 5.
+6. **Pairing reduces builds needed.** At a correlation of 0.5 a paired design needs about half the builds; the count then depends on the share's spread, still unmeasured. [[research/whole-overhead/real-projects/RESEARCH-axis-4-topics-and-sample-size|A4]] findings 13 to 15.
+7. **Today's loop machinery cannot judge a noisy sensor.** Its judge compares by sign with no noise band, 1-token gains reset the no-progress halt, and sensor spend sits outside the budget. [[research/whole-overhead/real-projects/RESEARCH-axis-7-optimization-loop|A7]] findings 3 to 5.
 8. **Biggest-first has a measured precedent and a ceiling.** In LOOP-003 the two largest sources gave 78% of the cut and yield fell off a cliff after about 30 runs. A7 findings 9, 10, 29.
 
 Medium confidence:
 
-9. **Isolation.** `--setting-sources project,local --strict-mcp-config` drops most of the user's loadout on the subscription (tested); the user's own CLAUDE.md still loads; a separate `CLAUDE_CONFIG_DIR` is the documented way to leave it, its settings and its transcripts behind, but needs its own login. [[research/whole-overhead/RESEARCH-axis-5-sandbox-and-privacy|A5]] findings 8 to 16.
+9. **Isolation.** `--setting-sources project,local --strict-mcp-config` drops most of the user's loadout on the subscription (tested); the user's own CLAUDE.md still loads; a separate `CLAUDE_CONFIG_DIR` is the documented way to leave it, its settings and its transcripts behind, but needs its own login. [[research/whole-overhead/real-projects/RESEARCH-axis-5-sandbox-and-privacy|A5]] findings 8 to 16.
 10. **A project-free record** can be built from the result event's counts, following `usage-scan`'s allowlist, hashed machine and refusal to write inside a repository. A5 findings 6, 24, 28.
 11. **Simulated humans are too cooperative.** They front-load information and inflate success; the fence is a hidden goal, progressive disclosure, a specificity rule and a question budget. A3 findings 12 to 18.
 12. **Topics collapse** when models choose freely; diversity comes from attributes sampled in code and put in the prompt. A4 findings 1 to 4.
-13. **Success needs a goal list frozen before the build**, checked by deterministic checks and a judge that inspects the workspace (88% to 90% agreement with humans on DevAI), never by the builder's own tests alone. [[research/whole-overhead/RESEARCH-axis-6-build-success|A6]] findings 1, 2, 6 to 8, 15.
+13. **Success needs a goal list frozen before the build**, checked by deterministic checks and a judge that inspects the workspace (88% to 90% agreement with humans on DevAI), never by the builder's own tests alone. [[research/whole-overhead/real-projects/RESEARCH-axis-6-build-success|A6]] findings 1, 2, 6 to 8, 15.
 
 ## Where the axes disagree
 
@@ -123,7 +123,7 @@ Approved 2026-11-01 with every recommendation below as the answer.
 
 ### Closed by the gap pass
 
-The follow-up pass ([[research/whole-overhead/RESEARCH-axis-8-gap-pass|axis 8]]) took the four gaps that needed research before a plan:
+The follow-up pass ([[research/whole-overhead/real-projects/RESEARCH-axis-8-gap-pass|axis 8]]) took the four gaps that needed research before a plan:
 
 - **What `-p` does at a usage limit: closed.** It exits 1 with `is_error: true` and `api_error: "usage_limit_reached"` while `subtype` still reads `success`, so a script keys on `api_error`; a `rate_limit_event` carrying `resetsAt` comes first. One edge stays for the pilot: a long run once exited 1 with nothing on stdout.
 - **Statistics of the share: interval closed, stopping rule partial.** A ratio-of-sums interval (delta method, Fieller when the denominator is noisy, or a bootstrap over builds) is standard; no source proves a sequential stopping rule for such a ratio at small sample sizes, so the plan uses a fixed batch size set from the pilot's spread.

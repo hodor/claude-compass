@@ -18,7 +18,7 @@ author: "builder"
 
 The panel draws while the `compass-ui-mockups` plugin (a throwaway Obsidian plugin in this vault's `.obsidian/plugins/`) is on. It opens in the right sidebar when Obsidian starts, and the command "Compass mockup: open review panel" brings it back. Everything on it reads this vault's real documents; nothing is sent to Claude. Choosing Approve or Needs changes writes one sample answer file under the vault's `tmp/mockups/ui/verdicts/`, in the shape set in [[archive/PLAN-025-review-across-files-and-sessions-detail]], and nothing else. Confidence is low: the click counts are read from the mockup and from the review card in `plugin/obsidian/compass-review/main.js`, never timed on a person.
 
-A review is one question put to the human about one or more documents; a session is one running Claude Code conversation, and a project is the folder holding the vault. The panel follows [[PLAN-025-review-across-files-and-sessions]], which builds on [[specs/human-surface/SPEC-030-review-documents-open-in-obsidian]] and [[research/human-surface/RESEARCH-plugin-ui-mockup]].
+A review is one question put to the human about one or more documents; a session is one running Claude Code conversation, and a project is the folder holding the vault. The panel follows [[PLAN-025-review-across-files-and-sessions]], which builds on [[specs/human-surface/SPEC-030-review-documents-open-in-obsidian]] and [[research/human-surface/mockups/RESEARCH-plugin-ui-mockup]].
 
 ## 1. One review, four files
 

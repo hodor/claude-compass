@@ -8,7 +8,7 @@ area: methodology
 tags: [consolidation, hot-path, taxonomy, index, domains]
 summary: "topic folders for the 35 flat plan lines and the stray research lines, old notes parked out of active.md: start-here files from 6,596 to 3,926 tokens now, 3,472 after the four open plans merge"
 created: 2026-11-24
-updated: 2026-11-24
+updated: 2026-11-26
 ---
 
 # Start-here files back under their limit
@@ -39,7 +39,7 @@ flowchart LR
   now --> a --> b
 ```
 
-> [!success] Approved 2026-11-24: Stage A and L1 applied (two lessons kept active); Stage B waits for the PLAN-033 to 036 merges.
+> [!success] Approved 2026-11-24: Stage A and L1 applied (two lessons kept active). Stage B applied 2026-11-26 after the PLAN-033 to 036 merges (B1 to B4; B5 not needed, see below): `compass hot-path` reads 3,357 / 5,000, this document's own index line included, and `compass validate` reports 0 errors.
 
 ## What was measured
 
@@ -287,7 +287,7 @@ compass move LESSON-parallel-research-check-siblings-first lessons/subagents --a
 
 These moves rewrite links inside files the four open worktrees (separate checkouts, see Stage A) edit (the four plan files, `RESULTS-wave-1-checks`, and the compaction-survival research the PLAN-033 worktree writes), so they wait for those merges.
 
-### - [ ] B1. PLAN-033 and PLAN-036 join `plans/pipeline/`: saves 215 tokens
+### - [x] B1. PLAN-033 and PLAN-036 join `plans/pipeline/`: saves 215 tokens
 
 Their specs, SPEC-025 and SPEC-034, sit in `specs/pipeline/`.
 
@@ -300,7 +300,7 @@ compass move PLAN-033-compaction-keeps-the-session-state PLAN-036-verification-b
 -- [[PLAN-036-verification-beyond-test-pass]] - the validator gains three rerunnable checks per task: changed lines reached from the task's named entry point, tests that flip when the task's code is reverted, and each spec requirement judged met or returned as work; the builder adds a correctness review beside its style review, the reviewer matrix records model family, and a planted-defect probe measures the KPI
 ```
 
-### - [ ] B2. PLAN-034 and PLAN-035 join `plans/tooling/`: saves 218 tokens
+### - [x] B2. PLAN-034 and PLAN-035 join `plans/tooling/`: saves 218 tokens
 
 Their specs sit in `specs/tooling/SPEC-027-compass-uses-fewer-tokens/`.
 
@@ -313,7 +313,7 @@ compass move PLAN-034-checking-cost-follows-task-and-model PLAN-035-prompt-cache
 -- [[PLAN-035-prompt-cache-is-a-design-input]] - measure first: a `compass cache` report reads the host's transcripts for first-request reads, next-session pairing with the first block that differs, per-agent-type and loop hit rates and the cache-write tier, and records the baseline; then, at your gate, Compass turns the git snapshot off and checks the gain, and a subagent 1-hour cache lifetime ships only if an A/B on builder waves shows it pays
 ```
 
-### - [ ] B3. The wave-checks line folds into `llm-research/`: saves 65 tokens
+### - [x] B3. The wave-checks line folds into `llm-research/`: saves 65 tokens
 
 Same treatment as the axis-2 lines in A9: the old description is appended to the document, then `compass sync` removes the line.
 
@@ -321,7 +321,7 @@ Same treatment as the axis-2 lines in A9: the old description is appended to the
 -  - [[research/llm-research/RESULTS-wave-1-checks]] - release 0.37.0 ships the first waves of PLAN-032 to PLAN-036; this page holds their manual checks, Gate 2 of the prompt-cache plan, and the four runs that need your go before they spend subscription usage
 ```
 
-### - [ ] B4. Topic folders inside research folders over the limit of 12: no root-index lines
+### - [x] B4. Topic folders inside research folders over the limit of 12: no root-index lines
 
 `compass validate` reports three research folders over 12 items. Their documents are not listed on the root index, so these moves only change the child count each folder line shows; they make each folder readable at a glance. B4 and B5 together add 44 tokens, measured as one step, nearly all of it the new line B5 adds.
 
@@ -339,7 +339,11 @@ What belongs in each: control-loops, evidence on control loops and the experimen
 
 After A12, `lessons/subagents/` holds 13 lessons. Four of them teach one craft, agents sharing one repository: LESSON-agents-never-stash-the-shared-tree, LESSON-parallel-builders-share-one-git-index, LESSON-subagent-worktrees-fork-stale, LESSON-verify-worktree-isolation-is-real. The new folder adds one line to `lessons/index.md`.
 
+Not applied: L1 moved LESSON-verify-worktree-isolation-is-real to `archive/lessons/`, so `lessons/subagents/` holds 9 lessons, under the limit of 12, and three of the four members remain.
+
 **Stage B total: 3,926 to 3,472 tokens.**
+
+Measured on the vault on 2026-11-26 with `compass hot-path`: 3,856 before Stage B, 3,423 after B1 and B2, 3,358 after B3, 3,357 after B4, against the limit of 5,000. These totals include this document's own index line. `compass validate`: 0 errors, 9 warnings, the three `folder_over_ceiling` warnings gone.
 
 ## Lesson catalog
 

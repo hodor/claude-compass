@@ -22,12 +22,12 @@ Six agents. Question: does research cover the whole spec, from curated sources, 
 
 | Handle | Document | Decisions served | Round two adds |
 |---|---|---|---|
-| **A** | [[research/pipeline/RESEARCH-research-methodologies-catalog]] | D-06 | DESMET; the protocol-artifact owner check |
-| **B** | [[research/pipeline/RESEARCH-scope-derivation-from-a-spec]] | D-01, D-02, D-05, D-06 | how a human's question takes priority |
-| **C** | [[research/pipeline/RESEARCH-source-reliability-criteria]] | D-03 | none |
-| **D** | [[research/pipeline/RESEARCH-code-as-primary-source]] | D-04, D-07 | the full plugin and MCP inventory |
-| **E** | [[research/pipeline/RESEARCH-research-spawning-research]] | D-05 | completeness scorers; Co-STORM warm start |
-| **F** | [[research/pipeline/RESEARCH-source-inventory]] | D-03, D-07 | ACM access; reachability from the deployment machine |
+| **A** | [[research/pipeline/research-scope/RESEARCH-research-methodologies-catalog]] | D-06 | DESMET; the protocol-artifact owner check |
+| **B** | [[research/pipeline/research-scope/RESEARCH-scope-derivation-from-a-spec]] | D-01, D-02, D-05, D-06 | how a human's question takes priority |
+| **C** | [[research/pipeline/research-scope/RESEARCH-source-reliability-criteria]] | D-03 | none |
+| **D** | [[research/pipeline/research-scope/RESEARCH-code-as-primary-source]] | D-04, D-07 | the full plugin and MCP inventory |
+| **E** | [[research/pipeline/research-scope/RESEARCH-research-spawning-research]] | D-05 | completeness scorers; Co-STORM warm start |
+| **F** | [[research/pipeline/research-scope/RESEARCH-source-inventory]] | D-03, D-07 | ACM access; reachability from the deployment machine |
 
 A dash means the document did not address the claim. Agreement is counted over the documents that addressed it, not over all six, so `2/2` means both documents that took a position took the same one.
 
