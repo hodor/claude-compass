@@ -54,3 +54,9 @@ Plan: [[PLAN-031-screenplays-in-the-vault]]; each task's full text, files and ch
 Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, files and checks are there. The human approved the subscription runs with the arm comparison.
 
 - [ ] The human marks the 40 answers of the judge's grading sheet under the probe's private root; `python bench/overhead/probe_judge.py agreement` then prints the agreement.
+
+## PLAN-034 Wave 3: the station ablation by planted defects
+
+Plan: [[PLAN-034-checking-cost-follows-task-and-model]]; the task's full text, files and checks are there. TASK-354 ran and its candidate rubric was not kept.
+
+- [ ] TASK-353: Station ablation by planted defects - complexity: L, depends_on: TASK-352

@@ -5,9 +5,9 @@ status: complete
 confidence: medium
 area: tooling
 tags: [tokens, cost, verification, models, measurement, sizing]
-summary: "blind raters give the same complexity letter to a task almost every time (kappa 0.88 on the strong model, 0.84 on the balanced one, 0.70 across the two), yet agree with the letter the planner wrote on fewer than half the sessions: they read the rubric's file counts, and the planners' S and L letters do not follow them"
+summary: "blind raters give the same complexity letter to a task almost every time (kappa 0.88 on the strong model, 0.84 on the balanced one, 0.70 across the two), yet agree with the letter the planner wrote on fewer than half the sessions; a rubric counting a task's tests apart raised cross-model kappa to 0.84 but lowered agreement with planners to 41-42%, so the shipped rubric stays"
 created: 2026-11-24
-updated: 2026-11-24
+updated: 2026-11-26
 author: "build-lead"
 depends_on: ["[[PLAN-034-checking-cost-follows-task-and-model]]", "[[ADR-024-difficulty-class-is-judged-not-scored]]"]
 ---
@@ -145,3 +145,84 @@ The planner's letter, then the letters of the three `opus` sessions, then of the
 - 30 tasks, 10 per letter: the kappas are point estimates with no interval.
 - A rater saw the task line and the plan's Goal, not the research behind the plan; a planner who read the research may have had reasons the line does not carry.
 - Model aliases (`opus`, `sonnet`) name whatever the host resolved on 2026-11-24.
+
+## Re-run with the tighter rubric (TASK-354)
+
+Run 2026-11-26 on the same 30 tasks, seed, models and session count, every session seeing the candidate rubric `sizing-tests-apart` in place of the shipped table:
+
+| Size | Scope | Example |
+|------|-------|---------|
+| S | One file and its tests | Add a field to a schema, write a utility function |
+| M | 2-4 files and their tests | Implement a new agent, refactor a module |
+| L | 5+ files, or a new subsystem | New feature end-to-end, major refactor |
+
+The task lines and Goal paragraphs were read from the plans as they stood when the first run drew them, so each session saw the same task text as before.
+
+> [!note] Verdict: the shipped rubric stays
+> The keep rule asked for three things. Two held: kappa within each model stayed at or above 0.80, and the pooled kappa rose from 0.70 to 0.84. The third failed: sessions giving the planner's letter fell to 41% and 42%, below the 47% the rule required on both models. The planner's table is unchanged.
+
+| Figure | Shipped rubric | Candidate | Keep rule |
+|---|---|---|---|
+| Fleiss' kappa, `opus` | 0.884 | 0.884 | at least 0.80: held |
+| Fleiss' kappa, `sonnet` | 0.836 | 0.852 | at least 0.80: held |
+| Fleiss' kappa, both models pooled | 0.703 | 0.842 | at least 0.70: held |
+| Session pairs across models agreeing | 219 of 270 (0.81) | 242 of 270 (0.90) | none |
+| Sessions giving the planner's letter, `opus` | 39 of 90 (0.43) | 37 of 90 (0.41) | above 0.47: failed |
+| Sessions giving the planner's letter, `sonnet` | 42 of 90 (0.47) | 38 of 90 (0.42) | above 0.47: failed |
+| Tasks drawing more than one letter | 8 of 30 | 6 of 30 | none |
+
+Sessions by the letter they gave under the candidate, against the planner's letter:
+
+| Planner's letter | opus S | opus M | opus L | sonnet S | sonnet M | sonnet L |
+|---|---|---|---|---|---|---|
+| S | 16 | 11 | 3 | 15 | 12 | 3 |
+| M | 12 | 15 | 3 | 10 | 15 | 5 |
+| L | 0 | 24 | 6 | 1 | 21 | 8 |
+
+### What moved
+
+- **The models now agree with each other.** No task splits cleanly by model any more (the first run had two), and 24 of 30 tasks draw one letter from all six sessions. Both models read the rubric's rows the same way.
+- **Counting tests apart fixed planner S and broke planner M in equal measure.** Planner-S tasks given S rose from 9 to 16 (`opus`) and 9 to 15 (`sonnet`), but planner-M tasks given S rose from 5 to 12 and 6 to 10: a task of one source file and its test is S under the candidate, and planners call many of those M.
+- **"A new subsystem" did not move planner L.** Planner-L tasks given L stayed at 6 on `opus` and fell from 14 to 8 on `sonnet`; 45 of 60 sessions still gave those tasks M. A planner's L on fewer than five files carries a judgment the line itself does not state.
+- **One task jumped two letters.** PLAN-001/TASK-010, five files listed, was S to its planner and L to all six sessions, since five files now sit in L alone.
+
+### What this means for keying checking on the letter
+
+The letter a rubric produces is now steadier across models (pooled kappa 0.84), but a rubric that follows file counts more tightly drifts further from the letters planners write. Agreement with planners does not rise by sharpening the file counts; the planners' S/M/L is not a file-count scale. Keying checking on the letter written in the plans still waits on that letter being the rubric's letter, which a rubric change alone did not bring about.
+
+### Per task under the candidate
+
+| Task | Planner | opus | sonnet |
+|---|---|---|---|
+| PLAN-033/TASK-437 | S | M M S | M M M |
+| PLAN-021/TASK-162 | S | S S S | S S S |
+| PLAN-032/TASK-304 | S | S S S | S S S |
+| PLAN-034/TASK-349 | S | M M M | M M M |
+| PLAN-022/TASK-186 | S | M M M | M M M |
+| PLAN-001/TASK-010 | S | L L L | L L L |
+| PLAN-017/TASK-007 | S | S S S | S S S |
+| PLAN-036/TASK-411 | S | S S S | S S S |
+| PLAN-025/TASK-212 | S | S S S | S S S |
+| PLAN-024/TASK-228 | S | M M M | M M M |
+| PLAN-025/TASK-217 | M | M M M | M M M |
+| PLAN-022/TASK-165 | M | M L M | L L L |
+| PLAN-032/TASK-306 | M | M M M | M M M |
+| PLAN-024/TASK-200 | M | M M M | M M M |
+| PLAN-017/TASK-011 | M | S S S | S S S |
+| PLAN-033/TASK-337 | M | S S S | M S M |
+| PLAN-008/TASK-073 | M | S S S | S S S |
+| PLAN-021/TASK-152 | M | M M M | M M M |
+| PLAN-006/TASK-048 | M | M L L | L L M |
+| PLAN-018/TASK-126 | M | S S S | S S S |
+| PLAN-036/TASK-402 | L | M M M | M M M |
+| PLAN-006/TASK-038 | L | M M M | M M M |
+| PLAN-017/TASK-008 | L | M M M | M M M |
+| PLAN-004/TASK-026 | L | M M M | M M M |
+| PLAN-003/TASK-019 | L | M M M | M M M |
+| PLAN-028/TASK-245 | L | L L L | L L L |
+| PLAN-025/TASK-223 | L | L L L | L L L |
+| PLAN-021/TASK-154 | L | M M M | L M L |
+| PLAN-006/TASK-049 | L | M M M | M M M |
+| PLAN-009/TASK-083 | L | M M M | M M S |
+
+Rubric words cited where sessions disagreed: "one file and its tests" 6 times, all with S; "2-4 files and their tests" 21 times, 20 with M; "5+ files" 10 times and "a new subsystem" 8 times, all with L.
