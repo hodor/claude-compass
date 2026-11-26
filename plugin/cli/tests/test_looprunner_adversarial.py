@@ -384,7 +384,14 @@ class ConcurrencyTests(AdvHarness):
         moves its state file, or appends to its ledger, so the real run
         later fails or double-records."""
         self.new_loop()
-        self.set_code_stub("time.sleep(6)\nsys.stdout.buffer.write(envelope)")
+        release = self.base / "release-live-run"
+        self.set_code_stub(
+            "deadline = time.time() + 60\n"
+            "while not os.path.exists(plan['release']) and time.time() < deadline:\n"
+            "    time.sleep(0.05)\n"
+            "sys.stdout.buffer.write(envelope)",
+            release=str(release),
+        )
         real = self.spawn(RUNNER_CHILD)
         try:
             self.wait_for_call()
@@ -401,6 +408,7 @@ class ConcurrencyTests(AdvHarness):
             self.assertEqual((self.loop_dir / "ledger.jsonl").read_bytes(), ledger_before)
             self.assertEqual(base.files_under(self.root / "tmp" / "loops"), scratch_before)
         finally:
+            release.write_text("go", encoding="utf-8")
             _out, err = real.communicate(timeout=90)
         self.assertEqual(real.returncode, 0, err.decode("utf-8", "replace"))
         (row,) = self.run_rows()
