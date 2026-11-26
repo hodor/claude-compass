@@ -13,7 +13,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[3]
 SKILL_DIR = REPO / "plugin" / "skills" / "obsidian"
 PIPELINE = REPO / "plugin" / "templates" / "rules" / "compass-pipeline.md"
-WORDS = REPO / ".compass" / "research" / "human-surface" / "RESEARCH-plain-words-mockup.md"
+WORDS = REPO / ".compass" / "research" / "human-surface" / "mockups" / "RESEARCH-plain-words-mockup.md"
 
 GITHUB_CALLOUTS = {"note", "tip", "important", "warning", "caution"}
 # The pipeline rules' line budget: the writing forms live in the obsidian
