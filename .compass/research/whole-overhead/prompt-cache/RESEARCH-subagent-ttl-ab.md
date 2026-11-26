@@ -22,8 +22,8 @@ flowchart LR
   G --> V
 ```
 
-> [!question] You decide
-> Gate 3 of [[PLAN-035-prompt-cache-is-a-design-input]]: adopt a 1-hour cache lifetime for subagents. Finding 3 is the case against: subagent cache cost per launch rose in all three pairs where both builds finished, and in 5 of the 6 pairs overall.
+> [!note] Decided
+> Gate 3 of [[PLAN-035-prompt-cache-is-a-design-input]]: subagents keep the 5-minute cache lifetime. Finding 3 is the reason: subagent cache cost per launch rose in all three pairs where both builds finished, and in 5 of the 6 pairs overall.
 
 Task TASK-428 of [[PLAN-035-prompt-cache-is-a-design-input]]. It tests the open question in [[RESEARCH-cache-ttl-subagents-loops]] (recommendation 1, findings 4, 9 and 13): whether reuse across subagents of one type, 5 to 60 minutes apart, repays the 1-hour write premium.
 
