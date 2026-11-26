@@ -11,6 +11,7 @@ Repo-local tooling that measures how many tokens Compass adds to a real build. N
 | `records.py` | Counts a session's tokens, adds list-price weights, appends one allowlisted row to the private records. |
 | `variants.py` | `make <part>` creates a git worktree of HEAD with `variants/<part>.patch` applied and committed and prints its path; `discard <part>` removes it. |
 | `pilot.py` | The pilot: probe, frozen topics, judged builds, report; `--arms` and `--topics` replay pool topics in chosen arms, variants included. |
+| `ablation.py` | The station ablation by planted defects: `pick` draws finished tasks of kept pilot builds by letter, `run` plants one defect per task and replays each checking station on it, `report` prints which station caught each defect and which stations are lighter-eligible per letter. |
 | `spread.py` | The per-part spread of a variant pilot: per pair of builds (run i of the variant against run i of full Compass on the same topic) the difference in goal share, weighted tokens and station spawns; the within-topic spread, the ablation batch size at the estimate and the upper 80% bound, the noninferiority verdict, the builders' review share; capped, failed, unjudged and unpaired builds listed apart. Aggregates only, topics by letter. |
 | `token_profile.py` | Where a build's tokens go, read from its session transcripts; `--by-agent` prints the mean and median weighted tokens per launch of each subagent type and each source family's share; `--json` saves the profile. |
 | `compare.py` | `compare.py BEFORE AFTER`: per agent type, the mean weighted tokens per launch in two folders of saved profiles, the change and a bootstrap 95% interval over sessions (fixed seed). |
@@ -79,6 +80,23 @@ python bench/overhead/pilot.py --arms compass compass-minus-post-tester --topics
 ```
 
 `stats.variant_pairs(topics, variant)` pairs run i of the variant with run i of the full Compass arm of the same topic; the pilot's aggregates report each variant's weighted and raw share against Compass over those pairs.
+
+## Station ablation by planted defects
+
+`ablation.py` measures which checking station catches a defect of a known class, per `complexity:` letter, without running whole builds.
+
+```bash
+python bench/overhead/ablation.py pick --projects-root C:/compass-overhead/projects --per-letter 2 --seed 0
+python bench/overhead/ablation.py run --projects-root C:/compass-overhead/projects --out ~/.compass/overhead/ablation --per-letter 2 --seed 0 --jobs 2
+python bench/overhead/ablation.py report --out ~/.compass/overhead/ablation
+```
+
+- **The tasks.** A kept Compass-arm build in a Python (`pyproject.toml`) or Go (`go.mod`) project gives every task whose history holds a pre-build tester commit (`test(TASK-NNN, ...): failing tests before implementation`) and exactly one builder commit whose subject starts with `TASK-NNN:`, and whose plan line carries an S, M or L letter. `pick` takes at most `--per-letter` per letter, round-robin over projects in a seeded order.
+- **The defect.** One mutation on a non-test source line the builder commit added, outside strings and comments: `comparison` (`<` and `<=`, `>` and `>=` swapped), `equality` (`==` and `!=`), `logic` (`and`/`or`, `&&`/`||`) or `constant` (an integer literal plus one). The task's project is cloned under `<out>/work/`; branch `clean` is the builder commit, and branch `planted` is a commit with the builder commit's parent, message and author whose tree carries the mutation. A mutant that does not compile (`py_compile`, `go build ./...`) is dropped for the next site.
+- **The stations,** each on its own copy so none sees another's work: `tester-pre` runs the pre-build tester commit's test files on the clean and planted copies and is caught when a test fails only on the planted one; `builder-review` is two sessions on `sonnet`, the style and the correctness charter of the builder agent's code-review step, ending in `FINDING <file>:<line>: ...` lines, caught when a finding sits within three lines of the site or names its enclosing function; `tester-post` is a `tester` agent session in post-build mode, caught when a test file it wrote or changed fails on the planted copy and passes on the clean one; `validator` is a `validator` agent session on the task, caught when its report shows a failure (`stationlib.parse_report`) and names the site.
+- **The rule.** Per letter, a station is lighter-eligible when every defect it caught was also caught by another station, and at least one defect of that letter was caught at all. Defects no station caught are counted apart: some mutants change no behaviour.
+
+Sessions start through `launch.run_session` (`--strict-mcp-config`, no console window, the tools each agent needs in `--allowedTools`). Progress is kept per task and station in `<out>/progress.json`; the same command resumes, a progress file of another seed or batch size is refused, and a usage limit exits 3. `<out>` inside a git work tree is refused. Each session's reply is kept under `<out>/work/<task>/replies/` for audit; the report prints ids, letters, classes and verdicts only.
 
 ## Comparing launches
 
