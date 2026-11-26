@@ -49,20 +49,6 @@ Plan: [[PLAN-031-screenplays-in-the-vault]]; each task's full text, files and ch
 - [ ] TASK-290: Live check 4, install the way Compass will - complexity: S, depends_on: TASK-286
 - [ ] TASK-291: Live check 5, the two previews side by side - complexity: S, depends_on: TASK-286
 
-## PLAN-034 Wave 1: checking cost follows task and model
-
-Plan: [[PLAN-034-checking-cost-follows-task-and-model]]; each task's full text, files and checks are there.
-
-- [x] TASK-350: Letter repeatability, measured - complexity: M, depends_on: none
-- [x] TASK-351: Two smoke builds on the subscription, one at a time - complexity: S, depends_on: TASK-343, TASK-346, TASK-349
-- [x] TASK-352: The per-part spread pilot - complexity: M, depends_on: TASK-344, TASK-345, TASK-351
-
-## PLAN-036 Wave 3: the probe on Node, evidence on Windows, release
-
-Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files and checks are there.
-
-- [ ] TASK-419: Release of the later wave and local refresh - complexity: S, depends_on: TASK-441, TASK-418
-
 ## PLAN-033 Wave 4: the task in progress and the judge
 
 Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, files and checks are there. The human approved the subscription runs with the arm comparison.

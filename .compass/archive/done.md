@@ -231,7 +231,7 @@ Prose rewritten around SPEC-016 D-06/D-07: the walk is gone; every spec born a f
 ## 2026-09-13
 
 ### Research covers the whole spec (SPEC-023)
-- [x] Rulings on [[research/pipeline/REVIEW-spec-023-research-consolidation]] recorded as D-02, D-03, D-08, D-09.
+- [x] Rulings on [[research/pipeline/research-scope/REVIEW-spec-023-research-consolidation]] recorded as D-02, D-03, D-08, D-09.
 - [x] [[PLAN-018-research-covers-the-whole-spec]] approved 2026-09-13.
 
 ### PLAN-018 Wave 1: research covers the whole spec
@@ -709,3 +709,19 @@ Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files a
 - [x] TASK-413: 4j's split kept: the probe showed no miss and no false alarm - complexity: S, depends_on: TASK-412
 - [x] TASK-441: `compass evidence run` starts a relative forward-slash path on Windows - complexity: S, depends_on: none
 - [x] TASK-418: A second planted-defect probe on a Node project - complexity: L, depends_on: TASK-412
+
+## 2026-11-26
+
+### PLAN-034 Wave 1: checking cost follows task and model
+
+Plan: [[PLAN-034-checking-cost-follows-task-and-model]]; each task's full text, files and checks are there.
+
+- [x] TASK-350: Letter repeatability, measured - complexity: M, depends_on: none
+- [x] TASK-351: Two smoke builds on the subscription, one at a time - complexity: S, depends_on: TASK-343, TASK-346, TASK-349
+- [x] TASK-352: The per-part spread pilot - complexity: M, depends_on: TASK-344, TASK-345, TASK-351
+
+### PLAN-036 Wave 3: the probe on Node, evidence on Windows, release
+
+Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files and checks are there.
+
+- [x] TASK-419: Release of the later wave and local refresh - complexity: S, depends_on: TASK-441, TASK-418

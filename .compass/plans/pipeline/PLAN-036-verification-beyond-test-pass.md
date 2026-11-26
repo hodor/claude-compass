@@ -213,7 +213,7 @@ The probe of TASK-412 flagged each planted failure in six of six builds with no 
   - Manual verification: none.
   - Entry point: `python bench/verification/planted.py --lang node`
 
-- [ ] TASK-419: Release of the later wave and local refresh: bump `plugin/.claude-plugin/plugin.json` to the next minor, run `python plugin/cli/compass self-update --force` so `.claude/` carries TASK-414 to TASK-441 - complexity: S, depends_on: TASK-441, TASK-418, files: [plugin/.claude-plugin/plugin.json]
+- [x] TASK-419: Release of the later wave and local refresh: bump `plugin/.claude-plugin/plugin.json` to the next minor, run `python plugin/cli/compass self-update --force` so `.claude/` carries TASK-414 to TASK-441 - complexity: S, depends_on: TASK-441, TASK-418, files: [plugin/.claude-plugin/plugin.json]
   - Automated verification: `python .claude/cli/compass reach --help` exits 0 and prints the `--run` form; `grep -n "compass reach --run" .claude/agents/validator.md` matches; `python -m pytest plugin/cli/tests -q` is green.
   - Manual verification: none.
   - Entry point: none: a release has no new code path.
