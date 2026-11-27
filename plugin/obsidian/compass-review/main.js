@@ -85,16 +85,23 @@
 // gives each row its own note field, Approve and "Needs changes"; a click sends
 // that document's verdict with its note at once and the other rows stay open.
 // "Needs changes" on a row is enabled once the row has a note, an edit or a
-// changed choice. A sent row shows the verdict it stands at and keeps its note
+// changed choice. Needs changes stays clickable on a row that is not locked: a
+// click with no note, edit or changed choice to go with it sends nothing, puts
+// focus in that row's note field, outlines it and shows a line under it asking
+// for the note. A sent row shows the verdict it stands at and keeps its note
 // field and the button of the other verdict enabled while the review is open: a
 // click on it sends a revision. A sent row whose file a newer open review
 // lists is settled there and takes no revision here. The card ends with
 // Approve all, which approves the rows not yet sent that carry no note. A newer
 // request that lists an unsent file of an older one replaces it. A review whose
-// request says `revisable: true` stays once every document is sent, as a
-// compact answered card (class `is-answered`) showing each verdict with the
-// other verdict's button live, one document or several, until it closes; a
-// newer request listing one of its files closes it at once.
+// request says `revisable: true` stays once every document is sent, as an
+// answered card (class `is-answered`) at the bottom of the panel, until it
+// closes; a newer request listing one of its files closes it at once. The
+// answered card is one line, "Answered: <title>, <n> approved, <m> needs
+// changes" (class `is-collapsed`), with Change, which opens it to its rows
+// with each verdict and the other verdict's button live (and Collapse closes
+// it back to the line), and Done, which closes the review by writing
+// `<id>.closed`, the marker `compass review --close` writes.
 //
 // Each listed document carries a one-line bar naming the review and the file's
 // place in it, with a button that opens the panel. A click on a card saves the
@@ -2311,7 +2318,8 @@ class CompassReview extends Plugin {
     }
   }
 
-  // Draws the pending reviews as cards, newest first. A card is built again
+  // Draws the pending reviews as cards, newest first, the answered ones of
+  // revisable reviews after the others. A card is built again
   // only when what it is made of changes (cardSignature); its question, file
   // titles, walk, buttons, fields and the note field for a file in view outside
   // the review are brought up to date in place, so a
@@ -2320,7 +2328,8 @@ class CompassReview extends Plugin {
   // the same text and selection.
   drawPanel(view) {
     const root = view.contentEl;
-    const entries = [...this.pending.values()].reverse();
+    const newest = [...this.pending.values()].reverse();
+    const entries = [...newest.filter((e) => !this.settled(e)), ...newest.filter((e) => this.settled(e))];
     const active = this.app.workspace.getActiveFile();
     const other = active && active.extension === "md" ? active : null;
     const otherFor = (entry) => (other && !entry.files.some((f) => f.file === other.path) ? other : null);
@@ -2412,6 +2421,16 @@ class CompassReview extends Plugin {
     const card = createDiv({ cls: "compass-review-card", attr: { tabindex: "0" } });
     card.dataset.id = request.id;
     card.compassParts = parts;
+    const slim = card.createDiv({ cls: "compass-review-slim" });
+    parts.slimText = slim.createSpan({ cls: "compass-review-slim-text" });
+    parts.toggle = slim.createEl("button", { cls: "compass-review-slim-change", text: "Change" });
+    parts.toggle.onclick = () => {
+      entry.expanded = !entry.expanded;
+      this.refreshCard(entry);
+    };
+    parts.done = slim.createEl("button", { cls: "compass-review-slim-done", text: "Done" });
+    parts.done.title = "Closes this review; its answers stay as they were sent";
+    parts.done.onclick = () => this.closeReview(entry).catch((e) => this.fail("close review", e));
     parts.question = card.createDiv({ cls: "compass-review-question", text: this.questionOf(entry) });
     card.addEventListener("keydown", (event) => {
       const target = event.target;
@@ -2465,6 +2484,7 @@ class CompassReview extends Plugin {
       const sentMark = row.createSpan({ cls: "compass-review-fine compass-review-row-sent" });
       let choice = null;
       let rowNote = null;
+      let hint = null;
       if (several) {
         rowNote = row.createEl("textarea", {
           cls: "compass-review-row-note",
@@ -2477,11 +2497,13 @@ class CompassReview extends Plugin {
           entry.states.get(f.file).note = rowNote.value;
           this.refreshCard(entry);
         });
+        hint = row.createDiv({ cls: "compass-review-need-note" });
         choice = row.createDiv({ cls: "compass-review-row-choice" });
         for (const [verdict, text] of [["approved", "Approve"], ["changes", "Needs changes"]]) {
           const b = choice.createEl("button", { cls: `compass-review-row-${verdict}`, text });
           b.onclick = (event) => {
             if (event && event.stopPropagation) event.stopPropagation();
+            if (verdict === "changes" && !this.fileHasFeedback(entry, f.file)) return this.askForNote(entry, f.file);
             return this.sendRows(entry, [i], verdict).catch((e) => this.fail("verdict", e));
           };
           choice[verdict] = b;
@@ -2494,7 +2516,7 @@ class CompassReview extends Plugin {
         return open();
       });
       row.addEventListener("click", open);
-      parts.rows.push({ row, link, mark, count, sentMark, choice, rowNote });
+      parts.rows.push({ row, link, mark, count, sentMark, choice, rowNote, hint });
     });
 
     if (!several) {
@@ -2509,6 +2531,7 @@ class CompassReview extends Plugin {
         entry.states.get(entry.files[entry.index].file).note = parts.notes.value;
         this.refreshCard(entry);
       });
+      parts.notesHint = card.createDiv({ cls: "compass-review-need-note" });
     }
 
     parts.otherSlot = card.createDiv({ cls: "compass-review-this-file-slot" });
@@ -2532,7 +2555,10 @@ class CompassReview extends Plugin {
       parts.approve = approve;
       parts.changes = actions.createEl("button", { cls: "compass-review-changes", text: "Needs changes" });
       approve.onclick = () => this.verdict(entry, "approved").catch((e) => this.fail("verdict", e));
-      parts.changes.onclick = () => this.verdict(entry, "changes").catch((e) => this.fail("verdict", e));
+      parts.changes.onclick = () => {
+        if (!this.hasFeedback(entry)) return this.askForNote(entry, entry.files[0].file);
+        return this.verdict(entry, "changes").catch((e) => this.fail("verdict", e));
+      };
     }
     foot.createDiv({
       cls: "compass-review-fine",
@@ -2653,7 +2679,7 @@ class CompassReview extends Plugin {
 
     entry.files.forEach((f, i) => {
       const state = entry.states.get(f.file);
-      const { row, link, mark, count, sentMark, choice, rowNote } = parts.rows[i];
+      const { row, link, mark, count, sentMark, choice, rowNote, hint } = parts.rows[i];
       link.setText(this.titleOf(f.file));
       mark.setText(state.read ? "read" : "unread");
       setClass(mark, "is-read", state.read);
@@ -2673,14 +2699,17 @@ class CompassReview extends Plugin {
         const stands = (verdict) => state.sent && state.verdict === verdict;
         const noFeedback = !this.fileHasFeedback(entry, f.file);
         choice.approved.disabled = settled || stands("approved");
-        choice.changes.disabled = settled || stands("changes") || noFeedback;
-        choice.changes.title = !settled && !stands("changes") && noFeedback ? "Write a note on this file or edit it first" : "";
+        choice.changes.disabled = settled || stands("changes");
+        choice.changes.title = choice.changes.disabled ? "" : noFeedback ? "Asks for a note on this file first" : "";
+        // `data-needs-note`: a click asks for a note instead of sending.
+        choice.changes.dataset.needsNote = String(!choice.changes.disabled && noFeedback);
         choice.approved.title = state.sent && !choice.approved.disabled ? "Changes the verdict you sent to approved" : "";
-        if (state.sent && !choice.changes.disabled) choice.changes.title = "Changes the verdict you sent to needs changes";
+        if (state.sent && !choice.changes.disabled && !noFeedback) choice.changes.title = "Changes the verdict you sent to needs changes";
       }
       if (rowNote) {
         rowNote.readOnly = settled;
         if (rowNote.value !== state.note && document.activeElement !== rowNote) rowNote.value = state.note;
+        this.showAsk(entry, f.file, rowNote, hint, settled);
       }
     });
 
@@ -2711,8 +2740,10 @@ class CompassReview extends Plugin {
       const stands = (verdict) => only.sent && only.verdict === verdict;
       const elsewhere = only.sent && this.heldElsewhere(entry, file);
       parts.approve.disabled = elsewhere || stands("approved");
-      parts.changes.disabled = elsewhere || stands("changes") || !this.hasFeedback(entry);
-      parts.changes.title = !elsewhere && !stands("changes") && !this.hasFeedback(entry) ? "Write a note first" : "";
+      parts.changes.disabled = elsewhere || stands("changes");
+      parts.changes.title = !parts.changes.disabled && !this.hasFeedback(entry) ? "Asks for a note first" : "";
+      parts.changes.dataset.needsNote = String(!parts.changes.disabled && !this.hasFeedback(entry));
+      this.showAsk(entry, file, parts.notes, parts.notesHint, elsewhere);
       for (const verdict of VERDICTS) {
         const b = verdict === "approved" ? parts.approve : parts.changes;
         setClass(b, "is-chosen", stands(verdict));
@@ -2721,7 +2752,49 @@ class CompassReview extends Plugin {
     }
     const answered = this.settled(entry);
     setClass(card, "is-answered", answered);
+    setClass(card, "is-collapsed", answered && entry.expanded !== true);
     parts.answered.setText(answered ? "Answered. A verdict can still be changed until Claude closes this review." : "");
+    const approvedCount = entry.files.filter((f) => entry.states.get(f.file).verdict === "approved").length;
+    parts.slimText.setText(
+      answered ? `Answered: ${this.questionOf(entry)}, ${approvedCount} approved, ${entry.files.length - approvedCount} needs changes` : ""
+    );
+    parts.toggle.setText(entry.expanded === true ? "Collapse" : "Change");
+  }
+
+  // Asks for the note a Needs changes click on `file` lacks: nothing is sent,
+  // the file's note field is outlined with a line under it, and it takes focus.
+  askForNote(entry, file) {
+    entry.askedFor = file;
+    this.refreshCard(entry);
+    for (const leaf of this.app.workspace.getLeavesOfType(PANEL_TYPE)) {
+      if (!(leaf.view instanceof ReviewPanelView)) continue;
+      const card = Array.from(leaf.view.contentEl.querySelectorAll(".compass-review-card")).find((el) => el.dataset.id === entry.request.id);
+      const parts = card && card.compassParts;
+      if (!parts) continue;
+      const i = entry.files.findIndex((f) => f.file === file);
+      const field = parts.notes || (parts.rows[i] && parts.rows[i].rowNote);
+      if (field && typeof field.focus === "function") field.focus();
+    }
+  }
+
+  // The outline and line under a note field while a Needs changes click on its
+  // file waits for a note; both go once the file has feedback or is locked.
+  showAsk(entry, file, field, hint, locked) {
+    const feedback = entry.files.length === 1 ? this.hasFeedback(entry) : this.fileHasFeedback(entry, file);
+    if (entry.askedFor === file && (feedback || locked)) entry.askedFor = null;
+    const asking = entry.askedFor === file;
+    if (field) setClass(field, "is-needed", asking);
+    if (hint) hint.setText(asking ? "Write what needs changing, then click Needs changes again" : "");
+  }
+
+  // Closes a review the human is done with: writes `<id>.closed` beside its
+  // request, as `compass review --close` does, and takes its card off the
+  // panel. The answers already sent stay as they are.
+  async closeReview(entry) {
+    await this.app.vault.adapter.write(closedPathFor(entry.path), "");
+    this.pending.delete(entry.request.id);
+    if (this.pending.size === 0) this.asideOwed = false;
+    this.refresh();
   }
 
   refreshCardIn(root, entry) {
@@ -3424,6 +3497,7 @@ class CompassReview extends Plugin {
     if (entry.files.length === 1 && entry.request.revisable === true && entry.states.get(entry.files[0].file).sent) {
       return this.reviseRow(entry, 0, verdict);
     }
+    if (verdict === "changes" && !this.hasFeedback(entry)) return;
     entry.sending = true;
     try {
       await this.sendVerdict(entry, verdict);

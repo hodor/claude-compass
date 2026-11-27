@@ -353,6 +353,9 @@ function typeInto(el, value) {
 }
 
 const verdictOf = (app, p) => JSON.parse(app.store.get(p));
+// Whether a Needs changes click would send nothing: the button is disabled, or
+// it asks for a note first.
+const waitsForNote = (b) => b.disabled === true || b.dataset.needsNote === "true";
 // The answer file for the documents from position `n`, and the names of every answer file of a request.
 const partialOf = (app, n, id = "1") => JSON.parse(app.store.get(`tmp/review/${id}.verdict.${n}.json`));
 const answerFilesOf = (app, id = "1") => [...app.store.keys()].filter((k) => k.startsWith(`tmp/review/${id}.verdict`)).sort();
@@ -730,11 +733,11 @@ test("listed markdown files typed in while the review is pending land in edited,
   assert.deepEqual(v.comments, []);
 });
 
-// Adversarial where: Needs changes is enabled with nothing to say (the
-// verdict would carry no feedback), stays disabled after a note on another
-// file or an edit, never re-disables when a note is cleared or is only
-// whitespace, or one review's feedback enables another card's button.
-test("Needs changes stays disabled until a note, a note on another file, or an edit exists, per card", async (t) => {
+// Adversarial where: Needs changes would send with nothing to say (the
+// verdict would carry no feedback), still asks for a note after a note on
+// another file or an edit, never asks again when a note is cleared or is only
+// whitespace, or one review's feedback releases another card's button.
+test("Needs changes asks for a note until a note, a note on another file, or an edit exists, per card", async (t) => {
   const setup = async () => {
     const r = await loaded({ "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md") });
     await r.plugin.handler({ request: "tmp/review/1.request.json" });
@@ -744,42 +747,42 @@ test("Needs changes stays disabled until a note, a note on another file, or an e
 
   await t.test("nothing written", async () => {
     const { app } = await setup();
-    assert.equal(changes(app).disabled, true);
+    assert.equal(waitsForNote(changes(app)), true);
     assert.notEqual(cardBtn(app, "1", "Approve").disabled, true, "Approve is never gated");
   });
   await t.test("a notes field entry, then cleared", async () => {
     const { app } = await setup();
     typeInto(notesIn(cardFor(app, "1")), "needs work");
-    assert.equal(changes(app).disabled, false);
+    assert.equal(waitsForNote(changes(app)), false);
     typeInto(notesIn(cardFor(app, "1")), "");
-    assert.equal(changes(app).disabled, true);
+    assert.equal(waitsForNote(changes(app)), true);
   });
   await t.test("a whitespace-only note", async () => {
     const { app } = await setup();
     typeInto(notesIn(cardFor(app, "1")), "   ");
-    assert.equal(changes(app).disabled, true);
+    assert.equal(waitsForNote(changes(app)), true);
   });
   await t.test("a note on another file, then cleared", async () => {
     const { app, leaf } = await setup();
     show(app, leaf, "b.md");
     typeInto(fileNoteIn(cardFor(app, "1")), "see this");
-    assert.equal(changes(app).disabled, false);
+    assert.equal(waitsForNote(changes(app)), false);
     typeInto(fileNoteIn(cardFor(app, "1")), "");
-    assert.equal(changes(app).disabled, true);
+    assert.equal(waitsForNote(changes(app)), true);
   });
   await t.test("an edit to a file", async () => {
     const { app } = await setup();
     typedIn(app, "a.md");
     await sleep();
-    assert.equal(changes(app).disabled, false);
+    assert.equal(waitsForNote(changes(app)), false);
   });
   await t.test("two reviews: an edit enables only the card it belongs to", async () => {
     const { app, plugin } = await setup();
     app.store.set("tmp/review/2.request.json", req("2", "b.md"));
     await plugin.handler({ request: "tmp/review/2.request.json" });
     typedIn(app, "b.md");
-    assert.equal(changes(app, "2").disabled, false);
-    assert.equal(changes(app, "1").disabled, true);
+    assert.equal(waitsForNote(changes(app, "2")), false);
+    assert.equal(waitsForNote(changes(app, "1")), true);
   });
 });
 
@@ -1367,11 +1370,11 @@ test("a file outside the review shows On this file with its own note, which coun
   assert.equal(thisFileIn(card0()), null);
   show(app, app.leaves[0], "elsewhere.md");
   assert.ok(textOf(thisFileIn(card0())).includes("On this file: elsewhere.md"));
-  assert.equal(rowButton(app, 0, "Needs changes").disabled, true);
+  assert.equal(waitsForNote(rowButton(app, 0, "Needs changes")), true);
   typeInto(fileNoteIn(card0()), "typo on line 3");
   assert.match(summaryOf(card0()), /^1 of 4 files read, 0 notes/);
   assert.match(summaryOf(card0()), /outside/);
-  assert.equal(rowButton(app, 0, "Needs changes").disabled, true, "a note outside the review decides no row");
+  assert.equal(waitsForNote(rowButton(app, 0, "Needs changes")), true, "a note outside the review decides no row");
   show(app, app.leaves[0], "plan.md");
   assert.equal(thisFileIn(card0()), null, "opening a listed file hides the box");
   assert.equal(positionOf(card0()), "File 2 of 4");
@@ -1438,23 +1441,23 @@ test("in a multi-file review a note or an edit enables only its own row's Needs 
     const { app } = await openSet();
     for (let i = 0; i < 4; i++) {
       assert.notEqual(rowButton(app, i, "Approve").disabled, true);
-      assert.equal(rowButton(app, i, "Needs changes").disabled, true, "Needs changes waits for a note or an edit");
+      assert.equal(waitsForNote(rowButton(app, i, "Needs changes")), true, "Needs changes waits for a note or an edit");
     }
     assert.notEqual(cardBtn(app, "1", "Approve all").disabled, true);
   });
   await t.test("a note on one row enables that row's Needs changes only, then cleared", async () => {
     const { app } = await openSet();
     typeInto(rowNoteIn(cardFor(app, "1"), 2), "see this");
-    assert.equal(rowButton(app, 2, "Needs changes").disabled, false);
-    assert.equal(rowButton(app, 0, "Needs changes").disabled, true);
+    assert.equal(waitsForNote(rowButton(app, 2, "Needs changes")), false);
+    assert.equal(waitsForNote(rowButton(app, 0, "Needs changes")), true);
     assert.deepEqual(answerFilesOf(app), [], "a note sends nothing");
     typeInto(rowNoteIn(cardFor(app, "1"), 2), "");
-    assert.equal(rowButton(app, 2, "Needs changes").disabled, true);
+    assert.equal(waitsForNote(rowButton(app, 2, "Needs changes")), true);
   });
   await t.test("a whitespace-only note enables nothing and Approve all still approves the row", async () => {
     const { app } = await openSet();
     typeInto(rowNoteIn(cardFor(app, "1"), 1), "  ");
-    assert.equal(rowButton(app, 1, "Needs changes").disabled, true);
+    assert.equal(waitsForNote(rowButton(app, 1, "Needs changes")), true);
     await click(cardBtn(app, "1", "Approve all"));
     await sleep();
     assert.deepEqual(sentVerdicts(app), ["approved", "approved", "approved", "approved"]);
@@ -1463,8 +1466,8 @@ test("in a multi-file review a note or an edit enables only its own row's Needs 
     const { app } = await openSet();
     typedIn(app, "plan.md");
     await sleep();
-    assert.equal(rowButton(app, 1, "Needs changes").disabled, false);
-    assert.equal(rowButton(app, 0, "Needs changes").disabled, true);
+    assert.equal(waitsForNote(rowButton(app, 1, "Needs changes")), false);
+    assert.equal(waitsForNote(rowButton(app, 0, "Needs changes")), true);
     assert.deepEqual(answerFilesOf(app), []);
   });
   await t.test("a note on row 2, then Approve all: row 2 is not recorded approved and stays open", async () => {
@@ -1742,7 +1745,7 @@ test("the outside-file box, the Needs changes tooltip and the arrow-key hint rea
   });
   await t.test("Needs changes tooltip while disabled", async () => {
     const { app } = await openSet();
-    assert.match(rowButton(app, 0, "Needs changes").title, /Write a note on this file or edit it first/);
+    assert.match(rowButton(app, 0, "Needs changes").title, /Asks for a note on this file first/);
     typeInto(rowNoteIn(cardFor(app, "1"), 0), "x");
     assert.equal(rowButton(app, 0, "Needs changes").title, "");
   });
@@ -1787,7 +1790,7 @@ test("a file-changed event with no editor-change event lists no edit", async () 
   await app.listeners.modify(mdFile("elsewhere.md"));
   await sleep();
   assert.deepEqual(feedbackOf(cardFor(app, "1")), []);
-  assert.equal(rowButton(app, 3, "Needs changes").disabled, true, "no edit stands in for the changes file's own feedback");
+  assert.equal(waitsForNote(rowButton(app, 3, "Needs changes")), true, "no edit stands in for the changes file's own feedback");
   await click(cardBtn(app, "1", "Approve all"));
   await sleep();
   assert.deepEqual(verdictOf(app, "tmp/review/1.verdict.json").edited, []);
@@ -3181,7 +3184,7 @@ test("a Change with an empty note is refused and sends nothing", async (t) => {
       const hint = decisionCard(app, "D-01").querySelector(".compass-decision-need-note");
       assert.ok(hint && hint.text.trim() !== "", "the card says a note is needed");
       assert.equal(decisionCard(app, "D-02").querySelector(".compass-decision-need-note"), null, "another card shows no hint");
-      assert.equal(cardBtn(app, "1", "Needs changes").disabled, true, "a refused Change is not feedback");
+      assert.equal(waitsForNote(cardBtn(app, "1", "Needs changes")), true, "a refused Change is not feedback");
     });
   }
   await t.test("after the refusal a note and a second Change are accepted", async () => {
@@ -5983,7 +5986,7 @@ test("a reload and a reopened panel keep the sent rows settled and the others op
     await plugin.scanPending();
     await sleep();
     assert.deepEqual(settled(app), [[], ["Needs changes"], [], []]);
-    assert.equal(rowButton(app, 1, "Needs changes").disabled, true, "the verdict the row stands at is not sent again");
+    assert.equal(waitsForNote(rowButton(app, 1, "Needs changes")), true, "the verdict the row stands at is not sent again");
     assert.equal(rowButton(app, 1, "Approve").disabled, false, "the other verdict stays open while rows are open");
   });
   await t.test("a request whose documents are all answered by part answers is not shown", async () => {
@@ -6047,7 +6050,7 @@ test("a renamed listed file keeps its sent state under the new path", async () =
   app.store.delete("plan.md");
   app.listeners.rename({ path: "plan2.md" }, "plan.md");
   assert.deepEqual(chosenIn(app, 1), ["Needs changes"]);
-  assert.equal(rowButton(app, 1, "Needs changes").disabled, true, "the renamed row stays sent as changes");
+  assert.equal(waitsForNote(rowButton(app, 1, "Needs changes")), true, "the renamed row stays sent as changes");
   assert.equal(sentMarkOf(app, 1), "sent: needs changes");
   await click(cardBtn(app, "1", "Approve all"));
   await sleep();
@@ -6156,7 +6159,7 @@ test("a sent row cannot be sent again at the verdict it stands at, by its button
   typeInto(rowNoteIn(cardFor(app, "1"), 1), "reorder");
   await decide(app, 1, "Needs changes");
   const sent = app.store.get("tmp/review/1.verdict.1.json");
-  assert.equal(rowButton(app, 1, "Needs changes").disabled, true);
+  assert.equal(waitsForNote(rowButton(app, 1, "Needs changes")), true);
   await click(rowButton(app, 1, "Needs changes"));
   await click(cardBtn(app, "1", "Approve all"));
   await sleep();
@@ -6189,10 +6192,10 @@ test("a decision changed on a spec is feedback for that file's row alone, and it
   await openDoc(app, SP);
   await plugin.openViewPanel();
   await settle();
-  assert.equal(rowButton(app, 0, "Needs changes").disabled, true);
+  assert.equal(waitsForNote(rowButton(app, 0, "Needs changes")), true);
   await changeDecision(app, "D-01", "reword it");
-  assert.equal(rowButton(app, 0, "Needs changes").disabled, false, "the first row's decision change is its feedback");
-  assert.equal(rowButton(app, 1, "Needs changes").disabled, true, "the second row has no feedback of its own");
+  assert.equal(waitsForNote(rowButton(app, 0, "Needs changes")), false, "the first row's decision change is its feedback");
+  assert.equal(waitsForNote(rowButton(app, 1, "Needs changes")), true, "the second row has no feedback of its own");
   await decide(app, 1, "Needs changes");
   assert.deepEqual(answerFilesOf(app), [], "the second row sends nothing");
   await decide(app, 0, "Needs changes");
@@ -6215,10 +6218,10 @@ test("approve then needs changes on a sent row writes revision 1 beside the unto
   const first = app.store.get("tmp/review/1.verdict.1.json");
   assert.equal(sentMarkOf(app, 1), "sent: approved");
   assert.equal(rowButton(app, 1, "Approve").disabled, true, "the verdict it stands at is not offered again");
-  assert.equal(rowButton(app, 1, "Needs changes").disabled, true, "Needs changes still needs a note or an edit");
+  assert.equal(waitsForNote(rowButton(app, 1, "Needs changes")), true, "Needs changes still needs a note or an edit");
   assert.equal(rowNoteIn(cardFor(app, "1"), 1).readOnly, false, "the sent row's note can be written");
   typeInto(rowNoteIn(cardFor(app, "1"), 1), "the order is wrong after all");
-  assert.equal(rowButton(app, 1, "Needs changes").disabled, false);
+  assert.equal(waitsForNote(rowButton(app, 1, "Needs changes")), false);
   await decide(app, 1, "Needs changes");
   assert.equal(app.store.get("tmp/review/1.verdict.1.json"), first, "the first answer is never rewritten");
   assert.deepEqual(revisionFilesOf(app), ["tmp/review/1.revision.1.1.json"]);
@@ -6230,7 +6233,7 @@ test("approve then needs changes on a sent row writes revision 1 beside the unto
   assert.equal(sentMarkOf(app, 1), "sent: needs changes");
   assert.deepEqual(chosenIn(app, 1), ["Needs changes"]);
   assert.equal(rowButton(app, 1, "Approve").disabled, false, "and back again stays possible");
-  assert.equal(rowButton(app, 1, "Needs changes").disabled, true);
+  assert.equal(waitsForNote(rowButton(app, 1, "Needs changes")), true);
 });
 
 // Adversarial where: the second change overwrites revision 1, numbers restart,
@@ -6327,7 +6330,7 @@ test("a sent row whose file a newer open review lists takes no revision", async 
   await plugin.handler({ request: "tmp/review/2.request.json" });
   assert.ok(plugin.pending.has("1"), "the older review stays for its open rows");
   typeInto(rowNoteIn(cardFor(app, "1"), 1), "no");
-  assert.equal(rowButton(app, 1, "Needs changes").disabled, true);
+  assert.equal(waitsForNote(rowButton(app, 1, "Needs changes")), true);
   assert.equal(rowNoteIn(cardFor(app, "1"), 1).readOnly, true);
   await plugin.sendRows(plugin.pending.get("1"), [1], "changes");
   assert.deepEqual(revisionFilesOf(app), []);
@@ -6369,9 +6372,9 @@ test("a one-document revisable review stays answered and its verdict changes by 
   assert.equal(sentMarkOf(app, 0), "sent: approved");
   assert.equal(win.minimized, 1, "no review waits on an answer, so Obsidian steps aside");
   assert.equal(cardBtn(app, "1", "Approve").disabled, true);
-  assert.equal(cardBtn(app, "1", "Needs changes").disabled, true, "Needs changes still needs a note");
+  assert.equal(waitsForNote(cardBtn(app, "1", "Needs changes")), true, "Needs changes still needs a note");
   typeInto(notesIn(cardFor(app, "1")), "the scope is too wide");
-  assert.equal(cardBtn(app, "1", "Needs changes").disabled, false);
+  assert.equal(waitsForNote(cardBtn(app, "1", "Needs changes")), false);
   await click(cardBtn(app, "1", "Needs changes"));
   await sleep();
   assert.equal(app.store.get("tmp/review/1.verdict.json"), first, "the answer is never rewritten");
@@ -6722,7 +6725,7 @@ test("a sent, revisable row marks its verdict chosen and stays unlocked; a row a
   const locked = rowsIn(cardFor(app, "1"))[0];
   assert.ok(has(locked, "is-locked"), "the newer review owns the file");
   assert.equal(rowButton(app, 0, "Approve").disabled, true);
-  assert.equal(rowButton(app, 0, "Needs changes").disabled, true);
+  assert.equal(waitsForNote(rowButton(app, 0, "Needs changes")), true);
   assert.equal(rowNoteIn(cardFor(app, "1"), 0).readOnly, true);
 });
 
@@ -6737,4 +6740,169 @@ test("the stylesheet dims only locked rows and shows a chosen verdict at full st
   assert.equal(/opacity/.test(rule(".compass-review-row.is-sent")), false, "a sent row is not dimmed");
   assert.match(rule(".compass-review-row.is-locked"), /opacity/, "a locked row is dimmed");
   assert.match(rule(".compass-review-card button.is-chosen[disabled]"), /opacity:\s*1\b/, "a chosen verdict is at full strength");
+});
+
+// ---- Needs changes without a note asks for one ----
+
+const hasCls = (el, c) => el.cls.split(" ").includes(c);
+const needLineIn = (row) => row.all().find((e) => hasCls(e, "compass-review-need-note"));
+const NEED_LINE = "Write what needs changing, then click Needs changes again";
+
+// Adversarial where: Needs changes on a row with no feedback is disabled (the
+// human cannot tell why), sends a changes verdict or revision with nothing to
+// act on, asks in the wrong row, or the outline and line stay after the note
+// is written.
+test("Needs changes on a row with no note asks for one in that row and sends nothing, then sends once a note exists", async () => {
+  const { app } = await openSet({ revisable: true });
+  await decide(app, 1, "Approve");
+  const before = [...app.store.keys()].sort();
+  for (const i of [1, 2]) {
+    const b = rowButton(app, i, "Needs changes");
+    assert.equal(b.disabled, false, `row ${i}: Needs changes is clickable`);
+    await click(b);
+    await sleep();
+    assert.deepEqual([...app.store.keys()].sort(), before, `row ${i}: nothing is written`);
+    const note = rowNoteIn(cardFor(app, "1"), i);
+    assert.equal(document.activeElement, note, `row ${i}: its note field takes focus`);
+    assert.ok(hasCls(note, "is-needed"), `row ${i}: its note field is outlined`);
+    assert.equal(needLineIn(rowsIn(cardFor(app, "1"))[i]).text, NEED_LINE);
+  }
+  assert.equal(hasCls(rowNoteIn(cardFor(app, "1"), 1), "is-needed"), false, "only the row last asked is outlined");
+  assert.equal(needLineIn(rowsIn(cardFor(app, "1"))[1]).text, "");
+  assert.equal(sentMarkOf(app, 1), "sent: approved", "the sent row still stands at approved");
+  typeInto(rowNoteIn(cardFor(app, "1"), 2), "split this task");
+  assert.equal(hasCls(rowNoteIn(cardFor(app, "1"), 2), "is-needed"), false, "the outline goes once a note is written");
+  assert.equal(needLineIn(rowsIn(cardFor(app, "1"))[2]).text, "");
+  await decide(app, 2, "Needs changes");
+  assert.deepEqual(partialOf(app, 2).files.map((f) => [f.verdict, f.note]), [["changes", "split this task"]]);
+});
+
+// Adversarial where: a sent row moved from approved to needs changes without a
+// note writes a revision, or the note asked for never lets it through.
+test("a sent row moves from approved to needs changes only once its note is written", async () => {
+  const { app } = await openSet({ revisable: true });
+  await decide(app, 0, "Approve");
+  await click(rowButton(app, 0, "Needs changes"));
+  await sleep();
+  assert.deepEqual(revisionFilesOf(app), [], "no revision without a note");
+  assert.equal(document.activeElement, rowNoteIn(cardFor(app, "1"), 0));
+  typeInto(rowNoteIn(cardFor(app, "1"), 0), "the need is wider");
+  await click(rowButton(app, 0, "Needs changes"));
+  await sleep();
+  assert.deepEqual(revisionFilesOf(app), ["tmp/review/1.revision.0.1.json"]);
+  assert.equal(revisionOf(app, 0, 1).verdict, "changes");
+  assert.equal(sentMarkOf(app, 0), "sent: needs changes");
+});
+
+// Adversarial where: the one-file card sends a changes verdict with no note,
+// or its note field is not the one asked for.
+test("Needs changes on a one-file card with no note asks for it and never sends an empty changes verdict", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  const b = cardBtn(app, "1", "Needs changes");
+  assert.equal(b.disabled, false);
+  await click(b);
+  await sleep();
+  assert.equal(app.store.has("tmp/review/1.verdict.json"), false, "nothing is sent");
+  const note = notesIn(cardFor(app, "1"));
+  assert.equal(document.activeElement, note);
+  assert.ok(hasCls(note, "is-needed"));
+  assert.ok(textOf(cardFor(app, "1")).includes(NEED_LINE));
+  await plugin.verdict(plugin.pending.get("1"), "changes");
+  assert.equal(app.store.has("tmp/review/1.verdict.json"), false, "the verdict path itself refuses an empty changes verdict");
+  typeInto(note, "too broad");
+  assert.equal(textOf(cardFor(app, "1")).includes(NEED_LINE), false);
+  await click(cardBtn(app, "1", "Needs changes"));
+  await sleep();
+  assert.equal(verdictOf(app, "tmp/review/1.verdict.json").verdict, "changes");
+});
+
+// Adversarial where: a row locked by a newer review offers Needs changes.
+test("Needs changes on a row a newer review holds stays disabled and asks for nothing", async () => {
+  const { app, plugin } = await openSet({ revisable: true });
+  await decide(app, 0, "Approve");
+  app.store.set("tmp/review/2.request.json", req("2", SET[0]));
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  await sleep();
+  const b = rowButton(app, 0, "Needs changes");
+  assert.equal(b.disabled, true);
+  assert.equal(b.dataset.needsNote, "false");
+});
+
+// ---- an answered revisable review collapses to one line ----
+
+const slimOf = (card) => card.querySelector(".compass-review-slim-text").text;
+const slimBtn = (card, text) => card.querySelector(".compass-review-slim").all().find((e) => e.tag === "button" && e.text === text);
+
+// Adversarial where: an answered revisable review keeps its full card on the
+// panel, sits above the reviews still waiting, counts its verdicts wrong, or
+// Change does not open its rows.
+test("an answered revisable review is one line at the bottom of the panel, and Change opens it", async () => {
+  const { app, plugin } = await openSet({ revisable: true });
+  typeInto(rowNoteIn(cardFor(app, "1"), 1), "reorder");
+  await decide(app, 1, "Needs changes");
+  await click(cardBtn(app, "1", "Approve all"));
+  await sleep();
+  app.store.set("other.md", "o");
+  app.store.set("tmp/review/2.request.json", req("2", "other.md"));
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  await sleep();
+  assert.deepEqual(cardIds(app), ["2", "1"], "the waiting review comes first");
+  app.store.set("third.md", "t");
+  app.store.set("tmp/review/3.request.json", req("3", "third.md"));
+  await plugin.handler({ request: "tmp/review/3.request.json" });
+  await sleep();
+  assert.deepEqual(cardIds(app), ["3", "2", "1"], "the answered review stays at the bottom");
+  const card = cardFor(app, "1");
+  assert.ok(hasCls(card, "is-answered") && hasCls(card, "is-collapsed"));
+  assert.equal(hasCls(cardFor(app, "2"), "is-collapsed"), false, "a waiting review is not collapsed");
+  assert.equal(slimOf(card), "Answered: T, 3 approved, 1 needs changes");
+  await click(slimBtn(card, "Change"));
+  assert.equal(hasCls(card, "is-collapsed"), false, "Change opens the rows");
+  assert.ok(hasCls(card, "is-answered"));
+  assert.ok(slimBtn(card, "Collapse"));
+  typeInto(rowNoteIn(card, 0), "wider");
+  await decide(app, 0, "Needs changes");
+  assert.equal(hasCls(cardFor(app, "1"), "is-collapsed"), false, "a revision keeps it open");
+  assert.equal(slimOf(cardFor(app, "1")), "Answered: T, 2 approved, 2 needs changes");
+  await click(slimBtn(cardFor(app, "1"), "Collapse"));
+  assert.ok(hasCls(cardFor(app, "1"), "is-collapsed"));
+});
+
+// Adversarial where: Done deletes the request or an answer, writes a marker
+// other than `<id>.closed`, leaves the card on the panel, or a recheck brings
+// the review back.
+test("Done writes <id>.closed, removes nothing, and the review leaves the panel for good", async () => {
+  const { app, plugin } = await openOne();
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
+  const card = cardFor(app, "1");
+  assert.ok(hasCls(card, "is-collapsed"));
+  assert.equal(slimOf(card), "Answered: T, 1 approved, 0 needs changes");
+  const before = [...app.store.keys()];
+  await click(slimBtn(card, "Done"));
+  await sleep();
+  assert.equal(app.store.get("tmp/review/1.closed"), "", "the marker compass review --close writes");
+  for (const k of before) assert.ok(app.store.has(k), `${k} is kept`);
+  assert.deepEqual([...app.store.keys()].filter((k) => !before.includes(k)), ["tmp/review/1.closed"]);
+  assert.equal(plugin.pending.has("1"), false);
+  assert.deepEqual(cardIds(app), []);
+  await plugin.recheck();
+  await plugin.scanPending();
+  assert.deepEqual(cardIds(app), [], "a closed review is not found again");
+});
+
+// Adversarial where: the stylesheet shows the one-line form on cards that are
+// not answered, or a collapsed card still shows its rows.
+test("the stylesheet shows the answered line only on answered cards and hides the rest when collapsed", () => {
+  const css = fs.readFileSync(path.join(__dirname, "..", "compass-review", "styles.css"), "utf8");
+  const rule = (sel) => [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+    .filter((m) => m[1].replace(/\/\*[\s\S]*?\*\//g, "").split(",").map((s) => s.trim()).includes(sel))
+    .map((m) => m[2])
+    .join(";");
+  assert.match(rule(".compass-review-slim"), /display:\s*none/);
+  assert.match(rule(".compass-review-card.is-answered .compass-review-slim"), /display:\s*flex/);
+  assert.match(rule(".compass-review-card.is-collapsed > :not(.compass-review-slim)"), /display:\s*none/);
+  assert.match(rule(".compass-review-card textarea.is-needed"), /outline/);
+  assert.match(rule(".compass-review-need-note:empty"), /display:\s*none/);
 });
