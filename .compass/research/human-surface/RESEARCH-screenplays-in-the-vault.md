@@ -8,7 +8,7 @@ tags: [obsidian, fountain, screenplay, vscode, human-surface]
 depends_on: ["[[SPEC-032-screenplays-in-the-vault]]"]
 summary: "Screenplays can live in the vault as .fountain files that the free Fountain plugin opens in Obsidian and BetterFountain opens in VS Code, with Compass installing the plugin, though links written inside a script stay invisible to Obsidian's backlinks."
 created: 2026-11-19
-updated: 2026-11-19
+updated: 2026-11-27
 git_branch: "master"
 git_commit: "f41369c"
 author: "reviewer"
@@ -135,9 +135,9 @@ No axis contradicts another on a fact. The open disagreements sit inside sources
 2. **Neither editor rewrites a file unprompted** (confidence: high; axis 2)
    BetterFountain writes only through scene-number and scene-shift commands, or on save when `fountain.general.numberScenesOnSave` is on (default off). Fountain saves only after a document change, from the editor text.
    - BetterFountain `src/extension.ts:100-106`, `package.json:129-133`; Fountain `src/views/editor_view_state.ts:100-105`.
-3. **Line endings after an Obsidian edit are unverified** (confidence: low; axes 2, 4)
-   BetterFountain reads LF, CR and CRLF. Fountain's grammar matches `\n`; whether CodeMirror saves a CRLF file as LF after one edit was recalled, not tested. Compass writes vault text with LF (`vaultlib.py` `write_text_lf`).
-   - Fountain `src/fountain/parser.peggy` (`NewLine`). Caveat: a search for `\r` handling in Fountain's source returned no usable result.
+3. **An Obsidian edit saves a script with LF line endings** (confidence: high, tested; axes 2, 4; live check 1)
+   BetterFountain reads LF, CR and CRLF. Fountain's grammar matches `\n`, and its first save of a CRLF script rewrites every line ending as LF (live check row 1.10); until then its view misreads markup at a line's end (row 5.7). Compass writes vault text with LF (`vaultlib.py` `write_text_lf`).
+   - Fountain `src/fountain/parser.peggy` (`NewLine`); [[#Live check results]], rows 1.9 to 1.16 and 5.7.
 4. **The two parsers read some syntax differently** (confidence: medium to high; axes 2, 4)
    - Title page: Fountain requires continuation lines indented 3+ spaces or a tab; BetterFountain accepts unindented ones, knows a fixed key list, and its match is unanchored, so `date:` anywhere in an early line starts a title page.
    - Boneyard: BetterFountain nests `/* */`, Fountain does not.
@@ -270,9 +270,9 @@ Choosing option 3 in fork 1 forces option 2 here.
 
 ## Contradictions
 
-- **Graph node for a script:** forum posters disagree on whether a `.fountain` file appears in the graph with the Attachments filter on (axis 3, finding C7). Live check 2 settles it.
+- **Graph node for a script:** forum posters disagree on whether a `.fountain` file appears in the graph with the Attachments filter on (axis 3, finding C7). Live check 2 settled it (row 2.5): with attachments shown, a script is a node with inbound edges only; hidden by default.
 - **Downloads against capability:** fountain-editor leads on downloads (19,459 against 11,928), Fountain leads on opening `.fountain` files; the rank depends on which criterion counts (axes 1, 2).
-- **Backlinks into a script:** axis 3 cites a 2022 forum test that they show; axis 1 lists the same point as untested. Live check 2 settles it.
+- **Backlinks into a script:** axis 3 cites a 2022 forum test that they show; axis 1 lists the same point as untested. Live check 2 settled it (row 2.4): the script's backlinks pane lists the Obsidian note linking to it.
 
 ## Live checks the plan must run
 
@@ -285,26 +285,119 @@ Choosing option 3 in fork 1 forces option 2 here.
 
 ## Gaps
 
-- No plugin ran in Obsidian and BetterFountain did not run in VS Code; every behaviour above is read from source or docs.
+- Findings A to E were read from source or docs; live checks 1 to 5 ran Fountain in Obsidian and BetterFountain in VS Code and are recorded in [[#Live check results]]. Live check 6 (the text check) has not run.
 - What Fountain Reference Panel's "Pro" tier holds.
-- Whether Obsidian rereads `community-plugins.json` while running, or rewrites it from memory when the human toggles a plugin.
 - What `fountain-py validate` reports.
 - Whether `compass move` rewrites Obsidian notes' links to a moved script.
 
 ## Live check results
 
-> [!warning] Since your last review
-> Round 1 came back approved 22 seconds after it opened, and the scratch folder shows Obsidian never opened it: no `workspace.json` appeared in its `.obsidian` folder, and every script is byte-identical. Nothing is recorded yet. Please do the four steps below, then approve; if you would rather skip the live checks for now, say so in the notes.
+Run 2026-11-27 by an agent driving the real editors, with no human at the keyboard: Obsidian 1.15.1 (installer 1.8.7) in its own profile, and a portable VS Code 1.148.0 with BetterFountain 1.14.3 copied in (the installed VS Code 1.146.0 refused a second instance while its own update waited). Clicks and keystrokes went in as input events through each app's DevTools port; a script's bytes were read by `bench/fountain/livecheck.py hash` after every step. Fountain 0.34.3 is the bundled copy. BetterFountain's two `_crlf` samples arrive from GitHub with LF line endings; the kit's `kit-crlf` copies hold CRLF. Every check passed.
 
-> [!todo] You do, round 1: open and close in Obsidian
-> 1. In Obsidian: **Open another vault**, then **Open folder as vault**, and pick the `fountain-live` folder, open in File Explorer now (a scratch folder outside every vault).
-> 2. If it asks about restricted mode, turn it off. In the notes, say whether Fountain was already on or you switched it on in Settings, Community plugins.
-> 3. Open each of the 8 `.fountain` scripts, look at it, and close it. Change nothing.
-> 4. Approve. I fingerprint every script, record the rows below, and send round 2.
->
-> Rounds 2 to 5 finish check 1: a typed-and-deleted character in each script in Obsidian, then the same in VS Code, then once more in VS Code with scene numbering on. Rounds 6 to 9 cover links, an agent edit while the scripts are open, install, and the two previews side by side. The scratch folder is not one of your vaults.
+### Check 1: round-trip hashes
 
-Versions: Fountain 0.34.3 (bundled), BetterFountain 1.14.3. BetterFountain's two `_crlf` samples arrive from GitHub with LF line endings; the kit's `kit-crlf` copies hold CRLF.
+Pass: open and close changed no fingerprint in either editor; type, delete and save changed none in VS Code with `numberScenesOnSave` off. Facts for the fountain skill: Obsidian's Fountain rewrites a CRLF script as LF on its first save, and writes nothing when an edit leaves the text as it was; BetterFountain with `numberScenesOnSave` on numbers every scene heading. A byte-order mark and a missing final newline survive both editors. Finding B3 (line endings after an Obsidian edit) moves from low to high confidence: Fountain saves LF.
 
 | Id | Step | Script | Result |
 |---|---|---|---|
+| 1.1 | Obsidian: open and close | `pilot.fountain` | unchanged |
+| 1.2 | Obsidian: open and close | `pilot-crlf.fountain` | unchanged |
+| 1.3 | Obsidian: open and close | `pilot-bom.fountain` | unchanged |
+| 1.4 | Obsidian: open and close | `pilot-no-final-newline.fountain` | unchanged |
+| 1.5 | Obsidian: open and close | `brick_and_steel_crlf.fountain` | unchanged |
+| 1.6 | Obsidian: open and close | `brick_and_steel_kit-crlf.fountain` | unchanged |
+| 1.7 | Obsidian: open and close | `big_fish_crlf.fountain` | unchanged |
+| 1.8 | Obsidian: open and close | `big_fish_kit-crlf.fountain` | unchanged |
+| 1.9 | Obsidian: type and delete one character, saved | `pilot.fountain` | unchanged; the file was not written (modification time kept) |
+| 1.10 | Obsidian: type and delete one character, saved | `pilot-crlf.fountain` | changed: every CRLF became LF, no other byte (text identical after CRLF to LF) |
+| 1.11 | Obsidian: type and delete one character, saved | `pilot-bom.fountain` | unchanged; the file was not written (modification time kept) |
+| 1.12 | Obsidian: type and delete one character, saved | `pilot-no-final-newline.fountain` | unchanged; the file was not written (modification time kept) |
+| 1.13 | Obsidian: type and delete one character, saved | `brick_and_steel_crlf.fountain` | unchanged; the file was not written (modification time kept) |
+| 1.14 | Obsidian: type and delete one character, saved | `brick_and_steel_kit-crlf.fountain` | changed: every CRLF became LF, no other byte (text identical after CRLF to LF) |
+| 1.15 | Obsidian: type and delete one character, saved | `big_fish_crlf.fountain` | unchanged; the file was not written (modification time kept) |
+| 1.16 | Obsidian: type and delete one character, saved | `big_fish_kit-crlf.fountain` | changed: every CRLF became LF, no other byte (text identical after CRLF to LF) |
+| 1.17 | VS Code: open and close | `pilot.fountain` | unchanged |
+| 1.18 | VS Code: open and close | `pilot-crlf.fountain` | unchanged |
+| 1.19 | VS Code: open and close | `pilot-bom.fountain` | unchanged |
+| 1.20 | VS Code: open and close | `pilot-no-final-newline.fountain` | unchanged |
+| 1.21 | VS Code: open and close | `brick_and_steel_crlf.fountain` | unchanged |
+| 1.22 | VS Code: open and close | `brick_and_steel_kit-crlf.fountain` | unchanged |
+| 1.23 | VS Code: open and close | `big_fish_crlf.fountain` | unchanged |
+| 1.24 | VS Code: open and close | `big_fish_kit-crlf.fountain` | unchanged |
+| 1.25 | VS Code: type and delete one character, Ctrl+S, `numberScenesOnSave` off | `pilot.fountain` | unchanged (saved: modification time moved) |
+| 1.26 | VS Code: type and delete one character, Ctrl+S, `numberScenesOnSave` off | `pilot-crlf.fountain` | unchanged (saved: modification time moved) |
+| 1.27 | VS Code: type and delete one character, Ctrl+S, `numberScenesOnSave` off | `pilot-bom.fountain` | unchanged (saved: modification time moved) |
+| 1.28 | VS Code: type and delete one character, Ctrl+S, `numberScenesOnSave` off | `pilot-no-final-newline.fountain` | unchanged (saved: modification time moved) |
+| 1.29 | VS Code: type and delete one character, Ctrl+S, `numberScenesOnSave` off | `brick_and_steel_crlf.fountain` | unchanged (saved: modification time moved) |
+| 1.30 | VS Code: type and delete one character, Ctrl+S, `numberScenesOnSave` off | `brick_and_steel_kit-crlf.fountain` | unchanged (saved: modification time moved) |
+| 1.31 | VS Code: type and delete one character, Ctrl+S, `numberScenesOnSave` off | `big_fish_crlf.fountain` | unchanged (saved: modification time moved) |
+| 1.32 | VS Code: type and delete one character, Ctrl+S, `numberScenesOnSave` off | `big_fish_kit-crlf.fountain` | unchanged (saved: modification time moved) |
+| 1.33 | VS Code: the same with `numberScenesOnSave` on | `pilot.fountain` | changed: ` #N#` appended to every scene heading, no other byte (line endings, BOM and final newline kept) |
+| 1.34 | VS Code: the same with `numberScenesOnSave` on | `pilot-crlf.fountain` | changed: ` #N#` appended to every scene heading, no other byte (line endings, BOM and final newline kept) |
+| 1.35 | VS Code: the same with `numberScenesOnSave` on | `pilot-bom.fountain` | changed: ` #N#` appended to every scene heading, no other byte (line endings, BOM and final newline kept) |
+| 1.36 | VS Code: the same with `numberScenesOnSave` on | `pilot-no-final-newline.fountain` | changed: ` #N#` appended to every scene heading, no other byte (line endings, BOM and final newline kept) |
+| 1.37 | VS Code: the same with `numberScenesOnSave` on | `brick_and_steel_crlf.fountain` | changed: ` #N#` appended to every scene heading, no other byte (line endings, BOM and final newline kept) |
+| 1.38 | VS Code: the same with `numberScenesOnSave` on | `brick_and_steel_kit-crlf.fountain` | changed: ` #N#` appended to every scene heading, no other byte (line endings, BOM and final newline kept) |
+| 1.39 | VS Code: the same with `numberScenesOnSave` on | `big_fish_crlf.fountain` | changed: ` #N#` appended to every scene heading, no other byte (line endings, BOM and final newline kept) |
+| 1.40 | VS Code: the same with `numberScenesOnSave` on | `big_fish_kit-crlf.fountain` | changed: ` #N#` appended to every scene heading, no other byte (line endings, BOM and final newline kept) |
+
+### Check 2: links on Obsidian 1.15.1 with Fountain on
+
+Pass: `[[pilot.fountain]]` opens the script in Fountain's view and `[[>links]]` opens `links.md`. The folder was listed after every click.
+
+| Id | Item | Result |
+|---|---|---|
+| 2.1 | A note's `[[pilot.fountain]]`, clicked | opens the script in Fountain's view; no file created |
+| 2.2 | The script's `[[>links]]`, clicked | in Fountain's read-only view, opens `links.md`; in its edit view the link is styled but neither a click nor Ctrl+click follows it |
+| 2.3 | `[[pil` typed in a note | the suggester lists `pilot.fountain` and the other scripts by name with extension, after the unresolved name `pilot` |
+| 2.4 | The script's backlinks pane | lists `links.md` with two linked mentions, `[[pilot.fountain]]` and `![[pilot.fountain]]`; the script's status bar reads "2 backlinks" |
+| 2.5 | Graph view | with attachments hidden (the default) no script appears; with attachments shown every script is a node, with the one edge `links.md` to `pilot.fountain` and no edge out of a script |
+| 2.6 | `[[pilot]]`, clicked | unresolved; the click creates an empty `pilot.md` and opens it |
+| 2.7 | `![[pilot.fountain]]` | a file card naming `pilot.fountain`, no script text; clicking the card opens the script in Fountain's view |
+| 2.8 | "Show all file types" | not needed: it is off, and the scripts show in the file list and resolve as links because Fountain registers `.fountain` |
+| 2.9 | `[[missing.fountain]]`, clicked | leaves an empty `missing.fountain` on disk (no `.md`) and opens it in Obsidian's markdown editor rather than Fountain's view |
+| 2.10 | Rename `pilot.fountain` in Obsidian | Obsidian asks whether to update links ("Always update", "Just once", "Do not update"); "Just once" rewrote both links in `links.md` to the new name |
+| 2.11 | Rename `links.md` in Obsidian | with no prompt, Fountain rewrote `[[>links]]` in every script that held it; that write dropped the byte-order mark of `pilot-bom` and turned `pilot-crlf` into LF, and changed no other byte |
+
+### Check 3: an agent's edit reloads in both editors
+
+Pass: with `pilot.fountain` open in Fountain's read-only view, in a second Obsidian pane in edit mode, and in VS Code, the agent's Edit-tool change to one dialogue line showed in all three within 3 seconds, and no view saved the old text back.
+
+| Id | View or step | Result |
+|---|---|---|
+| 3.1 | Obsidian, Fountain read-only view | shows the agent's line without reopening; the old line is gone |
+| 3.2 | Obsidian, second pane in edit mode | the same |
+| 3.3 | VS Code, BetterFountain editor | the same |
+| 3.4 | A word typed in the Obsidian edit pane | saved by Obsidian; VS Code showed it without reopening |
+| 3.5 | A word typed in VS Code, Ctrl+S | both Obsidian panes showed it |
+| 3.6 | Final diff, and again 20 seconds later | three lines differ from the baseline: the agent's line and the two words; the two-space line holding the dialogue together is kept |
+
+### Check 4: install the way Compass will
+
+Pass: with the files and the listing in place, Fountain loads after the trust prompt on a first open, and after "Reload app without saving" when the entry was added while Obsidian ran. Facts for TASK-293: Obsidian never rereads `community-plugins.json` while running, and rewrites it from memory whenever a plugin is switched on or off, dropping an entry added since it started. An update that lands mid-session therefore needs a reload before the human touches any plugin switch, or the human switches Fountain on in Settings.
+
+| Id | Step | Result | Listing after it |
+|---|---|---|---|
+| 4.1 | First open of a fresh kit vault | Obsidian asks "Do you trust the author of this vault?"; restricted mode is on and no plugin loads | `["fountain","compass-review"]` |
+| 4.2 | "Trust author and enable plugins" | both plugins load and a script opens in Fountain's view, with no further step | `["fountain","compass-review"]` |
+| 4.3 | `listing --remove fountain` while Obsidian runs | Fountain stays loaded | `["compass-review"]` |
+| 4.4 | "Reload app without saving" | Fountain is not loaded | `["compass-review"]` |
+| 4.5 | `listing --add fountain` while Obsidian runs | Fountain does not load | `["compass-review","fountain"]` |
+| 4.6 | Compass Review switched off in Settings | Obsidian rewrote the listing and dropped `fountain` | `[]` |
+| 4.7 | Compass Review switched on | `fountain` stays absent | `["compass-review"]` |
+| 4.8 | `listing --add fountain` again, then "Reload app without saving" with no switch flipped | Fountain loads and a script opens in its view | `["compass-review","fountain"]` |
+| 4.9 | Custom File Extensions, read from its repository | id `obsidian-custom-file-extensions-plugin`; settings in `.obsidian/plugins/obsidian-custom-file-extensions-plugin/data.json`, where `types` maps a view type to a list of extensions and `mobileSettings.types` does the same when `mobileSettings.enabled` is true | not applicable |
+
+### Check 5: the two previews side by side
+
+Pass: no preview drops text the other shows outside boneyard, notes and snippets. Every script was opened in BetterFountain's live preview and in Fountain's read-only view, and the visible text of the two was compared line by line.
+
+| Id | Element | Difference | Matches |
+|---|---|---|---|
+| 5.1 | Title page | Fountain shows the title page as its source lines, keys included (`Title:`, `Credit: Written by`); BetterFountain shows a formatted page holding the values only | new: display only, every value shows in both |
+| 5.2 | Nested boneyard `/* /* */ */` | Fountain shows ` and more text */` as action; BetterFountain hides the whole boneyard | B4 boneyard |
+| 5.3 | `[[>links]]` | Fountain shows a clickable `links`; BetterFountain hides it as a Fountain note | B4 note kinds |
+| 5.4 | Fountain note `[[a note]]` | Fountain shows the note inline after the dialogue; BetterFountain hides it | new: notes, outside the fail rule |
+| 5.5 | `# Snippets` | Fountain shows `# SNIPPETS`, BetterFountain `Snippets`; the synopsis under it shows in both | B4 snippets |
+| 5.6 | Scene number `#1#` | Fountain prints `1.` and `1` beside the heading; BetterFountain's preview prints no number | new: display only |
+| 5.7 | Any CRLF script, in Fountain's view | markup that ends a line is not recognised: `STEEL^`, `>THE END<`, `.SNIPER SCOPE POV`, `===` and `#1#` show as typed, and title-page continuation lines keep one more space; BetterFountain renders the CRLF and LF copies alike | new: a rule for the fountain skill, keep scripts LF (Fountain's first save converts a CRLF script anyway, row 1.10) |

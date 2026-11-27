@@ -728,3 +728,15 @@ Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files a
 
 ### PLAN-034 Wave 3: the station ablation by planted defects
 - [x] TASK-353: Station ablation by planted defects - complexity: L, depends_on: TASK-352
+
+## 2026-11-27
+
+### PLAN-031 Wave 1: prove screenplays on real editors
+
+Plan: [[PLAN-031-screenplays-in-the-vault]]; each task's full text, files and checks are there.
+
+- [x] TASK-287: Live check 1, round-trip hashes - complexity: S, depends_on: TASK-286
+- [x] TASK-288: Live check 2, links on the current Obsidian build - complexity: S, depends_on: TASK-286
+- [x] TASK-289: Live check 3, an agent's edit reloads in both editors - complexity: S, depends_on: TASK-286
+- [x] TASK-290: Live check 4, install the way Compass will - complexity: S, depends_on: TASK-286
+- [x] TASK-291: Live check 5, the two previews side by side - complexity: S, depends_on: TASK-286

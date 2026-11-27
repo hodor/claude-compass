@@ -39,15 +39,12 @@ Plan: [[PLAN-021-control-loops]].
 Plan: [[PLAN-028-whole-overhead-on-real-projects]]; each task's full text, files and checks are there.
 
 - [ ] TASK-249: You grade four pilot builds - complexity: S, depends_on: TASK-248
-## PLAN-031 Wave 1: prove screenplays on real editors
 
-Plan: [[PLAN-031-screenplays-in-the-vault]]; each task's full text, files and checks are there.
+## PLAN-031 pause point: the human confirms the live checks
 
-- [ ] TASK-287: Live check 1, round-trip hashes - complexity: S, depends_on: TASK-286
-- [ ] TASK-288: Live check 2, links on the current Obsidian build - complexity: S, depends_on: TASK-286
-- [ ] TASK-289: Live check 3, an agent's edit reloads in both editors - complexity: S, depends_on: TASK-286
-- [ ] TASK-290: Live check 4, install the way Compass will - complexity: S, depends_on: TASK-286
-- [ ] TASK-291: Live check 5, the two previews side by side - complexity: S, depends_on: TASK-286
+Plan: [[PLAN-031-screenplays-in-the-vault]]. Checks 1 to 5 passed and sit in [[RESEARCH-screenplays-in-the-vault#Live check results]]; the Later tasks are detailed once the human confirms them.
+
+- [ ] The human confirms the five live check results.
 
 ## PLAN-033 Wave 4: the task in progress and the judge
 
