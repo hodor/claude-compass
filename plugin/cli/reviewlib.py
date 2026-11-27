@@ -48,13 +48,25 @@ A review is two JSON files in the Compass vault's `tmp/review/`:
 - `<id>.verdict.<n>.taken`, `<id>.verdict.taken`, `<id>.revision.<i>.<k>.taken`:
   the empty marker a waiter writes beside an answer or revision once it has
   handed it on, so a later `compass review --wait <id>` takes up the next one.
-  A one-file answer gets none: every wait on it prints it.
+  A one-file answer to a request without `revisable` gets none: every wait on
+  it prints it.
 
-A review is open from its request until it closes, and it closes when every
-listed document is answered (the request is answered) or when its request
-file is removed (withdrawn). While it is open the human may revise any verdict
-he sent; once it closes no revision is written. Answers and revisions written
-before it closed are handed on after it closes, by the next waiter.
+- `<id>.closed`, an empty file written by `compass review --close <id>`: the
+  review is closed. Nothing beside the request is removed to close it.
+
+A review is open from its request until it closes. Every review closes when
+its request file is removed (withdrawn) or `<id>.closed` exists. A request
+whose `revisable` is not `true` also closes once every listed document is
+answered (the request is answered). A request with `"revisable": true`, which
+`compass review` writes, stays open after every document is answered and
+closes when a later request (one whose id starts with a later timestamp, the
+first `STAMP` characters) lists one of its documents and every document of it
+is answered, or `REVISE_SECONDS` (24 hours) after its newest answer or
+revision, timed by that file's `at` when it is an ISO time, else by the
+file's modification time. While a review is open the human may revise any
+verdict he sent, except on a document a later request lists; once it closes
+no revision is written. Answers and revisions written before it closed are
+handed on after it closes, by the next waiter.
 
 - `<id>.changes.diff`, written here beside the request when the review lists
   a document an earlier review in the vault already listed: `git diff <sha>
@@ -86,6 +98,7 @@ import re
 import secrets
 import subprocess
 import time
+from datetime import datetime
 from pathlib import Path
 
 import review_surfaces
@@ -96,6 +109,8 @@ CARRIED_LISTS = ("comments", "edited")
 SHORT_SHA = 10
 MAX_DIFF_LINES = 2000
 ORPHAN_SECONDS = 3600
+REVISE_SECONDS = 24 * 3600
+STAMP = 15
 EDITOR_SETTING = "review_editor"
 PER_USER_EDITORS = ("vscode", "cursor")
 YAML_NULLS = ("null", "Null", "NULL", "~")
@@ -337,6 +352,22 @@ def changes_path(request_path):
     return Path(request_path).with_name(name)
 
 
+def closed_path(request_path):
+    """The `<id>.closed` marker beside a request file."""
+    name = Path(request_path).name.replace(".request.json", ".closed")
+    return Path(request_path).with_name(name)
+
+
+def close(compass_vault, request_id):
+    """Close the review whose id is exactly `request_id` by writing its
+    `<id>.closed`; True when such a request exists. Nothing is removed."""
+    found = find_request(compass_vault, request_id)
+    if found is None:
+        return False
+    closed_path(found[0]).write_bytes(b"")
+    return True
+
+
 def seen_path(request_path):
     """The `<id>.seen` file beside a request file."""
     name = Path(request_path).name.replace(".request.json", ".seen")
@@ -364,13 +395,15 @@ def _write_atomic(path, data):
 
 
 def write_request(compass_vault, surface, root, document, title=None, step_aside=True, commit=None,
-                  documents=None, session="", project="", changes=b""):
+                  documents=None, session="", project="", changes=b"", revisable=False):
     """Write a request for `document` on `surface` (its `NAME`), `file`
     relative to `root`, recording the git `commit` it was sent at; return
     `(request, request_path)`. `documents`, a list of `(path, why)` starting
     with `document`, makes it a request for several files that also carries
     `files`, `session` and `project`. Non-empty `changes` (bytes, see
-    `changes_record`) is saved beside the request, ahead of it."""
+    `changes_record`) is saved beside the request, ahead of it. `revisable`
+    writes `"revisable": true`, keeping the review open after every document
+    is answered."""
     rid = new_id()
     request = {"id": rid, "surface": surface, "file": _relative(document, root)}
     if documents:
@@ -378,6 +411,8 @@ def write_request(compass_vault, surface, root, document, title=None, step_aside
         request["session"] = session or ""
         request["project"] = project or ""
     request.update({"title": title, "return": bool(step_aside), "commit": commit})
+    if revisable:
+        request["revisable"] = True
     directory = review_dir(compass_vault)
     directory.mkdir(parents=True, exist_ok=True)
     _drop_orphan_claims(directory)
@@ -755,10 +790,110 @@ def untaken_revisions(request_path, request):
     return {index for index, _, _, path in revisions(request_path, request) if not marker_of(path).exists()}
 
 
-def is_closed(request_path, request):
-    """Whether the review is closed: its request file is gone, or every listed
-    document is answered. No revision is written once it is closed."""
-    return not Path(request_path).exists() or is_answered(request_path, request)
+def is_revisable(request):
+    """Whether the request stays open after every document is answered."""
+    return request.get("revisable") is True
+
+
+def _answer_files(request_path, request):
+    """The answer and revision files beside the request that count: the whole
+    `<id>.verdict.json`, each valid `<id>.verdict.<n>.json`, each valid
+    revision."""
+    files = [verdict_path(request_path)] if whole_verdict(request_path, request) is not None else []
+    files += [Path(request_path).with_name(Path(request_path).name.replace(".request.json", f".verdict.{n}.json"))
+              for n, _ in partial_verdicts(request_path, request)]
+    return files + [path for _, _, _, path in revisions(request_path, request)]
+
+
+def _written_at(path):
+    """When an answer or revision was written: its `at` when that is an ISO
+    time, else the file's modification time; seconds since the epoch, or None
+    when the file is gone."""
+    verdict = read_json(path)
+    at = verdict.get("at") if verdict else None
+    if isinstance(at, str):
+        try:
+            stamp = datetime.fromisoformat(at)
+            if stamp.tzinfo is not None:
+                return stamp.timestamp()
+        except ValueError:
+            pass
+    try:
+        return Path(path).stat().st_mtime
+    except OSError:
+        return None
+
+
+def last_answered_at(request_path, request):
+    """The time of the newest answer or revision of the request, or None."""
+    times = [t for t in map(_written_at, _answer_files(request_path, request)) if t is not None]
+    return max(times) if times else None
+
+
+def _later_listing(request_path, request):
+    """Whether a request with a later timestamp in the same folder lists one
+    of this request's documents."""
+    stamp = Path(request_path).name[:STAMP]
+    vault = Path(request_path).parent.parent.parent
+    mine = _placed(request, vault)
+    if not mine:
+        return False
+    for other in Path(request_path).parent.glob("*.request.json"):
+        if other.name[:STAMP] <= stamp:
+            continue
+        later = read_json(other)
+        if later is not None and any(_same_path(a, b) for a in _placed(later, vault) for b in mine):
+            return True
+    return False
+
+
+def _placed(request, compass_vault):
+    """The resolved paths of the documents a request lists, by the surface it
+    names, else by every registered surface."""
+    surface = review_surfaces.named(request.get("surface"))
+    found = []
+    for name in request_files(request):
+        for candidate in [surface] if surface else review_surfaces.SURFACES:
+            listed = candidate.resolve({**request, "file": name}, compass_vault)
+            if listed is not None:
+                found.append(Path(listed).resolve())
+                break
+    return found
+
+
+def is_closed(request_path, request, now=None):
+    """Whether the review is closed (see the protocol above): its request file
+    is gone or `<id>.closed` exists; a request that is not revisable once it
+    is answered; a revisable one once it is answered and a later request
+    lists one of its documents or `REVISE_SECONDS` have passed since its
+    newest answer or revision. No revision is written once it is closed."""
+    if not Path(request_path).exists() or closed_path(request_path).exists():
+        return True
+    answered = is_answered(request_path, request)
+    if not is_revisable(request) or not answered:
+        return answered
+    if _later_listing(request_path, request):
+        return True
+    newest = last_answered_at(request_path, request)
+    return newest is not None and (time.time() if now is None else now) - newest >= REVISE_SECONDS
+
+
+def open_answered(compass_vault, document):
+    """`(path, request)` for every revisable request that lists `document`,
+    has every document answered and is not closed yet."""
+    directory = review_dir(compass_vault)
+    target = Path(document).resolve()
+    found = []
+    if not directory.is_dir():
+        return found
+    for path in sorted(directory.glob("*.request.json")):
+        request = read_json(path)
+        if (request is None or not is_revisable(request) or not is_answered(path, request)
+                or is_closed(path, request)):
+            continue
+        if any(_same_path(listed, target) for listed in _placed(request, compass_vault)):
+            found.append((path, request))
+    return found
 
 
 def find_request(compass_vault, request_id):
@@ -782,7 +917,7 @@ def _pending_entries(compass_vault):
     out = []
     for path in sorted(directory.glob("*.request.json")):
         request = read_json(path)
-        if request is None or is_answered(path, request):
+        if request is None or is_answered(path, request) or closed_path(path).exists():
             continue
         out.append((path, request))
     return out

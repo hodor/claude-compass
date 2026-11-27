@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import reviewlib  # noqa: E402
 from tests import test_review  # noqa: E402
 
-REQUEST_KEYS = {"id", "surface", "file", "files", "session", "project", "title", "return", "commit"}
+REQUEST_KEYS = {"id", "surface", "file", "files", "session", "project", "title", "return", "commit", "revisable"}
 
 
 class MultiFileProject(test_review.ReviewProject):
@@ -155,7 +155,7 @@ class MultiFileRequest(MultiFileProject):
         with mock.patch.dict(os.environ, {"CLAUDE_CODE_SESSION_ID": "sess-9"}):
             request = self.send(str(self.doc), "--title", "One")
         self.assertEqual(request, {"id": request["id"], "surface": "obsidian", "file": "specs/SPEC-001-x.md",
-                                   "title": "One", "return": True, "commit": self.commit})
+                                   "title": "One", "return": True, "commit": self.commit, "revisable": True})
 
     def test_a_file_that_cannot_go_out_refuses_the_whole_review_and_names_it(self):
         """Adversarial where: only the first file is checked, a dirty file

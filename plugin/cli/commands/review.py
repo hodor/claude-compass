@@ -1,6 +1,7 @@
 """`compass review <file>... [--why <path>=<line>]... [--title T] [--timeout S]
 [--no-wait]` and `compass review --status`, `compass review --wait <id>`,
-`compass review --cancel <id>`, `compass review --install` and
+`compass review --cancel <id>`, `compass review --close <id>`,
+`compass review --install` and
 `compass review --editor <name>` - put documents in front of the human in a
 visual md interface and wait for the verdict.
 
@@ -61,12 +62,26 @@ document whose current verdict no waiter has handed on yet (unanswered, or
 with an answer or revision not handed on); once the review is closed and
 everything is handed on, no `still open` line follows.
 
+Every request `compass review` writes carries `"revisable": true`, so the
+review stays open after every document is answered, until `--close`, a later
+request for one of its documents, or 24 hours after the newest answer or
+revision close it (the rule is in `reviewlib`). Sending a request for a
+document writes `<id>.closed` beside every open, fully answered revisable
+request that lists it. A one-file answer handed on gets `<id>.verdict.taken`.
+
 `compass review --wait <id> [--timeout S]` waits on the same request again:
 it prints the next answer or revision not yet handed on, in the same form and
 with the same exit codes, and ends the same way, so the caller runs it after
-acting on each answer until no `still open` line follows. An id that names no
-review, or a closed several-file review with nothing left to hand on, prints
-a message on stderr and exits 1.
+acting on each answer. On a revisable review with every answer handed on it
+waits for the next revision, and it ends with `closed <id>` (exit 0) once the
+review closes with nothing left to hand on, at once when it already is. An id
+that names no review, or a closed several-file review that is not revisable
+with nothing left to hand on, prints a message on stderr and exits 1.
+
+`compass review --close <id>` closes the review by writing the empty
+`<id>.closed` beside its request; nothing is removed. Its waiters end with
+`closed <id>` and the surface drops the review. An id that names no review
+prints a message on stderr and exits 1.
 
 A document goes out only when it is committed: one with uncommitted changes,
 one outside a git repository, a repository with no commits, and a machine
@@ -136,13 +151,14 @@ as vault, <path>, then turn on Compass Review`. A name that is not a review
 editor exits 1 and changes nothing; an editor that could not be prepared exits 1
 with the setting written.
 
-Exit 0 on a verdict, on `--no-wait`, `--status`, `--cancel`, `--install` and
-`--editor`; 1 when not configured, on timeout, on a withdrawn request, on a
-usage error, on a `--cancel` of an id that is not pending, on a `--wait` of an
+Exit 0 on a verdict, on `closed <id>`, on `--no-wait`, `--status`, `--cancel`,
+`--close`, `--install` and `--editor`; 1 when not configured, on timeout, on a withdrawn request, on a
+usage error, on a `--cancel` of an id that is not pending, on a `--close` of an
+id that names no review, on a `--wait` of an
 id with no answer left to hand on, on an `--editor` name that is not a review
-editor, or when `--status`, `--cancel`, `--wait`, `--install` or `--editor`
-finds no `.compass` vault; never 2. `--wait` on a one-file review prints its
-answer again.
+editor, or when `--status`, `--cancel`, `--close`, `--wait`, `--install` or
+`--editor` finds no `.compass` vault; never 2. `--wait` on a one-file review
+that is not revisable prints its answer again.
 """
 
 import json
@@ -161,13 +177,14 @@ USAGE = ("usage: compass review <file>... [--why <path>=<line>]... [--title T] [
          "       compass review --status\n"
          "       compass review --wait <id> [--timeout S]\n"
          "       compass review --cancel <id>\n"
+         "       compass review --close <id>\n"
          "       compass review --install [--selected]\n"
          "       compass review --editor <obsidian|vscode|cursor>\n")
 
 
 def _parse(args):
     opts = {"files": [], "whys": [], "title": None, "timeout": None, "wait": True,
-            "status": False, "install": False, "cancel": None, "rewait": None,
+            "status": False, "install": False, "cancel": None, "rewait": None, "close": None,
             "editor": None, "selected": False}
     i = 0
     while i < len(args):
@@ -183,6 +200,11 @@ def _parse(args):
                 raise ValueError("--cancel needs a request id")
             i += 1
             opts["cancel"] = args[i]
+        elif arg == "--close":
+            if i + 1 >= len(args):
+                raise ValueError("--close needs a request id")
+            i += 1
+            opts["close"] = args[i]
         elif arg == "--wait":
             if i + 1 >= len(args):
                 raise ValueError("--wait needs a request id")
@@ -216,9 +238,9 @@ def _parse(args):
             opts["files"].append(arg)
         i += 1
     modes = [opts["status"], opts["install"], opts["cancel"] is not None, opts["rewait"] is not None,
-             opts["editor"] is not None]
+             opts["editor"] is not None, opts["close"] is not None]
     if sum(modes) > 1:
-        raise ValueError("--status, --cancel, --install, --wait and --editor are separate runs")
+        raise ValueError("--status, --cancel, --close, --install, --wait and --editor are separate runs")
     if opts["rewait"] is not None and (opts["files"] or opts["whys"] or opts["title"] is not None or not opts["wait"]):
         raise ValueError("--wait takes the request id and --timeout only")
     if opts["selected"] and not opts["install"]:
@@ -277,6 +299,18 @@ def _cancel(request_id):
         return 1
     if not reviewlib.cancel(vault, request_id):
         sys.stderr.write(f"compass review: no pending review with id {request_id!r}\n")
+        return 1
+    return 0
+
+
+def _close(request_id):
+    try:
+        vault = vaultlib.find_vault_root()
+    except FileNotFoundError:
+        sys.stderr.write("compass review: no .compass vault found\n")
+        return 1
+    if not reviewlib.close(vault, request_id):
+        sys.stderr.write(f"compass review: no review with id {request_id!r}\n")
         return 1
     return 0
 
@@ -383,8 +417,9 @@ def _next_answer(request, request_path, several):
     """`(verdict, covered, marker)` for the earliest answer no waiter has
     handed on, else None. `covered` is the set of positions a partial answer
     covers, None for the whole `<id>.verdict.json`; `marker` is the file to
-    write once the answer is printed, None for a one-file answer, which every
-    wait prints."""
+    write once the answer is printed, None for a one-file answer to a request
+    that is not revisable, which every wait prints."""
+    several = several or reviewlib.is_revisable(request)
     whole = reviewlib.verdict_path(request_path)
     whole_marker = reviewlib.taken_path(request_path, None)
     if whole.exists() and not (several and whole_marker.exists()):
@@ -478,6 +513,9 @@ def _wait(request, request_path, documents, timeout, root, vault, surface_root, 
         if not Path(request_path).exists():
             print(f"withdrawn {request['id']}")
             return 1
+        if reviewlib.is_closed(request_path, request):
+            print(f"closed {request['id']}", flush=True)
+            return 0
         claimed = claimed or claim.exists()
         if not claimed and not hinted and time.monotonic() - started >= ACK_SECONDS:
             hinted = True
@@ -515,6 +553,9 @@ def _rewait(request_id, timeout):
     several = len(documents) > 1
     if (_next_answer(request, request_path, several) is None and not _revision_groups(request_path, request)
             and reviewlib.is_closed(request_path, request)):
+        if reviewlib.is_revisable(request) or reviewlib.closed_path(request_path).exists():
+            print(f"closed {request_id}")
+            return 0
         sys.stderr.write(f"compass review: every document of review {request_id!r} was already answered and handed on\n")
         return 1
     return _wait(request, request_path, documents, timeout, root, vault, surface_root, surface)
@@ -600,6 +641,8 @@ def run(args):
         return _status()
     if opts["cancel"] is not None:
         return _cancel(opts["cancel"])
+    if opts["close"] is not None:
+        return _close(opts["close"])
     if opts["rewait"] is not None:
         return _rewait(opts["rewait"], opts["timeout"])
     if opts["install"]:
@@ -626,6 +669,8 @@ def run(args):
         while (older := reviewlib.under_review(compass_vault, document)) is not None:
             if not reviewlib.cancel(compass_vault, older.get("id")):
                 break
+        for path, _ in reviewlib.open_answered(compass_vault, document):
+            reviewlib.closed_path(path).write_bytes(b"")
     several = len(documents) > 1
     changes = reviewlib.changes_record(compass_vault, root, documents)
     request, request_path = reviewlib.write_request(
@@ -633,7 +678,7 @@ def run(args):
         step_aside=not surface.has_focus(), commit=commit,
         documents=[(d, reasons.get(_key(g))) for d, g in zip(documents, given)] if several else None,
         session=os.environ.get("CLAUDE_CODE_SESSION_ID") or "",
-        project=Path(compass_vault).parent.name, changes=changes)
+        project=Path(compass_vault).parent.name, changes=changes, revisable=True)
     surface.deliver(context, request_path)
     print(f"requested {request['id']} {request['file']}", flush=True)
     if not opts["wait"]:

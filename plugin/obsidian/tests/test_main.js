@@ -5969,10 +5969,10 @@ test("a reload and a reopened panel keep the sent rows settled and the others op
 });
 // Adversarial where: the add-on is shipped under the version an installed copy
 // already runs, so the running plugin is never reloaded for the change.
-test("the shipped Obsidian manifest is at 0.8.0 or later", () => {
+test("the shipped Obsidian manifest is at 0.8.1 or later", () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "compass-review", "manifest.json"), "utf8"));
   const have = manifest.version.split(".").map(Number);
-  const want = [0, 8, 0];
+  const want = [0, 8, 1];
   let ok = true;
   for (let i = 0; i < 3; i++) if (have[i] !== want[i]) { ok = have[i] > want[i]; break; }
   assert.ok(ok, `manifest version ${manifest.version}`);
@@ -6310,4 +6310,166 @@ test("Approve all and a several-row send never revise a sent row", async () => {
   await plugin.sendRows(entry, [1, 2], "approved");
   assert.deepEqual(revisionFilesOf(app), []);
   assert.deepEqual(partialOf(app, 2).files.map((f) => f.index), [2]);
+});
+
+// ---- a revisable review stays as an answered card until it closes ----
+
+const ONE = (extra = {}) => ({ "specs/a.md": "x", "elsewhere.md": "e", "tmp/review/1.request.json": req("1", "specs/a.md", { revisable: true, ...extra }) });
+async function openOne(extra = {}) {
+  const r = await loaded(ONE(extra));
+  await r.plugin.handler({ request: "tmp/review/1.request.json" });
+  return r;
+}
+const isAnsweredCard = (app, id = "1") => cardFor(app, id).cls.split(" ").includes("is-answered");
+const hoursAgo = (h) => new Date(Date.now() - h * 3600 * 1000).toISOString();
+
+// Adversarial where: a one-document revisable review leaves on its answer, its
+// Approve is offered again, Needs changes skips its note gate, or the change
+// rewrites the verdict instead of adding revision 0.1.
+test("a one-document revisable review stays answered and its verdict changes by revision", async () => {
+  const { app, plugin } = await openOne();
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
+  const first = app.store.get("tmp/review/1.verdict.json");
+  assert.equal(JSON.parse(first).verdict, "approved");
+  assert.ok(plugin.pending.has("1"), "the answered review stays");
+  assert.ok(isAnsweredCard(app), "the card is the compact answered card");
+  assert.equal(sentMarkOf(app, 0), "sent: approved");
+  assert.equal(win.minimized, 1, "no review waits on an answer, so Obsidian steps aside");
+  assert.equal(cardBtn(app, "1", "Approve").disabled, true);
+  assert.equal(cardBtn(app, "1", "Needs changes").disabled, true, "Needs changes still needs a note");
+  typeInto(notesIn(cardFor(app, "1")), "the scope is too wide");
+  assert.equal(cardBtn(app, "1", "Needs changes").disabled, false);
+  await click(cardBtn(app, "1", "Needs changes"));
+  await sleep();
+  assert.equal(app.store.get("tmp/review/1.verdict.json"), first, "the answer is never rewritten");
+  assert.deepEqual(revisionFilesOf(app), ["tmp/review/1.revision.0.1.json"]);
+  const r = revisionOf(app, 0, 1);
+  assert.equal(r.verdict, "changes");
+  assert.equal(r.notes, "the scope is too wide");
+  assert.equal(r.files[0].index, 0);
+  assert.equal(sentMarkOf(app, 0), "sent: needs changes");
+  assert.equal(cardBtn(app, "1", "Approve").disabled, false);
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
+  assert.equal(revisionOf(app, 0, 2).verdict, "approved");
+});
+
+// Adversarial where: the last row's answer closes a revisable review, so the
+// document answered last can never be changed.
+test("the last document answered in a revisable review can be revised", async () => {
+  const { app, plugin } = await openSet({ revisable: true });
+  await click(cardBtn(app, "1", "Approve all"));
+  await sleep();
+  assert.ok(plugin.pending.has("1"));
+  assert.ok(isAnsweredCard(app));
+  assert.deepEqual([0, 1, 2, 3].map((i) => sentMarkOf(app, i)), Array(4).fill("sent: approved"));
+  typeInto(rowNoteIn(cardFor(app, "1"), 3), "the evidence is thin");
+  await decide(app, 3, "Needs changes");
+  assert.deepEqual(revisionFilesOf(app), ["tmp/review/1.revision.3.1.json"]);
+  assert.equal(revisionOf(app, 3, 1).files[0].note, "the evidence is thin");
+});
+
+// Adversarial where: an old request without the flag stays as an answered
+// card, so every review answered before the flag existed comes back.
+test("a request without revisable leaves on its answer and old answered ones stay closed", async () => {
+  const { app, plugin } = await loaded({ "specs/a.md": "x", "tmp/review/1.request.json": req("1", "specs/a.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
+  assert.equal(plugin.pending.has("1"), false);
+  const old = await loaded({
+    "specs/a.md": "x",
+    "tmp/review/5.request.json": req("5", "specs/a.md"),
+    "tmp/review/5.verdict.json": JSON.stringify({ id: "5", file: "specs/a.md", verdict: "approved", notes: "", at: hoursAgo(1) }),
+  });
+  await old.plugin.scanPending();
+  assert.deepEqual(cardIds(old.app), []);
+});
+
+// Adversarial where: a revisable review never closes on its own, or closes
+// before 24 hours after its newest answer or revision.
+test("a revisable review closes 24 hours after its newest answer or revision", async (t) => {
+  const answer = (at) => JSON.stringify({ id: "1", file: "specs/a.md", verdict: "approved", notes: "", at });
+  const revision = (at) => JSON.stringify({ id: "1", file: "specs/a.md", verdict: "changes", notes: "n", at, revision: 1,
+    files: [{ file: "specs/a.md", read: true, verdict: "changes", index: 0, note: "n" }] });
+  await t.test("found at start-up 25 hours on: not shown", async () => {
+    const { app, plugin } = await loaded({ ...ONE(), "tmp/review/1.verdict.json": answer(hoursAgo(25)) });
+    await plugin.scanPending();
+    assert.deepEqual(cardIds(app), []);
+  });
+  await t.test("23 hours on: shown answered, at its revised verdict", async () => {
+    const { app, plugin } = await loaded({ ...ONE(), "tmp/review/1.verdict.json": answer(hoursAgo(30)), "tmp/review/1.revision.0.1.json": revision(hoursAgo(23)) });
+    await plugin.scanPending();
+    await plugin.openPanel();
+    await sleep();
+    assert.deepEqual(cardIds(app), ["1"], "the newest revision restarts the 24 hours");
+    assert.equal(sentMarkOf(app, 0), "sent: needs changes");
+  });
+  await t.test("a held card is dropped by the recheck once the time is up", async () => {
+    const { app, plugin } = await openOne();
+    await click(cardBtn(app, "1", "Approve"));
+    await sleep();
+    const v = JSON.parse(app.store.get("tmp/review/1.verdict.json"));
+    app.store.set("tmp/review/1.verdict.json", JSON.stringify({ ...v, at: hoursAgo(24.01) }));
+    await plugin.recheck();
+    assert.equal(plugin.pending.has("1"), false);
+  });
+});
+
+// Adversarial where: the close marker is ignored, so a closed review keeps
+// taking revisions, or closing removes an answer.
+test("an <id>.closed marker closes a revisable review and no revision follows", async () => {
+  const { app, plugin } = await openOne();
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
+  const entry = plugin.pending.get("1");
+  app.store.set("tmp/review/1.closed", "");
+  typeInto(notesIn(cardFor(app, "1")), "too late");
+  await plugin.verdict(entry, "changes");
+  assert.deepEqual(revisionFilesOf(app), []);
+  assert.equal(plugin.pending.has("1"), false);
+  assert.ok(app.store.has("tmp/review/1.verdict.json"), "the answer stays");
+  assert.ok(notices.some((n) => /closed/.test(String(n))));
+});
+
+// Adversarial where: a newer request for the same file leaves the older
+// answered review open, so the document can be answered in two places.
+test("a newer request listing the same file closes the older answered revisable review", async (t) => {
+  await t.test("while both are held", async () => {
+    const { app, plugin } = await openOne();
+    await click(cardBtn(app, "1", "Approve"));
+    await sleep();
+    app.store.set("tmp/review/2.request.json", req("2", "specs/a.md", { revisable: true }));
+    await plugin.handler({ request: "tmp/review/2.request.json" });
+    assert.equal(plugin.pending.has("1"), false);
+    assert.ok(plugin.pending.has("2"));
+  });
+  await t.test("found on disk", async () => {
+    const files = {
+      "specs/a.md": "x",
+      "tmp/review/20261126T100000-aaaaaa.request.json": req("20261126T100000-aaaaaa", "specs/a.md", { revisable: true }),
+      "tmp/review/20261126T100000-aaaaaa.verdict.json": JSON.stringify({ id: "20261126T100000-aaaaaa", file: "specs/a.md", verdict: "approved", notes: "", at: hoursAgo(1) }),
+      "tmp/review/20261126T110000-bbbbbb.request.json": req("20261126T110000-bbbbbb", "specs/a.md", { revisable: true }),
+    };
+    const { app, plugin } = await loaded(files);
+    await plugin.scanPending();
+    await plugin.openPanel();
+    await sleep();
+    assert.deepEqual(cardIds(app), ["20261126T110000-bbbbbb"]);
+  });
+  await t.test("an earlier request does not close a later one", async () => {
+    const files = {
+      "specs/a.md": "x",
+      "tmp/review/20261126T110000-bbbbbb.request.json": req("20261126T110000-bbbbbb", "specs/a.md", { revisable: true }),
+      "tmp/review/20261126T110000-bbbbbb.verdict.json": JSON.stringify({ id: "20261126T110000-bbbbbb", file: "specs/a.md", verdict: "approved", notes: "", at: hoursAgo(1) }),
+      "tmp/review/20261126T100000-aaaaaa.request.json": req("20261126T100000-aaaaaa", "specs/a.md", { revisable: true }),
+      "tmp/review/20261126T100000-aaaaaa.verdict.json": JSON.stringify({ id: "20261126T100000-aaaaaa", file: "specs/a.md", verdict: "approved", notes: "", at: hoursAgo(1) }),
+    };
+    const { app, plugin } = await loaded(files);
+    await plugin.scanPending();
+    await plugin.openPanel();
+    await sleep();
+    assert.deepEqual(cardIds(app), ["20261126T110000-bbbbbb"]);
+  });
 });

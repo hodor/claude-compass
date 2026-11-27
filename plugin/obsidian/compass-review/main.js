@@ -45,14 +45,21 @@
 //     in. The review is answered once `<id>.verdict.json` exists or the `<n>`
 //     files cover every document.
 //   <dir>/<id>.revision.<i>.<k>.json   written here when the human changes the
-//     verdict he sent for the document at position `i` of a several-document
-//     review while it is open: the shape of a `<id>.verdict.<n>.json` with one
+//     verdict he sent for the document at position `i` while the review is
+//     open: the shape of a `<id>.verdict.<n>.json` with one
 //     `files` entry, whose `index` is `i`, plus `revision`, the number `k`,
 //     counting that document's revisions from 1. Every revision is a new file;
 //     no answer or revision is rewritten or removed. A document's current
 //     verdict is its highest revision's, else its answer's.
-// A review is open until it is answered or its request file is removed; no
-// revision is written once it is closed. Compass writes an empty `.taken`
+// A review is open until it closes; no revision is written once it is closed.
+// It closes when its request file is removed or `<dir>/<id>.closed` exists
+// (written by `compass review --close <id>`). A request without
+// `revisable: true` also closes once it is answered. A revisable one, once
+// answered, closes when a request with a later timestamp (the first 15
+// characters of its file name) lists one of its documents, or 24 hours after
+// its newest answer or revision (that file's `at`, else its modification
+// time). A revisable one-document review is revised the same way, as
+// `<id>.revision.0.<k>.json`. Compass writes an empty `.taken`
 // beside each answer or revision of a several-document review it has handed
 // on.
 // <dir> is the Compass vault's tmp/review folder: `tmp/review` when the
@@ -79,11 +86,15 @@
 // that document's verdict with its note at once and the other rows stay open.
 // "Needs changes" on a row is enabled once the row has a note, an edit or a
 // changed choice. A sent row shows the verdict it stands at and keeps its note
-// field and the button of the other verdict enabled while any row is open: a
+// field and the button of the other verdict enabled while the review is open: a
 // click on it sends a revision. A sent row whose file a newer open review
 // lists is settled there and takes no revision here. The card ends with
 // Approve all, which approves the rows not yet sent that carry no note. A newer
-// request that lists an unsent file of an older one replaces it.
+// request that lists an unsent file of an older one replaces it. A review whose
+// request says `revisable: true` stays once every document is sent, as a
+// compact answered card (class `is-answered`) showing each verdict with the
+// other verdict's button live, one document or several, until it closes; a
+// newer request listing one of its files closes it at once.
 //
 // Each listed document carries a one-line bar naming the review and the file's
 // place in it, with a button that opens the panel. A click on a card saves the
@@ -208,6 +219,10 @@ const VERDICTS = ["approved", "changes"];
 
 const RELOAD_RETRY_MS = 2000;
 const RECHECK_MS = 5000;
+// A revisable review closes this long after its newest answer or revision.
+const REVISE_MS = 24 * 3600 * 1000;
+// The characters of a request file name that hold its timestamp.
+const STAMP = 15;
 const PANEL_TYPE = "compass-review-panel";
 const VIEW_TYPE = "compass-view-panel";
 
@@ -309,6 +324,86 @@ async function answeredPositions(adapter, requestPath, count) {
 async function isAnswered(adapter, requestPath, count) {
   if (await adapter.exists(verdictPathFor(requestPath))) return true;
   return count > 1 && (await answeredPositions(adapter, requestPath, count)).size >= count;
+}
+
+// The `<id>.closed` marker beside a request.
+function closedPathFor(requestPath) {
+  return requestPath.replace(/\.request\.json$/, ".closed");
+}
+
+// When an answer was written, in milliseconds: its `at` when that parses as a
+// time with a zone, else the file's modification time when the adapter
+// reports it, else null.
+async function writtenAt(adapter, path, answer) {
+  if (answer && typeof answer.at === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(answer.at)) {
+    const t = Date.parse(answer.at);
+    if (!Number.isNaN(t)) return t;
+  }
+  try {
+    const stat = typeof adapter.stat === "function" ? await adapter.stat(path) : null;
+    return stat && typeof stat.mtime === "number" ? stat.mtime : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// The time of the newest answer or revision of a request, or null.
+async function lastAnsweredAt(adapter, requestPath) {
+  const times = [];
+  const whole = verdictPathFor(requestPath);
+  if (await adapter.exists(whole)) {
+    let answer = null;
+    try {
+      answer = JSON.parse(await adapter.read(whole));
+    } catch (e) {
+      answer = null;
+    }
+    times.push(await writtenAt(adapter, whole, answer));
+  }
+  for (const { n, answer } of await partialAnswers(adapter, requestPath)) times.push(await writtenAt(adapter, partialPathFor(requestPath, n), answer));
+  for (const { i, k, answer } of await revisionAnswers(adapter, requestPath)) times.push(await writtenAt(adapter, revisionPathFor(requestPath, i, k), answer));
+  const known = times.filter((t) => typeof t === "number");
+  return known.length > 0 ? Math.max(...known) : null;
+}
+
+// Whether a request with a later timestamp (the first STAMP characters of its
+// file name) in the same folder lists one of `files`.
+async function laterListing(adapter, requestPath, files) {
+  const slash = requestPath.lastIndexOf("/");
+  const dir = slash < 0 ? "" : requestPath.slice(0, slash);
+  const stamp = requestPath.slice(slash + 1, slash + 1 + STAMP);
+  const mine = new Set(files.map((f) => f.file));
+  let names = [];
+  try {
+    names = (await adapter.list(dir)).files;
+  } catch (e) {
+    return false;
+  }
+  for (const full of names) {
+    const name = full.slice(full.lastIndexOf("/") + 1);
+    if (!name.endsWith(".request.json") || name.slice(0, STAMP) <= stamp) continue;
+    try {
+      const later = JSON.parse(await adapter.read(full));
+      if (later && filesOf(later).some((f) => mine.has(f.file))) return true;
+    } catch (e) {
+      // a request still being written is read on the next look
+    }
+  }
+  return false;
+}
+
+// Whether a review is closed: its request file is gone or `<id>.closed`
+// exists; a request without `revisable: true` once it is answered; a
+// revisable one once it is answered and a later request lists one of its
+// documents or REVISE_MS have passed since its newest answer or revision.
+async function isClosed(adapter, requestPath, request, now = Date.now()) {
+  if (!(await adapter.exists(requestPath)) || (await adapter.exists(closedPathFor(requestPath)))) return true;
+  const files = filesOf(request);
+  const answered = await isAnswered(adapter, requestPath, files.length);
+  if (request.revisable !== true || !answered) return answered;
+  if (await laterListing(adapter, requestPath, files)) return true;
+  const newest = await lastAnsweredAt(adapter, requestPath);
+  return newest !== null && now - newest >= REVISE_MS;
 }
 
 function baseName(path) {
@@ -1584,11 +1679,10 @@ class CompassReview extends Plugin {
       const { files } = await adapter.list(dir);
       for (const path of files) {
         if (!path.endsWith(".request.json")) continue;
-        if (await adapter.exists(verdictPathFor(path))) continue;
         try {
           const request = await this.readRequest(path);
           if (request.surface && request.surface !== SURFACE) continue;
-          if (await isAnswered(adapter, path, filesOf(request).length)) continue;
+          if (await isClosed(adapter, path, request)) continue;
           this.track(request, path);
           await this.restoreSent(this.pending.get(request.id));
         } catch (e) {
@@ -1601,6 +1695,8 @@ class CompassReview extends Plugin {
 
   // A newer request that lists any file of an older one replaces the older one,
   // whose request file `compass review` has already removed.
+  // A revisable review whose every row is sent and that lists a file of the
+  // newer one is closed by it and leaves.
   track(request, path) {
     const files = filesOf(request);
     const replaced = [];
@@ -1610,6 +1706,8 @@ class CompassReview extends Plugin {
       const shared = files.some((f) => held.has(f.file));
       if (shared) {
         replaced.push(entry);
+        this.pending.delete(id);
+      } else if (this.settled(entry) && files.some((f) => entry.states.has(f.file))) {
         this.pending.delete(id);
       }
     }
@@ -1655,7 +1753,7 @@ class CompassReview extends Plugin {
   // sent, each at the verdict it stands at (its highest revision's, else its
   // answer's), so a card opened later shows them settled.
   async restoreSent(entry) {
-    if (!entry || entry.files.length < 2) return;
+    if (!entry) return;
     const answered = new Set();
     const settle = (item) => {
       const target = Number.isInteger(item.index) ? entry.files[item.index] : null;
@@ -1667,7 +1765,23 @@ class CompassReview extends Plugin {
       state.read = state.read || item.read === true;
       if (typeof item.note === "string") state.note = item.note;
     };
-    for (const { answer } of await partialAnswers(this.app.vault.adapter, entry.path)) answer.files.forEach(settle);
+    const adapter = this.app.vault.adapter;
+    if (await adapter.exists(verdictPathFor(entry.path))) {
+      let whole = null;
+      try {
+        whole = JSON.parse(await adapter.read(verdictPathFor(entry.path)));
+      } catch (e) {
+        whole = null;
+      }
+      if (whole && VERDICTS.includes(whole.verdict)) {
+        entry.files.forEach((f, index) => {
+          const item = Array.isArray(whole.files) && whole.files[index] ? whole.files[index] : {};
+          const note = entry.files.length === 1 ? whole.notes : item.note;
+          settle({ ...item, index, verdict: VERDICTS.includes(item.verdict) ? item.verdict : whole.verdict, note });
+        });
+      }
+    }
+    for (const { answer } of await partialAnswers(adapter, entry.path)) answer.files.forEach(settle);
     // A revision counts only for a document that has an answer.
     for (const { i, answer } of await revisionAnswers(this.app.vault.adapter, entry.path)) {
       if (!answered.has(i)) continue;
@@ -1974,7 +2088,7 @@ class CompassReview extends Plugin {
     const adapter = this.app.vault.adapter;
     const dead = [];
     for (const [id, entry] of this.pending) {
-      if (!(await adapter.exists(entry.path)) || (await isAnswered(adapter, entry.path, entry.files.length))) dead.push(id);
+      if (await isClosed(adapter, entry.path, entry.request)) dead.push(id);
     }
     for (const id of dead) this.pending.delete(id);
     if (this.pending.size === 0) this.asideOwed = false;
@@ -2305,6 +2419,7 @@ class CompassReview extends Plugin {
     parts.feedback = feedback.createEl("ul", { cls: "compass-review-feedback" });
     parts.feedbackBlock = feedback;
 
+    parts.answered = card.createDiv({ cls: "compass-review-fine compass-review-answered" });
     const foot = card.createDiv({ cls: "compass-review-foot" });
     parts.summary = foot.createDiv({ cls: "compass-review-fine compass-review-summary" });
     const actions = foot.createDiv({ cls: "compass-review-actions" });
@@ -2314,6 +2429,7 @@ class CompassReview extends Plugin {
         this.sendRows(entry, this.approvableRows(entry), "approved").catch((e) => this.fail("verdict", e));
     } else {
       const approve = actions.createEl("button", { cls: "mod-cta", text: "Approve" });
+      parts.approve = approve;
       parts.changes = actions.createEl("button", { cls: "compass-review-changes", text: "Needs changes" });
       approve.onclick = () => this.verdict(entry, "approved").catch((e) => this.fail("verdict", e));
       parts.changes.onclick = () => this.verdict(entry, "changes").catch((e) => this.fail("verdict", e));
@@ -2325,7 +2441,7 @@ class CompassReview extends Plugin {
     if (entry.files.length > 1) {
       foot.createDiv({
         cls: "compass-review-fine",
-        text: "Approve or Needs changes on a file sends that file at once; the others stay open. A file you sent can be changed while any file is still open.",
+        text: "Approve or Needs changes on a file sends that file at once; the others stay open. A file you sent can be changed until the review closes.",
       });
       foot.createDiv({
         cls: "compass-review-fine",
@@ -2349,6 +2465,12 @@ class CompassReview extends Plugin {
   // Whether one file has something for Claude to act on: writing, or an edit.
   fileHasFeedback(entry, file) {
     return this.fileHasWriting(entry, file) || entry.edited.has(file);
+  }
+
+  // Whether every row of a review is sent: a revisable review then stays on
+  // the panel as an answered card until it closes.
+  settled(entry) {
+    return entry.files.every((f) => entry.states.get(f.file).sent);
   }
 
   // Whether another review held here lists `file` among its rows not yet
@@ -2475,9 +2597,18 @@ class CompassReview extends Plugin {
       parts.approveAll.disabled = this.approvableRows(entry).length === 0;
       parts.approveAll.title = "Approves every file that has no note and has not been sent";
     } else {
-      parts.changes.disabled = !this.hasFeedback(entry);
-      parts.changes.title = parts.changes.disabled ? "Write a note first" : "";
+      const file = entry.files[0].file;
+      const only = entry.states.get(file);
+      const stands = (verdict) => only.sent && only.verdict === verdict;
+      const elsewhere = only.sent && this.heldElsewhere(entry, file);
+      parts.approve.disabled = elsewhere || stands("approved");
+      parts.changes.disabled = elsewhere || stands("changes") || !this.hasFeedback(entry);
+      parts.changes.title = !elsewhere && !stands("changes") && !this.hasFeedback(entry) ? "Write a note first" : "";
+      for (const verdict of VERDICTS) setClass(verdict === "approved" ? parts.approve : parts.changes, "is-chosen", stands(verdict));
     }
+    const answered = this.settled(entry);
+    setClass(card, "is-answered", answered);
+    parts.answered.setText(answered ? "Answered. A verdict can still be changed until Claude closes this review." : "");
   }
 
   refreshCardIn(root, entry) {
@@ -3168,8 +3299,12 @@ class CompassReview extends Plugin {
     if (f.evidence) inline(row.createDiv({ cls: "compass-finding-evidence compass-fine" }), f.evidence);
   }
 
+  // On a sent one-document review, the other verdict sends a revision.
   async verdict(entry, verdict) {
     if (entry.sending) return;
+    if (entry.files.length === 1 && entry.request.revisable === true && entry.states.get(entry.files[0].file).sent) {
+      return this.reviseRow(entry, 0, verdict);
+    }
     entry.sending = true;
     try {
       await this.sendVerdict(entry, verdict);
@@ -3208,7 +3343,8 @@ class CompassReview extends Plugin {
     const file = entry.files[i].file;
     const state = entry.states.get(file);
     if (!state.sent || state.verdict === verdict || this.heldElsewhere(entry, file)) return;
-    if (verdict === "changes" && !this.fileHasFeedback(entry, file)) return;
+    const feedback = entry.files.length === 1 ? this.hasFeedback(entry) : this.fileHasFeedback(entry, file);
+    if (verdict === "changes" && !feedback) return;
     entry.sending = true;
     try {
       await this.writeRevision(entry, i, verdict);
@@ -3235,10 +3371,10 @@ class CompassReview extends Plugin {
       return;
     }
     if (this.pending.get(request.id) !== entry) return;
-    if (await isAnswered(adapter, path, entry.files.length)) {
+    if (await isClosed(adapter, path, request)) {
       this.pending.delete(request.id);
       this.refresh();
-      new Notice("This review was already answered - nothing was sent");
+      new Notice(request.revisable === true ? "This review is closed - nothing was sent" : "This review was already answered - nothing was sent");
       this.settleAside(entry);
       return;
     }
@@ -3246,6 +3382,7 @@ class CompassReview extends Plugin {
     let k = numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
     while (await adapter.exists(revisionPathFor(path, i, k))) k += 1;
     const answer = { ...this.buildPartialAnswer(entry, [i], verdict, choiceLines), revision: k };
+    if (entry.files.length === 1) answer.notes = answer.files[0].note || "";
     await adapter.write(revisionPathFor(path, i, k), JSON.stringify(answer, null, 2));
     entry.states.get(entry.files[i].file).verdict = verdict;
     for (const [file, note] of entry.comments) entry.carriedComments.set(file, note);
@@ -3367,14 +3504,15 @@ class CompassReview extends Plugin {
     }
   }
 
-  // Obsidian steps aside once no review is left, when any review answered
-  // since the window was raised arrived without focus; a pending set that
-  // empties by withdrawal clears the debt instead. A review with no recorded
+  // Obsidian steps aside once no review is left waiting on an answer (every
+  // card left is an answered one), when any review answered since the window
+  // was raised arrived without focus; a pending set that empties by
+  // withdrawal clears the debt instead. A review with no recorded
   // arrival (found at start-up) follows its request's `return`.
   settleAside(entry) {
     const owes = entry.arrivedUnfocused === undefined ? !!entry.request.return : entry.arrivedUnfocused;
     this.asideOwed = this.asideOwed || owes;
-    if (this.pending.size === 0 && this.asideOwed) {
+    if ([...this.pending.values()].every((e) => this.settled(e)) && this.asideOwed) {
       this.asideOwed = false;
       this.stepAside();
     }
@@ -3417,10 +3555,10 @@ class CompassReview extends Plugin {
       state.verdict = verdict;
     }
     for (const [file, note] of entry.comments) entry.carriedComments.set(file, note);
-    if (entry.files.every((f) => entry.states.get(f.file).sent)) this.pending.delete(request.id);
+    if (this.settled(entry) && request.revisable !== true) this.pending.delete(request.id);
     this.refresh();
     new Notice(verdict === "approved" ? "Approved - sent to Claude" : "Changes requested - sent to Claude");
-    if (!this.pending.has(request.id)) this.settleAside(entry);
+    if (!this.pending.has(request.id) || this.settled(entry)) this.settleAside(entry);
   }
 
   async sendVerdict(entry, verdict) {
@@ -3438,19 +3576,20 @@ class CompassReview extends Plugin {
     }
     if (this.pending.get(request.id) !== entry) return;
     await this.app.vault.adapter.write(verdictPathFor(path), JSON.stringify(this.buildAnswer(entry, verdict, choiceLines), null, 2));
-    this.pending.delete(request.id);
+    // A revisable review stays as an answered card; any other one leaves.
+    if (request.revisable === true) {
+      for (const f of entry.files) {
+        const state = entry.states.get(f.file);
+        state.sent = true;
+        state.verdict = verdict;
+      }
+      for (const [file, note] of entry.comments) entry.carriedComments.set(file, note);
+    } else {
+      this.pending.delete(request.id);
+    }
     this.refresh();
     new Notice(verdict === "approved" ? "Approved - sent to Claude" : "Changes requested - sent to Claude");
-    // Obsidian steps aside once no review is left, when any review answered
-    // since the window was raised arrived without focus; a pending set that
-    // empties by withdrawal clears the debt instead. A review with no
-    // recorded arrival (found at start-up) follows its request's `return`.
-    const owes = entry.arrivedUnfocused === undefined ? !!request.return : entry.arrivedUnfocused;
-    this.asideOwed = this.asideOwed || owes;
-    if (this.pending.size === 0 && this.asideOwed) {
-      this.asideOwed = false;
-      this.stepAside();
-    }
+    this.settleAside(entry);
   }
 }
 
