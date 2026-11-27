@@ -32,10 +32,29 @@ A review is two JSON files in the Compass vault's `tmp/review/`:
   request's `files`; `<n>` is the lowest `index` it carries and the top-level
   `verdict` is `"approved"` when every entry is approved, else `"changes"`. A
   document is answered once; the request is answered when `<id>.verdict.json`
-  exists or the `<n>` files together cover every listed document. A waiter
-  that hands such an answer on writes the empty `<id>.verdict.<n>.taken`
-  beside it, so a later `compass review --wait <id>` takes up the next
-  answer. A document the human has answered is no longer under review.
+  exists or the `<n>` files together cover every listed document. A document
+  the human has answered is no longer under review.
+
+- `<id>.revision.<i>.<k>.json`, written by the surface when the human changes
+  the verdict he sent for the document at position `<i>` while the review is
+  open: the same shape as a `<id>.verdict.<n>.json` with one `files` entry,
+  whose `index` is `<i>`, plus `revision`, the number `<k>`. `<k>` counts the
+  document's revisions from 1; each revision is a new file and no answer or
+  revision is ever rewritten or removed, so the files beside a request are the
+  whole history of the human's answers. A document's current verdict is its
+  highest revision's, else its answer's. A revision of a document that has no
+  answer is not taken.
+
+- `<id>.verdict.<n>.taken`, `<id>.verdict.taken`, `<id>.revision.<i>.<k>.taken`:
+  the empty marker a waiter writes beside an answer or revision once it has
+  handed it on, so a later `compass review --wait <id>` takes up the next one.
+  A one-file answer gets none: every wait on it prints it.
+
+A review is open from its request until it closes, and it closes when every
+listed document is answered (the request is answered) or when its request
+file is removed (withdrawn). While it is open the human may revise any verdict
+he sent; once it closes no revision is written. Answers and revisions written
+before it closed are handed on after it closes, by the next waiter.
 
 - `<id>.changes.diff`, written here beside the request when the review lists
   a document an earlier review in the vault already listed: `git diff <sha>
@@ -83,6 +102,8 @@ YAML_NULLS = ("null", "Null", "NULL", "~")
 _SETTING_LINE = re.compile(rf"^{EDITOR_SETTING}[ \t]*:[ \t]*(.*)$")
 _SHA = re.compile(r"[0-9a-fA-F]{7,64}")
 _PARTIAL_NAME = re.compile(r"\.verdict\.(\d+)\.json$")
+_REVISION_NAME = re.compile(r"\.revision\.(\d+)\.(\d+)\.json$")
+_REVISION_NAME = re.compile(r"\.revision\.(\d+)\.(\d+)\.json$")
 
 
 class GitUnavailable(Exception):
@@ -649,14 +670,95 @@ def is_answered(request_path, request):
     return count > 1 and len(answered_indexes(request_path, request)) >= count
 
 
+def whole_verdict(request_path, request):
+    """The valid `<id>.verdict.json` beside the request, else None."""
+    verdict = read_json(verdict_path(request_path))
+    return verdict if verdict is not None and valid_verdict(verdict, request) else None
+
+
 def handed_indexes(request_path, request):
     """The positions whose answer a waiter already handed on (its `.taken`
-    marker exists)."""
+    marker exists), the whole `<id>.verdict.json` covering every position."""
     handed = set()
+    if whole_verdict(request_path, request) is not None and taken_path(request_path, None).exists():
+        handed |= set(range(len(request_files(request))))
     for n, verdict in partial_verdicts(request_path, request):
         if taken_path(request_path, n).exists():
             handed |= covered_indexes(verdict)
     return handed
+
+
+def revision_path(request_path, index, number):
+    """The `<id>.revision.<index>.<number>.json` file beside a request file."""
+    name = Path(request_path).name.replace(".request.json", f".revision.{index}.{number}.json")
+    return Path(request_path).with_name(name)
+
+
+def marker_of(answer_path):
+    """The `.taken` marker of an answer or revision file: its name with
+    `.json` replaced by `.taken`."""
+    answer_path = Path(answer_path)
+    return answer_path.with_name(answer_path.name[: -len(".json")] + ".taken")
+
+
+def answer_verdicts(request_path, request):
+    """`{index: word}`: the verdict each answered document was first sent
+    with, from `<id>.verdict.json` and the `<id>.verdict.<n>.json` files. An
+    entry without its own `verdict` takes its answer's top-level one."""
+    found = {}
+    count = len(request_files(request))
+    whole = whole_verdict(request_path, request)
+    if whole is not None:
+        entries = whole.get("files") or []
+        for i in range(count):
+            entry = entries[i] if i < len(entries) else {}
+            found[i] = entry.get("verdict") or whole["verdict"]
+    for _, verdict in partial_verdicts(request_path, request):
+        for entry in verdict["files"]:
+            found.setdefault(entry["index"], entry.get("verdict") or verdict["verdict"])
+    return found
+
+
+def revisions(request_path, request):
+    """`[(index, number, verdict, path)]` for each valid
+    `<id>.revision.<index>.<number>.json` beside the request, by index then
+    number. A revision is valid when it is a well-formed answer whose one
+    `files` entry carries the `index` its name gives, its number is 1 or more,
+    and that document has an answer."""
+    prefix = Path(request_path).name.replace(".request.json", ".revision.")
+    answered = answer_verdicts(request_path, request)
+    found = []
+    for path in Path(request_path).parent.glob(glob.escape(prefix) + "*.json"):
+        named = _REVISION_NAME.search(path.name)
+        if not named or path.name[: -len(named.group(0))] + ".revision." != prefix:
+            continue
+        index, number = int(named.group(1)), int(named.group(2))
+        verdict = read_json(path)
+        if (number < 1 or index not in answered or verdict is None or not _valid_partial(verdict, request)
+                or len(verdict["files"]) != 1 or verdict["files"][0]["index"] != index):
+            continue
+        found.append((index, number, verdict, path))
+    return sorted(found, key=lambda item: (item[0], item[1]))
+
+
+def current_verdicts(request_path, request):
+    """`{index: word}`: each answered document's verdict as it stands, its
+    highest revision's, else its answer's."""
+    current = answer_verdicts(request_path, request)
+    for index, _, verdict, _ in revisions(request_path, request):
+        current[index] = verdict["files"][0].get("verdict") or verdict["verdict"]
+    return current
+
+
+def untaken_revisions(request_path, request):
+    """The positions with a revision no waiter has handed on yet."""
+    return {index for index, _, _, path in revisions(request_path, request) if not marker_of(path).exists()}
+
+
+def is_closed(request_path, request):
+    """Whether the review is closed: its request file is gone, or every listed
+    document is answered. No revision is written once it is closed."""
+    return not Path(request_path).exists() or is_answered(request_path, request)
 
 
 def find_request(compass_vault, request_id):

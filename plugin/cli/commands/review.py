@@ -45,12 +45,28 @@ documents stay open in the same request, and the documents already answered
 are no longer under review. An answer to every document at once is the
 `<id>.verdict.json` described above. A one-file review ends on its one answer.
 
+While the review is open (see `reviewlib`) the human may change a verdict he
+sent; the surface writes it as `<id>.revision.<i>.<k>.json`. A waiter hands a
+revision on as one line `revised <path>: <old> -> <new>`, `<old>` being the
+verdict last handed on for that document and `<new>` the one it has now,
+followed by the revision printed the way an answer to that one document is
+(verdict JSON, `comment` and `edited` lines, its `file` line with the new
+note, the changes report and, with a note or an edit, the document's text).
+Several revisions of one document not yet handed on print as one, from the
+verdict last handed on to the newest. A waiter hands on the next answer and
+then every revision not yet handed on, so a revision written as the review
+closes is not left behind. Handing a revision on writes the empty
+`<id>.revision.<i>.<k>.taken` beside it. The `still open` line names every
+document whose current verdict no waiter has handed on yet (unanswered, or
+with an answer or revision not handed on); once the review is closed and
+everything is handed on, no `still open` line follows.
+
 `compass review --wait <id> [--timeout S]` waits on the same request again:
-it prints the next answer not yet handed on, in the same form and with the same
-exit codes, and ends the same way, so the caller runs it after acting on each
-answer until no `still open` line follows. An id that names no review, or a
-review whose every answer was already handed on, prints a message on stderr
-and exits 1.
+it prints the next answer or revision not yet handed on, in the same form and
+with the same exit codes, and ends the same way, so the caller runs it after
+acting on each answer until no `still open` line follows. An id that names no
+review, or a closed several-file review with nothing left to hand on, prints
+a message on stderr and exits 1.
 
 A document goes out only when it is committed: one with uncommitted changes,
 one outside a git repository, a repository with no commits, and a machine
@@ -367,7 +383,8 @@ def _next_answer(request, request_path, several):
     """`(verdict, covered, marker)` for the earliest answer no waiter has
     handed on, else None. `covered` is the set of positions a partial answer
     covers, None for the whole `<id>.verdict.json`; `marker` is the file to
-    write once the answer is printed, None when none is owed."""
+    write once the answer is printed, None for a one-file answer, which every
+    wait prints."""
     whole = reviewlib.verdict_path(request_path)
     whole_marker = reviewlib.taken_path(request_path, None)
     if whole.exists() and not (several and whole_marker.exists()):
@@ -381,31 +398,82 @@ def _next_answer(request, request_path, several):
     return None
 
 
+def _revision_groups(request_path, request):
+    """`[(index, old, new, verdict, markers)]`, one per document with a
+    revision no waiter has handed on, by position: `old` is the verdict the
+    waiters last handed on for it (its answer's, or the last revision handed on
+    before the new ones), `new` and `verdict` the newest revision's word and
+    body, `markers` the `.taken` files of the revisions it stands for."""
+    first = reviewlib.answer_verdicts(request_path, request)
+    by_index = {}
+    for index, _, verdict, path in reviewlib.revisions(request_path, request):
+        by_index.setdefault(index, []).append((verdict, reviewlib.marker_of(path)))
+    groups = []
+    for index, items in sorted(by_index.items()):
+        old = first[index]
+        pending = []
+        for verdict, marker in items:
+            word = verdict["files"][0].get("verdict") or verdict["verdict"]
+            if marker.exists() and not pending:
+                old = word
+            else:
+                pending.append((verdict, marker, word))
+        if pending:
+            groups.append((index, old, pending[-1][2], pending[-1][0], [marker for _, marker, _ in pending]))
+    return groups
+
+
+def _print_revision(request, group, documents, root, vault, surface_root):
+    index, old, new, verdict, _ = group
+    print(f"revised {documents[index][0]}: {old} -> {new}")
+    covered = {index} if len(documents) > 1 else None
+    _print_answer(request, verdict, documents, root, vault, surface_root, covered)
+
+
 def _print_open(request, request_path, documents):
-    """One line naming the documents whose answer no waiter has handed on."""
-    handed = reviewlib.handed_indexes(request_path, request)
+    """One line naming the documents whose current answer no waiter has handed
+    on: unanswered, answered but not handed on, or with a revision not handed
+    on. Nothing is printed once the review is closed."""
+    handed = reviewlib.handed_indexes(request_path, request) - reviewlib.untaken_revisions(request_path, request)
     waiting = [rel for i, (rel, _) in enumerate(documents) if i not in handed]
-    if waiting:
+    if waiting and Path(request_path).exists():
         print(f"still open {request['id']}: {', '.join(waiting)}", flush=True)
+
+
+def _hand_on(request, request_path, documents, root, vault, surface_root):
+    """Print and mark handed on the earliest answer no waiter has handed on,
+    then every revision no waiter has handed on. False when there is nothing
+    to hand on."""
+    several = len(documents) > 1
+    answer = _next_answer(request, request_path, several)
+    if answer is not None:
+        verdict, covered, marker = answer
+    groups = _revision_groups(request_path, request)
+    if answer is None and not groups:
+        return False
+    if answer is not None:
+        _print_answer(request, verdict, documents, root, vault, surface_root, covered if several else None)
+    for group in groups:
+        _print_revision(request, group, documents, root, vault, surface_root)
+    sys.stdout.flush()
+    if answer is not None and marker is not None:
+        marker.write_bytes(b"")
+    for group in groups:
+        for path in group[4]:
+            path.write_bytes(b"")
+    if several:
+        _print_open(request, request_path, documents)
+    return True
 
 
 def _wait(request, request_path, documents, timeout, root, vault, surface_root, surface):
     claim = reviewlib.seen_path(request_path)
-    several = len(documents) > 1
     started = time.monotonic()
     deadline = None if timeout is None else started + timeout
     claimed = False
     hinted = False
     while deadline is None or time.monotonic() < deadline:
-        answer = _next_answer(request, request_path, several)
-        if answer is not None:
-            verdict, covered, marker = answer
-            _print_answer(request, verdict, documents, root, vault, surface_root, covered)
-            sys.stdout.flush()
-            if marker is not None:
-                marker.write_bytes(b"")
-            if covered is not None:
-                _print_open(request, request_path, documents)
+        if _hand_on(request, request_path, documents, root, vault, surface_root):
             return 0
         if not Path(request_path).exists():
             print(f"withdrawn {request['id']}")
@@ -422,8 +490,8 @@ def _wait(request, request_path, documents, timeout, root, vault, surface_root, 
 
 
 def _rewait(request_id, timeout):
-    """`compass review --wait <id>`: wait on the documents of an existing
-    request whose answer no waiter has handed on yet."""
+    """`compass review --wait <id>`: wait on an existing request for the next
+    answer or revision no waiter has handed on yet."""
     try:
         vault = vaultlib.find_vault_root()
     except FileNotFoundError:
@@ -439,13 +507,14 @@ def _rewait(request_id, timeout):
         sys.stderr.write(f"compass review: cannot place the documents of review {request_id!r}\n")
         return 1
     surface, documents, surface_root = located
-    rels = [rel for rel, _ in documents]
     try:
         root, _ = reviewlib.repo_of(documents[0][1])
     except reviewlib.GitUnavailable as exc:
         sys.stderr.write(f"compass review: {exc}\n")
         return 1
-    if _next_answer(request, request_path, len(rels) > 1) is None and reviewlib.is_answered(request_path, request):
+    several = len(documents) > 1
+    if (_next_answer(request, request_path, several) is None and not _revision_groups(request_path, request)
+            and reviewlib.is_closed(request_path, request)):
         sys.stderr.write(f"compass review: every document of review {request_id!r} was already answered and handed on\n")
         return 1
     return _wait(request, request_path, documents, timeout, root, vault, surface_root, surface)
