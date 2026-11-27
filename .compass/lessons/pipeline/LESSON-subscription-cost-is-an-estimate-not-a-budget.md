@@ -6,11 +6,11 @@ category: domain
 area: architecture
 tags: [loops, budget, cost, subscription, flow-control]
 created: 2026-10-19
-updated: 2026-10-19
-score: 5
+updated: 2026-11-27
+score: 6
 summary: "On a Claude Code subscription total_cost_usd is an estimate, not a charge; loop flow control needs plan usage or rate-limit measures, not USD budgets"
 source: extract-lessons:signal
-seen: []
+seen: [2026-11-27]
 ---
 
 On a Claude Code subscription, `total_cost_usd` is an estimate rather than a charge, so a loop's USD budgets only pace it.

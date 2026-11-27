@@ -6,11 +6,11 @@ category: process
 area: workflow
 tags: [windows, git-bash, heredoc, escaping, scratchpad]
 created: 2026-08-30
-updated: 2026-08-30
-score: 5
+updated: 2026-11-27
+score: 6
 summary: "Git Bash heredocs on Windows collapse backslash escapes; scratchpad script files carry code patches instead"
 source: "extract-lessons:OPP-20260830T234845477891Z"
-seen: []
+seen: [2026-11-27]
 ---
 
 Inline heredocs piped through the Bash tool on this Windows host silently collapse backslash escapes before the shell sees them.

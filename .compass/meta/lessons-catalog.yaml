@@ -137,7 +137,7 @@ lessons:
     category: process
     area: workflow
     tags: [windows, git-bash, heredoc, escaping, scratchpad]
-    score: 5
+    score: 6
     summary: "Git Bash heredocs on Windows collapse backslash escapes; scratchpad script files carry code patches instead"
   - file: "LESSON-scope-notes-are-load-bearing.md"
     status: active
@@ -235,14 +235,14 @@ lessons:
     category: process
     area: methodology
     tags: [plans, verification, planner, manual-verification]
-    score: 5
+    score: 6
     summary: "Plan manual verification holds only judgment calls; mechanical checks go in automated verification or the orchestrator's own check"
   - file: "LESSON-subscription-cost-is-an-estimate-not-a-budget.md"
     status: active
     category: domain
     area: architecture
     tags: [loops, budget, cost, subscription, flow-control]
-    score: 5
+    score: 6
     summary: "On a Claude Code subscription total_cost_usd is an estimate, not a charge; loop flow control needs plan usage or rate-limit measures, not USD budgets"
   - file: "LESSON-ui-change-needs-agreed-mockup-before-build.md"
     status: active
@@ -314,3 +314,17 @@ lessons:
     tags: [hooks, cli, install-drift, versioning, plugin-update]
     score: 5
     summary: "Hooks ship with the plugin install but each project's .claude/cli updates separately; a hook calling a new CLI command must skip when the local CLI lacks it"
+  - file: "LESSON-loop-auto-accepts-increments-matching-the-accepted-pattern.md"
+    status: active
+    category: process
+    area: workflow
+    tags: [loops, review, automation, increments]
+    score: 5
+    summary: "Run a loop unattended by script-checking each increment against the pattern the human accepted; hold only the odd ones for him"
+  - file: "LESSON-loop-limits-step-only-when-unsupervised-or-expensive.md"
+    status: active
+    category: domain
+    area: workflow
+    tags: [loops, flow-control, escalation, cost]
+    score: 5
+    summary: "A loop's step 7 (limits and escalation) is set when the loop runs unsupervised or each run is costly; a cheap hand-run loop keeps the defaults"

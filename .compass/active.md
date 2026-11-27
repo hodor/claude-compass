@@ -19,12 +19,6 @@ Plan: [[PLAN-019-stop-at-80-percent-context]]. TASK-137 and TASK-138 shipped as 
 
 - [ ] TASK-139: Live acceptance in an interactive Claude Code session - the human watches the stop and the handoff (`COMPASS_CONTEXT_THRESHOLD` lowers the line).
 
-## PLAN-020: clone old sessions to harvest their lessons
-
-Plan: [[PLAN-020-clone-old-sessions]].
-
-- [ ] TASK-146: Live acceptance on this repo
-
 ## PLAN-021 Wave 2: judge, schedule, ast-grep sensor, skill, release
 
 Plan: [[PLAN-021-control-loops]].

@@ -740,3 +740,9 @@ Plan: [[PLAN-031-screenplays-in-the-vault]]; each task's full text, files and ch
 - [x] TASK-289: Live check 3, an agent's edit reloads in both editors - complexity: S, depends_on: TASK-286
 - [x] TASK-290: Live check 4, install the way Compass will - complexity: S, depends_on: TASK-286
 - [x] TASK-291: Live check 5, the two previews side by side - complexity: S, depends_on: TASK-286
+
+### PLAN-020: clone old sessions to harvest their lessons
+
+Plan: [[PLAN-020-clone-old-sessions]].
+
+- [x] TASK-146: Live acceptance on this repo

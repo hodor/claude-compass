@@ -24,7 +24,7 @@ Archived lessons live in `archive/lessons/`.
 - [[lessons/experiments/index|experiments]] (3 lessons) - designing measurements and experiments that can actually falsify
 - [[lessons/hooks/index|hooks]] (4 lessons) - hook registration, payloads, and firing semantics
 - [[lessons/instructions/index|instructions]] (1 lessons) - writing instructions agents follow - prose economy, thresholds that become Goodhart targets
-- [[lessons/pipeline/index|pipeline]] (6 lessons) - how work passes the human's gates - adversarial review before approval, walkthroughs in his words, verifying reversibility before acting unasked
+- [[lessons/pipeline/index|pipeline]] (8 lessons) - how work passes the human's gates - adversarial review before approval, walkthroughs in his words, verifying reversibility before acting unasked
 - [[lessons/platform/index|platform]] (2 lessons) - host and OS quirks - line endings, shells, Windows
 - [[lessons/subagents/index|subagents]] (9 lessons) - spawning, briefing, and supervising agents
 - [[lessons/test-quality/index|test-quality]] (4 lessons) - what makes tests and their evaluation mean something

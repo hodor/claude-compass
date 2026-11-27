@@ -6,7 +6,7 @@ confidence: high
 area: learning
 tags: [sessions, fork, headless, context-window, autocompact, transcript, lessons]
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-11-27
 git_branch: master
 git_commit: 2c7f5b3
 depends_on: ["[[specs/learning/SPEC-022-clone-old-sessions]]"]
@@ -44,3 +44,17 @@ Evidence for [[specs/learning/SPEC-022-clone-old-sessions]]. Live probes ran on 
 ## Open
 
 - Whether a vault-kept clone transcript can be reopened with `claude --resume` after being copied back into `~/.claude/projects`; the move-and-resume probe was blocked (finding 6).
+
+## Live acceptance on this repo
+
+Run 2026-11-27 (TASK-146) by an agent following `/compass:clone-old`, with Claude Code's own `claude` binary. Six sessions qualify as feature sessions; one is the running session, so five are clonable, none near a full context (the largest, 523K tokens on a 1M window, keeps 477K of headroom), so no `context-full` end was possible. The default-rate estimate for all five is about $560, so one session ran: the smallest, 60K tokens, estimated at $24.
+
+| Run | Sessions | Status | Cost | Transcript kept | Original changed |
+|---|---|---|---|---|---|
+| `20261127T194235328024Z` | 1 (ae974588) | done in 55 s | $0.77 | yes, in `~/.compass/sessions/F--claude-plugins-compass/` | no: SHA-256, size and modification time equal before and after |
+| `20261127T194345601444Z`, `--discard` with a one-lesson prompt file | the same session | done | $0.15 | no: the run folder holds only the lesson file and `run.json` | no |
+
+- Session files in `~/.claude/projects/F--claude-plugins-compass/`: 267 before both runs and 267 after.
+- The kept clone wrote 8 lessons; the discard clone 1, which merged with two of them. lesson-write's outcome: 2 created ([[LESSON-loop-auto-accepts-increments-matching-the-accepted-pattern]], [[LESSON-loop-limits-step-only-when-unsupervised-or-expensive]]), 3 recurrences ([[LESSON-windows-heredoc-backslash-escapes]], [[LESSON-manual-verification-is-judgment-only]], [[LESSON-subscription-cost-is-an-estimate-not-a-budget]]), 3 rejected as already documented (subagents return gate questions to the orchestrator, in the pipeline rules; a loop's end state, in SPEC-026 step 0; building before more documents once a direction is approved, in the human's standing instructions). The `clone-log.jsonl` run row lists the 3 recurrences under `merged`.
+- Measured cost against the estimate: $0.77 for a $24 estimate, about 3% of the default rate. With this run recorded under `~/.compass/sessions/`, `compass sessions list` now rates sessions from measured clones instead of the default.
+- `git status` shows changes only in `.compass/lessons/`, `.compass/meta/` and this document; `git grep` for a sentence of the kept clone's transcript finds nothing in the repository.
