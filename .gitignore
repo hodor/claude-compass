@@ -24,3 +24,4 @@ venv/
 .dsh/
 AGENTS.md
 .compass/loops/*/ledger.jsonl.lock
+.compass/meta/clone-log.jsonl
