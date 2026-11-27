@@ -17,8 +17,8 @@ summary: "a headless `claude -p --resume <id> --fork-session --no-session-persis
 
 Evidence for [[specs/learning/SPEC-022-clone-old-sessions]]. Live probes ran on Claude Code 2.1.302 against this project's transcripts in `~/.claude/projects/F--claude-plugins-compass/`, plus a read-only scan of all 920 transcripts on this machine. Probe outputs sat in the session scratchpad and are not kept.
 
-> [!question] You decide
-> Does the live acceptance on this repo stand, and do the two lessons it produced hold: [[LESSON-loop-auto-accepts-increments-matching-the-accepted-pattern]] and [[LESSON-loop-limits-step-only-when-unsupervised-or-expensive]]? See "Live acceptance on this repo".
+> [!note] Decided 2026-11-27
+> The live acceptance on this repo stands. Its two lessons, [[LESSON-loop-auto-accepts-increments-matching-the-accepted-pattern]] and [[LESSON-loop-limits-step-only-when-unsupervised-or-expensive]], are reviewed on their own.
 
 ## Findings
 
