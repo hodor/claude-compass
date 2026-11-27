@@ -154,14 +154,23 @@
   gap: 6px;
 }
 
-.compass-review-row-choice button.is-chosen {
+/* The verdict a file stands at: a filled, selected button on a row and on a
+   one-file card. It is disabled, since choosing it again sends nothing, but it
+   shows at full strength. */
+.compass-review-card button.is-chosen,
+.compass-review-card button.is-chosen[disabled] {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
+  opacity: 1;
+  box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 3px var(--interactive-accent);
 }
 
-.compass-review-row-choice button.compass-review-row-changes.is-chosen {
+.compass-review-card button.compass-review-row-changes.is-chosen,
+.compass-review-card button.compass-review-changes.is-chosen,
+.compass-review-card button.compass-review-row-changes.is-chosen[disabled],
+.compass-review-card button.compass-review-changes.is-chosen[disabled] {
   background: var(--text-error);
-  color: var(--text-on-accent);
+  box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 3px var(--text-error);
 }
 
 .compass-review-row-count {
@@ -173,8 +182,16 @@
   flex: 1 1 100%;
 }
 
+/* A sent file: its verdict can still be changed, so the row stays at full
+   strength with a mark on its edge. */
 .compass-review-row.is-sent {
-  opacity: 0.7;
+  border-left: 3px solid var(--interactive-accent);
+}
+
+/* A sent file a newer review now holds: nothing on the row can be changed. */
+.compass-review-row.is-locked {
+  opacity: 0.55;
+  cursor: default;
 }
 
 .compass-review-row-sent:empty {
@@ -185,6 +202,10 @@
   width: 100%;
   resize: vertical;
   font-size: var(--font-ui-small);
+}
+
+.compass-review-this-file-slot:empty {
+  display: none;
 }
 
 .compass-review-this-file {
@@ -964,7 +985,7 @@ button.compass-conf-filter.is-on {
    the buttons that change them. */
 .compass-review-card.is-answered .compass-review-nav,
 .compass-review-card.is-answered .compass-review-feedback-block,
-.compass-review-card.is-answered .compass-review-this-file,
+.compass-review-card.is-answered .compass-review-this-file-slot,
 .compass-review-card.is-answered .compass-review-foot > .compass-review-fine:not(.compass-review-summary) {
   display: none;
 }
