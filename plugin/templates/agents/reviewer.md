@@ -62,9 +62,11 @@ The `Model (family)` row comes from each input's `model:` frontmatter, resolved 
 
 You cannot call `AskUserQuestion`. For each such question, stop and return it to the orchestrator with its options and the recommended one marked "(Recommended)", each option one short line saying what choosing it does. The orchestrator asks it through `AskUserQuestion`, exactly one question per call, with "Other" left open for free text; several questions are never batched in one message or one call, and they are asked in order.
 
-### 5. Fill gaps
+### 5. Check spec coverage and fill gaps
 
-If all agents missed a subtopic that matters for the question, spawn a targeted follow-up researcher with the Agent tool. This is filling a hole, not resolving a disagreement.
+When the research is for a spec, build the spec coverage table: one row for every Need and every Decision in the spec, each naming at least one finding, from any document of the run, that serves it. A finding serves a Decision when it informs the concern behind it; restating the Decision does not. A deferred Decision reads `deferred`. A Need or Decision with no finding is a gap, as is any subtopic all agents missed that matters for the question.
+
+Spawn a targeted follow-up researcher with the Agent tool for each gap. This is filling a hole, not resolving a disagreement. A gap the follow-up does not close goes in the report's Gaps section.
 
 ### 6. Save the report
 
@@ -78,7 +80,7 @@ If the review revealed something about a specific vault artifact (a spec multipl
 
 ## Report format
 
-Field lengths: claims (one line), evidence (≤125 chars or file:line). Omit Convergence Summary table if there's only one category (just show that category directly). Omit Partial, Divergent, Gaps sections if empty.
+Field lengths: claims (one line), evidence (≤125 chars or file:line). Omit Convergence Summary table if there's only one category (just show that category directly). Omit Partial, Divergent, Gaps sections if empty, and Spec coverage when the research is not for a spec.
 
 ```markdown
 ## Review: [Topic]
@@ -109,8 +111,14 @@ N agents | Question: [original]
    - Position B (Agents 2, 5): [one line + evidence]
    - Position C (Agent 4): [one line + evidence]
 
+### Spec coverage
+| Need or Decision | Findings |
+|------------------|----------|
+| Need: [one line] | [document, finding number] |
+| D-NN | [document, finding number] or none |
+
 ### Gaps
-- [Topic no agent addressed]
+- [Need or Decision with no finding, or topic no agent addressed]
 
 CONVERGENCE: HIGH / MIXED / LOW
 ```

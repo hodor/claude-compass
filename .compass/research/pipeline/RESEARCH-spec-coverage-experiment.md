@@ -10,13 +10,10 @@ updated: 2026-11-27
 git_branch: build/plan-018-w2
 git_commit: 01087d5
 depends_on: ["[[specs/pipeline/SPEC-023-research-covers-the-whole-spec]]", "[[research/pipeline/research-scope/REVIEW-spec-023-research-consolidation]]", "[[research/pipeline/research-scope/RESEARCH-research-spawning-research]]"]
-summary: "castorini's nuggetizer, pointed at SPEC-023 and its consolidated review, runs end to end and scores 2 of 7 vital claims supported (strict vital recall 0.29); 3 of the 4 unsupported vital claims restate the spec's Problem diagnosis rather than anything research must cover, and the one Need no research document covers at all (the source ledger) surfaces only as an okay-rated claim"
+summary: "retires the nugget scorer: castorini's nuggetizer, pointed at SPEC-023 and its consolidated review, runs end to end and scores 2 of 7 vital claims supported (strict vital recall 0.29); 3 of the 4 unsupported vital claims restate the spec's Problem diagnosis rather than anything research must cover, and the one Need no research document covers at all (the source ledger) surfaces only as an okay-rated claim"
 ---
 
 # Scoring a Research Document Against Its Spec: The Nugget-Recall Experiment
-
-> [!question] You decide
-> Read the seven vital claims in the table below, especially the five marked unsupported or partial. Are they gaps in the research, or artifacts of pointing a question-answering scorer at a spec? The plan's rule: if they are artifacts, the mechanism retires rather than being tuned.
 
 Evidence for [[specs/pipeline/SPEC-023-research-covers-the-whole-spec]] D-05: whether a finished research document can be scored for what it still misses against the spec it was written for. The scorer is castorini's nuggetizer, profiled in [[research/pipeline/research-scope/RESEARCH-research-spawning-research]] findings 32 to 34.
 
@@ -83,6 +80,8 @@ Origin is this document's reading of which spec text the creator drew each claim
 5. **One passage under-reads a multi-document research run** (confidence: medium)
    SPEC-023's research is seven documents and the consolidation is the one scored. Claim 18 (a dedicated retriever per source) is unsupported in the consolidation while the source inventory profiles each source's access route. A scorer fed one document reports sibling coverage as a gap.
 
-## Reading, for the human to confirm
+## Verdict
 
-My reading, a guess until you confirm it: the three unsupported vital claims are artifacts of the mapping (finding 2), so by the plan's rule the mechanism as mapped retires. Against that, it found the one genuine gap (finding 3) among its unsupported claims; it did not rank it vital. A query built from the spec's Desired Outcome rather than its Problem would likely change finding 2, and the plan treats that change as tuning, not a second run.
+The human confirmed on 2026-11-27 that the three unsupported vital claims are artifacts of the mapping (finding 2), so by the plan's rule the scorer retires rather than being tuned. It did find the one genuine gap (finding 3) among its unsupported claims, but did not rank it vital. A query built from the spec's Desired Outcome rather than its Problem would likely change finding 2; that change is tuning, not a second run.
+
+A research run detects its gap instead through the reviewer's spec coverage table: one row per Need and per Decision, each naming at least one finding from any document of the run that serves it, and a row with none is a gap that spawns another pass. Over SPEC-023's seven research documents it leaves Need 5 empty, the gap finding 3 found ([[plans/pipeline/PLAN-018-research-covers-the-whole-spec]], TASK-130).

@@ -68,11 +68,11 @@ Each brief carries the axis, the sources to check first (from `plugin/cli/source
 
 ### 9. Consolidate with the reviewer
 
-Spawn `reviewer` with every researcher's output. It builds the convergence matrix and writes the consolidated `REVIEW-*.md` to `.compass/research/`.
+Spawn `reviewer` with every researcher's output and the spec. It builds the convergence matrix and the spec coverage table, and writes the consolidated `REVIEW-*.md` to `.compass/research/`.
 
 ### 10. A gap becomes another research pass
 
-If the review names a gap it cannot close, spawn another research pass on that gap. An unclosed gap never goes to a plan.
+A Need or Decision the coverage table leaves without a finding is a gap. If the review names a gap it cannot close, spawn another research pass on that gap. An unclosed gap never goes to a plan.
 
 ## Failure modes worth naming
 
