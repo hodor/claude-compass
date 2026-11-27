@@ -38,12 +38,19 @@ class El {
   createEl(tag, opts) { const e = new El(tag, opts); e.parent = this; this.children.push(e); return e; }
   createDiv(opts) { return this.createEl("div", opts); }
   createSpan(opts) { return this.createEl("span", opts); }
+  // An element already in the tree is moved, and a moved or removed element
+  // that holds focus loses it, as in a browser.
   insertBefore(el, ref) {
+    if (el.parent) { blurWithin(el); el.parent.children = el.parent.children.filter((c) => c !== el); }
     el.parent = this;
     const i = ref ? this.children.indexOf(ref) : -1;
     if (i < 0) this.children.push(el); else this.children.splice(i, 0, el);
   }
-  empty() { this.children.forEach((c) => { c.parent = null; }); this.children = []; }
+  empty() { this.children.forEach((c) => { blurWithin(c); c.parent = null; }); this.children = []; }
+  contains(el) { for (let n = el; n; n = n.parent) if (n === this) return true; return false; }
+  // Focus is held by one element at a time; a text field keeps a caret or selection.
+  focus() { document.activeElement = this; }
+  setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; }
   setText(t) { this.text = t; }
   appendText(t) { this.text += t; }
   setAttribute(k, v) { this.attrs[k] = String(v); }
@@ -53,13 +60,18 @@ class El {
   closest(sel) { for (let n = this; n; n = n.parent) if (matches(n, sel)) return n; return null; }
   addClass(c) { this.cls = this.cls ? `${this.cls} ${c}` : c; }
   removeClass(c) { this.cls = this.cls.split(" ").filter((x) => x && x !== c).join(" "); }
-  remove() { if (this.parent) this.parent.children = this.parent.children.filter((c) => c !== this); this.parent = null; }
+  remove() { blurWithin(this); if (this.parent) this.parent.children = this.parent.children.filter((c) => c !== this); this.parent = null; }
   all() { return [this, ...this.children.flatMap((c) => c.all())]; }
   querySelector(sel) { return this.all().slice(1).find((e) => matches(e, sel)) || null; }
   querySelectorAll(sel) { return this.all().slice(1).filter((e) => matches(e, sel)); }
 }
+// Focus leaves an element taken out of the tree.
+function blurWithin(el) {
+  if (document.activeElement && el.contains(document.activeElement)) document.activeElement = null;
+}
 global.createDiv = (opts) => new El("div", opts);
 global.document = new El("document");
+document.activeElement = null;
 global.window = globalThis;
 
 // ---- obsidian and electron stubs ----
@@ -129,6 +141,17 @@ for (const [name, exp] of Object.entries(stubs)) require.cache[name] = { id: nam
 
 const CompassReview = require(path.join(__dirname, "..", "compass-review", "main.js"));
 
+// The plugin manifests Obsidian holds after reading the plugin folder: none
+// when manifest.json is absent or cannot be parsed.
+function manifestsIn(store) {
+  try {
+    const manifest = JSON.parse(store.get(MANIFEST_PATH));
+    return manifest && typeof manifest === "object" ? { [PLUGIN_ID]: manifest } : {};
+  } catch (e) {
+    return {};
+  }
+}
+
 // ---- a fake app over an in-memory vault ----
 // Opening a file in a leaf makes it the active file and fires the workspace's
 // `file-open` and `layout-change` events, as Obsidian does.
@@ -160,13 +183,21 @@ function makeApp(files) {
     store,
     active: null,
     viewFactories: {},
-    // Obsidian's plugin manager. Disabling unloads the running instance; enabling
-    // loads a new one at the version the plugin folder's manifest.json holds, as
-    // Obsidian does, and runs its layout-ready work. A test replaces either method
-    // to model a reload that does nothing or fails.
+    // Obsidian's plugin manager. `manifests` holds the manifest of each plugin as
+    // Obsidian read it at start-up; only `loadManifests()` reads the plugin
+    // folder again. Disabling unloads the running instance; enabling loads a new
+    // one from the plugin folder's main.js at the version `manifests` holds, as
+    // Obsidian does, and runs its layout-ready work. A test replaces a method to
+    // model a reload that does nothing or fails, or deletes `loadManifests` to
+    // model an Obsidian without it.
     plugins: {
       calls: [],
       instance: null,
+      manifests: manifestsIn(store),
+      async loadManifests() {
+        app.plugins.calls.push(["loadManifests"]);
+        app.plugins.manifests = manifestsIn(store);
+      },
       async disablePlugin(id) {
         app.plugins.calls.push(["disable", id]);
         const old = app.plugins.instance;
@@ -174,7 +205,7 @@ function makeApp(files) {
       },
       async enablePlugin(id) {
         app.plugins.calls.push(["enable", id]);
-        const manifest = JSON.parse(store.get(MANIFEST_PATH));
+        const manifest = app.plugins.manifests[id];
         const next = new CompassReview(app, { id, version: manifest.version, dir: PLUGIN_DIR });
         app.plugins.instance = next;
         await next.onload();
@@ -1024,7 +1055,7 @@ test("a verdict click that failed can be clicked again", async (t) => {
 // file's modify, the periodic recheck) replace the notes field being typed
 // in, dropping its focus and caret, or lose the text when the active file
 // changes and the card is rebuilt.
-test("typing survives panel events: the same field stays in place, and a rebuilt card restores the text", async () => {
+test("typing survives panel events and a file outside the review coming into view: the same field stays in place", async () => {
   const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md") });
   await plugin.handler({ request: "tmp/review/1.request.json" });
   const field = notesIn(cardFor(app, "1"));
@@ -1036,8 +1067,8 @@ test("typing survives panel events: the same field stays in place, and a rebuilt
   assert.equal(notesIn(cardFor(app, "1")), field, "the notes field is the same element");
   assert.equal(field.value, "half a senten");
   show(app, app.leaves[0], "b.md");
-  assert.notEqual(notesIn(cardFor(app, "1")), field, "the card was rebuilt for the new file");
-  assert.equal(notesIn(cardFor(app, "1")).value, "half a senten", "the typed text is restored");
+  assert.equal(notesIn(cardFor(app, "1")), field, "the card is updated in place for the new file");
+  assert.equal(field.value, "half a senten");
   assert.ok(thisFileIn(cardFor(app, "1")), "the note field for the file in view appears");
 });
 
@@ -5492,12 +5523,13 @@ test("a failed write of <id>.seen is not thrown, and the card still opens and an
 // ---- an updated plugin takes effect in a running Obsidian: recheck reloads on a manifest change ----
 
 const manifestJson = (version) => JSON.stringify({ id: PLUGIN_ID, name: "Compass Review", version });
-const RELOAD = [["disable", PLUGIN_ID], ["enable", PLUGIN_ID]];
+const RELOAD = [["disable", PLUGIN_ID], ["loadManifests"], ["enable", PLUGIN_ID]];
 
 // A plugin loaded at `loadedVersion` in a vault whose plugin folder holds `diskManifest`
 // (undefined: no manifest.json file).
 async function loadedAs(loadedVersion, diskManifest, files = {}) {
   const app = makeApp({ ...files, ...(diskManifest === undefined ? {} : { [MANIFEST_PATH]: diskManifest }) });
+  app.plugins.manifests = { [PLUGIN_ID]: { id: PLUGIN_ID, version: loadedVersion } };
   const plugin = new CompassReview(app, { id: PLUGIN_ID, version: loadedVersion, dir: PLUGIN_DIR });
   app.plugins.instance = plugin;
   await plugin.onload();
@@ -5740,7 +5772,7 @@ test("a failed enable after a successful disable is retried once, then the human
     return realEnable(id);
   };
   await withConsoleCaptured(async () => { await plugin.recheck(); await waitMs(40); });
-  assert.deepEqual(app.plugins.calls, [["disable", PLUGIN_ID], ["enable", PLUGIN_ID], ["enable", PLUGIN_ID]]);
+  assert.deepEqual(app.plugins.calls, [["disable", PLUGIN_ID], ["loadManifests"], ["enable", PLUGIN_ID], ["enable", PLUGIN_ID]]);
   assert.equal(app.plugins.instance.manifest.version, "3.3.0", "the retry loaded the new version");
   assert.deepEqual(notices, [], "a retry that works says nothing");
 
@@ -5748,7 +5780,7 @@ test("a failed enable after a successful disable is retried once, then the human
   second.plugin.reloadRetryMs = 5;
   second.app.plugins.enablePlugin = async (id) => { second.app.plugins.calls.push(["enable", id]); throw new Error("enable failed"); };
   await withConsoleCaptured(async () => { await second.plugin.recheck(); await waitMs(40); await second.plugin.recheck(); await waitMs(40); });
-  assert.deepEqual(second.app.plugins.calls, [["disable", PLUGIN_ID], ["enable", PLUGIN_ID], ["enable", PLUGIN_ID]]);
+  assert.deepEqual(second.app.plugins.calls, [["disable", PLUGIN_ID], ["loadManifests"], ["enable", PLUGIN_ID], ["enable", PLUGIN_ID]]);
   assert.equal(notices.length, 1);
   assert.match(notices[0], /Settings > Community plugins/);
 });
@@ -6472,4 +6504,237 @@ test("a newer request listing the same file closes the older answered revisable 
     await sleep();
     assert.deepEqual(cardIds(app), ["20261126T110000-bbbbbb"]);
   });
+});
+
+// ---- a reload happens once per version on disk ----
+
+// Adversarial where: Obsidian enables the plugin with the manifest it read at
+// start-up, so the instance a reload loads still reports the old version; that
+// instance, knowing nothing of the reload, reloads again on every recheck and
+// the panel is torn down every few seconds.
+test("an instance loaded with Obsidian's stale manifest does not reload again for the version on disk", async () => {
+  const { app, plugin } = await loadedAs("3.2.1", manifestJson("3.3.0"), {
+    "a.md": "x", "tmp/review/71.request.json": req("71", "a.md"),
+  });
+  delete app.plugins.loadManifests;
+  await plugin.handler({ request: "tmp/review/71.request.json" });
+  await plugin.recheck();
+  await sleep();
+  const reload = [["disable", PLUGIN_ID], ["enable", PLUGIN_ID]];
+  assert.deepEqual(app.plugins.calls, reload);
+  const next = app.plugins.instance;
+  assert.notEqual(next, plugin);
+  assert.equal(next.manifest.version, "3.2.1", "the new instance reports the version Obsidian read at start-up");
+  for (let k = 0; k < 4; k++) { await next.recheck(); await sleep(); }
+  assert.deepEqual(app.plugins.calls, reload, "the new instance does not reload for 3.3.0 again");
+  assert.ok(next.pending.has("71"), "the review is still on the panel");
+  app.store.set(MANIFEST_PATH, manifestJson("3.4.0"));
+  await next.recheck();
+  await sleep();
+  assert.deepEqual(app.plugins.calls, [...reload, ...reload], "a later version on disk still reloads once");
+  const third = app.plugins.instance;
+  for (let k = 0; k < 3; k++) { await third.recheck(); await sleep(); }
+  assert.deepEqual(app.plugins.calls, [...reload, ...reload]);
+});
+
+// Adversarial where: the manifests are not read again before enabling, so the
+// new instance reports the old version, or a failure to read them stops the
+// reload and leaves the plugin disabled.
+test("a reload reads the manifests again so the new instance reports the version on disk", async () => {
+  const { app, plugin } = await loadedAs("3.2.1", manifestJson("3.3.0"));
+  await plugin.recheck();
+  await sleep();
+  assert.deepEqual(app.plugins.calls, RELOAD);
+  assert.equal(app.plugins.instance.manifest.version, "3.3.0");
+
+  const failing = await loadedAs("3.2.1", manifestJson("3.3.0"));
+  failing.app.plugins.loadManifests = async () => { failing.app.plugins.calls.push(["loadManifests"]); throw new Error("cannot list"); };
+  const logged = await withConsoleCaptured(async () => { await failing.plugin.recheck(); await sleep(); });
+  assert.deepEqual(failing.app.plugins.calls, RELOAD, "the plugin is enabled again after a failed manifest read");
+  assert.ok(logged.some((l) => l[0] === "error"), "the failed manifest read is logged");
+  const next = failing.app.plugins.instance;
+  for (let k = 0; k < 3; k++) { await next.recheck(); await sleep(); }
+  assert.deepEqual(failing.app.plugins.calls, RELOAD, "and it does not loop");
+});
+
+// ---- a note being typed keeps its focus, text and caret ----
+
+// Puts focus in a text field with the caret or selection at start..end.
+function focusAt(el, start, end = start) {
+  el.focus();
+  el.setSelectionRange(start, end);
+}
+function assertTyping(el, value, start, end, what) {
+  assert.equal(document.activeElement, el, `${what}: the field keeps focus`);
+  assert.equal(el.value, value, `${what}: the typed text stays`);
+  assert.equal(el.selectionStart, start, `${what}: the caret start stays`);
+  assert.equal(el.selectionEnd, end, `${what}: the caret end stays`);
+}
+
+// Adversarial where: the periodic recheck, a workspace event, a save of the
+// reviewed file by the editor, a typed edit in it, or the title in its
+// properties resolving redraws the card, so the field the human types in is
+// replaced and the caret is gone.
+test("a note being typed on a one-file card keeps focus, text and caret across rechecks, saves and a title change", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  const field = notesIn(cardFor(app, "1"));
+  typeInto(field, "half a senten");
+  focusAt(field, 5, 9);
+  for (let k = 0; k < 3; k++) await plugin.recheck();
+  assertTyping(field, "half a senten", 5, 9, "rechecks");
+  app.store.set("a.md", "---\ntitle: The real title\n---\nx");
+  await app.listeners.modify(mdFile("a.md"));
+  typedIn(app, "a.md");
+  app.wsListeners["layout-change"]();
+  await plugin.recheck();
+  assertTyping(field, "half a senten", 5, 9, "a save, an edit and a title change");
+  assert.ok(textOf(cardFor(app, "1")).includes("Note on The real title"), "the new title is shown in place");
+});
+
+// Adversarial where: a row note loses focus when another row is sent, when
+// a sent row's verdict is revised, when a file title changes or when a file
+// outside the review comes into view; or a card built again because its
+// request was rewritten gives the field back without its text or caret.
+test("a row note being typed keeps focus, text and caret across a send, a revision, a recheck and a rebuilt card", async () => {
+  const { app, plugin } = await openSet({ revisable: true });
+  await decide(app, 0, "Approve");
+  typeInto(rowNoteIn(cardFor(app, "1"), 1), "reorder");
+  const field = rowNoteIn(cardFor(app, "1"), 3);
+  typeInto(field, "the evidence is th");
+  focusAt(field, 18);
+  await click(rowButton(app, 1, "Needs changes"));
+  await sleep();
+  assert.ok(app.store.has("tmp/review/1.verdict.1.json"), "row 1 was sent");
+  assertTyping(field, "the evidence is th", 18, 18, "another row sent");
+  typeInto(rowNoteIn(cardFor(app, "1"), 0), "spec wording");
+  await click(rowButton(app, 0, "Needs changes"));
+  await sleep();
+  assert.deepEqual(revisionFilesOf(app), ["tmp/review/1.revision.0.1.json"], "row 0 was revised");
+  assertTyping(field, "the evidence is th", 18, 18, "a revision written");
+  app.store.set("plan.md", "---\ntitle: Renamed plan\n---\nx");
+  await plugin.recheck();
+  assertTyping(field, "the evidence is th", 18, 18, "a recheck after a title change");
+  assert.equal(linkIn(rowsIn(cardFor(app, "1"))[1]).text, "Renamed plan", "the row title is updated in place");
+
+  show(app, app.leaves[0], "elsewhere.md");
+  assert.ok(thisFileIn(cardFor(app, "1")), "the note field for the file in view appears");
+  assertTyping(field, "the evidence is th", 18, 18, "a file outside the review in view");
+
+  app.store.set("tmp/review/1.request.json", req("1", SET[0], { files: filesOf(), project: "grove", session: SESSION_A, revisable: true }));
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  await sleep();
+  const again = rowNoteIn(cardFor(app, "1"), 3);
+  assert.notEqual(again, field, "a rewritten request builds the card again");
+  assertTyping(again, "the evidence is th", 18, 18, "a rebuilt card");
+});
+
+// Adversarial where: sending the other rows redraws the card and takes focus
+// from the row being written, or a newer review arriving rebuilds every card,
+// so the human typing on the older one loses the field.
+test("a field keeps focus when the other rows are sent and when another review arrives", async () => {
+  const { app, plugin } = await openSet({ revisable: true });
+  const field = rowNoteIn(cardFor(app, "1"), 2);
+  typeInto(field, "check the ord");
+  focusAt(field, 13);
+  await click(cardBtn(app, "1", "Approve all"));
+  await sleep();
+  assert.equal(cardFor(app, "1").cls.split(" ").includes("is-answered"), false, "the row with a note stays open");
+  assertTyping(field, "check the ord", 13, 13, "Approve all on the other rows");
+  app.store.set("other.md", "o");
+  app.store.set("tmp/review/2.request.json", req("2", "other.md"));
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  await sleep();
+  await plugin.recheck();
+  assert.deepEqual(cardIds(app), ["2", "1"]);
+  assert.equal(rowNoteIn(cardFor(app, "1"), 2), field, "the older card is not built again");
+  assertTyping(field, "check the ord", 13, 13, "a newer review on the panel");
+});
+
+// Adversarial where: the field key restores focus into the wrong card, or a
+// card holding focus itself (for the arrow keys) loses it to a rebuild.
+test("a rebuilt card gives focus back to its own field and a focused card keeps focus", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y", "c.md": "z",
+    "tmp/review/1.request.json": req("1", "a.md"), "tmp/review/2.request.json": req("2", "b.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  const rewrite = async (id, file, project) => {
+    app.store.set(`tmp/review/${id}.request.json`, req(id, file, { project }));
+    plugin.track(JSON.parse(app.store.get(`tmp/review/${id}.request.json`)), `tmp/review/${id}.request.json`);
+    plugin.refresh();
+  };
+  const field = notesIn(cardFor(app, "1"));
+  typeInto(field, "mine");
+  focusAt(field, 2);
+  await rewrite("1", "a.md", "grove");
+  const again = notesIn(cardFor(app, "1"));
+  assert.notEqual(again, field, "the rewritten request builds its card again");
+  assertTyping(again, "mine", 2, 2, "the card of review 1");
+  assert.equal(notesIn(cardFor(app, "2")).value, "", "the field of review 2 is untouched");
+  const card2 = cardFor(app, "2");
+  card2.focus();
+  await rewrite("2", "b.md", "grove");
+  assert.notEqual(cardFor(app, "2"), card2, "card 2 is built again");
+  assert.equal(document.activeElement, cardFor(app, "2"), "the focused card keeps focus");
+});
+
+// Adversarial where: a save of the spec in view draws the decision cards again
+// and the note half typed in one of them loses focus and caret.
+test("a decision note being typed keeps focus, text and caret when the spec in view is drawn again", async () => {
+  const { app, plugin } = await loadedListing({ [SP]: CALLOUT, [REQ1]: req("1", SP) });
+  await openDoc(app, SP);
+  await plugin.openViewPanel();
+  await settle();
+  await plugin.handler({ request: REQ1 });
+  await settle();
+  const note = cardArea(decisionCard(app, "D-04"));
+  typeInto(note, "half typed");
+  focusAt(note, 4, 10);
+  app.store.set(SP, `${CALLOUT}\n`);
+  await app.listeners.modify(mdFile(SP));
+  await paQuiet();
+  const again = cardArea(decisionCard(app, "D-04"));
+  assertTyping(again, "half typed", 4, 10, "the spec drawn again");
+});
+
+// ---- a sent row that can still be revised looks live ----
+
+// Adversarial where: a sent row keeps a class that greys it out although its
+// other verdict is offered, its chosen verdict is not marked as chosen, or a
+// row locked by a newer review is not marked locked.
+test("a sent, revisable row marks its verdict chosen and stays unlocked; a row a newer review holds is locked", async () => {
+  const { app, plugin } = await openSet({ revisable: true });
+  await decide(app, 0, "Approve");
+  const has = (el, c) => el.cls.split(" ").includes(c);
+  const row = rowsIn(cardFor(app, "1"))[0];
+  assert.ok(has(row, "is-sent"));
+  assert.equal(has(row, "is-locked"), false, "a revisable sent row is not locked");
+  assert.deepEqual(chosenIn(app, 0), ["Approve"]);
+  assert.equal(rowButton(app, 0, "Approve").getAttribute("aria-pressed"), "true");
+  assert.equal(rowButton(app, 0, "Needs changes").getAttribute("aria-pressed"), "false");
+  assert.equal(rowNoteIn(cardFor(app, "1"), 0).readOnly, false);
+  assert.deepEqual(chosenIn(app, 1), [], "an unsent row has no chosen verdict");
+  assert.equal(has(rowsIn(cardFor(app, "1"))[1], "is-locked"), false);
+
+  app.store.set("tmp/review/2.request.json", req("2", SET[0]));
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  await sleep();
+  const locked = rowsIn(cardFor(app, "1"))[0];
+  assert.ok(has(locked, "is-locked"), "the newer review owns the file");
+  assert.equal(rowButton(app, 0, "Approve").disabled, true);
+  assert.equal(rowButton(app, 0, "Needs changes").disabled, true);
+  assert.equal(rowNoteIn(cardFor(app, "1"), 0).readOnly, true);
+});
+
+// Adversarial where: the stylesheet greys out every sent row, or dims a chosen
+// verdict as if it were disabled, so a row that can still be revised looks dead.
+test("the stylesheet dims only locked rows and shows a chosen verdict at full strength", () => {
+  const css = fs.readFileSync(path.join(__dirname, "..", "compass-review", "styles.css"), "utf8");
+  const rule = (sel) => [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+    .filter((m) => m[1].replace(/\/\*[\s\S]*?\*\//g, "").split(",").map((s) => s.trim()).includes(sel))
+    .map((m) => m[2])
+    .join(";");
+  assert.equal(/opacity/.test(rule(".compass-review-row.is-sent")), false, "a sent row is not dimmed");
+  assert.match(rule(".compass-review-row.is-locked"), /opacity/, "a locked row is dimmed");
+  assert.match(rule(".compass-review-card button.is-chosen[disabled]"), /opacity:\s*1\b/, "a chosen verdict is at full strength");
 });

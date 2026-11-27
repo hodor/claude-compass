@@ -106,8 +106,9 @@
 // the review's entry, so redrawing the panel keeps it. A periodic recheck drops
 // a review whose request file is gone or whose verdict already exists. It also
 // reads manifest.json from the plugin's own folder; when that names a version
-// other than the one loaded, the plugin disables and enables itself, and the new
-// instance claims the pending requests again.
+// other than the one loaded, the plugin disables itself, has Obsidian read the
+// plugin manifests again, enables itself, and the new instance claims the
+// pending requests again.
 //
 // The Compass view panel, a right-sidebar view (view type
 // `compass-view-panel`, opened by the "Open Compass view panel" command or the
@@ -218,6 +219,9 @@ const CARRIED_FILE = "carried-reviews.json";
 const VERDICTS = ["approved", "changes"];
 
 const RELOAD_RETRY_MS = 2000;
+// The key on the app under which the version a reload was made for is kept,
+// so the instance the reload loaded knows it too.
+const RELOAD_MARK = "compassReviewReloadedFor";
 const RECHECK_MS = 5000;
 // A revisable review closes this long after its newest answer or revision.
 const REVISE_MS = 24 * 3600 * 1000;
@@ -441,6 +445,48 @@ function plural(n, word) {
 function setClass(el, cls, on) {
   el.removeClass(cls);
   if (on) el.addClass(cls);
+}
+
+// The element holding keyboard focus inside `root`, as {el, card, field,
+// value, start, end}: `card` is the id of the review card around it, `field`
+// the `data-field` key of a text field (null for a card itself), `value` its
+// text and `start`/`end` its selection. Null when focus is outside `root`.
+function focusedField(root) {
+  const el = typeof document !== "undefined" ? document.activeElement : null;
+  if (!el || el === root || typeof root.contains !== "function" || !root.contains(el)) return null;
+  const card = typeof el.closest === "function" ? el.closest(".compass-review-card") : null;
+  return {
+    el,
+    card: card ? card.dataset.id : null,
+    field: (el.dataset && el.dataset.field) || null,
+    value: el.value,
+    start: el.selectionStart,
+    end: el.selectionEnd,
+  };
+}
+
+// Gives focus back to what `saved` (from focusedField) describes when a
+// redraw took it away: the same element while it is still in `root`, else the
+// text field with the same key in the same card, else that card. A text field
+// gets its typed text and its caret or selection back.
+function restoreFocus(root, saved) {
+  if (!saved || document.activeElement === saved.el) return;
+  let el = root.contains(saved.el) ? saved.el : null;
+  if (!el) {
+    const card = saved.card === null ? null : Array.from(root.querySelectorAll(".compass-review-card")).find((c) => c.dataset.id === saved.card);
+    if (saved.field) {
+      const scope = card || root;
+      el = Array.from(scope.querySelectorAll("textarea")).find((t) => t.dataset.field === saved.field) || null;
+    } else {
+      el = card || null;
+    }
+  }
+  if (!el || typeof el.focus !== "function") return;
+  if (saved.field && typeof saved.value === "string" && el.value !== saved.value) el.value = saved.value;
+  el.focus();
+  if (saved.field && Number.isInteger(saved.start) && Number.isInteger(saved.end) && typeof el.setSelectionRange === "function") {
+    el.setSelectionRange(saved.start, saved.end);
+  }
 }
 
 // The documents a request lists, in walking order; a request without a `files`
@@ -1950,23 +1996,35 @@ class CompassReview extends Plugin {
 
   // Loads the plugin again when the folder holds a different version than this
   // instance was loaded at, so an update takes effect without restarting
-  // Obsidian. Each version is reloaded for once; a reload that leaves this
-  // instance running does not repeat. What the human has typed on pending cards
-  // is saved first and restored by the new instance when it claims the same
-  // requests. True when a reload ran.
+  // Obsidian. Obsidian enables a plugin with the manifest it read at start-up,
+  // so the manifests are read again between disabling and enabling; the new
+  // instance then reports the version on disk. Each version is reloaded for
+  // once per app, kept under RELOAD_MARK on the app, so neither this instance
+  // nor the one the reload loaded repeats it, even when the new instance still
+  // reports the old version. What the human has typed on pending cards is saved
+  // first and restored by the new instance when it claims the same requests.
+  // True when a reload ran.
   async reloadWhenUpdated() {
     const version = await this.installedVersion();
     if (version === null || version === this.manifest.version || version === this.reloadedFor) return false;
+    if (version === this.app[RELOAD_MARK]) return false;
     this.reloadedFor = version;
+    this.app[RELOAD_MARK] = version;
+    const plugins = this.app.plugins;
     try {
       await this.saveCarried();
-      await this.app.plugins.disablePlugin(PLUGIN_ID);
+      await plugins.disablePlugin(PLUGIN_ID);
     } catch (e) {
       console.error(`[compass-review] reload for version ${version} failed`, e);
       return false;
     }
     try {
-      await this.app.plugins.enablePlugin(PLUGIN_ID);
+      if (typeof plugins.loadManifests === "function") await plugins.loadManifests();
+    } catch (e) {
+      console.error("[compass-review] reading the plugin manifests again failed", e);
+    }
+    try {
+      await plugins.enablePlugin(PLUGIN_ID);
       return true;
     } catch (e) {
       console.error(`[compass-review] enabling version ${version} failed, trying again`, e);
@@ -2246,58 +2304,115 @@ class CompassReview extends Plugin {
     return bar;
   }
 
-  // Redraws every open panel. A panel whose cards would come out the same is
-  // left alone, so a field being typed in keeps its focus and caret; the parts
-  // that follow the walk are brought up to date in place.
+  // Redraws every open panel; see drawPanel.
   renderPanel() {
     for (const leaf of this.app.workspace.getLeavesOfType(PANEL_TYPE)) {
       if (leaf.view instanceof ReviewPanelView) this.drawPanel(leaf.view);
     }
   }
 
+  // Draws the pending reviews as cards, newest first. A card is built again
+  // only when what it is made of changes (cardSignature); its question, file
+  // titles, walk, buttons, fields and the note field for a file in view outside
+  // the review are brought up to date in place, so a
+  // field being typed in keeps its focus, text and caret. A card that is built
+  // again, or moved, while it holds focus gets it back on the same field with
+  // the same text and selection.
   drawPanel(view) {
     const root = view.contentEl;
     const entries = [...this.pending.values()].reverse();
     const active = this.app.workspace.getActiveFile();
     const other = active && active.extension === "md" ? active : null;
     const otherFor = (entry) => (other && !entry.files.some((f) => f.file === other.path) ? other : null);
-    const signature = JSON.stringify(
-      entries.map((entry) => [
-        entry.request.id,
-        entry.request.title,
-        entry.request.project,
-        entry.request.session,
-        entry.files.map((f) => [f.file, f.why, this.titleOf(f.file)]),
-        otherFor(entry) && other.path,
-      ])
-    );
-    if (root.dataset.signature !== signature) {
-      root.dataset.signature = signature;
-      const focused = document.activeElement && document.activeElement.closest
-        ? document.activeElement.closest(".compass-review-card")
-        : null;
-      const focusedId = focused && root.contains(focused) ? focused.dataset.id : null;
+    const saved = focusedField(root);
+    if (!root.compassHeading || root.children[0] !== root.compassHeading) {
       root.empty();
-      root.createDiv({ cls: "compass-review-heading", text: "Reviews waiting on you" });
-      if (entries.length === 0) {
-        root.createDiv({ cls: "compass-review-empty", text: "No reviews pending" });
-        return;
-      }
-      for (const entry of entries) this.buildCard(root, entry, otherFor(entry));
-      // A card that held keyboard focus keeps it, so the arrow keys go on working.
-      const again = focusedId && Array.from(root.querySelectorAll(".compass-review-card")).find((el) => el.dataset.id === focusedId);
-      if (again && again.focus) again.focus();
+      root.compassHeading = root.createDiv({ cls: "compass-review-heading", text: "Reviews waiting on you" });
+      root.compassEmpty = null;
     }
+    const built = new Map();
+    for (const el of Array.from(root.children)) if (el.compassParts) built.set(el.dataset.id, el);
+    const wanted = new Set(entries.map((entry) => entry.request.id));
+    for (const [id, el] of built) if (!wanted.has(id)) el.remove();
+    if (entries.length === 0) {
+      if (!root.compassEmpty) root.compassEmpty = root.createDiv({ cls: "compass-review-empty", text: "No reviews pending" });
+      restoreFocus(root, saved);
+      return;
+    }
+    if (root.compassEmpty) {
+      root.compassEmpty.remove();
+      root.compassEmpty = null;
+    }
+    entries.forEach((entry, i) => {
+      const otherFile = otherFor(entry);
+      const signature = this.cardSignature(entry);
+      let card = built.get(entry.request.id);
+      if (card && card.dataset.signature !== signature) {
+        card.remove();
+        card = null;
+      }
+      if (!card) {
+        card = this.buildCard(entry, otherFile);
+        card.dataset.signature = signature;
+      } else {
+        this.placeOther(card, entry, otherFile);
+      }
+      if (root.children[i + 1] !== card) root.insertBefore(card, root.children[i + 1] || null);
+    });
     for (const entry of entries) this.refreshCardIn(root, entry);
+    restoreFocus(root, saved);
   }
 
-  buildCard(root, entry, other) {
+  // What a card is made of: the files it lists with their reasons, and the
+  // request's project and session.
+  cardSignature(entry) {
+    return JSON.stringify([
+      entry.files.map((f) => [f.file, f.why]),
+      this.projectOf(entry.request),
+      typeof entry.request.session === "string" ? entry.request.session : null,
+    ]);
+  }
+
+  // Fills a card's slot for the markdown file in view outside the review
+  // (`other`, or null for none): a note field for that file, whose text lives
+  // on the review. Only the slot is redrawn, and only when the file changes.
+  placeOther(card, entry, other) {
+    const parts = card.compassParts;
+    const path = other ? other.path : null;
+    if (parts.otherPath === path) return;
+    parts.otherPath = path;
+    const slot = parts.otherSlot;
+    slot.empty();
+    if (!other) return;
+    const block = slot.createDiv({ cls: "compass-review-this-file" });
+    block.createDiv({ cls: "compass-review-label", text: `On this file: ${other.path}` });
+    const note = block.createEl("textarea", {
+      cls: "compass-review-file-note",
+      placeholder: "Note on this file for Claude",
+      attr: { rows: "2" },
+    });
+    note.dataset.field = `other:${other.path}`;
+    note.value = entry.comments.get(other.path) || "";
+    note.addEventListener("input", () => {
+      if (note.value.trim()) entry.comments.set(other.path, note.value);
+      else entry.comments.delete(other.path);
+      this.refreshCard(entry);
+    });
+    block.createDiv({
+      cls: "compass-review-fine",
+      text: "This file is not in the review; the note goes with your answer.",
+    });
+  }
+
+  // A card for one review, not yet placed in a panel. Each text field carries
+  // a `data-field` key naming what it holds, so focus can find it again.
+  buildCard(entry, other) {
     const { request } = entry;
     const parts = { rows: [] };
-    const card = root.createDiv({ cls: "compass-review-card", attr: { tabindex: "0" } });
+    const card = createDiv({ cls: "compass-review-card", attr: { tabindex: "0" } });
     card.dataset.id = request.id;
     card.compassParts = parts;
-    card.createDiv({ cls: "compass-review-question", text: this.questionOf(entry) });
+    parts.question = card.createDiv({ cls: "compass-review-question", text: this.questionOf(entry) });
     card.addEventListener("keydown", (event) => {
       const target = event.target;
       const tag = String((target && target.tagName) || "").toLowerCase();
@@ -2356,6 +2471,7 @@ class CompassReview extends Plugin {
           placeholder: "Note on this file (optional)",
           attr: { rows: "2" },
         });
+        rowNote.dataset.field = `row:${f.file}`;
         rowNote.addEventListener("click", (event) => event.stopPropagation());
         rowNote.addEventListener("input", () => {
           entry.states.get(f.file).note = rowNote.value;
@@ -2378,7 +2494,7 @@ class CompassReview extends Plugin {
         return open();
       });
       row.addEventListener("click", open);
-      parts.rows.push({ row, mark, count, sentMark, choice, rowNote });
+      parts.rows.push({ row, link, mark, count, sentMark, choice, rowNote });
     });
 
     if (!several) {
@@ -2388,31 +2504,15 @@ class CompassReview extends Plugin {
         placeholder: "Note on this file (optional)",
         attr: { rows: "3" },
       });
+      parts.notes.dataset.field = `notes:${entry.files[0].file}`;
       parts.notes.addEventListener("input", () => {
         entry.states.get(entry.files[entry.index].file).note = parts.notes.value;
         this.refreshCard(entry);
       });
     }
 
-    if (other) {
-      const block = card.createDiv({ cls: "compass-review-this-file" });
-      block.createDiv({ cls: "compass-review-label", text: `On this file: ${other.path}` });
-      const note = block.createEl("textarea", {
-        cls: "compass-review-file-note",
-        placeholder: "Note on this file for Claude",
-        attr: { rows: "2" },
-      });
-      note.value = entry.comments.get(other.path) || "";
-      note.addEventListener("input", () => {
-        if (note.value.trim()) entry.comments.set(other.path, note.value);
-        else entry.comments.delete(other.path);
-        this.refreshCard(entry);
-      });
-      block.createDiv({
-        cls: "compass-review-fine",
-        text: "This file is not in the review; the note goes with your answer.",
-      });
-    }
+    parts.otherSlot = card.createDiv({ cls: "compass-review-this-file-slot" });
+    this.placeOther(card, entry, other);
 
     const feedback = card.createDiv({ cls: "compass-review-feedback-block" });
     feedback.createDiv({ cls: "compass-review-label", text: "Feedback so far" });
@@ -2448,6 +2548,7 @@ class CompassReview extends Plugin {
         text: "Left and right arrow keys move between files when this card has focus.",
       });
     }
+    return card;
   }
 
   // Whether one file carries something the human wrote: a note, or a changed
@@ -2544,6 +2645,7 @@ class CompassReview extends Plugin {
     if (!parts || parts.rows.length !== entry.files.length) return;
     const n = entry.files.length;
     const current = entry.files[entry.index];
+    parts.question.setText(this.questionOf(entry));
     parts.pos.setText(`File ${entry.index + 1} of ${n}`);
     parts.prev.disabled = entry.index === 0;
     parts.next.disabled = entry.index >= n - 1;
@@ -2551,16 +2653,23 @@ class CompassReview extends Plugin {
 
     entry.files.forEach((f, i) => {
       const state = entry.states.get(f.file);
-      const { row, mark, count, sentMark, choice, rowNote } = parts.rows[i];
+      const { row, link, mark, count, sentMark, choice, rowNote } = parts.rows[i];
+      link.setText(this.titleOf(f.file));
       mark.setText(state.read ? "read" : "unread");
       setClass(mark, "is-read", state.read);
       setClass(row, "is-current", i === entry.index);
       setClass(row, "is-sent", state.sent);
       count.setText(state.note.trim() ? "1 note" : "no note");
       sentMark.setText(state.sent ? `sent: ${state.verdict === "approved" ? "approved" : "needs changes"}` : "");
+      // A sent row stays live until a newer review lists its file; only then
+      // is it locked.
       const settled = state.sent && this.heldElsewhere(entry, f.file);
+      setClass(row, "is-locked", settled);
       if (choice) {
-        for (const verdict of VERDICTS) setClass(choice[verdict], "is-chosen", state.verdict === verdict);
+        for (const verdict of VERDICTS) {
+          setClass(choice[verdict], "is-chosen", state.sent && state.verdict === verdict);
+          choice[verdict].setAttribute("aria-pressed", String(state.sent && state.verdict === verdict));
+        }
         const stands = (verdict) => state.sent && state.verdict === verdict;
         const noFeedback = !this.fileHasFeedback(entry, f.file);
         choice.approved.disabled = settled || stands("approved");
@@ -2604,7 +2713,11 @@ class CompassReview extends Plugin {
       parts.approve.disabled = elsewhere || stands("approved");
       parts.changes.disabled = elsewhere || stands("changes") || !this.hasFeedback(entry);
       parts.changes.title = !elsewhere && !stands("changes") && !this.hasFeedback(entry) ? "Write a note first" : "";
-      for (const verdict of VERDICTS) setClass(verdict === "approved" ? parts.approve : parts.changes, "is-chosen", stands(verdict));
+      for (const verdict of VERDICTS) {
+        const b = verdict === "approved" ? parts.approve : parts.changes;
+        setClass(b, "is-chosen", stands(verdict));
+        b.setAttribute("aria-pressed", String(stands(verdict)));
+      }
     }
     const answered = this.settled(entry);
     setClass(card, "is-answered", answered);
@@ -2646,7 +2759,8 @@ class CompassReview extends Plugin {
 
   // Draws the view for the markdown file in view. A panel whose drawing would
   // come out the same is left alone, so a note being typed keeps its focus and
-  // caret; of two draws in flight only the later one lands. A document an
+  // caret; a plan or spec drawn again gives a focused note its focus, text and
+  // caret back. Of two draws in flight only the later one lands. A document an
   // agent's view opened (`view.heldPath`) leaves the drawing in place while it
   // is the file in view.
   async drawViewPanel(view) {
@@ -2713,6 +2827,7 @@ class CompassReview extends Plugin {
     ]);
     if (root.dataset.signature === signature) return;
     root.dataset.signature = signature;
+    const focus = focusedField(root);
     root.empty();
     view.chartToken = null;
     const token = (view.runToken = {});
@@ -2727,8 +2842,10 @@ class CompassReview extends Plugin {
       );
     } else if (kind === "plan") {
       this.drawPlanBoard(root, file, text, entry, changes);
+      restoreFocus(root, focus);
     } else if (kind === "spec") {
       this.drawSpecView(root, file, text, entry, changes, pipeline);
+      restoreFocus(root, focus);
     } else if (kind === "research") {
       this.drawResearchView(root, view, file, text, changes);
     } else if (kind === "loop") {
@@ -3036,6 +3153,7 @@ class CompassReview extends Plugin {
         placeholder: "What should change?",
         attr: { rows: "2" },
       });
+      note.dataset.field = `choice:${path}:${c.choice}`;
       const paint = () => {
         const state = hasOwn(answers, c.choice) ? answers[c.choice].state : "";
         setClass(row, "is-agree", state === "agree");
@@ -3180,6 +3298,7 @@ class CompassReview extends Plugin {
       placeholder: "What should change? A note is needed to change a decision.",
       attr: { rows: "2" },
     });
+    note.dataset.field = `decision:${path}:${d.id}`;
     let hint = null;
     let needNote = false;
     const stateNow = () => (hasOwn(answers, d.id) ? answers[d.id].state : "");
