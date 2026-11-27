@@ -1,7 +1,8 @@
 """Launch a child as the root of its own process tree and kill the whole tree.
 
 On POSIX the child starts in a new session, so `os.killpg` reaches every
-descendant. On Windows the child starts in a new process group and is placed
+descendant. On Windows the child starts in a new process group with no
+console window of its own, and is placed
 in a kill-on-close Job Object right after `Popen`; terminating the job, or
 closing its handle, ends the child and every descendant, including one
 spawned while the kill runs, which `taskkill /T` alone can miss. `taskkill /T`
@@ -40,9 +41,11 @@ _SNAPSHOT_PASSES = 5
 
 
 def popen_kwargs():
-    """The `Popen` keyword arguments that make the child lead its own tree."""
+    """The `Popen` keyword arguments that make the child lead its own tree.
+    On Windows the child also gets no console window, so a headless child of
+    a hook or background job never opens a window on the desktop."""
     if sys.platform == "win32":
-        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW}
     return {"start_new_session": True}
 
 
