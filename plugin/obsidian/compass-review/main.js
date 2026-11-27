@@ -76,7 +76,13 @@
 // n" with Previous, Next and Next unread (and the Left and Right arrow keys
 // while the card has focus), one row per file with its read mark, title, reason
 // and note count, and a note field for the file the walk is on. A file is
-// marked read when it opens, whether the card opened it or the human did. While
+// marked read when it opens, whether the card opened it or the human did. A
+// listed file that is on disk but missing from Obsidian's vault index (the
+// desktop file watcher can miss files written while Obsidian runs) is handed to
+// the vault adapter to index, when a request arrives and when the file is
+// opened; if it is still missing after a short wait, its row says Obsidian has
+// not indexed it yet, with a Reload button that runs Obsidian's "Reload app
+// without saving" command. While
 // a markdown file outside the review is in view, the card also shows an "On this
 // file" note field for that file. A summary line counts the files read and the
 // notes. A card for one document ends with one Approve and one "Needs
@@ -234,8 +240,22 @@ const RECHECK_MS = 5000;
 const REVISE_MS = 24 * 3600 * 1000;
 // The characters of a request file name that hold its timestamp.
 const STAMP = 15;
+// How long a file the vault adapter was asked to index is waited on, and how
+// often the vault index is checked meanwhile.
+const INDEX_WAIT_MS = 1000;
+const INDEX_POLL_MS = 50;
+const UNINDEXED_TEXT = "Obsidian has not indexed this file yet: reload Obsidian (Ctrl+P, Reload app without saving)";
 const PANEL_TYPE = "compass-review-panel";
 const VIEW_TYPE = "compass-view-panel";
+
+// A listed file that is on disk but missing from Obsidian's vault index after
+// the adapter was asked to index it.
+class UnindexedError extends Error {
+  constructor(path) {
+    super(`Obsidian has not indexed ${path} yet`);
+    this.path = path;
+  }
+}
 
 function electronRemote() {
   const electron = require("electron");
@@ -1783,6 +1803,7 @@ class CompassReview extends Plugin {
       comments: new Map(),
       carriedComments: new Map(),
       edited: new Set(),
+      unindexed: new Set(),
       choiceAnswers: new Map(),
       decisionAnswers: new Map(),
     };
@@ -1855,11 +1876,19 @@ class CompassReview extends Plugin {
   async onRequest(path) {
     if (!path) throw new Error("the compass-review link names no request");
     const request = await this.readRequest(path);
-    if (!this.app.vault.getAbstractFileByPath(request.file)) throw new Error(`file not in this vault: ${request.file}`);
+    const listed = filesOf(request).map((f) => f.file);
+    const indexed = await Promise.all(listed.map((file) => this.indexFile(file)));
+    const at = listed.indexOf(request.file);
+    const head = at >= 0 ? indexed[at] : await this.indexFile(request.file);
+    if (head === null) throw new Error(`file not in this vault: ${request.file}`);
     // Read before anything raises the window.
     const hadFocus = this.windowHasFocus();
     this.track(request, path);
     const entry = this.pending.get(request.id);
+    listed.forEach((file, i) => {
+      if (indexed[i] === "unindexed") entry.unindexed.add(file);
+      else entry.unindexed.delete(file);
+    });
     await this.restoreSent(entry);
     if (hadFocus !== null) entry.arrivedUnfocused = entry.arrivedUnfocused === true || !hadFocus;
     await this.openPanel();
@@ -1868,11 +1897,42 @@ class CompassReview extends Plugin {
     this.refresh();
   }
 
+  // The vault's file at `path`. A file on disk that the vault index lacks is
+  // handed to the vault adapter to index (`reconcileInternalFile`, which stats
+  // the file and adds it to the index as Obsidian's file watcher does), then
+  // waited on for up to INDEX_WAIT_MS. Resolves to the file; to "unindexed"
+  // when it is on disk but still not in the index; to null when it is not on
+  // disk or sits under a folder or name starting with a dot, which Obsidian
+  // never indexes.
+  async indexFile(path) {
+    const vault = this.app.vault;
+    const known = vault.getAbstractFileByPath(path);
+    if (known) return known;
+    if (path.split("/").some((part) => part.startsWith("."))) return null;
+    const adapter = vault.adapter;
+    if (!(await adapter.exists(path))) return null;
+    try {
+      if (typeof adapter.reconcileInternalFile === "function") await adapter.reconcileInternalFile(path);
+      else if (typeof adapter.reconcileFile === "function") await adapter.reconcileFile(path, path);
+    } catch (e) {
+      console.error("[compass-review] could not index", path, e);
+    }
+    const limit = Number.isFinite(this.indexWaitMs) ? this.indexWaitMs : INDEX_WAIT_MS;
+    for (let waited = 0; ; waited += INDEX_POLL_MS) {
+      const file = vault.getAbstractFileByPath(path);
+      if (file) return file;
+      if (waited >= limit) return "unindexed";
+      await new Promise((resolve) => setTimeout(resolve, INDEX_POLL_MS));
+    }
+  }
+
   // Brings a file into view: in the pane that already shows it, else in the
   // current pane. The editor takes keyboard focus unless `focus` is false.
   // `state` is the open state the pane takes, such as {eState: {line}}.
+  // A file on disk that Obsidian has not indexed throws an UnindexedError.
   async showFile(path, focus = true, state = undefined) {
-    const file = this.app.vault.getAbstractFileByPath(path);
+    const file = await this.indexFile(path);
+    if (file === "unindexed") throw new UnindexedError(path);
     if (!file) throw new Error(`file not in this vault: ${path}`);
     const open = this.app.workspace
       .getLeavesOfType("markdown")
@@ -1882,16 +1942,24 @@ class CompassReview extends Plugin {
     this.app.workspace.setActiveLeaf(leaf, { focus });
   }
 
-  // Opens file `i` of a review and moves its walk there, marking it read.
+  // Opens file `i` of a review and moves its walk there, marking it read. A
+  // file Obsidian has not indexed is marked on its row instead.
   async visit(entry, i, focus = false) {
     const target = entry && entry.files[i];
     if (!target) return;
     this.visiting = entry;
     try {
       await this.showFile(target.file, focus);
+    } catch (e) {
+      if (!(e instanceof UnindexedError)) throw e;
+      entry.unindexed.add(target.file);
+      entry.index = i;
+      this.refresh();
+      return;
     } finally {
       if (this.visiting === entry) this.visiting = null;
     }
+    entry.unindexed.delete(target.file);
     this.markVisited(entry, target.file);
     this.refresh();
   }
@@ -2480,6 +2548,7 @@ class CompassReview extends Plugin {
       const body = row.createDiv({ cls: "compass-review-row-body" });
       const link = body.createEl("a", { cls: "compass-review-file", text: this.titleOf(f.file), href: "#" });
       if (f.why) body.createDiv({ cls: "compass-review-fine", text: f.why });
+      const unindexed = body.createDiv({ cls: "compass-review-unindexed" });
       const count = row.createSpan({ cls: "compass-review-fine compass-review-row-count" });
       const sentMark = row.createSpan({ cls: "compass-review-fine compass-review-row-sent" });
       let choice = null;
@@ -2516,7 +2585,7 @@ class CompassReview extends Plugin {
         return open();
       });
       row.addEventListener("click", open);
-      parts.rows.push({ row, link, mark, count, sentMark, choice, rowNote, hint });
+      parts.rows.push({ row, link, mark, count, sentMark, choice, rowNote, hint, unindexed });
     });
 
     if (!several) {
@@ -2679,8 +2748,9 @@ class CompassReview extends Plugin {
 
     entry.files.forEach((f, i) => {
       const state = entry.states.get(f.file);
-      const { row, link, mark, count, sentMark, choice, rowNote, hint } = parts.rows[i];
+      const { row, link, mark, count, sentMark, choice, rowNote, hint, unindexed } = parts.rows[i];
       link.setText(this.titleOf(f.file));
+      this.showUnindexed(unindexed, entry.unindexed.has(f.file));
       mark.setText(state.read ? "read" : "unread");
       setClass(mark, "is-read", state.read);
       setClass(row, "is-current", i === entry.index);
@@ -2800,6 +2870,25 @@ class CompassReview extends Plugin {
   refreshCardIn(root, entry) {
     const card = Array.from(root.querySelectorAll(".compass-review-card")).find((el) => el.dataset.id === entry.request.id);
     if (card) this.fillCard(entry, card);
+  }
+
+  // Fills a row's unindexed line: the reload advice and a Reload button that
+  // runs Obsidian's "Reload app without saving", or nothing.
+  showUnindexed(el, on) {
+    if (el.compassOn === on) return;
+    el.compassOn = on;
+    el.empty();
+    if (!on) return;
+    el.createSpan({ cls: "compass-review-fine", text: UNINDEXED_TEXT });
+    const reload = el.createEl("button", { cls: "compass-review-reload", text: "Reload" });
+    reload.onclick = (event) => {
+      if (event && event.stopPropagation) event.stopPropagation();
+      try {
+        this.app.commands.executeCommandById("app:reload");
+      } catch (e) {
+        this.fail("reload", e);
+      }
+    };
   }
 
   refreshCard(entry) {

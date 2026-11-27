@@ -6906,3 +6906,120 @@ test("the stylesheet shows the answered line only on answered cards and hides th
   assert.match(rule(".compass-review-card textarea.is-needed"), /outline/);
   assert.match(rule(".compass-review-need-note:empty"), /display:\s*none/);
 });
+
+// ---- files on disk that Obsidian's vault index lacks ----
+
+// Hides `paths` from the vault index while they stay on disk, as Obsidian's
+// desktop file watcher does when it misses a file. The adapter's
+// `reconcileInternalFile` records each call and, when `indexes` is true, adds
+// the file to the index on a later tick, as Obsidian's adapter does through its
+// file-created event. `app.commands` records every command run.
+function hideFromIndex(app, paths, indexes) {
+  const hidden = new Set(paths);
+  const reconciled = [];
+  const lookup = app.vault.getAbstractFileByPath;
+  app.vault.getAbstractFileByPath = (p) => (hidden.has(p) ? null : lookup(p));
+  app.vault.adapter.reconcileInternalFile = async (p) => {
+    reconciled.push(p);
+    if (indexes) setTimeout(() => hidden.delete(p), 10);
+  };
+  const commands = [];
+  app.commands = { executeCommandById(id) { commands.push(id); return true; } };
+  return { hidden, reconciled, commands };
+}
+const unindexedText = (row) => { const el = row.querySelector(".compass-review-unindexed"); return el.all().map((e) => e.text).join(" ").trim(); };
+const reloadIn = (row) => row.all().find((e) => e.tag === "button" && e.text === "Reload");
+const twoFiles = { files: [{ file: "a.md", why: "" }, { file: "b.md", why: "" }] };
+
+// Adversarial where: a listed file the watcher missed throws "file not in this
+// vault" although it is on disk, or is reconciled but opened before the index
+// holds it, or only the first listed file is reconciled when the request comes.
+test("a listed file missing from the vault index is reconciled when the request comes and opens", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md", twoFiles) });
+  const fake = hideFromIndex(app, ["b.md"], true);
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  assert.deepEqual(fake.reconciled, ["b.md"], "the request reconciles every listed file the index lacks");
+  assert.deepEqual(notices, []);
+  const rows = rowsIn(cardFor(app, "1"));
+  await click(linkIn(rows[1]));
+  assert.deepEqual(notices, []);
+  assert.equal(app.active.path, "b.md");
+  assert.equal(unindexedText(rows[1]), "");
+  assert.equal(reloadIn(rows[1]), undefined);
+});
+
+test("a first listed file missing from the index is reconciled before the request fails or opens it", async () => {
+  const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md") });
+  const fake = hideFromIndex(app, ["a.md"], true);
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  assert.deepEqual(fake.reconciled, ["a.md"]);
+  assert.deepEqual(notices, []);
+  assert.equal(app.active.path, "a.md");
+});
+
+// Adversarial where: a file the adapter does not index fails silently, raises
+// "file not in this vault", opens an empty note, or the Reload button's click
+// also opens the row; or the line stays after the file is later indexed.
+test("a listed file the adapter does not index shows the reload line and a Reload button on its row", async (t) => {
+  await t.test("a second listed file", async () => {
+    const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md", twoFiles) });
+    plugin.indexWaitMs = 0;
+    const fake = hideFromIndex(app, ["b.md"], false);
+    await plugin.handler({ request: "tmp/review/1.request.json" });
+    assert.deepEqual(notices, []);
+    const rows = rowsIn(cardFor(app, "1"));
+    assert.equal(unindexedText(rows[0]), "");
+    assert.equal(unindexedText(rows[1]), "Obsidian has not indexed this file yet: reload Obsidian (Ctrl+P, Reload app without saving) Reload");
+    await click(linkIn(rows[1]));
+    assert.deepEqual(notices, [], "an unindexed file is reported on its row, not as a failure");
+    assert.equal(app.active.path, "a.md", "nothing else opens in its place");
+    assert.ok(fake.reconciled.filter((p) => p === "b.md").length >= 2, "opening the row asks the adapter again");
+    await click(reloadIn(rows[1]));
+    assert.deepEqual(fake.commands, ["app:reload"]);
+    assert.equal(app.active.path, "a.md");
+    fake.hidden.delete("b.md");
+    await click(linkIn(rows[1]));
+    assert.equal(app.active.path, "b.md");
+    assert.equal(unindexedText(rows[1]), "", "the line leaves once the file opens");
+  });
+  await t.test("the only listed file", async () => {
+    const { app, plugin } = await loaded({ "a.md": "x", "tmp/review/1.request.json": req("1", "a.md") });
+    plugin.indexWaitMs = 0;
+    const fake = hideFromIndex(app, ["a.md"], false);
+    await plugin.handler({ request: "tmp/review/1.request.json" });
+    assert.deepEqual(notices, []);
+    assert.deepEqual(cardIds(app), ["1"]);
+    const rows = rowsIn(cardFor(app, "1"));
+    assert.match(unindexedText(rows[0]), /^Obsidian has not indexed this file yet/);
+    await click(reloadIn(rows[0]));
+    assert.deepEqual(fake.commands, ["app:reload"]);
+  });
+  await t.test("an Obsidian without reconcileInternalFile still shows the line", async () => {
+    const { app, plugin } = await loaded({ "a.md": "x", "b.md": "y", "tmp/review/1.request.json": req("1", "a.md", twoFiles) });
+    plugin.indexWaitMs = 0;
+    hideFromIndex(app, ["b.md"], false);
+    delete app.vault.adapter.reconcileInternalFile;
+    await plugin.handler({ request: "tmp/review/1.request.json" });
+    assert.match(unindexedText(rowsIn(cardFor(app, "1"))[1]), /^Obsidian has not indexed this file yet/);
+  });
+});
+
+// Adversarial where: a file neither on disk nor indexed waits on the adapter
+// or shows the reload line instead of the failure it is.
+test("a listed file that is not on disk is never reconciled and fails as missing", async () => {
+  const { app, plugin } = await loaded({ "tmp/review/1.request.json": req("1", "gone.md") });
+  const fake = hideFromIndex(app, [], true);
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  assert.deepEqual(fake.reconciled, []);
+  assert.match(notices[0], /file not in this vault: gone.md/);
+});
+
+// Adversarial where: a file under a dot folder, which Obsidian never indexes,
+// is handed to the adapter and shown as waiting on a reload.
+test("a listed file under a dot folder is never reconciled and fails as outside the vault", async () => {
+  const { app, plugin } = await loaded({ ".compass/a.md": "x", "tmp/review/1.request.json": req("1", ".compass/a.md") });
+  const fake = hideFromIndex(app, [".compass/a.md"], true);
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  assert.deepEqual(fake.reconciled, []);
+  assert.match(notices[0], /file not in this vault: \.compass\/a\.md/);
+});
