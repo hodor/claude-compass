@@ -60,4 +60,4 @@ Plan: [[PLAN-033-compaction-keeps-the-session-state]]; each task's full text, fi
 Plan: [[PLAN-034-checking-cost-follows-task-and-model]]; the task's full text, files and checks are there. TASK-354 ran and its candidate rubric was not kept.
 
 - [x] TASK-353: Station ablation by planted defects - complexity: L, depends_on: TASK-352
-- [ ] You read [[RESEARCH-station-ablation]] and decide whether the batch of about 100 defects (about 350 sessions) is a spend to approve.
+- [ ] Resume the station-ablation batch after the usage limit resets on 2026-11-30: 56 of the 100 approved defects are unread; the run commands resume from their progress files
