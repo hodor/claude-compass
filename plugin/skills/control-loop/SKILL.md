@@ -1,5 +1,5 @@
 ---
-name: loop
+name: control-loop
 description: Create a control loop with the human, step by step from the end state to a dry run - sensor, dampener, controller, actuator, schedule, human review and flow control - reading the repository before asking and trying every part on its own before the loop is activated.
 version: 1.0.0
 allowed-tools: [Read, Grep, Glob, Bash, Write, Edit, AskUserQuestion]

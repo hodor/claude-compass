@@ -1,4 +1,4 @@
-"""Tests for `plugin/skills/loop/maya-recipe.md`, the control-loop recipe for
+"""Tests for `plugin/skills/control-loop/maya-recipe.md`, the control-loop recipe for
 animation work in Maya.
 
 Public contract these tests pin:
@@ -50,8 +50,8 @@ sys.path.insert(0, str(CLI_DIR))
 from commands import loop as loop_command  # noqa: E402
 
 PLUGIN = CLI_DIR.parent
-RECIPE = PLUGIN / "skills" / "loop" / "maya-recipe.md"
-SKILL = PLUGIN / "skills" / "loop" / "SKILL.md"
+RECIPE = PLUGIN / "skills" / "control-loop" / "maya-recipe.md"
+SKILL = PLUGIN / "skills" / "control-loop" / "SKILL.md"
 
 STEP_HEADING = re.compile(r"^## Step (\d+)\b", re.MULTILINE)
 PYTHON_BLOCK = re.compile(r"^```python[ \t]*\n(.*?)^```", re.MULTILINE | re.DOTALL)

@@ -1,6 +1,6 @@
 # Maya recipe: a loop that keys a shot
 
-How the eight steps of the `loop` skill map to animation work: a loop that keys a shot in Maya until every beat on the shot sheet has its key and the playblast is complete. It runs on the local lane, on a workstation with a Maya licence.
+How the eight steps of the `control-loop` skill map to animation work: a loop that keys a shot in Maya until every beat on the shot sheet has its key and the playblast is complete. It runs on the local lane, on a workstation with a Maya licence.
 
 Untested on this machine: on 2026-11-27 `mayapy` was looked for on PATH and not found. A Maya 2027 install was present outside PATH, and the recipe has not been run against it.
 

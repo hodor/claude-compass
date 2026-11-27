@@ -1,9 +1,9 @@
-"""Tests for `plugin/skills/loop/SKILL.md`, the guided creation of a control
+"""Tests for `plugin/skills/control-loop/SKILL.md`, the guided creation of a control
 loop through steps 0 to 7.
 
 Public contract these tests pin:
 
-    Frontmatter `name: loop` and a non-empty `description`.
+    Frontmatter `name: control-loop` and a non-empty `description`.
 
     Eight sections headed `## Step N: ...` for N = 0 to 7, in order, each
     holding a line that starts with `Done when:` (bold markers allowed).
@@ -48,7 +48,7 @@ sys.path.insert(0, str(CLI_DIR))
 from commands import loop as loop_command  # noqa: E402
 
 PLUGIN = CLI_DIR.parent
-SKILL = PLUGIN / "skills" / "loop" / "SKILL.md"
+SKILL = PLUGIN / "skills" / "control-loop" / "SKILL.md"
 LOOP_TEMPLATE = CLI_DIR / "loop_templates" / "loop.json"
 
 STEP_HEADING = re.compile(r"^## Step (\d+)\b.*$", re.MULTILINE)
@@ -99,9 +99,9 @@ class LoopSkillTests(unittest.TestCase):
         cls.text = read_skill()
         cls.steps = step_sections(cls.text)
 
-    def test_frontmatter_names_loop_with_a_description(self):
+    def test_frontmatter_names_control_loop_with_a_description(self):
         fields = frontmatter(self.text)
-        self.assertEqual(fields.get("name"), "loop")
+        self.assertEqual(fields.get("name"), "control-loop")
         self.assertTrue(fields.get("description"), "description is empty")
 
     def test_eight_steps_in_order_each_with_done_when(self):

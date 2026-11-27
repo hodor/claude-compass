@@ -12,7 +12,7 @@ Public contract these tests pin:
 
     The local install under the repository's `.claude/` lists `schedule`,
     `sense-ast-grep` and `sense-context` in `cli/maincli.py`, and holds
-    `skills/loop/SKILL.md` and `skills/loop/maya-recipe.md`. The install is
+    `skills/control-loop/SKILL.md` and `skills/control-loop/maya-recipe.md`. The install is
     generated, so these cases skip where no `.claude/cli/` exists (a fresh
     clone or CI checkout).
 
@@ -85,7 +85,7 @@ class LocalInstallTests(unittest.TestCase):
     def test_installed_loop_skill_and_recipe_exist(self):
         for name in ("SKILL.md", "maya-recipe.md"):
             with self.subTest(file=name):
-                self.assertTrue((INSTALL / "skills" / "loop" / name).is_file())
+                self.assertTrue((INSTALL / "skills" / "control-loop" / name).is_file())
 
 
 if __name__ == "__main__":
