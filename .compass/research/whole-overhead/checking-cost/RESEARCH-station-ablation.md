@@ -23,11 +23,8 @@ flowchart LR
   D --> N["no station<br/>1 defect"]
 ```
 
-> [!question] You decide
-> Is the batch that would earn lighter checking a spend to approve? On these 11 defects no station caught anything the others missed, so the rule marks every station lighter-eligible on every letter. Eleven defects cannot carry that: a station that alone catches one defect in ten would show no lone catch in a batch this size about a third of the time. Bounding that share below one in ten takes about 30 caught defects per letter, about 100 defects in all, about 350 more sessions on the subscription.
-> 1. (Recommended) Approve the full batch across S, M and L: about 100 defects, about 350 sessions, about 1.7 million output tokens, 4 to 5 hours at three sessions at once.
-> 2. Run only L tasks, about 33 defects and 90 sessions, since L is where the stations differed.
-> 3. Stop here and keep full checking everywhere.
+> [!note] Decided 2026-11-26
+> The full batch is approved: about 100 planted defects across S, M and L, about 350 sessions on the subscription, so that any station's lone catches are bounded below one in ten per letter. On the first 11 defects no station caught anything the others missed.
 
 Measured for [[PLAN-034-checking-cost-follows-task-and-model]] TASK-353, which replaced a goal-share ablation after [[RESEARCH-checking-cost-pilot]] put that at about 316 builds per arm.
 
