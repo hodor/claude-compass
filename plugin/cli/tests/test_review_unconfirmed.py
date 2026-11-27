@@ -794,7 +794,7 @@ class Contract(unittest.TestCase):
         bumped, or the `.vsix` is not rebuilt under the new version."""
         self.assertEqual(shipped_version(), "0.5.0")
         manifest = json.loads((REPO_PLUGIN / "obsidian" / "compass-review" / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], "0.8.3")
+        self.assertEqual(manifest["version"], "0.8.4")
         plugin = json.loads((REPO_PLUGIN / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
         self.assertRegex(plugin["version"], r"^\d+\.\d+\.\d+$")
         self.assertGreaterEqual(tuple(int(n) for n in plugin["version"].split(".")), (0, 34, 5))

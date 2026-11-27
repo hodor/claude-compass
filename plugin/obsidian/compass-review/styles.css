@@ -1007,6 +1007,20 @@ button.compass-conf-filter.is-on {
   display: none;
 }
 
+/* A row's line for a file Obsidian has not indexed: the reload advice and a
+   Reload button. */
+.compass-review-unindexed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-error);
+}
+
+.compass-review-unindexed:empty {
+  display: none;
+}
+
 /* The one-line form of an answered card: its title and verdict counts, with
    Change (or Collapse) and Done. Collapsed, the line is all the card shows. */
 .compass-review-slim {
