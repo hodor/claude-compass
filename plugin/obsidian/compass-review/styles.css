@@ -989,3 +989,49 @@ button.compass-conf-filter.is-on {
 .compass-review-card.is-answered .compass-review-foot > .compass-review-fine:not(.compass-review-summary) {
   display: none;
 }
+
+/* A Needs changes click that waits for a note: the note field is outlined
+   and a line under it asks for the note. */
+.compass-review-card textarea.is-needed {
+  outline: 2px solid var(--text-error);
+  outline-offset: 1px;
+}
+
+.compass-review-need-note {
+  flex: 1 1 100%;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-error);
+}
+
+.compass-review-need-note:empty {
+  display: none;
+}
+
+/* The one-line form of an answered card: its title and verdict counts, with
+   Change (or Collapse) and Done. Collapsed, the line is all the card shows. */
+.compass-review-slim {
+  display: none;
+}
+
+.compass-review-card.is-answered .compass-review-slim {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.compass-review-slim-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.compass-review-card.is-collapsed {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.compass-review-card.is-collapsed > :not(.compass-review-slim) {
+  display: none;
+}
