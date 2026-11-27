@@ -67,7 +67,7 @@ Pipeline: Spec → Research → Plan → Build → Test → Validate
 Research sub-agents: codebase-locator (where in code), codebase-analyzer (how code works), vault-locator (where in vault), vault-analyzer (what vault says), pattern-finder (code examples)
 Session: /compass:handoff (create | resume)
 Utilities: debug agent (errors), pr-describe (PRs)
-Skills: /compass:setup, /compass:guide, /compass:checkup, /compass:vault-health, /compass:annotate, /compass:autopilot, /compass:vision, /compass:retroactive, /compass:papers
+Skills: /compass:setup, /compass:guide, /compass:checkup, /compass:vault-health, /compass:annotate, /compass:autopilot, /compass:vision, /compass:retroactive, /compass:papers, /compass:loop (control loops)
 ```
 
 ### 3. After any action
