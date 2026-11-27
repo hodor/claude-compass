@@ -207,7 +207,8 @@ class Request(ReviewProject):
         self.assertEqual(first[0], "requested")
         self.assertEqual(first[2], "specs/SPEC-001-x.md")
         request = json.loads((reviewlib.review_dir(self.vault) / f"{first[1]}.request.json").read_text())
-        self.assertEqual(request, {"id": first[1], "surface": "obsidian", "file": "specs/SPEC-001-x.md", "title": "Spec one", "return": True, "commit": self.commit})
+        self.assertEqual(request, {"id": first[1], "surface": "obsidian", "file": "specs/SPEC-001-x.md", "title": "Spec one", "return": True, "commit": self.commit,
+                                   "revisable": True})
         self.assertEqual(len(self.opened), 1)
         self.assertTrue(self.opened[0].startswith("obsidian://compass-review?vault=abc123&request="))
         self.assertIn("tmp%2Freview%2F" + first[1] + ".request.json", self.opened[0])

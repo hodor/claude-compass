@@ -325,6 +325,15 @@ const verdictOf = (app, p) => JSON.parse(app.store.get(p));
 // The answer file for the documents from position `n`, and the names of every answer file of a request.
 const partialOf = (app, n, id = "1") => JSON.parse(app.store.get(`tmp/review/${id}.verdict.${n}.json`));
 const answerFilesOf = (app, id = "1") => [...app.store.keys()].filter((k) => k.startsWith(`tmp/review/${id}.verdict`)).sort();
+// The revision files of a request, and the parsed revision `k` of the document at `i`.
+const revisionFilesOf = (app, id = "1") => [...app.store.keys()].filter((k) => k.startsWith(`tmp/review/${id}.revision.`)).sort();
+const revisionOf = (app, i, k, id = "1") => JSON.parse(app.store.get(`tmp/review/${id}.revision.${i}.${k}.json`));
+// The "sent: ..." mark of the row at `i`.
+const sentMarkOf = (app, i, id = "1") => {
+  const row = cardFor(app, id).querySelectorAll(".compass-review-row")[i];
+  const e = row.querySelector(".compass-review-row-sent");
+  return e ? e.text : null;
+};
 
 // ---- request and verdict through the panel ----
 
@@ -5942,7 +5951,8 @@ test("a reload and a reopened panel keep the sent rows settled and the others op
     await plugin.scanPending();
     await sleep();
     assert.deepEqual(settled(app), [[], ["Needs changes"], [], []]);
-    assert.equal(rowButton(app, 1, "Approve").disabled, true);
+    assert.equal(rowButton(app, 1, "Needs changes").disabled, true, "the verdict the row stands at is not sent again");
+    assert.equal(rowButton(app, 1, "Approve").disabled, false, "the other verdict stays open while rows are open");
   });
   await t.test("a request whose documents are all answered by part answers is not shown", async () => {
     const answer = (files) => JSON.stringify({ id: "1", file: files[0].file, verdict: "approved", notes: "", comments: [], edited: [], at: "t", files });
@@ -5959,10 +5969,10 @@ test("a reload and a reopened panel keep the sent rows settled and the others op
 });
 // Adversarial where: the add-on is shipped under the version an installed copy
 // already runs, so the running plugin is never reloaded for the change.
-test("the shipped Obsidian manifest is at 0.8.0 or later", () => {
+test("the shipped Obsidian manifest is at 0.8.1 or later", () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "compass-review", "manifest.json"), "utf8"));
   const have = manifest.version.split(".").map(Number);
-  const want = [0, 8, 0];
+  const want = [0, 8, 1];
   let ok = true;
   for (let i = 0; i < 3; i++) if (have[i] !== want[i]) { ok = have[i] > want[i]; break; }
   assert.ok(ok, `manifest version ${manifest.version}`);
@@ -6005,7 +6015,8 @@ test("a renamed listed file keeps its sent state under the new path", async () =
   app.store.delete("plan.md");
   app.listeners.rename({ path: "plan2.md" }, "plan.md");
   assert.deepEqual(chosenIn(app, 1), ["Needs changes"]);
-  assert.equal(rowButton(app, 1, "Approve").disabled, true, "the renamed row stays sent");
+  assert.equal(rowButton(app, 1, "Needs changes").disabled, true, "the renamed row stays sent as changes");
+  assert.equal(sentMarkOf(app, 1), "sent: needs changes");
   await click(cardBtn(app, "1", "Approve all"));
   await sleep();
   assert.deepEqual(partialOf(app, 0).files.map((f) => [f.file, f.index]), [["spec.md", 0], ["detail.md", 2], ["study.md", 3]]);
@@ -6105,21 +6116,21 @@ test("a row's send and Approve all save the dirty listed editors and no others",
     assert.equal(partialOf(app, 1).files[0].verdict, "changes");
   });
 });
-// Adversarial where: a row sent as changes can be sent again as approved, or a
-// row sent as approved can be sent again with a changed verdict.
-test("a sent row cannot be changed by its buttons or by Approve all", async () => {
+// Adversarial where: a sent row's verdict is sent again unchanged, Approve all
+// overwrites a sent row's answer, or a click on the other verdict rewrites the
+// earlier answer instead of adding a revision.
+test("a sent row cannot be sent again at the verdict it stands at, by its buttons or by Approve all", async () => {
   const { app } = await openSet();
   typeInto(rowNoteIn(cardFor(app, "1"), 1), "reorder");
   await decide(app, 1, "Needs changes");
   const sent = app.store.get("tmp/review/1.verdict.1.json");
-  assert.equal(rowButton(app, 1, "Approve").disabled, true);
   assert.equal(rowButton(app, 1, "Needs changes").disabled, true);
-  await decide(app, 1, "Approve");
-  assert.deepEqual(chosenIn(app, 1), ["Needs changes"]);
+  await click(rowButton(app, 1, "Needs changes"));
   await click(cardBtn(app, "1", "Approve all"));
   await sleep();
   assert.equal(app.store.get("tmp/review/1.verdict.1.json"), sent);
   assert.deepEqual(answerFilesOf(app), ["tmp/review/1.verdict.0.json", "tmp/review/1.verdict.1.json"]);
+  assert.deepEqual(revisionFilesOf(app), []);
 });
 // Adversarial where: stepping with the arrow keys clears or moves a sent row's
 // state, or lights both buttons of a row.
@@ -6159,4 +6170,306 @@ test("a decision changed on a spec is feedback for that file's row alone, and it
   assert.deepEqual(first.files.map((f) => [f.file, f.verdict]), [[SP, "changes"]]);
   assert.equal(first.files[0].note, "D-01: reword it");
   assert.equal(partialOf(app, 1).files[0].note, undefined);
+});
+
+// ---- a sent row's verdict can be changed while the review is open ----
+
+// Adversarial where: a sent row locks its buttons, a click on the other verdict
+// rewrites or removes the earlier answer, the revision lacks its index or
+// number, or the sent mark keeps showing the first verdict.
+test("approve then needs changes on a sent row writes revision 1 beside the untouched answer", async () => {
+  const { app } = await openSet();
+  await decide(app, 1, "Approve");
+  const first = app.store.get("tmp/review/1.verdict.1.json");
+  assert.equal(sentMarkOf(app, 1), "sent: approved");
+  assert.equal(rowButton(app, 1, "Approve").disabled, true, "the verdict it stands at is not offered again");
+  assert.equal(rowButton(app, 1, "Needs changes").disabled, true, "Needs changes still needs a note or an edit");
+  assert.equal(rowNoteIn(cardFor(app, "1"), 1).readOnly, false, "the sent row's note can be written");
+  typeInto(rowNoteIn(cardFor(app, "1"), 1), "the order is wrong after all");
+  assert.equal(rowButton(app, 1, "Needs changes").disabled, false);
+  await decide(app, 1, "Needs changes");
+  assert.equal(app.store.get("tmp/review/1.verdict.1.json"), first, "the first answer is never rewritten");
+  assert.deepEqual(revisionFilesOf(app), ["tmp/review/1.revision.1.1.json"]);
+  const r = revisionOf(app, 1, 1);
+  assert.equal(r.id, "1");
+  assert.equal(r.revision, 1);
+  assert.equal(r.verdict, "changes");
+  assert.deepEqual(r.files, [{ file: "plan.md", read: false, verdict: "changes", index: 1, note: "the order is wrong after all" }]);
+  assert.equal(sentMarkOf(app, 1), "sent: needs changes");
+  assert.deepEqual(chosenIn(app, 1), ["Needs changes"]);
+  assert.equal(rowButton(app, 1, "Approve").disabled, false, "and back again stays possible");
+  assert.equal(rowButton(app, 1, "Needs changes").disabled, true);
+});
+
+// Adversarial where: the second change overwrites revision 1, numbers restart,
+// or the reversal to approved carries the old verdict.
+test("changes then approve then changes counts revisions 1 and 2 and keeps every file", async () => {
+  const { app } = await openSet();
+  typeInto(rowNoteIn(cardFor(app, "1"), 2), "missing a step");
+  await decide(app, 2, "Needs changes");
+  await decide(app, 2, "Approve");
+  assert.equal(revisionOf(app, 2, 1).verdict, "approved");
+  assert.equal(sentMarkOf(app, 2), "sent: approved");
+  await decide(app, 2, "Needs changes");
+  assert.deepEqual(revisionFilesOf(app), ["tmp/review/1.revision.2.1.json", "tmp/review/1.revision.2.2.json"]);
+  assert.equal(revisionOf(app, 2, 2).verdict, "changes");
+  assert.equal(revisionOf(app, 2, 2).revision, 2);
+  assert.equal(partialOf(app, 2).files[0].verdict, "changes", "the answer stays as first sent");
+});
+
+// Adversarial where: a revision number already on disk (another window, a
+// half-written file) is overwritten.
+test("a revision never overwrites a revision file already on disk", async () => {
+  const { app } = await openSet();
+  await decide(app, 0, "Approve");
+  app.store.set("tmp/review/1.revision.0.1.json", '{"id": "');
+  typeInto(rowNoteIn(cardFor(app, "1"), 0), "no");
+  await decide(app, 0, "Needs changes");
+  assert.equal(app.store.get("tmp/review/1.revision.0.1.json"), '{"id": "');
+  assert.equal(revisionOf(app, 0, 2).verdict, "changes");
+});
+
+// Adversarial where: a revision is written after the review closed, because
+// another surface answered the last rows, or after it was withdrawn.
+test("no revision is written once the review is answered elsewhere or withdrawn", async (t) => {
+  await t.test("answered by another surface", async () => {
+    const { app, plugin } = await openSet();
+    await decide(app, 0, "Approve");
+    const rest = [1, 2, 3].map((index) => ({ file: SET[index], read: true, verdict: "approved", index }));
+    app.store.set("tmp/review/1.verdict.1.json", JSON.stringify({ id: "1", file: SET[1], verdict: "approved", notes: "", comments: [], edited: [], files: rest, at: "t" }));
+    typeInto(rowNoteIn(cardFor(app, "1"), 0), "no");
+    await decide(app, 0, "Needs changes");
+    assert.deepEqual(revisionFilesOf(app), []);
+    assert.equal(plugin.pending.has("1"), false, "the closed review leaves the panel");
+    assert.ok(notices.some((n) => /already answered/.test(String(n))));
+  });
+  await t.test("withdrawn", async () => {
+    const { app, plugin } = await openSet();
+    await decide(app, 0, "Approve");
+    app.store.delete("tmp/review/1.request.json");
+    typeInto(rowNoteIn(cardFor(app, "1"), 0), "no");
+    await decide(app, 0, "Needs changes");
+    assert.deepEqual(revisionFilesOf(app), []);
+    assert.equal(plugin.pending.has("1"), false);
+  });
+});
+
+// Adversarial where: the last row's answer leaves the card in place with
+// changeable rows, so a revision lands after the review closed.
+test("answering the last open row closes the review and the card leaves", async () => {
+  const { app, plugin } = await openSet();
+  await decide(app, 0, "Approve");
+  await click(cardBtn(app, "1", "Approve all"));
+  await sleep();
+  assert.equal(plugin.pending.has("1"), false);
+  assert.deepEqual(cardIds(app), []);
+  assert.deepEqual(revisionFilesOf(app), []);
+});
+
+// Adversarial where: a reload shows a revised row at its first verdict, takes
+// a revision of an unanswered row as an answer, or loses the revised note.
+test("a reload restores each row at its latest revision and ignores revisions of unanswered rows", async () => {
+  const body = (files, extra = {}) => JSON.stringify({ id: "1", file: files[0].file, verdict: files[0].verdict, notes: "", comments: [], edited: [], at: "t", files, ...extra });
+  const { app, plugin } = await openSet({}, {
+    "tmp/review/1.verdict.1.json": body([{ file: "plan.md", read: true, verdict: "approved", index: 1 }]),
+    "tmp/review/1.revision.1.1.json": body([{ file: "plan.md", read: true, verdict: "changes", index: 1, note: "first" }], { revision: 1 }),
+    "tmp/review/1.revision.1.2.json": body([{ file: "plan.md", read: true, verdict: "changes", index: 1, note: "second" }], { revision: 2 }),
+    "tmp/review/1.revision.3.1.json": body([{ file: "study.md", read: true, verdict: "approved", index: 3 }], { revision: 1 }),
+  });
+  await plugin.scanPending();
+  await sleep();
+  assert.equal(sentMarkOf(app, 1), "sent: needs changes");
+  assert.equal(rowNoteIn(cardFor(app, "1"), 1).value, "second");
+  assert.equal(sentMarkOf(app, 3), "", "a revision with no answer settles nothing");
+  assert.equal(rowButton(app, 3, "Approve").disabled, false);
+  await decide(app, 1, "Approve");
+  assert.equal(revisionOf(app, 1, 3).verdict, "approved", "the next number follows the highest on disk");
+});
+
+// Adversarial where: a row whose file a newer open review lists can still be
+// revised here, so two reviews answer the same document.
+test("a sent row whose file a newer open review lists takes no revision", async () => {
+  const { app, plugin } = await openSet();
+  await decide(app, 1, "Approve");
+  app.store.set("tmp/review/2.request.json", req("2", "plan.md"));
+  await plugin.handler({ request: "tmp/review/2.request.json" });
+  assert.ok(plugin.pending.has("1"), "the older review stays for its open rows");
+  typeInto(rowNoteIn(cardFor(app, "1"), 1), "no");
+  assert.equal(rowButton(app, 1, "Needs changes").disabled, true);
+  assert.equal(rowNoteIn(cardFor(app, "1"), 1).readOnly, true);
+  await plugin.sendRows(plugin.pending.get("1"), [1], "changes");
+  assert.deepEqual(revisionFilesOf(app), []);
+});
+
+// Adversarial where: Approve all or a several-row send revises a sent row.
+test("Approve all and a several-row send never revise a sent row", async () => {
+  const { app, plugin } = await openSet();
+  typeInto(rowNoteIn(cardFor(app, "1"), 1), "x");
+  await decide(app, 1, "Needs changes");
+  const entry = plugin.pending.get("1");
+  await plugin.sendRows(entry, [1, 2], "approved");
+  assert.deepEqual(revisionFilesOf(app), []);
+  assert.deepEqual(partialOf(app, 2).files.map((f) => f.index), [2]);
+});
+
+// ---- a revisable review stays as an answered card until it closes ----
+
+const ONE = (extra = {}) => ({ "specs/a.md": "x", "elsewhere.md": "e", "tmp/review/1.request.json": req("1", "specs/a.md", { revisable: true, ...extra }) });
+async function openOne(extra = {}) {
+  const r = await loaded(ONE(extra));
+  await r.plugin.handler({ request: "tmp/review/1.request.json" });
+  return r;
+}
+const isAnsweredCard = (app, id = "1") => cardFor(app, id).cls.split(" ").includes("is-answered");
+const hoursAgo = (h) => new Date(Date.now() - h * 3600 * 1000).toISOString();
+
+// Adversarial where: a one-document revisable review leaves on its answer, its
+// Approve is offered again, Needs changes skips its note gate, or the change
+// rewrites the verdict instead of adding revision 0.1.
+test("a one-document revisable review stays answered and its verdict changes by revision", async () => {
+  const { app, plugin } = await openOne();
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
+  const first = app.store.get("tmp/review/1.verdict.json");
+  assert.equal(JSON.parse(first).verdict, "approved");
+  assert.ok(plugin.pending.has("1"), "the answered review stays");
+  assert.ok(isAnsweredCard(app), "the card is the compact answered card");
+  assert.equal(sentMarkOf(app, 0), "sent: approved");
+  assert.equal(win.minimized, 1, "no review waits on an answer, so Obsidian steps aside");
+  assert.equal(cardBtn(app, "1", "Approve").disabled, true);
+  assert.equal(cardBtn(app, "1", "Needs changes").disabled, true, "Needs changes still needs a note");
+  typeInto(notesIn(cardFor(app, "1")), "the scope is too wide");
+  assert.equal(cardBtn(app, "1", "Needs changes").disabled, false);
+  await click(cardBtn(app, "1", "Needs changes"));
+  await sleep();
+  assert.equal(app.store.get("tmp/review/1.verdict.json"), first, "the answer is never rewritten");
+  assert.deepEqual(revisionFilesOf(app), ["tmp/review/1.revision.0.1.json"]);
+  const r = revisionOf(app, 0, 1);
+  assert.equal(r.verdict, "changes");
+  assert.equal(r.notes, "the scope is too wide");
+  assert.equal(r.files[0].index, 0);
+  assert.equal(sentMarkOf(app, 0), "sent: needs changes");
+  assert.equal(cardBtn(app, "1", "Approve").disabled, false);
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
+  assert.equal(revisionOf(app, 0, 2).verdict, "approved");
+});
+
+// Adversarial where: the last row's answer closes a revisable review, so the
+// document answered last can never be changed.
+test("the last document answered in a revisable review can be revised", async () => {
+  const { app, plugin } = await openSet({ revisable: true });
+  await click(cardBtn(app, "1", "Approve all"));
+  await sleep();
+  assert.ok(plugin.pending.has("1"));
+  assert.ok(isAnsweredCard(app));
+  assert.deepEqual([0, 1, 2, 3].map((i) => sentMarkOf(app, i)), Array(4).fill("sent: approved"));
+  typeInto(rowNoteIn(cardFor(app, "1"), 3), "the evidence is thin");
+  await decide(app, 3, "Needs changes");
+  assert.deepEqual(revisionFilesOf(app), ["tmp/review/1.revision.3.1.json"]);
+  assert.equal(revisionOf(app, 3, 1).files[0].note, "the evidence is thin");
+});
+
+// Adversarial where: an old request without the flag stays as an answered
+// card, so every review answered before the flag existed comes back.
+test("a request without revisable leaves on its answer and old answered ones stay closed", async () => {
+  const { app, plugin } = await loaded({ "specs/a.md": "x", "tmp/review/1.request.json": req("1", "specs/a.md") });
+  await plugin.handler({ request: "tmp/review/1.request.json" });
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
+  assert.equal(plugin.pending.has("1"), false);
+  const old = await loaded({
+    "specs/a.md": "x",
+    "tmp/review/5.request.json": req("5", "specs/a.md"),
+    "tmp/review/5.verdict.json": JSON.stringify({ id: "5", file: "specs/a.md", verdict: "approved", notes: "", at: hoursAgo(1) }),
+  });
+  await old.plugin.scanPending();
+  assert.deepEqual(cardIds(old.app), []);
+});
+
+// Adversarial where: a revisable review never closes on its own, or closes
+// before 24 hours after its newest answer or revision.
+test("a revisable review closes 24 hours after its newest answer or revision", async (t) => {
+  const answer = (at) => JSON.stringify({ id: "1", file: "specs/a.md", verdict: "approved", notes: "", at });
+  const revision = (at) => JSON.stringify({ id: "1", file: "specs/a.md", verdict: "changes", notes: "n", at, revision: 1,
+    files: [{ file: "specs/a.md", read: true, verdict: "changes", index: 0, note: "n" }] });
+  await t.test("found at start-up 25 hours on: not shown", async () => {
+    const { app, plugin } = await loaded({ ...ONE(), "tmp/review/1.verdict.json": answer(hoursAgo(25)) });
+    await plugin.scanPending();
+    assert.deepEqual(cardIds(app), []);
+  });
+  await t.test("23 hours on: shown answered, at its revised verdict", async () => {
+    const { app, plugin } = await loaded({ ...ONE(), "tmp/review/1.verdict.json": answer(hoursAgo(30)), "tmp/review/1.revision.0.1.json": revision(hoursAgo(23)) });
+    await plugin.scanPending();
+    await plugin.openPanel();
+    await sleep();
+    assert.deepEqual(cardIds(app), ["1"], "the newest revision restarts the 24 hours");
+    assert.equal(sentMarkOf(app, 0), "sent: needs changes");
+  });
+  await t.test("a held card is dropped by the recheck once the time is up", async () => {
+    const { app, plugin } = await openOne();
+    await click(cardBtn(app, "1", "Approve"));
+    await sleep();
+    const v = JSON.parse(app.store.get("tmp/review/1.verdict.json"));
+    app.store.set("tmp/review/1.verdict.json", JSON.stringify({ ...v, at: hoursAgo(24.01) }));
+    await plugin.recheck();
+    assert.equal(plugin.pending.has("1"), false);
+  });
+});
+
+// Adversarial where: the close marker is ignored, so a closed review keeps
+// taking revisions, or closing removes an answer.
+test("an <id>.closed marker closes a revisable review and no revision follows", async () => {
+  const { app, plugin } = await openOne();
+  await click(cardBtn(app, "1", "Approve"));
+  await sleep();
+  const entry = plugin.pending.get("1");
+  app.store.set("tmp/review/1.closed", "");
+  typeInto(notesIn(cardFor(app, "1")), "too late");
+  await plugin.verdict(entry, "changes");
+  assert.deepEqual(revisionFilesOf(app), []);
+  assert.equal(plugin.pending.has("1"), false);
+  assert.ok(app.store.has("tmp/review/1.verdict.json"), "the answer stays");
+  assert.ok(notices.some((n) => /closed/.test(String(n))));
+});
+
+// Adversarial where: a newer request for the same file leaves the older
+// answered review open, so the document can be answered in two places.
+test("a newer request listing the same file closes the older answered revisable review", async (t) => {
+  await t.test("while both are held", async () => {
+    const { app, plugin } = await openOne();
+    await click(cardBtn(app, "1", "Approve"));
+    await sleep();
+    app.store.set("tmp/review/2.request.json", req("2", "specs/a.md", { revisable: true }));
+    await plugin.handler({ request: "tmp/review/2.request.json" });
+    assert.equal(plugin.pending.has("1"), false);
+    assert.ok(plugin.pending.has("2"));
+  });
+  await t.test("found on disk", async () => {
+    const files = {
+      "specs/a.md": "x",
+      "tmp/review/20261126T100000-aaaaaa.request.json": req("20261126T100000-aaaaaa", "specs/a.md", { revisable: true }),
+      "tmp/review/20261126T100000-aaaaaa.verdict.json": JSON.stringify({ id: "20261126T100000-aaaaaa", file: "specs/a.md", verdict: "approved", notes: "", at: hoursAgo(1) }),
+      "tmp/review/20261126T110000-bbbbbb.request.json": req("20261126T110000-bbbbbb", "specs/a.md", { revisable: true }),
+    };
+    const { app, plugin } = await loaded(files);
+    await plugin.scanPending();
+    await plugin.openPanel();
+    await sleep();
+    assert.deepEqual(cardIds(app), ["20261126T110000-bbbbbb"]);
+  });
+  await t.test("an earlier request does not close a later one", async () => {
+    const files = {
+      "specs/a.md": "x",
+      "tmp/review/20261126T110000-bbbbbb.request.json": req("20261126T110000-bbbbbb", "specs/a.md", { revisable: true }),
+      "tmp/review/20261126T110000-bbbbbb.verdict.json": JSON.stringify({ id: "20261126T110000-bbbbbb", file: "specs/a.md", verdict: "approved", notes: "", at: hoursAgo(1) }),
+      "tmp/review/20261126T100000-aaaaaa.request.json": req("20261126T100000-aaaaaa", "specs/a.md", { revisable: true }),
+      "tmp/review/20261126T100000-aaaaaa.verdict.json": JSON.stringify({ id: "20261126T100000-aaaaaa", file: "specs/a.md", verdict: "approved", notes: "", at: hoursAgo(1) }),
+    };
+    const { app, plugin } = await loaded(files);
+    await plugin.scanPending();
+    await plugin.openPanel();
+    await sleep();
+    assert.deepEqual(cardIds(app), ["20261126T110000-bbbbbb"]);
+  });
 });

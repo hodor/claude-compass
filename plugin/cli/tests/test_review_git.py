@@ -288,7 +288,7 @@ class GitReview(GitReviewBase):
         self.assertEqual(request["commit"], head)
         rest = {k: v for k, v in request.items() if k != "commit"}
         self.assertEqual(rest, {"id": first[1], "surface": "obsidian", "file": DOC_REL,
-                                "title": "Spec one", "return": True})
+                                "title": "Spec one", "return": True, "revisable": True})
 
     def test_changes_section_sits_between_the_carried_lines_and_the_document_text(self):
         """Adversarial where: the section is printed after the document text,

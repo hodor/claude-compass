@@ -959,3 +959,12 @@ button.compass-conf-filter.is-on {
   max-width: 100%;
   height: auto;
 }
+
+/* An answered card of a revisable review: only the rows, their verdicts and
+   the buttons that change them. */
+.compass-review-card.is-answered .compass-review-nav,
+.compass-review-card.is-answered .compass-review-feedback-block,
+.compass-review-card.is-answered .compass-review-this-file,
+.compass-review-card.is-answered .compass-review-foot > .compass-review-fine:not(.compass-review-summary) {
+  display: none;
+}

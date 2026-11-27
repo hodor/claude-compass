@@ -93,6 +93,14 @@ class PerDocument(MultiFileProject):
     def request_path(self, rid):
         return reviewlib.review_dir(self.vault) / f"{rid}.request.json"
 
+    def unflag(self, rid):
+        """Rewrite the request without `revisable`, as a request written
+        before the flag existed."""
+        path = self.request_path(rid)
+        request = json.loads(path.read_text(encoding="utf-8"))
+        request.pop("revisable", None)
+        path.write_text(json.dumps(request), encoding="utf-8")
+
 
 class FirstAnswerEndsTheWait(PerDocument):
     def test_a_row_answered_alone_ends_the_wait_with_that_row_only_and_names_the_rest(self):
@@ -151,6 +159,7 @@ class FirstAnswerEndsTheWait(PerDocument):
         rid = out.split()[1]
         self.assertEqual(len(self.file_lines(out)), 3)
         self.assertEqual(self.open_line(out), [])
+        self.unflag(rid)
         code, _, err = self.review("--wait", rid)
         self.assertEqual(code, 1)
         self.assertIn("already answered", err)
@@ -190,6 +199,7 @@ class WaitTakesTheNextAnswer(PerDocument):
         completed request stays in `--status`, or a further `--wait` waits for
         ever instead of exiting 1."""
         rid = self.start()
+        self.unflag(rid)
         self.write_partial(rid, [part(PLAN, 0), part(SPEC2, 2)])
         code, out, _ = self.review("--wait", rid, "--timeout", str(ANSWER_WAIT_SECONDS))
         self.assertEqual(code, 0, out)
