@@ -267,6 +267,7 @@ Agents depending on external tools (MCP, `gh`, specific runtimes) verify availab
 │   └── plugin.yaml          - Plugin source path + installed version (written by setup)
 ├── specs/               - one file per spec; a folder only once it holds 2+ specs
 ├── research/ plans/ decisions/ lessons/ handoffs/ prs/  - one file per artifact; specs/ and research/ group into domain folders as their corpus grows
+├── loops/                - control loops: one folder `LOOP-NNN-name/` per loop; its index.md is the artifact, the other files are its parts (`/compass:control-loop`)
 ├── <unit-name>/          - Unit folder: one large unit of work (index.md has `type: unit`)
 │   ├── index.md          - Unit marker, title, children listing
 │   ├── specs/ plans/ ... - Own type subdirs, unit-local numbering

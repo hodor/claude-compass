@@ -1,5 +1,5 @@
 """`compass loop new | status | activate | pause | resume | review | run | check | baseline |
-schedule | reconcile` - the project's control loops.
+schedule | reconcile | sense-context | sense-ast-grep | usage-scan` - the project's control loops.
 
 A loop is a folder `.compass/loops/LOOP-NNN-name/` (see `looplib`). `new <name>`
 writes one from `loop_templates/`: a draft index, a `loop.json` with safe caps
@@ -45,6 +45,14 @@ on demand and carries `"usage"` (`"none"` or `{"machines", "sessions"}`) and,
 when a usage file did not parse, `"skipped"` naming it. It exits 0 on every
 path; a bad argument or a missing folder is an invalid reading.
 
+`sense-ast-grep --rule FILE [--bin PATH] [PATHS...]` is a sensor command: it
+runs `ast-grep scan --rule FILE --json=stream [PATHS...]` from the project root
+and prints the sensor contract for its matches (see
+`sensorlib.parse_ast_grep_scan`). `FILE` resolves from the working directory.
+The binary is `--bin`, else `ast-grep` on PATH. It exits 0 on every path; a bad
+argument, a missing rule file or binary, or a failed scan is an invalid
+reading.
+
 `usage-scan [--projects DIR] [--days N] [--out FILE] [--plugin DIR]` counts, over
 the Claude Code transcripts under `--projects` (default `~/.claude/projects`)
 modified within `--days` (default 30), the sessions Compass was in and the
@@ -74,6 +82,7 @@ import os
 import re
 import secrets
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -133,6 +142,9 @@ VERIFIED_OUTCOMES = ("helpful", "neutral", "harmful")
 # `schtasks /TR` accepts at most this many characters.
 SCHTASKS_TR_LIMIT = 261
 
+# How long `sense-ast-grep` lets one scan run before killing it.
+AST_GREP_TIMEOUT_S = 900
+
 # Where `usage-scan` writes and `sense-context` reads, relative to the home folder.
 USAGE_FOLDER = Path(".compass") / "usage"
 
@@ -154,6 +166,7 @@ USAGE = (
     "       compass loop reconcile <LOOP-NNN> --prs <file|->\n"
     "       compass loop status <LOOP-NNN> --last-run\n"
     "       compass loop sense-context [--plugin DIR] [--usage DIR]\n"
+    "       compass loop sense-ast-grep --rule FILE [--bin PATH] [PATHS...]\n"
     "       compass loop usage-scan [--projects DIR] [--days N] [--out FILE] [--plugin DIR]\n"
 )
 
@@ -1215,6 +1228,51 @@ def _sense_context(args):
     return 0
 
 
+def _ast_grep_reading(args):
+    rule = binary = None
+    paths = []
+    it = iter(args)
+    for arg in it:
+        if arg in ("--rule", "--bin"):
+            value = next(it, None)
+            if value is None or value.startswith("--"):
+                return sensorlib.Reading(valid=False, reason=f"{arg} needs a value")
+            if arg == "--rule":
+                rule = value
+            else:
+                binary = value
+        elif arg.startswith("--"):
+            return sensorlib.Reading(valid=False, reason=f"unknown option {arg}")
+        else:
+            paths.append(arg)
+    if rule is None:
+        return sensorlib.Reading(
+            valid=False, reason="expected --rule FILE [--bin PATH] [PATHS...]")
+    rule_path = Path(rule).resolve()
+    if not rule_path.is_file():
+        return sensorlib.Reading(valid=False, reason=f"rule file not found: {rule_path}")
+    if binary is None:
+        binary = shutil.which("ast-grep")
+        if binary is None:
+            return sensorlib.Reading(
+                valid=False, reason="ast-grep not found on PATH; pass --bin PATH")
+    try:
+        root = vaultlib.find_vault_root().parent
+    except FileNotFoundError:
+        root = Path.cwd()
+    return sensorlib.scan_ast_grep(binary, rule_path, paths, root, AST_GREP_TIMEOUT_S)
+
+
+def _sense_ast_grep(args):
+    """Print the ast-grep sensor's reading as one JSON object and return 0."""
+    reading = _ast_grep_reading(args)
+    body = {"valid": reading.valid, "value": reading.value or 0, "items": reading.items}
+    if not reading.valid:
+        body["reason"] = reading.reason
+    print(json.dumps(body))
+    return 0
+
+
 def _git_root(directory):
     """The git work tree root containing `directory`, or None when it is in
     none or git cannot run."""
@@ -1303,6 +1361,7 @@ def _usage_scan(args):
 
 COMMANDS = {
     "sense-context": _sense_context,
+    "sense-ast-grep": _sense_ast_grep,
     "usage-scan": _usage_scan,
     "schedule": _schedule,
     "reconcile": _reconcile,

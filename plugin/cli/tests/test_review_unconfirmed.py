@@ -50,6 +50,26 @@ LINE = r"^waiting: (?P<label>.+?) has not picked up review (?P<id>\S+) yet; (?P<
 REPO_PLUGIN = Path(__file__).resolve().parents[2]
 
 
+class _ThreadStreams:
+    """A text stream that keeps what each thread writes in its own buffer."""
+
+    def __init__(self):
+        self._buffers = {}
+        self._lock = threading.Lock()
+
+    def write(self, text):
+        with self._lock:
+            self._buffers.setdefault(threading.get_ident(), []).append(text)
+        return len(text)
+
+    def flush(self):
+        pass
+
+    def text(self, ident):
+        with self._lock:
+            return "".join(self._buffers.get(ident, []))
+
+
 def seen_beside(request_path):
     """The claim file beside a request file, named here so a test of the
     waiter or of cancel does not depend on `reviewlib.seen_path` existing."""
@@ -434,6 +454,26 @@ class AckWait(ReviewProject):
         thread.start()
         return thread
 
+    def run_review(self, *args):
+        """Run `compass review <args>` in this thread with no stream swap of its
+        own, returning the exit code. Inside `per_thread_output`, what it prints
+        lands in this thread's buffer."""
+        try:
+            return self.module.run(list(args))
+        except SystemExit as exc:
+            return exc.code
+
+    @contextmanager
+    def per_thread_output(self):
+        """Route `sys.stdout` and `sys.stderr` to one buffer per thread for the
+        block, and yield a function returning the calling thread's stdout text.
+        `redirect_stdout` swaps the process-wide stream, so a review run from a
+        `when_requested` thread with it would capture the waiter's own lines."""
+        out, err = _ThreadStreams(), _ThreadStreams()
+        with mock.patch.object(sys, "stdout", out), mock.patch.object(sys, "stderr", err):
+            ident = threading.get_ident()
+            yield lambda: out.text(ident)
+
     @staticmethod
     def claim(path, _request):
         seen_beside(path).write_text("", encoding="utf-8")
@@ -589,9 +629,10 @@ class AckWait(ReviewProject):
         """Adversarial where: a request cancelled while the hint is up leaves
         the waiter polling a request that no longer exists, or ends with a
         not-configured line."""
-        self.when_requested(ACK + 0.4, lambda path, request: self.review("--cancel", request["id"]))
-        with self.request_clock() as clock:
-            code, out, _ = self.review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
+        self.when_requested(ACK + 0.4, lambda path, request: self.run_review("--cancel", request["id"]))
+        with self.request_clock() as clock, self.per_thread_output() as printed:
+            code = self.run_review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
+            out = printed()
         self.assertLess(time.monotonic() - clock["at"], 4)
         self.assertEqual(code, 1)
         lines = out.splitlines()
@@ -602,8 +643,10 @@ class AckWait(ReviewProject):
     def test_a_newer_request_for_the_same_document_ends_the_older_wait_as_withdrawn(self):
         """Adversarial where: the hint keeps the older waiter alive after a
         newer request for the document replaced its request."""
-        self.when_requested(ACK + 0.4, lambda path, request: self.review(str(self.doc), "--no-wait"))
-        code, out, _ = self.review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
+        self.when_requested(ACK + 0.4, lambda path, request: self.run_review(str(self.doc), "--no-wait"))
+        with self.per_thread_output() as printed:
+            code = self.run_review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
+            out = printed()
         self.assertEqual(code, 1)
         self.assertRegex(out.splitlines()[-1], r"^withdrawn ")
 
@@ -612,9 +655,10 @@ class AckWait(ReviewProject):
         withdrawal check, so a request cancelled during the window is reported
         as an editor that did not pick it up."""
         with mock.patch.object(self.module, "ACK_SECONDS", 12.0, create=True):
-            self.when_requested(0.2, lambda path, request: self.review("--cancel", request["id"]))
-            with self.request_clock() as clock:
-                code, out, _ = self.review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
+            self.when_requested(0.2, lambda path, request: self.run_review("--cancel", request["id"]))
+            with self.request_clock() as clock, self.per_thread_output() as printed:
+                code = self.run_review(str(self.doc), "--timeout", str(ANSWER_WAIT_SECONDS))
+                out = printed()
         self.assertLess(time.monotonic() - clock["at"], 8, "the cancel ends the wait, not the window")
         self.assertEqual(code, 1)
         self.assertRegex(out.splitlines()[-1], r"^withdrawn ")
