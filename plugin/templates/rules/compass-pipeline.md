@@ -51,7 +51,7 @@ Conversation output is never the record - logs, reports, and vault files are. On
 
 - Research traces to a spec.
 - Every finding gets a confidence level.
-- Axes span the whole spec.
+- Axes span the whole spec, and the consolidated review checks every Need and Decision against at least one finding; one with none is a gap.
 - Before spawning researchers, present the planned axes - each in one plain line: the question and where the answers will be sought - and invite the human in. With a review surface they are a draft research document sent for review; otherwise they are plain text. How his questions lead and how research runs once he joins: the `research` skill, step 4.
 - Sourcing of findings, consent to grading, and follow-up passes: the `research` skill, file `evidence-rules.md`.
 

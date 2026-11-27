@@ -71,7 +71,11 @@ class ReviewerCoverageStepTests(unittest.TestCase):
 
 class ReviewerReportFormatTests(unittest.TestCase):
     def setUp(self):
-        self.report = section(read(REVIEWER), "Report format", 2)
+        # The template inside the fence carries its own `## ` heading, so the
+        # section runs from its heading to the next one after the fence.
+        text = read(REVIEWER)
+        start = text.index("\n## Report format")
+        self.report = text[start:text.index("\n## Failure modes", start)]
 
     def test_report_template_carries_a_spec_coverage_table(self):
         block = re.search(r"```markdown\n(.*?)```", self.report, re.S)

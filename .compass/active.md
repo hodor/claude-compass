@@ -5,6 +5,12 @@ updated: 2026-09-13
 
 # Active Tasks
 
+## PLAN-018 Wave 3: how a run detects its own gap
+
+Plan: [[PLAN-018-research-covers-the-whole-spec]].
+
+- [x] TASK-130: The reviewer's spec coverage table checks every Need and Decision against a finding; an empty row is a gap
+
 ## PLAN-019: stop and suggest a handoff at 80% context
 
 Plan: [[PLAN-019-stop-at-80-percent-context]]. TASK-137 and TASK-138 shipped as v0.26.0.
