@@ -731,8 +731,10 @@ def session_extra_args(station):
     raise ValueError("%s runs no session" % station)
 
 
-def run_station_session(station, folder, prompt, *, private_root=None, claude_cmd=None, timeout=SESSION_TIMEOUT):
-    """The reply text of one station session in `folder`."""
+def run_station_session(station, folder, prompt, *, private_root=None, claude_cmd=None, timeout=SESSION_TIMEOUT,
+                        tokens=None):
+    """The reply text of one station session in `folder`. When `tokens` is a
+    dict it receives the session's `{model: {kind: tokens}}` counts."""
     result = launch.run_session(
         folder, prompt, repo_root=REPO_ROOT, private_root=private_root, claude_cmd=claude_cmd,
         extra_args=session_extra_args(station), timeout=timeout,
@@ -741,6 +743,10 @@ def run_station_session(station, folder, prompt, *, private_root=None, claude_cm
         raise UsageLimit("usage limit reached%s" % (" (resets at %s)" % result.resets_at if result.resets_at else ""))
     if result.status != launch.DONE:
         raise SessionFailed("%s session exited %s" % (station, result.returncode))
+    if tokens is not None:
+        import records
+
+        tokens.update(records.count_tokens(result.events))
     finals = [event for event in result.events if event.get("type") == "result"]
     reply = finals[-1].get("result") if finals else None
     return reply if isinstance(reply, str) else ""
@@ -841,12 +847,18 @@ def _install(tree):
 
 
 def _changed_test_files(tree, lang):
-    out = _git(tree, "status", "--porcelain", "--untracked-files=all")
+    out = _git_raw(tree, "status", "--porcelain", "-z", "--untracked-files=all")
     files = []
-    for line in out.splitlines():
-        path = line[3:].strip().strip('"')
-        if " -> " in path:
-            path = path.split(" -> ", 1)[1]
+    records = out.split("\x00")
+    index = 0
+    while index < len(records):
+        record = records[index]
+        index += 1
+        if len(record) < 4:
+            continue
+        status, path = record[:2], record[3:]
+        if "R" in status or "C" in status:
+            index += 1
         if path.startswith((".claude/", ".compass/")):
             continue
         if is_test_path(path, lang) and Path(path).suffix in (".py", ".go"):
@@ -920,9 +932,24 @@ def _station(entry, station, work, task, private_root, claude_cmd, prompt_set):
     replies.mkdir(exist_ok=True)
     folder = {"review-style": work / "review", "review-correctness": work / "review",
               "tester-post": work / "repo", "validator": work / "validate"}[station]
+    saved = replies / (station + ".md")
+    if saved.is_file():
+        # The session ran and its reply was kept, but judging it did not
+        # finish: judge the kept reply against the copy the session left.
+        result = _judge_station(station, saved.read_text(encoding="utf-8"), site, work, task)
+        result["tokens"] = {}
+        result["judged_from_saved_reply"] = True
+        return result
+    tokens = {}
     reply = run_station_session(station, folder, prompt_set[station], private_root=private_root,
-                                claude_cmd=claude_cmd)
-    (replies / (station + ".md")).write_text(reply, encoding="utf-8")
+                                claude_cmd=claude_cmd, tokens=tokens)
+    saved.write_text(reply, encoding="utf-8")
+    result = _judge_station(station, reply, site, work, task)
+    result["tokens"] = tokens
+    return result
+
+
+def _judge_station(station, reply, site, work, task):
     if station.startswith("review-"):
         return {"caught": review_caught(reply, site), "findings": len(parse_findings(reply))}
     if station == "validator":
@@ -1036,6 +1063,8 @@ def run(args, *, claude_cmd=None):
                 halted = error
             except SessionFailed as error:
                 print("session failed: %s" % error, file=sys.stderr)
+            except Exception as error:  # one station's judging error leaves the rest of the batch running
+                print("station error: %s: %s" % (type(error).__name__, error), file=sys.stderr)
     if halted is not None:
         print("usage limit: %s; run the same command again to resume" % halted, file=sys.stderr)
         return EXIT_USAGE_LIMIT
@@ -1086,11 +1115,56 @@ def _complete(entry):
     return all(station in entry.get("caught", {}) for station in STATIONS)
 
 
+def _defect_id(entry):
+    site = entry["site"]
+    return (entry["project"], entry["task"], site["path"], site["line"], site["col"], site["new"])
+
+
+def merge_batches(batches):
+    """One progress-shaped dict holding the defects of several batches. A
+    defect planted twice (same task, file, line, column and replacement) is
+    kept once, from the first batch naming it; keys gain a `#<n>` suffix when
+    a task holds more than one defect."""
+    merged = {"done": {}, "skipped": {}, "duplicates": 0}
+    seen = set()
+    for batch in batches:
+        for key, entry in batch.get("done", {}).items():
+            ident = _defect_id(entry) if "project" in entry else (key,)
+            if ident in seen:
+                merged["duplicates"] += 1
+                continue
+            seen.add(ident)
+            name, n = key, 2
+            while name in merged["done"]:
+                name, n = "%s#%d" % (key, n), n + 1
+            merged["done"][name] = entry
+        for key, skipped in batch.get("skipped", {}).items():
+            merged["skipped"].setdefault(key, skipped)
+    return merged
+
+
+def tokens_by_station(entries):
+    """`{session station: {kind: tokens}}` summed over `entries`."""
+    totals = {}
+    for entry in entries:
+        for station, result in entry.get("sessions", {}).items():
+            total = totals.setdefault(station, {})
+            for counts in (result.get("tokens") or {}).values():
+                for kind, value in counts.items():
+                    total[kind] = total.get(kind, 0) + value
+    return totals
+
+
 def render_report(data):
     entries = [e for e in data.get("done", {}).values() if _complete(e)]
     lines = ["defects with every station read: %d of %d" % (len(entries), len(data.get("done", {})))]
     for key, skipped in sorted(data.get("skipped", {}).items()):
         lines.append("skipped %s (%s): no compiling mutant" % (key, skipped["letter"]))
+    if data.get("duplicates"):
+        lines.append("duplicate defects left out: %d" % data["duplicates"])
+    for station, counts in sorted(tokens_by_station(entries).items()):
+        if counts:
+            lines.append("tokens %s: %s" % (station, ", ".join("%s %d" % kv for kv in sorted(counts.items()))))
     table = eligibility([{"letter": e["letter"], "caught": e["caught"]} for e in entries])
     lines.append("")
     lines.append("| Letter | Defects | Caught by none | " + " | ".join(STATIONS) + " |")
@@ -1128,7 +1202,8 @@ def main(argv=None, *, claude_cmd=None):
     run_cmd.add_argument("--recheck-pre", action="store_true",
                          help="run the pre-build tester's tests again for defects already planted")
     report = sub.add_parser("report")
-    report.add_argument("--out", required=True)
+    report.add_argument("--out", required=True, action="append",
+                        help="a batch folder; give it again to report several batches as one")
     report.add_argument("--rejudge", action="store_true",
                         help="judge the saved replies again before reporting")
     args = parser.parse_args(argv)
@@ -1138,12 +1213,14 @@ def main(argv=None, *, claude_cmd=None):
                 print("%s %s %s %s" % (Path(task.project).name, task.task, task.letter, task.lang))
             return 0
         if args.command == "report":
-            path = Path(args.out) / "progress.json"
-            if not path.is_file():
-                print("ablation: no progress file in %s" % args.out, file=sys.stderr)
-                return 1
-            data = rejudge(args.out) if args.rejudge else json.loads(path.read_text(encoding="utf-8"))
-            print(render_report(data))
+            batches = []
+            for out in args.out:
+                path = Path(out) / "progress.json"
+                if not path.is_file():
+                    print("ablation: no progress file in %s" % out, file=sys.stderr)
+                    return 1
+                batches.append(rejudge(out) if args.rejudge else json.loads(path.read_text(encoding="utf-8")))
+            print(render_report(merge_batches(batches)))
             return 0
         return run(args, claude_cmd=claude_cmd)
     except Refused as error:

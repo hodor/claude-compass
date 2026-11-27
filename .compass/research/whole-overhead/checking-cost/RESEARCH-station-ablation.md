@@ -5,7 +5,7 @@ status: complete
 confidence: low
 area: tooling
 tags: [tokens, cost, verification, measurement, bench, tester, validator, ablation]
-summary: "11 defects planted into finished pilot tasks and every checking station replayed on each: the validator caught all 10 that any station caught, no station caught a defect alone, so every station is lighter-eligible on this batch; the testers caught 1 of 4 defects on L tasks where review and validator caught 3; the claim needs about 100 defects (about 350 more sessions) before it bounds a station's lone catches below one in ten"
+summary: "planted defects with every checking station replayed on each: on 44 defects builder review is the only station that catches defects alone (1 on S, 2 on M, 1 on L, so it is not lighter-eligible on any letter); the testers and the validator caught none alone, but no cell reaches the one-in-ten bound; the run stopped at the usage limit with 56 of 100 approved defects unread"
 created: 2026-11-26
 updated: 2026-11-26
 author: "build-lead"
@@ -92,3 +92,42 @@ A station is dropped for a letter only if it almost never catches a defect alone
 - **A report is credited when it points at the planted line or at its file and function.** A report that describes the defect in words without naming either is not credited, so the counts are a floor.
 - **Two defects of the first batch landed inside docstrings.** They were set aside, kept with the batch's private records, and the same two tasks were planted again with lines inside multi-line strings and comments excluded.
 - **11 defects, 10 tasks and 2 languages.** The results are indicative only.
+
+## The full batch, stopped at the usage limit
+
+Run 2026-11-26 under the approval above: three more seeds of ten tasks per letter, on the harness of this page plus three fixes made during the run (git status read record by record, one station's judging error no longer stops the batch, a reply already kept is judged again rather than paid for twice). The subscription's usage limit ended the run after 44 of the planned 100 defects had every station read; the limit resets on 2026-11-30, and the same commands resume the 47 defects already planted.
+
+| Letter | Defects | Caught by a station | Pre-build tester | Builder review | Post-build tester | Validator | No station |
+|---|---|---|---|---|---|---|---|
+| S | 16 | 14 | 7 (0 alone) | 14 (1 alone) | 13 (0 alone) | 11 (0 alone) | 2 |
+| M | 14 | 12 | 6 (0 alone) | 11 (2 alone) | 10 (0 alone) | 9 (0 alone) | 2 |
+| L | 14 | 10 | 6 (0 alone) | 10 (1 alone) | 6 (0 alone) | 7 (0 alone) | 4 |
+
+The 44 defects span 34 tasks in 14 pilot projects: 30 integer constants, 9 equality swaps, 3 `and`/`or` swaps and 2 comparison swaps; 34 in Python and 10 in Go. Eight plants repeated a site an earlier seed had already drawn and are counted once.
+
+### Verdict per cell
+
+| Station | S | M | L |
+|---|---|---|---|
+| Pre-build tester | no lone catch; bound 0.21, not yet below 0.10 | no lone catch; bound 0.25 | no lone catch; bound 0.30 |
+| Builder review | not eligible: 1 lone catch | not eligible: 2 lone catches | not eligible: 1 lone catch |
+| Post-build tester | no lone catch; bound 0.21 | no lone catch; bound 0.25 | no lone catch; bound 0.30 |
+| Validator | no lone catch; bound 0.21 | no lone catch; bound 0.25 | no lone catch; bound 0.30 |
+
+The bound is the 95% upper limit on a station's lone-catch share given zero lone catches among the defects some station caught (3 divided by that count). No cell has reached the one-in-ten bound the approval set, so no checking level is lowered on this evidence.
+
+### What the larger batch adds
+
+- **Builder review is the one station that catches alone.** Its four lone catches were each read by hand: an inverted position check, a loop bound one past a room's edge, an exit code changed from 2 to 3, and an error path returning 1 where it returned 0. Each review finding names the planted line and describes the change. No test reached any of the four.
+- **The validator no longer catches everything.** On the first 11 defects it caught all that any station caught; over 44 it caught 27 of the 36, missing defects whose effect no command it ran made visible.
+- **On L tasks the testers stay behind review.** Both testers caught 6 of 14 L defects; review caught 10.
+- **10 of 44 defects were caught by no station.** Most change a constant no test or check reads, such as a default field value; some may change no behaviour the task asks for.
+
+### What it cost
+
+The 33 defects whose sessions recorded their tokens used about 18,000 output tokens each over four sessions: the validator about half, the post-build tester about a fifth, the two reviews together about a quarter.
+
+### Limits of this run
+
+- **For part of the run six sessions ran at once, not three.** A first copy of the run that was stopped to load a fix kept a second seed going beside the restarted one, so two seeds ran side by side until the usage limit. Its results were judged by the same rules and are kept; the overlap raised the run's pace on the subscription.
+- **56 planned defects are not yet read,** so every cell's count is below the 30 caught defects the bound needs.
