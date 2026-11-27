@@ -847,12 +847,18 @@ def _install(tree):
 
 
 def _changed_test_files(tree, lang):
-    out = _git(tree, "status", "--porcelain", "--untracked-files=all")
+    out = _git_raw(tree, "status", "--porcelain", "-z", "--untracked-files=all")
     files = []
-    for line in out.splitlines():
-        path = line[3:].strip().strip('"')
-        if " -> " in path:
-            path = path.split(" -> ", 1)[1]
+    records = out.split("\x00")
+    index = 0
+    while index < len(records):
+        record = records[index]
+        index += 1
+        if len(record) < 4:
+            continue
+        status, path = record[:2], record[3:]
+        if "R" in status or "C" in status:
+            index += 1
         if path.startswith((".claude/", ".compass/")):
             continue
         if is_test_path(path, lang) and Path(path).suffix in (".py", ".go"):
@@ -926,10 +932,18 @@ def _station(entry, station, work, task, private_root, claude_cmd, prompt_set):
     replies.mkdir(exist_ok=True)
     folder = {"review-style": work / "review", "review-correctness": work / "review",
               "tester-post": work / "repo", "validator": work / "validate"}[station]
+    saved = replies / (station + ".md")
+    if saved.is_file():
+        # The session ran and its reply was kept, but judging it did not
+        # finish: judge the kept reply against the copy the session left.
+        result = _judge_station(station, saved.read_text(encoding="utf-8"), site, work, task)
+        result["tokens"] = {}
+        result["judged_from_saved_reply"] = True
+        return result
     tokens = {}
     reply = run_station_session(station, folder, prompt_set[station], private_root=private_root,
                                 claude_cmd=claude_cmd, tokens=tokens)
-    (replies / (station + ".md")).write_text(reply, encoding="utf-8")
+    saved.write_text(reply, encoding="utf-8")
     result = _judge_station(station, reply, site, work, task)
     result["tokens"] = tokens
     return result
@@ -1049,6 +1063,8 @@ def run(args, *, claude_cmd=None):
                 halted = error
             except SessionFailed as error:
                 print("session failed: %s" % error, file=sys.stderr)
+            except Exception as error:  # one station's judging error leaves the rest of the batch running
+                print("station error: %s: %s" % (type(error).__name__, error), file=sys.stderr)
     if halted is not None:
         print("usage limit: %s; run the same command again to resume" % halted, file=sys.stderr)
         return EXIT_USAGE_LIMIT

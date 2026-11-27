@@ -68,3 +68,18 @@ def test_a_session_records_its_tokens(fake_reply, tmp_path):
                                  claude_cmd=fake_reply.command, tokens=tokens)
     assert tokens and all(isinstance(v, dict) for v in tokens.values())
     assert sum(counts.get("output", 0) for counts in tokens.values()) > 0
+
+
+def test_changed_test_files_keeps_the_first_letter_of_a_modified_tracked_file(tmp_path):
+    from test_ablation import _commit, _git
+
+    repo = tmp_path / "r"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    _commit(repo, {"tests/core/test_a.py": "def test_a():\n    pass\n", "src/a.py": "A = 1\n",
+                   "tests/old_test.py": "x = 1\n"}, "seed")
+    (repo / "tests" / "core" / "test_a.py").write_text("def test_a():\n    assert 0\n", encoding="utf-8")
+    (repo / "tests" / "test_b c.py").write_text("def test_b():\n    pass\n", encoding="utf-8")
+    _git(repo, "mv", "tests/old_test.py", "tests/new_test.py")
+    found = ablation._changed_test_files(repo, "python")
+    assert found == ["tests/core/test_a.py", "tests/new_test.py", "tests/test_b c.py"]
