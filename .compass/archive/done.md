@@ -728,3 +728,14 @@ Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files a
 
 ### PLAN-034 Wave 3: the station ablation by planted defects
 - [x] TASK-353: Station ablation by planted defects - complexity: L, depends_on: TASK-352
+
+## 2026-11-27
+
+### PLAN-021 Wave 2: judge, schedule, ast-grep sensor, skill, release
+
+Plan: [[PLAN-021-control-loops]].
+
+- [x] TASK-161: The ast-grep sensor adapter, pinned to saved scan output - complexity: M, depends_on: TASK-158, TASK-159, TASK-236
+- [x] TASK-160: `/compass:loop`: guided creation through steps 0 to 7 - complexity: M, depends_on: TASK-158, TASK-159, TASK-161
+- [x] TASK-162: The Maya recipe on the local lane, marked untested on this machine - complexity: S, depends_on: TASK-160
+- [x] TASK-163: Teach the vault conventions about loops and ship the next minor release - complexity: M, depends_on: TASK-158, TASK-159, TASK-160, TASK-161, TASK-162, TASK-236

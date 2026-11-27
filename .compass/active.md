@@ -25,15 +25,6 @@ Plan: [[PLAN-020-clone-old-sessions]].
 
 - [ ] TASK-146: Live acceptance on this repo
 
-## PLAN-021 Wave 2: judge, schedule, ast-grep sensor, skill, release
-
-Plan: [[PLAN-021-control-loops]].
-
-- [ ] TASK-161: The ast-grep sensor adapter, pinned to saved scan output - complexity: M, depends_on: TASK-158, TASK-159, TASK-236
-- [ ] TASK-160: `/compass:loop`: guided creation through steps 0 to 7 - complexity: M, depends_on: TASK-158, TASK-159, TASK-161
-- [ ] TASK-162: The Maya recipe on the local lane, marked untested on this machine - complexity: S, depends_on: TASK-160
-- [ ] TASK-163: Teach the vault conventions about loops and ship the next minor release - complexity: M, depends_on: TASK-158, TASK-159, TASK-160, TASK-161, TASK-162, TASK-236
-
 ## PLAN-028 Wave 1: the pilot
 
 Plan: [[PLAN-028-whole-overhead-on-real-projects]]; each task's full text, files and checks are there.
