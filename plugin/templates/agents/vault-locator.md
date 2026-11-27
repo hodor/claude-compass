@@ -38,6 +38,7 @@ Standard vault layout:
 ├── lessons/                          - LESSON-*.md
 ├── handoffs/                         - YYYY-MM-DD_*.md
 ├── prs/                              - <PR_NUMBER>_description.md
+├── loops/                            - LOOP-NNN-*/index.md (other files are the loop's parts)
 └── archive/                          - retired docs
 ```
 

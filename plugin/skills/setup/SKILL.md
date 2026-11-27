@@ -192,6 +192,7 @@ Then write the permission allowlist into the same `.claude/settings.json`. The J
   lessons/
   handoffs/
   prs/
+  loops/                    # control loops, one LOOP-NNN-name/ folder each
   archive/
 ```
 

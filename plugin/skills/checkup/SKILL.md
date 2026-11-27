@@ -28,7 +28,7 @@ Interactive flows (spec writing, planning iteration, handoffs, autopilot, retroa
 
 Required files: `.compass/index.md`, `.compass/active.md`, `.compass/backlog.md`, `.compass/meta/lessons-catalog.yaml`, `.compass/meta/plugin.yaml`.
 
-Required directories: `specs/`, `research/`, `plans/`, `decisions/`, `lessons/`, `handoffs/`, `prs/`, `.annotations/`.
+Required directories: `specs/`, `research/`, `plans/`, `decisions/`, `lessons/`, `handoffs/`, `prs/`, `.annotations/`. `loops/` is optional: `compass loop new` creates it with the first loop.
 
 ### 4. Vault integrity
 

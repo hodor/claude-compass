@@ -46,6 +46,7 @@ Pattern: `TYPE-NNN-descriptive-name.md`
 | Plan | `PLAN-NNN-descriptive-name.md` | `PLAN-001-mvp-implementation.md` |
 | Lesson | `LESSON-descriptive-name.md` | `LESSON-yaml-frontmatter-quoting.md` |
 | Handoff | `YYYY-MM-DD_HH-MM-SS_descriptive-name.md` | `2026-03-12_14-30-00_implement-auth-flow.md` |
+| Loop | `LOOP-NNN-descriptive-name/` (a folder; `index.md` is the artifact) | `LOOP-001-no-bare-except/` |
 
 `NNN` numbers are computed JIT at creation, not stored anywhere. There is NO counter file. Numbers are LOCAL to each folder (resets at each level). See [[ADR-003-drop-counter-file-jit-compute]] for the rationale and [[ADR-004-hierarchical-specs-with-facets]] for the hierarchy rules.
 
@@ -56,6 +57,7 @@ Pattern: `TYPE-NNN-descriptive-name.md`
 | SPEC | `max(N from glob '**/.compass/specs/SPEC-N-*.md') + 1`, default 1 |
 | ADR | `max(N from glob '**/.compass/decisions/ADR-N-*.md') + 1`, default 1 |
 | PLAN | `max(N from glob '**/.compass/plans/PLAN-N-*.md') + 1`, default 1 |
+| LOOP | `compass next-num loop`: `max(N from glob '**/.compass/loops/LOOP-N-*/') + 1`, default 1 |
 | TASK | `max(N) + 1` across `grep -oE 'TASK-([0-9]+)' .compass/active.md .compass/backlog.md`, default 1 |
 | RESEARCH | no number; descriptive name only |
 | LESSON | no number; descriptive slug only |

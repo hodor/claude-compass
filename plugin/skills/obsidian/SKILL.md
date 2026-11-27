@@ -26,7 +26,7 @@ Every vault document needs frontmatter:
 ```yaml
 ---
 title: "Human-readable title"                    # REQUIRED - all
-type: spec | research | plan | task | lesson | decision | handoff | idea  # REQUIRED - all
+type: spec | research | plan | task | lesson | decision | handoff | idea | loop  # REQUIRED - all
 status: draft | review | approved | active | done | archived  # REQUIRED - all
 status: new | exploring | parked | adopted | done | dropped  # idea documents use this set
 confidence: low | medium | high                  # REQUIRED for spec, research, decision
