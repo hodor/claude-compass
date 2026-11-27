@@ -17,7 +17,7 @@ A control loop is a folder `.compass/loops/LOOP-NNN-name/` that `compass loop ru
 
 - **Read before asking.** Each step first reads the repository (code, tests, CI files, the vault) for what answers it. The human is asked only what the code cannot answer, through `AskUserQuestion`, exactly one question per call, the recommended option first and labelled "(Recommended)".
 - **Write as you go.** `compass loop new <name>` scaffolds the folder; the skill fills its documents and `loop.json`. Each step writes its choice into the matching `## Step N` section of the loop's `index.md` in a sentence or two, and the machine form into `loop.json`, `actuator.md`, `golden/` or `feedback.md`.
-- **Defaults live in the template.** `plugin/cli/loop_templates/loop.json` holds every default (installed as `.claude/cli/loop_templates/loop.json`). Read it there; a key the human does not decide keeps its template value.
+- **Defaults live in the template.** `.claude/cli/loop_templates/loop.json` holds every default. Read it there; a key the human does not decide keeps its template value.
 - **Caps.** Each iteration is a fresh session, never a resume. `max_turns` bounds the actuator's tool rounds: cap N allows N tool rounds. `max_budget_usd` bounds one run and can be overshot by one response; the daily and total budgets catch the rest.
 - A step is finished only when its `Done when:` line holds. Check it before moving on.
 
