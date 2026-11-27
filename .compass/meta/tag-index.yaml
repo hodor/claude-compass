@@ -8,6 +8,7 @@ tags:
   - research/test-quality/beyond-test-pass/RESEARCH-planted-defect-probe.md
   - research/test-quality/beyond-test-pass/REVIEW-beyond-test-pass.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-3-part-by-part-rebaseline.md
+  - research/whole-overhead/checking-cost/RESEARCH-station-ablation.md
   acceptance-criteria:
   - lessons/test-quality/LESSON-untestable-criterion-is-a-spec-defect.md
   accuracy:
@@ -106,6 +107,7 @@ tags:
   - compass-cli/plans/PLAN-002-compass-cli-implementation.md
   - compass-cli/specs/SPEC-004-mechanical-work-off-the-agent-budget.md
   - decisions/vault-structure/ADR-003-drop-counter-file-jit-compute.md
+  - lessons/pipeline/LESSON-loop-auto-accepts-increments-matching-the-accepted-pattern.md
   autonomy:
   - specs/tooling/SPEC-018-scaffolding-invisible-to-the-human.md
   axes:
@@ -140,6 +142,7 @@ tags:
   - research/pipeline/compaction-survival/RESEARCH-probe-reference-arms.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-3-part-by-part-rebaseline.md
   - research/whole-overhead/checking-cost/RESEARCH-checking-cost-pilot.md
+  - research/whole-overhead/checking-cost/RESEARCH-station-ablation.md
   benchmarks:
   - research/llm-research/RESEARCH-axis-3-agent-memory.md
   - research/pipeline/RESEARCH-evaluation-benchmarks.md
@@ -428,6 +431,7 @@ tags:
   - research/distribution/RESEARCH-update-safe-customization.md
   cost:
   - decisions/distribution/ADR-008-model-resolution-table.md
+  - lessons/pipeline/LESSON-loop-limits-step-only-when-unsupervised-or-expensive.md
   - lessons/pipeline/LESSON-subscription-cost-is-an-estimate-not-a-budget.md
   - plans/distribution/PLAN-005-model-table.md
   - plans/tooling/PLAN-028-whole-overhead-on-real-projects.md
@@ -443,6 +447,7 @@ tags:
   - research/whole-overhead/checking-cost/RESEARCH-axis-5-gap-pass.md
   - research/whole-overhead/checking-cost/RESEARCH-checking-cost-pilot.md
   - research/whole-overhead/checking-cost/RESEARCH-letter-repeatability.md
+  - research/whole-overhead/checking-cost/RESEARCH-station-ablation.md
   - research/whole-overhead/checking-cost/REVIEW-checking-cost.md
   - research/whole-overhead/checking-cost/index.md
   - research/whole-overhead/prompt-cache/RESEARCH-cache-baseline-measured.md
@@ -657,6 +662,8 @@ tags:
   - research/llm-research/RESEARCH-axis-1b-anthropic-engineering-gap.md
   env-var:
   - lessons/vault-structure/LESSON-scratch-vaults-need-compass-dir.md
+  escalation:
+  - lessons/pipeline/LESSON-loop-limits-step-only-when-unsupervised-or-expensive.md
   escaping:
   - lessons/platform/LESSON-windows-heredoc-backslash-escapes.md
   evals:
@@ -730,6 +737,7 @@ tags:
   - research/rolling-wave/RESEARCH-rolling-wave-flow-theory.md
   - research/rolling-wave/index.md
   flow-control:
+  - lessons/pipeline/LESSON-loop-limits-step-only-when-unsupervised-or-expensive.md
   - lessons/pipeline/LESSON-subscription-cost-is-an-estimate-not-a-budget.md
   - plans/pipeline/PLAN-021-control-loops.md
   - research/pipeline/control-loops/RESEARCH-control-theory-for-loops.md
@@ -1062,6 +1070,8 @@ tags:
   - research/vault-structure/RESEARCH-cache-theory-for-context-tiers.md
   incremental-change:
   - specs/pipeline/SPEC-026-control-theory-for-loops.md
+  increments:
+  - lessons/pipeline/LESSON-loop-auto-accepts-increments-matching-the-accepted-pattern.md
   index:
   - decisions/vault-structure/ADR-021-index-speaks-in-domains.md
   - decisions/vault-structure/ADR-022-domains-scope-notes-shallow-when-unsure.md
@@ -1245,6 +1255,8 @@ tags:
   - research/whole-overhead/prompt-cache/RESEARCH-cache-ttl-subagents-loops.md
   loops:
   - handoffs/2026-10-29_09-30-00_issues-then-loops-then-workflow-spec.md
+  - lessons/pipeline/LESSON-loop-auto-accepts-increments-matching-the-accepted-pattern.md
+  - lessons/pipeline/LESSON-loop-limits-step-only-when-unsupervised-or-expensive.md
   - lessons/pipeline/LESSON-subscription-cost-is-an-estimate-not-a-budget.md
   - plans/pipeline/PLAN-021-control-loops.md
   - plans/tooling/PLAN-028-whole-overhead-on-real-projects.md
@@ -1312,6 +1324,7 @@ tags:
   - research/whole-overhead/checking-cost/RESEARCH-axis-5-gap-pass.md
   - research/whole-overhead/checking-cost/RESEARCH-checking-cost-pilot.md
   - research/whole-overhead/checking-cost/RESEARCH-letter-repeatability.md
+  - research/whole-overhead/checking-cost/RESEARCH-station-ablation.md
   - research/whole-overhead/checking-cost/REVIEW-checking-cost.md
   - research/whole-overhead/checking-cost/index.md
   - research/whole-overhead/prompt-cache/RESEARCH-cache-baseline-measured.md
@@ -1868,6 +1881,7 @@ tags:
   - handoffs/2026-03-12_review-all-plugin-files.md
   - handoffs/2026-03-12_session-2-obsidian-approved.md
   - lessons/pipeline/LESSON-adversarial-plan-review-before-build.md
+  - lessons/pipeline/LESSON-loop-auto-accepts-increments-matching-the-accepted-pattern.md
   - plans/human-surface/PLAN-022-review-in-obsidian.md
   - plans/human-surface/PLAN-025-review-across-files-and-sessions.md
   - research/hermes/RESEARCH-hermes-skill-review-gate.md
@@ -2245,6 +2259,7 @@ tags:
   - research/whole-overhead/checking-cost/RESEARCH-axis-2-checking-station-cost.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-5-gap-pass.md
   - research/whole-overhead/checking-cost/RESEARCH-checking-cost-pilot.md
+  - research/whole-overhead/checking-cost/RESEARCH-station-ablation.md
   tester-agent:
   - plans/pipeline/PLAN-007-test-quality.md
   - specs/pipeline/SPEC-013-test-quality.md
@@ -2308,6 +2323,7 @@ tags:
   - research/whole-overhead/checking-cost/RESEARCH-axis-5-gap-pass.md
   - research/whole-overhead/checking-cost/RESEARCH-checking-cost-pilot.md
   - research/whole-overhead/checking-cost/RESEARCH-letter-repeatability.md
+  - research/whole-overhead/checking-cost/RESEARCH-station-ablation.md
   - research/whole-overhead/checking-cost/REVIEW-checking-cost.md
   - research/whole-overhead/checking-cost/index.md
   - research/whole-overhead/prompt-cache/RESEARCH-cache-baseline-measured.md
@@ -2442,6 +2458,7 @@ tags:
   - research/test-quality/beyond-test-pass/RESEARCH-spec-conformance.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-2-checking-station-cost.md
   - research/whole-overhead/checking-cost/RESEARCH-axis-5-gap-pass.md
+  - research/whole-overhead/checking-cost/RESEARCH-station-ablation.md
   - specs/pipeline/SPEC-034-verification-beyond-test-pass.md
   vault:
   - decisions/ADR-001-methodology-as-skill-with-vault.md
@@ -2496,6 +2513,7 @@ tags:
   - research/whole-overhead/checking-cost/RESEARCH-axis-5-gap-pass.md
   - research/whole-overhead/checking-cost/RESEARCH-checking-cost-pilot.md
   - research/whole-overhead/checking-cost/RESEARCH-letter-repeatability.md
+  - research/whole-overhead/checking-cost/RESEARCH-station-ablation.md
   - research/whole-overhead/checking-cost/REVIEW-checking-cost.md
   - research/whole-overhead/checking-cost/index.md
   - specs/pipeline/SPEC-013-test-quality.md
