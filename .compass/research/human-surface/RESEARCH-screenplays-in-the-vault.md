@@ -44,8 +44,8 @@ flowchart LR
 > [!note] Approved 2026-11-19
 > The recommended option holds on every fork.
 
-> [!question] You decide
-> Do the five live check results stand, so the Later tasks of [[PLAN-031-screenplays-in-the-vault]] can be detailed? Two findings change those tasks: scripts are kept LF (CRLF scripts lose end-of-line markup in the Fountain view and become LF on Obsidian's first save), and Compass reloads Obsidian after adding a plugin entry, since a running Obsidian rewrites `community-plugins.json` from memory. See "Live check results".
+> [!note] Decided 2026-11-27
+> The five live check results stand, and the Later tasks of [[PLAN-031-screenplays-in-the-vault]] are detailed from them. Two findings change those tasks: scripts are kept LF (CRLF scripts lose end-of-line markup in the Fountain view and become LF on Obsidian's first save), and Compass reloads Obsidian after adding a plugin entry, since a running Obsidian rewrites `community-plugins.json` from memory. See "Live check results".
 
 ## Question
 
