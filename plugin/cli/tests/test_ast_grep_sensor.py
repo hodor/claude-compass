@@ -122,8 +122,9 @@ class ParserTests(unittest.TestCase):
                 self.assertEqual(reading.value, 10)
                 self.assertEqual(len(reading.items), 10)
                 for item in reading.items:
-                    self.assertNotIn("\\", item)
-                    self.assertIn("/", item.split(":", 1)[0])
+                    path = item.split(":", 1)[0]
+                    self.assertNotIn("\\", path)
+                    self.assertIn("/", path)
 
     def test_item_is_file_colon_collapsed_text(self):
         """Adversarial where: the multi-line match text keeps its newline and
@@ -253,7 +254,7 @@ class CommandTests(CommandCase):
         self.assertEqual(code, 0, err)
         self.assertEqual(reading["valid"], True, reading)
         self.assertEqual(reading["value"], 10)
-        self.assertFalse(any("\\" in item for item in reading["items"]))
+        self.assertFalse(any("\\" in item.split(":", 1)[0] for item in reading["items"]))
 
     def test_scan_argv_and_working_directory(self):
         """Adversarial where: the rule or the paths are dropped, the stream

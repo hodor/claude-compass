@@ -36,6 +36,10 @@ divided by their sessions summed; the value adds each source's tokens times
 its weight to the always-loaded tokens and rounds once at the end. A source
 with weight 0 adds nothing and is not an item.
 
+The ast-grep sensor reads `ast-grep scan --json=stream`: one item per match,
+the match's file with forward slashes, a colon, and its text on one line
+(`ast_grep_item`); the value counts the items.
+
 `scan_usage` reads Claude Code session transcripts and counts, per source of
 the plugin tree, the sessions that loaded it. The result names only plugin
 sources and counts.
@@ -523,6 +527,86 @@ def sense_context(plugin, usage_dir=None):
     usage = {"machines": machines, "sessions": sessions} if sessions else "none"
     return Reading(valid=True, value=int(round(value + weighted)), items=items,
                    usage=usage, skipped=skipped)
+
+
+def ast_grep_item(file, text):
+    """The identity of one ast-grep match: the file with forward slashes, a
+    colon, and the matched text with each whitespace run collapsed to one
+    space. It holds no line number, so a match moved by an unrelated edit keeps
+    its identity."""
+    return file.replace("\\", "/") + ":" + " ".join(text.split())
+
+
+def parse_ast_grep_scan(text, returncode, stderr=""):
+    """Turn the stdout and exit code of `ast-grep scan --json=stream` into a
+    Reading. Exit 0, and exit 1 with at least one match (an error-severity rule
+    matched), are valid; lines that do not start with `{` (the trailing
+    `Error: N error(s)` block) are skipped. A `{` line that is not a match
+    object, any other exit code, or exit 1 with no match is invalid; the
+    reason then carries the first line of `stderr`."""
+    said = next((line.strip() for line in stderr.splitlines() if line.strip()), "")
+    said = f": {said[:200]}" if said else ""
+    if returncode not in (0, 1):
+        return _invalid(f"ast-grep scan exited {returncode}{said}")
+    items = []
+    for number, line in enumerate(text.splitlines(), start=1):
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            data = json.loads(line)
+        except (ValueError, RecursionError):
+            return _invalid(f"ast-grep output line {number} is not JSON: {line[:200]}")
+        if not isinstance(data, dict):
+            return _invalid(f"ast-grep output line {number} is not a JSON object")
+        file, matched = data.get("file"), data.get("text")
+        if not isinstance(file, str) or not isinstance(matched, str):
+            return _invalid(f"ast-grep output line {number} lacks a string file and text")
+        items.append(ast_grep_item(file, matched))
+    if returncode == 1 and not items:
+        return _invalid(f"ast-grep scan exited 1 with no match{said}")
+    return Reading(valid=True, value=len(items), items=items)
+
+
+def scan_ast_grep(binary, rule, paths, cwd, timeout):
+    """Run `<binary> scan --rule <rule> --json=stream [paths...]` from `cwd`
+    and return its Reading. A binary that cannot start, or a scan still
+    running after `timeout` seconds (its process tree killed), is invalid."""
+    command = [str(binary), "scan", "--rule", str(rule), "--json=stream", *paths]
+    kwargs = proctree.popen_kwargs()
+    if os.name == "nt":
+        kwargs["creationflags"] = kwargs.get("creationflags", 0) | subprocess.CREATE_NO_WINDOW
+    try:
+        proc = subprocess.Popen(
+            command,
+            cwd=str(cwd),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            **kwargs,
+        )
+    except (OSError, ValueError) as exc:
+        return _invalid(f"could not start ast-grep ({binary}): {exc}")
+    job = proctree.assign(proc)
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proctree.kill(proc, job)
+        try:
+            proc.communicate(timeout=_KILL_WAIT_SECONDS)
+        except (subprocess.TimeoutExpired, OSError, ValueError):
+            pass
+        return _invalid(f"ast-grep scan timed out after {timeout:g} seconds")
+    except (OSError, ValueError) as exc:
+        proctree.kill(proc, job)
+        return _invalid(f"could not read the ast-grep output: {exc}")
+    finally:
+        proctree.release(job)
+    return parse_ast_grep_scan(
+        stdout.decode("utf-8", errors="replace"),
+        proc.returncode,
+        stderr.decode("utf-8", errors="replace"),
+    )
 
 
 def judge(before, after, direction):
