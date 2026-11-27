@@ -337,6 +337,8 @@ tags:
   - research/hermes/RESEARCH-hermes-vs-compass-fit.md
   competitive:
   - research/distribution/RESEARCH-gsd-core-improvements-for-compass.md
+  completeness:
+  - research/pipeline/RESEARCH-spec-coverage-experiment.md
   completeness-scoring:
   - research/pipeline/research-scope/REVIEW-spec-023-research-consolidation.md
   compression:
@@ -673,6 +675,7 @@ tags:
   evaluation:
   - research/llm-research/RESEARCH-axis-6-harness-engineering.md
   - research/pipeline/RESEARCH-evaluation-benchmarks.md
+  - research/pipeline/RESEARCH-spec-coverage-experiment.md
   - research/pipeline/compaction-survival/RESEARCH-axis-4-probe-kpi.md
   evidence:
   - lessons/experiments/LESSON-pin-the-motivating-datum.md
@@ -1470,6 +1473,8 @@ tags:
   - specs/tooling/SPEC-018-scaffolding-invisible-to-the-human.md
   nudges:
   - research/hermes/RESEARCH-hermes-memory-mechanics.md
+  nuggets:
+  - research/pipeline/RESEARCH-spec-coverage-experiment.md
   numbering:
   - lessons/vault-structure/LESSON-next-num-scope-doubles-type-dir.md
   observability:
@@ -1826,6 +1831,7 @@ tags:
   - research/llm-research/RESEARCH-axis-2b-host-features-gap.md
   - research/llm-research/RESEARCH-axis-4-multi-agent-verification.md
   - research/llm-research/RESEARCH-llm-research-for-compass.md
+  - research/pipeline/RESEARCH-spec-coverage-experiment.md
   - research/pipeline/research-scope/RESEARCH-code-as-primary-source.md
   - research/pipeline/research-scope/RESEARCH-research-methodologies-catalog.md
   - research/pipeline/research-scope/RESEARCH-research-spawning-research.md
@@ -1941,6 +1947,7 @@ tags:
   scope:
   - lessons/vault-structure/LESSON-next-num-scope-doubles-type-dir.md
   - plans/pipeline/PLAN-018-research-covers-the-whole-spec.md
+  - research/pipeline/RESEARCH-spec-coverage-experiment.md
   - research/pipeline/research-scope/RESEARCH-scope-derivation-from-a-spec.md
   - research/pipeline/research-scope/REVIEW-spec-023-research-consolidation.md
   - specs/pipeline/SPEC-023-research-covers-the-whole-spec.md
@@ -2131,6 +2138,8 @@ tags:
   - specs/learning/SPEC-033-ideas-keep-their-status.md
   stdlib:
   - research/test-quality/RESEARCH-test-quality-tooling.md
+  stop-rule:
+  - research/pipeline/RESEARCH-spec-coverage-experiment.md
   stopping-rules:
   - research/pipeline/research-scope/RESEARCH-research-spawning-research.md
   strategy:
