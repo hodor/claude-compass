@@ -5,7 +5,11 @@
 # Every field's coverage, access mechanics, key requirement and tested
 # result comes from research/pipeline/RESEARCH-source-inventory.md, whose
 # live-reachability section tested each entry from the deployment machine
-# on 2026-09-13.
+# on 2026-09-13. Each active entry's `tested` field holds the date and the
+# verdict of its latest `compass sources --check --live` run: `reachable`
+# for a scripted entry whose own retriever returned data, `browser-only` for
+# an entry the check reports without probing. A scripted entry the check
+# finds unreachable moves to `do_not_try` with its reason and date.
 
 sources:
   - name: "Crossref"
@@ -15,6 +19,7 @@ sources:
     reachable: "script"
     check_request: "GET https://api.crossref.org/works?query.bibliographic=test&mailto=... -> 200, JSON, over a million results (tested 2026-09-13)"
     retriever: "fetch_crossref"
+    tested: "2026-11-27 reachable"
   - name: "OpenAlex"
     coverage: "open metadata graph of scholarly works, CC0-licensed, successor to Microsoft Academic Graph"
     access: "REST, JSON, keyless calls allowed but credit-metered per call"
@@ -22,6 +27,7 @@ sources:
     reachable: "script"
     check_request: "GET https://api.openalex.org/works?per-page=1 -> 200, JSON, response carries a cost_usd field confirming metering runs even keyless (tested 2026-09-13)"
     retriever: "fetch_openalex"
+    tested: "2026-11-27 reachable"
   - name: "Unpaywall"
     coverage: "open-access location layer over Crossref DOIs, returning direct OA PDF links"
     access: "REST, JSON, auth is only an email query parameter, no key"
@@ -29,6 +35,7 @@ sources:
     reachable: "script"
     check_request: "GET https://api.unpaywall.org/v2/{doi}?email=... -> 200, JSON OA-location record (tested 2026-09-13)"
     retriever: "fetch_unpaywall"
+    tested: "2026-11-27 reachable"
   - name: "arXiv"
     coverage: "preprint metadata and full text across physics, math, computer science and related fields"
     access: "REST, Atom XML, no auth"
@@ -36,6 +43,7 @@ sources:
     reachable: "script"
     check_request: "GET http://export.arxiv.org/api/query?search_query=all:test&max_results=1 -> 200, Atom XML"
     retriever: "fetch_arxiv"
+    tested: "2026-11-27 reachable"
   - name: "OpenReview v2"
     coverage: "ML conference peer-review notes: submissions, reviews and rebuttals for venues including ICLR, NeurIPS and TMLR"
     access: "REST, JSON, the v2 host; public conference data reads without a token"
@@ -43,6 +51,7 @@ sources:
     reachable: "script"
     check_request: "GET https://api2.openreview.net/notes/search?term=test&limit=1 -> 200, JSON with a result count; the legacy v1 host at api.openreview.net answers 403 (tested 2026-09-13)"
     retriever: "fetch_openreview_v2"
+    tested: "2026-11-27 reachable"
   - name: "GitHub"
     coverage: "public repository metadata and full source, reachable at zero API-quota cost via git clone"
     access: "git clone and general REST work with no auth; code search and GraphQL require a token"
@@ -50,6 +59,7 @@ sources:
     reachable: "script"
     check_request: "GET https://api.github.com/search/repositories?q=test&per_page=1 -> 200, JSON; unauthenticated code search at /search/code instead returns 401 (tested 2026-09-13)"
     retriever: "fetch_github"
+    tested: "2026-11-27 reachable"
   - name: "Semantic Scholar"
     coverage: "paper metadata, abstracts and citation graph across all fields"
     access: "REST, JSON, keyless calls work but are throttled"
@@ -57,6 +67,7 @@ sources:
     reachable: "script"
     check_request: "GET https://api.semanticscholar.org/graph/v1/paper/search?query=test&limit=1 -> 200 on a first anonymous call, 429 asking for a key on the next (tested 2026-09-13)"
     retriever: "fetch_semantic_scholar"
+    tested: "2026-11-27 reachable"
   - name: "ACM Digital Library"
     coverage: "ACM proceedings and journals, fully open access since 2026-01-01"
     access: "web only; every acm.org subdomain returns a Cloudflare bot challenge to non-browser requests regardless of open-access status"
@@ -64,6 +75,7 @@ sources:
     reachable: "browser"
     check_request: "GET https://dl.acm.org/doi/{doi} -> 403 Cloudflare challenge to curl with any user agent; a real browser session passes the wall without logging in (tested 2026-09-13)"
     retriever: "fetch_acm_digital_library"
+    tested: "2026-11-27 browser-only"
   - name: "DBLP"
     coverage: "computer-science-only bibliography, metadata only, CC0-licensed"
     access: "REST, JSON, no key; scripted calls receive a bot-challenge page instead of data"
@@ -71,6 +83,7 @@ sources:
     reachable: "browser"
     check_request: "GET https://dblp.org/search/publ/api?q=test&format=json -> 200, text/html bot-challenge page, not JSON (tested 2026-09-13)"
     retriever: "fetch_dblp"
+    tested: "2026-11-27 browser-only"
   - name: "Internet Archive Scholar"
     coverage: "large full-text scholarly search aggregating Crossref, PubMed, arXiv, JSTOR, ORCID, DOAJ, CORE, Unpaywall, Semantic Scholar and CiteSeerX"
     access: "web search UI, no key; scripted calls receive a session-verification challenge page instead of results"
@@ -78,6 +91,7 @@ sources:
     reachable: "browser"
     check_request: "GET https://scholar.archive.org/search?q=test&format=json -> 200, text/html Session Verification challenge page (tested 2026-09-13)"
     retriever: "fetch_internet_archive_scholar"
+    tested: "2026-11-27 browser-only"
 do_not_try:
   - name: "CiteSeerX"
     coverage: "CS literature metadata and cached PDFs"

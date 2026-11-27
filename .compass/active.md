@@ -5,14 +5,6 @@ updated: 2026-09-13
 
 # Active Tasks
 
-## PLAN-018 Wave 2: prove the stop rule, exercise the list, close the autopilot gap
-
-Plan: [[PLAN-018-research-covers-the-whole-spec]]. Wave 1 shipped as v0.24.0 on 2026-09-14; its manual checks await the human. Wave 2 starts on his word.
-
-- [ ] TASK-129: Run the completeness scorer on a real spec and research
-- [ ] TASK-131: Exercise every shipped retriever against its live source
-- [ ] TASK-135: Autopilot research calls the research entry point
-
 ## PLAN-019: stop and suggest a handoff at 80% context
 
 Plan: [[PLAN-019-stop-at-80-percent-context]]. TASK-137 and TASK-138 shipped as v0.26.0.

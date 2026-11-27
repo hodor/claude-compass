@@ -728,3 +728,13 @@ Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files a
 
 ### PLAN-034 Wave 3: the station ablation by planted defects
 - [x] TASK-353: Station ablation by planted defects - complexity: L, depends_on: TASK-352
+
+## 2026-11-27
+
+### PLAN-018 Wave 2: prove the stop rule, exercise the list, close the autopilot gap
+
+Plan: [[PLAN-018-research-covers-the-whole-spec]]. Wave 1 shipped as v0.24.0 on 2026-09-14; its manual checks await the human. Wave 2 starts on his word.
+
+- [x] TASK-129: Run the completeness scorer on a real spec and research
+- [x] TASK-131: Exercise every shipped retriever against its live source
+- [x] TASK-135: Autopilot research calls the research entry point

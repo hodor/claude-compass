@@ -496,5 +496,69 @@ class DoNotTryReasonDatedTests(unittest.TestCase):
                 )
 
 
+class ShippedListTestedFieldTests(unittest.TestCase):
+    """Every active entry records the verdict `compass sources --check
+    --live` gave it and the date that verdict was taken, as one `tested`
+    field of the form `YYYY-MM-DD <verdict>`. A scripted entry's recorded
+    verdict is `reachable`, since an unreachable one moves to the do-not-try
+    record; a browser entry's is `browser-only`, the verdict the check
+    reports without probing it.
+
+    Adversarial classes: an entry left without a `tested` field, so the
+    list reads as checked when it never was; a date that is not ISO, or a
+    verdict glued on without one; a scripted entry recorded unreachable but
+    left on the active list; a do-not-try entry with an empty reason."""
+
+    TESTED = __import__("re").compile(r"^(\d{4}-\d{2}-\d{2}) (\S+)$")
+
+    def _entries(self):
+        sources = sourceslib.load_sources()["sources"]
+        self.assertTrue(sources, "shipped source list is empty")
+        return sources
+
+    def test_every_active_entry_carries_a_tested_field_with_an_iso_date(self):
+        import datetime
+
+        for entry in self._entries():
+            with self.subTest(source=entry.get("name")):
+                tested = entry.get("tested")
+                self.assertTrue(tested, f"{entry.get('name')} has no tested field")
+                match = self.TESTED.match(tested)
+                self.assertTrue(
+                    match, f"{entry.get('name')}'s tested is not 'YYYY-MM-DD <verdict>': {tested!r}"
+                )
+                datetime.date.fromisoformat(match.group(1))
+
+    def test_no_tested_date_lies_in_the_future(self):
+        """A mistyped year reads as a fresh check for as long as the typo
+        stands, hiding the list's age."""
+        import datetime
+
+        today = datetime.date.today()
+        for entry in self._entries():
+            with self.subTest(source=entry.get("name")):
+                match = self.TESTED.match(entry.get("tested", ""))
+                self.assertTrue(match, f"{entry.get('name')} has no parseable tested field")
+                self.assertLessEqual(datetime.date.fromisoformat(match.group(1)), today)
+
+    def test_recorded_verdict_matches_the_entry_reachability_class(self):
+        expected = {"script": "reachable", "browser": "browser-only"}
+        for entry in self._entries():
+            with self.subTest(source=entry.get("name")):
+                match = self.TESTED.match(entry.get("tested", ""))
+                self.assertTrue(match, f"{entry.get('name')} has no parseable tested field")
+                self.assertEqual(match.group(2), expected[entry.get("reachable")])
+
+    def test_no_do_not_try_entry_lacks_a_reason(self):
+        entries = sourceslib.load_sources()["do_not_try"]
+        self.assertTrue(entries, "do-not-try record is empty")
+        for entry in entries:
+            with self.subTest(source=entry.get("name")):
+                self.assertTrue(
+                    (entry.get("reason") or "").strip(),
+                    f"{entry.get('name')} sits in do-not-try with no reason",
+                )
+
+
 if __name__ == "__main__":
     unittest.main()

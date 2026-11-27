@@ -29,7 +29,9 @@ Read `.compass/index.md`, `.compass/active.md`, `.compass/lessons/index.md`. Rea
 
 ### 2. Research
 
-Spawn the `researcher` agent. If research is thin, spawn another researcher instead of moving on.
+Run the research entry point, the `research` skill (`/compass:research`), on the task's source spec, following its "Deriving scope from a spec" protocol in full. It derives the axes from the whole spec, puts the human's own questions first, discloses the grading it intends to apply, and holds its gate before any researcher spawns. That gate is the run's one research stop: the axis list and the grading disclosure reach the human there, and his answer settles `grading: allowed` or `grading: refused` for every researcher brief. The entry point spawns one researcher per axis and the reviewer that consolidates them. A gap the review cannot close becomes another research pass through the same entry point, never a plan.
+
+Keep the gate's grading answer; the plan checkpoint below shows it.
 
 ### 3. Plan
 
@@ -38,9 +40,12 @@ Spawn the `planner` agent with the spec and research. Wait for completion.
 **Checkpoint (plan approval, the human-owned gate):**
 ```
 Research: [one-line summary with confidence]
+grading: [allowed | refused, as the research gate settled it]
 Plan ready for: [task description]
 [Summary of phases, tasks, complexity, verification]
 ```
+
+The `grading:` line repeats the research gate's answer so the human approving the plan sees whether graded evidence shaped it; the checkpoint never asks about grading again.
 
 When a review surface is configured, the plan file goes through the review rule in the pipeline rules (`compass review <plan file> --title "Proceed with implementation?"`) and nothing is asked here. Otherwise ask "Proceed with implementation?" through `AskUserQuestion`, exactly one question per call. The recommended option comes first, labelled "(Recommended)"; each option is one short line saying what choosing it does; "Other" stays open for free text:
 
@@ -90,7 +95,7 @@ Field lengths: one line per change, one line per decision/lesson. Omit Decisions
 ### Pipeline
 | Phase | Agent | Status | Key Output |
 |-------|-------|--------|------------|
-| Research | researcher | complete | [N findings] |
+| Research | research entry point | complete | [N axes, N findings, grading allowed/refused] |
 | Plan | planner | complete | [N tasks / M phases] |
 | Build | builder | complete | [N files changed] |
 | Test | tester | complete | [N tests pass] |
@@ -114,11 +119,11 @@ Estimated [S/M] | Actual [S/M/L] | [one line why if differed]
 
 ## Failure modes worth naming
 
-- Doing the research yourself instead of spawning the researcher.
+- Doing the research yourself, or spawning the `researcher` agent directly, instead of running the research entry point: a direct spawn skips the axis derivation, the gate and the grading disclosure, and its findings come back ungraded.
 - Writing a quick inline plan instead of spawning the planner.
 - Writing code yourself instead of spawning the builder.
 - Skipping the tester because "this is small." It always runs.
 - Skipping the validator because "everything passed." It's the final gate.
 - Rushing checkpoints - present findings and wait for real confirmation.
-- Continuing past a weak research phase instead of respawning.
+- Continuing to the plan past a research gap instead of running another pass through the research entry point.
 - Proceeding on an L+ task instead of hard-exiting.

@@ -33,7 +33,7 @@ Compass is a Claude Code plugin that provides an AI-guided development workflow 
 - [[research/rolling-wave/index|rolling-wave]] (folder, 4 children) - plan detail tracking proximity - receding horizons, flow theory, practice
 - [[research/test-quality/index|test-quality]] (folder, 8 children) - what makes a test suite good and how to measure it
 - [[research/vault-structure/index|vault-structure]] (folder, 10 children) - evidence on organizing and retrieving vault memory - hierarchy, tiers, RAG, graphs, taxonomy
-- [[research/pipeline/index|pipeline]] (folder, 7 children) - evidence on the pipeline as a method - benchmarks, scientific rigor, decision-coverage mechanics
+- [[research/pipeline/index|pipeline]] (folder, 8 children) - evidence on the pipeline as a method - benchmarks, scientific rigor, decision-coverage mechanics
 - [[research/human-surface/index|human-surface]] (folder, 8 children) - how Compass puts things in front of the human: the questions it asks, the documents it hands over for review, and how all of it reads
 - [[research/whole-overhead/index|whole-overhead]] (folder, 4 children) - evidence on measuring Compass's whole token overhead on projects agents build, and cutting it biggest area first
   - [[research/methodology/PROPOSAL-hot-path-consolidation-2026-11]] - topic folders for the 35 flat plan lines and the stray research lines, old notes parked out of active.md: start-here files from 6,596 to 3,926 tokens now, 3,472 after the four open plans merge

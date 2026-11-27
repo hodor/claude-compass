@@ -171,22 +171,41 @@ A research run for a spec presents axes traceable to the spec's Problem, Decisio
 
 ### Wave 2 (detailed): Prove the stop rule, exercise the list, close the autopilot gap
 
-- [ ] TASK-129: Run the completeness scorer against a real spec and a real research document and record whether it detects a gap a human agrees is a gap - files: [.compass/research/pipeline/RESEARCH-spec-coverage-experiment.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-05], commit-upfront: the experiment's shape is inferred from the code contract and fixed now, because a later change to it would invalidate everything written against its result
+- [x] TASK-129: Run the completeness scorer against a real spec and a real research document and record whether it detects a gap a human agrees is a gap - files: [.compass/research/pipeline/RESEARCH-spec-coverage-experiment.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-05], commit-upfront: the experiment's shape is inferred from the code contract and fixed now, because a later change to it would invalidate everything written against its result
   - No source anywhere scores a research report against a requirements document, and four candidate scorers were profiled and each scores against something a spec is not. One runnable scorer exists for a neighbouring problem: it breaks a ground truth into atomic claims, marks which are essential, and checks a finished text for each. [[research/pipeline/research-scope/RESEARCH-research-spawning-research]] names it, its license and its three stages.
   - The mapping onto a spec is read off that pipeline's data contract rather than stated by any source, which is why this is an experiment: the spec's Problem becomes the query, its Decisions and Needs become the ground truth the claims are drawn from, the finished research document is the text checked, and the recall over essential claims is the coverage score.
   - Automated verification: the pipeline runs end to end against [[specs/pipeline/SPEC-023-research-covers-the-whole-spec]] and [[research/pipeline/research-scope/REVIEW-spec-023-research-consolidation]] and emits a numeric score with a per-claim breakdown.
   - Manual verification: the human reads the claims marked unsupported and says whether they are real gaps or artifacts of the mapping. A run where they are artifacts retires the mechanism rather than tuning it.
+  - Verification record, 2026-11-27: the pipeline ran end to end (nuggetizer `d00dc3e`, every stage on Claude Sonnet, 8 calls) and scored strict vital recall 0.29, 2 of 7 vital claims supported, with a 23-claim breakdown in [[research/pipeline/RESEARCH-spec-coverage-experiment]]. Three of the unsupported vital claims restate the spec's Problem, which was passed as the query; the one Need no research document covers, the source ledger, surfaced as an unsupported okay-rated claim. The human's reading of the unsupported claims is the open manual check.
 
-- [ ] TASK-131: Exercise every shipped retriever against its live source and record the result beside the entry - complexity: S, depends_on: none, files: [plugin/cli/sources.yaml, plugin/cli/tests/test_sourceslib.py], decisions: [SPEC-023-research-covers-the-whole-spec/D-09, SPEC-023-research-covers-the-whole-spec/D-03]
+- [x] TASK-131: Exercise every shipped retriever against its live source and record the result beside the entry - complexity: S, depends_on: none, files: [plugin/cli/sources.yaml, plugin/cli/tests/test_sourceslib.py], decisions: [SPEC-023-research-covers-the-whole-spec/D-09, SPEC-023-research-covers-the-whole-spec/D-03]
   - `compass sources --check --live` already prints a verdict per scripted entry. This task runs it, records each verdict and its date as a `tested` field on the entry in `plugin/cli/sources.yaml`, and moves any entry whose live verdict is unreachable into the do-not-try record with the same reason and date rather than deleting it.
   - The pre-build station writes the test first: every active entry carries a `tested` field with an ISO date, and no entry in the do-not-try record lacks a reason.
   - Automated verification: `python plugin/cli/compass sources --check --live` exits 0 and its output is pasted into this block with one verdict per scripted entry; `python -m pytest plugin/cli/tests/test_sourceslib.py -q` passes with the new test; the full suite passes.
   - Manual verification: the human compares the verdicts with the reachability findings in [[research/pipeline/research-scope/RESEARCH-source-inventory]] and confirms any entry that moved to do-not-try belongs there.
+  - Verification record, 2026-11-27: every scripted entry answered with data, so no entry moved to do-not-try, and each active entry now carries `tested: "2026-11-27 reachable"` or `tested: "2026-11-27 browser-only"`.
+    ```
+    $ python plugin/cli/compass sources --check --live
+    name                      verdict
+    Crossref                  reachable
+    OpenAlex                  reachable
+    Unpaywall                 reachable
+    arXiv                     reachable
+    OpenReview v2             reachable
+    GitHub                    reachable
+    Semantic Scholar          reachable
+    ACM Digital Library       browser-only
+    DBLP                      browser-only
+    Internet Archive Scholar  browser-only
+    exit=0
+    ```
+    Semantic Scholar's `reachable` is a keyless 429 whose body is JSON asking for a key, which the check classifies as the source's own API answering; it matches the inventory's record of a throttled keyless call, and the entry keeps its key requirement. `python -m pytest plugin/cli/tests/test_sourceslib.py -q`: 26 passed, with four new cases (a dated `tested` field on every active entry, its verdict matching the entry's reachability class, no future date, no do-not-try entry without a reason).
 
-- [ ] TASK-135: Make the autopilot research step call the entry point, so a pipeline run gets the derivation, the axis gate and the grading disclosure - complexity: S, depends_on: none, files: [plugin/skills/autopilot/SKILL.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-01, SPEC-023-research-covers-the-whole-spec/D-05]
+- [x] TASK-135: Make the autopilot research step call the entry point, so a pipeline run gets the derivation, the axis gate and the grading disclosure - complexity: S, depends_on: none, files: [plugin/skills/autopilot/SKILL.md], decisions: [SPEC-023-research-covers-the-whole-spec/D-01, SPEC-023-research-covers-the-whole-spec/D-05]
   - Autopilot's step 2 spawns the researcher directly, so a pipeline run gets the researcher's habits but neither the axis derivation nor the gate where grading is disclosed; findings from such a run come back ungraded. This task routes step 2 through the research entry point and carries the gate's outcome into autopilot's own plan-approval checkpoint, so one human stop serves both.
   - Automated verification: a grep of `plugin/skills/autopilot/SKILL.md` finds the research entry point named as the step-2 call and the `grading:` field carried into the checkpoint block; the full suite passes.
   - Manual verification: run autopilot on one S task in this repo and confirm the axis list and the grading disclosure appear before any researcher spawns.
+  - Verification record, 2026-11-27: step 2 runs the `research` skill's "Deriving scope from a spec" protocol, whose gate is the run's one research stop and settles `grading: allowed` or `grading: refused`; the plan checkpoint block carries a `grading:` line repeating that answer and asks nothing about grading again. `plugin/cli/tests/test_autopilot_research_step.py` (9 cases) guards the step-2 call, the absence of a direct researcher spawn, the checkpoint field, its spelling against the research entry point, and that autopilot's `allowed-tools` covers every tool the entry point declares.
 
 ## Later (intent only)
 
