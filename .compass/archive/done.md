@@ -725,3 +725,6 @@ Plan: [[PLAN-034-checking-cost-follows-task-and-model]]; each task's full text, 
 Plan: [[PLAN-036-verification-beyond-test-pass]]; each task's full text, files and checks are there.
 
 - [x] TASK-419: Release of the later wave and local refresh - complexity: S, depends_on: TASK-441, TASK-418
+
+### PLAN-034 Wave 3: the station ablation by planted defects
+- [x] TASK-353: Station ablation by planted defects - complexity: L, depends_on: TASK-352
