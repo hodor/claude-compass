@@ -1,6 +1,7 @@
 ---
 title: "Trial: change a verdict after sending it"
 type: mockup
+status: draft
 summary: "a throwaway review page for trying a verdict change in the review card"
 ---
 
