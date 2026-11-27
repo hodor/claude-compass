@@ -17,6 +17,9 @@ summary: "a headless `claude -p --resume <id> --fork-session --no-session-persis
 
 Evidence for [[specs/learning/SPEC-022-clone-old-sessions]]. Live probes ran on Claude Code 2.1.302 against this project's transcripts in `~/.claude/projects/F--claude-plugins-compass/`, plus a read-only scan of all 920 transcripts on this machine. Probe outputs sat in the session scratchpad and are not kept.
 
+> [!question] You decide
+> Does the live acceptance on this repo stand, and do the two lessons it produced hold: [[LESSON-loop-auto-accepts-increments-matching-the-accepted-pattern]] and [[LESSON-loop-limits-step-only-when-unsupervised-or-expensive]]? See "Live acceptance on this repo".
+
 ## Findings
 
 **1. A fork is a working copy that remembers its session, and the original is untouched.** `claude -p --resume <id> --fork-session "<question>"` against a 57K-token past session answered with what that session had done and a specific warning drawn from a failure inside it. The original's SHA-256 was identical before and after. A persisted fork is self-contained: its file held all 62 lines of the original plus its own 19, every line rewritten to the fork's new `sessionId`. Source: live probe; transcript diff. Confidence: high.

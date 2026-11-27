@@ -44,6 +44,9 @@ flowchart LR
 > [!note] Approved 2026-11-19
 > The recommended option holds on every fork.
 
+> [!question] You decide
+> Do the five live check results stand, so the Later tasks of [[PLAN-031-screenplays-in-the-vault]] can be detailed? Two findings change those tasks: scripts are kept LF (CRLF scripts lose end-of-line markup in the Fountain view and become LF on Obsidian's first save), and Compass reloads Obsidian after adding a plugin entry, since a running Obsidian rewrites `community-plugins.json` from memory. See "Live check results".
+
 ## Question
 
 How can the human write and preview Fountain screenplays in Obsidian, keep editing the same files in VS Code with BetterFountain, link them like any document, and let agents read and edit them, set up by Compass in every vault (a project's document folder), as the spec (what we need) [[SPEC-032-screenplays-in-the-vault]] asks?
