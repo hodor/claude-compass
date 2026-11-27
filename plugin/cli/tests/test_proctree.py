@@ -236,5 +236,42 @@ class AssignTests(unittest.TestCase):
         proctree.kill(proc, None)
 
 
+# Run by a parent that has no console, the way a hook or a background job
+# runs: it starts a child with `popen_kwargs()` and writes the console window
+# handle the child sees. A child given its own console has a nonzero handle,
+# and that console is a window on the human's desktop.
+CONSOLE_PROBE_PARENT = """
+import subprocess, sys
+sys.path.insert(0, sys.argv[1])
+import proctree
+child = subprocess.run(
+    [sys.executable, "-c", "import ctypes; print(ctypes.windll.kernel32.GetConsoleWindow())"],
+    stdin=subprocess.DEVNULL, capture_output=True, text=True, **proctree.popen_kwargs(),
+)
+open(sys.argv[2], "w").write(child.stdout.strip())
+"""
+
+
+@unittest.skipUnless(sys.platform == "win32", "console windows exist on Windows only")
+class ConsoleWindowTests(unittest.TestCase):
+    def test_child_of_a_console_less_parent_opens_no_console_window(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "handle.txt"
+            subprocess.run(
+                [sys.executable, "-c", CONSOLE_PROBE_PARENT,
+                 os.path.dirname(os.path.abspath(proctree.__file__)), str(out)],
+                creationflags=subprocess.DETACHED_PROCESS,
+                timeout=SETTLE_SECONDS,
+            )
+            self.assertEqual(out.read_text().strip(), "0",
+                             "the child got a console window of its own")
+
+    def test_flags_keep_the_new_process_group(self):
+        flags = proctree.popen_kwargs()["creationflags"]
+        self.assertTrue(flags & subprocess.CREATE_NEW_PROCESS_GROUP)
+        self.assertTrue(flags & subprocess.CREATE_NO_WINDOW)
+        self.assertFalse(flags & subprocess.DETACHED_PROCESS)
+
+
 if __name__ == "__main__":
     unittest.main()
