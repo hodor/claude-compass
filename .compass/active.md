@@ -27,7 +27,7 @@ Plan: [[PLAN-028-whole-overhead-on-real-projects]]; each task's full text, files
 
 Plan: [[PLAN-031-screenplays-in-the-vault]]. Checks 1 to 5 passed and sit in [[RESEARCH-screenplays-in-the-vault#Live check results]]; the Later tasks are detailed once the human confirms them.
 
-- [ ] The human confirms the five live check results.
+- [x] The human confirms the five live check results.
 
 ## PLAN-033 Wave 4: the task in progress and the judge
 
